@@ -28,9 +28,14 @@ pub enum CanonAbi {
     Rust,
     RustCold,
     RustPreserveNone,
+    RustTail,
 
     /// An ABI that rustc does not know how to call or define.
     Custom,
+
+    /// Swift calling convention, exposed via LLVM's `swiftcc`. Cross-platform
+    /// and not tied to a specific target architecture.
+    Swift,
 
     /// ABIs relevant to 32-bit Arm targets
     Arm(ArmCall),
@@ -55,9 +60,13 @@ pub enum CanonAbi {
 impl CanonAbi {
     pub fn is_rustic_abi(self) -> bool {
         match self {
-            CanonAbi::Rust | CanonAbi::RustCold | CanonAbi::RustPreserveNone => true,
+            CanonAbi::Rust
+            | CanonAbi::RustCold
+            | CanonAbi::RustPreserveNone
+            | CanonAbi::RustTail => true,
             CanonAbi::C
             | CanonAbi::Custom
+            | CanonAbi::Swift
             | CanonAbi::Arm(_)
             | CanonAbi::GpuKernel
             | CanonAbi::Interrupt(_)
@@ -76,7 +85,9 @@ impl fmt::Display for CanonAbi {
             CanonAbi::Rust => ExternAbi::Rust,
             CanonAbi::RustCold => ExternAbi::RustCold,
             CanonAbi::RustPreserveNone => ExternAbi::RustPreserveNone,
+            CanonAbi::RustTail => ExternAbi::RustTail,
             CanonAbi::Custom => ExternAbi::Custom,
+            CanonAbi::Swift => ExternAbi::Swift,
             CanonAbi::Arm(arm_call) => match arm_call {
                 ArmCall::Aapcs => ExternAbi::Aapcs { unwind: false },
                 ArmCall::CCmseNonSecureCall => ExternAbi::CmseNonSecureCall,

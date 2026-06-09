@@ -7,7 +7,8 @@
     clippy::manual_midpoint,
     clippy::manual_unwrap_or_default,
     clippy::manual_unwrap_or,
-    clippy::unnecessary_option_map_or_else
+    clippy::unnecessary_option_map_or_else,
+    clippy::map_or_identity
 )]
 
 fn bad1(string: Option<&str>) -> (bool, &str) {

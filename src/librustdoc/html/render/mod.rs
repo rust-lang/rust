@@ -36,11 +36,11 @@ mod ordered_json;
 mod print_item;
 pub(crate) mod sidebar;
 mod sorted_template;
-pub(crate) mod span_map;
 mod type_layout;
 mod write_shared;
 
 use std::borrow::Cow;
+use std::cmp::Ordering;
 use std::collections::VecDeque;
 use std::fmt::{self, Display as _, Write};
 use std::iter::Peekable;
@@ -64,7 +64,6 @@ use rustc_span::symbol::{Symbol, sym};
 use tracing::{debug, info};
 
 pub(crate) use self::context::*;
-pub(crate) use self::span_map::{LinkFromSrc, collect_spans_and_sources};
 pub(crate) use self::write_shared::*;
 use crate::clean::{self, Defaultness, Item, ItemId, RenderedLink};
 use crate::display::{Joined as _, MaybeDisplay as _};
@@ -81,6 +80,7 @@ use crate::html::format::{
 use crate::html::markdown::{
     HeadingOffset, IdMap, Markdown, MarkdownItemInfo, MarkdownSummaryLine, short_markdown_summary,
 };
+use crate::html::render::print_item::ImplString;
 use crate::html::render::search_index::get_function_type_for_search;
 use crate::html::static_files::SCRAPE_EXAMPLES_HELP_MD;
 use crate::html::{highlight, sources};
@@ -125,7 +125,7 @@ enum RenderMode {
 // Helper structs for rendering items/sidebars and carrying along contextual
 // information
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct IndexItemInfo {
     pub(crate) ty: ItemType,
     pub(crate) desc: String,
@@ -142,8 +142,8 @@ impl IndexItemInfo {
         item: &Item,
         parent_did: Option<DefId>,
         impl_generics: Option<&(clean::Type, clean::Generics)>,
+        ty: ItemType,
     ) -> Self {
-        let ty = item.type_();
         let desc = short_markdown_summary(&item.doc_value(), &item.link_names(cache));
         let search_type = get_function_type_for_search(item, tcx, impl_generics, parent_did, cache);
         let aliases = item.attrs.get_doc_aliases();
@@ -155,7 +155,7 @@ impl IndexItemInfo {
 
 /// Struct representing one entry in the JS search index. These are all emitted
 /// by hand to a large JS file at the end of cache-creation.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct IndexItem {
     pub(crate) defid: Option<DefId>,
     pub(crate) name: Symbol,
@@ -531,30 +531,38 @@ impl AllTypes {
         }
     }
 
-    fn append(&mut self, item_name: String, item_type: &ItemType) {
+    fn add_item_entry(&mut self, item_type: ItemType, new_url: String, name: String) {
+        match item_type {
+            ItemType::Struct => self.structs.insert(ItemEntry::new(new_url, name)),
+            ItemType::Enum => self.enums.insert(ItemEntry::new(new_url, name)),
+            ItemType::Union => self.unions.insert(ItemEntry::new(new_url, name)),
+            ItemType::Primitive => self.primitives.insert(ItemEntry::new(new_url, name)),
+            ItemType::Trait => self.traits.insert(ItemEntry::new(new_url, name)),
+            ItemType::Macro => self.macros.insert(ItemEntry::new(new_url, name)),
+            ItemType::Function => self.functions.insert(ItemEntry::new(new_url, name)),
+            ItemType::TypeAlias => self.type_aliases.insert(ItemEntry::new(new_url, name)),
+            ItemType::Static => self.statics.insert(ItemEntry::new(new_url, name)),
+            ItemType::Constant => self.constants.insert(ItemEntry::new(new_url, name)),
+            ItemType::ProcAttribute | ItemType::DeclMacroAttribute => {
+                self.attribute_macros.insert(ItemEntry::new(new_url, name))
+            }
+            ItemType::ProcDerive | ItemType::DeclMacroDerive => {
+                self.derive_macros.insert(ItemEntry::new(new_url, name))
+            }
+            ItemType::TraitAlias => self.trait_aliases.insert(ItemEntry::new(new_url, name)),
+            _ => true,
+        };
+    }
+
+    fn append(&mut self, item_name: String, item: &clean::Item) {
         let mut url: Vec<_> = item_name.split("::").skip(1).collect();
         if let Some(name) = url.pop() {
-            let new_url = format!("{}/{item_type}.{name}.html", url.join("/"));
+            let new_url = format!("{}/{}", url.join("/"), item.html_filename());
             url.push(name);
             let name = url.join("::");
-            match *item_type {
-                ItemType::Struct => self.structs.insert(ItemEntry::new(new_url, name)),
-                ItemType::Enum => self.enums.insert(ItemEntry::new(new_url, name)),
-                ItemType::Union => self.unions.insert(ItemEntry::new(new_url, name)),
-                ItemType::Primitive => self.primitives.insert(ItemEntry::new(new_url, name)),
-                ItemType::Trait => self.traits.insert(ItemEntry::new(new_url, name)),
-                ItemType::Macro => self.macros.insert(ItemEntry::new(new_url, name)),
-                ItemType::Function => self.functions.insert(ItemEntry::new(new_url, name)),
-                ItemType::TypeAlias => self.type_aliases.insert(ItemEntry::new(new_url, name)),
-                ItemType::Static => self.statics.insert(ItemEntry::new(new_url, name)),
-                ItemType::Constant => self.constants.insert(ItemEntry::new(new_url, name)),
-                ItemType::ProcAttribute => {
-                    self.attribute_macros.insert(ItemEntry::new(new_url, name))
-                }
-                ItemType::ProcDerive => self.derive_macros.insert(ItemEntry::new(new_url, name)),
-                ItemType::TraitAlias => self.trait_aliases.insert(ItemEntry::new(new_url, name)),
-                _ => true,
-            };
+            for type_ in item.types() {
+                self.add_item_entry(type_, new_url.clone(), name.clone());
+            }
         }
     }
 
@@ -809,7 +817,8 @@ fn document_full_inner(
         }
 
         let kind = match &item.kind {
-            clean::ItemKind::StrippedItem(box kind) | kind => kind,
+            clean::ItemKind::StrippedItem(kind) => kind,
+            kind => kind,
         };
 
         if let clean::ItemKind::FunctionItem(..) | clean::ItemKind::MethodItem(..) = kind {
@@ -934,41 +943,62 @@ fn short_item_info(
     extra_info
 }
 
+// Prints the polarity and path of an impl's trait, if it has one, e.g. `Send`, `!Sync`.
+fn impl_trait_key(cx: &Context<'_>, i: &Impl) -> Option<String> {
+    let trait_ = i.inner_impl().trait_.as_ref()?;
+    let prefix = match i.inner_impl().polarity {
+        ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
+        ty::ImplPolarity::Negative => "!",
+    };
+    Some(format!("{prefix}{:#}", print_path(trait_, cx)))
+}
+
 // Render the list of items inside one of the sections "Trait Implementations",
 // "Auto Trait Implementations," "Blanket Trait Implementations" (on struct/enum pages).
-fn render_impls(
-    cx: &Context<'_>,
-    mut w: impl Write,
-    impls: &[&Impl],
-    containing_item: &clean::Item,
+fn render_impls<'a, 'cx>(
+    cx: &'a Context<'cx>,
+    mut impls: Vec<&'a Impl>,
+    containing_item: &'a clean::Item,
     toggle_open_by_default: bool,
-) -> fmt::Result {
-    let mut rendered_impls = impls
-        .iter()
-        .map(|i| {
-            let did = i.trait_did().unwrap();
-            let provided_trait_methods = i.inner_impl().provided_trait_methods(cx.tcx());
-            let assoc_link = AssocItemLink::GotoSource(did.into(), &provided_trait_methods);
-            let imp = render_impl(
-                cx,
-                i,
-                containing_item,
-                assoc_link,
-                RenderMode::Normal,
-                None,
-                &[],
-                ImplRenderingParameters {
-                    show_def_docs: true,
-                    show_default_items: true,
-                    show_non_assoc_items: true,
-                    toggle_open_by_default,
-                },
-            );
-            imp.to_string()
-        })
-        .collect::<Vec<_>>();
-    rendered_impls.sort();
-    w.write_str(&rendered_impls.join(""))
+) -> impl fmt::Display + use<'a, 'cx> {
+    impls.sort_by_cached_key(|imp| {
+        let prefix = match imp.inner_impl().polarity {
+            ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => Ordering::Greater,
+            ty::ImplPolarity::Negative => Ordering::Less,
+        };
+        (prefix, ImplString::new_path(imp, cx))
+    });
+    // Render each impl alongside its `impl_trait_key`, which is used as the primary sorting key
+    // to match the impl order in the sidebar.
+
+    fmt::from_fn(move |f| {
+        impls
+            .iter()
+            .map(|i| {
+                fmt::from_fn(|f| {
+                    let did = i.trait_did().unwrap();
+                    let provided_trait_methods = i.inner_impl().provided_trait_methods(cx.tcx());
+                    let assoc_link = AssocItemLink::GotoSource(did.into(), &provided_trait_methods);
+                    render_impl(
+                        cx,
+                        i,
+                        containing_item,
+                        assoc_link,
+                        RenderMode::Normal,
+                        None,
+                        &[],
+                        ImplRenderingParameters {
+                            show_def_docs: true,
+                            show_default_items: true,
+                            show_non_assoc_items: true,
+                            toggle_open_by_default,
+                        },
+                    )
+                    .fmt(f)
+                })
+            })
+            .joined("", f)
+    })
 }
 
 /// Build a (possibly empty) `href` attribute (a key-value pair) for the given associated item.
@@ -1390,16 +1420,12 @@ fn render_all_impls(
     mut w: impl Write,
     cx: &Context<'_>,
     containing_item: &clean::Item,
-    concrete: &[&Impl],
-    synthetic: &[&Impl],
-    blanket_impl: &[&Impl],
+    concrete_impls: Vec<&Impl>,
+    auto_trait_impls: Vec<&Impl>,
+    blanket_impls: Vec<&Impl>,
 ) -> fmt::Result {
-    let impls = {
-        let mut buf = String::new();
-        render_impls(cx, &mut buf, concrete, containing_item, true)?;
-        buf
-    };
-    if !impls.is_empty() {
+    if !concrete_impls.is_empty() {
+        let impls = render_impls(cx, concrete_impls, containing_item, true);
         write!(
             w,
             "{}<div id=\"trait-implementations-list\">{impls}</div>",
@@ -1407,25 +1433,25 @@ fn render_all_impls(
         )?;
     }
 
-    if !synthetic.is_empty() {
+    if !auto_trait_impls.is_empty() {
+        let impls = render_impls(cx, auto_trait_impls, containing_item, false);
+        // FIXME: Change the ID to `auto-trait-implementations-list`!
         write!(
             w,
-            "{}<div id=\"synthetic-implementations-list\">",
+            "{}<div id=\"synthetic-implementations-list\">{impls}</div>",
             write_impl_section_heading("Auto Trait Implementations", "synthetic-implementations",)
         )?;
-        render_impls(cx, &mut w, synthetic, containing_item, false)?;
-        w.write_str("</div>")?;
     }
 
-    if !blanket_impl.is_empty() {
+    if !blanket_impls.is_empty() {
+        let impls = render_impls(cx, blanket_impls, containing_item, false);
         write!(
             w,
-            "{}<div id=\"blanket-implementations-list\">",
+            "{}<div id=\"blanket-implementations-list\">{impls}</div>",
             write_impl_section_heading("Blanket Implementations", "blanket-implementations")
         )?;
-        render_impls(cx, &mut w, blanket_impl, containing_item, false)?;
-        w.write_str("</div>")?;
     }
+
     Ok(())
 }
 
@@ -1452,10 +1478,10 @@ fn render_assoc_items_inner(
 ) -> fmt::Result {
     info!("Documenting associated items of {:?}", containing_item.name);
     let cache = &cx.shared.cache;
-    let Some(v) = cache.impls.get(&it) else { return Ok(()) };
-    let (mut non_trait, traits): (Vec<_>, _) =
-        v.iter().partition(|i| i.inner_impl().trait_.is_none());
-    if !non_trait.is_empty() {
+    let Some(impls) = cache.impls.get(&it) else { return Ok(()) };
+    let (mut inherent_impls, trait_impls): (Vec<_>, _) =
+        impls.iter().partition(|i| i.inner_impl().trait_.is_none());
+    if !inherent_impls.is_empty() {
         let render_mode = what.render_mode();
         let class_html = what
             .class()
@@ -1478,7 +1504,7 @@ fn render_assoc_items_inner(
                 // we should not show methods from `[MaybeUninit<u8>]`.
                 // this `retain` filters out any instances where
                 // the types do not line up perfectly.
-                non_trait.retain(|impl_| {
+                inherent_impls.retain(|impl_| {
                     type_.is_doc_subtype_of(&impl_.inner_impl().for_, &cx.shared.cache)
                 });
                 let derived_id = cx.derive_id(&id);
@@ -1505,8 +1531,8 @@ fn render_assoc_items_inner(
                 )
             }
         };
-        let impls_buf = fmt::from_fn(|f| {
-            non_trait
+        let inherent_impls_buf = fmt::from_fn(|f| {
+            inherent_impls
                 .iter()
                 .map(|i| {
                     render_impl(
@@ -1529,10 +1555,10 @@ fn render_assoc_items_inner(
         })
         .to_string();
 
-        if !impls_buf.is_empty() {
+        if !inherent_impls_buf.is_empty() {
             write!(
                 w,
-                "{section_heading}<div id=\"{id}\"{class_html}>{impls_buf}</div>{}",
+                "{section_heading}<div id=\"{id}\"{class_html}>{inherent_impls_buf}</div>{}",
                 matches!(what, AssocItemRender::DerefFor { .. })
                     .then_some("</details>")
                     .maybe_display(),
@@ -1540,13 +1566,14 @@ fn render_assoc_items_inner(
         }
     }
 
-    if !traits.is_empty() {
-        let deref_impl = traits.iter().find(|t| {
+    if !trait_impls.is_empty() {
+        let deref_impl = trait_impls.iter().find(|t| {
             t.trait_did() == cx.tcx().lang_items().deref_trait() && !t.is_negative_trait_impl()
         });
         if let Some(impl_) = deref_impl {
-            let has_deref_mut =
-                traits.iter().any(|t| t.trait_did() == cx.tcx().lang_items().deref_mut_trait());
+            let has_deref_mut = trait_impls
+                .iter()
+                .any(|t| t.trait_did() == cx.tcx().lang_items().deref_mut_trait());
             render_deref_methods(&mut w, cx, impl_, containing_item, has_deref_mut, derefs)?;
         }
 
@@ -1556,12 +1583,12 @@ fn render_assoc_items_inner(
             return Ok(());
         }
 
-        let (synthetic, concrete): (Vec<&Impl>, Vec<&Impl>) =
-            traits.into_iter().partition(|t| t.inner_impl().kind.is_auto());
-        let (blanket_impl, concrete): (Vec<&Impl>, _) =
-            concrete.into_iter().partition(|t| t.inner_impl().kind.is_blanket());
+        let (auto_trait_impls, trait_impls): (Vec<&Impl>, Vec<&Impl>) =
+            trait_impls.into_iter().partition(|t| t.inner_impl().kind.is_auto());
+        let (blanket_impls, concrete_impls): (Vec<&Impl>, _) =
+            trait_impls.into_iter().partition(|t| t.inner_impl().kind.is_blanket());
 
-        render_all_impls(w, cx, containing_item, &concrete, &synthetic, &blanket_impl)?;
+        render_all_impls(w, cx, containing_item, concrete_impls, auto_trait_impls, blanket_impls)?;
     }
     Ok(())
 }
@@ -1582,7 +1609,7 @@ fn render_deref_methods(
         .items
         .iter()
         .find_map(|item| match item.kind {
-            clean::AssocTypeItem(box ref t, _) => Some(match *t {
+            clean::AssocTypeItem(ref t, _) => Some(match *t {
                 clean::TypeAlias { item_type: Some(ref type_), .. } => (type_, &t.type_),
                 _ => (&t.type_, &t.type_),
             }),
@@ -2597,7 +2624,7 @@ impl ItemSection {
             Self::AssociatedConstants => "associated-consts",
             Self::ForeignTypes => "foreign-types",
             Self::Keywords => "keywords",
-            Self::Attributes => "attributes",
+            Self::Attributes => "attribute-docs",
             Self::AttributeMacros => "attributes",
             Self::DeriveMacros => "derives",
             Self::TraitAliases => "trait-aliases",
@@ -2659,8 +2686,8 @@ fn item_ty_to_section(ty: ItemType) -> ItemSection {
         ItemType::ForeignType => ItemSection::ForeignTypes,
         ItemType::Keyword => ItemSection::Keywords,
         ItemType::Attribute => ItemSection::Attributes,
-        ItemType::ProcAttribute => ItemSection::AttributeMacros,
-        ItemType::ProcDerive => ItemSection::DeriveMacros,
+        ItemType::ProcAttribute | ItemType::DeclMacroAttribute => ItemSection::AttributeMacros,
+        ItemType::ProcDerive | ItemType::DeclMacroDerive => ItemSection::DeriveMacros,
         ItemType::TraitAlias => ItemSection::TraitAliases,
     }
 }
@@ -2709,7 +2736,7 @@ fn collect_paths_for_type(first_ty: &clean::Type, cache: &Cache) -> Vec<String> 
             clean::Type::BorrowedRef { type_, .. } => {
                 work.push_back(type_);
             }
-            clean::Type::QPath(box clean::QPathData { self_type, trait_, .. }) => {
+            clean::Type::QPath(clean::QPathData { self_type, trait_, .. }) => {
                 work.push_back(self_type);
                 if let Some(trait_) = trait_ {
                     process_path(trait_.def_id());

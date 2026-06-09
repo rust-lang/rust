@@ -112,7 +112,7 @@ impl Clone for RootDatabase {
             storage: self.storage.clone(),
             files: self.files.clone(),
             crates_map: self.crates_map.clone(),
-            nonce: Nonce::new(),
+            nonce: self.nonce,
         }
     }
 }
@@ -179,6 +179,10 @@ impl SourceDatabase for RootDatabase {
 
     fn nonce_and_revision(&self) -> (Nonce, salsa::Revision) {
         (self.nonce, salsa::plumbing::ZalsaDatabase::zalsa(self).current_revision())
+    }
+
+    fn line_column(&self, file: FileId, offset: syntax::TextSize) -> Result<(u32, u32), ()> {
+        line_index(self, file).try_line_col(offset).map(|lc| (lc.line, lc.col)).ok_or(())
     }
 }
 
@@ -402,10 +406,16 @@ impl<'a> MiniCore<'a> {
 
 impl std::fmt::Debug for MiniCore<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("MiniCore")
-            // don't print the whole contents if they correspond to the default
-            .field(if self.0 == test_utils::MiniCore::RAW_SOURCE { &"<default>" } else { &self.0 })
-            .finish()
+        let mut d = f.debug_tuple("MiniCore");
+        if self.0 == test_utils::MiniCore::RAW_SOURCE {
+            // Don't print the whole contents if they correspond to the default.
+            // The `format_args!` makes it so that the output is
+            // `MiniCore(<default>)` and not `MiniCore("<default>").
+            d.field(&format_args!("<default>"));
+        } else {
+            d.field(&self.0);
+        };
+        d.finish()
     }
 }
 

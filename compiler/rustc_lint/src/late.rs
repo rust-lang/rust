@@ -439,14 +439,6 @@ fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
 
     filtered_passes.push(Box::new(HardwiredLints));
     let pass = RuntimeCombinedLateLintPass { passes: &mut filtered_passes[..] };
-    late_lint_crate_inner(tcx, context, pass);
-}
-
-fn late_lint_crate_inner<'tcx, T: LateLintPass<'tcx>>(
-    tcx: TyCtxt<'tcx>,
-    context: LateContext<'tcx>,
-    pass: T,
-) {
     let mut cx = LateContextAndPass { context, pass };
 
     // Visit the whole crate.

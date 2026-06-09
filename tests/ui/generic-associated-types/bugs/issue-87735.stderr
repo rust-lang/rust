@@ -3,6 +3,15 @@ error[E0207]: the type parameter `U` is not constrained by the impl trait, self 
    |
 LL | impl<'b, T, U> AsRef2 for Foo<T>
    |             ^ unconstrained type parameter
+   |
+help: use the type parameter `U` in the `Foo` type and use it in the type definition
+   |
+LL ~ struct Foo<T, U>(T);
+LL | #[derive(Debug)]
+LL | struct FooRef<'a, U>(&'a [U]);
+LL |
+LL ~ impl<'b, T, U> AsRef2 for Foo<T, U>
+   |
 
 error[E0309]: the parameter type `U` may not live long enough
   --> $DIR/issue-87735.rs:34:3

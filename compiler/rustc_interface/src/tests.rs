@@ -10,9 +10,9 @@ use rustc_errors::ColorConfig;
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_hir::attrs::{CollapseMacroDebuginfo, NativeLibKind};
 use rustc_session::config::{
-    AnnotateMoves, AutoDiff, BranchProtection, CFGuard, Cfg, CoverageLevel, CoverageOptions,
-    DebugInfo, DumpMonoStatsFormat, ErrorOutputType, ExternEntry, ExternLocation, Externs,
-    FmtDebug, FunctionReturn, IncrementalStateAssertion, InliningThreshold, Input,
+    AnnotateMoves, AutoDiff, BranchProtection, CFGuard, Cfg, CodegenRetagOptions, CoverageLevel,
+    CoverageOptions, DebugInfo, DumpMonoStatsFormat, ErrorOutputType, ExternEntry, ExternLocation,
+    Externs, FmtDebug, FunctionReturn, IncrementalStateAssertion, InliningThreshold, Input,
     InstrumentCoverage, InstrumentXRay, LinkSelfContained, LinkerPluginLto, LocationDetail, LtoCli,
     MirIncludeSpans, NextSolverConfig, Offload, Options, OutFileName, OutputType, OutputTypes,
     PAuthKey, PacRet, Passes, PatchableFunctionEntry, Polonius, ProcMacroExecutionStrategy, Strip,
@@ -578,19 +578,16 @@ fn test_codegen_options_tracking_hash() {
 
     // Make sure that changing an [UNTRACKED] option leaves the hash unchanged.
     // tidy-alphabetical-start
-    untracked!(ar, String::from("abc"));
     untracked!(codegen_units, Some(42));
     untracked!(default_linker_libraries, true);
     untracked!(dlltool, Some(PathBuf::from("custom_dlltool.exe")));
     untracked!(extra_filename, String::from("extra-filename"));
     untracked!(incremental, Some(String::from("abc")));
-    untracked!(inline_threshold, Some(0xf007ba11));
     // `link_arg` is omitted because it just forwards to `link_args`.
     untracked!(link_args, vec![String::from("abc"), String::from("def")]);
     untracked!(link_self_contained, LinkSelfContained::on());
     untracked!(linker, Some(PathBuf::from("linker")));
     untracked!(linker_flavor, Some(LinkerFlavorCli::Gcc));
-    untracked!(no_stack_check, true);
     untracked!(remark, Passes::Some(vec![String::from("pass1"), String::from("pass2")]));
     untracked!(rpath, true);
     untracked!(save_temps, true);
@@ -734,7 +731,7 @@ fn test_unstable_options_tracking_hash() {
     untracked!(span_debug, true);
     untracked!(span_free_formats, true);
     untracked!(temps_dir, Some(String::from("abc")));
-    untracked!(threads, 99);
+    untracked!(threads, Some(99));
     untracked!(time_llvm_passes, true);
     untracked!(time_passes, true);
     untracked!(time_passes_format, TimePassesFormat::Json);
@@ -775,6 +772,7 @@ fn test_unstable_options_tracking_hash() {
         })
     );
     tracked!(codegen_backend, Some("abc".to_string()));
+    tracked!(codegen_emit_retag, Some(CodegenRetagOptions::default()));
     tracked!(
         coverage_options,
         CoverageOptions {
@@ -785,8 +783,8 @@ fn test_unstable_options_tracking_hash() {
     );
     tracked!(crate_attr, vec!["abc".to_string()]);
     tracked!(cross_crate_inline_threshold, InliningThreshold::Always);
-    tracked!(debug_info_for_profiling, true);
     tracked!(debug_info_type_line_numbers, true);
+    tracked!(debuginfo_for_profiling, true);
     tracked!(default_visibility, Some(rustc_target::spec::SymbolVisibility::Hidden));
     tracked!(dep_info_omit_d_target, true);
     tracked!(direct_access_external_data, Some(true));
@@ -794,7 +792,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(dwarf_version, Some(5));
     tracked!(embed_metadata, false);
     tracked!(embed_source, true);
-    tracked!(emscripten_wasm_eh, false);
     tracked!(export_executable_symbols, true);
     tracked!(fewer_names, Some(true));
     tracked!(fixed_x18, true);

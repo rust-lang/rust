@@ -55,7 +55,11 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_alias(interner: I, alias_ty: ty::AliasTy<I>) -> Self;
 
-    fn new_projection_from_args(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self {
+    fn new_projection_from_args(
+        interner: I,
+        def_id: I::TraitAssocTyId,
+        args: I::GenericArgs,
+    ) -> Self {
         Self::new_alias(
             interner,
             ty::AliasTy::new_from_args(interner, ty::AliasTyKind::Projection { def_id }, args),
@@ -64,7 +68,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_projection(
         interner: I,
-        def_id: I::DefId,
+        def_id: I::TraitAssocTyId,
         args: impl IntoIterator<Item: Into<I::GenericArg>>,
     ) -> Self {
         Self::new_alias(
@@ -396,16 +400,14 @@ pub trait Term<I: Interner<Term = Self>>:
         }
     }
 
-    fn to_alias_term(self, interner: I) -> Option<ty::AliasTerm<I>> {
+    fn to_alias_term(self) -> Option<ty::AliasTerm<I>> {
         match self.kind() {
             ty::TermKind::Ty(ty) => match ty.kind() {
                 ty::Alias(alias_ty) => Some(alias_ty.into()),
                 _ => None,
             },
             ty::TermKind::Const(ct) => match ct.kind() {
-                ty::ConstKind::Unevaluated(uv) => {
-                    Some(ty::AliasTerm::from_unevaluated_const(interner, uv))
-                }
+                ty::ConstKind::Unevaluated(uv) => Some(uv.into()),
                 _ => None,
             },
         }
@@ -527,6 +529,18 @@ pub trait Clause<I: Interner<Clause = Self>>:
 {
     fn as_predicate(self) -> I::Predicate;
 
+    fn as_type_outlives_clause(self) -> Option<ty::Binder<I, ty::OutlivesPredicate<I, I::Ty>>> {
+        self.kind()
+            .map_bound(|clause| {
+                if let ty::ClauseKind::TypeOutlives(outlives) = clause {
+                    Some(outlives)
+                } else {
+                    None
+                }
+            })
+            .transpose()
+    }
+
     fn as_trait_clause(self) -> Option<ty::Binder<I, ty::TraitPredicate<I>>> {
         self.kind()
             .map_bound(|clause| if let ty::ClauseKind::Trait(t) = clause { Some(t) } else { None })
@@ -629,25 +643,32 @@ pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
 pub trait Features<I: Interner>: Copy {
     fn generic_const_exprs(self) -> bool;
 
+    fn generic_const_args(self) -> bool;
+
     fn coroutine_clone(self) -> bool;
 
     fn feature_bound_holds_in_crate(self, symbol: I::Symbol) -> bool;
 }
 
 #[rust_analyzer::prefer_underscore_import]
-pub trait DefId<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
+pub trait DefId<I: Interner, Local = <I as Interner>::LocalDefId>:
+    Copy + Debug + Hash + Eq + TypeFoldable<I>
+{
     fn is_local(self) -> bool;
 
-    fn as_local(self) -> Option<I::LocalDefId>;
+    fn as_local(self) -> Option<Local>;
 }
 
-pub trait SpecificDefId<I: Interner>:
-    DefId<I> + Into<I::DefId> + TryFrom<I::DefId, Error: std::fmt::Debug>
+pub trait SpecificDefId<I: Interner, Local = <I as Interner>::LocalDefId>:
+    DefId<I, Local> + Into<I::DefId> + TryFrom<I::DefId, Error: std::fmt::Debug>
 {
 }
 
-impl<I: Interner, T: DefId<I> + Into<I::DefId> + TryFrom<I::DefId, Error: std::fmt::Debug>>
-    SpecificDefId<I> for T
+impl<
+    I: Interner,
+    T: DefId<I, Local> + Into<I::DefId> + TryFrom<I::DefId, Error: std::fmt::Debug>,
+    Local,
+> SpecificDefId<I, Local> for T
 {
 }
 
@@ -677,6 +698,12 @@ pub trait OpaqueTypeStorageEntries: Debug + Copy + Default {
     /// reevaluating a goal. For now, this is only when the number of non-duplicated
     /// entries changed.
     fn needs_reevaluation(self, canonicalized: usize) -> bool;
+}
+
+pub trait BoundVarKinds<I: Interner>:
+    Copy + Debug + Hash + Eq + SliceLike<Item = ty::BoundVariableKind<I>> + Default
+{
+    fn from_vars(cx: I, iter: impl IntoIterator<Item = ty::BoundVariableKind<I>>) -> Self;
 }
 
 pub trait SliceLike: Sized + Copy {

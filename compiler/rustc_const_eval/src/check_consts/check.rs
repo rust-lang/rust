@@ -610,6 +610,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
             }
 
+            Rvalue::Reborrow(..) => {
+                // FIXME(reborrow): figure out if this is relevant at all.
+            }
+
             Rvalue::RawPtr(RawPtrKind::FakeForPtrMetadata, place) => {
                 // These are only inserted for slice length, so the place must already be indirect.
                 // This implies we do not have to worry about whether the borrow escapes.
@@ -665,7 +669,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
             }
 
-            Rvalue::BinaryOp(op, box (lhs, rhs)) => {
+            Rvalue::BinaryOp(op, (lhs, rhs)) => {
                 let lhs_ty = lhs.ty(self.body, self.tcx);
                 let rhs_ty = rhs.ty(self.body, self.tcx);
 

@@ -231,6 +231,7 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::Loop(..)
             | ast::ExprKind::MacCall(..)
             | ast::ExprKind::MethodCall(..)
+            | ast::ExprKind::Move(..)
             | ast::ExprKind::Paren(..)
             | ast::ExprKind::Underscore
             | ast::ExprKind::Path(..)

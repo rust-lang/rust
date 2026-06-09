@@ -19,7 +19,7 @@ use crate::{
 // This diagnostic is triggered when there is an `else` block for an `if` expression whose
 // then branch diverges (e.g. ends with a `return`, `continue`, `break` e.t.c).
 pub(crate) fn remove_unnecessary_else(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &RemoveUnnecessaryElse,
 ) -> Option<Diagnostic> {
     if d.if_expr.file_id.macro_file().is_some() {
@@ -40,7 +40,7 @@ pub(crate) fn remove_unnecessary_else(
     )
 }
 
-fn fixes(ctx: &DiagnosticsContext<'_>, d: &RemoveUnnecessaryElse) -> Option<Vec<Assist>> {
+fn fixes(ctx: &DiagnosticsContext<'_, '_>, d: &RemoveUnnecessaryElse) -> Option<Vec<Assist>> {
     let root = ctx.sema.db.parse_or_expand(d.if_expr.file_id);
     let if_expr = d.if_expr.value.to_node(&root);
     let if_expr = ctx.sema.original_ast_node(if_expr)?;

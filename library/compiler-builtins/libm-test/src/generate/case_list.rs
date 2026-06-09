@@ -6,6 +6,8 @@
 //!
 //! This is useful for adding regression tests or expected failures.
 
+#[cfg(f16_enabled)]
+use libm::hf16;
 #[cfg(f128_enabled)]
 use libm::hf128;
 use libm::{hf32, hf64};
@@ -941,6 +943,55 @@ fn floorf128_cases() -> Vec<TestCase<op::floorf128::Routine>> {
 #[cfg(f16_enabled)]
 fn floorf16_cases() -> Vec<TestCase<op::floorf16::Routine>> {
     cases![]
+}
+
+#[cfg(f16_enabled)]
+fn fmaf16_cases() -> Vec<TestCase<op::fmaf16::Routine>> {
+    cases![
+        // Subnormal result
+        ((hf16!("0x1p-11"), hf16!("0x1p-11"), 0.0), None,),
+        ((hf16!("0x1p-24"), hf16!("0x1p-24"), 0.0), None,),
+        // Failed during extensive tests
+        (
+            (
+                hf16!("-0x1.c4p-12"),
+                hf16!("0x1.22p-14"),
+                hf16!("-0x1.f4p-15"),
+            ),
+            hf16!("-0x1.f48p-15")
+        ),
+        // Examples from https://github.com/llvm/llvm-project/issues/128450
+        (
+            (
+                hf16!("0x1.400p+8"),
+                hf16!("0x1.008p+7"),
+                hf16!("0x1.000p-24"),
+            ),
+            hf16!("0x1.40cp+15")
+        ),
+        (
+            (hf16!("0x1.eb8p-12"), hf16!("0x1.9p-11"), hf16!("-0x1p-11"),),
+            None
+        ),
+        // Previous failures during testing
+        ((-569.0, -4.89, 65470.0), None),
+        ((-998.0, 0.02596, -998.0), None),
+        ((6e-8, 6e-8, -6.104e-5), None),
+        ((6e-8, 65300.0, 9.5e-7), None),
+        ((-569.0, -4.89, -0.0417), None),
+        ((6444.0, 0.003443, 0.003443), None),
+        ((6e-8, 6e-8, 6e-8), None),
+        ((6e-8, -1.0, 6e-8), None),
+        ((1.001, 65500.0, 6e-8), None),
+        ((1.001, 65500.0, 65500.0), None),
+        ((1.002, 65470.0, 0.0), None),
+        ((1.002, 65470.0, 65500.0), None),
+        ((0.0002216, -8.464e-5, 4.4e-5), None),
+        ((-56700.0, -2.082, -61120.0), None),
+        ((-475.3, -475.3, 60450.0), None),
+        ((-61120.0, -3.969, 20320.0), None),
+        ((6e-8, -6e-8, 0.0), None),
+    ]
 }
 
 fn fmaf_cases() -> Vec<TestCase<op::fmaf::Routine>> {

@@ -1,6 +1,6 @@
 use hir::db::ExpandDatabase;
 use ide_db::syntax_helpers::prettify_macro_expansion;
-use syntax::ast::{self, AstNode};
+use syntax::ast::{self, AstNode, edit::AstNodeEdit};
 
 use crate::{AssistContext, AssistId, Assists};
 
@@ -35,7 +35,7 @@ use crate::{AssistContext, AssistId, Assists};
 //     println!("{number}");
 // }
 // ```
-pub(crate) fn inline_macro(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn inline_macro(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let unexpanded = ctx.find_node_at_offset::<ast::MacroCall>()?;
     let macro_call = ctx.sema.to_def(&unexpanded)?;
     let target_crate_id = ctx.sema.file_to_module_def(ctx.vfs_file_id())?.krate(ctx.db()).into();
@@ -46,12 +46,15 @@ pub(crate) fn inline_macro(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
         "Inline macro".to_owned(),
         text_range,
         |builder| {
+            let editor = builder.make_editor(unexpanded.syntax());
             let expanded = ctx.sema.parse_or_expand(macro_call.into());
             let span_map = ctx.sema.db.expansion_span_map(macro_call);
             // Don't call `prettify_macro_expansion()` outside the actual assist action; it does some heavy rowan tree manipulation,
             // which can be very costly for big macros when it is done *even without the assist being invoked*.
-            let expanded = prettify_macro_expansion(ctx.db(), expanded, &span_map, target_crate_id);
-            builder.replace(text_range, expanded.to_string())
+            let expanded = prettify_macro_expansion(ctx.db(), expanded, span_map, target_crate_id);
+            let expanded = ast::edit::indent(&expanded, unexpanded.indent_level());
+            editor.replace(unexpanded.syntax(), expanded);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
@@ -207,15 +210,15 @@ macro_rules! num {
             inline_macro,
             r#"
 macro_rules! foo {
-  () => {foo!()}
+  ($t:tt) => {foo!(1)}
 }
-fn f() { let result = foo$0!(); }
+fn f() { let result = foo$0!(0); }
 "#,
             r#"
 macro_rules! foo {
-  () => {foo!()}
+  ($t:tt) => {foo!(1)}
 }
-fn f() { let result = foo!(); }
+fn f() { let result = foo!(1); }
 "#,
         );
     }
@@ -258,7 +261,7 @@ macro_rules! whitespace {
         if true {}
     };
 }
-fn f() { if true{}; }
+fn f() { if true {}; }
 "#,
         )
     }
@@ -297,12 +300,12 @@ macro_rules! foo {
 }
 fn main() {
     cfg_if!{
-    if #[cfg(test)]{
-        1;
-    }else {
-        1;
-    }
-};
+        if #[cfg(test)]{
+            1;
+        }else {
+            1;
+        }
+    };
 }
 "#,
         );

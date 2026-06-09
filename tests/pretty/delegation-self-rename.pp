@@ -19,7 +19,7 @@ impl <'a, A, const B: bool> Trait<'a, A, B> for X { }
 #[attr = Inline(Hint)]
 fn foo<'a, Self, A, const B: _, const B2: _, T, U,
     impl FnOnce() -> usize>(self: _, arg1: _) -> _ where
-    'a:'a { self.foo::<B2, T, U>(arg1) }
+    'a:'a { Trait::<'a, A, B>::foo::<B2, T, U>(self, arg1) }
 #[attr = Inline(Hint)]
 fn bar<Self, impl FnOnce() -> usize>(self: _, arg1: _)
     -> _ { Trait::<'static, (), true>::foo::<true, (), ()>(self, arg1) }

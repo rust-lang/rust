@@ -35,7 +35,7 @@ use crate::{
 //     }
 // }
 // ```
-pub(crate) fn generate_setter(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn generate_setter(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     // This if condition denotes two modes this assist can work in:
     // - First is acting upon selection of record fields
     // - Next is acting upon a single record field
@@ -124,7 +124,7 @@ pub(crate) fn generate_setter(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
 //     }
 // }
 // ```
-pub(crate) fn generate_getter(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn generate_getter(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     generate_getter_impl(acc, ctx, false)
 }
 
@@ -149,7 +149,7 @@ pub(crate) fn generate_getter(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
 //     }
 // }
 // ```
-pub(crate) fn generate_getter_mut(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn generate_getter_mut(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     generate_getter_impl(acc, ctx, true)
 }
 
@@ -175,7 +175,7 @@ enum AssistType {
 
 pub(crate) fn generate_getter_impl(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     mutable: bool,
 ) -> Option<()> {
     let (strukt, info_of_record_fields, fn_names) =
@@ -215,7 +215,7 @@ pub(crate) fn generate_getter_impl(
 }
 
 fn generate_getter_from_info(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     info: &AssistInfo,
     record_field_info: &RecordFieldInfo,
     make: &SyntaxFactory,
@@ -329,7 +329,7 @@ fn generate_setter_from_info(
 }
 
 fn extract_and_parse(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     assist_type: AssistType,
 ) -> Option<(ast::Struct, Vec<RecordFieldInfo>, Vec<String>)> {
     // This if condition denotes two modes assists can work in:
@@ -411,7 +411,7 @@ fn parse_record_field(
 }
 
 fn items(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     info_of_record_fields: Vec<RecordFieldInfo>,
     assist_info: &AssistInfo,
     make: &SyntaxFactory,
@@ -432,7 +432,7 @@ fn items(
 
 fn build_source_change(
     builder: &mut SourceChangeBuilder,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     info_of_record_fields: Vec<RecordFieldInfo>,
     assist_info: AssistInfo,
 ) {
@@ -458,7 +458,7 @@ fn build_source_change(
     let make = editor.make();
     let items = items(ctx, info_of_record_fields, &assist_info, make);
     let ty_params = assist_info.strukt.generic_param_list();
-    let ty_args = ty_params.as_ref().map(|it| it.to_generic_args());
+    let ty_args = ty_params.as_ref().map(|it| it.to_generic_args(make));
     let impl_def = make.impl_(
         None,
         ty_params,

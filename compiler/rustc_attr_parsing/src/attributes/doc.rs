@@ -1,6 +1,6 @@
 use rustc_ast::ast::{AttrStyle, LitKind, MetaItemLit};
 use rustc_errors::{Applicability, msg};
-use rustc_feature::template;
+use rustc_feature::{AttributeStability, template};
 use rustc_hir::Target;
 use rustc_hir::attrs::{
     AttributeKind, CfgEntry, CfgHideShow, CfgInfo, DocAttribute, DocInline, HideOrShow,
@@ -41,7 +41,7 @@ fn check_keyword(cx: &mut AcceptContext<'_, '_>, keyword: Symbol, span: Span) ->
 
 fn check_attribute(cx: &mut AcceptContext<'_, '_>, attribute: Symbol, span: Span) -> bool {
     // FIXME: This should support attributes with namespace like `diagnostic::do_not_recommend`.
-    if rustc_feature::BUILTIN_ATTRIBUTE_MAP.contains_key(&attribute) {
+    if rustc_feature::BUILTIN_ATTRIBUTE_MAP.contains(&attribute) {
         return true;
     }
     cx.emit_err(DocAttributeNotAttribute { span, attribute });
@@ -190,6 +190,8 @@ impl DocParser {
 
                 // FIXME: convert list into a Vec of `AttributeKind` because current code is awful.
                 for attr in list.mixed() {
+                    // Arguments of `attr` are checked via the span, so can be safely ignored
+                    attr.ignore_args();
                     self.attribute.test_attrs.push(attr.span());
                 }
             }
@@ -255,8 +257,7 @@ impl DocParser {
             }
             ArgParser::List(list) => {
                 for i in list.mixed() {
-                    let Some(alias) = i.lit().and_then(|i| i.value_str()) else {
-                        cx.adcx().expected_string_literal(i.span(), i.lit());
+                    let Some(alias) = cx.expect_string_literal(i) else {
                         continue;
                     };
 
@@ -264,8 +265,7 @@ impl DocParser {
                 }
             }
             ArgParser::NameValue(nv) => {
-                let Some(alias) = nv.value_as_str() else {
-                    cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
+                let Some(alias) = cx.expect_string_literal(nv) else {
                     return;
                 };
                 self.add_alias(cx, alias, nv.value_span);
@@ -704,6 +704,7 @@ impl AttributeParser for DocParser {
             ],
             NameValueStr: "string"
         ),
+        AttributeStability::Stable, // Some parts of the attribute are unstable, manually checked in parser
         |this, cx, args| {
             this.accept_single_doc_attr(cx, args);
         },

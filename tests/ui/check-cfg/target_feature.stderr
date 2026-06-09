@@ -65,6 +65,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `bulk-memory`
 `c`
 `cache`
+`clflushopt`
 `cmpxchg16b`
 `concurrent-functions`
 `crc`

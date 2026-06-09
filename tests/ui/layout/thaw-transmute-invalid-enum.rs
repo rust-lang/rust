@@ -20,7 +20,7 @@ enum Ox00 {
 }
 
 #[repr(C, packed(2))]
-//~^ ERROR: attribute should be applied to a struct
+//~^ ERROR: attribute cannot be used on
 enum OxFF {
     V = 0xFF,
 }

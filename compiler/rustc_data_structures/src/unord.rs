@@ -12,7 +12,7 @@ use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
 
 use crate::fingerprint::Fingerprint;
 use crate::fx::{FxBuildHasher, FxHashMap, FxHashSet};
-use crate::stable_hasher::{
+use crate::stable_hash::{
     StableCompare, StableHash, StableHashCtxt, StableHasher, ToStableHashKey,
 };
 
@@ -34,6 +34,11 @@ use crate::stable_hasher::{
 pub struct UnordItems<T, I: Iterator<Item = T>>(I);
 
 impl<T, I: Iterator<Item = T>> UnordItems<T, I> {
+    #[inline]
+    pub fn new(iter: I) -> UnordItems<T, I> {
+        UnordItems(iter)
+    }
+
     #[inline]
     pub fn map<U, F: Fn(T) -> U>(self, f: F) -> UnordItems<U, impl Iterator<Item = U>> {
         UnordItems(self.0.map(f))
@@ -60,6 +65,14 @@ impl<T, I: Iterator<Item = T>> UnordItems<T, I> {
         f: F,
     ) -> UnordItems<U, impl Iterator<Item = U>> {
         UnordItems(self.0.filter_map(f))
+    }
+
+    #[inline]
+    pub fn chain(
+        self,
+        other: UnordItems<T, impl Iterator<Item = T>>,
+    ) -> UnordItems<T, impl Iterator<Item = T>> {
+        UnordItems(self.0.chain(other.0))
     }
 
     #[inline]
@@ -102,10 +115,10 @@ impl<T, I: Iterator<Item = T>> UnordItems<T, I> {
     #[inline]
     pub fn flat_map<U, F, O>(self, f: F) -> UnordItems<O, impl Iterator<Item = O>>
     where
-        U: IntoIterator<Item = O>,
-        F: Fn(T) -> U,
+        U: Iterator<Item = O>,
+        F: Fn(T) -> UnordItems<O, U>,
     {
-        UnordItems(self.0.flat_map(f))
+        UnordItems(self.0.flat_map(move |x| f(x).0))
     }
 
     pub fn collect<C: From<UnordItems<T, I>>>(self) -> C {
@@ -244,7 +257,7 @@ pub struct UnordSet<V: Eq + Hash> {
 
 impl<V: Eq + Hash> UnordCollection for UnordSet<V> {}
 
-impl<V: Eq + Hash> const Default for UnordSet<V> {
+const impl<V: Eq + Hash> Default for UnordSet<V> {
     #[inline]
     fn default() -> Self {
         Self { inner: FxHashSet::with_hasher(FxBuildHasher) }
@@ -443,7 +456,7 @@ pub struct UnordMap<K: Eq + Hash, V> {
 
 impl<K: Eq + Hash, V> UnordCollection for UnordMap<K, V> {}
 
-impl<K: Eq + Hash, V> const Default for UnordMap<K, V> {
+const impl<K: Eq + Hash, V> Default for UnordMap<K, V> {
     #[inline]
     fn default() -> Self {
         Self { inner: FxHashMap::with_hasher(FxBuildHasher) }

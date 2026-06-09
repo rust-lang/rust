@@ -1,4 +1,4 @@
-use hir_def::{GenericDefId, HasModule, signatures::FunctionSignature};
+use hir_def::{HasModule, signatures::FunctionSignature};
 use hir_expand::EditionedFileId;
 use span::Edition;
 use syntax::{TextRange, TextSize};
@@ -41,7 +41,7 @@ fn eval_main(db: &TestDB, file_id: EditionedFileId) -> Result<(String, String), 
                 func_id.into(),
                 GenericArgs::empty(interner).store(),
                 crate::ParamEnvAndCrate {
-                    param_env: db.trait_environment(GenericDefId::from(func_id).into()),
+                    param_env: db.trait_environment(func_id.into()),
                     krate: func_id.krate(db),
                 }
                 .store(),

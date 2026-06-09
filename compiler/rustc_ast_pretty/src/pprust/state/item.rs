@@ -36,7 +36,7 @@ impl<'a> State<'a> {
             ast::ForeignItemKind::Fn(func) => {
                 self.print_fn_full(vis, attrs, &*func);
             }
-            ast::ForeignItemKind::Static(box ast::StaticItem {
+            ast::ForeignItemKind::Static(ast::StaticItem {
                 ident,
                 ty,
                 mutability,
@@ -56,7 +56,7 @@ impl<'a> State<'a> {
                 define_opaque.as_deref(),
                 eii_impls,
             ),
-            ast::ForeignItemKind::TyAlias(box ast::TyAlias {
+            ast::ForeignItemKind::TyAlias(ast::TyAlias {
                 defaultness,
                 ident,
                 generics,
@@ -190,7 +190,7 @@ impl<'a> State<'a> {
                 self.print_use_tree(tree);
                 self.word(";");
             }
-            ast::ItemKind::Static(box StaticItem {
+            ast::ItemKind::Static(StaticItem {
                 ident,
                 ty,
                 safety,
@@ -224,7 +224,7 @@ impl<'a> State<'a> {
                 }
                 self.end(ib);
             }
-            ast::ItemKind::Const(box ast::ConstItem {
+            ast::ItemKind::Const(ast::ConstItem {
                 defaultness,
                 ident,
                 generics,
@@ -296,7 +296,7 @@ impl<'a> State<'a> {
                 self.end(ib);
                 self.end(cb);
             }
-            ast::ItemKind::TyAlias(box ast::TyAlias {
+            ast::ItemKind::TyAlias(ast::TyAlias {
                 defaultness,
                 ident,
                 generics,
@@ -340,7 +340,7 @@ impl<'a> State<'a> {
                     }
                 };
 
-                if let Some(box of_trait) = of_trait {
+                if let Some(of_trait) = of_trait {
                     let ast::TraitImplHeader { defaultness, safety, polarity, ref trait_ref } =
                         *of_trait;
                     self.print_defaultness(defaultness);
@@ -370,7 +370,7 @@ impl<'a> State<'a> {
                 let empty = item.attrs.is_empty() && items.is_empty();
                 self.bclose(item.span, empty, cb);
             }
-            ast::ItemKind::Trait(box ast::Trait {
+            ast::ItemKind::Trait(ast::Trait {
                 impl_restriction,
                 constness,
                 safety,
@@ -403,7 +403,7 @@ impl<'a> State<'a> {
                 let empty = item.attrs.is_empty() && items.is_empty();
                 self.bclose(item.span, empty, cb);
             }
-            ast::ItemKind::TraitAlias(box TraitAlias { constness, ident, generics, bounds }) => {
+            ast::ItemKind::TraitAlias(TraitAlias { constness, ident, generics, bounds }) => {
                 let (cb, ib) = self.head("");
                 self.print_visibility(&item.vis);
                 self.print_constness(*constness);
@@ -511,6 +511,20 @@ impl<'a> State<'a> {
         }
     }
 
+    pub(crate) fn print_mut_restriction(&mut self, mut_restriction: &ast::MutRestriction) {
+        match &mut_restriction.kind {
+            ast::RestrictionKind::Restricted { path, shorthand, .. } => {
+                let path = Self::to_string(|s| s.print_path(path, false, 0));
+                if *shorthand {
+                    self.word_nbsp(format!("mut({path})"))
+                } else {
+                    self.word_nbsp(format!("mut(in {path})"))
+                }
+            }
+            ast::RestrictionKind::Unrestricted => {}
+        }
+    }
+
     fn print_defaultness(&mut self, defaultness: ast::Defaultness) {
         if let ast::Defaultness::Default(_) = defaultness {
             self.word_nbsp("default");
@@ -537,6 +551,7 @@ impl<'a> State<'a> {
                         s.maybe_print_comment(field.span.lo());
                         s.print_outer_attributes(&field.attrs);
                         s.print_visibility(&field.vis);
+                        s.print_mut_restriction(&field.mut_restriction);
                         s.print_type(&field.ty)
                     });
                     self.pclose();
@@ -562,6 +577,7 @@ impl<'a> State<'a> {
                         self.maybe_print_comment(field.span.lo());
                         self.print_outer_attributes(&field.attrs);
                         self.print_visibility(&field.vis);
+                        self.print_mut_restriction(&field.mut_restriction);
                         self.print_ident(field.ident.unwrap());
                         self.word_nbsp(":");
                         self.print_type(&field.ty);
@@ -596,7 +612,7 @@ impl<'a> State<'a> {
             ast::AssocItemKind::Fn(func) => {
                 self.print_fn_full(vis, attrs, &*func);
             }
-            ast::AssocItemKind::Const(box ast::ConstItem {
+            ast::AssocItemKind::Const(ast::ConstItem {
                 defaultness,
                 ident,
                 generics,
@@ -617,7 +633,7 @@ impl<'a> State<'a> {
                     &[],
                 );
             }
-            ast::AssocItemKind::Type(box ast::TyAlias {
+            ast::AssocItemKind::Type(ast::TyAlias {
                 defaultness,
                 ident,
                 generics,
@@ -852,14 +868,6 @@ impl<'a> State<'a> {
                     self.nbsp();
                     self.print_lifetime_bounds(bounds);
                 }
-            }
-            ast::WherePredicateKind::EqPredicate(ast::WhereEqPredicate {
-                lhs_ty, rhs_ty, ..
-            }) => {
-                self.print_type(lhs_ty);
-                self.space();
-                self.word_space("=");
-                self.print_type(rhs_ty);
             }
         }
     }

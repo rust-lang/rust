@@ -2,6 +2,7 @@
 //                      note: need to model better how duplicate attr errors work when not using
 //                      SingleAttributeParser which is what we have two of here.
 
+use rustc_feature::AttributeStability;
 use rustc_hir::attrs::{AttributeKind, InlineAttr};
 use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 
@@ -32,6 +33,7 @@ impl SingleAttributeParser for InlineParser {
         List: &["always", "never"],
         "https://doc.rust-lang.org/reference/attributes/codegen.html#the-inline-attribute"
     );
+    const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         match args {
@@ -39,7 +41,7 @@ impl SingleAttributeParser for InlineParser {
             ArgParser::List(list) => {
                 let l = cx.expect_single(list)?;
 
-                match l.meta_item().and_then(|i| i.path().word_sym()) {
+                match l.meta_item_no_args().and_then(|i| i.path().word_sym()) {
                     Some(sym::always) => {
                         Some(AttributeKind::Inline(InlineAttr::Always, cx.attr_span))
                     }
@@ -68,7 +70,8 @@ impl SingleAttributeParser for RustcForceInlineParser {
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
     ]);
-
+    const STABILITY: AttributeStability =
+        unstable!(rustc_attrs, "`#[rustc_force_inline]` forces a free function to be inlined");
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["reason"], NameValueStr: "reason");
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
@@ -77,21 +80,11 @@ impl SingleAttributeParser for RustcForceInlineParser {
             ArgParser::List(list) => {
                 let l = cx.expect_single(list)?;
 
-                let Some(reason) = l.lit().and_then(|i| i.kind.str()) else {
-                    cx.adcx().expected_string_literal(l.span(), l.lit());
-                    return None;
-                };
+                let reason = cx.expect_string_literal(l)?;
 
                 Some(reason)
             }
-            ArgParser::NameValue(v) => {
-                let Some(reason) = v.value_as_str() else {
-                    cx.adcx().expected_string_literal(v.value_span, Some(v.value_as_lit()));
-                    return None;
-                };
-
-                Some(reason)
-            }
+            ArgParser::NameValue(v) => cx.expect_string_literal(v),
         };
 
         Some(AttributeKind::Inline(

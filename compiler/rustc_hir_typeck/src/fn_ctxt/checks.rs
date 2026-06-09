@@ -21,6 +21,7 @@ use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
+use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::{DUMMY_SP, Ident, Span, kw, sym};
 use rustc_trait_selection::error_reporting::infer::{FailureCode, ObligationCauseExt};
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -328,7 +329,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let demand_compatible = |idx| {
             let formal_input_ty: Ty<'tcx> = formal_input_tys[idx];
             let expected_input_ty: Ty<'tcx> = expected_input_tys[idx];
-            let provided_arg = &provided_args[idx];
+            let provided_arg: &hir::Expr<'tcx> = &provided_args[idx];
 
             debug!("checking argument {}: {:?} = {:?}", idx, provided_arg, formal_input_ty);
 
@@ -337,7 +338,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // 1. Unify the provided argument with the expected type
             let expectation = Expectation::rvalue_hint(self, expected_input_ty);
 
-            let checked_ty = self.check_expr_with_expectation(provided_arg, expectation);
+            // If we are processing first arg of delegation then we could have adjusted it
+            // in `execute_delegation_aware_arguments_check`.
+            let checked_ty = self
+                .tcx
+                .hir_opt_delegation_info(self.body_id)
+                .and_then(|_| self.typeck_results.borrow().node_type_opt(provided_arg.hir_id))
+                .unwrap_or_else(|| self.check_expr_with_expectation(provided_arg, expectation));
 
             // 2. Coerce to the most detailed type that could be coerced
             //    to, which is `expected_ty` if `rvalue_hint` returns an
@@ -954,14 +961,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // wrapping in parentheses. We find the statement or expression
                         // following the `match` (`&& true`) and see if it is something that
                         // can reasonably be interpreted as a binop following an expression.
-                        err.multipart_suggestion(
-                            "parentheses are required to parse this as an expression",
-                            vec![
-                                (expr.span.shrink_to_lo(), "(".to_string()),
-                                (expr.span.shrink_to_hi(), ")".to_string()),
-                            ],
-                            Applicability::MachineApplicable,
-                        );
+                        err.subdiagnostic(ExprParenthesesNeeded::surrounding(expr.span));
                     } else if expr.can_have_side_effects() {
                         self.suggest_semicolon_at_end(expr.span, err);
                     }

@@ -2,15 +2,18 @@
 //! immutable, all function here return a fresh copy of the tree, instead of
 //! doing an in-place modification.
 use parser::T;
-use std::{fmt, iter, ops};
+use std::{
+    fmt,
+    iter::{self, once},
+    ops,
+};
 
 use crate::{
     AstToken, NodeOrToken, SyntaxElement,
-    SyntaxKind::WHITESPACE,
+    SyntaxKind::{ATTR, COMMENT, WHITESPACE},
     SyntaxNode, SyntaxToken,
     ast::{self, AstNode, HasName, make},
     syntax_editor::{Position, SyntaxEditor, SyntaxMappingBuilder},
-    ted,
 };
 
 use super::syntax_factory::SyntaxFactory;
@@ -84,29 +87,6 @@ impl IndentLevel {
         IndentLevel(0)
     }
 
-    /// XXX: this intentionally doesn't change the indent of the very first token.
-    /// For example, in something like:
-    /// ```
-    /// fn foo() -> i32 {
-    ///    92
-    /// }
-    /// ```
-    /// if you indent the block, the `{` token would stay put.
-    pub(super) fn increase_indent(self, node: &SyntaxNode) {
-        let tokens = node.preorder_with_tokens().filter_map(|event| match event {
-            rowan::WalkEvent::Leave(NodeOrToken::Token(it)) => Some(it),
-            _ => None,
-        });
-        for token in tokens {
-            if let Some(ws) = ast::Whitespace::cast(token)
-                && ws.text().contains('\n')
-            {
-                let new_ws = make::tokens::whitespace(&format!("{}{self}", ws.syntax()));
-                ted::replace(ws.syntax(), &new_ws);
-            }
-        }
-    }
-
     pub(super) fn clone_increase_indent(self, node: &SyntaxNode) -> SyntaxNode {
         let (editor, node) = SyntaxEditor::new(node.clone());
         let tokens = node
@@ -122,23 +102,6 @@ impl IndentLevel {
             editor.replace(ws.syntax(), &new_ws);
         }
         editor.finish().new_root().clone()
-    }
-
-    pub(super) fn decrease_indent(self, node: &SyntaxNode) {
-        let tokens = node.preorder_with_tokens().filter_map(|event| match event {
-            rowan::WalkEvent::Leave(NodeOrToken::Token(it)) => Some(it),
-            _ => None,
-        });
-        for token in tokens {
-            if let Some(ws) = ast::Whitespace::cast(token)
-                && ws.text().contains('\n')
-            {
-                let new_ws = make::tokens::whitespace(
-                    &ws.syntax().text().replace(&format!("\n{self}"), "\n"),
-                );
-                ted::replace(ws.syntax(), &new_ws);
-            }
-        }
     }
 
     pub(super) fn clone_decrease_indent(self, node: &SyntaxNode) -> SyntaxNode {
@@ -197,6 +160,28 @@ pub trait AstNodeEdit: AstNode + Clone + Sized {
 
 impl<N: AstNode + Clone> AstNodeEdit for N {}
 
+pub trait AttrsOwnerEdit: ast::HasAttrs {
+    fn remove_attrs_and_docs(&self, editor: &SyntaxEditor) {
+        let mut remove_next_ws = false;
+        for child in self.syntax().children_with_tokens() {
+            match child.kind() {
+                ATTR | COMMENT => {
+                    remove_next_ws = true;
+                    editor.delete(child);
+                    continue;
+                }
+                WHITESPACE if remove_next_ws => {
+                    editor.delete(child);
+                }
+                _ => (),
+            }
+            remove_next_ws = false;
+        }
+    }
+}
+
+impl<T: ast::HasAttrs> AttrsOwnerEdit for T {}
+
 impl ast::IdentPat {
     pub fn set_pat(&self, pat: Option<ast::Pat>, editor: &SyntaxEditor) -> ast::IdentPat {
         let make = editor.make();
@@ -250,6 +235,32 @@ impl ast::IdentPat {
         }
         self.clone()
     }
+}
+
+impl ast::UseTree {
+    pub fn wrap_in_tree_list_with_editor(&self) -> Option<ast::UseTree> {
+        if self.use_tree_list().is_some()
+            && self.path().is_none()
+            && self.star_token().is_none()
+            && self.rename().is_none()
+        {
+            return None;
+        }
+
+        let (editor, use_tree) = SyntaxEditor::with_ast_node(self);
+        let make = editor.make();
+        let first_child = use_tree.syntax().first_child_or_token()?;
+        let last_child = use_tree.syntax().last_child_or_token()?;
+        let use_tree_list = make.use_tree_list(once(self.clone()));
+        editor.replace_all(first_child..=last_child, vec![use_tree_list.syntax().clone().into()]);
+
+        let edit = editor.finish();
+        ast::UseTree::cast(edit.new_root().clone())
+    }
+}
+
+pub fn indent(node: &SyntaxNode, level: IndentLevel) -> SyntaxNode {
+    level.clone_increase_indent(node)
 }
 
 #[test]

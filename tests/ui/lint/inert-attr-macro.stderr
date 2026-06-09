@@ -4,8 +4,8 @@ warning: `#[inline]` attribute cannot be used on macro calls
 LL |     #[inline] foo!();
    |     ^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[inline]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 note: the lint level is defined here
   --> $DIR/inert-attr-macro.rs:3:9
    |
@@ -31,8 +31,8 @@ warning: `#[inline]` attribute cannot be used on macro calls
 LL |     #[allow(warnings)] #[inline] foo!();
    |                        ^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[inline]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: 3 warnings emitted
 

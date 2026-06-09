@@ -885,9 +885,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             for stmt in &bb.statements {
                 match &stmt.kind {
                     // Ignore the implicit `()` return place assignment for unit functions/blocks
-                    StatementKind::Assign(box (_, Rvalue::Use(Operand::Constant(const_), _)))
+                    StatementKind::Assign((_, Rvalue::Use(Operand::Constant(const_), _)))
                         if const_.ty().is_unit() =>
                     {
+                        continue;
+                    }
+                    // Ignore return value plumbing. After a call returning a non-`!`
+                    // uninhabited type, a tail expression can be unreachable while
+                    // still being needed to satisfy the surrounding return type.
+                    StatementKind::Assign((place, _)) if place.as_local() == Some(RETURN_PLACE) => {
                         continue;
                     }
                     StatementKind::StorageLive(_) | StatementKind::StorageDead(_) => {

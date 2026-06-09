@@ -117,17 +117,13 @@ pub(crate) fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTar
             tcx.sess.split_debuginfo(),
             tcx.sess.opts.unstable_opts.split_dwarf_kind,
             mod_name,
-            tcx.sess.invocation_temp.as_deref(),
         )
     } else {
         None
     };
 
-    let output_obj_file = Some(tcx.output_filenames(()).temp_path_for_cgu(
-        OutputType::Object,
-        mod_name,
-        tcx.sess.invocation_temp.as_deref(),
-    ));
+    let output_obj_file =
+        Some(tcx.output_filenames(()).temp_path_for_cgu(OutputType::Object, mod_name));
     let config = TargetMachineFactoryConfig { split_dwarf_file, output_obj_file };
 
     target_machine_factory(
@@ -322,11 +318,7 @@ pub(crate) fn save_temp_bitcode(
         return;
     }
     let ext = format!("{name}.bc");
-    let path = cgcx.output_filenames.temp_path_ext_for_cgu(
-        &ext,
-        &module.name,
-        cgcx.invocation_temp.as_deref(),
-    );
+    let path = cgcx.output_filenames.temp_path_ext_for_cgu(&ext, &module.name);
     write_bitcode_to_file(&module.module_llvm, &path)
 }
 
@@ -813,10 +805,10 @@ pub(crate) unsafe fn llvm_optimize(
     if cgcx.target_is_like_gpu && config.offload.contains(&config::Offload::Device) {
         let device_path = cgcx.output_filenames.path(OutputType::Object);
         let device_dir = device_path.parent().unwrap();
-        let device_out = device_dir.join("host.out");
+        let device_out = device_dir.join("device.bin");
         let device_out_c = path_to_c_string(device_out.as_path());
         unsafe {
-            // 1) Bundle device module into offload image host.out (device TM)
+            // 1) Bundle device module into offload image device.bin (device TM)
             let ok = llvm::LLVMRustBundleImages(
                 module.module_llvm.llmod(),
                 module.module_llvm.tm.raw(),
@@ -829,7 +821,7 @@ pub(crate) unsafe fn llvm_optimize(
     }
 
     // This assumes that we previously compiled our kernels for a gpu target, which created a
-    // `host.out` artifact. The user is supposed to provide us with a path to this artifact, we
+    // `device.bin` artifact. The user is supposed to provide us with a path to this artifact, we
     // don't need any other artifacts from the previous run. We will embed this artifact into our
     // LLVM-IR host module, to create a `host.o` ObjectFile, which we will write to disk.
     // The last, not yet automated steps uses the `clang-linker-wrapper` to process `host.o`.
@@ -845,7 +837,7 @@ pub(crate) unsafe fn llvm_optimize(
             } else if device_pathbuf
                 .file_name()
                 .and_then(|n| n.to_str())
-                .is_some_and(|n| n != "host.out")
+                .is_some_and(|n| n != "device.bin")
             {
                 dcx.emit_err(crate::errors::OffloadWrongFileName);
             } else if !device_pathbuf.exists() {
@@ -854,14 +846,14 @@ pub(crate) unsafe fn llvm_optimize(
             let host_path = cgcx.output_filenames.path(OutputType::Object);
             let host_dir = host_path.parent().unwrap();
             let out_obj = host_dir.join("host.o");
-            let host_out_c = path_to_c_string(device_pathbuf.as_path());
+            let device_bin_c = path_to_c_string(device_pathbuf.as_path());
 
-            // 2) Finalize host: lib.bc + host.out -> host.o (host TM)
+            // 2) Finalize host: lib.bc + device.bin -> host.o (host TM)
             // We create a full clone of our LLVM host module, since we will embed the device IR
             // into it, and this might break caching or incremental compilation otherwise.
             let llmod2 = llvm::LLVMCloneModule(module.module_llvm.llmod());
             let ok =
-                unsafe { llvm::LLVMRustOffloadEmbedBufferInModule(llmod2, host_out_c.as_ptr()) };
+                unsafe { llvm::LLVMRustOffloadEmbedBufferInModule(llmod2, device_bin_c.as_ptr()) };
             if !ok {
                 dcx.emit_err(crate::errors::OffloadEmbedFailed);
             }
@@ -876,7 +868,7 @@ pub(crate) unsafe fn llvm_optimize(
                 prof,
                 true,
             );
-            // We ignore cgcx.save_temps here and unconditionally always keep our `host.out` artifact.
+            // We ignore cgcx.save_temps here and unconditionally always keep our `device.bin` artifact.
             // Otherwise, recompiling the host code would fail since we deleted that device artifact
             // in the previous host compilation, which would be confusing at best.
         }
@@ -949,11 +941,8 @@ pub(crate) fn optimize(
         if let Some(thin_lto_buffer) = thin_lto_buffer {
             let thin_lto_buffer = thin_lto_buffer.unwrap();
             module.thin_lto_buffer = Some(thin_lto_buffer.data().to_vec());
-            let bc_summary_out = cgcx.output_filenames.temp_path_for_cgu(
-                OutputType::ThinLinkBitcode,
-                &module.name,
-                cgcx.invocation_temp.as_deref(),
-            );
+            let bc_summary_out =
+                cgcx.output_filenames.temp_path_for_cgu(OutputType::ThinLinkBitcode, &module.name);
             if let Some(thin_lto_summary_buffer) = thin_lto_summary_buffer
                 && let Some(thin_link_bitcode_filename) = bc_summary_out.file_name()
             {
@@ -1008,16 +997,8 @@ pub(crate) fn codegen(
         // copy it to the .o file, and delete the bitcode if it wasn't
         // otherwise requested.
 
-        let bc_out = cgcx.output_filenames.temp_path_for_cgu(
-            OutputType::Bitcode,
-            &module.name,
-            cgcx.invocation_temp.as_deref(),
-        );
-        let obj_out = cgcx.output_filenames.temp_path_for_cgu(
-            OutputType::Object,
-            &module.name,
-            cgcx.invocation_temp.as_deref(),
-        );
+        let bc_out = cgcx.output_filenames.temp_path_for_cgu(OutputType::Bitcode, &module.name);
+        let obj_out = cgcx.output_filenames.temp_path_for_cgu(OutputType::Object, &module.name);
 
         if config.bitcode_needed() {
             if config.emit_bc || config.emit_obj == EmitObj::Bitcode {
@@ -1055,11 +1036,8 @@ pub(crate) fn codegen(
         if config.emit_ir {
             let _timer =
                 prof.generic_activity_with_arg("LLVM_module_codegen_emit_ir", &*module.name);
-            let out = cgcx.output_filenames.temp_path_for_cgu(
-                OutputType::LlvmAssembly,
-                &module.name,
-                cgcx.invocation_temp.as_deref(),
-            );
+            let out =
+                cgcx.output_filenames.temp_path_for_cgu(OutputType::LlvmAssembly, &module.name);
             let out_c = path_to_c_string(&out);
 
             extern "C" fn demangle_callback(
@@ -1103,11 +1081,7 @@ pub(crate) fn codegen(
         if config.emit_asm {
             let _timer =
                 prof.generic_activity_with_arg("LLVM_module_codegen_emit_asm", &*module.name);
-            let path = cgcx.output_filenames.temp_path_for_cgu(
-                OutputType::Assembly,
-                &module.name,
-                cgcx.invocation_temp.as_deref(),
-            );
+            let path = cgcx.output_filenames.temp_path_for_cgu(OutputType::Assembly, &module.name);
 
             // We can't use the same module for asm and object code output,
             // because that triggers various errors like invalid IR or broken
@@ -1136,9 +1110,7 @@ pub(crate) fn codegen(
                 let _timer =
                     prof.generic_activity_with_arg("LLVM_module_codegen_emit_obj", &*module.name);
 
-                let dwo_out = cgcx
-                    .output_filenames
-                    .temp_path_dwo_for_cgu(&module.name, cgcx.invocation_temp.as_deref());
+                let dwo_out = cgcx.output_filenames.temp_path_dwo_for_cgu(&module.name);
                 let dwo_out = match (cgcx.split_debuginfo, cgcx.split_dwarf_kind) {
                     // Don't change how DWARF is emitted when disabled.
                     (SplitDebuginfo::Off, _) => None,
@@ -1203,7 +1175,6 @@ pub(crate) fn codegen(
         config.emit_asm,
         config.emit_ir,
         &cgcx.output_filenames,
-        cgcx.invocation_temp.as_deref(),
     )
 }
 

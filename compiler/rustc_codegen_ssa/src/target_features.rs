@@ -62,16 +62,15 @@ pub(crate) fn from_target_feature_attr(
                 feature: feature_str,
                 reason,
             });
-        } else if let Some(nightly_feature) = stability.requires_nightly()
+        } else if let Some(nightly_feature) = stability.requires_nightly(/* in_cfg */ false)
             && !rust_features.enabled(nightly_feature)
         {
-            feature_err(
-                &tcx.sess,
-                nightly_feature,
-                feature_span,
-                format!("the target feature `{feature}` is currently unstable"),
-            )
-            .emit();
+            let explain = if stability.is_cfg_stable_toggle_unstable() {
+                format!("the target feature `{feature}` is allowed in cfg but unstable otherwise")
+            } else {
+                format!("the target feature `{feature}` is currently unstable")
+            };
+            feature_err(&tcx.sess, nightly_feature, feature_span, explain).emit();
         } else {
             // Add this and the implied features.
             for &name in tcx.implied_target_features(feature) {
@@ -309,18 +308,32 @@ pub fn cfg_target_feature<'a, const N: usize>(
                     sess.dcx().emit_warn(unknown_feature);
                 }
                 Some((_, stability, _)) => {
-                    if let Err(reason) = stability.toggle_allowed() {
-                        sess.dcx().emit_warn(errors::ForbiddenCTargetFeature {
+                    if let Stability::Forbidden { reason, hard_error } = stability {
+                        let diag = errors::ForbiddenCTargetFeature {
                             feature: base_feature,
                             enabled: if enable { "enabled" } else { "disabled" },
                             reason,
-                        });
-                    } else if stability.requires_nightly().is_some() {
+                            future_compat_note: !hard_error,
+                        };
+
+                        if *hard_error {
+                            sess.dcx().emit_err(diag);
+                        } else {
+                            sess.dcx().emit_warn(diag);
+                        }
+                    } else if stability.requires_nightly(/* in_cfg */ false).is_some() {
                         // An unstable feature. Warn about using it. It makes little sense
                         // to hard-error here since we just warn about fully unknown
                         // features above.
-                        sess.dcx()
-                            .emit_warn(errors::UnstableCTargetFeature { feature: base_feature });
+                        let note = if stability.is_cfg_stable_toggle_unstable() {
+                            "this feature is allowed in cfg but unstable otherwise"
+                        } else {
+                            "this feature is not stably supported"
+                        };
+                        sess.dcx().emit_warn(errors::UnstableCTargetFeature {
+                            feature: base_feature,
+                            note,
+                        });
                     }
                 }
             }
@@ -346,7 +359,8 @@ pub fn cfg_target_feature<'a, const N: usize>(
                 // "forbidden" features.
                 if allow_unstable
                     || (gate.in_cfg()
-                        && (sess.is_nightly_build() || gate.requires_nightly().is_none()))
+                        && (sess.is_nightly_build()
+                            || gate.requires_nightly(/* in_cfg */ true).is_none()))
                 {
                     Some(Symbol::intern(feature))
                 } else {

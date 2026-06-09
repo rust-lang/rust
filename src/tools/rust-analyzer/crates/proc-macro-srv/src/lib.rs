@@ -7,33 +7,16 @@
 //!
 //! * We use `tt` for proc-macro `TokenStream` server, it is easier to manipulate and interact with
 //!   RA than `proc-macro2` token stream.
-//! * By **copying** the whole rustc `lib_proc_macro` code, we are able to build this with `stable`
-//!   rustc rather than `unstable`. (Although in general ABI compatibility is still an issue)…
 
-#![cfg(feature = "sysroot-abi")]
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
-#![feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span)]
-#![allow(
-    unreachable_pub,
-    internal_features,
-    clippy::disallowed_types,
-    clippy::print_stderr,
-    unused_crate_dependencies,
-    unused_features
-)]
+#![cfg(feature = "in-rust-tree")]
+#![feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span, rustc_private)]
+#![expect(unreachable_pub, internal_features, clippy::disallowed_types, clippy::print_stderr)]
+#![allow(unused_features, unused_crate_dependencies)]
 #![deny(deprecated_safe, clippy::undocumented_unsafe_blocks)]
 
-#[cfg(not(feature = "in-rust-tree"))]
-extern crate proc_macro as rustc_proc_macro;
-#[cfg(feature = "in-rust-tree")]
 extern crate rustc_driver as _;
-#[cfg(feature = "in-rust-tree")]
-extern crate rustc_proc_macro;
-
-#[cfg(not(feature = "in-rust-tree"))]
-extern crate ra_ap_rustc_lexer as rustc_lexer;
-#[cfg(feature = "in-rust-tree")]
 extern crate rustc_lexer;
+extern crate rustc_proc_macro;
 
 mod bridge;
 mod dylib;
@@ -41,7 +24,7 @@ mod server_impl;
 mod token_stream;
 
 use std::{
-    collections::{HashMap, hash_map::Entry},
+    collections::{HashMap, HashSet, hash_map::Entry},
     env,
     ffi::OsString,
     fs,
@@ -52,7 +35,7 @@ use std::{
 };
 
 use paths::{Utf8Path, Utf8PathBuf};
-use span::Span;
+use span::{FIXUP_ERASED_FILE_AST_ID_MARKER, Span};
 use temp_dir::TempDir;
 
 pub use crate::server_impl::token_id::SpanId;
@@ -123,6 +106,7 @@ pub trait ProcMacroClientInterface {
     fn byte_range(&mut self, span: Span) -> Range<usize>;
     fn span_source(&mut self, span: Span) -> Span;
     fn span_parent(&mut self, span: Span) -> Option<Span>;
+    fn span_join(&mut self, first: Span, second: Span) -> Option<Span>;
 }
 
 const EXPANDER_STACK_SIZE: usize = 8 * 1024 * 1024;
@@ -144,7 +128,7 @@ impl ExpandError {
 }
 
 impl ProcMacroSrv<'_> {
-    pub fn expand<S: ProcMacroSrvSpan>(
+    pub fn expand<'a, S: ProcMacroSrvSpan + 'a>(
         &self,
         lib: impl AsRef<Utf8Path>,
         env: &[(String, String)],
@@ -155,7 +139,8 @@ impl ProcMacroSrv<'_> {
         def_site: S,
         call_site: S,
         mixed_site: S,
-        callback: Option<ProcMacroClientHandle<'_>>,
+        tracked_env: &'a mut TrackedEnv,
+        callback: Option<ProcMacroClientHandle<'a>>,
     ) -> Result<token_stream::TokenStream<S>, ExpandError> {
         let snapped_env = self.env;
         let expander = self.expander(lib.as_ref()).map_err(|err| ExpandError::Internal {
@@ -172,13 +157,18 @@ impl ProcMacroSrv<'_> {
                 .name(macro_name.to_owned())
                 .spawn_scoped(s, move || {
                     expander.expand(
-                        macro_name, macro_body, attribute, def_site, call_site, mixed_site,
+                        macro_name,
+                        macro_body,
+                        attribute,
+                        def_site,
+                        call_site,
+                        mixed_site,
+                        tracked_env,
                         callback,
                     )
                 });
             match thread.unwrap().join() {
                 Ok(res) => res.map_err(ExpandError::Panic),
-
                 Err(payload) => {
                     if let Some(marker) = payload.downcast_ref::<ProcMacroPanicMarker>() {
                         return match marker {
@@ -235,6 +225,12 @@ impl ProcMacroSrv<'_> {
     }
 }
 
+#[derive(Default)]
+pub struct TrackedEnv {
+    pub env_vars: HashMap<Box<str>, Option<Box<str>>>,
+    pub paths: HashSet<Box<str>>,
+}
+
 pub trait ProcMacroSrvSpan: Copy + Send + Sync {
     type Server<'a>: rustc_proc_macro::bridge::server::Server<
             TokenStream = crate::token_stream::TokenStream<Self>,
@@ -243,6 +239,7 @@ pub trait ProcMacroSrvSpan: Copy + Send + Sync {
         call_site: Self,
         def_site: Self,
         mixed_site: Self,
+        tracked_env: &'a mut TrackedEnv,
         callback: Option<ProcMacroClientHandle<'a>>,
     ) -> Self::Server<'a>;
 }
@@ -254,16 +251,10 @@ impl ProcMacroSrvSpan for SpanId {
         call_site: Self,
         def_site: Self,
         mixed_site: Self,
+        _: &'a mut TrackedEnv,
         callback: Option<ProcMacroClientHandle<'a>>,
     ) -> Self::Server<'a> {
-        Self::Server {
-            call_site,
-            def_site,
-            mixed_site,
-            callback,
-            tracked_env_vars: Default::default(),
-            tracked_paths: Default::default(),
-        }
+        Self::Server { call_site, def_site, mixed_site, callback }
     }
 }
 
@@ -273,6 +264,7 @@ impl ProcMacroSrvSpan for Span {
         call_site: Self,
         def_site: Self,
         mixed_site: Self,
+        tracked_env: &'a mut TrackedEnv,
         callback: Option<ProcMacroClientHandle<'a>>,
     ) -> Self::Server<'a> {
         Self::Server {
@@ -280,8 +272,8 @@ impl ProcMacroSrvSpan for Span {
             def_site,
             mixed_site,
             callback,
-            tracked_env_vars: Default::default(),
-            tracked_paths: Default::default(),
+            tracked_env,
+            fixup_id: FIXUP_ERASED_FILE_AST_ID_MARKER,
         }
     }
 }

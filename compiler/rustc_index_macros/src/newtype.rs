@@ -155,13 +155,13 @@ impl Parse for Newtype {
         let stable_hash_impl = if stable_hash {
             quote! {
                 #gate_rustc_only
-                impl ::rustc_data_structures::stable_hasher::StableHash for #name {
+                impl ::rustc_data_structures::stable_hash::StableHash for #name {
                     fn stable_hash<
-                        __Hcx: ::rustc_data_structures::stable_hasher::StableHashCtxt
+                        __Hcx: ::rustc_data_structures::stable_hash::StableHashCtxt
                     >(
                         &self,
                         hcx: &mut __Hcx,
-                        hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher
+                        hasher: &mut ::rustc_data_structures::stable_hash::StableHasher
                     ) {
                         self.as_u32().stable_hash(hcx, hasher)
                     }

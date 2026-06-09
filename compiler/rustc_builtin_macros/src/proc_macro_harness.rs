@@ -16,7 +16,7 @@ use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use smallvec::smallvec;
 use thin_vec::{ThinVec, thin_vec};
 
-use crate::errors;
+use crate::diagnostics;
 
 struct ProcMacroDerive {
     id: NodeId,
@@ -91,7 +91,7 @@ pub fn inject(
 impl<'a> CollectProcMacros<'a> {
     fn check_not_pub_in_root(&self, vis: &ast::Visibility, sp: Span) {
         if self.is_proc_macro_crate && self.in_root && vis.kind.is_pub() {
-            self.dcx.emit_err(errors::ProcMacro { span: sp });
+            self.dcx.emit_err(diagnostics::ProcMacro { span: sp });
         }
     }
 
@@ -174,7 +174,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
     fn visit_item(&mut self, item: &'a ast::Item) {
         if let ast::ItemKind::MacroDef(..) = item.kind {
             if self.is_proc_macro_crate && attr::contains_name(&item.attrs, sym::macro_export) {
-                self.dcx.emit_err(errors::ExportMacroRules {
+                self.dcx.emit_err(diagnostics::ExportMacroRules {
                     span: self.source_map.guess_head_span(item.span),
                 });
             }
@@ -238,7 +238,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
 
         if !self.is_proc_macro_crate {
             self.dcx
-                .create_err(errors::AttributeOnlyUsableWithCrateType {
+                .create_err(diagnostics::AttributeOnlyUsableWithCrateType {
                     span: attr.span,
                     path: &pprust::path_to_string(&attr.get_normal_item().path),
                 })

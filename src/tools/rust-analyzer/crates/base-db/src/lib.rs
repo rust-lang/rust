@@ -7,6 +7,7 @@ extern crate rustc_driver as _;
 
 pub use salsa;
 pub use salsa_macros;
+use span::TextSize;
 
 // FIXME: Rename this crate, base db is non descriptive
 mod change;
@@ -37,7 +38,7 @@ use rustc_hash::{FxHashSet, FxHasher};
 use salsa::{Durability, Setter};
 pub use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 use triomphe::Arc;
-pub use vfs::{AnchoredPath, AnchoredPathBuf, FileId, VfsPath, file_set::FileSet};
+pub use vfs::{AbsPathBuf, AnchoredPath, AnchoredPathBuf, FileId, VfsPath, file_set::FileSet};
 
 pub type FxIndexSet<T> = indexmap::IndexSet<T, rustc_hash::FxBuildHasher>;
 pub type FxIndexMap<K, V> =
@@ -49,6 +50,7 @@ macro_rules! impl_intern_key {
         #[salsa_macros::interned(no_lifetime, revisions = usize::MAX)]
         #[derive(PartialOrd, Ord)]
         pub struct $id {
+            #[returns(ref)]
             pub loc: $loc,
         }
 
@@ -280,6 +282,8 @@ pub trait SourceDatabase: salsa::Database {
     fn crates_map(&self) -> Arc<CratesMap>;
 
     fn nonce_and_revision(&self) -> (Nonce, salsa::Revision);
+
+    fn line_column(&self, file: FileId, offset: TextSize) -> Result<(u32, u32), ()>;
 }
 
 static NEXT_NONCE: AtomicUsize = AtomicUsize::new(0);

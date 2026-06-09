@@ -16,7 +16,7 @@ use crate::{
     attrs::{AstPathExt, AttrId, expand_cfg_attr, is_item_tree_filtered_attr},
     db::ExpandDatabase,
     fixup::{self, SyntaxFixupUndoInfo},
-    span_map::SpanMapRef,
+    span_map::SpanMap,
     tt::{self, DelimSpan, Span},
 };
 
@@ -51,7 +51,7 @@ fn macro_input_callback(
     censor_item_tree_attr_ids: &[AttrId],
     krate: Crate,
     default_span: Span,
-    span_map: SpanMapRef<'_>,
+    span_map: SpanMap<'_>,
 ) -> impl FnMut(&mut PreorderWithTokens, &WalkEvent<SyntaxElement>) -> (bool, Vec<tt::Leaf>) {
     let cfg_options = OnceCell::new();
     let cfg_options = move || *cfg_options.get_or_init(|| krate.cfg_options(db));
@@ -295,7 +295,7 @@ fn macro_input_callback(
 pub(crate) fn attr_macro_input_to_token_tree(
     db: &dyn ExpandDatabase,
     node: &SyntaxNode,
-    span_map: SpanMapRef<'_>,
+    span_map: SpanMap<'_>,
     span: Span,
     is_derive: bool,
     censor_item_tree_attr_ids: &[AttrId],

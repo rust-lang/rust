@@ -1288,6 +1288,26 @@ pub(crate) struct IncorrectImplRestriction {
 }
 
 #[derive(Diagnostic)]
+#[diag("incorrect `mut` restriction")]
+#[help(
+    "some possible `mut` restrictions are:
+    `mut(crate)`: can only be mutated in the current crate
+    `mut(super)`: can only be mutated in the parent module
+    `mut(self)`: can only be mutated in current module
+    `mut(in path::to::module)`: can only be mutated in the specified path"
+)]
+pub(crate) struct IncorrectMutRestriction {
+    #[primary_span]
+    #[suggestion(
+        "help: use `in` to restrict mutations to the path `{$inner_str}`",
+        code = "in {inner_str}",
+        applicability = "machine-applicable"
+    )]
+    pub span: Span,
+    pub inner_str: String,
+}
+
+#[derive(Diagnostic)]
 #[diag("<assignment> ... else {\"{\"} ... {\"}\"} is not allowed")]
 pub(crate) struct AssignmentElseNotAllowed {
     #[primary_span]
@@ -3238,7 +3258,7 @@ pub(crate) struct DotDotDotRestPattern {
     #[suggestion(
         "for a rest pattern, use `..` instead of `...`",
         style = "verbose",
-        code = "",
+        code = "..",
         applicability = "machine-applicable"
     )]
     pub suggestion: Option<Span>,
@@ -3441,10 +3461,6 @@ pub(crate) struct UnexpectedExpressionInPattern {
     pub span: Span,
     /// Was a `RangePatternBound` expected?
     pub is_bound: bool,
-    /// The unexpected expr's precedence. Not used directly in the error message, but needed for
-    /// the stashing of this error to work correctly. We store a `u32` rather than an
-    /// `ExprPrecedence` to avoid having to impl `IntoDiagArg` for `ExprPrecedence`.
-    pub expr_precedence: u32,
 }
 
 #[derive(Subdiagnostic)]
@@ -4618,4 +4634,29 @@ pub(crate) struct ReservedMultihashLint {
         applicability = "machine-applicable"
     )]
     pub suggestion: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "if you meant to write a path, use a double colon",
+    code = "::",
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct UseDoubleColonSuggestion {
+    #[primary_span]
+    pub colon: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    "if you meant to create a regular struct, use curly braces",
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct UseRegularStructSuggestion {
+    #[suggestion_part(code = " {{ ")]
+    pub open: Span,
+    #[suggestion_part(code = " }}")]
+    pub close: Span,
+    #[suggestion_part(code = "")]
+    pub semicolon: Option<Span>,
 }

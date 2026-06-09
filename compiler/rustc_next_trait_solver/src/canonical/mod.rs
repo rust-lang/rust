@@ -17,15 +17,16 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::{
     self as ty, Canonical, CanonicalVarKind, CanonicalVarValues, InferCtxtLike, Interner,
-    TypeFoldable, TypingModeEqWrapper,
+    TypeFoldable, TypingMode, TypingModeEqWrapper,
 };
 use tracing::instrument;
 
 use crate::delegate::SolverDelegate;
 use crate::resolve::eager_resolve_vars;
 use crate::solve::{
-    CanonicalInput, CanonicalResponse, Certainty, ExternalConstraintsData, Goal,
-    NestedNormalizationGoals, QueryInput, Response, VisibleForLeakCheck, inspect,
+    CanonicalInput, CanonicalResponse, Certainty, ExternalConstraintsData,
+    ExternalRegionConstraints, Goal, NestedNormalizationGoals, QueryInput, Response,
+    VisibleForLeakCheck, inspect,
 };
 
 pub mod canonicalizer;
@@ -54,6 +55,7 @@ pub(super) fn canonicalize_goal<D, I>(
     delegate: &D,
     goal: Goal<I, I::Predicate>,
     opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)],
+    typing_mode: TypingMode<I>,
 ) -> (Vec<I::GenericArg>, CanonicalInput<I, I::Predicate>)
 where
     D: SolverDelegate<Interner = I>,
@@ -66,10 +68,9 @@ where
             predefined_opaques_in_body: delegate.cx().mk_predefined_opaques_in_body(opaque_types),
         },
     );
-    let query_input = ty::CanonicalQueryInput {
-        canonical,
-        typing_mode: TypingModeEqWrapper(delegate.typing_mode()),
-    };
+
+    let query_input =
+        ty::CanonicalQueryInput { canonical, typing_mode: TypingModeEqWrapper(typing_mode) };
     (orig_values, query_input)
 }
 
@@ -117,11 +118,16 @@ where
     let ExternalConstraintsData { region_constraints, opaque_types, normalization_nested_goals } =
         &*external_constraints;
 
-    register_region_constraints(
-        delegate,
-        region_constraints.iter().map(|(c, vis)| (*c, vis.and(visible_for_leak_check))),
-        span,
-    );
+    match region_constraints {
+        ExternalRegionConstraints::Old(r) => register_region_constraints(
+            delegate,
+            r.iter().map(|(c, vis)| (*c, vis.and(visible_for_leak_check))),
+            span,
+        ),
+        ExternalRegionConstraints::NextGen(r) => {
+            delegate.register_solver_region_constraint(r.clone())
+        }
+    };
     register_new_opaque_types(delegate, opaque_types, span);
 
     (normalization_nested_goals.clone(), certainty)
@@ -375,7 +381,7 @@ pub fn response_no_constraints_raw<I: Interner>(
             var_values: ty::CanonicalVarValues::make_identity(cx, var_kinds),
             // FIXME: maybe we should store the "no response" version in cx, like
             // we do for cx.types and stuff.
-            external_constraints: cx.mk_external_constraints(ExternalConstraintsData::default()),
+            external_constraints: cx.mk_external_constraints(ExternalConstraintsData::new(cx)),
             certainty,
         },
     }

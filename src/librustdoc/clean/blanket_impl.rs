@@ -25,7 +25,7 @@ pub(crate) fn synthesize_blanket_impls(
     let mut blanket_impls = Vec::new();
     for trait_def_id in tcx.visible_traits() {
         if !cx.cache.effective_visibilities.is_reachable(tcx, trait_def_id)
-            || cx.generated_synthetics.contains(&(ty.skip_binder(), trait_def_id))
+            || cx.synthetic_blanket_impls.contains(&(ty.skip_binder(), trait_def_id))
         {
             continue;
         }
@@ -81,7 +81,7 @@ pub(crate) fn synthesize_blanket_impls(
             }
             debug!("found applicable impl for trait ref {trait_ref:?}");
 
-            cx.generated_synthetics.insert((ty.skip_binder(), trait_def_id));
+            cx.synthetic_blanket_impls.insert((ty.skip_binder(), trait_def_id));
 
             blanket_impls.push(clean::Item {
                 inner: Box::new(clean::ItemInner {

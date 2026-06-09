@@ -413,14 +413,8 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
 
             let term = blk.terminator();
             let caller_attrs = tcx.codegen_fn_attrs(self.caller_def_id());
-            if let TerminatorKind::Drop {
-                ref place,
-                target,
-                unwind,
-                replace: _,
-                drop: _,
-                async_fut: _,
-            } = term.kind
+            if let TerminatorKind::Drop { ref place, target, unwind, replace: _, drop: _ } =
+                term.kind
             {
                 work_list.push(target);
 
@@ -565,11 +559,23 @@ fn resolve_callsite<'tcx, I: Inliner<'tcx>>(
             let args = tcx
                 .try_normalize_erasing_regions(inliner.typing_env(), Unnormalized::new_wip(args))
                 .ok()?;
-            let callee =
+            let mut callee =
                 Instance::try_resolve(tcx, inliner.typing_env(), def_id, args).ok().flatten()?;
 
-            if let InstanceKind::Virtual(..) | InstanceKind::Intrinsic(_) = callee.def {
+            if let InstanceKind::Virtual(..) = callee.def {
                 return None;
+            }
+            if let InstanceKind::Intrinsic(..) = callee.def {
+                let intrinsic = tcx.intrinsic(def_id).unwrap();
+                if intrinsic.must_be_overridden {
+                    return None; // intrinsic without fallback body
+                }
+                if !tcx.sess.fallback_intrinsics.contains(&intrinsic.name) {
+                    return None; // intrinsic that the backend may want to overwrite
+                }
+                // The callee is the fallback body.
+                debug!("callsite is fallback body: {def_id:?}");
+                callee = ty::Instance { def: ty::InstanceKind::Item(def_id), args: callee.args };
             }
 
             if inliner.history().contains(&callee.def_id()) {
@@ -1072,8 +1078,7 @@ fn make_call_args<'tcx, I: Inliner<'tcx>>(
     //
     // and the vector is `[closure_ref, tmp0, tmp1, tmp2]`.
     if callsite.fn_sig.abi() == ExternAbi::RustCall && callee_body.spread_arg.is_none() {
-        // FIXME(edition_2024): switch back to a normal method call.
-        let mut args = <_>::into_iter(args);
+        let mut args = args.into_iter();
         let self_ = create_temp_if_necessary(
             inliner,
             args.next().unwrap().node,

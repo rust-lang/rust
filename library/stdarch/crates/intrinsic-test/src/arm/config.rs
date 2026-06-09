@@ -9,7 +9,6 @@ pub const PLATFORM_RUST_CFGS: &str = r#"
 #![cfg_attr(target_arch = "arm", feature(stdarch_arm_neon_intrinsics))]
 #![cfg_attr(target_arch = "arm", feature(stdarch_aarch32_crc32))]
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_fcma))]
-#![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_dotprod))]
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_i8mm))]
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_sm4))]
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_ftts))]

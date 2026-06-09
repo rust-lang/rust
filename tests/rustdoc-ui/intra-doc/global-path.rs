@@ -5,4 +5,7 @@
 
 /// [::Unresolved]
 //~^ WARN unresolved link to `::Unresolved`
+///
+/// [::std::unresolved]
+//~^ WARN unresolved link to `::std::unresolved`
 pub struct Item;

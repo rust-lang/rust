@@ -93,20 +93,9 @@ an AST expression).
 ## Getting code-completion for rustc internals to work
 
 ### RustRover
-Unfortunately, [`RustRover`][RustRover_homepage] does not (yet?) understand how Clippy uses compiler-internals
-using `extern crate` and it also needs to be able to read the source files of the rustc-compiler which are not
-available via a `rustup` component at the time of writing.
-To work around this, you need to have a copy of the [rustc-repo][rustc_repo] available which can be obtained via
-`git clone https://github.com/rust-lang/rust/`.
-Then you can run a `cargo dev` command to automatically make Clippy use the rustc-repo via path-dependencies
-which `RustRover` will be able to understand.
-Run `cargo dev setup intellij --repo-path <repo-path>` where `<repo-path>` is a path to the rustc repo
-you just cloned.
-The command will add path-dependencies pointing towards rustc-crates inside the rustc repo to
-Clippy's `Cargo.toml`s and should allow `RustRover` to understand most of the types that Clippy uses.
-Just make sure to remove the dependencies again before finally making a pull request!
+Since [`RustRover`][RustRover_homepage] 2026.1, no additional setup is required.
+Just open the project in RustRover as usual.
 
-[rustc_repo]: https://github.com/rust-lang/rust/
 [RustRover_homepage]: https://www.jetbrains.com/rust/
 
 ### Rust Analyzer

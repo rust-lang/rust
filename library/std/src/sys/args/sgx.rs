@@ -1,4 +1,5 @@
-#![allow(fuzzy_provenance_casts)] // FIXME: this module systematically confuses pointers and integers
+// FIXME: this module systematically confuses pointers and integers
+#![allow(fuzzy_provenance_casts, lossy_provenance_casts)]
 
 use crate::ffi::OsString;
 use crate::num::NonZero;

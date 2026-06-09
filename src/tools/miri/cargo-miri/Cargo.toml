@@ -1,5 +1,4 @@
 [package]
-authors = ["Miri Team"]
 description = "An experimental interpreter for Rust MIR (cargo wrapper)."
 license = "MIT OR Apache-2.0"
 name = "cargo-miri"

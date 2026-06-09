@@ -15,6 +15,7 @@ mod validations;
 
 use self::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 use crate::char::{self, EscapeDebugExtArgs};
+use crate::hint::assert_unchecked;
 use crate::range::Range;
 use crate::slice::{self, SliceIndex};
 use crate::ub_checks::assert_unsafe_precondition;
@@ -421,21 +422,35 @@ impl str {
     #[inline]
     pub const fn floor_char_boundary(&self, index: usize) -> usize {
         if index >= self.len() {
-            self.len()
-        } else {
-            let mut i = index;
-            while i > 0 {
-                if self.as_bytes()[i].is_utf8_char_boundary() {
-                    break;
-                }
-                i -= 1;
-            }
-
-            //  The character boundary will be within four bytes of the index
-            debug_assert!(i >= index.saturating_sub(3));
-
-            i
+            return self.len();
         }
+        if self.as_bytes()[index].is_utf8_char_boundary() {
+            return index;
+        }
+        // Unlike `ceil_char_boundary`, the loop is unrolled manually to prevent the compiler from
+        // generating excessive unrolled loop bodies when `index` is statically known.
+
+        // The first byte of `&str` must always be a char boundary, so we can assume `i > 0` below
+        // for any `i` where `self.as_bytes()[i]` is not a char boundary.
+        debug_assert!(self.as_bytes()[0].is_utf8_char_boundary());
+
+        // SAFETY: `self.as_bytes()[0]` is always a char boundary with valid `&str`
+        unsafe { assert_unchecked(index >= 1) };
+        if self.as_bytes()[index - 1].is_utf8_char_boundary() {
+            return index - 1;
+        }
+
+        // SAFETY: `self.as_bytes()[0]` is always a char boundary with valid `&str`
+        unsafe { assert_unchecked(index >= 2) };
+        if self.as_bytes()[index - 2].is_utf8_char_boundary() {
+            return index - 2;
+        }
+
+        // `self.as_bytes()[0]` is always a char boundary with valid `&str`
+        debug_assert!(index >= 3);
+        // The character boundary will be within four bytes of the index
+        debug_assert!(self.as_bytes()[index - 3].is_utf8_char_boundary());
+        index - 3
     }
 
     /// Finds the closest `x` not below `index` where [`is_char_boundary(x)`] is `true`.
@@ -467,14 +482,14 @@ impl str {
             self.len()
         } else {
             let mut i = index;
-            while i < self.len() {
-                if self.as_bytes()[i].is_utf8_char_boundary() {
+            while !self.as_bytes()[i].is_utf8_char_boundary() {
+                i += 1;
+                if i >= self.len() {
                     break;
                 }
-                i += 1;
             }
 
-            //  The character boundary will be within four bytes of the index
+            // The character boundary will be within four bytes of the index
             debug_assert!(i <= index + 3);
 
             i
@@ -2826,6 +2841,9 @@ impl str {
     /// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`,
     /// but without allocating and copying temporaries.
     ///
+    /// For Unicode-aware case-insensitive matching, consider
+    /// [`str::eq_ignore_case_unnormalized`].
+    ///
     /// # Examples
     ///
     /// ```
@@ -2839,6 +2857,59 @@ impl str {
     #[inline]
     pub const fn eq_ignore_ascii_case(&self, other: &str) -> bool {
         self.as_bytes().eq_ignore_ascii_case(other.as_bytes())
+    }
+
+    /// Checks that two strings are a caseless match, according to
+    /// [Definition 144] in Chapter 3 of the Unicode Standard.
+    ///
+    /// [Definition 144]: https://www.unicode.org/versions/latest/core-spec/chapter-3/#G53513
+    ///
+    /// Same as `a.to_casefold_unnormalized() == b.to_casefold_unnormalized()`,
+    /// but without allocating. See that method's documentation,
+    /// as well as [`char::to_casefold_unnormalized()`],
+    /// for more information about case folding.
+    ///
+    /// No [normalization] (e.g. NFC) is performed, so visually and semantically identical strings
+    /// might still compare unequal. For example, `"Å"` (U+00C5 LATIN CAPITAL LETTER A WITH RING ABOVE)
+    /// is considered distinct from `"Å"` (A followed by U+030A COMBINING RING ABOVE),
+    /// even though Unicode considers them canonically equivalent.
+    ///
+    /// In addition, this method is independent of language/locale,
+    /// so the special behavior of I/ı/İ/i in Turkish and Azeri is not handled.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(casefold)]
+    /// assert!("Ferris".eq_ignore_case_unnormalized("FERRIS"));
+    /// assert!("Ferrös".eq_ignore_case_unnormalized("FERRÖS"));
+    /// assert!("ẞ".eq_ignore_case_unnormalized("ss"));
+    /// ```
+    ///
+    /// No NFC [normalization] is performed:
+    ///
+    /// ```rust
+    /// #![feature(casefold)]
+    /// // These two strings are visually and semantically identical...
+    /// let comp = "Å";
+    /// let decomp = "Å";
+    ///
+    /// // ... but not codepoint-for-codepoint equal.
+    /// assert_eq!(comp, "\u{C5}");
+    /// assert_eq!(decomp, "A\u{030A}");
+    ///
+    /// // Their case-foldings are likewise unequal:
+    /// assert!(!comp.eq_ignore_case_unnormalized(decomp));
+    /// ```
+    ///
+    /// [normalization]: https://www.unicode.org/faq/normalization
+    #[unstable(feature = "casefold", issue = "154742")]
+    #[must_use]
+    #[inline]
+    pub fn eq_ignore_case_unnormalized(&self, other: &str) -> bool {
+        self.chars()
+            .flat_map(char::to_casefold_unnormalized)
+            .eq(other.chars().flat_map(char::to_casefold_unnormalized))
     }
 
     /// Converts this string to its ASCII upper case equivalent in-place.
@@ -3155,7 +3226,7 @@ impl str {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const AsRef<[u8]> for str {
+const impl AsRef<[u8]> for str {
     #[inline]
     fn as_ref(&self) -> &[u8] {
         self.as_bytes()
@@ -3164,7 +3235,7 @@ impl const AsRef<[u8]> for str {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-impl const Default for &str {
+const impl Default for &str {
     /// Creates an empty str
     #[inline]
     fn default() -> Self {
@@ -3174,7 +3245,7 @@ impl const Default for &str {
 
 #[stable(feature = "default_mut_str", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-impl const Default for &mut str {
+const impl Default for &mut str {
     /// Creates an empty mutable str
     #[inline]
     fn default() -> Self {

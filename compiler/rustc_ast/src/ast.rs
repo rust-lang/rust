@@ -25,13 +25,14 @@ pub use GenericArgs::*;
 pub use UnsafeSource::*;
 pub use rustc_ast_ir::{FloatTy, IntTy, Movability, Mutability, Pinnedness, UintTy};
 use rustc_data_structures::packed::Pu128;
-use rustc_data_structures::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::tagged_ptr::Tag;
 use rustc_macros::{Decodable, Encodable, StableHash, Walkable};
 pub use rustc_span::AttrId;
 use rustc_span::{
-    ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, Span, Spanned, Symbol, kw, respan, sym,
+    ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, LocalExpnId, Span, Spanned, Symbol, kw, respan,
+    sym,
 };
 use thin_vec::{ThinVec, thin_vec};
 
@@ -509,8 +510,6 @@ pub enum WherePredicateKind {
     BoundPredicate(WhereBoundPredicate),
     /// A lifetime predicate (e.g., `'a: 'b + 'c`).
     RegionPredicate(WhereRegionPredicate),
-    /// An equality predicate (unsupported).
-    EqPredicate(WhereEqPredicate),
 }
 
 /// A type bound.
@@ -1557,12 +1556,10 @@ impl Expr {
         }
 
         match &self.kind {
-            ExprKind::Closure(closure) => {
-                match closure.fn_decl.output {
-                    FnRetTy::Default(_) => ExprPrecedence::Jump,
-                    FnRetTy::Ty(_) => prefix_attrs_precedence(&self.attrs),
-                }
-            }
+            ExprKind::Closure(closure) => match closure.fn_decl.output {
+                FnRetTy::Default(_) => ExprPrecedence::Jump,
+                FnRetTy::Ty(_) => prefix_attrs_precedence(&self.attrs),
+            },
 
             ExprKind::Break(_ /*label*/, value)
             | ExprKind::Ret(value)
@@ -1584,17 +1581,16 @@ impl Expr {
             ExprKind::Binary(op, ..) => op.node.precedence(),
             ExprKind::Cast(..) => ExprPrecedence::Cast,
 
-            ExprKind::Assign(..) |
-            ExprKind::AssignOp(..) => ExprPrecedence::Assign,
+            ExprKind::Assign(..) | ExprKind::AssignOp(..) => ExprPrecedence::Assign,
 
             // Unary, prefix
-            ExprKind::AddrOf(..)
+            ExprKind::AddrOf(..) => ExprPrecedence::Prefix,
+
             // Here `let pats = expr` has `let pats =` as a "unary" prefix of `expr`.
             // However, this is not exactly right. When `let _ = a` is the LHS of a binop we
             // need parens sometimes. E.g. we can print `(let _ = a) && b` as `let _ = a && b`
             // but we need to print `(let _ = a) < b` as-is with parens.
-            | ExprKind::Let(..)
-            | ExprKind::Unary(..) => ExprPrecedence::Prefix,
+            ExprKind::Let(..) | ExprKind::Move(..) | ExprKind::Unary(..) => ExprPrecedence::Prefix,
 
             // Need parens if and only if there are prefix attributes.
             ExprKind::Array(_)
@@ -1763,6 +1759,8 @@ pub enum ExprKind {
     Binary(BinOp, Box<Expr>, Box<Expr>),
     /// A unary operation (e.g., `!x`, `*x`).
     Unary(UnOp, Box<Expr>),
+    /// A `move(expr)` expression.
+    Move(Box<Expr>, Span),
     /// A literal (e.g., `1`, `"foo"`).
     Lit(token::Lit),
     /// A cast (e.g., `foo as f64`).
@@ -3498,6 +3496,7 @@ impl AttrItem {
             || self.path == sym::warn
             || self.path == sym::allow
             || self.path == sym::deny
+            || self.path == sym::expect
     }
 }
 
@@ -3584,6 +3583,13 @@ pub struct ImplRestriction {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub struct MutRestriction {
+    pub kind: RestrictionKind,
+    pub span: Span,
+    pub tokens: Option<LazyAttrTokenStream>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub enum RestrictionKind {
     Unrestricted,
     Restricted { path: Box<Path>, id: NodeId, shorthand: bool },
@@ -3598,6 +3604,7 @@ pub struct FieldDef {
     pub id: NodeId,
     pub span: Span,
     pub vis: Visibility,
+    pub mut_restriction: MutRestriction,
     pub safety: Safety,
     pub ident: Option<Ident>,
 
@@ -3864,6 +3871,19 @@ pub struct Fn {
     pub eii_impls: ThinVec<EiiImpl>,
 }
 
+impl Fn {
+    pub fn is_pin_drop_sugar(&self) -> bool {
+        self.ident.name == sym::drop
+            && self
+                .sig
+                .decl
+                .inputs
+                .first()
+                .and_then(|param| param.to_self())
+                .is_some_and(|eself| matches!(eself.node, SelfKind::Pinned(None, Mutability::Mut)))
+    }
+}
+
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct EiiImpl {
     pub node_id: NodeId,
@@ -3887,6 +3907,13 @@ pub struct EiiImpl {
     pub is_default: bool,
 }
 
+#[derive(Clone, Copy, Encodable, Decodable, Debug, PartialEq, Eq)]
+pub enum DelegationSource {
+    Single,
+    List(LocalExpnId),
+    Glob,
+}
+
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct Delegation {
     /// Path resolution id.
@@ -3897,7 +3924,14 @@ pub struct Delegation {
     pub rename: Option<Ident>,
     pub body: Option<Box<Block>>,
     /// The item was expanded from a glob delegation item.
-    pub from_glob: bool,
+    #[visitable(ignore)]
+    pub source: DelegationSource,
+}
+
+impl Delegation {
+    pub fn last_segment_span(&self) -> Span {
+        self.path.segments.last().unwrap().ident.span
+    }
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -4087,18 +4121,18 @@ impl ItemKind {
     pub fn ident(&self) -> Option<Ident> {
         match *self {
             ItemKind::ExternCrate(_, ident)
-            | ItemKind::Static(box StaticItem { ident, .. })
-            | ItemKind::Const(box ConstItem { ident, .. })
-            | ItemKind::Fn(box Fn { ident, .. })
+            | ItemKind::Static(StaticItem { ident, .. })
+            | ItemKind::Const(ConstItem { ident, .. })
+            | ItemKind::Fn(Fn { ident, .. })
             | ItemKind::Mod(_, ident, _)
-            | ItemKind::TyAlias(box TyAlias { ident, .. })
+            | ItemKind::TyAlias(TyAlias { ident, .. })
             | ItemKind::Enum(ident, ..)
             | ItemKind::Struct(ident, ..)
             | ItemKind::Union(ident, ..)
-            | ItemKind::Trait(box Trait { ident, .. })
-            | ItemKind::TraitAlias(box TraitAlias { ident, .. })
+            | ItemKind::Trait(Trait { ident, .. })
+            | ItemKind::TraitAlias(TraitAlias { ident, .. })
             | ItemKind::MacroDef(ident, _)
-            | ItemKind::Delegation(box Delegation { ident, .. }) => Some(ident),
+            | ItemKind::Delegation(Delegation { ident, .. }) => Some(ident),
 
             ItemKind::ConstBlock(_) => Some(ConstBlockItem::IDENT),
 
@@ -4149,14 +4183,14 @@ impl ItemKind {
 
     pub fn generics(&self) -> Option<&Generics> {
         match self {
-            Self::Fn(box Fn { generics, .. })
-            | Self::TyAlias(box TyAlias { generics, .. })
-            | Self::Const(box ConstItem { generics, .. })
+            Self::Fn(Fn { generics, .. })
+            | Self::TyAlias(TyAlias { generics, .. })
+            | Self::Const(ConstItem { generics, .. })
             | Self::Enum(_, generics, _)
             | Self::Struct(_, generics, _)
             | Self::Union(_, generics, _)
-            | Self::Trait(box Trait { generics, .. })
-            | Self::TraitAlias(box TraitAlias { generics, .. })
+            | Self::Trait(Trait { generics, .. })
+            | Self::TraitAlias(TraitAlias { generics, .. })
             | Self::Impl(Impl { generics, .. }) => Some(generics),
 
             Self::ExternCrate(..)
@@ -4205,10 +4239,10 @@ pub enum AssocItemKind {
 impl AssocItemKind {
     pub fn ident(&self) -> Option<Ident> {
         match *self {
-            AssocItemKind::Const(box ConstItem { ident, .. })
-            | AssocItemKind::Fn(box Fn { ident, .. })
-            | AssocItemKind::Type(box TyAlias { ident, .. })
-            | AssocItemKind::Delegation(box Delegation { ident, .. }) => Some(ident),
+            AssocItemKind::Const(ConstItem { ident, .. })
+            | AssocItemKind::Fn(Fn { ident, .. })
+            | AssocItemKind::Type(TyAlias { ident, .. })
+            | AssocItemKind::Delegation(Delegation { ident, .. }) => Some(ident),
 
             AssocItemKind::MacCall(_) | AssocItemKind::DelegationMac(_) => None,
         }
@@ -4216,9 +4250,9 @@ impl AssocItemKind {
 
     pub fn defaultness(&self) -> Defaultness {
         match *self {
-            Self::Const(box ConstItem { defaultness, .. })
-            | Self::Fn(box Fn { defaultness, .. })
-            | Self::Type(box TyAlias { defaultness, .. }) => defaultness,
+            Self::Const(ConstItem { defaultness, .. })
+            | Self::Fn(Fn { defaultness, .. })
+            | Self::Type(TyAlias { defaultness, .. }) => defaultness,
             Self::MacCall(..) | Self::Delegation(..) | Self::DelegationMac(..) => {
                 Defaultness::Implicit
             }
@@ -4271,9 +4305,9 @@ pub enum ForeignItemKind {
 impl ForeignItemKind {
     pub fn ident(&self) -> Option<Ident> {
         match *self {
-            ForeignItemKind::Static(box StaticItem { ident, .. })
-            | ForeignItemKind::Fn(box Fn { ident, .. })
-            | ForeignItemKind::TyAlias(box TyAlias { ident, .. }) => Some(ident),
+            ForeignItemKind::Static(StaticItem { ident, .. })
+            | ForeignItemKind::Fn(Fn { ident, .. })
+            | ForeignItemKind::TyAlias(TyAlias { ident, .. }) => Some(ident),
 
             ForeignItemKind::MacCall(_) => None,
         }

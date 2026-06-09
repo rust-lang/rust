@@ -544,7 +544,7 @@ pub(super) fn definition(
                     let mut body = source.value.body()?.syntax().clone();
                     if let Some(macro_file) = source.file_id.macro_file() {
                         let span_map = db.expansion_span_map(macro_file);
-                        body = prettify_macro_expansion(db, body, &span_map, it.krate(db).into());
+                        body = prettify_macro_expansion(db, body, span_map, it.krate(db).into());
                     }
                     if env::var_os("RA_DEV").is_some() {
                         format!("{body}\n{}", render_const_eval_error(db, err, display_target))
@@ -576,7 +576,7 @@ pub(super) fn definition(
                     let mut body = source.value.body()?.syntax().clone();
                     if let Some(macro_file) = source.file_id.macro_file() {
                         let span_map = db.expansion_span_map(macro_file);
-                        body = prettify_macro_expansion(db, body, &span_map, it.krate(db).into());
+                        body = prettify_macro_expansion(db, body, span_map, it.krate(db).into());
                     }
                     if env::var_os("RA_DEV").is_some() {
                         format!("{body}\n{}", render_const_eval_error(db, err, display_target))
@@ -664,14 +664,14 @@ pub(super) fn definition(
         }
         let drop_info = match def {
             Definition::Field(field) => {
-                DropInfo { drop_glue: field.ty(db).to_type(db).drop_glue(db), has_dtor: None }
+                DropInfo { drop_glue: field.ty(db).drop_glue(db), has_dtor: None }
             }
             Definition::Adt(Adt::Struct(strukt)) => {
-                let struct_drop_glue = strukt.ty_params(db).drop_glue(db);
+                let struct_drop_glue = strukt.ty(db).drop_glue(db);
                 let mut fields_drop_glue = strukt
                     .fields(db)
                     .iter()
-                    .map(|field| field.ty(db).to_type(db).drop_glue(db))
+                    .map(|field| field.ty(db).drop_glue(db))
                     .max()
                     .unwrap_or(DropGlue::None);
                 let has_dtor = match (fields_drop_glue, struct_drop_glue) {
@@ -688,10 +688,10 @@ pub(super) fn definition(
             // Unions cannot have fields with drop glue.
             Definition::Adt(Adt::Union(union)) => DropInfo {
                 drop_glue: DropGlue::None,
-                has_dtor: Some(union.ty_params(db).drop_glue(db) != DropGlue::None),
+                has_dtor: Some(union.ty(db).drop_glue(db) != DropGlue::None),
             },
             Definition::Adt(Adt::Enum(enum_)) => {
-                let enum_drop_glue = enum_.ty_params(db).drop_glue(db);
+                let enum_drop_glue = enum_.ty(db).drop_glue(db);
                 let fields_drop_glue = enum_
                     .variants(db)
                     .iter()
@@ -699,7 +699,7 @@ pub(super) fn definition(
                         variant
                             .fields(db)
                             .iter()
-                            .map(|field| field.ty(db).to_type(db).drop_glue(db))
+                            .map(|field| field.ty(db).drop_glue(db))
                             .max()
                             .unwrap_or(DropGlue::None)
                     })
@@ -714,13 +714,13 @@ pub(super) fn definition(
                 let fields_drop_glue = variant
                     .fields(db)
                     .iter()
-                    .map(|field| field.ty(db).to_type(db).drop_glue(db))
+                    .map(|field| field.ty(db).drop_glue(db))
                     .max()
                     .unwrap_or(DropGlue::None);
                 DropInfo { drop_glue: fields_drop_glue, has_dtor: None }
             }
             Definition::TypeAlias(type_alias) => {
-                DropInfo { drop_glue: type_alias.ty_params(db).drop_glue(db), has_dtor: None }
+                DropInfo { drop_glue: type_alias.ty(db).drop_glue(db), has_dtor: None }
             }
             Definition::Local(local) => {
                 DropInfo { drop_glue: local.ty(db).drop_glue(db), has_dtor: None }
@@ -1136,12 +1136,12 @@ fn markup(
     }
 }
 
-fn render_memory_layout(
+fn render_memory_layout<'db>(
     config: Option<MemoryLayoutHoverConfig>,
-    layout: impl FnOnce() -> Result<Layout, LayoutError>,
-    offset: impl FnOnce(&Layout) -> Option<u64>,
-    padding: impl FnOnce(&Layout) -> Option<(&str, u64)>,
-    tag: impl FnOnce(&Layout) -> Option<usize>,
+    layout: impl FnOnce() -> Result<Layout<'db>, LayoutError>,
+    offset: impl FnOnce(&Layout<'db>) -> Option<u64>,
+    padding: impl for<'a> FnOnce(&'a Layout<'db>) -> Option<(&'a str, u64)>,
+    tag: impl FnOnce(&Layout<'db>) -> Option<usize>,
 ) -> Option<String> {
     let config = config?;
     let layout = layout().ok()?;

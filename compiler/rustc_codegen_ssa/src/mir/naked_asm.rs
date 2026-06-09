@@ -451,7 +451,7 @@ fn wasm_type<'tcx>(signature: &mut String, arg_abi: &ArgAbi<'_, Ty<'tcx>>, ptr_t
         PassMode::Cast { pad_i32, ref cast } => {
             // For wasm, Cast is used for single-field primitive wrappers like `struct Wrapper(i64);`
             assert!(!pad_i32, "not currently used by wasm calling convention");
-            assert!(cast.prefix[0].is_none(), "no prefix");
+            assert!(cast.prefix.is_empty(), "no prefix");
             assert_eq!(cast.rest.total, arg_abi.layout.size, "single item");
 
             let wrapped_wasm_type = match cast.rest.unit.kind {

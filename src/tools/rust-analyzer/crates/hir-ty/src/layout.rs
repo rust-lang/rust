@@ -10,12 +10,12 @@ use hir_def::{
 use la_arena::{Idx, RawIdx};
 
 use rustc_abi::{
-    AddressSpace, Float, Integer, LayoutCalculator, Primitive, ReprOptions, Scalar, StructKind,
-    TargetDataLayout, WrappingRange,
+    AddressSpace, BackendRepr, FieldsShape, Float, Integer, LayoutCalculator, Niche, Primitive,
+    ReprOptions, Scalar, Size, StructKind, TargetDataLayout, WrappingRange,
 };
 use rustc_index::IndexVec;
 use rustc_type_ir::{
-    FloatTy, IntTy, UintTy,
+    FloatTy, IntTy, TypeVisitableExt as _, UintTy,
     inherent::{GenericArgs as _, IntoKind},
 };
 use triomphe::Arc;
@@ -25,7 +25,8 @@ use crate::{
     consteval::try_const_usize,
     db::HirDatabase,
     next_solver::{
-        DbInterner, GenericArgs, StoredTy, Ty, TyKind, TypingMode,
+        Const, ConstKind, DbInterner, GenericArgs, PatternKind, StoredTy, Ty, TyKind, TypingMode,
+        ValueConst,
         infer::{DbInternerInferExt, traits::ObligationCause},
     },
     traits::StoredParamEnvAndCrate,
@@ -36,6 +37,9 @@ pub use self::{adt::layout_of_adt_query, target::target_data_layout_query};
 
 pub(crate) mod adt;
 pub(crate) mod target;
+
+#[cfg(test)]
+mod tests;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RustcEnumVariantIdx(pub usize);
@@ -142,10 +146,10 @@ fn layout_of_simd_ty<'db>(
     // where T is a primitive scalar (integer/float/pointer).
     let fields = db.field_types(id.into());
     let mut fields = fields.iter();
-    let Some(TyKind::Array(e_ty, e_len)) = fields
-        .next()
-        .filter(|_| fields.next().is_none())
-        .map(|f| (*f.1).get().instantiate(DbInterner::new_no_crate(db), args).kind())
+    let Some(TyKind::Array(e_ty, e_len)) =
+        fields.next().filter(|_| fields.next().is_none()).map(|f| {
+            (*f.1).get().instantiate(DbInterner::new_no_crate(db), args).skip_norm_wip().kind()
+        })
     else {
         return Err(LayoutError::InvalidSimdType);
     };
@@ -167,7 +171,7 @@ pub fn layout_of_ty_query(
     let Ok(target) = db.target_data_layout(krate) else {
         return Err(LayoutError::TargetLayoutNotAvailable);
     };
-    let dl = &*target;
+    let dl = target;
     let cx = LayoutCx::new(dl);
     let infer_ctxt = interner.infer_ctxt().build(TypingMode::PostAnalysis);
     let cause = ObligationCause::dummy();
@@ -177,7 +181,7 @@ pub fn layout_of_ty_query(
         .unwrap_or(ty.as_ref());
     let result = match ty.kind() {
         TyKind::Adt(def, args) => {
-            match def.inner().id {
+            match def.def_id() {
                 hir_def::AdtId::StructId(s) => {
                     let repr = AttrFlags::repr(db, s.into()).unwrap_or_default();
                     if repr.simd() {
@@ -187,13 +191,13 @@ pub fn layout_of_ty_query(
                             repr.packed(),
                             &args,
                             trait_env.as_ref(),
-                            &target,
+                            target,
                         );
                     }
                 }
                 _ => {}
             }
-            return db.layout_of_adt(def.inner().id, args.store(), trait_env);
+            return db.layout_of_adt(def.def_id(), args.store(), trait_env);
         }
         TyKind::Bool => Layout::scalar(
             dl,
@@ -341,12 +345,151 @@ pub fn layout_of_ty_query(
             return db
                 .layout_of_ty(args.as_coroutine_closure().tupled_upvars_ty().store(), trait_env);
         }
-
         TyKind::CoroutineWitness(_, _) => {
             return Err(LayoutError::NotImplemented);
         }
 
-        TyKind::Pat(_, _) | TyKind::UnsafeBinder(_) => {
+        TyKind::Pat(ty, pat) => {
+            let mut layout = (*db.layout_of_ty(ty.store(), trait_env.clone())?).clone();
+            match pat.kind() {
+                PatternKind::Range { start, end } => {
+                    if let BackendRepr::Scalar(scalar) = &mut layout.backend_repr {
+                        scalar.valid_range_mut().start = extract_const_value(start)?
+                            .try_to_bits(db, trait_env.as_ref())
+                            .ok_or(LayoutError::Unknown)?;
+
+                        scalar.valid_range_mut().end = extract_const_value(end)?
+                            .try_to_bits(db, trait_env.as_ref())
+                            .ok_or(LayoutError::Unknown)?;
+
+                        // FIXME(pattern_types): create implied bounds from pattern types in signatures
+                        // that require that the range end is >= the range start so that we can't hit
+                        // this error anymore without first having hit a trait solver error.
+                        // Very fuzzy on the details here, but pattern types are an internal impl detail,
+                        // so we can just go with this for now
+                        if scalar.is_signed() {
+                            let range = scalar.valid_range_mut();
+                            let start = layout.size.sign_extend(range.start);
+                            let end = layout.size.sign_extend(range.end);
+                            if end < start {
+                                return Err(LayoutError::HasErrorType);
+                            }
+                        } else {
+                            let range = scalar.valid_range_mut();
+                            if range.end < range.start {
+                                return Err(LayoutError::HasErrorType);
+                            }
+                        };
+
+                        let niche = Niche {
+                            offset: Size::ZERO,
+                            value: scalar.primitive(),
+                            valid_range: scalar.valid_range(target),
+                        };
+
+                        layout.largest_niche = Some(niche);
+                    } else {
+                        panic!("pattern type with range but not scalar layout: {ty:?}, {layout:?}")
+                    }
+                }
+                PatternKind::NotNull => {
+                    if let BackendRepr::Scalar(scalar) | BackendRepr::ScalarPair(scalar, _) =
+                        &mut layout.backend_repr
+                    {
+                        scalar.valid_range_mut().start = 1;
+                        let niche = Niche {
+                            offset: Size::ZERO,
+                            value: scalar.primitive(),
+                            valid_range: scalar.valid_range(target),
+                        };
+
+                        layout.largest_niche = Some(niche);
+                    } else {
+                        panic!(
+                            "pattern type with `!null` pattern but not scalar/pair layout: {ty:?}, {layout:?}"
+                        )
+                    }
+                }
+
+                PatternKind::Or(variants) => match variants[0].kind() {
+                    PatternKind::Range { .. } => {
+                        if let BackendRepr::Scalar(scalar) = &mut layout.backend_repr {
+                            let variants: Result<Vec<_>, _> = variants
+                                .iter()
+                                .map(|pat| match pat.kind() {
+                                    PatternKind::Range { start, end } => Ok::<_, LayoutError>((
+                                        extract_const_value(start)
+                                            .unwrap()
+                                            .try_to_bits(db, trait_env.as_ref())
+                                            .ok_or(LayoutError::Unknown)?,
+                                        extract_const_value(end)
+                                            .unwrap()
+                                            .try_to_bits(db, trait_env.as_ref())
+                                            .ok_or(LayoutError::Unknown)?,
+                                    )),
+                                    PatternKind::NotNull | PatternKind::Or(_) => {
+                                        unreachable!("mixed or patterns are not allowed")
+                                    }
+                                })
+                                .collect();
+                            let mut variants = variants?;
+                            if !scalar.is_signed() {
+                                return Err(LayoutError::HasErrorType);
+                            }
+                            variants.sort();
+                            if variants.len() != 2 {
+                                return Err(LayoutError::HasErrorType);
+                            }
+
+                            // first is the one starting at the signed in range min
+                            let mut first = variants[0];
+                            let mut second = variants[1];
+                            if second.0
+                                == layout.size.truncate(layout.size.signed_int_min() as u128)
+                            {
+                                (second, first) = (first, second);
+                            }
+
+                            if layout.size.sign_extend(first.1) >= layout.size.sign_extend(second.0)
+                            {
+                                return Err(LayoutError::HasErrorType);
+                            }
+                            if layout.size.signed_int_max() as u128 != second.1 {
+                                return Err(LayoutError::HasErrorType);
+                            }
+
+                            // Now generate a wrapping range (which aren't allowed in surface syntax).
+                            scalar.valid_range_mut().start = second.0;
+                            scalar.valid_range_mut().end = first.1;
+
+                            let niche = Niche {
+                                offset: Size::ZERO,
+                                value: scalar.primitive(),
+                                valid_range: scalar.valid_range(target),
+                            };
+
+                            layout.largest_niche = Some(niche);
+                        } else {
+                            panic!(
+                                "pattern type with range but not scalar layout: {ty:?}, {layout:?}"
+                            )
+                        }
+                    }
+                    PatternKind::NotNull => panic!("or patterns can't contain `!null` patterns"),
+                    PatternKind::Or(..) => panic!("patterns cannot have nested or patterns"),
+                },
+            }
+            // Pattern types contain their base as their sole field.
+            // This allows the rest of the compiler to process pattern types just like
+            // single field transparent Adts, and only the parts of the compiler that
+            // specifically care about pattern types will have to handle it.
+            layout.fields = FieldsShape::Arbitrary {
+                offsets: [Size::ZERO].into_iter().collect(),
+                in_memory_order: [RustcFieldIdx::new(0)].into_iter().collect(),
+            };
+            layout
+        }
+        TyKind::UnsafeBinder(_) => {
             return Err(LayoutError::NotImplemented);
         }
 
@@ -371,10 +514,29 @@ pub(crate) fn layout_of_ty_cycle_result(
     Err(LayoutError::RecursiveTypeWithoutIndirection)
 }
 
+fn extract_const_value<'db>(ct: Const<'db>) -> Result<ValueConst<'db>, LayoutError> {
+    match ct.kind() {
+        ConstKind::Value(cv) => Ok(cv),
+        ConstKind::Param(_)
+        | ConstKind::Expr(_)
+        | ConstKind::Unevaluated(_)
+        | ConstKind::Infer(_)
+        | ConstKind::Bound(..)
+        | ConstKind::Placeholder(_) => {
+            if ct.has_param() {
+                Err(LayoutError::HasPlaceholder)
+            } else {
+                Err(LayoutError::Unknown)
+            }
+        }
+        ConstKind::Error(_) => Err(LayoutError::HasErrorConst),
+    }
+}
+
 fn struct_tail_erasing_lifetimes<'a>(db: &'a dyn HirDatabase, pointee: Ty<'a>) -> Ty<'a> {
     match pointee.kind() {
         TyKind::Adt(def, args) => {
-            let struct_id = match def.inner().id {
+            let struct_id = match def.def_id() {
                 AdtId::StructId(id) => id,
                 _ => return pointee,
             };
@@ -405,12 +567,9 @@ fn field_ty<'a>(
     fd: LocalFieldId,
     args: GenericArgs<'a>,
 ) -> Ty<'a> {
-    db.field_types(def)[fd].get().instantiate(DbInterner::new_no_crate(db), args)
+    db.field_types(def)[fd].get().instantiate(DbInterner::new_no_crate(db), args).skip_norm_wip()
 }
 
 fn scalar_unit(dl: &TargetDataLayout, value: Primitive) -> Scalar {
     Scalar::Initialized { value, valid_range: WrappingRange::full(value.size(dl)) }
 }
-
-#[cfg(test)]
-mod tests;

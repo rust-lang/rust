@@ -7,7 +7,7 @@ use std::ops::{Bound, Index, IndexMut, RangeBounds};
 
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
 
-use crate::stable_hasher::{StableHash, StableHashCtxt, StableHasher, StableOrd};
+use crate::stable_hash::{StableHash, StableHashCtxt, StableHasher, StableOrd};
 
 mod index_map;
 

@@ -1,5 +1,4 @@
 [package]
-authors = ["Miri Team"]
 description = "dependencies that unit tests can have"
 license = "MIT OR Apache-2.0"
 name = "miri-test-deps"

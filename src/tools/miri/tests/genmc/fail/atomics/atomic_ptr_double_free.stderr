@@ -25,7 +25,7 @@ LL |     dealloc(ptr as *mut u8, Layout::new::<u64>())
                at tests/genmc/fail/atomics/atomic_ptr_double_free.rs:LL:CC
            2: <std::boxed::Box<{closure@tests/genmc/fail/atomics/atomic_ptr_double_free.rs:LL:CC}> as std::ops::FnOnce<()>>::call_once
                at RUSTLIB/alloc/src/boxed.rs:LL:CC
-           3: genmc::spawn_pthread_closure::thread_func
+           3: genmc::spawn_pthread_closure::thread_func::<{closure@tests/genmc/fail/atomics/atomic_ptr_double_free.rs:LL:CC}>
                at tests/genmc/fail/atomics/../../../utils/genmc.rs:LL:CC
 note: the last function in that backtrace got called indirectly due to this code
   --> tests/genmc/fail/atomics/../../../utils/genmc.rs:LL:CC

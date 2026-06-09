@@ -739,33 +739,10 @@ unsafe impl Sync for TypeId {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-impl const PartialEq for TypeId {
+const impl PartialEq for TypeId {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        #[cfg(miri)]
-        return crate::intrinsics::type_id_eq(*self, *other);
-        #[cfg(not(miri))]
-        {
-            let this = self;
-            crate::intrinsics::const_eval_select!(
-                @capture { this: &TypeId, other: &TypeId } -> bool:
-                if const {
-                    crate::intrinsics::type_id_eq(*this, *other)
-                } else {
-                    // Ideally we would just invoke `type_id_eq` unconditionally here,
-                    // but since we do not MIR inline intrinsics, because backends
-                    // may want to override them (and miri does!), MIR opts do not
-                    // clean up this call sufficiently for LLVM to turn repeated calls
-                    // of `TypeId` comparisons against one specific `TypeId` into
-                    // a lookup table.
-                    // SAFETY: We know that at runtime none of the bits have provenance and all bits
-                    // are initialized. So we can just convert the whole thing to a `u128` and compare that.
-                    unsafe {
-                        crate::mem::transmute::<_, u128>(*this) == crate::mem::transmute::<_, u128>(*other)
-                    }
-                }
-            )
-        }
+        crate::intrinsics::type_id_eq(*self, *other)
     }
 }
 
@@ -839,7 +816,7 @@ impl TypeId {
         self,
         trait_represented_by_type_id: TypeId,
     ) -> Option<TraitImpl<*const ()>> {
-        if self.info().size.is_none() {
+        if self.size().is_none() {
             return None;
         }
 
@@ -852,7 +829,7 @@ impl TypeId {
         }
     }
 
-    fn as_u128(self) -> u128 {
+    pub(crate) fn as_u128(self) -> u128 {
         let mut bytes = [0; 16];
 
         // This is a provenance-stripping memcpy.
@@ -1007,18 +984,23 @@ pub const fn type_name_of_val<T: ?Sized>(_val: &T) -> &'static str {
 #[must_use]
 #[unstable(feature = "try_as_dyn", issue = "144361")]
 pub const fn try_as_dyn<
-    T: Any + 'static,
+    T: Any + ?Sized + 'static,
     U: ptr::Pointee<Metadata = ptr::DynMetadata<U>> + ?Sized + 'static,
 >(
     t: &T,
 ) -> Option<&U> {
+    // For unsized `T`, `trait_info_of` always returns `None` (vtable lookup is
+    // only supported for sized types). The function therefore unconditionally
+    // returns `None` in that case.
     let vtable: Option<ptr::DynMetadata<U>> =
         const { TypeId::of::<T>().trait_info_of::<U>().as_ref().map(TraitImpl::get_vtable) };
     match vtable {
         Some(dyn_metadata) => {
-            let pointer = ptr::from_raw_parts(t, dyn_metadata);
+            let pointer = ptr::from_raw_parts(t as *const T as *const (), dyn_metadata);
             // SAFETY: `t` is a reference to a type, so we know it is valid.
             // `dyn_metadata` is a vtable for T, implementing the trait of `U`.
+            // `T` is sized here because `trait_info_of` only returns `Some` for sized types,
+            // so the thin data pointer fully describes the value.
             Some(unsafe { &*pointer })
         }
         None => None,
@@ -1061,18 +1043,23 @@ pub const fn try_as_dyn<
 #[must_use]
 #[unstable(feature = "try_as_dyn", issue = "144361")]
 pub const fn try_as_dyn_mut<
-    T: Any + 'static,
+    T: Any + ?Sized + 'static,
     U: ptr::Pointee<Metadata = ptr::DynMetadata<U>> + ?Sized + 'static,
 >(
     t: &mut T,
 ) -> Option<&mut U> {
+    // For unsized `T`, `trait_info_of` always returns `None` (vtable lookup is
+    // only supported for sized types). The function therefore unconditionally
+    // returns `None` in that case.
     let vtable: Option<ptr::DynMetadata<U>> =
         const { TypeId::of::<T>().trait_info_of::<U>().as_ref().map(TraitImpl::get_vtable) };
     match vtable {
         Some(dyn_metadata) => {
-            let pointer = ptr::from_raw_parts_mut(t, dyn_metadata);
+            let pointer = ptr::from_raw_parts_mut(t as *mut T as *mut (), dyn_metadata);
             // SAFETY: `t` is a reference to a type, so we know it is valid.
             // `dyn_metadata` is a vtable for T, implementing the trait of `U`.
+            // `T` is sized here because `trait_info_of` only returns `Some` for sized types,
+            // so the thin data pointer fully describes the value.
             Some(unsafe { &mut *pointer })
         }
         None => None,

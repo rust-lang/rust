@@ -8,6 +8,7 @@ use rustc_index::Idx;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutError, SizeSkeleton};
 use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized};
+use rustc_span::ErrorGuaranteed;
 use rustc_span::def_id::LocalDefId;
 use tracing::trace;
 
@@ -31,7 +32,7 @@ fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         }
 
         if def.variant(data_idx).fields.len() == 1 {
-            return def.variant(data_idx).single_field().ty(tcx, args);
+            return def.variant(data_idx).single_field().ty(tcx, args).skip_norm_wip();
         }
     }
 
@@ -72,15 +73,15 @@ fn check_transmute<'tcx>(
     from: Ty<'tcx>,
     to: Ty<'tcx>,
     hir_id: HirId,
-) {
-    let span = || tcx.hir_span(hir_id);
+) -> Result<(), ErrorGuaranteed> {
+    let span = tcx.hir_span(hir_id);
     let normalize = |ty| {
         if let Ok(ty) = tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)) {
             ty
         } else {
             Ty::new_error_with_message(
                 tcx,
-                span(),
+                span,
                 format!("tried to normalize non-wf type {ty:#?} in check_transmute"),
             )
         }
@@ -92,11 +93,11 @@ fn check_transmute<'tcx>(
 
     // Transmutes that are only changing lifetimes are always ok.
     if from == to {
-        return;
+        return Ok(());
     }
 
-    let sk_from = SizeSkeleton::compute(from, tcx, typing_env);
-    let sk_to = SizeSkeleton::compute(to, tcx, typing_env);
+    let sk_from = SizeSkeleton::compute(from, tcx, typing_env, span);
+    let sk_to = SizeSkeleton::compute(to, tcx, typing_env, span);
     trace!(?sk_from, ?sk_to);
 
     // Check for same size using the skeletons.
@@ -104,7 +105,7 @@ fn check_transmute<'tcx>(
         && let Ok(sk_to) = sk_to
     {
         if sk_from.same_size(sk_to) {
-            return;
+            return Ok(());
         }
 
         // Special-case transmuting from `typeof(function)` and
@@ -114,38 +115,42 @@ fn check_transmute<'tcx>(
             && let SizeSkeleton::Known(size_to, _) = sk_to
             && size_to == Pointer(tcx.data_layout.instruction_address_space).size(&tcx)
         {
-            struct_span_code_err!(tcx.sess.dcx(), span(), E0591, "can't transmute zero-sized type")
+            struct_span_code_err!(tcx.sess.dcx(), span, E0591, "can't transmute zero-sized type")
                 .with_note(format!("source type: {from}"))
                 .with_note(format!("target type: {to}"))
                 .with_help("cast with `as` to a pointer instead")
                 .emit();
-            return;
+            return Ok(());
         }
     }
 
     let mut err = struct_span_code_err!(
         tcx.sess.dcx(),
-        span(),
+        span,
         E0512,
         "cannot transmute between types of different sizes, or dependently-sized types"
     );
     if from == to {
         err.note(format!("`{from}` does not have a fixed size"));
-        err.emit();
+        Err(err.emit())
     } else {
         err.note(format!("source type: `{}` ({})", from, skeleton_string(from, sk_from)));
         err.note(format!("target type: `{}` ({})", to, skeleton_string(to, sk_to)));
-        err.emit();
+        Err(err.emit())
     }
 }
 
-pub(crate) fn check_transmutes(tcx: TyCtxt<'_>, owner: LocalDefId) {
+pub(crate) fn check_transmutes(tcx: TyCtxt<'_>, owner: LocalDefId) -> Result<(), ErrorGuaranteed> {
     assert!(!tcx.is_typeck_child(owner.to_def_id()));
     let typeck_results = tcx.typeck(owner);
-    let None = typeck_results.tainted_by_errors else { return };
+    if let Some(e) = typeck_results.tainted_by_errors {
+        return Err(e);
+    };
 
-    let typing_env = ty::TypingEnv::post_analysis(tcx, owner);
+    let typing_env = ty::TypingEnv::codegen(tcx, owner);
+    let mut result = Ok(());
     for &(from, to, hir_id) in &typeck_results.transmutes_to_check {
-        check_transmute(tcx, typing_env, from, to, hir_id);
+        result = result.and(check_transmute(tcx, typing_env, from, to, hir_id));
     }
+    result
 }

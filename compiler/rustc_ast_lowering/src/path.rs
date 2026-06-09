@@ -11,13 +11,13 @@ use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Ident, Span, Symbol, sym};
 use smallvec::smallvec;
 use tracing::{debug, instrument};
 
-use super::errors::{
+use crate::diagnostics::{
     AsyncBoundNotOnTrait, AsyncBoundOnlyForFnTraits, BadReturnTypeNotation,
     GenericTypeWithParentheses, RTNSuggestion, UseAngleBrackets,
 };
-use super::{
+use crate::{
     AllowReturnTypeNotation, GenericArgsCtor, GenericArgsMode, ImplTraitContext, ImplTraitPosition,
-    LifetimeRes, LoweringContext, ParamMode, ResolverAstLoweringExt,
+    LifetimeRes, LoweringContext, ParamMode,
 };
 
 impl<'hir> LoweringContext<'_, 'hir> {
@@ -422,7 +422,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         segment_ident_span: Span,
         generic_args: &mut GenericArgsCtor<'hir>,
     ) {
-        let (start, end) = match self.resolver.get_lifetime_res(segment_id) {
+        let (start, end) = match self.owner.get_lifetime_res(segment_id) {
             Some(LifetimeRes::ElidedAnchor { start, end }) => (start, end),
             None => return,
             Some(res) => {

@@ -257,8 +257,6 @@ use crate::{fmt, intrinsics};
 )]
 #[expect(missing_debug_implementations)]
 mod private {
-    pub(super) trait Sealed {}
-
     #[cfg(target_has_atomic_load_store = "8")]
     #[repr(C, align(1))]
     pub struct Align1<T>(T);
@@ -291,8 +289,7 @@ mod private {
     reason = "implementation detail which may disappear or be replaced at any time",
     issue = "none"
 )]
-#[expect(private_bounds)]
-pub unsafe trait AtomicPrimitive: Sized + Copy + private::Sealed {
+pub impl(self) unsafe trait AtomicPrimitive: Sized + Copy {
     /// Temporary implementation detail.
     type Storage: Sized;
 }
@@ -300,8 +297,6 @@ pub unsafe trait AtomicPrimitive: Sized + Copy + private::Sealed {
 macro impl_atomic_primitive(
     [$($T:ident)?] $Primitive:ty as $Storage:ident<$Operand:ty>, size($size:literal)
 ) {
-    impl $(<$T>)? private::Sealed for $Primitive {}
-
     #[unstable(
         feature = "atomic_internals",
         reason = "implementation detail which may disappear or be replaced at any time",
@@ -622,7 +617,7 @@ impl AtomicBool {
     /// assert_eq!(some_bool, false);
     /// ```
     #[inline]
-    #[cfg(target_has_atomic_equal_alignment = "8")]
+    #[cfg(target_has_atomic_primitive_alignment = "8")]
     #[unstable(feature = "atomic_from_mut", issue = "76314")]
     pub fn from_mut(v: &mut bool) -> &mut Self {
         // SAFETY: the mutable reference guarantees unique ownership, and
@@ -682,7 +677,7 @@ impl AtomicBool {
     /// assert_eq!(some_bools, [true; 10]);
     /// ```
     #[inline]
-    #[cfg(target_has_atomic_equal_alignment = "8")]
+    #[cfg(target_has_atomic_primitive_alignment = "8")]
     #[unstable(feature = "atomic_from_mut", issue = "76314")]
     pub fn from_mut_slice(v: &mut [bool]) -> &mut [Self] {
         // SAFETY: the mutable reference guarantees unique ownership, and
@@ -1593,7 +1588,7 @@ impl<T> AtomicPtr<T> {
     /// assert_eq!(unsafe { *some_ptr }, 456);
     /// ```
     #[inline]
-    #[cfg(target_has_atomic_equal_alignment = "ptr")]
+    #[cfg(target_has_atomic_primitive_alignment = "ptr")]
     #[unstable(feature = "atomic_from_mut", issue = "76314")]
     pub fn from_mut(v: &mut *mut T) -> &mut Self {
         let [] = [(); align_of::<AtomicPtr<()>>() - align_of::<*mut ()>()];
@@ -1672,7 +1667,7 @@ impl<T> AtomicPtr<T> {
     /// }
     /// ```
     #[inline]
-    #[cfg(target_has_atomic_equal_alignment = "ptr")]
+    #[cfg(target_has_atomic_primitive_alignment = "ptr")]
     #[unstable(feature = "atomic_from_mut", issue = "76314")]
     pub fn from_mut_slice(v: &mut [*mut T]) -> &mut [Self] {
         // SAFETY:
@@ -2504,7 +2499,7 @@ impl<T> AtomicPtr<T> {
 #[cfg(target_has_atomic_load_store = "8")]
 #[stable(feature = "atomic_bool_from", since = "1.24.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const From<bool> for AtomicBool {
+const impl From<bool> for AtomicBool {
     /// Converts a `bool` into an `AtomicBool`.
     ///
     /// # Examples
@@ -2523,7 +2518,7 @@ impl const From<bool> for AtomicBool {
 #[cfg(target_has_atomic_load_store = "ptr")]
 #[stable(feature = "atomic_from", since = "1.23.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T> const From<*mut T> for AtomicPtr<T> {
+const impl<T> From<*mut T> for AtomicPtr<T> {
     /// Converts a `*mut T` into an `AtomicPtr<T>`.
     #[inline]
     fn from(p: *mut T) -> Self {
@@ -3621,7 +3616,7 @@ macro_rules! atomic_int {
 #[cfg(target_has_atomic_load_store = "8")]
 atomic_int! {
     cfg(target_has_atomic = "8"),
-    cfg(target_has_atomic_equal_alignment = "8"),
+    cfg(target_has_atomic_primitive_alignment = "8"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -3639,7 +3634,7 @@ atomic_int! {
 #[cfg(target_has_atomic_load_store = "8")]
 atomic_int! {
     cfg(target_has_atomic = "8"),
-    cfg(target_has_atomic_equal_alignment = "8"),
+    cfg(target_has_atomic_primitive_alignment = "8"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -3657,7 +3652,7 @@ atomic_int! {
 #[cfg(target_has_atomic_load_store = "16")]
 atomic_int! {
     cfg(target_has_atomic = "16"),
-    cfg(target_has_atomic_equal_alignment = "16"),
+    cfg(target_has_atomic_primitive_alignment = "16"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -3675,7 +3670,7 @@ atomic_int! {
 #[cfg(target_has_atomic_load_store = "16")]
 atomic_int! {
     cfg(target_has_atomic = "16"),
-    cfg(target_has_atomic_equal_alignment = "16"),
+    cfg(target_has_atomic_primitive_alignment = "16"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -3693,7 +3688,7 @@ atomic_int! {
 #[cfg(target_has_atomic_load_store = "32")]
 atomic_int! {
     cfg(target_has_atomic = "32"),
-    cfg(target_has_atomic_equal_alignment = "32"),
+    cfg(target_has_atomic_primitive_alignment = "32"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -3711,7 +3706,7 @@ atomic_int! {
 #[cfg(target_has_atomic_load_store = "32")]
 atomic_int! {
     cfg(target_has_atomic = "32"),
-    cfg(target_has_atomic_equal_alignment = "32"),
+    cfg(target_has_atomic_primitive_alignment = "32"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -3729,7 +3724,7 @@ atomic_int! {
 #[cfg(target_has_atomic_load_store = "64")]
 atomic_int! {
     cfg(target_has_atomic = "64"),
-    cfg(target_has_atomic_equal_alignment = "64"),
+    cfg(target_has_atomic_primitive_alignment = "64"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -3747,7 +3742,7 @@ atomic_int! {
 #[cfg(target_has_atomic_load_store = "64")]
 atomic_int! {
     cfg(target_has_atomic = "64"),
-    cfg(target_has_atomic_equal_alignment = "64"),
+    cfg(target_has_atomic_primitive_alignment = "64"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
@@ -3765,7 +3760,7 @@ atomic_int! {
 #[cfg(target_has_atomic_load_store = "128")]
 atomic_int! {
     cfg(target_has_atomic = "128"),
-    cfg(target_has_atomic_equal_alignment = "128"),
+    cfg(target_has_atomic_primitive_alignment = "128"),
     unstable(feature = "integer_atomics", issue = "99069"),
     unstable(feature = "integer_atomics", issue = "99069"),
     unstable(feature = "integer_atomics", issue = "99069"),
@@ -3783,7 +3778,7 @@ atomic_int! {
 #[cfg(target_has_atomic_load_store = "128")]
 atomic_int! {
     cfg(target_has_atomic = "128"),
-    cfg(target_has_atomic_equal_alignment = "128"),
+    cfg(target_has_atomic_primitive_alignment = "128"),
     unstable(feature = "integer_atomics", issue = "99069"),
     unstable(feature = "integer_atomics", issue = "99069"),
     unstable(feature = "integer_atomics", issue = "99069"),
@@ -3805,7 +3800,7 @@ macro_rules! atomic_int_ptr_sized {
         #[cfg(target_pointer_width = $target_pointer_width)]
         atomic_int! {
             cfg(target_has_atomic = "ptr"),
-            cfg(target_has_atomic_equal_alignment = "ptr"),
+            cfg(target_has_atomic_primitive_alignment = "ptr"),
             stable(feature = "rust1", since = "1.0.0"),
             stable(feature = "extended_compare_and_swap", since = "1.10.0"),
             stable(feature = "atomic_debug", since = "1.3.0"),
@@ -3823,7 +3818,7 @@ macro_rules! atomic_int_ptr_sized {
         #[cfg(target_pointer_width = $target_pointer_width)]
         atomic_int! {
             cfg(target_has_atomic = "ptr"),
-            cfg(target_has_atomic_equal_alignment = "ptr"),
+            cfg(target_has_atomic_primitive_alignment = "ptr"),
             stable(feature = "rust1", since = "1.0.0"),
             stable(feature = "extended_compare_and_swap", since = "1.10.0"),
             stable(feature = "atomic_debug", since = "1.3.0"),
@@ -4228,8 +4223,9 @@ unsafe fn atomic_umin<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 /// An atomic fence.
 ///
 /// Fences create synchronization between themselves and atomic operations or fences in other
-/// threads. To achieve this, a fence prevents the compiler and CPU from reordering certain types of
-/// memory operations around it.
+/// threads. It can be helpful to think of a fence as preventing the compiler and CPU from
+/// reordering certain types of memory operations around it, but that is a simplified model which
+/// fails to capture some of the nuances.
 ///
 /// There are 3 different ways to use an atomic fence:
 ///
@@ -4379,6 +4375,7 @@ unsafe fn atomic_umin<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "fence"]
+#[doc(alias = "atomic_thread_fence")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub fn fence(order: Ordering) {
     // SAFETY: using an atomic fence is safe.
@@ -4393,15 +4390,15 @@ pub fn fence(order: Ordering) {
     }
 }
 
-/// A "compiler-only" atomic fence.
+/// An atomic fence for synchronization within a single thread.
 ///
 /// Like [`fence`], this function establishes synchronization with other atomic operations and
 /// fences. However, unlike [`fence`], `compiler_fence` only establishes synchronization with
 /// operations *in the same thread*. This may at first sound rather useless, since code within a
 /// thread is typically already totally ordered and does not need any further synchronization.
-/// However, there are cases where code can run on the same thread without being ordered:
+/// However, there are cases where code can run on the same thread without being synchronized:
 /// - The most common case is that of a *signal handler*: a signal handler runs in the same thread
-///   as the code it interrupted, but it is not ordered with respect to that code. `compiler_fence`
+///   as the code it interrupted, but it is not synchronized with that code. `compiler_fence`
 ///   can be used to establish synchronization between a thread and its signal handler, the same way
 ///   that `fence` can be used to establish synchronization across threads.
 /// - Similar situations can arise in embedded programming with interrupt handlers, or in custom
@@ -4412,9 +4409,14 @@ pub fn fence(order: Ordering) {
 /// [`fence`], synchronization still requires atomic operations to be used in both threads -- it is
 /// not possible to perform synchronization entirely with fences and non-atomic operations.
 ///
-/// `compiler_fence` does not emit any machine code, but restricts the kinds of memory re-ordering
-/// the compiler is allowed to do. `compiler_fence` corresponds to [`atomic_signal_fence`] in C and
-/// C++.
+/// `compiler_fence` does not emit any machine code. However, note that `compiler_fence` is also
+/// *not* a "compiler barrier". It can be helpful to think of a `compiler_fence` as preventing the
+/// compiler from reordering certain types of memory operations around it, but that is a simplified
+/// model which fails to capture some of the nuances. The only actual guarantee made by
+/// `compiler_fence` is establishing synchronization with signal handlers and similar kinds of code,
+/// under the rules described in the [`fence`] documentation.
+///
+/// `compiler_fence` corresponds to [`atomic_signal_fence`] in C and C++.
 ///
 /// [`atomic_signal_fence`]: https://en.cppreference.com/w/cpp/atomic/atomic_signal_fence
 ///
@@ -4457,6 +4459,7 @@ pub fn fence(order: Ordering) {
 #[inline]
 #[stable(feature = "compiler_fences", since = "1.21.0")]
 #[rustc_diagnostic_item = "compiler_fence"]
+#[doc(alias = "atomic_signal_fence")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub fn compiler_fence(order: Ordering) {
     // SAFETY: using an atomic fence is safe.

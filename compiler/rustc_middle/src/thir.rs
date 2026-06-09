@@ -546,6 +546,18 @@ pub enum ExprKind<'tcx> {
     Yield {
         value: ExprId,
     },
+    /// Use of an ADT that implements the Reborrow (for Mut) or CoerceShared traits (for Not). This
+    /// expression is produced by the [`Adjust::GenericReborrow`] in places where normally the ADT
+    /// would be moved or assigned over. Instead, this produces an [`Rvalue::Reborrow`] which
+    /// produces a bitwise copy of the source ADT and disables the source for the copy's lifetime.
+    ///
+    /// [`Adjust::GenericReborrow`]: crate::ty::adjustment::Adjust::GenericReborrow
+    /// [`Rvalue::Reborrow`]: mir::Rvalue::Reborrow
+    Reborrow {
+        source: ExprId,
+        mutability: Mutability,
+        target: Ty<'tcx>,
+    },
 }
 
 /// Represents the association of a field identifier and an expression.
@@ -716,23 +728,6 @@ impl<'tcx> Pat<'tcx> {
             it(p);
             true
         })
-    }
-
-    /// Whether this a never pattern.
-    pub fn is_never_pattern(&self) -> bool {
-        let mut is_never_pattern = false;
-        self.walk(|pat| match &pat.kind {
-            PatKind::Never => {
-                is_never_pattern = true;
-                false
-            }
-            PatKind::Or { pats } => {
-                is_never_pattern = pats.iter().all(|p| p.is_never_pattern());
-                false
-            }
-            _ => true,
-        });
-        is_never_pattern
     }
 }
 

@@ -4,7 +4,7 @@ use either::Either;
 use hir::{Adt, AsAssocItem, Crate, FindPathConfig, HasAttrs, ModuleDef, Semantics};
 use ide_db::RootDatabase;
 use ide_db::syntax_helpers::suggest_name;
-use ide_db::{famous_defs::FamousDefs, helpers::mod_path_to_ast};
+use ide_db::{famous_defs::FamousDefs, helpers::mod_path_to_ast_with_factory};
 use itertools::Itertools;
 use syntax::ast::edit::IndentLevel;
 use syntax::ast::syntax_factory::SyntaxFactory;
@@ -38,7 +38,7 @@ use crate::{AssistContext, AssistId, Assists, utils};
 //     }
 // }
 // ```
-pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let match_expr = ctx.find_node_at_offset_with_descend::<ast::MatchExpr>()?;
     let match_arm_list = match_expr.match_arm_list()?;
     let arm_list_range = ctx.sema.original_range_opt(match_arm_list.syntax())?;
@@ -80,16 +80,25 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
     let module = scope.module();
     let cfg = ctx.config.find_path_config(ctx.sema.is_nightly(scope.krate()));
     let self_ty = if ctx.config.prefer_self_ty {
-        scope.expression_store_owner().and_then(|def| {
-            match def {
-                hir::ExpressionStoreOwner::Body(def_with_body) => {
-                    def_with_body.as_assoc_item(ctx.db())
+        scope
+            .expression_store_owner()
+            .and_then(|def| {
+                match def {
+                    hir::ExpressionStoreOwner::Body(def_with_body) => {
+                        def_with_body.as_assoc_item(ctx.db())
+                    }
+                    hir::ExpressionStoreOwner::Signature(def) => def.as_assoc_item(ctx.db()),
+                    hir::ExpressionStoreOwner::VariantFields(_) => None,
+                }?
+                .implementing_ty(ctx.db())
+            })
+            .map(|self_ty| {
+                if let Some(owner) = scope.generic_def() {
+                    self_ty.try_rebase_into_owner(ctx.db(), owner).unwrap()
+                } else {
+                    self_ty
                 }
-                hir::ExpressionStoreOwner::Signature(def) => def.as_assoc_item(ctx.db()),
-                hir::ExpressionStoreOwner::VariantFields(_) => None,
-            }?
-            .implementing_ty(ctx.db())
-        })
+            })
     } else {
         None
     };
@@ -303,7 +312,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
 }
 
 fn cursor_at_trivial_match_arm_list(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     match_expr: &MatchExpr,
     match_arm_list: &MatchArmList,
 ) -> Option<()> {
@@ -357,7 +366,7 @@ struct ArmsEdit {
 }
 
 impl ArmsEdit {
-    fn remove_wildcard_arms(&mut self, ctx: &AssistContext<'_>, editor: &SyntaxEditor) {
+    fn remove_wildcard_arms(&mut self, ctx: &AssistContext<'_, '_>, editor: &SyntaxEditor) {
         for arm in self.match_arm_list.arms() {
             if !matches!(arm.pat(), Some(Pat::WildcardPat(_))) {
                 self.last_arm = Some(arm);
@@ -417,7 +426,7 @@ impl ArmsEdit {
 
     fn add_comma_after_last_arm(
         &self,
-        ctx: &AssistContext<'_>,
+        ctx: &AssistContext<'_, '_>,
         make: &SyntaxFactory,
         editor: &SyntaxEditor,
     ) {
@@ -432,7 +441,7 @@ impl ArmsEdit {
 
     fn cover_edit_range(
         &self,
-        ctx: &AssistContext<'_>,
+        ctx: &AssistContext<'_, '_>,
         node: &impl AstNode,
     ) -> Option<std::ops::RangeInclusive<syntax::SyntaxElement>> {
         let range = ctx.sema.original_range_opt(node.syntax())?;
@@ -581,7 +590,7 @@ fn resolve_array_of_enum_def(
 }
 
 fn build_pat(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     make: &SyntaxFactory,
     module: hir::Module,
     var: ExtendedVariant,
@@ -602,14 +611,18 @@ fn build_pat(
                     false,
                 )
             } else {
-                mod_path_to_ast(&module.find_path(db, ModuleDef::from(var), cfg)?, edition)
+                mod_path_to_ast_with_factory(
+                    make,
+                    &module.find_path(db, ModuleDef::from(var), cfg)?,
+                    edition,
+                )
             };
             let fields = var.fields(db);
             let pat: ast::Pat = match var.kind(db) {
                 hir::StructKind::Tuple => {
                     let mut name_generator = suggest_name::NameGenerator::default();
                     let pats = fields.into_iter().map(|f| {
-                        let name = name_generator.for_type(&f.ty(db).to_type(db), db, edition);
+                        let name = name_generator.for_type(&f.ty(db), db, edition);
                         match name {
                             Some(name) => make.ident_pat(false, false, make.name(&name)).into(),
                             None => make.wildcard_pat().into(),

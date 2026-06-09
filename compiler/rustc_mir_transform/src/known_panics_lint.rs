@@ -415,14 +415,14 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 trace!("checking UnaryOp(op = {:?}, arg = {:?})", op, arg);
                 self.check_unary_op(*op, arg, location)?;
             }
-            Rvalue::BinaryOp(op, box (left, right)) => {
+            Rvalue::BinaryOp(op, (left, right)) => {
                 trace!("checking BinaryOp(op = {:?}, left = {:?}, right = {:?})", op, left, right);
                 self.check_binary_op(*op, left, right, location)?;
             }
 
             // Do not try creating references (#67862)
-            Rvalue::RawPtr(_, place) | Rvalue::Ref(_, _, place) => {
-                trace!("skipping RawPtr | Ref for {:?}", place);
+            Rvalue::RawPtr(_, place) | Rvalue::Ref(_, _, place) | Rvalue::Reborrow(_, _, place) => {
+                trace!("skipping RawPtr | Ref | Reborrow for {:?}", place);
 
                 // This may be creating mutable references or immutable references to cells.
                 // If that happens, the pointed to value could be mutated via that reference.
@@ -553,9 +553,9 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 self.eval_operand(operand)?.into()
             }
 
-            CopyForDeref(place) => self.eval_place(place)?.into(),
+            CopyForDeref(place) | Reborrow(_, _, place) => self.eval_place(place)?.into(),
 
-            BinaryOp(bin_op, box (ref left, ref right)) => {
+            BinaryOp(bin_op, (ref left, ref right)) => {
                 let left = self.eval_operand(left)?;
                 let left = self.use_ecx(|this| this.ecx.read_immediate(&left))?;
 
@@ -955,7 +955,9 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
                 self.can_const_prop[local] = ConstPropMode::NoPropagation;
             }
             MutatingUse(MutatingUseContext::Projection)
-            | NonMutatingUse(NonMutatingUseContext::Projection) => bug!("visit_place should not pass {context:?} for {local:?}"),
+            | NonMutatingUse(NonMutatingUseContext::Projection) => {
+                bug!("visit_place should not pass {context:?} for {local:?}")
+            }
         }
     }
 }

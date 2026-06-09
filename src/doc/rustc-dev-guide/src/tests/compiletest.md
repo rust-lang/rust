@@ -346,17 +346,6 @@ See also the [codegen tests](#codegen-tests) for a similar set of tests.
 If you need to work with `#![no_std]` cross-compiling tests, consult the
 [`minicore` test auxiliary](./minicore.md) chapter.
 
-#### Conditional assembly tests based on instruction support
-
-Tests that depend on specific assembly instructions being available can use the
-`//@ needs-asm-mnemonic: <MNEMONIC>` directive.
-This will skip the test if the target backend does not support the specified instruction mnemonic.
-
-For example, a test that requires the `RET` instruction:
-```rust,ignore
-//@ needs-asm-mnemonic: RET
-```
-
 [`tests/assembly-llvm`]: https://github.com/rust-lang/rust/tree/HEAD/tests/assembly-llvm
 
 
@@ -832,13 +821,14 @@ check for any problems that might arise.
 To run the tests in a different mode, you need to pass the `--compare-mode` CLI flag:
 
 ```bash
-./x test tests/ui --compare-mode=chalk
+./x test tests/ui --compare-mode=next-solver
 ```
 
 The possible compare modes are:
 
-- `polonius` — Runs with Polonius with `-Zpolonius`.
-- `chalk` — Runs with Chalk with `-Zchalk`.
+- `polonius` — Runs with Polonius with `-Zpolonius=next`.
+- `next-solver` — Runs with the next trait solver with `-Znext-solver`.
+- `next-solver-coherence` — Runs coherence with the next trait solver with `-Znext-solver=coherence`.
 - `split-dwarf` — Runs with unpacked split-DWARF with `-Csplit-debuginfo=unpacked`.
 - `split-dwarf-single` — Runs with packed split-DWARF with `-Csplit-debuginfo=packed`.
 

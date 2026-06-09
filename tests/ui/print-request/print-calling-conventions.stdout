@@ -1,6 +1,7 @@
 C
 C-unwind
 Rust
+Swift
 aapcs
 aapcs-unwind
 avr-interrupt
@@ -28,6 +29,7 @@ system
 system-unwind
 sysv64
 sysv64-unwind
+tail
 thiscall
 thiscall-unwind
 unadjusted

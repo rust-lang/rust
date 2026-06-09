@@ -20,7 +20,7 @@ use std::cmp::Ordering;
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for expressions like `x >= 3 && x < 8` that could
-    /// be more readably expressed as `(3..8).contains(x)`.
+    /// be more readably expressed as `(3..8).contains(&x)`.
     ///
     /// ### Why is this bad?
     /// `contains` expresses the intent better and has less
@@ -38,6 +38,12 @@ declare_clippy_lint! {
     ///# let x = 6;
     /// assert!((3..8).contains(&x));
     /// ```
+    ///
+    /// ### Limitations
+    /// Out-of-range checks on floating-point types, such as `q < 0.0 || q > 1.0`,
+    /// are not linted. For `NaN`, that expression is `false`, but
+    /// `!(0.0..=1.0).contains(&q)` is `true`, so the suggested rewrite would
+    /// change control flow.
     #[clippy::version = "1.49.0"]
     pub MANUAL_RANGE_CONTAINS,
     style,
@@ -250,6 +256,11 @@ fn check_possible_range_contains(
                 applicability,
             );
         } else if !combine_and && ord == Some(l.ord) {
+            // For floating-point types, `q < lo || q > hi` evaluates to `false` for NaN,
+            // but `!(lo..=hi).contains(&q)` evaluates to `true` for NaN, so not linting.
+            if matches!(cx.typeck_results().expr_ty(l.expr).kind(), ty::Float(_)) {
+                return;
+            }
             // `!_.contains(_)`
             // order lower bound and upper bound
             let (l_span, u_span, l_inc, u_inc) = if l.ord == Ordering::Less {

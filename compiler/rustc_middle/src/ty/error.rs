@@ -12,7 +12,7 @@ use rustc_macros::extension;
 pub use rustc_type_ir::error::ExpectedFound;
 
 use crate::ty::print::{FmtPrinter, Print, with_forced_trimmed_paths};
-use crate::ty::{self, Lift, Ty, TyCtxt};
+use crate::ty::{self, Ty, TyCtxt};
 
 pub type TypeError<'tcx> = rustc_type_ir::error::TypeError<TyCtxt<'tcx>>;
 
@@ -35,7 +35,7 @@ impl<'tcx> TypeError<'tcx> {
         }
 
         match self {
-            TypeError::CyclicTy(_) => "cyclic type of infinite size".into(),
+            TypeError::CyclicTy(_) => "recursive type with infinite-size name".into(),
             TypeError::CyclicConst(_) => "encountered a self-referencing constant".into(),
             TypeError::Mismatch => "types differ".into(),
             TypeError::PolarityMismatch(values) => {
@@ -220,10 +220,10 @@ impl<'tcx> Ty<'tcx> {
 impl<'tcx> TyCtxt<'tcx> {
     pub fn string_with_limit<T>(self, t: T, length_limit: usize, ns: hir::def::Namespace) -> String
     where
-        T: Copy + for<'a, 'b> Lift<TyCtxt<'b>, Lifted: Print<'b, FmtPrinter<'a, 'b>>>,
+        T: Copy + for<'a> Print<FmtPrinter<'a, 'tcx>>,
     {
         let mut type_limit = 50;
-        let regular = FmtPrinter::print_string(self, ns, |p| self.lift(t).print(p))
+        let regular = FmtPrinter::print_string(self, ns, |p| t.print(p))
             .expect("could not write to `String`");
         if regular.len() <= length_limit {
             return regular;
@@ -233,7 +233,7 @@ impl<'tcx> TyCtxt<'tcx> {
             // Look for the longest properly trimmed path that still fits in length_limit.
             short = with_forced_trimmed_paths!({
                 let mut p = FmtPrinter::new_with_limit(self, ns, Limit(type_limit));
-                self.lift(t).print(&mut p).expect("could not print type");
+                t.print(&mut p).expect("could not print type");
                 p.into_buffer()
             });
             if short.len() <= length_limit || type_limit == 0 {
@@ -250,7 +250,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// where we wrote the file to is only printed once. The path will use the type namespace.
     pub fn short_string<T>(self, t: T, path: &mut Option<PathBuf>) -> String
     where
-        T: Copy + Hash + for<'a, 'b> Lift<TyCtxt<'b>, Lifted: Print<'b, FmtPrinter<'a, 'b>>>,
+        T: Copy + Hash + for<'a> Print<FmtPrinter<'a, 'tcx>>,
     {
         self.short_string_namespace(t, path, hir::def::Namespace::TypeNS)
     }
@@ -266,9 +266,9 @@ impl<'tcx> TyCtxt<'tcx> {
         namespace: hir::def::Namespace,
     ) -> String
     where
-        T: Copy + Hash + for<'a, 'b> Lift<TyCtxt<'b>, Lifted: Print<'b, FmtPrinter<'a, 'b>>>,
+        T: Copy + Hash + for<'a> Print<FmtPrinter<'a, 'tcx>>,
     {
-        let regular = FmtPrinter::print_string(self, namespace, |p| self.lift(t).print(p))
+        let regular = FmtPrinter::print_string(self, namespace, |p| t.print(p))
             .expect("could not write to `String`");
 
         if !self.sess.opts.unstable_opts.write_long_types_to_disk || self.sess.opts.verbose {

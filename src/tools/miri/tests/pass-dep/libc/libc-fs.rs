@@ -1,21 +1,21 @@
 //@ignore-target: windows # no libc
 //@compile-flags: -Zmiri-disable-isolation
 
-#![feature(io_error_more)]
-#![feature(io_error_uncategorized)]
-
 use std::ffi::{CStr, CString, OsString};
-use std::fs::{File, canonicalize, remove_file};
+use std::fs::{self, File, canonicalize, create_dir, remove_dir, remove_file};
 use std::io::{Error, ErrorKind, Write};
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::AsRawFd;
 use std::path::PathBuf;
+use std::ptr;
 
 #[path = "../../utils/mod.rs"]
 mod utils;
 
 #[path = "../../utils/libc.rs"]
 mod libc_utils;
+
+use libc_utils::errno_result;
 
 fn main() {
     test_dup();
@@ -28,6 +28,7 @@ fn main() {
     test_file_open_unix_allow_two_args();
     test_file_open_unix_needs_three_args();
     test_file_open_unix_extra_third_arg();
+    test_file_open_dir();
     #[cfg(target_os = "linux")]
     test_o_tmpfile_flag();
     test_posix_mkstemp();
@@ -58,19 +59,32 @@ fn main() {
     test_statx_on_file_descriptor();
     #[cfg(target_os = "linux")]
     test_statx_empty_path_on_pipe();
+    test_readv();
+    test_readv_empty_bufs();
+    #[cfg(not(target_os = "solaris"))]
+    test_preadv();
+    test_pread();
+    test_writev();
+    test_writev_empty_bufs();
+    #[cfg(not(target_os = "solaris"))]
+    test_pwritev();
+    test_pwrite();
+    test_linkat();
 }
 
 #[cfg(target_os = "linux")]
 #[track_caller]
-fn assert_statx_matches_metadata(stx: &libc::statx, meta: &std::fs::Metadata, expected_size: u64) {
+fn assert_statx_matches_metadata(stx: &libc::statx, meta: &fs::Metadata, expected_size: u64) {
     use std::os::unix::fs::MetadataExt;
     let mask = stx.stx_mask;
 
     // Guaranteed by the shim on any Linux target.
-    assert!(mask & libc::STATX_TYPE != 0);
     assert!(mask & libc::STATX_SIZE != 0);
     assert_eq!(stx.stx_size, expected_size);
-    assert_eq!((stx.stx_mode as u32) & libc::S_IFMT, libc::S_IFREG);
+    assert!(mask & libc::STATX_TYPE != 0);
+    assert_eq!((stx.stx_mode as libc::mode_t) & libc::S_IFMT, libc::S_IFREG);
+    assert!(mask & libc::STATX_MODE != 0);
+    assert_ne!((stx.stx_mode as libc::mode_t) & !libc::S_IFMT, 0);
 
     // Host-dependent enrichment: only assert when the mask says the field is real.
     if mask & libc::STATX_INO != 0 {
@@ -88,9 +102,6 @@ fn assert_statx_matches_metadata(stx: &libc::statx, meta: &std::fs::Metadata, ex
     if mask & libc::STATX_BLOCKS != 0 {
         assert_eq!(stx.stx_blocks, meta.blocks());
     }
-
-    // We don't support non-S_IFMT bits in stx_mode.
-    assert_eq!(mask & libc::STATX_MODE, 0);
 
     // Do not assert stx_blksize and stx_dev_* : there are no mask bits for them.
 }
@@ -143,7 +154,7 @@ fn test_statx_on_file_path() {
         assert_eq!(ret, 0, "statx failed: {}", std::io::Error::last_os_error());
 
         let stx = stx.assume_init();
-        let meta = std::fs::metadata(&path).unwrap();
+        let meta = fs::metadata(&path).unwrap();
         assert_statx_matches_metadata(&stx, &meta, bytes.len() as u64);
     }
 
@@ -177,18 +188,21 @@ fn test_statx_empty_path_on_pipe() {
 
         let statx_buf = statx_buf.assume_init();
 
-        assert_ne!(statx_buf.stx_mask & libc::STATX_TYPE, 0);
         assert_ne!(statx_buf.stx_mask & libc::STATX_SIZE, 0);
-        assert_eq!(statx_buf.stx_mask & libc::STATX_MODE, 0);
-        assert_eq!((statx_buf.stx_mode as libc::mode_t) & libc::S_IFMT, libc::S_IFIFO);
         assert_eq!(statx_buf.stx_size, 0);
+        assert_ne!(statx_buf.stx_mask & libc::STATX_TYPE, 0);
+        assert_eq!((statx_buf.stx_mode as libc::mode_t) & libc::S_IFMT, libc::S_IFIFO);
+        assert_ne!(statx_buf.stx_mask & libc::STATX_MODE, 0);
+        assert_ne!((statx_buf.stx_mode as libc::mode_t) & !libc::S_IFMT, 0);
 
-        // Synthetic metadata must not advertise host-only fields.
-        assert_eq!(statx_buf.stx_mask & libc::STATX_INO, 0);
-        assert_eq!(statx_buf.stx_mask & libc::STATX_NLINK, 0);
-        assert_eq!(statx_buf.stx_mask & libc::STATX_UID, 0);
-        assert_eq!(statx_buf.stx_mask & libc::STATX_GID, 0);
-        assert_eq!(statx_buf.stx_mask & libc::STATX_BLOCKS, 0);
+        if cfg!(miri) {
+            // Synthetic metadata must not advertise host-only fields.
+            assert_eq!(statx_buf.stx_mask & libc::STATX_INO, 0);
+            assert_eq!(statx_buf.stx_mask & libc::STATX_NLINK, 0);
+            assert_eq!(statx_buf.stx_mask & libc::STATX_UID, 0);
+            assert_eq!(statx_buf.stx_mask & libc::STATX_GID, 0);
+            assert_eq!(statx_buf.stx_mask & libc::STATX_BLOCKS, 0);
+        }
 
         errno_check(libc::close(fds[0]));
         errno_check(libc::close(fds[1]));
@@ -199,21 +213,46 @@ fn test_file_open_unix_allow_two_args() {
     let path = utils::prepare_with_content("test_file_open_unix_allow_two_args.txt", &[]);
     let name = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
 
-    let _fd = unsafe { libc::open(name.as_ptr(), libc::O_RDONLY) };
+    let _fd = errno_result(unsafe { libc::open(name.as_ptr(), libc::O_RDONLY) }).unwrap();
 }
 
 fn test_file_open_unix_needs_three_args() {
     let path = utils::prepare_with_content("test_file_open_unix_needs_three_args.txt", &[]);
     let name = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
 
-    let _fd = unsafe { libc::open(name.as_ptr(), libc::O_CREAT, 0o666) };
+    let _fd =
+        errno_result(unsafe { libc::open(name.as_ptr(), libc::O_CREAT | libc::O_RDWR, 0o666) })
+            .unwrap();
 }
 
 fn test_file_open_unix_extra_third_arg() {
     let path = utils::prepare_with_content("test_file_open_unix_extra_third_arg.txt", &[]);
     let name = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
 
-    let _fd = unsafe { libc::open(name.as_ptr(), libc::O_RDONLY, 42) };
+    let _fd = errno_result(unsafe { libc::open(name.as_ptr(), libc::O_RDONLY, 42) }).unwrap();
+}
+
+fn test_file_open_dir() {
+    let dir_path = utils::prepare_dir("miri_test_fs_dir");
+    create_dir(&dir_path).unwrap();
+    let dir_name = CString::new(dir_path.into_os_string().into_encoded_bytes()).unwrap();
+
+    // Opening it for read-write fails. The error code differs between Unix and Windows hosts.
+    let err = errno_result(unsafe { libc::open(dir_name.as_ptr(), libc::O_RDWR) }).unwrap_err();
+    assert!(
+        [libc::EISDIR, libc::EPERM].contains(&err.raw_os_error().unwrap()),
+        "unexpected errno: {err}"
+    );
+
+    // Opening it for reading succeeds, but then reading fails.
+    // FIXME: currently does not behave as expected on Windows hosts.
+    // See <https://github.com/rust-lang/miri/issues/5084>.
+    // let fd = errno_result(unsafe { libc::open(dir_name.as_ptr(), libc::O_RDONLY) }).unwrap();
+    // let mut buf = [0u8; 4];
+    // let err =
+    //     errno_result(unsafe { libc::read(fd, buf.as_mut_ptr().cast(), buf.len()) }).unwrap_err();
+    // assert_eq!(err.raw_os_error().unwrap(), libc::EISDIR, "unexpected errno: {err}");
+    // libc_utils::errno_check(unsafe { libc::close(fd) });
 }
 
 fn test_dup_stdout_stderr() {
@@ -221,8 +260,8 @@ fn test_dup_stdout_stderr() {
     unsafe {
         let new_stdout = libc::fcntl(1, libc::F_DUPFD, 0);
         let new_stderr = libc::fcntl(2, libc::F_DUPFD, 0);
-        libc_utils::write_all(new_stdout, bytes.as_ptr() as *const libc::c_void, bytes.len());
-        libc_utils::write_all(new_stderr, bytes.as_ptr() as *const libc::c_void, bytes.len());
+        libc_utils::write_all(new_stdout, bytes).unwrap();
+        libc_utils::write_all(new_stderr, bytes).unwrap();
     }
 }
 
@@ -325,13 +364,16 @@ fn test_ftruncate<T: From<i32>>(
 
 #[cfg(target_os = "linux")]
 fn test_o_tmpfile_flag() {
+    if !cfg!(miri) {
+        return; // checks miri-specific behavior
+    }
+
     use std::fs::{OpenOptions, create_dir};
     use std::os::unix::fs::OpenOptionsExt;
     let dir_path = utils::prepare_dir("miri_test_fs_dir");
     create_dir(&dir_path).unwrap();
     // test that the `O_TMPFILE` custom flag gracefully errors instead of stopping execution
     assert_eq!(
-        Some(libc::EOPNOTSUPP),
         OpenOptions::new()
             .read(true)
             .write(true)
@@ -339,13 +381,21 @@ fn test_o_tmpfile_flag() {
             .open(dir_path)
             .unwrap_err()
             .raw_os_error(),
+        Some(libc::EOPNOTSUPP),
     );
 }
 
 fn test_posix_mkstemp() {
+    use std::env;
     use std::ffi::OsStr;
     use std::os::unix::io::FromRawFd;
     use std::path::Path;
+
+    // We want to test `mkstemp` on a relative name, so we cd to a tempdir and later cd back.
+    let old_cwd = env::current_dir().unwrap();
+    let dir_path = utils::prepare_dir("miri_test_libc_readdir");
+    create_dir(&dir_path).expect("create_dir failed");
+    env::set_current_dir(&dir_path).unwrap();
 
     let valid_template = "fooXXXXXX";
     // C needs to own this as `mkstemp(3)` says:
@@ -354,12 +404,12 @@ fn test_posix_mkstemp() {
     // There seems to be no `as_mut_ptr` on `CString` so we need to use `into_raw`.
     let ptr = CString::new(valid_template).unwrap().into_raw();
     let fd = unsafe { libc::mkstemp(ptr) };
+    assert!(fd >= 0, "mkstemp failed");
     // Take ownership back in Rust to not leak memory.
     let slice = unsafe { CString::from_raw(ptr) };
-    assert!(fd > 0);
     let osstr = OsStr::from_bytes(slice.to_bytes());
     let path: &Path = osstr.as_ref();
-    let name = path.file_name().unwrap().to_string_lossy();
+    let name = path.to_string_lossy();
     assert!(name.ne("fooXXXXXX"));
     assert!(name.starts_with("foo"));
     assert_eq!(name.len(), 9);
@@ -369,6 +419,9 @@ fn test_posix_mkstemp() {
     );
     let file = unsafe { File::from_raw_fd(fd) };
     assert!(file.set_len(0).is_ok());
+    // Cleanup. Also checks that the filename actually exists.
+    drop(file);
+    remove_file(path).unwrap();
 
     let invalid_templates = vec!["foo", "barXX", "XXXXXXbaz", "whatXXXXXXever", "X"];
     for t in invalid_templates {
@@ -382,6 +435,8 @@ fn test_posix_mkstemp() {
         assert_eq!(e.raw_os_error(), Some(libc::EINVAL));
         assert_eq!(e.kind(), std::io::ErrorKind::InvalidInput);
     }
+
+    env::set_current_dir(old_cwd).unwrap();
 }
 
 /// Test allocating variant of `realpath`.
@@ -605,6 +660,7 @@ fn test_fstat() {
 
     assert_eq!(stat.st_size, 5);
     assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFREG);
+    assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
 
     // Check that all fields are initialized.
     check_stat_fields(stat);
@@ -625,6 +681,7 @@ fn test_stat() {
 
     assert_eq!(stat.st_size, 5);
     assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFREG);
+    assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
 
     // Check that all fields are initialized.
     check_stat_fields(stat);
@@ -648,6 +705,7 @@ fn test_lstat() {
     let stat = unsafe { stat.assume_init_ref() };
 
     assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFLNK);
+    assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
 
     // Check that all fields are initialized.
     check_stat_fields(stat);
@@ -748,7 +806,6 @@ fn test_ioctl() {
 
 fn test_opendir_closedir() {
     // dir should exist
-    use std::fs::{create_dir, remove_dir};
     let path = utils::prepare_dir("miri_test_libc_opendir_closedir");
     create_dir(&path).expect("create_dir failed");
     let cpath = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
@@ -842,4 +899,307 @@ pub fn check_stat_fields(stat: &libc::stat) {
     let _st_atime_nsec = stat.st_atime_nsec;
     let _st_mtime_nsec = stat.st_mtime_nsec;
     let _st_ctime_nsec = stat.st_ctime_nsec;
+}
+
+/// Test vectored reads with multiple buffers.
+fn test_readv() {
+    let file_contents = [1u8, 2, 3, 4, 5, 6];
+    let path = utils::prepare_with_content("pass-libc-readv.txt", &file_contents);
+    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
+    assert_ne!(fd, -1);
+
+    let mut buffer = [0u8; 4];
+    let (buffer1, buffer2) = buffer.split_at_mut(2);
+
+    let iov = [
+        libc::iovec { iov_base: ptr::null_mut::<libc::c_void>(), iov_len: 0 as libc::size_t },
+        libc::iovec {
+            iov_base: buffer1.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer1.len() as libc::size_t,
+        },
+        libc::iovec {
+            iov_base: buffer2.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer2.len() as libc::size_t,
+        },
+    ];
+
+    let bytes_read = unsafe {
+        errno_result(libc::readv(fd, iov.as_ptr(), iov.len() as libc::c_int)).unwrap() as usize
+    };
+
+    // The vectored read should read at least one byte.
+    assert!(bytes_read > 0);
+    assert_eq!(&buffer[0..bytes_read], &file_contents[0..bytes_read]);
+}
+
+/// Test that vectored reads without any buffers return zero.
+fn test_readv_empty_bufs() {
+    let path = utils::prepare_with_content("pass-libc-readv-empty-bufs.txt", &[1u8, 2, 3]);
+    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
+    assert_ne!(fd, -1);
+    unsafe { assert_eq!(errno_result(libc::readv(fd, ptr::null::<libc::iovec>(), 0)).unwrap(), 0) };
+}
+
+/// Test vectored reads with multiple buffers and a byte offset.
+///
+/// **Note**: We skip this test on Solaris targets because Solaris
+/// doesn't have `preadv`.
+#[cfg(not(target_os = "solaris"))]
+fn test_preadv() {
+    let file_contents = [1u8, 2, 3, 4, 5, 6];
+    let path = utils::prepare_with_content("pass-libc-preadv.txt", &file_contents);
+    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
+    assert_ne!(fd, -1);
+
+    let mut buffer = [0u8; 4];
+    let (buffer1, buffer2) = buffer.split_at_mut(2);
+
+    let iov = [
+        libc::iovec { iov_base: ptr::null_mut::<libc::c_void>(), iov_len: 0 as libc::size_t },
+        libc::iovec {
+            iov_base: buffer1.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer1.len() as libc::size_t,
+        },
+        libc::iovec {
+            iov_base: buffer2.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer2.len() as libc::size_t,
+        },
+    ];
+
+    // Read with a 2 byte offset.
+    const OFFSET: usize = 2;
+    let bytes_read = unsafe {
+        errno_result(libc::preadv(
+            fd,
+            iov.as_ptr(),
+            iov.len() as libc::c_int,
+            OFFSET as libc::off_t,
+        ))
+        .unwrap() as usize
+    };
+
+    // The vectored read should read at least one byte.
+    assert!(bytes_read > 0);
+    // The vectored read should start at the provided byte offset.
+    assert_eq!(&buffer[0..bytes_read], &file_contents[OFFSET..(bytes_read + OFFSET)]);
+}
+
+/// Test reading with an offset.
+fn test_pread() {
+    let file_contents = [1u8, 2, 3, 4, 5, 6];
+    let path = utils::prepare_with_content("pass-libc-pread.txt", &file_contents);
+    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
+    assert_ne!(fd, -1);
+
+    let mut buffer = [0u8; 2];
+
+    // Read with a 2 byte offset.
+    const OFFSET: usize = 2;
+    let bytes_read = unsafe {
+        errno_result(libc::pread(
+            fd,
+            buffer.as_mut_ptr().cast(),
+            buffer.len() as libc::size_t,
+            OFFSET as libc::off_t,
+        ))
+        .unwrap() as usize
+    };
+
+    // We should read at least one byte.
+    assert!(bytes_read > 0);
+    // The read should start at the provided byte offset.
+    assert_eq!(&buffer[0..bytes_read], &file_contents[OFFSET..(bytes_read + OFFSET)]);
+}
+
+/// Test vectored writes with multiple buffers.
+fn test_writev() {
+    let path = utils::prepare_with_content("pass-libc-writev.txt", &[]);
+    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) };
+    assert_ne!(fd, -1);
+
+    let mut write_buffer = [1u8, 2, 3, 4, 5, 6];
+    let (buffer1, buffer2) = write_buffer.split_at_mut(3);
+
+    let iov = [
+        libc::iovec { iov_base: ptr::null_mut::<libc::c_void>(), iov_len: 0 as libc::size_t },
+        libc::iovec {
+            iov_base: buffer1.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer1.len() as libc::size_t,
+        },
+        libc::iovec {
+            iov_base: buffer2.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer2.len() as libc::size_t,
+        },
+    ];
+
+    let bytes_written = unsafe {
+        errno_result(libc::writev(fd, iov.as_ptr(), iov.len() as libc::c_int)).unwrap() as usize
+    };
+    // The vectored write should write at least one byte.
+    assert!(bytes_written > 0);
+
+    // Open the FD again in readonly mode and with an unadvanced pointer.
+    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
+    assert_ne!(fd, -1);
+
+    let mut read_buffer = [0u8; 16];
+    unsafe {
+        libc_utils::read_exact_generic(
+            read_buffer.as_mut_ptr().cast(),
+            bytes_written as libc::size_t,
+            libc_utils::Retry::NoRetry,
+            |buf, count| libc::read(fd, buf, count),
+        )
+        .unwrap()
+    };
+
+    assert_eq!(&write_buffer[0..bytes_written], &read_buffer[0..bytes_written]);
+}
+
+/// Test that vectored writes without any buffers return zero.
+fn test_writev_empty_bufs() {
+    let path = utils::prepare_with_content("pass-libc-writev-empty-bufs.txt", &[1u8, 2, 3]);
+    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) };
+    assert_ne!(fd, -1);
+    unsafe {
+        assert_eq!(errno_result(libc::writev(fd, ptr::null::<libc::iovec>(), 0)).unwrap(), 0)
+    };
+}
+
+/// Test vectored writes with multiple buffers and a byte offset.
+///
+/// **Note**: We skip this test on Solaris targets because Solaris
+/// doesn't have `pwritev`.
+#[cfg(not(target_os = "solaris"))]
+fn test_pwritev() {
+    let path = utils::prepare_with_content("pass-libc-pwritev.txt", &[]);
+    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) };
+    assert_ne!(fd, -1);
+
+    let mut write_buffer = [1u8, 2, 3, 4, 5, 6];
+    let (buffer1, buffer2) = write_buffer.split_at_mut(3);
+
+    let iov = [
+        libc::iovec { iov_base: ptr::null_mut::<libc::c_void>(), iov_len: 0 as libc::size_t },
+        libc::iovec {
+            iov_base: buffer1.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer1.len() as libc::size_t,
+        },
+        libc::iovec {
+            iov_base: buffer2.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer2.len() as libc::size_t,
+        },
+    ];
+
+    // Write with a 2 byte offset.
+    const OFFSET: usize = 2;
+    let bytes_written = unsafe {
+        errno_result(libc::pwritev(
+            fd,
+            iov.as_ptr(),
+            iov.len() as libc::c_int,
+            OFFSET as libc::off_t,
+        ))
+        .unwrap() as usize
+    };
+    // The vectored write should write at least one byte.
+    assert!(bytes_written > 0);
+
+    // Open the FD again in readonly mode and with an unadvanced pointer.
+    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
+    assert_ne!(fd, -1);
+
+    let mut read_buffer = [0u8; 16];
+    // Read offset + bytes written.
+    unsafe {
+        libc_utils::read_exact_generic(
+            read_buffer.as_mut_ptr().cast(),
+            (bytes_written + OFFSET) as libc::size_t,
+            libc_utils::Retry::NoRetry,
+            |buf, count| libc::read(fd, buf, count),
+        )
+        .unwrap()
+    };
+
+    // The vectored write should start at the provided byte offset.
+    assert_eq!(&write_buffer[0..bytes_written], &read_buffer[OFFSET..(bytes_written + OFFSET)]);
+}
+
+/// Test writing with an offset.
+fn test_pwrite() {
+    let path = utils::prepare_with_content("pass-libc-pwritev.txt", &[]);
+    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) };
+    assert_ne!(fd, -1);
+
+    let write_buffer = [1u8, 2, 3, 4, 5, 6];
+
+    // Write with a 2 byte offset.
+    const OFFSET: usize = 2;
+    let bytes_written = unsafe {
+        errno_result(libc::pwrite(
+            fd,
+            write_buffer.as_ptr().cast(),
+            write_buffer.len() as libc::size_t,
+            OFFSET as libc::off_t,
+        ))
+        .unwrap() as usize
+    };
+    // We should write at least one byte.
+    assert!(bytes_written > 0);
+
+    // Open the FD again in readonly mode and with an unadvanced pointer.
+    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
+    assert_ne!(fd, -1);
+
+    let mut read_buffer = [0u8; 16];
+    // Read offset + bytes written.
+    unsafe {
+        libc_utils::read_exact_generic(
+            read_buffer.as_mut_ptr().cast(),
+            (bytes_written + OFFSET) as libc::size_t,
+            libc_utils::Retry::NoRetry,
+            |buf, count| libc::read(fd, buf, count),
+        )
+        .unwrap()
+    };
+
+    // The write should start at the provided byte offset.
+    assert_eq!(&write_buffer[0..bytes_written], &read_buffer[OFFSET..(bytes_written + OFFSET)]);
+}
+
+fn test_linkat() {
+    let source = utils::prepare_with_content("miri_test_libc_linkat_source.txt", b"hello");
+    let link = utils::prepare("miri_test_libc_linkat_link.txt");
+
+    let c_source = CString::new(source.as_os_str().as_bytes()).expect("CString::new failed");
+    let c_link = CString::new(link.as_os_str().as_bytes()).expect("CString::new failed");
+
+    // Call linkat
+    unsafe {
+        libc_utils::errno_check(libc::linkat(
+            libc::AT_FDCWD,
+            c_source.as_ptr(),
+            libc::AT_FDCWD,
+            c_link.as_ptr(),
+            0,
+        ));
+    }
+
+    // Verify that the hard link works:
+    // Modifications to one are visible through the other.
+    fs::write(&source, b"hello world").unwrap();
+    let contents = fs::read(&link).unwrap();
+    assert_eq!(contents, b"hello world");
+
+    // Cleanup
+    remove_file(&source).unwrap();
+    remove_file(&link).unwrap();
 }

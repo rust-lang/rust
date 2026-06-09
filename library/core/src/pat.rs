@@ -64,7 +64,7 @@ impl_range_pat! {
 }
 
 #[rustc_const_unstable(feature = "pattern_type_range_trait", issue = "123646")]
-impl const RangePattern for char {
+const impl RangePattern for char {
     const MIN: Self = char::MIN;
 
     const MAX: Self = char::MAX;

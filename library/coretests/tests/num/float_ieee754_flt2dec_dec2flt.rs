@@ -51,7 +51,7 @@ float_test! {
     name: preserve_signed_zero,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f16: #[cfg(target_has_reliable_f16)],
         f128: #[cfg(false)],
     },
     test {
@@ -67,7 +67,7 @@ float_test! {
     name: preserve_signed_infinity,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f16: #[cfg(target_has_reliable_f16)],
         f128: #[cfg(false)],
     },
     test {
@@ -83,7 +83,7 @@ float_test! {
     name: infinity_to_str,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f16: #[cfg(target_has_reliable_f16)],
         f128: #[cfg(false)],
     },
     test {
@@ -109,7 +109,7 @@ float_test! {
     name: nan_to_str,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f16: #[cfg(target_has_reliable_f16)],
         f128: #[cfg(false)],
     },
     test {
@@ -127,7 +127,7 @@ float_test! {
     name: infinity_from_str,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f16: #[cfg(target_has_reliable_f16)],
         f128: #[cfg(false)],
     },
     test {
@@ -152,7 +152,7 @@ float_test! {
     name: qnan_from_str,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(any(miri, target_has_reliable_f16))],
+        f16: #[cfg(target_has_reliable_f16)],
         f128: #[cfg(false)],
     },
     test {

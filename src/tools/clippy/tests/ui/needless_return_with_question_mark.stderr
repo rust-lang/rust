@@ -13,5 +13,23 @@ error: unneeded `return` statement with `?` operator
 LL |         return Err(())?;
    |         ^^^^^^^ help: remove it
 
-error: aborting due to 2 previous errors
+error: unneeded `return` statement with `?` operator
+  --> tests/ui/needless_return_with_question_mark.rs:134:9
+   |
+LL |         return Err(())?;
+   |         ^^^^^^^ help: remove it
+
+error: unneeded `return` statement with `?` operator
+  --> tests/ui/needless_return_with_question_mark.rs:143:13
+   |
+LL |             return Err(())?;
+   |             ^^^^^^^ help: remove it
+
+error: unneeded `return` statement with `?` operator
+  --> tests/ui/needless_return_with_question_mark.rs:163:5
+   |
+LL |     return Err(())?;
+   |     ^^^^^^^ help: remove it
+
+error: aborting due to 5 previous errors
 

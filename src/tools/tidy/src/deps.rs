@@ -133,6 +133,12 @@ pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
         submodules: &[],
     },
     WorkspaceInfo {
+        path: "library/stdarch",
+        exceptions: EXCEPTIONS_STDARCH,
+        crates_and_deps: None,
+        submodules: &[],
+    },
+    WorkspaceInfo {
         path: "compiler/rustc_codegen_cranelift",
         exceptions: EXCEPTIONS_CRANELIFT,
         crates_and_deps: Some((
@@ -253,6 +259,8 @@ const EXCEPTIONS_RUSTBOOK: ExceptionList = &[
     ("mdbook-summary", "MPL-2.0"),
     // tidy-alphabetical-end
 ];
+
+const EXCEPTIONS_STDARCH: ExceptionList = &[];
 
 const EXCEPTIONS_CRANELIFT: ExceptionList = &[];
 
@@ -466,6 +474,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "unicode-script",
     "unicode-security",
     "unicode-width",
+    "utf8_iter",
     "utf8parse",
     "valuable",
     "version_check",
@@ -543,16 +552,7 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "wasip2",
     "wasip3",
     "windows-link",
-    "windows-sys",
-    "windows-targets",
-    "windows_aarch64_gnullvm",
-    "windows_aarch64_msvc",
-    "windows_i686_gnu",
-    "windows_i686_gnullvm",
-    "windows_i686_msvc",
-    "windows_x86_64_gnu",
-    "windows_x86_64_gnullvm",
-    "windows_x86_64_msvc",
+    "windows-sys@0.61.100", // Enforce the usage of our dummy windows-sys patch. Keep version in sync.
     "wit-bindgen",
     // tidy-alphabetical-end
 ];
@@ -597,6 +597,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "log",
     "mach2",
     "memchr",
+    "memmap2",
     "object",
     "proc-macro2",
     "quote",

@@ -23,7 +23,7 @@ help: <TAG> was later invalidated at offsets [0x0..0x10] by a Unique retag
 LL |                 from_raw_parts_mut(ptr.offset(mid as isize), len - mid),
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: stack backtrace:
-           0: safe::split_at_mut
+           0: safe::split_at_mut::<i32>
                at tests/fail/both_borrows/buggy_split_at_mut.rs:LL:CC
            1: main
                at tests/fail/both_borrows/buggy_split_at_mut.rs:LL:CC

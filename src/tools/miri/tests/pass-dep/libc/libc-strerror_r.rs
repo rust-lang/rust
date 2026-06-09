@@ -2,7 +2,7 @@
 
 fn main() {
     unsafe {
-        let mut buf = vec![0u8; 32];
+        let mut buf = vec![0u8; 64];
         assert_eq!(libc::strerror_r(libc::EPERM, buf.as_mut_ptr().cast(), buf.len()), 0);
         let mut buf2 = vec![0u8; 64];
         assert_eq!(libc::strerror_r(-1i32, buf2.as_mut_ptr().cast(), buf2.len()), 0);

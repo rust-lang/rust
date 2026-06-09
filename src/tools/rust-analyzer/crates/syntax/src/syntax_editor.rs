@@ -133,7 +133,19 @@ impl SyntaxEditor {
             !matches!(&element, SyntaxElement::Node(node) if node == &self.root),
             "should not delete root node"
         );
-        self.changes.borrow_mut().push(Change::Replace(element.syntax_element(), None));
+        let mut changes = self.changes.borrow_mut();
+        for change in changes.iter_mut() {
+            if let Change::Replace(existing, replacement) = change
+                && *existing == element
+            {
+                if replacement.is_none() {
+                    return;
+                }
+                *replacement = None;
+                return;
+            }
+        }
+        changes.push(Change::Replace(element, None));
     }
 
     pub fn delete_all(&self, range: RangeInclusive<SyntaxElement>) {
@@ -149,9 +161,23 @@ impl SyntaxEditor {
     pub fn replace(&self, old: impl Element, new: impl Element) {
         let old = old.syntax_element();
         debug_assert!(is_ancestor_or_self_of_element(&old, &self.root));
-        self.changes
-            .borrow_mut()
-            .push(Change::Replace(old.syntax_element(), Some(new.syntax_element())));
+        let new = new.syntax_element();
+        let mut changes = self.changes.borrow_mut();
+        for change in changes.iter_mut() {
+            if let Change::Replace(existing, replacement) = change
+                && *existing == old
+            {
+                match replacement {
+                    None => return,
+                    Some(existing_new) if *existing_new == new => return,
+                    Some(existing_new) => {
+                        *existing_new = new;
+                        return;
+                    }
+                }
+            }
+        }
+        changes.push(Change::Replace(old, Some(new)));
     }
 
     pub fn replace_with_many(&self, old: impl Element, new: Vec<SyntaxElement>) {
@@ -176,6 +202,14 @@ impl SyntaxEditor {
 
     pub fn finish(self) -> SyntaxEdit {
         edit_algo::apply_edits(self)
+    }
+
+    pub fn deleted(&self, element: impl Element) -> bool {
+        let element = element.syntax_element();
+        self.changes
+            .borrow()
+            .iter()
+            .any(|change| matches!(change, Change::Replace(existing, None) if *existing == element))
     }
 }
 
@@ -215,6 +249,17 @@ impl SyntaxEdit {
     /// syntax tree.
     pub fn find_annotation(&self, annotation: SyntaxAnnotation) -> &[SyntaxElement] {
         self.annotations.get(&annotation).as_ref().map_or(&[], |it| it.as_slice())
+    }
+
+    pub fn find_element(&self, old_node: &SyntaxNode) -> Option<SyntaxNode> {
+        let old_root_start = self.old_root.text_range().start();
+        let old_start = old_node.text_range().start() - old_root_start;
+        let new_root_start = self.new_root.text_range().start();
+        let kind = old_node.kind();
+
+        self.new_root
+            .descendants()
+            .find(|it| it.kind() == kind && it.text_range().start() - new_root_start == old_start)
     }
 }
 
@@ -695,6 +740,62 @@ mod tests {
                 {
                 let first = 1;{
                 let second = 2;let third = 3;
+            }
+            }
+            }"#]];
+        expect.assert_eq(&edit.new_root.to_string());
+    }
+
+    #[test]
+    fn test_dependent_change_prefers_nearest_changed_ancestor() {
+        let root = make::block_expr(
+            [],
+            Some(
+                make::block_expr(
+                    [make::let_stmt(
+                        make::ext::simple_ident_pat(make::name("second")).into(),
+                        None,
+                        Some(make::expr_literal("2").into()),
+                    )
+                    .into()],
+                    None,
+                )
+                .into(),
+            ),
+        );
+
+        let (editor, root) = SyntaxEditor::with_ast_node(&root);
+        let make = editor.make();
+
+        let inner_block =
+            root.syntax().descendants().flat_map(ast::BlockExpr::cast).nth(1).unwrap();
+
+        let outer_replacement = make.block_expr([], Some(ast::Expr::BlockExpr(root.clone())));
+        let inner_replacement =
+            make.block_expr([], Some(ast::Expr::BlockExpr(inner_block.clone())));
+
+        let first_let = make.let_stmt(
+            make::ext::simple_ident_pat(make::name("first")).into(),
+            None,
+            Some(make::expr_literal("1").into()),
+        );
+
+        editor.insert(
+            Position::first_child_of(inner_block.stmt_list().unwrap().syntax()),
+            first_let.syntax(),
+        );
+        editor.replace(inner_block.syntax(), inner_replacement.syntax());
+        editor.replace(root.syntax(), outer_replacement.syntax());
+
+        let edit = editor.finish();
+
+        let expect = expect![[r#"
+            {
+                {
+                {
+                let first = 1;{
+                let second = 2;
+            }
             }
             }
             }"#]];

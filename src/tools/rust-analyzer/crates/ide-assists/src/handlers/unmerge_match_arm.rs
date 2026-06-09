@@ -30,7 +30,7 @@ use crate::{AssistContext, AssistId, Assists};
 //     }
 // }
 // ```
-pub(crate) fn unmerge_match_arm(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn unmerge_match_arm(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let pipe_token = ctx.find_token_syntax_at_offset(T![|])?;
     let or_pat = ast::OrPat::cast(pipe_token.parent()?)?;
     if or_pat.leading_pipe().is_some_and(|it| it == pipe_token) {

@@ -67,8 +67,8 @@ use crate::marker::Tuple;
         // SAFETY: tidy is not smart enough to tell that the below unsafe block is a string
         label = "call the function in a closure: `|| unsafe {{ /* code */ }}`"
     ),
-    message = "expected a `{Trait}` closure, found `{Self}`",
-    label = "expected an `{Trait}` closure, found `{Self}`"
+    message = "expected a `{This:resolved}` closure, found `{Self}`",
+    label = "expected an `{This:resolved}` closure, found `{Self}`"
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 #[must_use = "closures are lazy and do nothing unless called"]
@@ -154,8 +154,8 @@ pub const trait Fn<Args: Tuple>: [const] FnMut<Args> {
         // SAFETY: tidy is not smart enough to tell that the below unsafe block is a string
         label = "call the function in a closure: `|| unsafe {{ /* code */ }}`"
     ),
-    message = "expected a `{Trait}` closure, found `{Self}`",
-    label = "expected an `{Trait}` closure, found `{Self}`"
+    message = "expected a `{This:resolved}` closure, found `{Self}`",
+    label = "expected an `{This:resolved}` closure, found `{Self}`"
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 #[must_use = "closures are lazy and do nothing unless called"]
@@ -233,8 +233,8 @@ pub const trait FnMut<Args: Tuple>: FnOnce<Args> {
         // SAFETY: tidy is not smart enough to tell that the below unsafe block is a string
         label = "call the function in a closure: `|| unsafe {{ /* code */ }}`"
     ),
-    message = "expected a `{Trait}` closure, found `{Self}`",
-    label = "expected an `{Trait}` closure, found `{Self}`"
+    message = "expected a `{This:resolved}` closure, found `{Self}`",
+    label = "expected an `{This:resolved}` closure, found `{Self}`"
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 #[must_use = "closures are lazy and do nothing unless called"]
@@ -255,7 +255,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
-    impl<A: Tuple, F: ?Sized> const Fn<A> for &F
+    const impl<A: Tuple, F: ?Sized> Fn<A> for &F
     where
         F: [const] Fn<A>,
     {
@@ -266,7 +266,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
-    impl<A: Tuple, F: ?Sized> const FnMut<A> for &F
+    const impl<A: Tuple, F: ?Sized> FnMut<A> for &F
     where
         F: [const] Fn<A>,
     {
@@ -277,7 +277,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
-    impl<A: Tuple, F: ?Sized> const FnOnce<A> for &F
+    const impl<A: Tuple, F: ?Sized> FnOnce<A> for &F
     where
         F: [const] Fn<A>,
     {
@@ -290,7 +290,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
-    impl<A: Tuple, F: ?Sized> const FnMut<A> for &mut F
+    const impl<A: Tuple, F: ?Sized> FnMut<A> for &mut F
     where
         F: [const] FnMut<A>,
     {
@@ -301,7 +301,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
-    impl<A: Tuple, F: ?Sized> const FnOnce<A> for &mut F
+    const impl<A: Tuple, F: ?Sized> FnOnce<A> for &mut F
     where
         F: [const] FnMut<A>,
     {

@@ -3,7 +3,7 @@ use ide_db::{
     FxHashMap, FxHashSet, RootDatabase,
     assists::AssistId,
     defs::Definition,
-    helpers::mod_path_to_ast,
+    helpers::mod_path_to_ast_with_factory,
     search::{FileReference, SearchScope},
 };
 use itertools::Itertools;
@@ -47,7 +47,10 @@ use crate::{
 //     let baz2 = &baz;
 // }
 // ```
-pub(crate) fn destructure_struct_binding(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn destructure_struct_binding(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_, '_>,
+) -> Option<()> {
     let target = ctx.find_node_at_offset::<Target>()?;
     let data = collect_data(target, ctx)?;
 
@@ -119,7 +122,7 @@ impl AstNode for Target {
 }
 
 fn destructure_struct_binding_impl(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     builder: &mut SourceChangeBuilder,
     data: &StructEditData,
 ) {
@@ -173,7 +176,7 @@ impl StructEditData {
     }
 }
 
-fn collect_data(target: Target, ctx: &AssistContext<'_>) -> Option<StructEditData> {
+fn collect_data(target: Target, ctx: &AssistContext<'_, '_>) -> Option<StructEditData> {
     let ty = target.ty(&ctx.sema)?;
     let hir::Adt::Struct(struct_type) = ty.strip_references().as_adt()? else { return None };
 
@@ -246,7 +249,7 @@ fn collect_data(target: Target, ctx: &AssistContext<'_>) -> Option<StructEditDat
 }
 
 fn get_names_in_scope(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     target: &Target,
     usages: &[FileReference],
 ) -> Option<FxHashSet<SmolStr>> {
@@ -270,13 +273,13 @@ fn get_names_in_scope(
 }
 
 fn destructure_pat(
-    _ctx: &AssistContext<'_>,
+    _ctx: &AssistContext<'_, '_>,
     editor: &SyntaxEditor,
     data: &StructEditData,
     field_names: &[(SmolStr, SmolStr)],
 ) {
     let make = editor.make();
-    let struct_path = mod_path_to_ast(&data.struct_def_path, data.edition);
+    let struct_path = mod_path_to_ast_with_factory(make, &data.struct_def_path, data.edition);
     let is_ref = data.target.is_ref();
     let is_mut = data.target.is_mut();
 
@@ -313,7 +316,10 @@ fn destructure_pat(
     data.apply_to_destruct(new_pat, editor);
 }
 
-fn generate_field_names(ctx: &AssistContext<'_>, data: &StructEditData) -> Vec<(SmolStr, SmolStr)> {
+fn generate_field_names(
+    ctx: &AssistContext<'_, '_>,
+    data: &StructEditData,
+) -> Vec<(SmolStr, SmolStr)> {
     match data.kind {
         hir::StructKind::Tuple => data
             .visible_fields
@@ -348,7 +354,7 @@ fn new_field_name(base_name: SmolStr, names_in_scope: &FxHashSet<SmolStr>) -> Sm
 }
 
 fn update_usages(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     editor: &SyntaxEditor,
     data: &StructEditData,
     field_names: &FxHashMap<SmolStr, SmolStr>,
@@ -367,7 +373,7 @@ fn update_usages(
 }
 
 fn build_usage_edit(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     make: &SyntaxFactory,
     data: &StructEditData,
     usage: &FileReference,

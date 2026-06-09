@@ -244,7 +244,7 @@ impl<T, A: Allocator> RawVec<T, A> {
 
         let me = ManuallyDrop::new(self);
         unsafe {
-            let slice = ptr::slice_from_raw_parts_mut(me.ptr() as *mut MaybeUninit<T>, len);
+            let slice = me.ptr().cast::<MaybeUninit<T>>().cast_slice(len);
             Box::from_raw_in(slice, ptr::read(&me.inner.alloc))
         }
     }
@@ -898,9 +898,5 @@ const fn layout_array(cap: usize, elem_layout: Layout) -> Result<Layout, TryRese
     // which lets us use the much-simpler `repeat_packed`.
     debug_assert!(elem_layout.size() == elem_layout.pad_to_align().size());
 
-    // FIXME(const-hack) return to using `map` and `map_err` once `const_closures` is implemented
-    match elem_layout.repeat_packed(cap) {
-        Ok(layout) => Ok(layout),
-        Err(_) => Err(CapacityOverflow.into()),
-    }
+    elem_layout.repeat_packed(cap).map_err(const |_| CapacityOverflow.into())
 }

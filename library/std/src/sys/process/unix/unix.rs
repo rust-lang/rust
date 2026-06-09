@@ -318,7 +318,7 @@ impl Command {
                         // An alternative would be to require CAP_SETGID (in
                         // addition to CAP_SETUID) for setting the UID.
                         if e.raw_os_error() != Some(libc::EPERM) {
-                            return Err(e.into());
+                            return Err(e);
                         }
                     }
                 }
@@ -1000,6 +1000,19 @@ impl Process {
             return pid_fd.send_signal(signal);
         }
         cvt(unsafe { libc::kill(self.pid, signal) }).map(drop)
+    }
+
+    pub(crate) fn send_process_group_signal(&self, signal: i32) -> io::Result<()> {
+        // See note in `send_signal` regarding recycled PIDs.
+        if self.status.is_some() {
+            return Ok(());
+        }
+        #[cfg(target_os = "linux")]
+        if let Some(pid_fd) = self.pidfd.as_ref() {
+            // The `PIDFD_SIGNAL_PROCESS_GROUP` flag requires kernel >= 6.9
+            return pid_fd.send_process_group_signal(signal);
+        }
+        cvt(unsafe { libc::killpg(self.pid, signal) }).map(drop)
     }
 
     pub fn wait(&mut self) -> io::Result<ExitStatus> {

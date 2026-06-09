@@ -7,6 +7,7 @@ static ABI_CAFE_REPO: GitRepo = GitRepo::github(
     "Gankra",
     "abi-cafe",
     "94d38030419eb00a1ba80e5e2b4d763dcee58db4",
+    &[],
     "6efb4457893c8670",
     "abi-cafe",
 );

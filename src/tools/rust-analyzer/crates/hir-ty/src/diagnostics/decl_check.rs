@@ -33,7 +33,7 @@ use hir_expand::{
     HirFileId,
     name::{AsName, Name},
 };
-use intern::sym;
+use rustc_abi::ExternAbi;
 use stdx::{always, never};
 use syntax::{
     AstNode, AstPtr, ToSmolStr,
@@ -211,7 +211,7 @@ impl<'a> DeclValidator<'a> {
             // Don't run the lint on extern "[not Rust]" fn items with the
             // #[no_mangle] attribute.
             let no_mangle = AttrFlags::query(self.db, func.into()).contains(AttrFlags::NO_MANGLE);
-            if no_mangle && data.abi.as_ref().is_some_and(|abi| *abi != sym::Rust) {
+            if no_mangle && data.abi != ExternAbi::Rust {
                 cov_mark::hit!(extern_func_no_mangle_ignored);
             } else {
                 self.create_incorrect_case_diagnostic_for_item_name(
@@ -504,15 +504,15 @@ impl<'a> DeclValidator<'a> {
     fn validate_enum_variants(&mut self, enum_id: EnumId) {
         let data = enum_id.enum_variants(self.db);
 
-        for (variant_id, _, _) in data.variants.iter() {
+        for (variant_id, _) in data.variants.values() {
             self.validate_enum_variant_fields(*variant_id);
         }
 
         let edition = self.edition(enum_id);
         let mut enum_variants_replacements = data
             .variants
-            .iter()
-            .filter_map(|(_, name, _)| {
+            .keys()
+            .filter_map(|name| {
                 to_camel_case(&name.display_no_db(edition).to_smolstr()).map(|new_name| {
                     Replacement {
                         current_name: name.clone(),

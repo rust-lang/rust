@@ -6,14 +6,14 @@ use crate::consteval::try_const_usize;
 
 use super::*;
 
-impl<'db> Evaluator<'db> {
+impl<'a, 'db: 'a> Evaluator<'a, 'db> {
     fn detect_simd_ty(&self, ty: Ty<'db>) -> Result<'db, (usize, Ty<'db>)> {
         match ty.kind() {
             TyKind::Adt(adt_def, subst) => {
                 let len = match subst.as_slice().get(1).and_then(|it| it.konst()) {
                     Some(len) => len,
                     _ => {
-                        if let AdtId::StructId(id) = adt_def.def_id().0 {
+                        if let AdtId::StructId(id) = adt_def.def_id() {
                             let struct_data = id.fields(self.db);
                             let fields = struct_data.fields();
                             let Some((first_field, _)) = fields.iter().next() else {
@@ -21,7 +21,8 @@ impl<'db> Evaluator<'db> {
                             };
                             let field_ty = self.db.field_types(id.into())[first_field]
                                 .get()
-                                .instantiate(self.interner(), subst);
+                                .instantiate(self.interner(), subst)
+                                .skip_norm_wip();
                             return Ok((fields.len(), field_ty));
                         }
                         return Err(MirEvalError::InternalError(
@@ -53,7 +54,7 @@ impl<'db> Evaluator<'db> {
         args: &[IntervalAndTy<'db>],
         _generic_args: GenericArgs<'db>,
         destination: Interval,
-        _locals: &Locals,
+        _locals: &Locals<'a>,
         _span: MirSpan,
     ) -> Result<'db, ()> {
         match name {

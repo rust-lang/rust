@@ -1,10 +1,11 @@
+use rustc_feature::AttributeStability;
 use rustc_hir::attrs::{DebugVisualizer, DebuggerVisualizerType};
 
 use super::prelude::*;
 
-pub(crate) struct DebuggerViualizerParser;
+pub(crate) struct DebuggerVisualizerParser;
 
-impl CombineAttributeParser for DebuggerViualizerParser {
+impl CombineAttributeParser for DebuggerVisualizerParser {
     const PATH: &[Symbol] = &[sym::debugger_visualizer];
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::Mod), Allow(Target::Crate)]);
@@ -12,6 +13,7 @@ impl CombineAttributeParser for DebuggerViualizerParser {
         List: &[r#"natvis_file = "...", gdb_script_file = "...""#],
         "https://doc.rust-lang.org/reference/attributes/debugger.html#the-debugger_visualizer-attribute"
     );
+    const STABILITY: AttributeStability = AttributeStability::Stable;
 
     type Item = DebugVisualizer;
     const CONVERT: ConvertFn<Self::Item> = |v, _| AttributeKind::DebuggerVisualizer(v);
@@ -34,10 +36,7 @@ impl CombineAttributeParser for DebuggerViualizerParser {
             }
         };
 
-        let Some(path) = args.value_as_str() else {
-            cx.adcx().expected_string_literal(args.value_span, Some(args.value_as_lit()));
-            return None;
-        };
+        let path = cx.expect_string_literal(args)?;
 
         Some(DebugVisualizer { span: ident.span.to(args.value_span), visualizer_type, path })
     }

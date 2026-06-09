@@ -1,0 +1,14 @@
+// MIR for `includes_never::{closure#0}::{closure#0}` 0 coroutine_drop_proxy_async
+
+fn includes_never::{closure#0}::{closure#0}(_1: {async block@$DIR/async_fn.rs:61:18: 61:23}, _2: &mut Context<'_>) -> Poll<()> {
+    let mut _0: std::task::Poll<()>;
+
+    bb0: {
+        drop(_1) -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        _0 = Poll::<()>::Ready(const ());
+        return;
+    }
+}

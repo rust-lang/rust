@@ -229,6 +229,7 @@ pub macro assert_matches {
 /// };
 /// ```
 #[stable(feature = "cfg_select", since = "1.95.0")]
+#[doc(alias = "cfg_if", alias = "cfg-if")]
 #[rustc_diagnostic_item = "cfg_select"]
 #[rustc_builtin_macro]
 pub macro cfg_select($($tt:tt)*) {
@@ -1624,6 +1625,48 @@ pub(crate) mod builtin {
     #[allow_internal_unstable(core_intrinsics)]
     #[rustc_builtin_macro]
     pub macro autodiff_reverse($item:item) {
+        /* compiler built-in */
+    }
+
+    /// The `offload_kernel` macro is applied to a function to generate two separate
+    /// definitions: a host-side wrapper for dispatch and a device-side kernel.
+    ///
+    /// The macro does not perform the offload itself. It generates the necessary
+    /// code required by the compiler's offloading infrastructure.
+    ///
+    /// ### Usage example:
+    ///
+    /// ```rust,ignore (offload requires a -Z flag)
+    /// #[offload_kernel]
+    /// fn foo(a: &[f32], b: &[f32], c: *mut f32) {
+    ///     *c = a[0] + b[0];
+    /// }
+    /// ```
+    ///
+    /// This expands to the host-side function:
+    ///
+    /// ```rust,ignore (offload requires a -Z flag)
+    /// #[unsafe(no_mangle)]
+    /// #[inline(never)]
+    /// fn foo(_: &[f32], _: &[f32], _: *mut f32) {
+    ///     ::core::panicking::panic("not implemented")
+    /// }
+    /// ```
+    ///
+    /// And the device-side kernel:
+    ///
+    /// ```rust,ignore (offload requires a -Z flag)
+    /// #[rustc_offload_kernel]
+    /// #[unsafe(no_mangle)]
+    /// unsafe extern "gpu-kernel" fn foo(a: &[f32], b: &[f32], c: *mut f32) {
+    ///     *c = a[0] + b[0];
+    /// }
+    /// ```
+    #[unstable(feature = "gpu_offload", issue = "131513")]
+    #[allow_internal_unstable(rustc_attrs)]
+    #[allow_internal_unstable(core_intrinsics)]
+    #[rustc_builtin_macro]
+    pub macro offload_kernel($item:item) {
         /* compiler built-in */
     }
 

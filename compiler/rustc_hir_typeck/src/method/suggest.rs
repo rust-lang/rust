@@ -1903,10 +1903,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         (FxIndexSet::default(), FxIndexSet::default(), Vec::new())
                     });
                     entry.0.insert(cause_span);
-                    entry.1.insert((
-                        cause_span,
-                        cause_msg,
-                    ));
+                    entry.1.insert((cause_span, cause_msg));
                     entry.2.push(p);
                     skip_list.insert(p);
                     manually_impl = true;
@@ -1918,16 +1915,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     span: item_span,
                     ..
                 })) => {
-                    let sized_pred =
-                        unsatisfied_predicates.iter().any(|(pred, _, _)| {
-                            match pred.kind().skip_binder() {
-                                ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
-                                    self.tcx.is_lang_item(pred.def_id(), LangItem::Sized)
-                                        && pred.polarity == ty::PredicatePolarity::Positive
-                                }
-                                _ => false,
+                    let sized_pred = unsatisfied_predicates.iter().any(|(pred, _, _)| {
+                        match pred.kind().skip_binder() {
+                            ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
+                                self.tcx.is_lang_item(pred.def_id(), LangItem::Sized)
+                                    && pred.polarity == ty::PredicatePolarity::Positive
                             }
-                        });
+                            _ => false,
+                        }
+                    });
                     for param in generics.params {
                         if param.span == cause_span && sized_pred {
                             let (sp, sugg) = match param.colon_span {
@@ -1954,7 +1950,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     entry.2.push(p);
                     if cause_span != *item_span {
                         entry.0.insert(cause_span);
-                        entry.1.insert((cause_span, "unsatisfied trait bound introduced here".to_string()));
+                        entry.1.insert((
+                            cause_span,
+                            "unsatisfied trait bound introduced here".to_string(),
+                        ));
                     } else {
                         if let Some(of_trait) = of_trait {
                             entry.0.insert(of_trait.trait_ref.path.span);
@@ -1967,7 +1966,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     entry.1.insert((self_ty.span, String::new()));
                 }
                 Some(Node::Item(hir::Item {
-                    kind: hir::ItemKind::Trait { is_auto:  rustc_ast::ast::IsAuto::Yes, .. },
+                    kind: hir::ItemKind::Trait { is_auto: rustc_ast::ast::IsAuto::Yes, .. },
                     span: item_span,
                     ..
                 })) => {
@@ -1994,7 +1993,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     });
                     entry.0.insert(cause_span);
                     entry.1.insert((ident.span, String::new()));
-                    entry.1.insert((cause_span, "unsatisfied trait bound introduced here".to_string()));
+                    entry.1.insert((
+                        cause_span,
+                        "unsatisfied trait bound introduced here".to_string(),
+                    ));
                     entry.2.push(p);
                 }
                 _ => {
@@ -2805,7 +2807,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let variant = &def.non_enum_variant();
                     tcx.find_field_index(item_name, variant).map(|index| {
                         let field = &variant.fields[index];
-                        let field_ty = field.ty(tcx, args);
+                        let field_ty = field.ty(tcx, args).skip_norm_wip();
                         (field, field_ty)
                     })
                 }
@@ -3270,7 +3272,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let [field] = &variant.fields.raw[..] else {
                             return None;
                         };
-                        let field_ty = field.ty(tcx, args);
+                        let field_ty = field.ty(tcx, args).skip_norm_wip();
 
                         // Skip `_`, since that'll just lead to ambiguity.
                         if self.resolve_vars_if_possible(field_ty).is_ty_var() {
@@ -3305,7 +3307,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 match &matching_variants[..] {
                     [(_, field, pick)] => {
-                        let self_ty = field.ty(tcx, args);
+                        let self_ty = field.ty(tcx, args).skip_norm_wip();
                         err.span_note(
                             tcx.def_span(pick.item.def_id),
                             format!("the method `{item_name}` exists on the type `{self_ty}`"),
@@ -4794,7 +4796,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let hir::Node::Expr(rcvr) = self.tcx.hir_node(hir_id) else {
             return false;
         };
-        let trait_ref = ty::TraitRef::new(self.tcx, trait_def_id, rcvr_ty.into_iter());
+        // The trait may have generic parameters beyond `Self` (e.g. `Borrow<Borrowed>`), and
+        // `rcvr_ty` may even be unknown. We only ever know the receiver type (the `Self` arg),
+        // so fill `Self` from `rcvr_ty` when available and the remaining parameters with fresh
+        // inference variables; building a `TraitRef` with a partial arg list would otherwise trip
+        // `debug_assert_args_compatible` and ICE. See #157189.
+        let trait_ref = ty::TraitRef::new_from_args(
+            self.tcx,
+            trait_def_id,
+            ty::GenericArgs::for_item(self.tcx, trait_def_id, |param, _| {
+                if param.index == 0
+                    && let Some(rcvr_ty) = rcvr_ty
+                {
+                    rcvr_ty.into()
+                } else {
+                    self.var_for_def(rcvr.span, param)
+                }
+            }),
+        );
         let trait_pred = ty::Binder::dummy(ty::TraitPredicate {
             trait_ref,
             polarity: ty::PredicatePolarity::Positive,

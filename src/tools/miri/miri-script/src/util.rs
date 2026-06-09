@@ -157,7 +157,11 @@ impl MiriEnv {
         let features = features_to_args(features);
         // Install binaries to the miri toolchain's `sysroot` so they do not interact with other toolchains.
         // (Not using `cargo_cmd` as `install` is special and doesn't use `--manifest-path`.)
-        cmd!(self.sh, "{cargo_bin} +{toolchain} install {cargo_extra_flags...} --path {path} --force --root {sysroot} {features...} {args...}").run()?;
+        // Adding `--locked` so that behavior is closer to `./miri build`. However, cargo doesn't
+        // like `--locked --locked` so we need extra logic to avoid that.
+        let locked_flag =
+            if cargo_extra_flags.iter().any(|f| f == "--locked") { None } else { Some("--locked") };
+        cmd!(self.sh, "{cargo_bin} +{toolchain} install {locked_flag...} {cargo_extra_flags...} --path {path} --force --root {sysroot} {features...} {args...}").run()?;
         Ok(())
     }
 

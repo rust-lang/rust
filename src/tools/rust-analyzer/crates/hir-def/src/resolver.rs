@@ -194,7 +194,8 @@ impl<'db> Resolver<'db> {
                     LangItemTarget::TraitId(it) => TypeNs::TraitId(it),
                     LangItemTarget::FunctionId(_)
                     | LangItemTarget::ImplId(_)
-                    | LangItemTarget::StaticId(_) => return None,
+                    | LangItemTarget::StaticId(_)
+                    | LangItemTarget::ConstId(_) => return None,
                 };
                 return Some((
                     type_ns,
@@ -337,6 +338,7 @@ impl<'db> Resolver<'db> {
                         LangItemTarget::StaticId(it) => ValueNs::StaticId(it),
                         LangItemTarget::StructId(it) => ValueNs::StructId(it),
                         LangItemTarget::EnumVariantId(it) => ValueNs::EnumVariantId(it),
+                        LangItemTarget::ConstId(it) => ValueNs::ConstId(it),
                         LangItemTarget::UnionId(_)
                         | LangItemTarget::ImplId(_)
                         | LangItemTarget::TypeAliasId(_)
@@ -356,7 +358,8 @@ impl<'db> Resolver<'db> {
                     LangItemTarget::TraitId(it) => TypeNs::TraitId(it),
                     LangItemTarget::FunctionId(_)
                     | LangItemTarget::ImplId(_)
-                    | LangItemTarget::StaticId(_) => return None,
+                    | LangItemTarget::StaticId(_)
+                    | LangItemTarget::ConstId(_) => return None,
                 };
                 // Remaining segments start from 0 because lang paths have no segments other than the remaining.
                 return Some((
@@ -936,7 +939,7 @@ fn handle_macro_def_scope(
         // and use its parent expansion.
         *hygiene_id = HygieneId::new(parent_ctx.opaque_and_semiopaque(db));
         *hygiene_info = parent_ctx.outer_expn(db).map(|expansion| {
-            let expansion = db.lookup_intern_macro_call(expansion.into());
+            let expansion = hir_expand::MacroCallId::from(expansion).loc(db);
             (parent_ctx.parent(db), expansion.def)
         });
     }
@@ -950,7 +953,7 @@ fn hygiene_info(
     if !hygiene_id.is_root() {
         let ctx = hygiene_id.syntax_context();
         ctx.outer_expn(db).map(|expansion| {
-            let expansion = db.lookup_intern_macro_call(expansion.into());
+            let expansion = hir_expand::MacroCallId::from(expansion).loc(db);
             (ctx.parent(db), expansion.def)
         })
     } else {

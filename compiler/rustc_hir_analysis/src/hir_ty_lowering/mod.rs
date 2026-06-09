@@ -26,7 +26,7 @@ use rustc_ast::LitKind;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, Diagnostic, ErrorGuaranteed, FatalError, Level, StashKey,
+    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError, StashKey,
     struct_span_code_err,
 };
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
@@ -36,7 +36,6 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::DynCompatibilityViolation;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::middle::stability::AllowUnstable;
-use rustc_middle::ty::print::PrintPolyTraitRefExt as _;
 use rustc_middle::ty::{
     self, Const, FnSigKind, GenericArgKind, GenericArgsRef, GenericParamDefKind, LitToConstInput,
     Ty, TyCtxt, TypeSuperFoldable, TypeVisitableExt, TypingMode, Unnormalized, Upcast,
@@ -47,12 +46,11 @@ use rustc_session::errors::feature_err;
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc_span::{DUMMY_SP, Ident, Span, kw, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
-use rustc_trait_selection::traits::wf::object_region_bounds;
 use rustc_trait_selection::traits::{self, FulfillmentError};
 use tracing::{debug, instrument};
 
 use crate::check::check_abi;
-use crate::errors::{AmbiguousLifetimeBound, BadReturnTypeNotation, NoFieldOnType};
+use crate::errors::{BadReturnTypeNotation, NoFieldOnType};
 use crate::hir_ty_lowering::errors::{GenericsArgsErrExtend, prohibit_assoc_item_constraint};
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
 use crate::middle::resolve_bound_vars as rbv;
@@ -1282,13 +1280,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     where
         I: Iterator<Item = ty::PolyTraitRef<'tcx>>,
     {
-        let tcx = self.tcx();
-
         let mut matching_candidates = all_candidates().filter(|r| {
             self.probe_trait_that_defines_assoc_item(r.def_id(), assoc_tag, assoc_ident)
         });
 
-        let Some(bound) = matching_candidates.next() else {
+        let Some(bound1) = matching_candidates.next() else {
             return Err(self.report_unresolved_assoc_item(
                 all_candidates,
                 qself,
@@ -1298,137 +1294,21 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 constraint,
             ));
         };
-        debug!(?bound);
 
         if let Some(bound2) = matching_candidates.next() {
-            debug!(?bound2);
-
-            let assoc_kind_str = errors::assoc_tag_str(assoc_tag);
-            let qself_str = qself.to_string(tcx);
-            let mut err = self.dcx().create_err(crate::errors::AmbiguousAssocItem {
-                span,
-                assoc_kind: assoc_kind_str,
+            return Err(self.report_ambiguous_assoc_item(
+                bound1,
+                bound2,
+                matching_candidates,
+                qself,
+                assoc_tag,
                 assoc_ident,
-                qself: &qself_str,
-            });
-            // Provide a more specific error code index entry for equality bindings.
-            err.code(
-                if let Some(constraint) = constraint
-                    && let hir::AssocItemConstraintKind::Equality { .. } = constraint.kind
-                {
-                    E0222
-                } else {
-                    E0221
-                },
-            );
-
-            // FIXME(#97583): Print associated item bindings properly (i.e., not as equality
-            // predicates!).
-            // FIXME: Turn this into a structured, translatable & more actionable suggestion.
-            let mut where_bounds = vec![];
-            for bound in [bound, bound2].into_iter().chain(matching_candidates) {
-                let bound_id = bound.def_id();
-                let assoc_item = tcx.associated_items(bound_id).find_by_ident_and_kind(
-                    tcx,
-                    assoc_ident,
-                    assoc_tag,
-                    bound_id,
-                );
-                let bound_span = assoc_item.and_then(|item| tcx.hir_span_if_local(item.def_id));
-
-                if let Some(bound_span) = bound_span {
-                    err.span_label(
-                        bound_span,
-                        format!("ambiguous `{assoc_ident}` from `{}`", bound.print_trait_sugared(),),
-                    );
-                    if let Some(constraint) = constraint {
-                        match constraint.kind {
-                            hir::AssocItemConstraintKind::Equality { term } => {
-                                let term: ty::Term<'_> = match term {
-                                    hir::Term::Ty(ty) => self.lower_ty(ty).into(),
-                                    hir::Term::Const(ct) => {
-                                        let assoc_item =
-                                            assoc_item.expect("assoc_item should be present");
-                                        let projection_term = bound.map_bound(|trait_ref| {
-                                            let item_segment = hir::PathSegment {
-                                                ident: constraint.ident,
-                                                hir_id: constraint.hir_id,
-                                                res: Res::Err,
-                                                args: Some(constraint.gen_args),
-                                                infer_args: false,
-                                            };
-
-                                            let alias_args = self.lower_generic_args_of_assoc_item(
-                                                constraint.ident.span,
-                                                assoc_item.def_id,
-                                                &item_segment,
-                                                trait_ref.args,
-                                            );
-                                            ty::AliasTerm::new_from_def_id(
-                                                tcx,
-                                                assoc_item.def_id,
-                                                alias_args,
-                                            )
-                                        });
-
-                                        // FIXME(mgca): code duplication with other places we lower
-                                        // the rhs' of associated const bindings
-                                        let ty = projection_term.map_bound(|alias| {
-                                            tcx.type_of(alias.def_id())
-                                                .instantiate(tcx, alias.args)
-                                                .skip_norm_wip()
-                                        });
-                                        let ty = bounds::check_assoc_const_binding_type(
-                                            self,
-                                            constraint.ident,
-                                            ty,
-                                            constraint.hir_id,
-                                        );
-
-                                        self.lower_const_arg(ct, ty).into()
-                                    }
-                                };
-                                if term.references_error() {
-                                    continue;
-                                }
-                                // FIXME(#97583): This isn't syntactically well-formed!
-                                where_bounds.push(format!(
-                                    "        T: {trait}::{assoc_ident} = {term}",
-                                    trait = bound.print_only_trait_path(),
-                                ));
-                            }
-                            // FIXME: Provide a suggestion.
-                            hir::AssocItemConstraintKind::Bound { bounds: _ } => {}
-                        }
-                    } else {
-                        err.span_suggestion_verbose(
-                            span.with_hi(assoc_ident.span.lo()),
-                            "use fully-qualified syntax to disambiguate",
-                            format!("<{qself_str} as {}>::", bound.print_only_trait_path()),
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
-                } else {
-                    let trait_ =
-                        tcx.short_string(bound.print_only_trait_path(), err.long_ty_path());
-                    err.note(format!(
-                        "associated {assoc_kind_str} `{assoc_ident}` could derive from `{trait_}`",
-                    ));
-                }
-            }
-            if !where_bounds.is_empty() {
-                err.help(format!(
-                    "consider introducing a new type parameter `T` and adding `where` constraints:\
-                     \n    where\n        T: {qself_str},\n{}",
-                    where_bounds.join(",\n"),
-                ));
-                let reported = err.emit();
-                return Err(reported);
-            }
-            err.emit();
+                span,
+                constraint,
+            ));
         }
 
-        Ok(bound)
+        Ok(bound1)
     }
 
     /// Lower a [type-relative](hir::QPath::TypeRelative) path in type position to a type.
@@ -1518,7 +1398,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         )? {
             TypeRelativePath::AssocItem(def_id, args) => {
                 self.require_type_const_attribute(def_id, span)?;
-                let ct = Const::new_unevaluated(tcx, ty::UnevaluatedConst::new(def_id, args));
+                let ct = Const::new_unevaluated(
+                    tcx,
+                    ty::UnevaluatedConst::new(
+                        tcx,
+                        ty::UnevaluatedConstKind::new_from_def_id(tcx, def_id),
+                        args,
+                    ),
+                );
                 let ct = self.check_param_uses_if_mcg(ct, span, false);
                 Ok(ct)
             }
@@ -1550,54 +1437,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         span: Span,
         mode: LowerTypeRelativePathMode,
     ) -> Result<TypeRelativePath<'tcx>, ErrorGuaranteed> {
-        struct AmbiguousAssocItem<'tcx> {
-            variant_def_id: DefId,
-            item_def_id: DefId,
-            span: Span,
-            segment_ident: Ident,
-            bound_def_id: DefId,
-            self_ty: Ty<'tcx>,
-            tcx: TyCtxt<'tcx>,
-            mode: LowerTypeRelativePathMode,
-        }
-
-        impl<'a, 'tcx> Diagnostic<'a, ()> for AmbiguousAssocItem<'tcx> {
-            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
-                let Self {
-                    variant_def_id,
-                    item_def_id,
-                    span,
-                    segment_ident,
-                    bound_def_id,
-                    self_ty,
-                    tcx,
-                    mode,
-                } = self;
-                let mut lint = Diag::new(dcx, level, "ambiguous associated item");
-
-                let mut could_refer_to = |kind: DefKind, def_id, also| {
-                    let note_msg = format!(
-                        "`{}` could{} refer to the {} defined here",
-                        segment_ident,
-                        also,
-                        tcx.def_kind_descr(kind, def_id)
-                    );
-                    lint.span_note(tcx.def_span(def_id), note_msg);
-                };
-
-                could_refer_to(DefKind::Variant, variant_def_id, "");
-                could_refer_to(mode.def_kind_for_diagnostics(), item_def_id, " also");
-
-                lint.span_suggestion(
-                    span,
-                    "use fully-qualified syntax",
-                    format!("<{} as {}>::{}", self_ty, tcx.item_name(bound_def_id), segment_ident),
-                    Applicability::MachineApplicable,
-                );
-                lint
-            }
-        }
-
         debug!(%self_ty, ?segment.ident);
         let tcx = self.tcx();
 
@@ -1677,7 +1516,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 AMBIGUOUS_ASSOCIATED_ITEMS,
                 qpath_hir_id,
                 span,
-                AmbiguousAssocItem {
+                errors::AmbiguityBetweenVariantAndAssocItem {
                     variant_def_id,
                     item_def_id,
                     span,
@@ -2008,6 +1847,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         trait_segment: Option<&hir::PathSegment<'tcx>>,
         item_segment: &hir::PathSegment<'tcx>,
     ) -> Result<Const<'tcx>, ErrorGuaranteed> {
+        let tcx = self.tcx();
         let (item_def_id, item_args) = self.lower_resolved_assoc_item_path(
             span,
             opt_self_ty,
@@ -2017,8 +1857,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ty::AssocTag::Const,
         )?;
         self.require_type_const_attribute(item_def_id, span)?;
-        let uv = ty::UnevaluatedConst::new(item_def_id, item_args);
-        Ok(Const::new_unevaluated(self.tcx(), uv))
+        let uv = ty::UnevaluatedConst::new(
+            tcx,
+            ty::UnevaluatedConstKind::new_from_def_id(tcx, item_def_id),
+            item_args,
+        );
+        Ok(Const::new_unevaluated(tcx, uv))
     }
 
     /// Lower a [resolved][hir::QPath::Resolved] (type-level) associated item path.
@@ -2860,7 +2704,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let _ = self
                     .prohibit_generic_args(leading_segments.iter(), GenericsArgsErrExtend::None);
                 let args = self.lower_generic_args_of_path_segment(span, did, segment);
-                ty::Const::new_unevaluated(tcx, ty::UnevaluatedConst::new(did, args))
+                ty::Const::new_unevaluated(
+                    tcx,
+                    ty::UnevaluatedConst::new(
+                        tcx,
+                        ty::UnevaluatedConstKind::new_from_def_id(tcx, did),
+                        args,
+                    ),
+                )
             }
             Res::Def(DefKind::Ctor(ctor_of, CtorKind::Const), did) => {
                 assert_eq!(opt_self_ty, None);
@@ -2984,10 +2835,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             Some(v) => v,
             None => ty::Const::new_unevaluated(
                 tcx,
-                ty::UnevaluatedConst {
-                    def: anon.def_id.to_def_id(),
-                    args: ty::GenericArgs::identity_for_item(tcx, anon.def_id.to_def_id()),
-                },
+                ty::UnevaluatedConst::new(
+                    tcx,
+                    ty::UnevaluatedConstKind::Anon { def_id: anon.def_id.to_def_id() },
+                    ty::GenericArgs::identity_for_item(tcx, anon.def_id.to_def_id()),
+                ),
             ),
         }
     }
@@ -3064,7 +2916,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         span: Span,
     ) -> Result<(), ErrorGuaranteed> {
         let tcx = self.tcx();
-        if tcx.is_type_const(def_id) {
+        // FIXME(gca): Intentionally disallowing paths to inherent associated non-type constants
+        // until a refactoring for how generic args for IACs are represented has been landed.
+        let is_inherent_assoc_const = tcx.def_kind(def_id)
+            == DefKind::AssocConst { is_type_const: false }
+            && tcx.def_kind(tcx.parent(def_id)) == DefKind::Impl { of_trait: false };
+        if tcx.is_type_const(def_id)
+            || tcx.features().generic_const_args() && !is_inherent_assoc_const
+        {
             Ok(())
         } else {
             let mut err = self.dcx().struct_span_err(
@@ -3729,48 +3588,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             err.emit();
         }
-    }
-
-    /// Given the bounds on an object, determines what single region bound (if any) we can
-    /// use to summarize this type.
-    ///
-    /// The basic idea is that we will use the bound the user
-    /// provided, if they provided one, and otherwise search the supertypes of trait bounds
-    /// for region bounds. It may be that we can derive no bound at all, in which case
-    /// we return `None`.
-    #[instrument(level = "debug", skip(self, span), ret)]
-    fn compute_object_lifetime_bound(
-        &self,
-        span: Span,
-        existential_predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-    ) -> Option<ty::Region<'tcx>> // if None, use the default
-    {
-        let tcx = self.tcx();
-
-        // No explicit region bound specified. Therefore, examine trait
-        // bounds and see if we can derive region bounds from those.
-        let derived_region_bounds = object_region_bounds(tcx, existential_predicates);
-
-        // If there are no derived region bounds, then report back that we
-        // can find no region bound. The caller will use the default.
-        if derived_region_bounds.is_empty() {
-            return None;
-        }
-
-        // If any of the derived region bounds are 'static, that is always
-        // the best choice.
-        if derived_region_bounds.iter().any(|r| r.is_static()) {
-            return Some(tcx.lifetimes.re_static);
-        }
-
-        // Determine whether there is exactly one unique region in the set
-        // of derived region bounds. If so, use that. Otherwise, report an
-        // error.
-        let r = derived_region_bounds[0];
-        if derived_region_bounds[1..].iter().any(|r1| r != *r1) {
-            self.dcx().emit_err(AmbiguousLifetimeBound { span });
-        }
-        Some(r)
     }
 
     fn construct_const_ctor_value(

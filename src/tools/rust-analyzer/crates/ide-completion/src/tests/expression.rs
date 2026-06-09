@@ -5,8 +5,8 @@ use crate::{
     CompletionConfig,
     config::AutoImportExclusionType,
     tests::{
-        BASE_ITEMS_FIXTURE, TEST_CONFIG, check, check_edit, check_with_base_items,
-        completion_list_with_config,
+        BASE_ITEMS_FIXTURE, TEST_CONFIG, check, check_edit, check_edit_with_config,
+        check_with_base_items, completion_list_with_config,
     },
 };
 
@@ -48,8 +48,8 @@ fn baz() {
             fn create_foo(…)   fn(&FooDesc)
             fn function()              fn()
             ma makro!(…) macro_rules! makro
-            md _69latrick
-            md module
+            md _69latrick::
+            md module::
             sc STATIC                  Unit
             st FooDesc              FooDesc
             st Record                Record
@@ -149,8 +149,8 @@ impl Unit {
             me self.foo()          fn(self)
             lc self                    Unit
             ma makro!(…) macro_rules! makro
-            md module
-            md qualified
+            md module::
+            md qualified::
             sp Self                    Unit
             sc STATIC                  Unit
             st Record                Record
@@ -212,8 +212,8 @@ impl Unit {
             en Enum                    Enum
             fn function()              fn()
             ma makro!(…) macro_rules! makro
-            md module
-            md qualified
+            md module::
+            md qualified::
             sc STATIC                  Unit
             st Record                Record
             st Tuple                  Tuple
@@ -1055,6 +1055,7 @@ fn brr() {
             fn brr()                               fn()
             st YoloVariant                  YoloVariant
             st YoloVariant {…} YoloVariant { f: usize }
+            ev Yolo(…) (use HH::Yolo) Yolo(YoloVariant)
             bt u32                                  u32
             kw const
             kw crate::
@@ -1146,6 +1147,49 @@ fn break_value_no_block() {
         "break",
         r#"fn f() -> i32 { loop { match () { () => $0 } } }"#,
         r#"fn f() -> i32 { loop { match () { () => break $0 } } }"#,
+    );
+}
+
+#[test]
+fn complete_module_colons() {
+    check_edit(
+        "module",
+        r#"mod module {} fn foo() { $0 }"#,
+        r#"mod module {} fn foo() { module:: }"#,
+    );
+
+    check_edit(
+        "module",
+        r#"mod module {} fn foo() { $0foo::bar }"#,
+        r#"mod module {} fn foo() { module::foo::bar }"#,
+    );
+
+    check_edit_with_config(
+        CompletionConfig { add_colons_to_module: false, ..TEST_CONFIG },
+        "module",
+        r#"mod module {} fn foo() { $0 }"#,
+        r#"mod module {} fn foo() { module }"#,
+    );
+}
+
+#[test]
+fn complete_module_exists_colons() {
+    check_edit(
+        "module",
+        r#"mod module {} fn foo() { $0::bar }"#,
+        r#"mod module {} fn foo() { module::bar }"#,
+    );
+
+    check_edit(
+        "module",
+        r#"
+macro_rules! i { ($i:ident) => { $i::bar } }
+mod module {}
+fn foo() { i!($0) }"#,
+        r#"
+macro_rules! i { ($i:ident) => { $i::bar } }
+mod module {}
+fn foo() { i!(module) }"#,
     );
 }
 
@@ -2224,7 +2268,7 @@ pub struct UnstableThisShouldNotBeListed;
 "#,
         expect![[r#"
             fn main() fn()
-            md std
+            md std::
             bt u32     u32
             kw async
             kw const
@@ -2278,7 +2322,7 @@ pub struct UnstableButWeAreOnNightlyAnyway;
 "#,
         expect![[r#"
             fn main()                                                     fn()
-            md std
+            md std::
             st UnstableButWeAreOnNightlyAnyway UnstableButWeAreOnNightlyAnyway
             bt u32                                                         u32
             kw async
@@ -2328,12 +2372,12 @@ fn main() {
     $0
 }
 //- /std.rs crate:std
-#[unstable(feature = "intrinsics")]
+#[unstable(feature = "core_intrinsics")]
 pub mod intrinsics {}
     "#,
         expect![[r#"
             fn main() fn()
-            md std
+            md std::
             bt u32     u32
             kw async
             kw const
@@ -2383,10 +2427,10 @@ fn main() {
 pub mod intrinsics {}
     "#,
         expect![[r#"
-            fn main() fn()
-            md intrinsics
-            md std
-            bt u32     u32
+            fn main()  fn()
+            md intrinsics::
+            md std::
+            bt u32      u32
             kw async
             kw const
             kw crate::
@@ -2622,7 +2666,7 @@ fn main() {
             ma helper!(…) macro_rules! helper
             ma m!(…)           macro_rules! m
             ma makro!(…)   macro_rules! makro
-            md module
+            md module::
             sc STATIC                    Unit
             st Record                  Record
             st Tuple                    Tuple
@@ -2920,6 +2964,84 @@ fn foo() {
 }
 
 #[test]
+fn flyimport_excluded_mod_items_from_flyimport() {
+    check_with_config(
+        CompletionConfig {
+            exclude_flyimport: vec![(
+                "ra_test_fixture::xpack::xmodule2".to_owned(),
+                AutoImportExclusionType::SubItems,
+            )],
+            ..TEST_CONFIG
+        },
+        r#"
+mod xpack {
+    mod xmodule1 {
+        pub struct XOther;
+    }
+    pub mod xmodule2 {
+        pub use super::xmodule1::*;
+        pub struct XStruct;
+        pub fn xfn() {}
+    }
+}
+
+fn foo() {
+    x$0
+}
+        "#,
+        expect![[r#"
+            ct CONST                       Unit
+            en Enum                        Enum
+            fn foo()                       fn()
+            fn function()                  fn()
+            ma makro!(…)     macro_rules! makro
+            md module::
+            md xmodule2:: (use xpack::xmodule2)
+            md xpack::
+            sc STATIC                      Unit
+            st Record                    Record
+            st Tuple                      Tuple
+            st Unit                        Unit
+            un Union                      Union
+            ev TupleV(…)            TupleV(u32)
+            bt u32                          u32
+            kw async
+            kw const
+            kw crate::
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+}
+
+#[test]
 fn excluded_trait_method_is_excluded_from_path_completion() {
     check_with_config(
         CompletionConfig {
@@ -3076,8 +3198,8 @@ fn bar() {
 }
         "#,
         expect![[r#"
-            en Option                             Option<{unknown}>
-            en Result                  Result<{unknown}, {unknown}>
+            en Option                                     Option<T>
+            en Result                                  Result<T, E>
             fn bar()                                           fn()
             lc i                                                i32
             ma const_format_args!(…) macro_rules! const_format_args
@@ -3085,12 +3207,12 @@ fn bar() {
             ma format_args_nl!(…)       macro_rules! format_args_nl
             ma panic!(…)                         macro_rules! panic
             ma print!(…)                         macro_rules! print
-            md core
-            md result (use core::result)
-            md rust_2015 (use core::prelude::rust_2015)
-            md rust_2018 (use core::prelude::rust_2018)
-            md rust_2021 (use core::prelude::rust_2021)
-            md rust_2024 (use core::prelude::rust_2024)
+            md core::
+            md result:: (use core::result)
+            md rust_2015:: (use core::prelude::rust_2015)
+            md rust_2018:: (use core::prelude::rust_2018)
+            md rust_2021:: (use core::prelude::rust_2021)
+            md rust_2024:: (use core::prelude::rust_2024)
             tt Clone
             tt Copy
             tt FromIterator
@@ -3162,6 +3284,37 @@ fn foo() {
 }
 
 #[test]
+fn deprecated_enum_marks_variants_deprecated() {
+    check(
+        r#"
+#[deprecated]
+enum Foo { Bar }
+fn main() { let _ = Foo::$0; }
+"#,
+        expect![[r#"
+            ev Bar Bar DEPRECATED
+        "#]],
+    );
+}
+
+#[test]
+fn deprecated_variant_of_undeprecated_enum_still_deprecated() {
+    check(
+        r#"
+enum Foo {
+    #[deprecated] Bar,
+    Baz,
+}
+fn main() { let _ = Foo::$0; }
+"#,
+        expect![[r#"
+            ev Bar Bar DEPRECATED
+            ev Baz Baz
+        "#]],
+    );
+}
+
+#[test]
 fn non_std_test_attr_macro() {
     check(
         r#"
@@ -3174,9 +3327,9 @@ fn foo() {
 }
     "#,
         expect![[r#"
-            fn foo()  fn()
-            md proc_macros
-            bt u32     u32
+            fn foo()    fn()
+            md proc_macros::
+            bt u32       u32
             kw async
             kw const
             kw crate::
@@ -3224,9 +3377,9 @@ fn foo() {
 }
     "#,
         expect![[r#"
-            fn foo()  fn()
-            md proc_macros
-            bt u32     u32
+            fn foo()    fn()
+            md proc_macros::
+            bt u32       u32
             kw async
             kw const
             kw crate::
@@ -3795,6 +3948,164 @@ fn baz(v: impl Bar) {
             sn refm           &mut expr
             sn return       return expr
             sn unsafe         unsafe {}
+        "#]],
+    );
+}
+
+#[test]
+fn regression_21697() {
+    check(
+        r#"
+trait SuperTrait {
+    type AssocTy;
+}
+
+trait SubTrait<T = <Self as SuperTrait>::AssocTy>: SuperTrait {}
+
+fn tryme(param: impl SubTrait) {
+    param$0
+}
+    "#,
+        expect![[r#"
+            fn tryme(…) fn(impl SubTrait<<impl SubTrait<<… as SuperTrait>::AssocTy> + ?Sized as SuperTrait>::AssocTy> + ?Sized)
+            lc param        impl SubTrait<<impl SubTrait<<… as SuperTrait>::AssocTy> + ?Sized as SuperTrait>::AssocTy> + ?Sized
+            tt SubTrait
+            tt SuperTrait
+            bt u32                                                                                                          u32
+            kw async
+            kw const
+            kw crate::
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+}
+
+#[test]
+fn can_complete_macro_path_inside_expansion() {
+    check(
+        r#"
+macro_rules! bar { () => (); }
+macro_rules! foo { ($i:ident) => { $i!() }; }
+fn main() {
+    foo!(ba$0);
+}
+    "#,
+        expect![[r#"
+            fn main()          fn()
+            ma bar macro_rules! bar
+            ma foo macro_rules! foo
+            bt u32              u32
+            kw const
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw return
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+        "#]],
+    );
+}
+
+#[test]
+fn no_completion_for_autorefd_traits_in_path_mode() {
+    check(
+        r#"
+//- minicore: clone
+trait Test1 {}
+
+fn test<H: Test1>(test: H) {
+    H::$0
+}
+    "#,
+        expect![""],
+    );
+}
+
+#[test]
+fn imported_enum_variant_has_lower_priority() {
+    check(
+        r#"
+pub struct String {}
+mod foo {
+    pub enum Foo { String }
+}
+fn main() {
+    Strin$0
+}
+    "#,
+        expect![[r#"
+            fn main()                          fn()
+            md foo::
+            st String                        String
+            ev String (use foo::Foo::String) String
+            bt u32                              u32
+            kw async
+            kw const
+            kw crate::
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
         "#]],
     );
 }

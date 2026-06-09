@@ -70,7 +70,11 @@ fn recurse_build<'tcx>(
         }
         &ExprKind::ZstLiteral { user_ty: _ } => ty::Const::zero_sized(tcx, node.ty),
         &ExprKind::NamedConst { def_id, args, user_ty: _ } => {
-            let uneval = ty::UnevaluatedConst::new(def_id, args);
+            let uneval = ty::UnevaluatedConst::new(
+                tcx,
+                ty::UnevaluatedConstKind::new_from_def_id(tcx, def_id),
+                args,
+            );
             ty::Const::new_unevaluated(tcx, uneval)
         }
         ExprKind::ConstParam { param, .. } => ty::Const::new_param(tcx, *param),
@@ -105,7 +109,7 @@ fn recurse_build<'tcx>(
         // }
         // ```
         ExprKind::Block { block } => {
-            if let thir::Block { stmts: box [], expr: Some(e), .. } = &body.blocks[*block] {
+            if let thir::Block { stmts: [], expr: Some(e), .. } = &body.blocks[*block] {
                 recurse_build(tcx, body, *e, root_span)?
             } else {
                 maybe_supported_error(GenericConstantTooComplexSub::BlockNotSupported(node.span))?
@@ -208,6 +212,9 @@ fn recurse_build<'tcx>(
         | ExprKind::ThreadLocalRef(_) => {
             error(GenericConstantTooComplexSub::OperationNotSupported(node.span))?
         }
+        ExprKind::Reborrow { .. } => {
+            todo!();
+        }
     })
 }
 
@@ -305,6 +312,9 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
             | thir::ExprKind::InlineAsm(_)
             | thir::ExprKind::ThreadLocalRef(_)
             | thir::ExprKind::Yield { .. } => false,
+            thir::ExprKind::Reborrow { .. } => {
+                todo!();
+            }
         }
     }
     fn pat_is_poly(&mut self, pat: &thir::Pat<'tcx>) -> bool {

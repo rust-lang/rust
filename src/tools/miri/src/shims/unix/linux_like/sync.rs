@@ -64,15 +64,15 @@ pub fn futex<'tcx>(
             };
 
             if bitset == 0 {
-                return ecx.set_last_error_and_return(LibcError("EINVAL"), dest);
+                return ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
             }
 
             let timeout = ecx.deref_pointer_as(timeout, ecx.libc_ty_layout("timespec"))?;
-            let timeout = if ecx.ptr_is_null(timeout.ptr())? {
+            let deadline = if ecx.ptr_is_null(timeout.ptr())? {
                 None
             } else {
                 let Some(duration) = ecx.read_timespec(&timeout)? else {
-                    return ecx.set_last_error_and_return(LibcError("EINVAL"), dest);
+                    return ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
                 };
                 let timeout_clock = if op & futex_realtime == futex_realtime {
                     ecx.check_no_isolation(
@@ -82,14 +82,14 @@ pub fn futex<'tcx>(
                 } else {
                     TimeoutClock::Monotonic
                 };
-                let timeout_anchor = if wait_bitset {
+                let timeout_style = if wait_bitset {
                     // FUTEX_WAIT_BITSET uses an absolute timestamp.
-                    TimeoutAnchor::Absolute
+                    TimeoutStyle::Absolute
                 } else {
                     // FUTEX_WAIT uses a relative timestamp.
-                    TimeoutAnchor::Relative
+                    TimeoutStyle::Relative
                 };
-                Some((timeout_clock, timeout_anchor, duration))
+                Some(ecx.machine.timeout(timeout_clock, timeout_style, duration))
             };
             // There may be a concurrent thread changing the value of addr
             // and then invoking the FUTEX_WAKE syscall. It is critical that the
@@ -154,7 +154,7 @@ pub fn futex<'tcx>(
                 ecx.futex_wait(
                     futex_ref,
                     bitset,
-                    timeout,
+                    deadline,
                     callback!(
                         @capture<'tcx> {
                             dest: MPlaceTy<'tcx>,
@@ -164,7 +164,7 @@ pub fn futex<'tcx>(
                                 ecx.write_int(0, &dest)
                             }
                             UnblockKind::TimedOut => {
-                                ecx.set_last_error_and_return(LibcError("ETIMEDOUT"), &dest)
+                                ecx.set_errno_and_return_neg1(LibcError("ETIMEDOUT"), &dest)
                             }
                         }
                     ),
@@ -172,7 +172,7 @@ pub fn futex<'tcx>(
             } else {
                 // The futex value doesn't match the expected value, so we return failure
                 // right away without sleeping: -1 and errno set to EAGAIN.
-                return ecx.set_last_error_and_return(LibcError("EAGAIN"), dest);
+                return ecx.set_errno_and_return_neg1(LibcError("EAGAIN"), dest);
             }
         }
         // FUTEX_WAKE: (int *addr, int op = FUTEX_WAKE, int val)
@@ -189,7 +189,7 @@ pub fn futex<'tcx>(
                 // Return an error code. (That seems nicer than silently doing something non-intuitive.)
                 // This means that if an address gets reused by a new allocation,
                 // we'll use an independent futex queue for this... that seems acceptable.
-                return ecx.set_last_error_and_return(LibcError("EFAULT"), dest);
+                return ecx.set_errno_and_return_neg1(LibcError("EFAULT"), dest);
             };
             let futex_ref = futex_ref.futex.clone();
 
@@ -205,7 +205,7 @@ pub fn futex<'tcx>(
                 u32::MAX
             };
             if bitset == 0 {
-                return ecx.set_last_error_and_return(LibcError("EINVAL"), dest);
+                return ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
             }
             // Together with the SeqCst fence in futex_wait, this makes sure that futex_wait
             // will see the latest value on addr which could be changed by our caller

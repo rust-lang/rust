@@ -6,7 +6,6 @@ use hir_def::{
 };
 use rustc_hash::FxHashSet;
 use rustc_type_ir::inherent::{AdtDef, GenericArgs as _, IntoKind};
-use stdx::never;
 
 use crate::{
     consteval,
@@ -22,9 +21,9 @@ use crate::{
 #[salsa::tracked]
 pub fn destructor(db: &dyn HirDatabase, adt: AdtId) -> Option<ImplId> {
     let module = match adt {
-        AdtId::EnumId(id) => db.lookup_intern_enum(id).container,
-        AdtId::StructId(id) => db.lookup_intern_struct(id).container,
-        AdtId::UnionId(id) => db.lookup_intern_union(id).container,
+        AdtId::EnumId(id) => id.loc(db).container,
+        AdtId::StructId(id) => id.loc(db).container,
+        AdtId::UnionId(id) => id.loc(db).container,
     };
     let interner = DbInterner::new_with(db, module.krate(db));
     let drop_trait = interner.lang_items().Drop?;
@@ -70,7 +69,7 @@ fn has_drop_glue_impl<'db>(
     let db = infcx.interner.db;
     match ty.kind() {
         TyKind::Adt(adt_def, subst) => {
-            let adt_id = adt_def.def_id().0;
+            let adt_id = adt_def.def_id();
             if adt_def.destructor(infcx.interner).is_some() {
                 return DropGlue::HasDropGlue;
             }
@@ -87,7 +86,7 @@ fn has_drop_glue_impl<'db>(
                         .map(|(_, field_ty)| {
                             has_drop_glue_impl(
                                 infcx,
-                                field_ty.get().instantiate(infcx.interner, subst),
+                                field_ty.get().instantiate(infcx.interner, subst).skip_norm_wip(),
                                 env,
                                 visited,
                             )
@@ -100,14 +99,17 @@ fn has_drop_glue_impl<'db>(
                 AdtId::EnumId(id) => id
                     .enum_variants(db)
                     .variants
-                    .iter()
-                    .map(|&(variant, _, _)| {
+                    .values()
+                    .map(|&(variant, _)| {
                         db.field_types(variant.into())
                             .iter()
                             .map(|(_, field_ty)| {
                                 has_drop_glue_impl(
                                     infcx,
-                                    field_ty.get().instantiate(infcx.interner, subst),
+                                    field_ty
+                                        .get()
+                                        .instantiate(infcx.interner, subst)
+                                        .skip_norm_wip(),
                                     env,
                                     visited,
                                 )
@@ -174,9 +176,7 @@ fn has_drop_glue_impl<'db>(
             }
         }
         TyKind::Infer(..) => unreachable!("inference vars shouldn't exist out of inference"),
-        TyKind::Pat(..) | TyKind::UnsafeBinder(..) => {
-            never!("we do not handle pattern and unsafe binder types");
-            DropGlue::None
-        }
+        TyKind::Pat(ty, _) => has_drop_glue_impl(infcx, ty, env, visited),
+        TyKind::UnsafeBinder(ty) => has_drop_glue_impl(infcx, ty.skip_binder(), env, visited),
     }
 }

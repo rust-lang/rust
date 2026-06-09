@@ -1,7 +1,7 @@
 use std::hash::Hash;
 
-use rustc_data_structures::stable_hasher::{
-    HashingControls, RawDefId, RawDefPathHash, RawSpan, StableHash, StableHashCtxt, StableHasher,
+use rustc_data_structures::stable_hash::{
+    RawDefId, RawDefPathHash, RawSpan, StableHash, StableHashControls, StableHashCtxt, StableHasher,
 };
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_session::Session;
@@ -20,34 +20,34 @@ enum CachingSourceMap<'a> {
 /// enough information to transform `DefId`s and `HirId`s into stable `DefPath`s (i.e.,
 /// a reference to the `TyCtxt`) and it holds a few caches for speeding up various
 /// things (e.g., each `DefId`/`DefPath` is only hashed once).
-pub struct StableHashingContext<'a> {
+pub struct StableHashState<'a> {
     untracked: &'a Untracked,
     // The value of `-Z incremental-ignore-spans`.
     // This field should only be used by `unstable_opts_incremental_ignore_span`
     incremental_ignore_spans: bool,
     caching_source_map: CachingSourceMap<'a>,
-    hashing_controls: HashingControls,
+    stable_hash_controls: StableHashControls,
 }
 
-impl<'a> StableHashingContext<'a> {
+impl<'a> StableHashState<'a> {
     #[inline]
     pub fn new(sess: &'a Session, untracked: &'a Untracked) -> Self {
         let hash_spans_initial = !sess.opts.unstable_opts.incremental_ignore_spans;
 
-        StableHashingContext {
+        StableHashState {
             untracked,
             incremental_ignore_spans: sess.opts.unstable_opts.incremental_ignore_spans,
             caching_source_map: CachingSourceMap::Unused(sess.source_map()),
-            hashing_controls: HashingControls { hash_spans: hash_spans_initial },
+            stable_hash_controls: StableHashControls { hash_spans: hash_spans_initial },
         }
     }
 
     #[inline]
     pub fn while_hashing_spans<F: FnOnce(&mut Self)>(&mut self, hash_spans: bool, f: F) {
-        let prev_hash_spans = self.hashing_controls.hash_spans;
-        self.hashing_controls.hash_spans = hash_spans;
+        let prev_hash_spans = self.stable_hash_controls.hash_spans;
+        self.stable_hash_controls.hash_spans = hash_spans;
         f(self);
-        self.hashing_controls.hash_spans = prev_hash_spans;
+        self.stable_hash_controls.hash_spans = prev_hash_spans;
     }
 
     #[inline]
@@ -67,12 +67,12 @@ impl<'a> StableHashingContext<'a> {
     }
 
     #[inline]
-    pub fn hashing_controls(&self) -> HashingControls {
-        self.hashing_controls
+    pub fn stable_hash_controls(&self) -> StableHashControls {
+        self.stable_hash_controls
     }
 }
 
-impl<'a> StableHashCtxt for StableHashingContext<'a> {
+impl<'a> StableHashCtxt for StableHashState<'a> {
     /// Hashes a span in a stable way. We can't directly hash the span's `BytePos` fields (that
     /// would be similar to hashing pointers, since those are just offsets into the `SourceMap`).
     /// Instead, we hash the (file name, line, column) triple, which stays the same even if the
@@ -85,12 +85,12 @@ impl<'a> StableHashCtxt for StableHashingContext<'a> {
     ///
     /// IMPORTANT: changes to this method should be reflected in implementations of `SpanEncoder`.
     #[inline]
-    fn span_hash_stable(&mut self, raw_span: RawSpan, hasher: &mut StableHasher) {
+    fn stable_hash_span(&mut self, raw_span: RawSpan, hasher: &mut StableHasher) {
         const TAG_VALID_SPAN: u8 = 0;
         const TAG_INVALID_SPAN: u8 = 1;
         const TAG_RELATIVE_SPAN: u8 = 2;
 
-        if !self.hashing_controls().hash_spans {
+        if !self.stable_hash_controls().hash_spans {
             return;
         }
 
@@ -170,13 +170,13 @@ impl<'a> StableHashCtxt for StableHashingContext<'a> {
     }
 
     /// Assert that the provided `StableHashCtxt` is configured with the default
-    /// `HashingControls`. We should always have bailed out before getting to here with a
+    /// `StableHashControls`. We should always have bailed out before getting to here with a
     /// non-default mode. With this check in place, we can avoid the need to maintain separate
-    /// versions of `ExpnData` hashes for each permutation of `HashingControls` settings.
+    /// versions of `ExpnData` hashes for each permutation of `StableHashControls` settings.
     #[inline]
-    fn assert_default_hashing_controls(&self, msg: &str) {
-        let hashing_controls = self.hashing_controls;
-        let HashingControls { hash_spans } = hashing_controls;
+    fn assert_default_stable_hash_controls(&self, msg: &str) {
+        let stable_hash_controls = self.stable_hash_controls;
+        let StableHashControls { hash_spans } = stable_hash_controls;
 
         // Note that we require that `hash_spans` be the inverse of the global `-Z
         // incremental-ignore-spans` option. Normally, this option is disabled, in which case
@@ -187,12 +187,12 @@ impl<'a> StableHashCtxt for StableHashingContext<'a> {
         // used for metadata.
         assert_eq!(
             hash_spans, !self.incremental_ignore_spans,
-            "Attempted hashing of {msg} with non-default HashingControls: {hashing_controls:?}"
+            "Attempted hashing of {msg} with non-default StableHashControls: {stable_hash_controls:?}"
         );
     }
 
     #[inline]
-    fn hashing_controls(&self) -> HashingControls {
-        self.hashing_controls
+    fn stable_hash_controls(&self) -> StableHashControls {
+        self.stable_hash_controls
     }
 }

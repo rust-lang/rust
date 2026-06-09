@@ -24,7 +24,10 @@ use crate::{AssistContext, AssistId, Assists};
 //     };
 // }
 // ```
-pub(crate) fn convert_let_else_to_match(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn convert_let_else_to_match(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_, '_>,
+) -> Option<()> {
     let (editor, _) = SyntaxEditor::new(ctx.source_file().syntax().clone());
     // Should focus on the `else` token to trigger
     let let_stmt = ctx
@@ -143,6 +146,10 @@ fn remove_mut_and_collect_idents(
             let pat = remove_mut_and_collect_idents(editor, &p.pat()?, acc)?;
             make.box_pat(pat).into()
         }
+        ast::Pat::DerefPat(p) => {
+            let pat = remove_mut_and_collect_idents(editor, &p.pat()?, acc)?;
+            make.deref_pat(pat)
+        }
         ast::Pat::OrPat(p) => {
             let pats = p
                 .pats()
@@ -222,6 +229,7 @@ fn remove_mut_and_collect_idents(
         | ast::Pat::LiteralPat(_)
         | ast::Pat::PathPat(_)
         | ast::Pat::WildcardPat(_)
+        | ast::Pat::NotNull(_)
         | ast::Pat::ConstBlockPat(_) => pat.clone(),
         // don't support macro pat yet
         ast::Pat::MacroPat(_) => return None,

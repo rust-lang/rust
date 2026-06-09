@@ -19,7 +19,7 @@
 // CHECK-NOT define
 // CHECK: bb3
 // CHECK: call void @__tgt_target_data_begin_mapper(ptr nonnull @anon.{{.*}}.1, i64 -1, i32 1, ptr nonnull %.offload_baseptrs, ptr nonnull %.offload_ptrs, ptr nonnull @.offload_sizes.foo, ptr nonnull @.offload_maptypes.foo.begin, ptr null, ptr null)
-// CHECK: %10 = call i32 @__tgt_target_kernel(ptr nonnull @anon.{{.*}}.1, i64 -1, i32 256, i32 32, ptr nonnull @.foo.region_id, ptr nonnull %kernel_args)
+// CHECK: = call i32 @__tgt_target_kernel(ptr nonnull @anon.{{.*}}.1, i64 -1, i32 256, i32 32, ptr nonnull @.foo.region_id, ptr nonnull %kernel_args)
 // CHECK-NEXT: call void @__tgt_target_data_end_mapper(ptr nonnull @anon.{{.*}}.1, i64 -1, i32 1, ptr nonnull %.offload_baseptrs, ptr nonnull %.offload_ptrs, ptr nonnull @.offload_sizes.foo, ptr nonnull @.offload_maptypes.foo.end, ptr null, ptr null)
 #[unsafe(no_mangle)]
 unsafe fn main() {
@@ -30,6 +30,7 @@ unsafe fn main() {
             foo,
             [256, 1, 1],
             [32, 1, 1],
+            0,
             (A.as_ptr() as *const [f32; 6],),
         );
     }

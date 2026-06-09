@@ -1073,6 +1073,21 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 self.simplify_place_projection(place, location);
                 return self.new_pointer(*place, AddressKind::Ref(borrow_kind));
             }
+            Rvalue::Reborrow(_, mutbl, place) => {
+                if mutbl == Mutability::Mut {
+                    // Note: this is adapted from simplify_aggregate.
+                    let mut operand = Operand::Copy(place);
+                    let val = self.simplify_operand(&mut operand, location);
+                    // FIXME(reborrow): Is it correct to make these retagging assignments?
+                    *rvalue = Rvalue::Use(Operand::Copy(place), WithRetag::Yes);
+                    return val;
+                } else {
+                    // FIXME(reborrow): CoerceShared should perform effectively a copy followed by a
+                    // transmute, or possibly something more complicated in the future. For now we
+                    // leave this unoptimised.
+                    return None;
+                }
+            }
             Rvalue::RawPtr(mutbl, ref mut place) => {
                 self.simplify_place_projection(place, location);
                 return self.new_pointer(*place, AddressKind::Address(mutbl));
@@ -1086,7 +1101,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             Rvalue::Cast(ref mut kind, ref mut value, to) => {
                 return self.simplify_cast(kind, value, to, location);
             }
-            Rvalue::BinaryOp(op, box (ref mut lhs, ref mut rhs)) => {
+            Rvalue::BinaryOp(op, (ref mut lhs, ref mut rhs)) => {
                 return self.simplify_binary(op, lhs, rhs, location);
             }
             Rvalue::UnaryOp(op, ref mut arg_op) => {
@@ -1185,7 +1200,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         let tcx = self.tcx;
         let ty = rvalue.ty(self.local_decls, tcx);
 
-        let Rvalue::Aggregate(box ref kind, ref mut field_ops) = *rvalue else { bug!() };
+        let Rvalue::Aggregate(ref kind, ref mut field_ops) = *rvalue else { bug!() };
 
         if field_ops.is_empty() {
             let is_zst = match *kind {
@@ -1761,7 +1776,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             && adt.repr().transparent()
             && let [single_field] = adt.non_enum_variant().fields.raw.as_slice()
         {
-            Some((FieldIdx::ZERO, single_field.ty(self.tcx, args)))
+            Some((FieldIdx::ZERO, single_field.ty(self.tcx, args).skip_norm_wip()))
         } else {
             None
         }

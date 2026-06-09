@@ -1,8 +1,7 @@
 use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
 use rustc_errors::{Diag, MultiSpan, pluralize};
-use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::find_attr;
+use rustc_hir::{self as hir, LangItem, find_attr};
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
@@ -140,62 +139,88 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             let item_name = tcx.item_name(def_id);
                             let item_args = self.format_generic_args(assoc_args);
 
-                            // Here, we try to see if there's an existing
-                            // trait implementation that matches the one that
-                            // we're suggesting to restrict. If so, find the
-                            // "end", whether it be at the end of the trait
-                            // or the end of the generic arguments.
-                            let mut matching_span = None;
-                            let mut matched_end_of_args = false;
-                            for bound in generics.bounds_for_param(local_id) {
-                                let potential_spans = bound.bounds.iter().find_map(|bound| {
-                                    let bound_trait_path = bound.trait_ref()?.path;
-                                    let def_id = bound_trait_path.res.opt_def_id()?;
-                                    let generic_args = bound_trait_path
-                                        .segments
-                                        .iter()
-                                        .last()
-                                        .map(|path| path.args());
-                                    (def_id == trait_ref.def_id)
-                                        .then_some((bound_trait_path.span, generic_args))
-                                });
+                            if
+                            // if we're referencing an async fn trait's output future
+                            //
+                            // AsyncFnOnce
+                            (tcx.is_lang_item(trait_ref.def_id, LangItem::AsyncFnOnce)
+                                && tcx.is_lang_item(def_id, LangItem::CallOnceFuture))
+                            // AsyncFnMut
+                            ||
+                            (tcx.is_lang_item(trait_ref.def_id, LangItem::AsyncFnMut)
+                                && tcx.is_lang_item(def_id, LangItem::CallRefFuture))
+                            // AsyncFn
+                            ||
+                            (tcx.is_lang_item(trait_ref.def_id, LangItem::AsyncFn)
+                                && tcx.is_lang_item(def_id, LangItem::CallRefFuture))
+                            {
+                                // don't make a suggestion to constrain it, it's not possible in
+                                // current rust. In fact, when something is referring to this, you
+                                // may have just needed to await something.
 
-                                if let Some((end_of_trait, end_of_args)) = potential_spans {
-                                    let args_span = end_of_args.and_then(|args| args.span());
-                                    matched_end_of_args = args_span.is_some();
-                                    matching_span = args_span
-                                        .or_else(|| Some(end_of_trait))
-                                        .map(|span| span.shrink_to_hi());
-                                    break;
-                                }
-                            }
-
-                            if matched_end_of_args {
-                                // Append suggestion to the end of our args
-                                let path = format!(", {item_name}{item_args} = {p}");
-                                note = !suggest_constraining_type_param(
-                                    tcx,
-                                    generics,
-                                    diag,
-                                    &proj.self_ty().to_string(),
-                                    &path,
-                                    None,
-                                    matching_span,
-                                );
+                                diag.help("you may have forgotten to await an async function");
+                                diag.note(format!("it is currently not possible to add bounds constraining the future returned from an async function (`{item_name}`)"));
+                                // don't note, since it's talking about missing bounds. There's
+                                // currently no way to bound the return future
+                                note = false;
                             } else {
-                                // Suggest adding a bound to an existing trait
-                                // or if the trait doesn't exist, add the trait
-                                // and the suggested bounds.
-                                let path = format!("<{item_name}{item_args} = {p}>");
-                                note = !suggest_constraining_type_param(
-                                    tcx,
-                                    generics,
-                                    diag,
-                                    &proj.self_ty().to_string(),
-                                    &path,
-                                    None,
-                                    matching_span,
-                                );
+                                // Here, we try to see if there's an existing
+                                // trait implementation that matches the one that
+                                // we're suggesting to restrict. If so, find the
+                                // "end", whether it be at the end of the trait
+                                // or the end of the generic arguments.
+                                let mut matching_span = None;
+                                let mut matched_end_of_args = false;
+                                for bound in generics.bounds_for_param(local_id) {
+                                    let potential_spans = bound.bounds.iter().find_map(|bound| {
+                                        let bound_trait_path = bound.trait_ref()?.path;
+                                        let def_id = bound_trait_path.res.opt_def_id()?;
+                                        let generic_args = bound_trait_path
+                                            .segments
+                                            .iter()
+                                            .last()
+                                            .map(|path| path.args());
+                                        (def_id == trait_ref.def_id)
+                                            .then_some((bound_trait_path.span, generic_args))
+                                    });
+
+                                    if let Some((end_of_trait, end_of_args)) = potential_spans {
+                                        let args_span = end_of_args.and_then(|args| args.span());
+                                        matched_end_of_args = args_span.is_some();
+                                        matching_span = args_span
+                                            .or_else(|| Some(end_of_trait))
+                                            .map(|span| span.shrink_to_hi());
+                                        break;
+                                    }
+                                }
+
+                                if matched_end_of_args {
+                                    // Append suggestion to the end of our args
+                                    let path = format!(", {item_name}{item_args} = {p}");
+                                    note = !suggest_constraining_type_param(
+                                        tcx,
+                                        generics,
+                                        diag,
+                                        &proj.self_ty().to_string(),
+                                        &path,
+                                        None,
+                                        matching_span,
+                                    );
+                                } else {
+                                    // Suggest adding a bound to an existing trait
+                                    // or if the trait doesn't exist, add the trait
+                                    // and the suggested bounds.
+                                    let path = format!("<{item_name}{item_args} = {p}>");
+                                    note = !suggest_constraining_type_param(
+                                        tcx,
+                                        generics,
+                                        diag,
+                                        &proj.self_ty().to_string(),
+                                        &path,
+                                        None,
+                                        matching_span,
+                                    );
+                                }
                             }
                         }
                         if note {

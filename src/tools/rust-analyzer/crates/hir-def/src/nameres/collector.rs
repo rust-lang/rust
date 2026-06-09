@@ -316,7 +316,7 @@ impl<'db> DefCollector<'db> {
                                 _ => None,
                             },
                         );
-                    crate_data.unstable_features.extend(features);
+                    features.for_each(|feature| crate_data.unstable_features.enable(feature));
                 }
                 () if *attr_name == sym::register_tool => {
                     if let Some(ident) = attr.single_ident_value() {
@@ -1027,7 +1027,7 @@ impl<'db> DefCollector<'db> {
                             .enum_variants(self.db)
                             .variants
                             .iter()
-                            .map(|&(variant, ref name, _)| {
+                            .map(|(name, &(variant, _))| {
                                 let res = PerNs::both(variant.into(), variant.into(), vis, None);
                                 (Some(name.clone()), res)
                             })
@@ -2428,6 +2428,8 @@ impl ModCollector<'_, '_> {
                 self.def_collector.db,
                 self.def_collector.def_map.krate,
                 self.def_collector.def_map.block_id(),
+                Some(self.module_id),
+                name.clone(),
             )
             .to_static()
         };
@@ -2560,7 +2562,7 @@ impl ModCollector<'_, '_> {
                         .def_map
                         .diagnostics
                         .push(DefDiagnostic::unimplemented_builtin_macro(self.module_id, f_ast_id));
-                    return;
+                    MacroExpander::UnimplementedBuiltIn
                 }
             }
         } else {
@@ -2639,7 +2641,7 @@ impl ModCollector<'_, '_> {
                     .def_map
                     .diagnostics
                     .push(DefDiagnostic::unimplemented_builtin_macro(self.module_id, f_ast_id));
-                return;
+                MacroExpander::UnimplementedBuiltIn
             }
         } else {
             // Case 2: normal `macro`
@@ -2840,6 +2842,6 @@ foo!(KABOOM);
         assert_eq!(def_map.recursion_limit(), 4);
         assert!(def_map.is_no_core());
         assert!(def_map.is_no_std());
-        assert!(def_map.is_unstable_feature_enabled(&sym::register_tool));
+        assert!(def_map.features().is_enabled(&sym::register_tool));
     }
 }

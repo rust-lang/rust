@@ -88,6 +88,8 @@ rm -r tests/run-make/reproducible-build-2
 rm -r tests/run-make/no-builtins-lto
 rm -r tests/run-make/reachable-extern-fn-available-lto
 rm -r tests/run-make/no-builtins-linker-plugin-lto
+rm -r tests/run-make/fat-then-thin-lto
+rm -r tests/run-make/cross-lang-lto-upstream-rlibs
 
 # coverage instrumentation
 rm tests/ui/consts/precise-drop-with-coverage.rs
@@ -146,6 +148,7 @@ rm tests/ui/consts/const-mut-refs-crate.rs # same
 rm tests/ui/abi/large-byval-align.rs # exceeds implementation limit of Cranelift
 rm -r tests/run-make/short-ice # ICE backtrace begin/end marker mismatch
 rm -r tests/run-make/naked-dead-code-elimination # function not eliminated
+rm tests/ui/codegen/huge-stacks.rs # Cranelift doesn't allow stack frames to exceed 4GB
 
 # doesn't work due to the way the rustc test suite is invoked.
 # should work when using ./x.py test the way it is intended
@@ -200,5 +203,5 @@ index 073116933bd..c3e4578204d 100644
 EOF
 
 echo "[TEST] rustc test suite"
-./x.py test --stage 0 --test-args=--no-capture tests/{codegen-units,run-make,run-make-cargo,ui,incremental}
+./x.py test --stage 0 --no-capture --verbose-run-make-subprocess-output=false tests/{codegen-units,run-make,run-make-cargo,ui,incremental}
 popd

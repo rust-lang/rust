@@ -7,7 +7,7 @@ use rustc_abi::{ExternAbi, Integer};
 use rustc_data_structures::base_n::ToBaseN;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
-use rustc_data_structures::stable_hasher::StableHasher;
+use rustc_data_structures::stable_hash::StableHasher;
 use rustc_hashes::Hash64;
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
@@ -646,9 +646,11 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
                 // could have different bound vars *anyways*.
                 match predicate.as_ref().skip_binder() {
                     ty::ExistentialPredicate::Trait(trait_ref) => {
-                        // Use a type that can't appear in defaults of type parameters.
-                        let dummy_self = Ty::new_fresh(p.tcx, 0);
-                        let trait_ref = trait_ref.with_self_ty(p.tcx, dummy_self);
+                        // Dummy Self is safe to use as it can't appear in generic param defaults
+                        // which is important later on for correctly eliding generic args that
+                        // coincide with their default.
+                        let trait_ref =
+                            trait_ref.with_self_ty(p.tcx, p.tcx.types.trait_object_dummy_self);
                         p.print_def_path(trait_ref.def_id, trait_ref.args)?;
                     }
                     ty::ExistentialPredicate::Projection(projection) => {
@@ -690,8 +692,8 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
 
             // We may still encounter unevaluated consts due to the printing
             // logic sometimes passing identity-substituted impl headers.
-            ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args, .. }) => {
-                return self.print_def_path(def, args);
+            ty::ConstKind::Unevaluated(ty::UnevaluatedConst { kind, args, .. }) => {
+                return self.print_def_path(kind.def_id(), args);
             }
 
             ty::ConstKind::Expr(_)

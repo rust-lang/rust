@@ -26,46 +26,50 @@ fn test_socketpair() {
 
     // Read size == data available in buffer.
     let data = b"abcde";
-    write_all_from_slice(fds[0], data).unwrap();
-    let buf = read_all_into_array::<5>(fds[1]).unwrap();
+    write_all(fds[0], data).unwrap();
+    let buf = read_exact_array::<5>(fds[1]).unwrap();
     assert_eq!(&buf, data);
 
     // Read size > data available in buffer.
     let data = b"abc";
-    write_all_from_slice(fds[0], data).unwrap();
+    write_all(fds[0], data).unwrap();
     let mut buf2: [u8; 5] = [0; 5];
-    let (read, rest) = read_into_slice(fds[1], &mut buf2).unwrap();
+    let (read, rest) = read_split_slice(fds[1], &mut buf2).unwrap();
     assert_eq!(read[..], data[..read.len()]);
     // Write 2 more bytes so we can exactly fill the `rest`.
-    write_all_from_slice(fds[0], b"12").unwrap();
-    read_all_into_slice(fds[1], rest).unwrap();
+    write_all(fds[0], b"12").unwrap();
+    read_exact(fds[1], rest).unwrap();
+    assert_eq!(&buf2, b"abc12");
 
     // Test read and write from another direction.
     // Read size == data available in buffer.
     let data = b"12345";
-    write_all_from_slice(fds[1], data).unwrap();
-    let buf3 = read_all_into_array::<5>(fds[0]).unwrap();
+    write_all(fds[1], data).unwrap();
+    let buf3 = read_exact_array::<5>(fds[0]).unwrap();
     assert_eq!(&buf3, data);
 
     // Read size > data available in buffer.
-    let data = b"123";
-    write_all_from_slice(fds[1], data).unwrap();
+    let data = b"abc";
+    write_all(fds[1], data).unwrap();
     let mut buf4: [u8; 5] = [0; 5];
-    let (read, rest) = read_into_slice(fds[0], &mut buf4).unwrap();
+    let (read, rest) = read_split_slice(fds[0], &mut buf4).unwrap();
     assert_eq!(read[..], data[..read.len()]);
     // Write 2 more bytes so we can exactly fill the `rest`.
-    write_all_from_slice(fds[1], b"12").unwrap();
-    read_all_into_slice(fds[0], rest).unwrap();
+    write_all(fds[1], b"12").unwrap();
+    read_exact(fds[0], rest).unwrap();
+    assert_eq!(&buf4, b"abc12");
 
     // Test when happens when we close one end, with some data in the buffer.
-    write_all_from_slice(fds[0], data).unwrap();
+    write_all(fds[0], data).unwrap();
     errno_check(unsafe { libc::close(fds[0]) });
     // Reading the other end should return that data, then EOF.
     let mut buf: [u8; 5] = [0; 5];
-    let (res, _) = read_until_eof_into_slice(fds[1], &mut buf).unwrap();
-    assert_eq!(res, data);
+    let (read, _tail) = read_split_slice(fds[1], &mut buf).unwrap();
+    assert_eq!(read, data);
+    let (read, _tail) = read_split_slice(fds[1], &mut buf).unwrap();
+    assert_eq!(read, &[]);
     // Writing the other end should emit EPIPE.
-    let err = write_all_from_slice(fds[1], &mut buf).unwrap_err();
+    let err = write_all(fds[1], &mut buf).unwrap_err();
     assert_eq!(err.raw_os_error(), Some(libc::EPIPE));
 }
 
@@ -74,19 +78,19 @@ fn test_socketpair_threaded() {
     errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
 
     let thread1 = thread::spawn(move || {
-        let buf = read_all_into_array::<5>(fds[1]).unwrap();
+        let buf = read_exact_array::<5>(fds[1]).unwrap();
         assert_eq!(&buf, b"abcde");
     });
     thread::yield_now();
-    write_all_from_slice(fds[0], b"abcde").unwrap();
+    write_all(fds[0], b"abcde").unwrap();
     thread1.join().unwrap();
 
     // Read and write from different direction
     let thread2 = thread::spawn(move || {
         thread::yield_now();
-        write_all_from_slice(fds[1], b"12345").unwrap();
+        write_all(fds[1], b"12345").unwrap();
     });
-    let buf = read_all_into_array::<5>(fds[0]).unwrap();
+    let buf = read_exact_array::<5>(fds[0]).unwrap();
     assert_eq!(&buf, b"12345");
     thread2.join().unwrap();
 }
@@ -98,13 +102,13 @@ fn test_race() {
     let thread1 = thread::spawn(move || {
         // write() from the main thread will occur before the read() here
         // because preemption is disabled and the main thread yields after write().
-        let buf = read_all_into_array::<1>(fds[1]).unwrap();
+        let buf = read_exact_array::<1>(fds[1]).unwrap();
         assert_eq!(&buf, b"a");
         // The read above establishes a happens-before so it is now safe to access this global variable.
         unsafe { assert_eq!(VAL, 1) };
     });
     unsafe { VAL = 1 };
-    write_all_from_slice(fds[0], b"a").unwrap();
+    write_all(fds[0], b"a").unwrap();
     thread::yield_now();
     thread1.join().unwrap();
 }
@@ -115,12 +119,12 @@ fn test_blocking_read() {
     errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
     let thread1 = thread::spawn(move || {
         // Let this thread block on read.
-        let buf = read_all_into_array::<3>(fds[1]).unwrap();
+        let buf = read_exact_array::<3>(fds[1]).unwrap();
         assert_eq!(&buf, b"abc");
     });
     let thread2 = thread::spawn(move || {
         // Unblock thread1 by doing writing something.
-        write_all_from_slice(fds[0], b"abc").unwrap();
+        write_all(fds[0], b"abc").unwrap();
     });
     thread1.join().unwrap();
     thread2.join().unwrap();
@@ -132,14 +136,14 @@ fn test_blocking_write() {
     errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
     let arr1: [u8; 0x34000] = [1; 0x34000];
     // Exhaust the space in the buffer so the subsequent write will block.
-    write_all_from_slice(fds[0], &arr1).unwrap();
+    write_all(fds[0], &arr1).unwrap();
     let thread1 = thread::spawn(move || {
         // The write below will be blocked because the buffer is already full.
-        write_all_from_slice(fds[0], b"abc").unwrap();
+        write_all(fds[0], b"abc").unwrap();
     });
     let thread2 = thread::spawn(move || {
         // Unblock thread1 by freeing up some space.
-        let buf = read_all_into_array::<3>(fds[1]).unwrap();
+        let buf = read_exact_array::<3>(fds[1]).unwrap();
         assert_eq!(buf, [1, 1, 1]);
     });
     thread1.join().unwrap();

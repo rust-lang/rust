@@ -15,7 +15,7 @@ use super::Lift;
 
 pub type PrintError = std::fmt::Error;
 
-pub trait Print<'tcx, P> {
+pub trait Print<P> {
     fn print(&self, p: &mut P) -> Result<(), PrintError>;
 }
 
@@ -350,19 +350,19 @@ pub fn characteristic_def_id_of_type(ty: Ty<'_>) -> Option<DefId> {
     characteristic_def_id_of_type_cached(ty, &mut SsoHashSet::new())
 }
 
-impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::Region<'tcx> {
+impl<'tcx, P: Printer<'tcx>> Print<P> for ty::Region<'tcx> {
     fn print(&self, p: &mut P) -> Result<(), PrintError> {
         p.print_region(*self)
     }
 }
 
-impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for Ty<'tcx> {
+impl<'tcx, P: Printer<'tcx>> Print<P> for Ty<'tcx> {
     fn print(&self, p: &mut P) -> Result<(), PrintError> {
         p.print_type(*self)
     }
 }
 
-impl<'tcx, P: Printer<'tcx> + std::fmt::Write> Print<'tcx, P> for ty::Instance<'tcx> {
+impl<'tcx, P: Printer<'tcx> + std::fmt::Write> Print<P> for ty::Instance<'tcx> {
     fn print(&self, cx: &mut P) -> Result<(), PrintError> {
         cx.print_def_path(self.def_id(), self.args)?;
         match self.def {
@@ -399,13 +399,13 @@ impl<'tcx, P: Printer<'tcx> + std::fmt::Write> Print<'tcx, P> for ty::Instance<'
     }
 }
 
-impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> {
+impl<'tcx, P: Printer<'tcx>> Print<P> for &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> {
     fn print(&self, p: &mut P) -> Result<(), PrintError> {
         p.print_dyn_existential(self)
     }
 }
 
-impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::Const<'tcx> {
+impl<'tcx, P: Printer<'tcx>> Print<P> for ty::Const<'tcx> {
     fn print(&self, p: &mut P) -> Result<(), PrintError> {
         p.print_const(*self)
     }
@@ -413,7 +413,7 @@ impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::Const<'tcx> {
 
 impl<T> rustc_type_ir::ir_print::IrPrint<T> for TyCtxt<'_>
 where
-    T: Copy + for<'a, 'tcx> Lift<TyCtxt<'tcx>, Lifted: Print<'tcx, FmtPrinter<'a, 'tcx>>>,
+    T: Copy + for<'a, 'tcx> Lift<TyCtxt<'tcx>, Lifted: Print<FmtPrinter<'a, 'tcx>>>,
 {
     fn print(t: &T, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         ty::tls::with(|tcx| {

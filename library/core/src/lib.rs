@@ -61,11 +61,11 @@
     target_has_atomic = "32",
     target_has_atomic = "64",
     target_has_atomic = "ptr",
-    target_has_atomic_equal_alignment = "8",
-    target_has_atomic_equal_alignment = "16",
-    target_has_atomic_equal_alignment = "32",
-    target_has_atomic_equal_alignment = "64",
-    target_has_atomic_equal_alignment = "ptr",
+    target_has_atomic_primitive_alignment = "8",
+    target_has_atomic_primitive_alignment = "16",
+    target_has_atomic_primitive_alignment = "32",
+    target_has_atomic_primitive_alignment = "64",
+    target_has_atomic_primitive_alignment = "ptr",
     target_has_atomic_load_store = "8",
     target_has_atomic_load_store = "16",
     target_has_atomic_load_store = "32",
@@ -80,6 +80,7 @@
 #![deny(rust_2021_incompatible_or_patterns)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(fuzzy_provenance_casts)]
+#![deny(lossy_provenance_casts)]
 #![warn(deprecated_in_future)]
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
@@ -110,7 +111,6 @@
 #![feature(offset_of_enum)]
 #![feature(panic_internals)]
 #![feature(pattern_type_macro)]
-#![feature(sealed)]
 #![feature(ub_checks)]
 // tidy-alphabetical-end
 //
@@ -123,8 +123,8 @@
 #![feature(auto_traits)]
 #![feature(cfg_sanitize)]
 #![feature(cfg_target_has_atomic)]
-#![feature(cfg_target_has_atomic_equal_alignment)]
 #![feature(cfg_ub_checks)]
+#![feature(const_closures)]
 #![feature(const_precise_live_drops)]
 #![feature(const_trait_impl)]
 #![feature(decl_macro)]
@@ -141,6 +141,7 @@
 #![feature(freeze_impls)]
 #![feature(fundamental)]
 #![feature(funnel_shifts)]
+#![feature(impl_restriction)]
 #![feature(intra_doc_pointers)]
 #![feature(intrinsics)]
 #![feature(lang_items)]
@@ -166,7 +167,6 @@
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
 #![feature(strict_provenance_lints)]
-#![feature(target_feature_inline_always)]
 #![feature(trait_alias)]
 #![feature(transparent_unions)]
 #![feature(try_blocks)]
@@ -220,14 +220,6 @@ pub mod from {
     pub use crate::macros::builtin::From;
 }
 
-mod sealed {
-    /// This trait being unreachable from outside the crate
-    /// prevents outside implementations of our extension traits.
-    /// This allows adding more trait methods in the future.
-    #[unstable(feature = "sealed", issue = "none")]
-    pub trait Sealed {}
-}
-
 // We don't export this through #[macro_export] for now, to avoid breakage.
 #[unstable(feature = "autodiff", issue = "124509")]
 #[doc = include_str!("../../core/src/autodiff.md")]
@@ -235,6 +227,10 @@ pub mod autodiff {
     #[unstable(feature = "autodiff", issue = "124509")]
     pub use crate::macros::builtin::{autodiff_forward, autodiff_reverse};
 }
+
+#[unstable(feature = "gpu_offload", issue = "131513")]
+#[doc = include_str!("../../core/src/offload.md")]
+pub mod offload;
 
 #[unstable(feature = "contracts", issue = "128044")]
 pub mod contracts;

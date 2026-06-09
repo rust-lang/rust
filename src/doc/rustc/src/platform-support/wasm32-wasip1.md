@@ -70,17 +70,16 @@ be used instead.
 
 [`wasi-libc`]: https://github.com/WebAssembly/wasi-libc
 
-## Building the target
+## Building the target in rustc
 
-To build this target first acquire a copy of
-[`wasi-sdk`](https://github.com/WebAssembly/wasi-sdk/). At this time version 22
-is the minimum needed.
+To build this target first acquire a copy of [`wasi-sdk`]. At this time version
+33 is the minimum needed.
 
 Next configure the `WASI_SDK_PATH` environment variable to point to where this
 is installed. For example:
 
 ```text
-export WASI_SDK_PATH=/path/to/wasi-sdk-22.0
+export WASI_SDK_PATH=/path/to/wasi-sdk-33.0
 ```
 
 Next be sure to enable LLD when building Rust from source as LLVM's `wasm-ld`
@@ -102,6 +101,16 @@ Rust programs can be built for that target:
 ```text
 rustc --target wasm32-wasip1 your-code.rs
 ```
+
+The `wasm32-wasip1` toolchain comes with a self-contained sysroot meaning that
+no external compiler is required when building for this target. Users which
+build a `staticlib`, however, or use an external `-Clinker`, are recommended to
+use [`wasi-sdk`]. The minimum version required of [`wasi-sdk`] will change over
+time as it's updated in Rust and Rust relies on newer features that [`wasi-sdk`]
+has. See the documentation above about building the target in rustc for the
+minimum known working version.
+
+[`wasi-sdk`]: https://github.com/WebAssembly/wasi-sdk
 
 ## Cross-compilation
 

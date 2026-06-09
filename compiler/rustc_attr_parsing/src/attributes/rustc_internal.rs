@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use rustc_ast::{LitIntType, LitKind, MetaItemLit};
+use rustc_feature::AttributeStability;
 use rustc_hir::LangItem;
 use rustc_hir::attrs::{
     BorrowckGraphvizFormatKind, CguFields, CguKind, DivergingBlockBehavior,
@@ -20,6 +21,10 @@ pub(crate) struct RustcMainParser;
 impl NoArgsAttributeParser for RustcMainParser {
     const PATH: &[Symbol] = &[sym::rustc_main];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const STABILITY: AttributeStability = unstable!(
+        rustc_attrs,
+        "the `#[rustc_main]` attribute is used internally to specify test entry point function"
+    );
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcMain;
 }
 
@@ -28,6 +33,10 @@ pub(crate) struct RustcMustImplementOneOfParser;
 impl SingleAttributeParser for RustcMustImplementOneOfParser {
     const PATH: &[Symbol] = &[sym::rustc_must_implement_one_of];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
+    const STABILITY: AttributeStability = unstable!(
+        rustc_attrs,
+        "the `#[rustc_must_implement_one_of]` attribute is used to change minimal complete definition of a trait. Its syntax and semantics are highly experimental and will be subject to change before stabilization"
+    );
     const TEMPLATE: AttributeTemplate = template!(List: &["function1, function2, ..."]);
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let list = cx.expect_list(args, cx.attr_span)?;
@@ -43,7 +52,7 @@ impl SingleAttributeParser for RustcMustImplementOneOfParser {
 
         let mut errored = false;
         for argument in inputs {
-            let Some(meta) = argument.meta_item() else {
+            let Some(meta) = argument.meta_item_no_args() else {
                 cx.adcx().expected_identifier(argument.span());
                 return None;
             };
@@ -75,6 +84,8 @@ impl NoArgsAttributeParser for RustcNeverReturnsNullPtrParser {
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNeverReturnsNullPtr;
 }
 pub(crate) struct RustcNoImplicitAutorefsParser;
@@ -88,6 +99,7 @@ impl NoArgsAttributeParser for RustcNoImplicitAutorefsParser {
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
 
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNoImplicitAutorefs;
 }
@@ -98,6 +110,7 @@ impl SingleAttributeParser for RustcLegacyConstGenericsParser {
     const PATH: &[Symbol] = &[sym::rustc_legacy_const_generics];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const TEMPLATE: AttributeTemplate = template!(List: &["N"]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let meta_items = cx.expect_list(args, cx.attr_span)?;
@@ -141,6 +154,7 @@ impl NoArgsAttributeParser for RustcInheritOverflowChecksParser {
         Allow(Target::Method(MethodKind::TraitImpl)),
         Allow(Target::Closure),
     ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcInheritOverflowChecks;
 }
 
@@ -150,16 +164,12 @@ impl SingleAttributeParser for RustcLintOptDenyFieldAccessParser {
     const PATH: &[Symbol] = &[sym::rustc_lint_opt_deny_field_access];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Field)]);
     const TEMPLATE: AttributeTemplate = template!(Word);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let arg = cx.expect_single_element_list(args, cx.attr_span)?;
+        let lint_message = cx.expect_string_literal(arg)?;
 
-        let MetaItemOrLitParser::Lit(MetaItemLit { kind: LitKind::Str(lint_message, _), .. }) = arg
-        else {
-            cx.adcx().expected_string_literal(arg.span(), arg.lit());
-            return None;
-        };
-
-        Some(AttributeKind::RustcLintOptDenyFieldAccess { lint_message: *lint_message })
+        Some(AttributeKind::RustcLintOptDenyFieldAccess { lint_message })
     }
 }
 
@@ -168,6 +178,7 @@ pub(crate) struct RustcLintOptTyParser;
 impl NoArgsAttributeParser for RustcLintOptTyParser {
     const PATH: &[Symbol] = &[sym::rustc_lint_opt_ty];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcLintOptTy;
 }
 
@@ -204,10 +215,7 @@ fn parse_cgu_fields(
             }
         };
 
-        let Some(str) = arg.value_as_str() else {
-            cx.adcx().expected_string_literal(arg.value_span, Some(arg.value_as_lit()));
-            continue;
-        };
+        let str = cx.expect_string_literal(arg)?;
 
         if res.is_some() {
             cx.adcx().duplicate_key(ident.span.to(arg.args_span()), ident.name);
@@ -266,6 +274,7 @@ impl AttributeParser for RustcCguTestAttributeParser {
         (
             &[sym::rustc_partition_reused],
             template!(List: &[r#"cfg = "...", module = "...""#]),
+            unstable!(rustc_attrs),
             |this, cx, args| {
                 this.items.extend(parse_cgu_fields(cx, args, false).map(|(cfg, module, _)| {
                     (cx.attr_span, CguFields::PartitionReused { cfg, module })
@@ -275,6 +284,7 @@ impl AttributeParser for RustcCguTestAttributeParser {
         (
             &[sym::rustc_partition_codegened],
             template!(List: &[r#"cfg = "...", module = "...""#]),
+            unstable!(rustc_attrs),
             |this, cx, args| {
                 this.items.extend(parse_cgu_fields(cx, args, false).map(|(cfg, module, _)| {
                     (cx.attr_span, CguFields::PartitionCodegened { cfg, module })
@@ -284,6 +294,7 @@ impl AttributeParser for RustcCguTestAttributeParser {
         (
             &[sym::rustc_expected_cgu_reuse],
             template!(List: &[r#"cfg = "...", module = "...", kind = "...""#]),
+            unstable!(rustc_attrs),
             |this, cx, args| {
                 this.items.extend(parse_cgu_fields(cx, args, true).map(|(cfg, module, kind)| {
                     // unwrap ok because if not given, we return None in `parse_cgu_fields`.
@@ -313,6 +324,7 @@ impl SingleAttributeParser for RustcDeprecatedSafe2024Parser {
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
     const TEMPLATE: AttributeTemplate = template!(List: &[r#"audit_that = "...""#]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let single = cx.expect_single_element_list(args, cx.attr_span)?;
@@ -324,10 +336,7 @@ impl SingleAttributeParser for RustcDeprecatedSafe2024Parser {
             return None;
         };
 
-        let Some(suggestion) = arg.value_as_str() else {
-            cx.adcx().expected_string_literal(arg.value_span, Some(arg.value_as_lit()));
-            return None;
-        };
+        let suggestion = cx.expect_string_literal(arg)?;
 
         Some(AttributeKind::RustcDeprecatedSafe2024 { suggestion })
     }
@@ -344,6 +353,7 @@ impl NoArgsAttributeParser for RustcConversionSuggestionParser {
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcConversionSuggestion;
 }
 
@@ -352,6 +362,7 @@ pub(crate) struct RustcCaptureAnalysisParser;
 impl NoArgsAttributeParser for RustcCaptureAnalysisParser {
     const PATH: &[Symbol] = &[sym::rustc_capture_analysis];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Closure)]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcCaptureAnalysis;
 }
 
@@ -364,6 +375,10 @@ impl SingleAttributeParser for RustcNeverTypeOptionsParser {
         r#"fallback = "unit", "never", "no""#,
         r#"diverging_block_default = "unit", "never""#,
     ]);
+    const STABILITY: AttributeStability = unstable!(
+        rustc_attrs,
+        "`rustc_never_type_options` is used to experiment with never type fallback and work on never type stabilization"
+    );
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let list = cx.expect_list(args, cx.attr_span)?;
@@ -388,10 +403,7 @@ impl SingleAttributeParser for RustcNeverTypeOptionsParser {
                 }
             };
 
-            let Some(field) = arg.value_as_str() else {
-                cx.adcx().expected_string_literal(arg.value_span, Some(arg.value_as_lit()));
-                continue;
-            };
+            let field = cx.expect_string_literal(arg)?;
 
             if res.is_some() {
                 cx.adcx().duplicate_key(ident.span, ident.name);
@@ -432,6 +444,7 @@ pub(crate) struct RustcTrivialFieldReadsParser;
 impl NoArgsAttributeParser for RustcTrivialFieldReadsParser {
     const PATH: &[Symbol] = &[sym::rustc_trivial_field_reads];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcTrivialFieldReads;
 }
 
@@ -446,6 +459,7 @@ impl NoArgsAttributeParser for RustcNoMirInlineParser {
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNoMirInline;
 }
 
@@ -461,6 +475,7 @@ impl NoArgsAttributeParser for RustcNoWritableParser {
         Allow(Target::Method(MethodKind::TraitImpl)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
     ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNoWritable;
 }
 
@@ -475,6 +490,7 @@ impl NoArgsAttributeParser for RustcLintQueryInstabilityParser {
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcLintQueryInstability;
 }
 
@@ -489,7 +505,7 @@ impl NoArgsAttributeParser for RustcRegionsParser {
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
-
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcRegions;
 }
 
@@ -504,7 +520,7 @@ impl NoArgsAttributeParser for RustcLintUntrackedQueryInformationParser {
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
-
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcLintUntrackedQueryInformation;
 }
 
@@ -514,6 +530,7 @@ impl SingleAttributeParser for RustcSimdMonomorphizeLaneLimitParser {
     const PATH: &[Symbol] = &[sym::rustc_simd_monomorphize_lane_limit];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let nv = cx.expect_name_value(args, cx.attr_span, None)?;
@@ -527,6 +544,7 @@ impl SingleAttributeParser for RustcScalableVectorParser {
     const PATH: &[Symbol] = &[sym::rustc_scalable_vector];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["count"]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         if args.as_no_args().is_ok() {
@@ -548,13 +566,11 @@ impl SingleAttributeParser for LangParser {
     const PATH: &[Symbol] = &[sym::lang];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); // Targets are checked per lang item in `rustc_passes`
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
+    const STABILITY: AttributeStability = unstable!(lang_items);
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let nv = cx.expect_name_value(args, cx.attr_span, None)?;
-        let Some(name) = nv.value_as_str() else {
-            cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
-            return None;
-        };
+        let name = cx.expect_string_literal(nv)?;
         let Some(lang_item) = LangItem::from_name(name) else {
             cx.emit_err(UnknownLangItem { span: cx.attr_span, name });
             return None;
@@ -574,6 +590,7 @@ impl NoArgsAttributeParser for RustcHasIncoherentInherentImplsParser {
         Allow(Target::Union),
         Allow(Target::ForeignTy),
     ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcHasIncoherentInherentImpls;
 }
 
@@ -582,6 +599,7 @@ pub(crate) struct PanicHandlerParser;
 impl NoArgsAttributeParser for PanicHandlerParser {
     const PATH: &[Symbol] = &[sym::panic_handler];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); // Targets are checked per lang item in `rustc_passes`
+    const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::Lang(LangItem::PanicImpl);
 }
 
@@ -596,6 +614,7 @@ impl NoArgsAttributeParser for RustcNounwindParser {
         Allow(Target::Method(MethodKind::TraitImpl)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
     ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNounwind;
 }
 
@@ -604,6 +623,7 @@ pub(crate) struct RustcOffloadKernelParser;
 impl NoArgsAttributeParser for RustcOffloadKernelParser {
     const PATH: &[Symbol] = &[sym::rustc_offload_kernel];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcOffloadKernel;
 }
 
@@ -615,7 +635,6 @@ impl CombineAttributeParser for RustcMirParser {
     type Item = RustcMirKind;
 
     const CONVERT: ConvertFn<Self::Item> = |items, _| AttributeKind::RustcMir(items);
-
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -623,8 +642,8 @@ impl CombineAttributeParser for RustcMirParser {
         Allow(Target::Method(MethodKind::Trait { body: false })),
         Allow(Target::Method(MethodKind::Trait { body: true })),
     ]);
-
     const TEMPLATE: AttributeTemplate = template!(List: &["arg1, arg2, ..."]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
 
     fn extend(
         cx: &mut AcceptContext<'_, '_>,
@@ -649,10 +668,7 @@ impl CombineAttributeParser for RustcMirParser {
                                 mi.span(),
                                 Some(sym::borrowck_graphviz_postflow),
                             )?;
-                            let Some(path) = nv.value_as_str() else {
-                                cx.adcx().expected_string_literal(nv.value_span, None);
-                                return None;
-                            };
+                            let path = cx.expect_string_literal(nv)?;
                             let path = PathBuf::from(path.to_string());
                             if path.file_name().is_some() {
                                 Some(RustcMirKind::BorrowckGraphvizPostflow { path })
@@ -699,6 +715,10 @@ impl NoArgsAttributeParser for RustcNonConstTraitMethodParser {
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::Trait { body: false })),
     ]);
+    const STABILITY: AttributeStability = unstable!(
+        rustc_attrs,
+        "`#[rustc_non_const_trait_method]` should only used by the standard library to mark trait methods as non-const to allow large traits an easier transition to const"
+    );
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNonConstTraitMethod;
 }
 
@@ -710,7 +730,6 @@ impl CombineAttributeParser for RustcCleanParser {
     type Item = RustcCleanAttribute;
 
     const CONVERT: ConvertFn<Self::Item> = |items, _| AttributeKind::RustcClean(items);
-
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         // tidy-alphabetical-start
         Allow(Target::AssocConst),
@@ -735,7 +754,7 @@ impl CombineAttributeParser for RustcCleanParser {
         Allow(Target::Union),
         // tidy-alphabetical-end
     ]);
-
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const TEMPLATE: AttributeTemplate =
         template!(List: &[r#"cfg = "...", /*opt*/ label = "...", /*opt*/ except = "...""#]);
 
@@ -757,8 +776,7 @@ impl CombineAttributeParser for RustcCleanParser {
                 continue;
             };
             let value_span = value.value_span;
-            let Some(value) = value.value_as_str() else {
-                cx.adcx().expected_string_literal(value_span, None);
+            let Some(value) = cx.expect_string_literal(value) else {
                 continue;
             };
             match ident.name {
@@ -805,7 +823,6 @@ pub(crate) struct RustcIfThisChangedParser;
 
 impl SingleAttributeParser for RustcIfThisChangedParser {
     const PATH: &[Symbol] = &[sym::rustc_if_this_changed];
-
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         // tidy-alphabetical-start
         Allow(Target::AssocConst),
@@ -830,8 +847,8 @@ impl SingleAttributeParser for RustcIfThisChangedParser {
         Allow(Target::Union),
         // tidy-alphabetical-end
     ]);
-
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["DepNode"]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         if !cx.cx.sess.opts.unstable_opts.query_dep_graph {
@@ -841,7 +858,7 @@ impl SingleAttributeParser for RustcIfThisChangedParser {
             ArgParser::NoArgs => Some(AttributeKind::RustcIfThisChanged(cx.attr_span, None)),
             ArgParser::List(list) => {
                 let item = cx.expect_single(list)?;
-                let Some(ident) = item.meta_item().and_then(|item| item.ident()) else {
+                let Some(ident) = item.meta_item_no_args().and_then(|item| item.ident()) else {
                     cx.adcx().expected_identifier(item.span());
                     return None;
                 };
@@ -888,8 +905,8 @@ impl CombineAttributeParser for RustcThenThisWouldNeedParser {
         Allow(Target::Union),
         // tidy-alphabetical-end
     ]);
-
     const TEMPLATE: AttributeTemplate = template!(List: &["DepNode"]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
 
     fn extend(
         cx: &mut AcceptContext<'_, '_>,
@@ -899,7 +916,7 @@ impl CombineAttributeParser for RustcThenThisWouldNeedParser {
             cx.emit_err(AttributeRequiresOpt { span: cx.attr_span, opt: "-Z query-dep-graph" });
         }
         let item = cx.expect_single_element_list(args, cx.attr_span)?;
-        let Some(ident) = item.meta_item().and_then(|item| item.ident()) else {
+        let Some(ident) = item.meta_item_no_args().and_then(|item| item.ident()) else {
             cx.adcx().expected_identifier(item.span());
             return None;
         };
@@ -916,6 +933,7 @@ impl NoArgsAttributeParser for RustcInsignificantDtorParser {
         Allow(Target::Struct),
         Allow(Target::ForeignTy),
     ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcInsignificantDtor;
 }
 
@@ -954,6 +972,7 @@ impl NoArgsAttributeParser for RustcEffectiveVisibilityParser {
         Allow(Target::PatField),
         Allow(Target::Crate),
     ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcEffectiveVisibility;
 }
 
@@ -980,13 +999,14 @@ impl SingleAttributeParser for RustcDiagnosticItemParser {
         Allow(Target::Crate),
     ]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
+    const STABILITY: AttributeStability = unstable!(
+        rustc_attrs,
+        "the `#[rustc_diagnostic_item]` attribute allows the compiler to reference types from the standard library for diagnostic purposes"
+    );
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let nv = cx.expect_name_value(args, cx.attr_span, None)?;
-        let Some(value) = nv.value_as_str() else {
-            cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
-            return None;
-        };
+        let value = cx.expect_string_literal(nv)?;
         Some(AttributeKind::RustcDiagnosticItem(value))
     }
 }
@@ -1002,6 +1022,10 @@ impl NoArgsAttributeParser for RustcDoNotConstCheckParser {
         Allow(Target::Method(MethodKind::Trait { body: false })),
         Allow(Target::Method(MethodKind::Trait { body: true })),
     ]);
+    const STABILITY: AttributeStability = unstable!(
+        rustc_attrs,
+        "`#[rustc_do_not_const_check]` skips const-check for this function's body"
+    );
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDoNotConstCheck;
 }
 
@@ -1010,6 +1034,11 @@ pub(crate) struct RustcNonnullOptimizationGuaranteedParser;
 impl NoArgsAttributeParser for RustcNonnullOptimizationGuaranteedParser {
     const PATH: &[Symbol] = &[sym::rustc_nonnull_optimization_guaranteed];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
+    const STABILITY: AttributeStability = unstable!(
+        rustc_attrs,
+        "the `#[rustc_nonnull_optimization_guaranteed]` attribute is just used to document guaranteed niche optimizations in the standard library",
+        "the compiler does not even check whether the type indeed is being non-null-optimized; it is your responsibility to ensure that the attribute is only used on types that are optimized"
+    );
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNonnullOptimizationGuaranteed;
 }
 
@@ -1024,6 +1053,7 @@ impl NoArgsAttributeParser for RustcStrictCoherenceParser {
         Allow(Target::Union),
         Allow(Target::ForeignTy),
     ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcStrictCoherence;
 }
 
@@ -1033,16 +1063,12 @@ impl SingleAttributeParser for RustcReservationImplParser {
     const PATH: &[Symbol] = &[sym::rustc_reservation_impl];
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::Impl { of_trait: true })]);
-
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "reservation message");
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let nv = cx.expect_name_value(args, cx.attr_span, None)?;
-
-        let Some(value_str) = nv.value_as_str() else {
-            cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
-            return None;
-        };
+        let value_str = cx.expect_string_literal(nv)?;
 
         Some(AttributeKind::RustcReservationImpl(value_str))
     }
@@ -1053,6 +1079,7 @@ pub(crate) struct PreludeImportParser;
 impl NoArgsAttributeParser for PreludeImportParser {
     const PATH: &[Symbol] = &[sym::prelude_import];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Use)]);
+    const STABILITY: AttributeStability = unstable!(prelude_import);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::PreludeImport;
 }
 
@@ -1062,14 +1089,14 @@ impl SingleAttributeParser for RustcDocPrimitiveParser {
     const PATH: &[Symbol] = &[sym::rustc_doc_primitive];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Mod)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "primitive name");
+    const STABILITY: AttributeStability = unstable!(
+        rustc_attrs,
+        "the `#[rustc_doc_primitive]` attribute is used by the standard library to provide a way to generate documentation for primitive types"
+    );
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let nv = cx.expect_name_value(args, cx.attr_span, None)?;
-
-        let Some(value_str) = nv.value_as_str() else {
-            cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
-            return None;
-        };
+        let value_str = cx.expect_string_literal(nv)?;
 
         Some(AttributeKind::RustcDocPrimitive(cx.attr_span, value_str))
     }
@@ -1080,6 +1107,7 @@ pub(crate) struct RustcIntrinsicParser;
 impl NoArgsAttributeParser for RustcIntrinsicParser {
     const PATH: &[Symbol] = &[sym::rustc_intrinsic];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const STABILITY: AttributeStability = unstable!(intrinsics);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcIntrinsic;
 }
 
@@ -1088,6 +1116,7 @@ pub(crate) struct RustcIntrinsicConstStableIndirectParser;
 impl NoArgsAttributeParser for RustcIntrinsicConstStableIndirectParser {
     const PATH: &'static [Symbol] = &[sym::rustc_intrinsic_const_stable_indirect];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcIntrinsicConstStableIndirect;
 }
 
@@ -1096,5 +1125,6 @@ pub(crate) struct RustcExhaustiveParser;
 impl NoArgsAttributeParser for RustcExhaustiveParser {
     const PATH: &'static [Symbol] = &[sym::rustc_must_match_exhaustively];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Enum)]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcMustMatchExhaustively;
 }

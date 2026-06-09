@@ -54,7 +54,7 @@ index 2e16f2cf27..3ac3df99a8 100644
 --- a/src/bootstrap/bootstrap.py
 +++ b/src/bootstrap/bootstrap.py
 @@ -1147,6 +1147,8 @@ class RustBuild(object):
-             args += ["-Zwarnings"]
+         if deny_warnings:
              env["CARGO_BUILD_WARNINGS"] = "deny"
 
 +        env["RUSTFLAGS"] += " -Zbinary-dep-depinfo"

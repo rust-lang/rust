@@ -11,7 +11,7 @@ use crate::convert::Infallible;
 use crate::error::Error;
 use crate::hash::{self, Hash};
 use crate::intrinsics::transmute_unchecked;
-use crate::iter::{TrustedLen, UncheckedIterator, repeat_n};
+use crate::iter::{TrustedLen, repeat_n};
 use crate::marker::Destruct;
 use crate::mem::{self, ManuallyDrop, MaybeUninit};
 use crate::ops::{
@@ -52,7 +52,10 @@ pub use iter::IntoIter;
 #[must_use = "cloning is often expensive and is not expected to have side effects"]
 #[stable(feature = "array_repeat", since = "1.91.0")]
 pub fn repeat<T: Clone, const N: usize>(val: T) -> [T; N] {
-    from_trusted_iterator(repeat_n(val, N))
+    let mut iter = repeat_n(val, N);
+    // SAFETY: Unless a panic occurs, from_fn will call the closure N times,
+    // and repeat_n's next() will return Some for N times.
+    from_fn(move |_| unsafe { iter.next().unwrap_unchecked() })
 }
 
 /// Creates an array where each element is produced by calling `f` with
@@ -90,10 +93,8 @@ pub fn repeat<T: Clone, const N: usize>(val: T) -> [T; N] {
 /// You can also capture things, for example to create an array full of clones
 /// where you can't just use `[item; N]` because it's not `Copy`:
 /// ```
-/// # // TBH `array::repeat` would be better for this, but it's not stable yet.
-/// let my_string = String::from("Hello");
-/// let clones: [String; 42] = std::array::from_fn(|_| my_string.clone());
-/// assert!(clones.iter().all(|x| *x == my_string));
+/// let my_string: [String; 2] = std::array::from_fn(|i| format!("Hello {i}"));
+/// assert_eq!(my_string, ["Hello 0", "Hello 1"]);
 /// ```
 ///
 /// The array is generated in ascending index order, starting from the front
@@ -194,7 +195,7 @@ impl Error for TryFromSliceError {}
 
 #[stable(feature = "try_from_slice_error", since = "1.36.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const From<Infallible> for TryFromSliceError {
+const impl From<Infallible> for TryFromSliceError {
     fn from(x: Infallible) -> TryFromSliceError {
         match x {}
     }
@@ -202,7 +203,7 @@ impl const From<Infallible> for TryFromSliceError {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T, const N: usize> const AsRef<[T]> for [T; N] {
+const impl<T, const N: usize> AsRef<[T]> for [T; N] {
     #[inline]
     fn as_ref(&self) -> &[T] {
         &self[..]
@@ -211,7 +212,7 @@ impl<T, const N: usize> const AsRef<[T]> for [T; N] {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T, const N: usize> const AsMut<[T]> for [T; N] {
+const impl<T, const N: usize> AsMut<[T]> for [T; N] {
     #[inline]
     fn as_mut(&mut self) -> &mut [T] {
         &mut self[..]
@@ -220,7 +221,7 @@ impl<T, const N: usize> const AsMut<[T]> for [T; N] {
 
 #[stable(feature = "array_borrow", since = "1.4.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T, const N: usize> const Borrow<[T]> for [T; N] {
+const impl<T, const N: usize> Borrow<[T]> for [T; N] {
     fn borrow(&self) -> &[T] {
         self
     }
@@ -228,7 +229,7 @@ impl<T, const N: usize> const Borrow<[T]> for [T; N] {
 
 #[stable(feature = "array_borrow", since = "1.4.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T, const N: usize> const BorrowMut<[T]> for [T; N] {
+const impl<T, const N: usize> BorrowMut<[T]> for [T; N] {
     fn borrow_mut(&mut self) -> &mut [T] {
         self
     }
@@ -248,7 +249,7 @@ impl<T, const N: usize> const BorrowMut<[T]> for [T; N] {
 /// ```
 #[stable(feature = "try_from", since = "1.34.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T, const N: usize> const TryFrom<&[T]> for [T; N]
+const impl<T, const N: usize> TryFrom<&[T]> for [T; N]
 where
     T: Copy,
 {
@@ -274,7 +275,7 @@ where
 /// ```
 #[stable(feature = "try_from_mut_slice_to_array", since = "1.59.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T, const N: usize> const TryFrom<&mut [T]> for [T; N]
+const impl<T, const N: usize> TryFrom<&mut [T]> for [T; N]
 where
     T: Copy,
 {
@@ -300,7 +301,7 @@ where
 /// ```
 #[stable(feature = "try_from", since = "1.34.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<'a, T, const N: usize> const TryFrom<&'a [T]> for &'a [T; N] {
+const impl<'a, T, const N: usize> TryFrom<&'a [T]> for &'a [T; N] {
     type Error = TryFromSliceError;
 
     #[inline]
@@ -323,7 +324,7 @@ impl<'a, T, const N: usize> const TryFrom<&'a [T]> for &'a [T; N] {
 /// ```
 #[stable(feature = "try_from", since = "1.34.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<'a, T, const N: usize> const TryFrom<&'a mut [T]> for &'a mut [T; N] {
+const impl<'a, T, const N: usize> TryFrom<&'a mut [T]> for &'a mut [T; N] {
     type Error = TryFromSliceError;
 
     #[inline]
@@ -379,7 +380,7 @@ impl<'a, T, const N: usize> IntoIterator for &'a mut [T; N] {
 
 #[stable(feature = "index_trait_on_arrays", since = "1.50.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-impl<T, I, const N: usize> const Index<I> for [T; N]
+const impl<T, I, const N: usize> Index<I> for [T; N]
 where
     [T]: [const] Index<I>,
 {
@@ -393,7 +394,7 @@ where
 
 #[stable(feature = "index_trait_on_arrays", since = "1.50.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-impl<T, I, const N: usize> const IndexMut<I> for [T; N]
+const impl<T, I, const N: usize> IndexMut<I> for [T; N]
 where
     [T]: [const] IndexMut<I>,
 {
@@ -406,7 +407,7 @@ where
 /// Implements comparison of arrays [lexicographically](Ord#lexicographical-comparison).
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-impl<T: [const] PartialOrd, const N: usize> const PartialOrd for [T; N] {
+const impl<T: [const] PartialOrd, const N: usize> PartialOrd for [T; N] {
     #[inline]
     fn partial_cmp(&self, other: &[T; N]) -> Option<Ordering> {
         PartialOrd::partial_cmp(&&self[..], &&other[..])
@@ -432,7 +433,7 @@ impl<T: [const] PartialOrd, const N: usize> const PartialOrd for [T; N] {
 /// Implements comparison of arrays [lexicographically](Ord#lexicographical-comparison).
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-impl<T: [const] Ord, const N: usize> const Ord for [T; N] {
+const impl<T: [const] Ord, const N: usize> Ord for [T; N] {
     #[inline]
     fn cmp(&self, other: &[T; N]) -> Ordering {
         Ord::cmp(&&self[..], &&other[..])
@@ -466,7 +467,15 @@ trait SpecArrayClone: Clone {
 impl<T: Clone> SpecArrayClone for T {
     #[inline]
     default fn clone<const N: usize>(array: &[T; N]) -> [T; N] {
-        from_trusted_iterator(array.iter().cloned())
+        let mut ptr: *const T = array.as_ptr();
+        // SAFETY: Unless a panic occurs, from_fn will call the closure N times,
+        // so our pointer arithmetic will be in bounds for the N-element array.
+        // This works even for ZSTs, since in that case, add() is a no-op.
+        from_fn(move |_| unsafe {
+            let old = ptr;
+            ptr = ptr.add(1);
+            (&*old).clone()
+        })
     }
 }
 
@@ -879,39 +888,6 @@ impl<T, const N: usize> [T; N] {
     }
 }
 
-/// Populate an array from the first `N` elements of `iter`
-///
-/// # Panics
-///
-/// If the iterator doesn't actually have enough items.
-///
-/// By depending on `TrustedLen`, however, we can do that check up-front (where
-/// it easily optimizes away) so it doesn't impact the loop that fills the array.
-#[inline]
-fn from_trusted_iterator<T, const N: usize>(iter: impl UncheckedIterator<Item = T>) -> [T; N] {
-    try_from_trusted_iterator(iter.map(NeverShortCircuit)).0
-}
-
-#[inline]
-fn try_from_trusted_iterator<T, R, const N: usize>(
-    iter: impl UncheckedIterator<Item = R>,
-) -> ChangeOutputType<R, [T; N]>
-where
-    R: Try<Output = T>,
-    R::Residual: Residual<[T; N]>,
-{
-    assert!(iter.size_hint().0 >= N);
-    fn next<T>(mut iter: impl UncheckedIterator<Item = T>) -> impl FnMut(usize) -> T {
-        move |_| {
-            // SAFETY: We know that `from_fn` will call this at most N times,
-            // and we checked to ensure that we have at least that many items.
-            unsafe { iter.next_unchecked() }
-        }
-    }
-
-    try_from_fn(next(iter))
-}
-
 /// Version of [`try_from_fn`] using a passed-in slice in order to avoid
 /// needing to monomorphize for every array length.
 ///
@@ -982,7 +958,7 @@ impl<T> Guard<'_, T> {
 }
 
 #[rustc_const_unstable(feature = "array_try_from_fn", issue = "89379")]
-impl<T: [const] Destruct> const Drop for Guard<'_, T> {
+const impl<T: [const] Destruct> Drop for Guard<'_, T> {
     #[inline]
     fn drop(&mut self) {
         debug_assert!(self.initialized <= self.array_mut.len());
@@ -1017,7 +993,7 @@ pub(crate) const trait SpecNextChunk<T, const N: usize>: Iterator<Item = T> {
     fn spec_next_chunk(&mut self) -> Result<[T; N], IntoIter<T, N>>;
 }
 #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
-impl<I: [const] Iterator<Item = T>, T, const N: usize> const SpecNextChunk<T, N> for I {
+const impl<I: [const] Iterator<Item = T>, T, const N: usize> SpecNextChunk<T, N> for I {
     #[inline]
     default fn spec_next_chunk(&mut self) -> Result<[T; N], IntoIter<T, N>> {
         let mut array = [const { MaybeUninit::uninit() }; N];
@@ -1035,7 +1011,7 @@ impl<I: [const] Iterator<Item = T>, T, const N: usize> const SpecNextChunk<T, N>
     }
 }
 #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
-impl<I: [const] Iterator<Item = T> + TrustedLen, T, const N: usize> const SpecNextChunk<T, N>
+const impl<I: [const] Iterator<Item = T> + TrustedLen, T, const N: usize> SpecNextChunk<T, N>
     for I
 {
     fn spec_next_chunk(&mut self) -> Result<[T; N], IntoIter<T, N>> {

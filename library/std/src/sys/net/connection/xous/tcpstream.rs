@@ -213,11 +213,14 @@ impl TcpStream {
         } else {
             let result = receive_request.raw;
             if result[0] != 0 {
-                if result[1] == 8 {
+                // The error code lives at byte 4 of the kernel's response buffer
+                // (matches the byte the send path reads in `write` below). Byte 1
+                // is part of the marker header, not the code.
+                if result[4] == 8 {
                     // timed out
                     return Err(io::const_error!(io::ErrorKind::TimedOut, "timeout"));
                 }
-                if result[1] == 9 {
+                if result[4] == 9 {
                     // would block
                     return Err(io::const_error!(io::ErrorKind::WouldBlock, "would block"));
                 }
@@ -350,6 +353,14 @@ impl TcpStream {
     }
 
     pub fn linger(&self) -> io::Result<Option<Duration>> {
+        unimpl!();
+    }
+
+    pub fn set_keepalive(&self, _: bool) -> io::Result<()> {
+        unimpl!();
+    }
+
+    pub fn keepalive(&self) -> io::Result<bool> {
         unimpl!();
     }
 

@@ -1,6 +1,6 @@
 //! Attributes that are only used on function prototypes.
 
-use rustc_feature::{AttributeTemplate, template};
+use rustc_feature::{AttributeStability, AttributeTemplate, template};
 use rustc_hir::Target;
 use rustc_hir::attrs::{AttributeKind, MirDialect, MirPhase};
 use rustc_span::{Span, Symbol, sym};
@@ -8,14 +8,15 @@ use rustc_span::{Span, Symbol, sym};
 use crate::attributes::SingleAttributeParser;
 use crate::context::AcceptContext;
 use crate::parser::{ArgParser, NameValueParser};
-use crate::session_diagnostics;
 use crate::target_checking::AllowedTargets;
 use crate::target_checking::Policy::Allow;
+use crate::{session_diagnostics, unstable};
 
 pub(crate) struct CustomMirParser;
 
 impl SingleAttributeParser for CustomMirParser {
     const PATH: &[rustc_span::Symbol] = &[sym::custom_mir];
+    const STABILITY: AttributeStability = unstable!(custom_mir);
 
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
 
@@ -74,8 +75,7 @@ fn extract_value(
         return;
     }
 
-    let Some(value_sym) = val.value_as_str() else {
-        cx.adcx().expected_string_literal(val.value_span, Some(val.value_as_lit()));
+    let Some(value_sym) = cx.expect_string_literal(val) else {
         *failed = true;
         return;
     };

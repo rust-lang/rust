@@ -38,12 +38,16 @@ trait ArgAttributesExt {
 const ABI_AFFECTING_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 1] =
     [(ArgAttribute::InReg, llvm::AttributeKind::InReg)];
 
-const OPTIMIZATION_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 5] = [
+const OPTIMIZATION_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 6] = [
     (ArgAttribute::NoAlias, llvm::AttributeKind::NoAlias),
     (ArgAttribute::NonNull, llvm::AttributeKind::NonNull),
     (ArgAttribute::ReadOnly, llvm::AttributeKind::ReadOnly),
     (ArgAttribute::NoUndef, llvm::AttributeKind::NoUndef),
     (ArgAttribute::Writable, llvm::AttributeKind::Writable),
+    // Our internal NoFree attribute still allows deallocation of zero-size allocations. However,
+    // these don't render any bytes non-dereferenceable, so it's still fine to apply LLVM NoFree
+    // for them.
+    (ArgAttribute::NoFree, llvm::AttributeKind::NoFree),
 ];
 
 const CAPTURES_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 3] = [
@@ -75,7 +79,9 @@ fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'
     // Only apply remaining attributes when optimizing
     if cx.sess().opts.optimize != config::OptLevel::No {
         let deref = this.pointee_size.bytes();
-        if deref != 0 {
+        // dereferenceable in LLVM currently implies nofree, so only emit dereferenceable if nofree
+        // is also set.
+        if deref != 0 && regular.contains(ArgAttribute::NoFree) {
             if regular.contains(ArgAttribute::NonNull) {
                 attrs.push(llvm::CreateDereferenceableAttr(cx.llcx, deref));
             } else {
@@ -187,7 +193,7 @@ impl LlvmType for CastTarget {
 
         // Simplify to a single unit or an array if there's no prefix.
         // This produces the same layout, but using a simpler type.
-        if self.prefix.iter().all(|x| x.is_none()) {
+        if self.prefix.is_empty() {
             // We can't do this if is_consecutive is set and the unit would get
             // split on the target. Currently, this is only relevant for i128
             // registers.
@@ -199,8 +205,7 @@ impl LlvmType for CastTarget {
         }
 
         // Generate a struct type with the prefix and the "rest" arguments.
-        let prefix_args =
-            self.prefix.iter().flat_map(|option_reg| option_reg.map(|reg| reg.llvm_type(cx)));
+        let prefix_args = self.prefix.iter().map(|reg| reg.llvm_type(cx));
         let rest_args = (0..rest_count).map(|_| rest_ll_unit);
         let args: Vec<_> = prefix_args.chain(rest_args).collect();
         cx.type_struct(&args, false)
@@ -718,10 +723,15 @@ pub(crate) fn to_llvm_calling_convention(sess: &Session, abi: CanonAbi) -> llvm:
             Arch::X86_64 | Arch::AArch64 => llvm::PreserveNone,
             _ => llvm::CCallConv,
         },
+        CanonAbi::RustTail => match &sess.target.arch {
+            Arch::X86 | Arch::X86_64 | Arch::AArch64 => llvm::Tail,
+            _ => sess.dcx().fatal("extern \"tail\" is only supported on x86_64 and aarch64"),
+        },
         // Functions with this calling convention can only be called from assembly, but it is
         // possible to declare an `extern "custom"` block, so the backend still needs a calling
         // convention for declaring foreign functions.
         CanonAbi::Custom => llvm::CCallConv,
+        CanonAbi::Swift => llvm::SwiftCallConv,
         CanonAbi::GpuKernel => match &sess.target.arch {
             Arch::AmdGpu => llvm::AmdgpuKernel,
             Arch::Nvptx64 => llvm::PtxKernel,

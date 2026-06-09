@@ -84,7 +84,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
         }
 
         let def_id = opaque.def_id.to_def_id();
-        let infcx = &cx.tcx.infer_ctxt().build(cx.typing_mode());
+        let infcx = &cx.tcx.infer_ctxt().ignoring_regions().build(cx.typing_mode());
         // For every projection predicate in the opaque type's explicit bounds,
         // check that the type that we're assigning actually satisfies the bounds
         // of the associated type.
@@ -232,6 +232,5 @@ struct OpaqueHiddenInferredBoundLint<'tcx> {
 struct AddBound<'tcx> {
     #[primary_span]
     suggest_span: Span,
-    #[skip_arg]
     trait_ref: TraitPredPrintModifiersAndPath<'tcx>,
 }

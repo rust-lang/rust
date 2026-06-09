@@ -748,7 +748,7 @@ impl ProjectWorkspace {
                     .packages()
                     .filter_map(|pkg| {
                         if ws[pkg].is_local {
-                            // the local ones are included in the main `PackageRoot`` below
+                            // the local ones are included in the main `PackageRoot` below
                             return None;
                         }
                         let pkg_root = ws[pkg].manifest.parent().to_path_buf();

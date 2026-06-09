@@ -1,22 +1,26 @@
 //! MIR definitions and implementation
 
-use std::{collections::hash_map::Entry, fmt::Display, iter};
+use std::{fmt::Display, iter};
 
 use base_db::Crate;
 use either::Either;
 use hir_def::{
-    DefWithBodyId, FieldId, StaticId, TupleFieldId, UnionId, VariantId,
+    FieldId, StaticId, TupleFieldId, UnionId, VariantId,
     hir::{BindingId, Expr, ExprId, Ordering, PatId},
 };
+use intern::{InternedSlice, InternedSliceRef, impl_slice_internable};
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
 use rustc_ast_ir::Mutability;
 use rustc_hash::FxHashMap;
-use rustc_type_ir::inherent::{GenericArgs as _, IntoKind, Ty as _};
+use rustc_type_ir::{
+    CollectAndApply, GenericTypeVisitable,
+    inherent::{GenericArgs as _, IntoKind, Ty as _},
+};
 use smallvec::{SmallVec, smallvec};
 use stdx::{impl_from, never};
 
 use crate::{
-    CallableDefId, InferenceResult, MemoryMap,
+    CallableDefId, InferBodyId, InferenceResult, MemoryMap,
     consteval::usize_const,
     db::{HirDatabase, InternedClosureId},
     display::{DisplayTarget, HirDisplay},
@@ -24,6 +28,7 @@ use crate::{
     next_solver::{
         Allocation, AllocationData, DbInterner, ErrorGuaranteed, GenericArgs, ParamEnv,
         StoredAllocation, StoredConst, StoredGenericArgs, StoredTy, Ty, TyKind,
+        impl_stored_interned_slice,
         infer::{InferCtxt, traits::ObligationCause},
         obligation_ctxt::ObligationCtxt,
     },
@@ -46,9 +51,6 @@ pub use lower::{
 pub use monomorphization::{
     monomorphized_mir_body_for_closure_query, monomorphized_mir_body_query,
 };
-
-pub(crate) use lower::mir_body_cycle_result;
-pub(crate) use monomorphization::monomorphized_mir_body_cycle_result;
 
 use super::consteval::try_const_usize;
 
@@ -148,7 +150,7 @@ impl<'db> Operand {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum ProjectionElem<V: PartialEq> {
     Deref,
     Field(Either<FieldId, TupleFieldId>),
@@ -158,7 +160,7 @@ pub enum ProjectionElem<V: PartialEq> {
     ConstantIndex { offset: u64, from_end: bool },
     Subslice { from: u64, to: u64 },
     //Downcast(Option<Symbol>, VariantIdx),
-    OpaqueCast(StoredTy),
+    OpaqueCast(std::convert::Infallible),
 }
 
 impl<V: PartialEq> ProjectionElem<V> {
@@ -200,9 +202,10 @@ impl<V: PartialEq> ProjectionElem<V> {
                 }
             },
             ProjectionElem::Field(Either::Left(f)) => match base.kind() {
-                TyKind::Adt(_, subst) => {
-                    db.field_types(f.parent)[f.local_id].get().instantiate(interner, subst)
-                }
+                TyKind::Adt(_, subst) => db.field_types(f.parent)[f.local_id]
+                    .get()
+                    .instantiate(interner, subst)
+                    .skip_norm_wip(),
                 ty => {
                     never!("Only adt has field, found {:?}", ty);
                     Ty::new_error(interner, ErrorGuaranteed)
@@ -262,97 +265,114 @@ impl<V: PartialEq> ProjectionElem<V> {
 
 type PlaceElem = ProjectionElem<LocalId>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ProjectionId(u32);
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ProjectionStore {
-    id_to_proj: FxHashMap<ProjectionId, Box<[PlaceElem]>>,
-    proj_to_id: FxHashMap<Box<[PlaceElem]>, ProjectionId>,
+impl<W: crate::next_solver::WorldExposer> GenericTypeVisitable<W> for PlaceElem {
+    fn generic_visit_with(&self, _: &mut W) {}
 }
 
-impl Default for ProjectionStore {
-    fn default() -> Self {
-        let mut this = Self { id_to_proj: Default::default(), proj_to_id: Default::default() };
-        // Ensure that [] will get the id 0 which is used in `ProjectionId::Empty`
-        this.intern(Box::new([]));
-        this
-    }
+impl_slice_internable!(gc; ProjectionStorage, (), PlaceElem);
+impl_stored_interned_slice!(ProjectionStorage, Projection, StoredProjection);
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Projection<'db> {
+    interned: InternedSliceRef<'db, ProjectionStorage>,
 }
 
-impl ProjectionStore {
-    pub fn shrink_to_fit(&mut self) {
-        self.id_to_proj.shrink_to_fit();
-        self.proj_to_id.shrink_to_fit();
-    }
-
-    pub fn intern_if_exist(&self, projection: &[PlaceElem]) -> Option<ProjectionId> {
-        self.proj_to_id.get(projection).copied()
-    }
-
-    pub fn intern(&mut self, projection: Box<[PlaceElem]>) -> ProjectionId {
-        let new_id = ProjectionId(self.proj_to_id.len() as u32);
-        match self.proj_to_id.entry(projection) {
-            Entry::Occupied(id) => *id.get(),
-            Entry::Vacant(e) => {
-                let key_clone = e.key().clone();
-                e.insert(new_id);
-                self.id_to_proj.insert(new_id, key_clone);
-                new_id
-            }
-        }
+impl<'db> std::fmt::Debug for Projection<'db> {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        (*self).as_slice().fmt(fmt)
     }
 }
 
-impl ProjectionId {
-    pub const EMPTY: ProjectionId = ProjectionId(0);
-
-    pub fn is_empty(self) -> bool {
-        self == ProjectionId::EMPTY
+impl<'db> Projection<'db> {
+    pub fn new_from_iter<I, T>(args: I) -> T::Output
+    where
+        I: IntoIterator<Item = T>,
+        T: CollectAndApply<PlaceElem, Self>,
+    {
+        CollectAndApply::collect_and_apply(args.into_iter(), Self::new_from_slice)
     }
 
-    pub fn lookup(self, store: &ProjectionStore) -> &[PlaceElem] {
-        store.id_to_proj.get(&self).unwrap()
+    #[inline]
+    pub fn new_from_slice(slice: &[PlaceElem]) -> Self {
+        Self { interned: InternedSlice::from_header_and_slice((), slice) }
     }
 
-    pub fn project(self, projection: PlaceElem, store: &mut ProjectionStore) -> ProjectionId {
-        let mut current = self.lookup(store).to_vec();
-        current.push(projection);
-        store.intern(current.into())
+    #[inline]
+    pub fn as_slice(self) -> &'db [PlaceElem] {
+        &self.interned.get().slice
+    }
+
+    pub fn project(self, projection: PlaceElem) -> Projection<'db> {
+        Projection::new_from_iter(self.as_slice().iter().copied().chain([projection]))
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+impl<'db> std::ops::Deref for Projection<'db> {
+    type Target = [PlaceElem];
+
+    fn deref(&self) -> &Self::Target {
+        self.as_slice()
+    }
+}
+
+impl StoredProjection {
+    // FIXME: rename to as_slice
+    pub fn lookup(&self) -> &[PlaceElem] {
+        self.as_ref().as_slice()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.lookup().is_empty()
+    }
+}
+
+// FIXME: would be nicer to rename PlaceRef -> Place, Place -> StoredPlace, but I didn't want to blow up the diff
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct PlaceRef<'db> {
+    pub local: LocalId,
+    pub projection: Projection<'db>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Place {
     pub local: LocalId,
-    pub projection: ProjectionId,
+    pub projection: StoredProjection,
 }
 
 impl Place {
-    fn is_parent(&self, child: &Place, store: &ProjectionStore) -> bool {
-        self.local == child.local
-            && child.projection.lookup(store).starts_with(self.projection.lookup(store))
-    }
-
-    /// The place itself is not included
-    fn iterate_over_parents<'a>(
-        &'a self,
-        store: &'a ProjectionStore,
-    ) -> impl Iterator<Item = Place> + 'a {
-        let projection = self.projection.lookup(store);
-        (0..projection.len()).map(|x| &projection[0..x]).filter_map(move |x| {
-            Some(Place { local: self.local, projection: store.intern_if_exist(x)? })
-        })
-    }
-
-    fn project(&self, projection: PlaceElem, store: &mut ProjectionStore) -> Place {
-        Place { local: self.local, projection: self.projection.project(projection, store) }
+    pub fn as_ref<'db>(&self) -> PlaceRef<'db> {
+        PlaceRef { local: self.local, projection: self.projection.as_ref() }
     }
 }
 
-impl From<LocalId> for Place {
+impl<'db> PlaceRef<'db> {
+    fn is_parent(&self, child: PlaceRef<'db>) -> bool {
+        self.local == child.local
+            && child.projection.as_slice().starts_with(self.projection.as_slice())
+    }
+
+    /// The place itself is not included
+    fn iterate_over_parents<'a>(&'a self) -> impl Iterator<Item = PlaceRef<'db>> + 'a {
+        let projection = self.projection.as_slice();
+        (0..projection.len()).map(move |x| PlaceRef {
+            local: self.local,
+            projection: Projection::new_from_slice(&projection[0..x]),
+        })
+    }
+
+    fn project(&self, projection: PlaceElem) -> PlaceRef<'db> {
+        PlaceRef { local: self.local, projection: self.projection.project(projection) }
+    }
+
+    pub fn store(&self) -> Place {
+        Place { local: self.local, projection: self.projection.store() }
+    }
+}
+
+impl<'db> From<LocalId> for PlaceRef<'db> {
     fn from(local: LocalId) -> Self {
-        Self { local, projection: ProjectionId::EMPTY }
+        let empty: &[PlaceElem] = &[];
+        PlaceRef { local, projection: Projection::new_from_slice(empty) }
     }
 }
 
@@ -1083,11 +1103,10 @@ pub struct BasicBlock {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MirBody {
-    pub projection_store: ProjectionStore,
     pub basic_blocks: Arena<BasicBlock>,
     pub locals: Arena<Local>,
     pub start_block: BasicBlockId,
-    pub owner: DefWithBodyId,
+    pub owner: InferBodyId,
     pub binding_locals: ArenaMap<BindingId, LocalId>,
     pub upvar_locals: FxHashMap<BindingId, Vec<(LocalId, crate::closure_analysis::Place)>>,
     pub param_locals: Vec<LocalId>,
@@ -1101,15 +1120,11 @@ impl MirBody {
         self.binding_locals.iter().map(|(it, y)| (*y, it)).collect()
     }
 
-    fn walk_places(&mut self, mut f: impl FnMut(&mut Place, &mut ProjectionStore)) {
-        fn for_operand(
-            op: &mut Operand,
-            f: &mut impl FnMut(&mut Place, &mut ProjectionStore),
-            store: &mut ProjectionStore,
-        ) {
+    fn walk_places(&mut self, mut f: impl FnMut(&mut Place)) {
+        fn for_operand(op: &mut Operand, f: &mut impl FnMut(&mut Place)) {
             match &mut op.kind {
                 OperandKind::Copy(p) | OperandKind::Move(p) => {
-                    f(p, store);
+                    f(p);
                 }
                 OperandKind::Constant { .. }
                 | OperandKind::Static(_)
@@ -1120,25 +1135,25 @@ impl MirBody {
             for statement in &mut block.statements {
                 match &mut statement.kind {
                     StatementKind::Assign(p, r) => {
-                        f(p, &mut self.projection_store);
+                        f(p);
                         match r {
                             Rvalue::ShallowInitBoxWithAlloc(_) => (),
                             Rvalue::ShallowInitBox(o, _)
                             | Rvalue::UnaryOp(_, o)
                             | Rvalue::Cast(_, o, _)
                             | Rvalue::Repeat(o, _)
-                            | Rvalue::Use(o) => for_operand(o, &mut f, &mut self.projection_store),
+                            | Rvalue::Use(o) => for_operand(o, &mut f),
                             Rvalue::CopyForDeref(p)
                             | Rvalue::Discriminant(p)
                             | Rvalue::Len(p)
-                            | Rvalue::Ref(_, p) => f(p, &mut self.projection_store),
+                            | Rvalue::Ref(_, p) => f(p),
                             Rvalue::CheckedBinaryOp(_, o1, o2) => {
-                                for_operand(o1, &mut f, &mut self.projection_store);
-                                for_operand(o2, &mut f, &mut self.projection_store);
+                                for_operand(o1, &mut f);
+                                for_operand(o2, &mut f);
                             }
                             Rvalue::Aggregate(_, ops) => {
                                 for op in ops.iter_mut() {
-                                    for_operand(op, &mut f, &mut self.projection_store);
+                                    for_operand(op, &mut f);
                                 }
                             }
                             Rvalue::ThreadLocalRef(n)
@@ -1147,9 +1162,7 @@ impl MirBody {
                             | Rvalue::NullaryOp(n) => match *n {},
                         }
                     }
-                    StatementKind::FakeRead(p) | StatementKind::Deinit(p) => {
-                        f(p, &mut self.projection_store)
-                    }
+                    StatementKind::FakeRead(p) | StatementKind::Deinit(p) => f(p),
                     StatementKind::StorageLive(_)
                     | StatementKind::StorageDead(_)
                     | StatementKind::Nop => (),
@@ -1157,9 +1170,7 @@ impl MirBody {
             }
             match &mut block.terminator {
                 Some(x) => match &mut x.kind {
-                    TerminatorKind::SwitchInt { discr, .. } => {
-                        for_operand(discr, &mut f, &mut self.projection_store)
-                    }
+                    TerminatorKind::SwitchInt { discr, .. } => for_operand(discr, &mut f),
                     TerminatorKind::FalseEdge { .. }
                     | TerminatorKind::FalseUnwind { .. }
                     | TerminatorKind::Goto { .. }
@@ -1169,24 +1180,23 @@ impl MirBody {
                     | TerminatorKind::Return
                     | TerminatorKind::Unreachable => (),
                     TerminatorKind::Drop { place, .. } => {
-                        f(place, &mut self.projection_store);
+                        f(place);
                     }
                     TerminatorKind::DropAndReplace { place, value, .. } => {
-                        f(place, &mut self.projection_store);
-                        for_operand(value, &mut f, &mut self.projection_store);
+                        f(place);
+                        for_operand(value, &mut f);
                     }
                     TerminatorKind::Call { func, args, destination, .. } => {
-                        for_operand(func, &mut f, &mut self.projection_store);
-                        args.iter_mut()
-                            .for_each(|x| for_operand(x, &mut f, &mut self.projection_store));
-                        f(destination, &mut self.projection_store);
+                        for_operand(func, &mut f);
+                        args.iter_mut().for_each(|x| for_operand(x, &mut f));
+                        f(destination);
                     }
                     TerminatorKind::Assert { cond, .. } => {
-                        for_operand(cond, &mut f, &mut self.projection_store);
+                        for_operand(cond, &mut f);
                     }
                     TerminatorKind::Yield { value, resume_arg, .. } => {
-                        for_operand(value, &mut f, &mut self.projection_store);
-                        f(resume_arg, &mut self.projection_store);
+                        for_operand(value, &mut f);
+                        f(resume_arg);
                     }
                 },
                 None => (),
@@ -1204,9 +1214,7 @@ impl MirBody {
             upvar_locals,
             param_locals,
             closures,
-            projection_store,
         } = self;
-        projection_store.shrink_to_fit();
         basic_blocks.shrink_to_fit();
         locals.shrink_to_fit();
         binding_locals.shrink_to_fit();

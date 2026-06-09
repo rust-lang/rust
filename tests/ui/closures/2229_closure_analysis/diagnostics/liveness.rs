@@ -1,6 +1,6 @@
 //@ edition:2021
-
 //@ check-pass
+//@ ignore-parallel-frontend unstable liveness diagnostics
 #![allow(unreachable_code)]
 #![warn(unused)]
 #![allow(dead_code)]

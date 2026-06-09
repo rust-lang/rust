@@ -1,0 +1,14 @@
+error: expected one of `async`, `|`, or `||`, found `[`
+  --> $DIR/parse-ambiguity-errors.rs:12:17
+   |
+LL |     let _ = move[x] || y;
+   |                 ^ expected one of `async`, `|`, or `||`
+
+error: `move(expr)` is only supported in plain closures
+  --> $DIR/parse-ambiguity-errors.rs:7:13
+   |
+LL |     let _ = move(x) || y;
+   |             ^^^^
+
+error: aborting due to 2 previous errors
+

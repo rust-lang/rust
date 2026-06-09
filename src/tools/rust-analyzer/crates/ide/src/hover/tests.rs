@@ -3153,6 +3153,35 @@ fn test_hover_layout_of_enum() {
 }
 
 #[test]
+fn test_hover_layout_nonzero_type_alias() {
+    check(
+        r#"//- minicore: non_zero
+use core::num;
+trait Trait { type Inner; }
+impl Trait for u8 { type Inner = num::NonZeroU8; }
+#[repr(transparent)]
+struct NonZero<T: Trait>(T::Inner);
+type NonZeroU8$0 = NonZero<u8>;
+"#,
+        expect![[r#"
+            *NonZeroU8*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            type NonZeroU8 = NonZero<u8>
+            ```
+
+            ---
+
+            size = 1, align = 1, niches = 1, no Drop
+        "#]],
+    );
+}
+
+#[test]
 fn test_hover_layout_padding_info() {
     check(
         r#"struct $0Foo {
@@ -3392,7 +3421,7 @@ fn main() { let foo_test = unsafe { fo$0o(1, 2, 3); } }
             ```
 
             ```rust
-            pub unsafe fn foo(bar: i32, ...) -> i32
+            pub unsafe extern "C" fn foo(bar: i32, ...) -> i32
             ```
         "#]],
     );
@@ -5972,9 +6001,8 @@ const FOO$0: f64 = 1.0f64;
 fn hover_const_eval_floating_point() {
     check(
         r#"
-extern "rust-intrinsic" {
-    pub fn expf64(x: f64) -> f64;
-}
+#[rustc_intrinsic]
+pub fn expf64(x: f64) -> f64;
 
 const FOO$0: f64 = expf64(1.2);
 "#,
@@ -7152,6 +7180,7 @@ fn f() { let expr = [1, 2, $03$0, 4] }
 fn hover_range_functions() {
     check_hover_range(
         r#"
+//- minicore: unsize, coerce_unsized
 fn f<T>(a: &[T]) { }
 fn b() { $0f$0(&[1, 2, 3, 4, 5]); }
 "#,
@@ -9197,7 +9226,7 @@ extern "C" {
             ```
 
             ```rust
-            unsafe fn fun()
+            unsafe extern "C" fn fun()
             ```
         "#]],
     );

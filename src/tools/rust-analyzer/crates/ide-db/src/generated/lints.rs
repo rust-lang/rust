@@ -258,6 +258,13 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         deny_since: None,
     },
     Lint {
+        label: "dead_code_pub_in_binary",
+        description: r##"detect public items in executable crates that are never used"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "default_overrides_default_fields",
         description: r##"detect `Default` impl that should use the type's default field values"##,
         default_severity: Severity::Error,
@@ -566,13 +573,6 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         deny_since: None,
     },
     Lint {
-        label: "inline_always_mismatching_target_features",
-        description: r##"detects when a function annotated with `#[inline(always)]` and `#[target_feature(enable = "..")]` is inlined into a caller without the required target feature"##,
-        default_severity: Severity::Warning,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "inline_no_sanitize",
         description: r##"detects incompatible use of `#[inline(always)]` and `#[sanitize(... = "off")]`"##,
         default_severity: Severity::Warning,
@@ -736,7 +736,7 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     Lint {
         label: "linker_messages",
         description: r##"warnings emitted at runtime by the target-specific linker program"##,
-        default_severity: Severity::Allow,
+        default_severity: Severity::Warning,
         warn_since: None,
         deny_since: None,
     },
@@ -1233,6 +1233,13 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     Lint {
         label: "suspicious_double_ref_op",
         description: r##"suspicious call of trait method on `&&T`"##,
+        default_severity: Severity::Warning,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "tail_call_track_caller",
+        description: r##"detects tail calls of functions marked with `#[track_caller]`"##,
         default_severity: Severity::Warning,
         warn_since: None,
         deny_since: None,
@@ -2436,6 +2443,22 @@ Allows `extern "riscv-interrupt-m" fn()` and `extern "riscv-interrupt-s" fn()`.
 The tracking issue for this feature is: [#111889]
 
 [#111889]: https://github.com/rust-lang/rust/issues/111889
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "abi_swift",
+        description: r##"# `abi_swift`
+
+Allows `extern "Swift" fn()`.
+
+The tracking issue for this feature is: [#156481]
+
+[#156481]: https://github.com/rust-lang/rust/issues/156481
 
 ------------------------
 "##,
@@ -3918,22 +3941,6 @@ The tracking issue for this feature is: [#151828]
         deny_since: None,
     },
     Lint {
-        label: "bool_to_result",
-        description: r##"# `bool_to_result`
-
-
-
-The tracking issue for this feature is: [#142748]
-
-[#142748]: https://github.com/rust-lang/rust/issues/142748
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "borrowed_buf_init",
         description: r##"# `borrowed_buf_init`
 
@@ -4313,11 +4320,27 @@ defined in Rust. They may be called both from within Rust and via FFI.
 pub unsafe extern "C" fn add(n: usize, mut args: ...) -> usize {
     let mut sum = 0;
     for _ in 0..n {
-        sum += args.arg::<usize>();
+        sum += args.next_arg::<usize>();
     }
     sum
 }
 ```
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "c_variadic_experimental_arch",
+        description: r##"# `c_variadic_experimental_arch`
+
+Allows defining c-variadic functions on targets where this feature has not yet undergone sufficient testing for stabilization.
+
+The tracking issue for this feature is: [#155973]
+
+[#155973]: https://github.com/rust-lang/rust/issues/155973
+
+------------------------
 "##,
         default_severity: Severity::Allow,
         warn_since: None,
@@ -4615,22 +4638,6 @@ The tracking issue for this feature is: [#94039]
         deny_since: None,
     },
     Lint {
-        label: "cfg_target_has_atomic_equal_alignment",
-        description: r##"# `cfg_target_has_atomic_equal_alignment`
-
-Allows `cfg(target_has_atomic_equal_alignment = "...")`.
-
-The tracking issue for this feature is: [#93822]
-
-[#93822]: https://github.com/rust-lang/rust/issues/93822
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "cfg_target_has_reliable_f16_f128",
         description: r##"# `cfg_target_has_reliable_f16_f128`
 
@@ -4806,22 +4813,6 @@ This feature has no tracking issue, and is therefore likely internal to the comp
         deny_since: None,
     },
     Lint {
-        label: "char_max_len",
-        description: r##"# `char_max_len`
-
-
-
-The tracking issue for this feature is: [#121714]
-
-[#121714]: https://github.com/rust-lang/rust/issues/121714
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "clamp_magnitude",
         description: r##"# `clamp_magnitude`
 
@@ -4830,6 +4821,22 @@ The tracking issue for this feature is: [#121714]
 The tracking issue for this feature is: [#148519]
 
 [#148519]: https://github.com/rust-lang/rust/issues/148519
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "clflushopt_target_feature",
+        description: r##"# `clflushopt_target_feature`
+
+The `clflushopt` target feature on x86.
+
+The tracking issue for this feature is: [#157096]
+
+[#157096]: https://github.com/rust-lang/rust/issues/157096
 
 ------------------------
 "##,
@@ -5552,6 +5559,20 @@ The tracking issue for this feature is: [#95174]
         deny_since: None,
     },
     Lint {
+        label: "const_param_ty_unchecked",
+        description: r##"# `const_param_ty_unchecked`
+
+Allows skipping `ConstParamTy_` trait implementation checks
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "const_path_separators",
         description: r##"# `const_path_separators`
 
@@ -6004,6 +6025,22 @@ This feature has no tracking issue, and is therefore likely internal to the comp
         deny_since: None,
     },
     Lint {
+        label: "core_io",
+        description: r##"# `core_io`
+
+
+
+The tracking issue for this feature is: [#154046]
+
+[#154046]: https://github.com/rust-lang/rust/issues/154046
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "core_io_borrowed_buf",
         description: r##"# `core_io_borrowed_buf`
 
@@ -6012,6 +6049,20 @@ This feature has no tracking issue, and is therefore likely internal to the comp
 The tracking issue for this feature is: [#117693]
 
 [#117693]: https://github.com/rust-lang/rust/issues/117693
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "core_io_internals",
+        description: r##"# `core_io_internals`
+
+
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
 
 ------------------------
 "##,
@@ -6986,13 +7037,96 @@ The tracking issue for this feature is: [#143874]
         label: "diagnostic_on_move",
         description: r##"# `diagnostic_on_move`
 
-Allows giving on-move borrowck custom diagnostic messages for a type
-
 The tracking issue for this feature is: [#154181]
 
-[#154181]: https://github.com/rust-lang/rust/issues/154181
-
 ------------------------
+
+The `diagnostic_on_move` feature allows use of the `#[diagnostic::on_move]` attribute. It should be
+placed on struct, enum and union declarations, though it is not an error to be located in other
+positions. This attribute is a hint to the compiler to supplement the error message when the
+annotated type is involved in a borrowcheck error.
+
+For example, [`File`] is annotated as such:
+```rust
+#![feature(diagnostic_on_move)]
+
+#[diagnostic::on_move(note = "you can use `File::try_clone` \
+                             to duplicate a `File` instance")]
+pub struct File {
+    // ...
+}
+```
+
+When you try to use a `File` after it's already been moved, it will helpfully tell you about `try_clone`.
+
+The message and label can also be customized:
+
+```rust
+#![feature(diagnostic_on_move)]
+
+use std::marker::PhantomData;
+
+#[diagnostic::on_move(
+    message = "`{Self}` cannot be used multiple times",
+    label = "this token may only be used once",
+    note = "you can create a new `Token` with `Token::conjure()`"
+)]
+pub struct Token<'brand> {
+    spooky: PhantomData<&'brand ()>,
+}
+
+impl Token<'_> {
+    pub fn conjure<'u>() -> Token<'u> {
+        Token {
+            spooky: PhantomData,
+        }
+    }
+}
+```
+The user may try to use it like this:
+```rust,compile_fail,E0382
+# #![feature(diagnostic_on_move)]
+#
+# use std::marker::PhantomData;
+#
+# #[diagnostic::on_move(
+#     message = "`{Self}` cannot be used multiple times",
+#     label = "this token may only be used once",
+#     note = "you can create a new `Token` with `Token::conjure()`"
+# )]
+# pub struct Token<'brand> {
+#     spooky: PhantomData<&'brand ()>,
+# }
+#
+# impl Token<'_> {
+#     pub fn conjure<'u>() -> Token<'u> {
+#         Token {
+#             spooky: PhantomData,
+#         }
+#     }
+# }
+# fn main() {
+let token = Token::conjure();
+let _ = (token, token);
+# }
+```
+This will result in the following error:
+```text
+error[E0382]: `Token` cannot be used multiple times
+  --> src/main.rs:24:21
+   |
+ 1 |     let token = Token::conjure();
+   |         ----- this token may only be used once
+ 2 |     let _ = (token, token);
+   |              -----  ^^^^^ value used here after move
+   |              |
+   |              value moved here
+   |
+   = note: you can create a new `Token` with `Token::conjure()`
+```
+
+[`File`]: https://doc.rust-lang.org/nightly/std/fs/struct.File.html "File in std::fs"
+[#154181]: https://github.com/rust-lang/rust/issues/154181 "Tracking Issue for #[diagnostic::on_move]"
 "##,
         default_severity: Severity::Allow,
         warn_since: None,
@@ -7009,6 +7143,66 @@ The tracking issue for this feature is: [#152900]
 [#152900]: https://github.com/rust-lang/rust/issues/152900
 
 ------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "diagnostic_on_unmatch_args",
+        description: r##"# `diagnostic_on_unmatch_args`
+
+The tracking issue for this feature is: [#155642]
+
+[#155642]: https://github.com/rust-lang/rust/issues/155642
+
+------------------------
+
+The `diagnostic_on_unmatch_args` feature adds the
+`#[diagnostic::on_unmatch_args(...)]` attribute for declarative macros.
+It lets a macro definition customize diagnostics for matcher failures after all arms have been
+tried, such as incomplete invocations or trailing extra arguments.
+
+This attribute currently applies to declarative macros such as `macro_rules!` and `pub macro`.
+It is currently used for errors emitted by declarative macro matching itself; fragment parser
+errors still use their existing diagnostics.
+
+```rust,compile_fail
+#![feature(diagnostic_on_unmatch_args)]
+
+#[diagnostic::on_unmatch_args(
+    message = "invalid arguments to {This} macro invocation",
+    label = "expected a type and value here",
+    note = "this macro expects a type and a value, like `pair!(u8, 0)`",
+    note = "see <link/to/docs>",
+)]
+macro_rules! pair {
+    ($ty:ty, $value:expr) => {};
+}
+
+pair!(u8);
+```
+
+This emits output like:
+
+```text
+error: invalid arguments to pair macro invocation
+  --> example.rs:13:9
+   |
+9  | macro_rules! pair {
+   | ----------------- when calling this macro
+...
+13 | pair!(u8);
+   |         ^ expected a type and value here
+   |
+note: while trying to match `,`
+  --> example.rs:10:12
+   |
+10 |     ($ty:ty, $value:expr) => {};
+   |            ^
+   = note: this macro expects a type and a value, like `pair!(u8, 0)`
+   = note: see <link/to/docs>
+```
 "##,
         default_severity: Severity::Allow,
         warn_since: None,
@@ -8077,6 +8271,22 @@ The tracking issue for this feature is: [#99842]
         deny_since: None,
     },
     Lint {
+        label: "float_masks",
+        description: r##"# `float_masks`
+
+
+
+The tracking issue for this feature is: [#154064]
+
+[#154064]: https://github.com/rust-lang/rust/issues/154064
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "float_minimum_maximum",
         description: r##"# `float_minimum_maximum`
 
@@ -8516,7 +8726,7 @@ The tracking issue for this feature is: [#130539]
     },
     Lint {
         label: "generic_const_args",
-        description: r##"# `generic_const_args`
+        description: r##"# generic_const_args
 
 Allows using generics in more complex const expressions, based on definitional equality.
 
@@ -8525,6 +8735,35 @@ The tracking issue for this feature is: [#151972]
 [#151972]: https://github.com/rust-lang/rust/issues/151972
 
 ------------------------
+
+Warning: This feature is incomplete; its design and syntax may change.
+
+This feature enables many of the same use cases supported by [generic_const_exprs],
+but based on the machinery developed for [min_generic_const_args]. In a way, it is
+meant to be an interim successor for GCE (though it might not currently support all
+the valid cases that supported by GCE).
+
+See also: [generic_const_items]
+
+[min_generic_const_args]: min-generic-const-args.md
+[generic_const_exprs]: generic-const-exprs.md
+[generic_const_items]: generic-const-items.md
+
+## Examples
+
+<!-- NOTE(ignore) generic_const_args requires -Znext-solver to compile -->
+```rust,ignore (requires-Z-next-solver)
+#![feature(generic_const_items)]
+#![feature(min_generic_const_args)]
+#![feature(generic_const_args)]
+#![expect(incomplete_features)]
+
+type const ADD1<const N: usize>: usize = const { N + 1 };
+
+type const INC<const N: usize>: usize = ADD1::<N>;
+
+const ARR: [(); ADD1::<0>] = [(); INC::<0>];
+```
 "##,
         default_severity: Severity::Allow,
         warn_since: None,
@@ -8532,15 +8771,79 @@ The tracking issue for this feature is: [#151972]
     },
     Lint {
         label: "generic_const_exprs",
-        description: r##"# `generic_const_exprs`
+        description: r##"# generic_const_exprs
 
-Allows non-trivial generic constants which have to have wfness manually propagated to callers
+Allows non-trivial generic constants which have to be shown to successfully evaluate
+to a value by being part of an item signature.
 
 The tracking issue for this feature is: [#76560]
+
 
 [#76560]: https://github.com/rust-lang/rust/issues/76560
 
 ------------------------
+
+Warning: This feature is incomplete; its design and syntax may change.
+
+See also: [min_generic_const_args], [generic_const_args]
+
+[min_generic_const_args]: min-generic-const-args.md
+[generic_const_args]: generic-const-args.md
+
+## Examples
+
+```rust
+#![allow(incomplete_features)]
+#![feature(generic_const_exprs)]
+
+// Use parameters that depend on a generic argument.
+struct Foo<const N: usize>
+where
+    [(); N + 1]:,
+{
+    array: [usize; N + 1],
+}
+
+// Use generic parameters in const operations.
+trait Bar {
+    const X: usize;
+    const Y: usize;
+}
+
+// Note `B::X * B::Y`.
+const fn baz<B: Bar>(x: [usize; B::X], y: [usize; B::Y]) -> [usize; B::X * B::Y] {
+    let mut out = [0; B::X * B::Y];
+    let mut i = 0;
+    while i < B::Y {
+        let mut j = 0;
+        while j < B::X {
+            out[i * B::X + j] = y[i].saturating_mul(x[j]);
+            j += 1;
+        }
+        i += 1;
+    }
+    out
+}
+
+
+// Create a new type based on a generic argument.
+pub struct Grow<const N: usize> {
+    arr: [usize; N],
+}
+
+impl<const N: usize> Grow<N> {
+    pub const fn grow(self, val: usize) -> Grow<{ N + 1 }> {
+        let mut new_arr = [0; { N + 1 }];
+        let mut idx = 0;
+        while idx < N {
+            new_arr[idx] = self.arr[idx];
+            idx += 1;
+        }
+        new_arr[N] = val;
+        Grow { arr: new_arr }
+    }
+}
+```
 "##,
         default_severity: Severity::Allow,
         warn_since: None,
@@ -8548,7 +8851,7 @@ The tracking issue for this feature is: [#76560]
     },
     Lint {
         label: "generic_const_items",
-        description: r##"# `generic_const_items`
+        description: r##"# generic_const_items
 
 Allows generic parameters and where-clauses on free & associated const items.
 
@@ -8557,6 +8860,50 @@ The tracking issue for this feature is: [#113521]
 [#113521]: https://github.com/rust-lang/rust/issues/113521
 
 ------------------------
+
+Warning: This feature is an [experiment] and lacks an RFC.
+There are no guarantees that it will ever be stabilized.
+
+See also: [generic_const_exprs], [min_generic_const_args].
+
+[experiment]: https://lang-team.rust-lang.org/how_to/experiment.html
+[generic_const_exprs]: generic-const-exprs.md
+[min_generic_const_args]: min-generic-const-args.md
+
+## Examples
+
+### Generic constant values
+
+```rust
+#![allow(incomplete_features)]
+#![feature(generic_const_items)]
+
+const GENERIC_VAL<const ARG: usize>: usize = ARG + 1;
+
+#[test]
+fn generic_const_arg() {
+    assert_eq!(GENERIC_VAL::<1>, 2);
+    assert_eq!(GENERIC_VAL::<2>, 3);
+}
+```
+
+### Conditional constants
+
+```rust
+#![allow(incomplete_features)]
+#![feature(generic_const_items)]
+
+// `GENERIC_VAL::<0>` will fail to compile
+const GENERIC_VAL<const ARG: usize>: usize = if ARG > 0 { ARG + 1 } else { panic!("0 value") };
+
+// Will fail to compile if the `Copy` derive is removed.
+const COPY_MARKER<C: Copy>: () = ();
+
+#[derive(Clone, Copy)]
+struct Foo;
+
+const FOO_IS_COPY: () = COPY_MARKER::<Foo>;
+```
 "##,
         default_severity: Severity::Allow,
         warn_since: None,
@@ -8663,6 +9010,22 @@ The tracking issue for this feature is: [#125119]
 
 
 This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "gpu_launch_sized_workgroup_mem",
+        description: r##"# `gpu_launch_sized_workgroup_mem`
+
+
+
+The tracking issue for this feature is: [#135513]
+
+[#135513]: https://github.com/rust-lang/rust/issues/135513
 
 ------------------------
 "##,
@@ -9034,8 +9397,24 @@ The tracking issue for this feature is: [#99069]
         deny_since: None,
     },
     Lint {
-        label: "integer_extend_truncate",
-        description: r##"# `integer_extend_truncate`
+        label: "integer_cast_extras",
+        description: r##"# `integer_cast_extras`
+
+
+
+The tracking issue for this feature is: [#154650]
+
+[#154650]: https://github.com/rust-lang/rust/issues/154650
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "integer_widen_truncate",
+        description: r##"# `integer_widen_truncate`
 
 
 
@@ -10547,15 +10926,116 @@ The tracking issue for this feature is: [#154042]
     },
     Lint {
         label: "min_generic_const_args",
-        description: r##"# `min_generic_const_args`
+        description: r##"# min_generic_const_args
 
-Enables the generic const args MVP (only bare paths, not arbitrary computation).
+Enables the generic const args MVP (paths to type const items and constructors for ADTs and primitives).
 
 The tracking issue for this feature is: [#132980]
 
 [#132980]: https://github.com/rust-lang/rust/issues/132980
 
 ------------------------
+
+Warning: This feature is incomplete; its design and syntax may change.
+
+This feature acts as a minimal alternative to [generic_const_exprs] that allows a smaller subset of functionality,
+and uses a different approach for implementation. It is intentionally more restrictive, which helps with avoiding edge
+cases that make the `generic_const_exprs` hard to implement properly. See [Feature background][feature_background]
+for more details.
+
+Related features: [generic_const_args], [generic_const_items].
+
+[feature_background]: https://github.com/rust-lang/project-const-generics/blob/main/documents/min_const_generics_plan.md
+[generic_const_exprs]: generic-const-exprs.md
+[generic_const_args]: generic-const-args.md
+[generic_const_items]: generic-const-items.md
+
+## `type const` syntax
+
+This feature introduces new syntax: `type const`.
+Constants marked as `type const` are allowed to be used in type contexts, e.g.:
+
+```compile_fail
+#![allow(incomplete_features)]
+#![feature(min_generic_const_args)]
+
+type const X: usize = 1;
+const Y: usize = 1;
+
+struct Foo {
+    good_arr: [(); X], // Allowed
+    bad_arr: [(); Y], // Will not compile, `Y` must be `type const`.
+}
+```
+
+## Examples
+
+```rust
+#![allow(incomplete_features)]
+#![feature(min_generic_const_args)]
+
+trait Bar {
+    type const VAL: usize;
+    type const VAL2: usize;
+}
+
+struct Baz;
+
+impl Bar for Baz {
+    type const VAL: usize = 2;
+    type const VAL2: usize = const { Self::VAL * 2 };
+}
+
+struct Foo<B: Bar> {
+    arr1: [usize; B::VAL],
+    arr2: [usize; B::VAL2],
+}
+```
+
+Note that with [generic_const_exprs] the same example would look as follows:
+
+```rust
+#![allow(incomplete_features)]
+#![feature(generic_const_exprs)]
+
+trait Bar {
+    const VAL: usize;
+    const VAL2: usize;
+}
+
+struct Baz;
+
+impl Bar for Baz {
+    const VAL: usize = 2;
+    const VAL2: usize = const { Self::VAL * 2 };
+}
+
+struct Foo<B: Bar>
+where
+    [(); B::VAL]:,
+    [(); B::VAL2]:,
+{
+    arr1: [usize; B::VAL],
+    arr2: [usize; B::VAL2],
+}
+```
+
+Use of const functions is allowed:
+
+```rust
+#![allow(incomplete_features)]
+#![feature(min_generic_const_args)]
+
+const VAL: usize = 1;
+
+const fn inc(val: usize) -> usize {
+    val + 1
+}
+
+type const INC: usize = const { inc(VAL) };
+
+const ARR: [usize; INC] = [0; INC];
+```
 "##,
         default_severity: Severity::Allow,
         warn_since: None,
@@ -10680,6 +11160,22 @@ The tracking issue for this feature is: [#147456]
         deny_since: None,
     },
     Lint {
+        label: "move_expr",
+        description: r##"# `move_expr`
+
+Allows `move(expr)` in closures.
+
+The tracking issue for this feature is: [#155050]
+
+[#155050]: https://github.com/rust-lang/rust/issues/155050
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "movrs_target_feature",
         description: r##"# `movrs_target_feature`
 
@@ -10768,6 +11264,22 @@ Allows `mut ref` and `mut ref mut` identifier patterns.
 The tracking issue for this feature is: [#123076]
 
 [#123076]: https://github.com/rust-lang/rust/issues/123076
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "mut_restriction",
+        description: r##"# `mut_restriction`
+
+Allows `mut(crate) field: Type` restrictions.
+
+The tracking issue for this feature is: [#105077]
+
+[#105077]: https://github.com/rust-lang/rust/issues/105077
 
 ------------------------
 "##,
@@ -11582,6 +12094,20 @@ The tracking issue for this feature is: [#118485]
         deny_since: None,
     },
     Lint {
+        label: "os_str_split_at",
+        description: r##"# `os_str_split_at`
+
+
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "os_string_truncate",
         description: r##"# `os_string_truncate`
 
@@ -11770,22 +12296,6 @@ The tracking issue for this feature is: [#153328]
         deny_since: None,
     },
     Lint {
-        label: "path_is_empty",
-        description: r##"# `path_is_empty`
-
-
-
-The tracking issue for this feature is: [#148494]
-
-[#148494]: https://github.com/rust-lang/rust/issues/148494
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "path_trailing_sep",
         description: r##"# `path_trailing_sep`
 
@@ -11794,6 +12304,22 @@ The tracking issue for this feature is: [#148494]
 The tracking issue for this feature is: [#142503]
 
 [#142503]: https://github.com/rust-lang/rust/issues/142503
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "pathbuf_into_string",
+        description: r##"# `pathbuf_into_string`
+
+
+
+The tracking issue for this feature is: [#156203]
+
+[#156203]: https://github.com/rust-lang/rust/issues/156203
 
 ------------------------
 "##,
@@ -11950,6 +12476,20 @@ Experimental features that make `Pin` more ergonomic.
 The tracking issue for this feature is: [#130494]
 
 [#130494]: https://github.com/rust-lang/rust/issues/130494
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "pin_macro_internals",
+        description: r##"# `pin_macro_internals`
+
+
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
 
 ------------------------
 "##,
@@ -12950,6 +13490,22 @@ The tracking issue for this feature is: [#138099]
         deny_since: None,
     },
     Lint {
+        label: "return_address",
+        description: r##"# `return_address`
+
+
+
+The tracking issue for this feature is: [#154966]
+
+[#154966]: https://github.com/rust-lang/rust/issues/154966
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "return_type_notation",
         description: r##"# `return_type_notation`
 
@@ -13416,6 +13972,22 @@ The tracking issue for this feature is: [#90747]
 The tracking issue for this feature is: [#56975]
 
 [#56975]: https://github.com/rust-lang/rust/issues/56975
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "share_trait",
+        description: r##"# `share_trait`
+
+
+
+The tracking issue for this feature is: [#156756]
+
+[#156756]: https://github.com/rust-lang/rust/issues/156756
 
 ------------------------
 "##,
@@ -14410,22 +14982,6 @@ The tracking issue for this feature is: [#95439]
         deny_since: None,
     },
     Lint {
-        label: "target_feature_inline_always",
-        description: r##"# `target_feature_inline_always`
-
-Allows the use of target_feature when a function is marked inline(always).
-
-The tracking issue for this feature is: [#145574]
-
-[#145574]: https://github.com/rust-lang/rust/issues/145574
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "tcp_deferaccept",
         description: r##"# `tcp_deferaccept`
 
@@ -14434,6 +14990,22 @@ The tracking issue for this feature is: [#145574]
 The tracking issue for this feature is: [#119639]
 
 [#119639]: https://github.com/rust-lang/rust/issues/119639
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "tcp_keepalive",
+        description: r##"# `tcp_keepalive`
+
+
+
+The tracking issue for this feature is: [#155889]
+
+[#155889]: https://github.com/rust-lang/rust/issues/155889
 
 ------------------------
 "##,
@@ -14912,7 +15484,7 @@ pub fn main() {
     foo(&1);
 
     // Use trait alias for trait objects.
-    let a: &Bar = &123;
+    let a: &dyn Bar = &123;
     println!("{:?}", a);
     let b = Box::new(456) as Box<dyn Foo>;
     println!("{:?}", b);
@@ -15140,22 +15712,6 @@ This feature has no tracking issue, and is therefore likely internal to the comp
     Lint {
         label: "trusted_len",
         description: r##"# `trusted_len`
-
-
-
-The tracking issue for this feature is: [#37572]
-
-[#37572]: https://github.com/rust-lang/rust/issues/37572
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "trusted_len_next_unchecked",
-        description: r##"# `trusted_len_next_unchecked`
 
 
 
@@ -15773,6 +16329,22 @@ The tracking issue for this feature is: [#89517]
         deny_since: None,
     },
     Lint {
+        label: "unix_kill_process_group",
+        description: r##"# `unix_kill_process_group`
+
+
+
+The tracking issue for this feature is: [#156537]
+
+[#156537]: https://github.com/rust-lang/rust/issues/156537
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "unix_mkfifo",
         description: r##"# `unix_mkfifo`
 
@@ -16265,6 +16837,22 @@ The tracking issue for this feature is: [#146954]
         deny_since: None,
     },
     Lint {
+        label: "view_types",
+        description: r##"# `view_types`
+
+Allows view types.
+
+The tracking issue for this feature is: [#155938]
+
+[#155938]: https://github.com/rust-lang/rust/issues/155938
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "waker_fn",
         description: r##"# `waker_fn`
 
@@ -16437,6 +17025,22 @@ This feature is internal to the Rust compiler and is not intended for general us
         description: r##"# `windows_net`
 
 This feature is internal to the Rust compiler and is not intended for general use.
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "windows_permissions_ext",
+        description: r##"# `windows_permissions_ext`
+
+
+
+The tracking issue for this feature is: [#152956]
+
+[#152956]: https://github.com/rust-lang/rust/issues/152956
 
 ------------------------
 "##,

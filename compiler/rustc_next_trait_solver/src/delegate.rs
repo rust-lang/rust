@@ -1,6 +1,8 @@
 use std::ops::Deref;
 
-use rustc_type_ir::solve::{Certainty, Goal, NoSolution, VisibleForLeakCheck};
+use rustc_type_ir::solve::{
+    Certainty, FetchEligibleAssocItemResponse, Goal, NoSolution, VisibleForLeakCheck,
+};
 use rustc_type_ir::{self as ty, InferCtxtLike, Interner, TypeFoldable};
 
 pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
@@ -67,7 +69,7 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
 
     fn add_item_bounds_for_hidden_type(
         &self,
-        def_id: <Self::Interner as Interner>::DefId,
+        def_id: <Self::Interner as Interner>::OpaqueTyId,
         args: <Self::Interner as Interner>::GenericArgs,
         param_env: <Self::Interner as Interner>::ParamEnv,
         hidden_ty: <Self::Interner as Interner>::Ty,
@@ -77,12 +79,9 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
     fn fetch_eligible_assoc_item(
         &self,
         goal_trait_ref: ty::TraitRef<Self::Interner>,
-        trait_assoc_def_id: <Self::Interner as Interner>::DefId,
+        trait_assoc_def_id: <Self::Interner as Interner>::TraitAssocTermId,
         impl_def_id: <Self::Interner as Interner>::ImplId,
-    ) -> Result<
-        Option<<Self::Interner as Interner>::DefId>,
-        <Self::Interner as Interner>::ErrorGuaranteed,
-    >;
+    ) -> FetchEligibleAssocItemResponse<Self::Interner>;
 
     fn is_transmutable(
         &self,

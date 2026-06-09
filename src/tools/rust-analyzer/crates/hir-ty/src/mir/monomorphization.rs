@@ -7,15 +7,13 @@
 //!
 //! So the monomorphization should be called even if the substitution is empty.
 
-use hir_def::DefWithBodyId;
 use rustc_type_ir::inherent::IntoKind;
 use rustc_type_ir::{
     FallibleTypeFolder, TypeFlags, TypeFoldable, TypeSuperFoldable, TypeVisitableExt,
 };
-use triomphe::Arc;
 
 use crate::{
-    ParamEnvAndCrate,
+    InferBodyId, ParamEnvAndCrate,
     next_solver::{
         Allocation, AllocationData, Const, ConstKind, Region, RegionKind, StoredConst,
         StoredGenericArgs, StoredTy,
@@ -65,6 +63,9 @@ impl<'db> FallibleTypeFolder<DbInterner<'db>> for Filler<'db> {
                         ty,
                     )
                     .map_err(|_| MirLowerError::NotSupported("can't normalize alias".to_owned()))?;
+                // Normalization could introduce infer vars (for example, if the alias cannot be normalized),
+                // and we must not have infer vars in the body.
+                let ty = ty.replace_infer_with_error(self.infcx.interner);
                 ty.try_super_fold_with(self)
             }
             TyKind::Param(param) => Ok(self
@@ -237,38 +238,50 @@ impl<'db> Filler<'db> {
     }
 }
 
+#[salsa_macros::tracked(returns(ref), cycle_result = monomorphized_mir_body_cycle_result)]
 pub fn monomorphized_mir_body_query(
     db: &dyn HirDatabase,
-    owner: DefWithBodyId,
+    owner: InferBodyId,
     subst: StoredGenericArgs,
     trait_env: StoredParamEnvAndCrate,
-) -> Result<Arc<MirBody>, MirLowerError> {
+) -> Result<MirBody, MirLowerError> {
     let mut filler = Filler::new(db, trait_env.as_ref(), subst.as_ref());
     let body = db.mir_body(owner)?;
     let mut body = (*body).clone();
     filler.fill_body(&mut body)?;
-    Ok(Arc::new(body))
+    Ok(body)
 }
 
-pub(crate) fn monomorphized_mir_body_cycle_result(
+fn monomorphized_mir_body_cycle_result(
     _db: &dyn HirDatabase,
     _: salsa::Id,
-    _: DefWithBodyId,
+    _: InferBodyId,
     _: StoredGenericArgs,
     _: StoredParamEnvAndCrate,
-) -> Result<Arc<MirBody>, MirLowerError> {
+) -> Result<MirBody, MirLowerError> {
     Err(MirLowerError::Loop)
 }
 
+#[salsa_macros::tracked(returns(ref), cycle_result = monomorphized_mir_body_for_closure_cycle_result)]
 pub fn monomorphized_mir_body_for_closure_query(
     db: &dyn HirDatabase,
     closure: InternedClosureId,
     subst: StoredGenericArgs,
     trait_env: StoredParamEnvAndCrate,
-) -> Result<Arc<MirBody>, MirLowerError> {
+) -> Result<MirBody, MirLowerError> {
     let mut filler = Filler::new(db, trait_env.as_ref(), subst.as_ref());
     let body = db.mir_body_for_closure(closure)?;
     let mut body = (*body).clone();
     filler.fill_body(&mut body)?;
-    Ok(Arc::new(body))
+    Ok(body)
+}
+
+fn monomorphized_mir_body_for_closure_cycle_result(
+    _db: &dyn HirDatabase,
+    _: salsa::Id,
+    _: InternedClosureId,
+    _: StoredGenericArgs,
+    _: StoredParamEnvAndCrate,
+) -> Result<MirBody, MirLowerError> {
+    Err(MirLowerError::Loop)
 }

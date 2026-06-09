@@ -2,7 +2,7 @@
 //!
 //! Except for use items which are tested in [super::use_tree] and mod declarations with are tested
 //! in [crate::completions::mod_].
-use expect_test::expect;
+use expect_test::{Expect, expect};
 
 use crate::tests::{check, check_edit, check_with_base_items};
 
@@ -15,7 +15,7 @@ impl Tra$0
         expect![[r#"
             en Enum                    Enum
             ma makro!(…) macro_rules! makro
-            md module
+            md module::
             st Record                Record
             st Tuple                  Tuple
             st Unit                    Unit
@@ -41,7 +41,7 @@ impl Trait for Str$0
         expect![[r#"
             en Enum                    Enum
             ma makro!(…) macro_rules! makro
-            md module
+            md module::
             st Record                Record
             st Tuple                  Tuple
             st Unit                    Unit
@@ -118,7 +118,7 @@ fn completes_where() {
         expect![[r#"
             en Enum (adds ->)          Enum
             ma makro!(…) macro_rules! makro
-            md module (adds ->)
+            md module:: (adds ->)
             st Record (adds ->)      Record
             st Tuple (adds ->)        Tuple
             st Unit (adds ->)          Unit
@@ -135,6 +135,12 @@ fn completes_where() {
         "#]],
     );
     check_with_base_items(
+        r"fn func() -> foo::Bar $0",
+        expect![[r#"
+            kw where
+        "#]],
+    );
+    check_with_base_items(
         r"enum Enum $0",
         expect![[r#"
         kw where
@@ -147,6 +153,62 @@ fn completes_where() {
     "#]],
     );
     check_with_base_items(
+        r"trait Trait $0 {}",
+        expect![[r#"
+        kw where
+    "#]],
+    );
+}
+
+#[test]
+fn completes_where_in_stmt_list() {
+    fn check_in_stmt_list(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
+        check(&format!("const _: () = {{{ra_fixture}}};"), expect);
+    }
+    check_in_stmt_list(
+        r"struct Struct $0",
+        expect![[r#"
+        kw where
+    "#]],
+    );
+    check_in_stmt_list(
+        r"struct Struct $0 {}",
+        expect![[r#"
+        kw where
+    "#]],
+    );
+    check_in_stmt_list(
+        r"fn func() $0",
+        expect![[r#"
+            bt u32 (adds ->) u32
+            kw crate:: (adds ->)
+            kw dyn (adds ->)
+            kw fn (adds ->)
+            kw for (adds ->)
+            kw impl (adds ->)
+            kw self:: (adds ->)
+            kw where
+        "#]],
+    );
+    check_in_stmt_list(
+        r"fn func() -> foo::Bar $0",
+        expect![[r#"
+            kw where
+        "#]],
+    );
+    check_in_stmt_list(
+        r"enum Enum $0",
+        expect![[r#"
+        kw where
+    "#]],
+    );
+    check_in_stmt_list(
+        r"enum Enum $0 {}",
+        expect![[r#"
+        kw where
+    "#]],
+    );
+    check_in_stmt_list(
         r"trait Trait $0 {}",
         expect![[r#"
         kw where
@@ -301,7 +363,7 @@ fn bar() {
             ma expand_to_test!(…) macro_rules! expand_to_test
             ma makro!(…)                   macro_rules! makro
             ma test!(…)                            macro test
-            md module
+            md module::
             sc STATIC                                    Unit
             st Record                                  Record
             st Tuple                                    Tuple

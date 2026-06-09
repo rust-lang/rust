@@ -72,7 +72,11 @@ pub(crate) fn as_constant_inner<'tcx>(
         ExprKind::NamedConst { def_id, args, ref user_ty } => {
             let user_ty = user_ty.as_ref().and_then(push_cuta);
             if tcx.is_type_const(def_id) {
-                let uneval = ty::UnevaluatedConst::new(def_id, args);
+                let uneval = ty::UnevaluatedConst::new(
+                    tcx,
+                    ty::UnevaluatedConstKind::new_from_def_id(tcx, def_id),
+                    args,
+                );
                 let ct = ty::Const::new_unevaluated(tcx, uneval);
 
                 let const_ = Const::Ty(ty, ct);

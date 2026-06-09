@@ -1,7 +1,7 @@
 // Test that changing a tracked commandline argument invalidates
 // the cache while changing an untracked one doesn't.
 
-//@ revisions:rpass1 rpass2 rpass3 rpass4
+//@ revisions:rpass1 rpass2 rpass3 rpass4 rpass5
 //@ compile-flags: -Z query-dep-graph
 
 #![feature(rustc_attrs)]
@@ -9,6 +9,7 @@
 #![rustc_partition_codegened(module="commandline_args", cfg="rpass2")]
 #![rustc_partition_reused(module="commandline_args", cfg="rpass3")]
 #![rustc_partition_codegened(module="commandline_args", cfg="rpass4")]
+#![rustc_partition_reused(module="commandline_args", cfg="rpass5")]
 
 // Between revisions 1 and 2, we are changing the debuginfo-level, which should
 // invalidate the cache. Between revisions 2 and 3, we are adding `--diagnostic-width`
@@ -18,6 +19,10 @@
 //@[rpass2] compile-flags: -C debuginfo=2
 //@[rpass3] compile-flags: -C debuginfo=2 --diagnostic-width=80
 //@[rpass4] compile-flags: -C debuginfo=2 --diagnostic-width=80 --remap-path-prefix=/home/bors/r=src
+// Regression test for https://github.com/rust-lang/rust/issues/156182.
+// `-Zunstable-options` enables internal lints, so the lint store changes without
+// changing the incremental command-line hash.
+//@[rpass5] compile-flags: -C debuginfo=2 --diagnostic-width=80 --remap-path-prefix=/home/bors/r=src -Zunstable-options
 //@ ignore-backends: gcc
 
 pub fn main() {

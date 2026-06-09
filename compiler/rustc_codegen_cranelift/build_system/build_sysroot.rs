@@ -231,6 +231,8 @@ fn build_clif_sysroot_for_triple(
     // inlining.
     rustflags.push("-Zinline-mir".to_owned());
 
+    rustflags.push("-Zdisable-incr-comp-backend-caching".to_owned());
+
     if let Some(prefix) = env::var_os("CG_CLIF_STDLIB_REMAP_PATH_PREFIX") {
         rustflags.push("--remap-path-prefix".to_owned());
         rustflags.push(format!("library/={}/library", prefix.to_str().unwrap()));

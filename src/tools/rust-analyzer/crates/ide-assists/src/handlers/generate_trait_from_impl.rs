@@ -68,7 +68,10 @@ use syntax::{
 //     const_maker! {i32, 7}
 // }
 // ```
-pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn generate_trait_from_impl(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_, '_>,
+) -> Option<()> {
     // Get AST Node
     let impl_ast = ctx.find_node_at_offset::<ast::Impl>()?;
 
@@ -131,7 +134,7 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
             ];
 
             if let Some(params) = impl_ast.generic_param_list() {
-                let gen_args = &params.to_generic_args();
+                let gen_args = &params.to_generic_args(make);
                 elements.insert(1, gen_args.syntax().clone().into());
             }
 

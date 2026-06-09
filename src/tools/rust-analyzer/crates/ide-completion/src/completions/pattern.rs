@@ -12,7 +12,7 @@ use crate::{
 /// Completes constants and paths in unqualified patterns.
 pub(crate) fn complete_pattern(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     pattern_ctx: &PatternContext,
 ) {
     let mut add_keyword = |kw, snippet| acc.add_keyword_snippet(ctx, kw, snippet);
@@ -128,7 +128,7 @@ pub(crate) fn complete_pattern(
 
 pub(crate) fn complete_pattern_path(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx<'_>,
 ) {
     match qualified {

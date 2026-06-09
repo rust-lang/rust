@@ -1147,7 +1147,6 @@ class RustBuild(object):
         else:
             deny_warnings = self.warnings == "deny"
         if deny_warnings:
-            args += ["-Zwarnings"]
             env["CARGO_BUILD_WARNINGS"] = "deny"
 
         # Add RUSTFLAGS_BOOTSTRAP to RUSTFLAGS for bootstrap compilation.

@@ -3,7 +3,7 @@ use std::hash::{BuildHasherDefault, Hash, Hasher};
 
 use rustc_data_structures::AtomicRef;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::stable_hasher::{
+use rustc_data_structures::stable_hash::{
     RawDefId, RawDefPathHash, StableHash, StableHashCtxt, StableHasher, StableOrd, ToStableHashKey,
 };
 use rustc_data_structures::unhash::Unhasher;
@@ -462,24 +462,6 @@ impl ToStableHashKey for LocalDefId {
     #[inline]
     fn to_stable_hash_key<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx) -> DefPathHash {
         self.to_def_id().to_stable_hash_key(hcx)
-    }
-}
-
-impl ToStableHashKey for CrateNum {
-    type KeyType = DefPathHash;
-
-    #[inline]
-    fn to_stable_hash_key<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx) -> DefPathHash {
-        self.as_def_id().to_stable_hash_key(hcx)
-    }
-}
-
-impl ToStableHashKey for DefPathHash {
-    type KeyType = DefPathHash;
-
-    #[inline]
-    fn to_stable_hash_key<Hcx>(&self, _: &mut Hcx) -> DefPathHash {
-        *self
     }
 }
 

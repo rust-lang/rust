@@ -8,7 +8,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, adjusted_display_ran
 //
 // Diagnoses missing trait items in a trait impl.
 pub(crate) fn trait_impl_missing_assoc_item(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::TraitImplMissingAssocItems,
 ) -> Diagnostic {
     let missing = d.missing.iter().format_with(", ", |(name, item), f| {
@@ -149,10 +149,18 @@ impl Trait for () {
     type Item = ();
     fn item() {}
 }
+impl Trait for Adt<i32> {}
+   //^^^^^ error: not all trait items implemented, missing: `type Item`, `fn item`
 
 // Items with Self: Sized bound not required to be implemented for unsized types.
 impl Trait for str {}
 impl Trait for dyn OtherTrait {}
+impl Trait for Adt<[i32]> {}
+impl Trait for Slice<i32> {}
+impl Trait for (str,) {}
+
+struct Adt<T>(i32, T);
+struct Slice<T>([T]);
  "#,
         )
     }

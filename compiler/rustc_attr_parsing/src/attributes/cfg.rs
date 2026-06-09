@@ -20,7 +20,6 @@ use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 use thin_vec::ThinVec;
 
 use crate::attributes::AttributeSafety;
-use crate::attributes::diagnostic::check_cfg;
 use crate::context::{AcceptContext, ShouldEmit};
 use crate::parser::{
     AllowExprMetavar, ArgParser, MetaItemListParser, MetaItemOrLitParser, NameValueParser,
@@ -29,7 +28,7 @@ use crate::session_diagnostics::{
     AttributeParseError, AttributeParseErrorReason, CfgAttrBadDelim, MetaBadDelimSugg,
     ParsedDescription,
 };
-use crate::{AttributeParser, parse_version, session_diagnostics};
+use crate::{AttributeParser, check_cfg, parse_version, session_diagnostics};
 
 pub const CFG_TEMPLATE: AttributeTemplate = template!(
     List: &["predicate"],
@@ -135,12 +134,12 @@ fn parse_cfg_entry_version(
             cx.emit_err(session_diagnostics::ExpectedSingleVersionLiteral { span: list.span })
         );
     };
-    let Some(version_lit) = version.lit() else {
+    let Some(version_lit) = version.as_lit() else {
         return Err(
             cx.emit_err(session_diagnostics::ExpectedVersionLiteral { span: version.span() })
         );
     };
-    let Some(version_str) = version_lit.value_str() else {
+    let Some(version_str) = version_lit.value_as_str() else {
         return Err(
             cx.emit_err(session_diagnostics::ExpectedVersionLiteral { span: version_lit.span })
         );
@@ -327,8 +326,11 @@ pub fn parse_cfg_attr(
             }) {
                 Ok(r) => return Some(r),
                 Err(e) => {
-                    let suggestions = CFG_ATTR_TEMPLATE
-                        .suggestions(AttrSuggestionStyle::Attribute(cfg_attr.style), sym::cfg_attr);
+                    let suggestions = CFG_ATTR_TEMPLATE.suggestions(
+                        AttrSuggestionStyle::Attribute(cfg_attr.style),
+                        cfg_attr.get_normal_item().unsafety,
+                        sym::cfg_attr,
+                    );
                     e.with_span_suggestions(
                         cfg_attr.span,
                         "must be of the form",
@@ -360,8 +362,11 @@ pub fn parse_cfg_attr(
                 description: ParsedDescription::Attribute,
                 reason,
                 suggestions: session_diagnostics::AttributeParseErrorSuggestions::CreatedByTemplate(
-                    CFG_ATTR_TEMPLATE
-                        .suggestions(AttrSuggestionStyle::Attribute(cfg_attr.style), sym::cfg_attr),
+                    CFG_ATTR_TEMPLATE.suggestions(
+                        AttrSuggestionStyle::Attribute(cfg_attr.style),
+                        cfg_attr.get_normal_item().unsafety,
+                        sym::cfg_attr,
+                    ),
                 ),
             });
         }

@@ -86,7 +86,7 @@ impl AttributeKind {
             PatchableFunctionEntry { .. } => Yes,
             Path(..) => No,
             PatternComplexityLimit { .. } => No,
-            PinV2 => Yes,
+            PinV2(..) => Yes,
             PreludeImport => No,
             ProcMacro => No,
             ProcMacroAttribute => No,

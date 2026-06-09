@@ -2,12 +2,9 @@
 
 use std::borrow::Cow;
 use std::ffi::OsString;
-use std::fs::{
-    self, DirBuilder, File, FileType, OpenOptions, TryLockError, read_dir, remove_dir, remove_file,
-    rename,
-};
+use std::fs::{self, DirBuilder, File, FileType, OpenOptions, TryLockError};
 use std::io::{self, ErrorKind, Read, Seek, SeekFrom, Write};
-use std::path::{self, Path, PathBuf};
+use std::path::{self, Path};
 use std::time::SystemTime;
 
 use rustc_abi::Size;
@@ -67,6 +64,10 @@ impl UnixFileDescription for FileHandle {
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
+        if !self.readable {
+            return finish.call(ecx, Err(LibcError("EBADF")));
+        }
+
         let mut bytes = vec![0; len];
         // Emulates pread using seek + read + seek to restore cursor position.
         // Correctness of this emulation relies on sequential nature of Miri execution.
@@ -104,6 +105,10 @@ impl UnixFileDescription for FileHandle {
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
+        if !self.writable {
+            return finish.call(ecx, Err(LibcError("EBADF")));
+        }
+
         // Emulates pwrite using seek + write + seek to restore cursor position.
         // Correctness of this emulation relies on sequential nature of Miri execution.
         // The closure is used to emulate `try` block, since we "bubble" `io::Error` using `?`.
@@ -236,15 +241,10 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // which can be different between the libc used by std and the libc used by everyone else.
         let buf = this.deref_pointer(buf_op)?;
 
-        // `libc::S_IF*` constants are of type `mode_t`, which varies in width across targets
-        // (`u16` on macOS, `u32` on Linux). Read the scalar using `mode_t`'s size on the target.
-        let mode_t_size = this.libc_ty_layout("mode_t").size;
-        let mode: u32 = metadata.mode.to_uint(mode_t_size)?.try_into().unwrap();
-
         this.write_int_fields_named(
             &[
                 ("st_dev", metadata.dev.unwrap_or(0).into()),
-                ("st_mode", mode.into()),
+                ("st_mode", metadata.mode.into()),
                 ("st_nlink", metadata.nlink.unwrap_or(0).into()),
                 ("st_ino", metadata.ino.unwrap_or(0).into()),
                 ("st_uid", metadata.uid.unwrap_or(0).into()),
@@ -346,6 +346,17 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 },
         })
     }
+
+    #[cfg(unix)]
+    fn host_permissions_from_mode(&self, mode: u32) -> InterpResult<'tcx, fs::Permissions> {
+        use std::os::unix::fs::PermissionsExt;
+        interp_ok(fs::Permissions::from_mode(mode))
+    }
+
+    #[cfg(not(unix))]
+    fn host_permissions_from_mode(&self, _mode: u32) -> InterpResult<'tcx, fs::Permissions> {
+        throw_unsup_format!("setting file permissions is only supported on Unix hosts")
+    }
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -384,6 +395,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("access mode flags on this target are unsupported");
         }
         let mut writable = true;
+        let mut readable = true;
 
         // Now we check the access mode
         let access_mode = flag & 0b11;
@@ -393,6 +405,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             writable = false;
             options.read(true);
         } else if access_mode == o_wronly {
+            readable = false;
             options.write(true);
         } else if access_mode == o_rdwr {
             options.read(true).write(true);
@@ -454,7 +467,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let o_tmpfile = this.eval_libc_i32("O_TMPFILE");
             if flag & o_tmpfile == o_tmpfile {
                 // if the flag contains `O_TMPFILE` then we return a graceful error
-                return this.set_last_error_and_return_i32(LibcError("EOPNOTSUPP"));
+                return this.set_errno_and_return_neg1_i32(LibcError("EOPNOTSUPP"));
             }
         }
 
@@ -474,7 +487,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // O_NOFOLLOW only fails when the trailing component is a symlink;
                 // the entire rest of the path can still contain symlinks.
                 if path.is_symlink() {
-                    return this.set_last_error_and_return_i32(LibcError("ELOOP"));
+                    return this.set_errno_and_return_neg1_i32(LibcError("ELOOP"));
                 }
             }
         }
@@ -487,12 +500,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`open`", reject_with)?;
-            return this.set_last_error_and_return_i32(ErrorKind::PermissionDenied);
+            return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 
         let fd = options
             .open(path)
-            .map(|file| this.machine.fds.insert_new(FileHandle { file, writable }));
+            .map(|file| this.machine.fds.insert_new(FileHandle { file, writable, readable }));
 
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(fd)?))
     }
@@ -511,7 +524,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let seek_from = if whence == this.eval_libc_i32("SEEK_SET") {
             if offset < 0 {
                 // Negative offsets return `EINVAL`.
-                return this.set_last_error_and_return(LibcError("EINVAL"), dest);
+                return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
             } else {
                 SeekFrom::Start(u64::try_from(offset).unwrap())
             }
@@ -520,13 +533,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         } else if whence == this.eval_libc_i32("SEEK_END") {
             SeekFrom::End(i64::try_from(offset).unwrap())
         } else {
-            return this.set_last_error_and_return(LibcError("EINVAL"), dest);
+            return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
         };
 
         let communicate = this.machine.communicate();
 
         let Some(fd) = this.machine.fds.get(fd_num) else {
-            return this.set_last_error_and_return(LibcError("EBADF"), dest);
+            return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
         let result = fd.seek(communicate, seek_from)?.map(|offset| i64::try_from(offset).unwrap());
         drop(fd);
@@ -544,10 +557,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`unlink`", reject_with)?;
-            return this.set_last_error_and_return_i32(ErrorKind::PermissionDenied);
+            return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 
-        let result = remove_file(path).map(|_| 0);
+        let result = fs::remove_file(path).map(|_| 0);
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
     }
 
@@ -574,10 +587,63 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`symlink`", reject_with)?;
-            return this.set_last_error_and_return_i32(ErrorKind::PermissionDenied);
+            return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 
         let result = create_link(&target, &linkpath).map(|_| 0);
+        interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
+    }
+
+    fn linkat(
+        &mut self,
+        oldfd_op: &OpTy<'tcx>,
+        oldpath_op: &OpTy<'tcx>,
+        newfd_op: &OpTy<'tcx>,
+        newpath_op: &OpTy<'tcx>,
+        flags_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        // Load all arguments
+        let flags = this.read_scalar(flags_op)?.to_i32()?;
+        let oldfd = this.read_scalar(oldfd_op)?.to_i32()?;
+        let newfd = this.read_scalar(newfd_op)?.to_i32()?;
+        let oldpath_ptr = this.read_pointer(oldpath_op)?;
+        let newpath_ptr = this.read_pointer(newpath_op)?;
+
+        // Relevant libc constants
+        let at_fdcwd = this.eval_libc_i32("AT_FDCWD");
+
+        // Reject if isolation is enabled.
+        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
+            this.reject_in_isolation("`linkat`", reject_with)?;
+            return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
+        }
+
+        // Read flags - only support 0.
+        if flags != 0 {
+            throw_unsup_format!("unsupported linkat flags {:#x}", flags);
+        }
+
+        // Resolve oldpath
+        if oldfd != at_fdcwd {
+            throw_unsup_format!("linkat with `olddirfd` not equal to `AT_FDCWD` is not supported");
+        }
+        if oldpath_ptr == Pointer::null() {
+            return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
+        }
+        let oldpath = this.read_path_from_c_str(oldpath_ptr)?.into_owned();
+
+        // Resolve newpath
+        if newfd != at_fdcwd {
+            throw_unsup_format!("linkat with `newdirfd` not equal to `AT_FDCWD` is not supported");
+        }
+        if newpath_ptr == Pointer::null() {
+            return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
+        }
+        let newpath = this.read_path_from_c_str(newpath_ptr)?.into_owned();
+
+        let result = fs::hard_link(&oldpath, &newpath).map(|()| 0);
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
     }
 
@@ -597,13 +663,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`stat`", reject_with)?;
-            return this.set_last_error_and_return_i32(LibcError("EACCES"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EACCES"));
         }
 
         // `stat` always follows symlinks.
         let metadata = match FileMetadata::from_path(this, &path, true)? {
             Ok(metadata) => metadata,
-            Err(err) => return this.set_last_error_and_return_i32(err),
+            Err(err) => return this.set_errno_and_return_neg1_i32(err),
         };
 
         interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op)?))
@@ -626,12 +692,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`lstat`", reject_with)?;
-            return this.set_last_error_and_return_i32(LibcError("EACCES"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EACCES"));
         }
 
         let metadata = match FileMetadata::from_path(this, &path, false)? {
             Ok(metadata) => metadata,
-            Err(err) => return this.set_last_error_and_return_i32(err),
+            Err(err) => return this.set_errno_and_return_neg1_i32(err),
         };
 
         interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op)?))
@@ -653,12 +719,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`fstat`", reject_with)?;
             // Set error code as "EBADF" (bad fd)
-            return this.set_last_error_and_return_i32(LibcError("EBADF"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         }
 
         let metadata = match FileMetadata::from_fd_num(this, fd)? {
             Ok(metadata) => metadata,
-            Err(err) => return this.set_last_error_and_return_i32(err),
+            Err(err) => return this.set_errno_and_return_neg1_i32(err),
         };
         interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op)?))
     }
@@ -683,7 +749,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // If the statxbuf or pathname pointers are null, the function fails with `EFAULT`.
         if this.ptr_is_null(statxbuf_ptr)? || this.ptr_is_null(pathname_ptr)? {
-            return this.set_last_error_and_return_i32(LibcError("EFAULT"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
         }
 
         let statxbuf = this.deref_pointer_as(statxbuf_op, this.libc_ty_layout("statx"))?;
@@ -724,7 +790,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 assert!(empty_path_flag);
                 LibcError("EBADF")
             };
-            return this.set_last_error_and_return_i32(ecode);
+            return this.set_errno_and_return_neg1_i32(ecode);
         }
 
         // If the `AT_SYMLINK_NOFOLLOW` flag is set, we query the file's metadata without following
@@ -740,14 +806,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
         let metadata = match metadata {
             Ok(metadata) => metadata,
-            Err(err) => return this.set_last_error_and_return_i32(err),
+            Err(err) => return this.set_errno_and_return_neg1_i32(err),
         };
 
         // The `_mask_op` parameter specifies the file information that the caller requested.
         // However, `statx` is allowed to return information that was not requested or to not
         // return information that was requested. This `mask` represents the information we can
         // actually provide for any target.
-        let mut mask = this.eval_libc_u32("STATX_TYPE") | this.eval_libc_u32("STATX_SIZE");
+        let mut mask = this.eval_libc_u32("STATX_TYPE")
+            | this.eval_libc_u32("STATX_MODE")
+            | this.eval_libc_u32("STATX_SIZE");
 
         // Check which pieces of metadata we acquired, and set the appropriate flags in the mask.
         if metadata.ino.is_some() {
@@ -765,15 +833,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if metadata.blocks.is_some() {
             mask |= this.eval_libc_u32("STATX_BLOCKS");
         }
-
-        // `statx.stx_mode` is `__u16`. `libc::S_IF*` are of type `mode_t`, which varies in
-        // width across targets (`u16` on macOS, `u32` on Linux). Read using `mode_t`'s size.
-        let mode_t_size = this.libc_ty_layout("mode_t").size;
-        let mode: u16 = metadata
-            .mode
-            .to_uint(mode_t_size)?
-            .try_into()
-            .unwrap_or_else(|_| bug!("libc contains bad value for constant"));
 
         // We need to set the corresponding bits of `mask` if the access, creation and modification
         // times were available. Otherwise we let them be zero.
@@ -805,12 +864,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.write_int_fields_named(
             &[
                 ("stx_mask", mask.into()),
+                ("stx_mode", metadata.mode.into()),
                 ("stx_blksize", metadata.blksize.unwrap_or(0).into()),
                 ("stx_attributes", 0),
                 ("stx_nlink", metadata.nlink.unwrap_or(0).into()),
                 ("stx_uid", metadata.uid.unwrap_or(0).into()),
                 ("stx_gid", metadata.gid.unwrap_or(0).into()),
-                ("stx_mode", mode.into()),
                 ("stx_ino", metadata.ino.unwrap_or(0).into()),
                 ("stx_size", metadata.size.into()),
                 ("stx_blocks", metadata.blocks.unwrap_or(0).into()),
@@ -858,6 +917,59 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_i32(0))
     }
 
+    fn chmod(&mut self, path_op: &OpTy<'tcx>, mode_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        let path_ptr = this.read_pointer(path_op)?;
+        let mode = this.read_scalar(mode_op)?.to_uint(this.libc_ty_layout("mode_t").size)?;
+
+        if this.ptr_is_null(path_ptr)? {
+            return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
+        }
+        let path = this.read_path_from_c_str(path_ptr)?;
+
+        // Reject if isolation is enabled.
+        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
+            this.reject_in_isolation("`chmod`", reject_with)?;
+            return this.set_errno_and_return_neg1_i32(LibcError("EACCES"));
+        }
+
+        let permissions = this.host_permissions_from_mode(mode.try_into().unwrap())?;
+        if let Err(err) = fs::set_permissions(path, permissions) {
+            return this.set_errno_and_return_neg1_i32(err);
+        }
+
+        interp_ok(Scalar::from_i32(0))
+    }
+
+    fn fchmod(&mut self, fd_op: &OpTy<'tcx>, mode_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        let fd_num = this.read_scalar(fd_op)?.to_i32()?;
+        let mode = this.read_scalar(mode_op)?.to_uint(this.libc_ty_layout("mode_t").size)?;
+
+        let Some(fd) = this.machine.fds.get(fd_num) else {
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+        };
+        let Some(file) = fd.downcast::<FileHandle>() else {
+            // The docs don't talk about what happens for non-regular files...
+            throw_unsup_format!("`fchmod` is only supported on regular files")
+        };
+        if !file.writable && !file.readable {
+            // Apparently, `fchmod` on a read-only file is fine. But let's not allow it on a
+            // path-only file.
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+        }
+        assert!(this.machine.communicate(), "isolation should have prevented even opening a file");
+
+        let permissions = this.host_permissions_from_mode(mode.try_into().unwrap())?;
+        if let Err(err) = file.file.set_permissions(permissions) {
+            return this.set_errno_and_return_neg1_i32(err);
+        }
+
+        interp_ok(Scalar::from_i32(0))
+    }
+
     fn rename(
         &mut self,
         oldpath_op: &OpTy<'tcx>,
@@ -869,7 +981,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let newpath_ptr = this.read_pointer(newpath_op)?;
 
         if this.ptr_is_null(oldpath_ptr)? || this.ptr_is_null(newpath_ptr)? {
-            return this.set_last_error_and_return_i32(LibcError("EFAULT"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
         }
 
         let oldpath = this.read_path_from_c_str(oldpath_ptr)?;
@@ -878,10 +990,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`rename`", reject_with)?;
-            return this.set_last_error_and_return_i32(ErrorKind::PermissionDenied);
+            return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 
-        let result = rename(oldpath, newpath).map(|_| 0);
+        let result = fs::rename(oldpath, newpath).map(|_| 0);
 
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
     }
@@ -901,7 +1013,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`mkdir`", reject_with)?;
-            return this.set_last_error_and_return_i32(ErrorKind::PermissionDenied);
+            return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 
         #[cfg_attr(not(unix), allow(unused_mut))]
@@ -928,10 +1040,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`rmdir`", reject_with)?;
-            return this.set_last_error_and_return_i32(ErrorKind::PermissionDenied);
+            return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 
-        let result = remove_dir(path).map(|_| 0i32);
+        let result = fs::remove_dir(path).map(|_| 0i32);
 
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
     }
@@ -948,7 +1060,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return interp_ok(Scalar::null_ptr(this));
         }
 
-        let result = read_dir(name);
+        let result = fs::read_dir(name);
 
         match result {
             Ok(dir_iter) => {
@@ -1186,11 +1298,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`closedir`", reject_with)?;
-            return this.set_last_error_and_return_i32(LibcError("EBADF"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         }
 
         let Some(mut open_dir) = this.machine.dirs.streams.remove(&dirp) else {
-            return this.set_last_error_and_return_i32(LibcError("EBADF"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
         if let Some(entry) = open_dir.entry.take() {
             this.deallocate_ptr(entry, None, MiriMemoryKind::Runtime.into())?;
@@ -1204,34 +1316,26 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn ftruncate64(&mut self, fd_num: i32, length: i128) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        // Reject if isolation is enabled.
-        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("`ftruncate64`", reject_with)?;
-            // Set error code as "EBADF" (bad fd)
-            return this.set_last_error_and_return_i32(LibcError("EBADF"));
-        }
-
         let Some(fd) = this.machine.fds.get(fd_num) else {
-            return this.set_last_error_and_return_i32(LibcError("EBADF"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
-
         let Some(file) = fd.downcast::<FileHandle>() else {
             // The docs say that EINVAL is returned when the FD "does not reference a regular file
             // or a POSIX shared memory object" (and we don't support shmem objects).
-            return interp_ok(this.eval_libc("EINVAL"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
         };
+        if !file.writable {
+            // man page says "EBADF or EINVAL", Linux seems to use EINVAL.
+            return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
+        }
+        assert!(this.machine.communicate(), "isolation should have prevented even opening a file");
 
-        if file.writable {
-            if let Ok(length) = length.try_into() {
-                let result = file.file.set_len(length);
-                let result = this.try_unwrap_io_result(result.map(|_| 0i32))?;
-                interp_ok(Scalar::from_i32(result))
-            } else {
-                this.set_last_error_and_return_i32(LibcError("EINVAL"))
-            }
+        if let Ok(length) = length.try_into() {
+            let result = file.file.set_len(length);
+            let result = this.try_unwrap_io_result(result.map(|_| 0i32))?;
+            interp_ok(Scalar::from_i32(result))
         } else {
-            // The file is not writable
-            this.set_last_error_and_return_i32(LibcError("EINVAL"))
+            this.set_errno_and_return_neg1_i32(LibcError("EINVAL"))
         }
     }
 
@@ -1303,25 +1407,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
-        // Reject if isolation is enabled.
-        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("`fsync`", reject_with)?;
-            // Set error code as "EBADF" (bad fd)
-            return this.set_last_error_and_return_i32(LibcError("EBADF"));
-        }
-
         self.ffullsync_fd(fd)
     }
 
     fn ffullsync_fd(&mut self, fd_num: i32) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
         let Some(fd) = this.machine.fds.get(fd_num) else {
-            return this.set_last_error_and_return_i32(LibcError("EBADF"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
         // Only regular files support synchronization.
         let file = fd.downcast::<FileHandle>().ok_or_else(|| {
             err_unsup_format!("`fsync` is only supported on file-backed file descriptors")
         })?;
+        assert!(this.machine.communicate(), "isolation should have prevented even opening a file");
+
         let io_result = maybe_sync_file(&file.file, file.writable, File::sync_all);
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(io_result)?))
     }
@@ -1331,20 +1430,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
-        // Reject if isolation is enabled.
-        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("`fdatasync`", reject_with)?;
-            // Set error code as "EBADF" (bad fd)
-            return this.set_last_error_and_return_i32(LibcError("EBADF"));
-        }
-
         let Some(fd) = this.machine.fds.get(fd) else {
-            return this.set_last_error_and_return_i32(LibcError("EBADF"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
         // Only regular files support synchronization.
         let file = fd.downcast::<FileHandle>().ok_or_else(|| {
             err_unsup_format!("`fdatasync` is only supported on file-backed file descriptors")
         })?;
+        assert!(this.machine.communicate(), "isolation should have prevented even opening a file");
+
         let io_result = maybe_sync_file(&file.file, file.writable, File::sync_data);
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(io_result)?))
     }
@@ -1364,29 +1458,24 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let flags = this.read_scalar(flags_op)?.to_i32()?;
 
         if offset < 0 || nbytes < 0 {
-            return this.set_last_error_and_return_i32(LibcError("EINVAL"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
         }
         let allowed_flags = this.eval_libc_i32("SYNC_FILE_RANGE_WAIT_BEFORE")
             | this.eval_libc_i32("SYNC_FILE_RANGE_WRITE")
             | this.eval_libc_i32("SYNC_FILE_RANGE_WAIT_AFTER");
         if flags & allowed_flags != flags {
-            return this.set_last_error_and_return_i32(LibcError("EINVAL"));
-        }
-
-        // Reject if isolation is enabled.
-        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("`sync_file_range`", reject_with)?;
-            // Set error code as "EBADF" (bad fd)
-            return this.set_last_error_and_return_i32(LibcError("EBADF"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
         }
 
         let Some(fd) = this.machine.fds.get(fd) else {
-            return this.set_last_error_and_return_i32(LibcError("EBADF"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
         // Only regular files support synchronization.
         let file = fd.downcast::<FileHandle>().ok_or_else(|| {
             err_unsup_format!("`sync_data_range` is only supported on file-backed file descriptors")
         })?;
+        assert!(this.machine.communicate(), "isolation should have prevented even opening a file");
+
         let io_result = maybe_sync_file(&file.file, file.writable, File::sync_data);
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(io_result)?))
     }
@@ -1541,7 +1630,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`mkstemp`", reject_with)?;
-            return this.set_last_error_and_return_i32(LibcError("EACCES"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EACCES"));
         }
 
         // Get the bytes of the suffix we expect in _target_ encoding.
@@ -1557,7 +1646,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // If we don't find the suffix, it is an error.
         if last_six_char_bytes != suffix_bytes {
-            return this.set_last_error_and_return_i32(LibcError("EINVAL"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
         }
 
         // At this point we know we have 6 ASCII 'X' characters as a suffix.
@@ -1575,18 +1664,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mut fopts = OpenOptions::new();
         fopts.read(true).write(true).create_new(true);
 
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::OpenOptionsExt;
-            // Do not allow others to read or modify this file.
-            fopts.mode(0o600);
-            fopts.custom_flags(libc::O_EXCL);
-        }
-        #[cfg(windows)]
-        {
-            use std::os::windows::fs::OpenOptionsExt;
-            // Do not allow others to read or modify this file.
-            fopts.share_mode(0);
+        cfg_select! {
+            unix =>
+            {
+                use std::os::unix::fs::OpenOptionsExt;
+                // Do not allow others to read or modify this file.
+                fopts.mode(0o600);
+                fopts.custom_flags(libc::O_EXCL);
+            }
+            windows =>
+            {
+                use std::os::windows::fs::OpenOptionsExt;
+                // Do not allow others to read or modify this file.
+                fopts.share_mode(0);
+            }
+            _ => {
+                throw_unsup_format!("`mkstemp` is not supported on this host OS");
+            }
         }
 
         // If the generated file already exists, we will try again `max_attempts` many times.
@@ -1594,7 +1688,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let rng = this.machine.rng.get_mut();
 
             // Generate a random unique suffix.
-            let unique_suffix = SUBSTITUTIONS.choose_multiple(rng, 6).collect::<String>();
+            let unique_suffix =
+                (0..6).map(|_| SUBSTITUTIONS.choose(rng).unwrap()).collect::<String>();
 
             // Replace the template string with the random string.
             template_bytes[start_pos..end_pos].copy_from_slice(unique_suffix.as_bytes());
@@ -1602,16 +1697,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Write the modified template back to the passed in pointer to maintain POSIX semantics.
             this.write_bytes_ptr(template_ptr, template_bytes.iter().copied())?;
 
-            // To actually open the file, turn this into a host OsString.
-            let p = bytes_to_os_str(template_bytes)?.to_os_string();
-
-            let possibly_unique = std::env::temp_dir().join::<PathBuf>(p.into());
-
-            let file = fopts.open(possibly_unique);
-
+            // See if we can create and open this file.
+            let file = fopts.open(bytes_to_os_str(template_bytes)?);
             match file {
                 Ok(f) => {
-                    let fd = this.machine.fds.insert_new(FileHandle { file: f, writable: true });
+                    let fd = this.machine.fds.insert_new(FileHandle {
+                        file: f,
+                        writable: true,
+                        readable: true,
+                    });
                     return interp_ok(Scalar::from_i32(fd));
                 }
                 Err(e) =>
@@ -1622,14 +1716,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         _ => {
                             // "On error, -1 is returned, and errno is set to
                             // indicate the error"
-                            return this.set_last_error_and_return_i32(e);
+                            return this.set_errno_and_return_neg1_i32(e);
                         }
                     },
             }
         }
 
         // We ran out of attempts to create the file, return an error.
-        this.set_last_error_and_return_i32(LibcError("EEXIST"))
+        this.set_errno_and_return_neg1_i32(LibcError("EEXIST"))
     }
 }
 
@@ -1684,7 +1778,8 @@ fn file_type_to_mode_name(file_type: std::fs::FileType) -> &'static str {
 /// expose it. `statx` must only advertise the corresponding `STATX_*` bit when the field is `Some`;
 /// legacy `stat` writes zero for `None` to preserve the old fallback behavior.
 struct FileMetadata {
-    mode: Scalar,
+    /// This holds both the file type (dir, regular, symlink, ...) and permissions.
+    mode: u32,
     size: u64,
     created: Option<(u64, u32)>,
     accessed: Option<(u64, u32)>,
@@ -1728,6 +1823,9 @@ impl FileMetadata {
         mode_name: &str,
     ) -> InterpResult<'tcx, Result<FileMetadata, IoError>> {
         let mode = ecx.eval_libc(mode_name);
+        let mode: u32 = mode.to_uint(ecx.libc_ty_layout("mode_t").size)?.try_into().unwrap();
+        // We observed 0x777 on sockets and 0x600 on pipes...
+        let mode = mode | 0o666;
         interp_ok(Ok(FileMetadata {
             mode,
             size: 0,
@@ -1757,6 +1855,7 @@ impl FileMetadata {
 
         let file_type = metadata.file_type();
         let mode = ecx.eval_libc(file_type_to_mode_name(file_type));
+        let mut mode = mode.to_uint(ecx.libc_ty_layout("mode_t").size)?.try_into().unwrap();
 
         let size = metadata.len();
 
@@ -1769,6 +1868,8 @@ impl FileMetadata {
         cfg_select! {
             unix => {
                 use std::os::unix::fs::MetadataExt;
+                use std::os::unix::fs::PermissionsExt;
+
                 let dev = metadata.dev();
                 let ino = metadata.ino();
                 let nlink = metadata.nlink();
@@ -1776,6 +1877,8 @@ impl FileMetadata {
                 let gid = metadata.gid();
                 let blksize = metadata.blksize();
                 let blocks = metadata.blocks();
+
+                mode |= metadata.permissions().mode();
 
                 interp_ok(Ok(FileMetadata {
                     mode,
@@ -1792,20 +1895,25 @@ impl FileMetadata {
                     blocks: Some(blocks),
                 }))
             }
-            _ => interp_ok(Ok(FileMetadata {
-                mode,
-                size,
-                created,
-                accessed,
-                modified,
-                dev: None,
-                ino: None,
-                nlink: None,
-                uid: None,
-                gid: None,
-                blksize: None,
-                blocks: None,
-            })),
+            _ => {
+                // Emulate "everyone can read" or "everyone can read and write".
+                mode |= if metadata.permissions().readonly() { 0o111 } else { 0o333 };
+
+                interp_ok(Ok(FileMetadata {
+                    mode,
+                    size,
+                    created,
+                    accessed,
+                    modified,
+                    dev: None,
+                    ino: None,
+                    nlink: None,
+                    uid: None,
+                    gid: None,
+                    blksize: None,
+                    blocks: None,
+                }))
+            },
         }
     }
 }

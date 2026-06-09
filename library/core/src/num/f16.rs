@@ -35,6 +35,7 @@ pub mod consts {
     pub const TAU: f16 = 6.28318530717958647692528676655900577_f16;
 
     /// The golden ratio (φ)
+    #[doc(alias = "phi")]
     #[unstable(feature = "f16", issue = "116909")]
     pub const GOLDEN_RATIO: f16 = 1.618033988749894848204586834365638118_f16;
 
@@ -973,7 +974,7 @@ impl f16 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     pub const fn midpoint(self, other: f16) -> f16 {
-        const HI: f16 = f16::MAX / 2.;
+        const HI: f16 = f16::MAX * 0.5;
 
         let (a, b) = (self, other);
         let abs_a = a.abs();
@@ -981,9 +982,9 @@ impl f16 {
 
         if abs_a <= HI && abs_b <= HI {
             // Overflow is impossible
-            (a + b) / 2.
+            (a + b) * 0.5
         } else {
-            (a / 2.) + (b / 2.)
+            (a * 0.5) + (b * 0.5)
         }
     }
 
@@ -1448,7 +1449,7 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(target_has_reliable_f16_math)] {
+    /// # #[cfg(target_has_reliable_f16)] {
     ///
     /// let x = 3.5_f16;
     /// let y = -3.5_f16;
@@ -1513,7 +1514,7 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(target_has_reliable_f16_math)] {
+    /// # #[cfg(target_has_reliable_f16)] {
     ///
     /// let f = 3.5_f16;
     ///
@@ -1606,7 +1607,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16)] {
     ///
     /// let f = 3.7_f16;
@@ -1635,7 +1635,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16)] {
     ///
     /// let f = 3.01_f16;
@@ -1664,7 +1663,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16)] {
     ///
     /// let f = 3.3_f16;
@@ -1698,7 +1696,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16)] {
     ///
     /// let f = 3.3_f16;
@@ -1730,7 +1727,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16)] {
     ///
     /// let f = 3.7_f16;
@@ -1760,7 +1756,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16)] {
     ///
     /// let x = 3.6_f16;
@@ -1799,7 +1794,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16)] {
     ///
     /// let m = 10.0_f16;
@@ -1844,7 +1838,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16)] {
     ///
     /// let a: f16 = 7.0;
@@ -1888,7 +1881,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16)] {
     ///
     /// let a: f16 = 7.0;
@@ -1931,12 +1923,11 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
-    /// # #[cfg(target_has_reliable_f16)] {
+    /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let x = 2.0_f16;
     /// let abs_difference = (x.powi(2) - (x * x)).abs();
-    /// assert!(abs_difference <= f16::EPSILON);
+    /// assert!(abs_difference <= 0.1);
     ///
     /// assert_eq!(f16::powi(f16::NAN, 0), 1.0);
     /// assert_eq!(f16::powi(0.0, 0), 1.0);
@@ -1964,7 +1955,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16)] {
     ///
     /// let positive = 4.0_f16;
@@ -1999,7 +1989,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16)] {
     ///
     /// let x = 8.0f16;

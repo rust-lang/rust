@@ -1,5 +1,9 @@
+use std::cell::RefCell;
+use std::collections::hash_map::Entry;
+
 use either::{Left, Right};
 use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_hir::limit::Limit;
 use rustc_middle::mir::interpret::{ErrorHandled, InvalidMetaKind, ReportedErrorInfo};
@@ -9,10 +13,9 @@ use rustc_middle::ty::layout::{
     LayoutOfHelpers, TyAndLayout,
 };
 use rustc_middle::ty::{
-    self, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingEnv, TypingMode,
-    Variance,
+    self, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingEnv, Variance,
 };
-use rustc_middle::{bug, mir, span_bug};
+use rustc_middle::{mir, span_bug};
 use rustc_span::Span;
 use rustc_target::callconv::FnAbi;
 use tracing::{debug, trace};
@@ -38,6 +41,9 @@ pub struct InterpCx<'tcx, M: Machine<'tcx>> {
     /// The current context in case we're evaluating in a
     /// polymorphic context. This always uses `ty::TypingMode::PostAnalysis`.
     pub(super) typing_env: ty::TypingEnv<'tcx>,
+
+    /// The query cache is slow so we have our own cache in front of it.
+    pub(super) layout_cache: RefCell<FxHashMap<Ty<'tcx>, rustc_abi::Layout<'tcx>>>,
 
     /// The virtual memory system.
     pub memory: Memory<'tcx, M>,
@@ -131,10 +137,19 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// This inherent method takes priority over the trait method with the same name in LayoutOf,
     /// and allows wrapping the actual [LayoutOf::layout_of] with a tracing span.
     /// See [LayoutOf::layout_of] for the original documentation.
-    #[inline(always)]
+    #[inline]
     pub fn layout_of(&self, ty: Ty<'tcx>) -> Result<TyAndLayout<'tcx>, InterpErrorKind<'tcx>> {
-        let _trace = enter_trace_span!(M, layouting::layout_of, ty = ?ty.kind());
-        LayoutOf::layout_of(self, ty)
+        match self.layout_cache.borrow_mut().entry(ty) {
+            Entry::Occupied(occupied_entry) => {
+                Ok(TyAndLayout { ty, layout: *occupied_entry.get() })
+            }
+            Entry::Vacant(vacant_entry) => {
+                let _trace = enter_trace_span!(M, layouting::layout_of, ty = ?ty.kind());
+                let layout = LayoutOf::layout_of(self, ty)?;
+                vacant_entry.insert(layout.layout);
+                Ok(layout)
+            }
+        }
     }
 
     /// This inherent method takes priority over the trait method with the same name in FnAbiOf,
@@ -165,25 +180,30 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 }
 
 /// Test if it is valid for a MIR assignment to assign `src`-typed place to `dest`-typed value.
-/// This test should be symmetric, as it is primarily about layout compatibility.
 pub(super) fn mir_assign_valid_types<'tcx>(
     tcx: TyCtxt<'tcx>,
     typing_env: TypingEnv<'tcx>,
     src: TyAndLayout<'tcx>,
     dest: TyAndLayout<'tcx>,
 ) -> bool {
-    // Type-changing assignments can happen when subtyping is used. While
-    // all normal lifetimes are erased, higher-ranked types with their
-    // late-bound lifetimes are still around and can lead to type
-    // differences.
+    // We *could* check `Invariant` here since all subtyping must be explicit post-borrowck.
+    // However, this check is also used by the interpreter to figure out if a transmute can be
+    // turned into a regular assignment (which has a more efficient codepath), so we want the check
+    // to consider as many assignments as possible to be valid. Therefore we are happy to accept
+    // one-way subtyping.
     if util::relate_types(tcx, typing_env, Variance::Covariant, src.ty, dest.ty) {
-        // Make sure the layout is equal, too -- just to be safe. Miri really
-        // needs layout equality. For performance reason we skip this check when
-        // the types are equal. Equal types *can* have different layouts when
-        // enum downcast is involved (as enum variants carry the type of the
-        // enum), but those should never occur in assignments.
+        // Make sure the layout is equal, too -- just to be safe. Miri really needs layout equality.
+        // For performance reason we skip this check when the types are equal. Equal types *can*
+        // have different layouts when enum downcast is involved (as enum variants carry the type of
+        // the enum), but those should never occur in assignments.
         if cfg!(debug_assertions) || src.ty != dest.ty {
-            assert_eq!(src.layout, dest.layout);
+            assert_eq!(
+                src.layout,
+                dest.layout,
+                "{src} is a subtype of {dest} but they have different layout",
+                src = src.ty,
+                dest = dest.ty,
+            );
         }
         true
     } else {
@@ -238,26 +258,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         typing_env: ty::TypingEnv<'tcx>,
         machine: M,
     ) -> Self {
-        // Const eval always happens in post analysis mode in order to be able to use the hidden types of
-        // opaque types. This is needed for trivial things like `size_of`, but also for using associated
-        // types that are not specified in the opaque type. We also use MIR bodies whose opaque types have
-        // already been revealed, so we'd be able to at least partially observe the hidden types anyways.
-        if cfg!(debug_assertions) {
-            match typing_env.typing_mode() {
-                TypingMode::PostAnalysis => {}
-                TypingMode::Coherence
-                | TypingMode::Analysis { .. }
-                | TypingMode::Borrowck { .. }
-                | TypingMode::PostBorrowckAnalysis { .. } => {
-                    bug!("Const eval should always happens in PostAnalysis mode.");
-                }
-            }
-        }
+        crate::assert_typing_mode(typing_env.typing_mode());
 
         InterpCx {
             machine,
             tcx: tcx.at(root_span),
             typing_env,
+            layout_cache: RefCell::new(FxHashMap::default()),
             memory: Memory::new(),
             recursion_limit: tcx.recursion_limit(),
         }
