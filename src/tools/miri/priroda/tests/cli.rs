@@ -1,132 +1,57 @@
-use std::io::Write;
+use std::env;
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::process::Command;
 
-/// Runs one scripted Priroda CLI fixture against a Rust program.
-///
-/// `test_path` is the extensionless fixture stem. The helper sends
-/// `<test_path>.stdin` to Priroda and expects exact stdout from
-/// `<test_path>.stdout`.
-fn run_cli_test(program_path: &str, test_path: &str) -> Result<(), Box<dyn std::error::Error>> {
-    // Anchor relative paths to the crate root so the test does not depend on
-    // the current working directory used by a test runner or IDE.
+use regex::bytes::Regex;
+use ui_test::spanned::Spanned;
+use ui_test::status_emitter::StatusEmitter;
+use ui_test::{CommandBuilder, Config, default_file_filter, run_tests_generic};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let miri_dir = manifest_dir.parent().unwrap();
 
-    let test_path = manifest_dir.join(test_path);
-    let stdin_path = test_path.with_extension("stdin");
-    let stdout_path = test_path.with_extension("stdout");
-
-    // Keep scripted stdin as raw bytes: the helper only forwards it to the
-    // child process, so there is no need to validate it as UTF-8 here.
-    let input = std::fs::read(stdin_path)?;
-
-    // Source paths printed for `std` frames come from the active rustc
-    // toolchain, not from `MIRI_SYSROOT`, so expand `{RUSTC_SYSROOT}` from
-    // `rustc --print sysroot`. Use strict UTF-8 because this value is part of
-    // the exact stdout contract; invalid output should fail the test.
     let rustc_sysroot = Command::new("rustc").arg("--print").arg("sysroot").output()?;
     let rustc_sysroot = String::from_utf8(rustc_sysroot.stdout)?.trim().to_owned();
 
-    // Keep fixture stdout exact while allowing machine-specific absolute paths
-    // to be written with stable placeholders.
-    let expected_output = std::fs::read_to_string(stdout_path)?
-        .replace("{MANIFEST_DIR}", &manifest_dir.display().to_string())
-        .replace("{MIRI_DIR}", &manifest_dir.parent().unwrap().display().to_string())
-        .replace("{RUSTC_SYSROOT}", &rustc_sysroot);
+    let mut program = CommandBuilder::rustc();
+    program.program = PathBuf::from(env!("CARGO_BIN_EXE_priroda"));
 
-    let mut priroda = Command::new(env!("CARGO_BIN_EXE_priroda"))
-        .arg(manifest_dir.join(program_path))
-        // The CLI contract checks stderr exactly, so inherited logging
-        // configuration would make the test fail for reasons unrelated to
-        // Priroda's behavior.
-        .env_remove("RUSTC_LOG")
-        .env_remove("RUST_LOG")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
+    // Remove logging env vars that might leak into stderr
+    program.envs.push(("RUSTC_LOG".into(), None));
+    program.envs.push(("RUST_LOG".into(), None));
 
-    priroda.stdin.as_mut().unwrap().write_all(&input)?;
-    // Close stdin after the scripted input so Priroda can observe EOF if a
-    // fixture does not explicitly quit.
-    drop(priroda.stdin.take());
+    let mut config = Config {
+        program,
+        out_dir: PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("priroda_ui"),
+        ..Config::rustc("tests/ui")
+    };
 
-    let output = priroda.wait_with_output()?;
+    // Replace the dynamic paths in the actual stdout with the stable placeholders
+    let manifest_dir_regex =
+        Regex::new(&regex::escape(&manifest_dir.display().to_string())).unwrap();
+    let miri_dir_regex = Regex::new(&regex::escape(&miri_dir.display().to_string())).unwrap();
+    let rustc_sysroot_regex = Regex::new(&regex::escape(&rustc_sysroot)).unwrap();
 
-    assert!(
-        output.status.success(),
-        "priroda exited with status {}\nstderr:\n{}",
-        output.status,
-        // This is only diagnostic text for a failed assertion, so lossy UTF-8 is
-        // better than hiding stderr behind a second conversion failure.
-        String::from_utf8_lossy(&output.stderr),
-    );
+    config.comment_defaults.base().normalize_stdout.extend([
+        (manifest_dir_regex.into(), b"{MANIFEST_DIR}".to_vec()),
+        (miri_dir_regex.into(), b"{MIRI_DIR}".to_vec()),
+        (rustc_sysroot_regex.into(), b"{RUSTC_SYSROOT}".to_vec()),
+    ]);
 
-    assert!(
-        output.stderr.is_empty(),
-        "expected no stderr output, got:\n{}",
-        // Same reasoning as above: stderr is not part of the success path here;
-        // it is shown to make a failure easier to debug.
-        String::from_utf8_lossy(&output.stderr),
-    );
+    // Priroda CLI tests do not currently require annotation comments in the test files
+    config.comment_defaults.base().exit_status = Spanned::dummy(0).into();
+    config.comment_defaults.base().require_annotations = Spanned::dummy(false).into();
 
-    // Actual stdout is the value under test, so require valid UTF-8 before doing
-    // the exact string comparison against the expanded fixture.
-    assert_eq!(String::from_utf8(output.stdout)?, expected_output);
+    let args = ui_test::Args::test()?;
+    config.with_args(&args);
+
+    run_tests_generic(
+        vec![config],
+        default_file_filter,
+        |_, _| {},
+        Box::<dyn StatusEmitter>::from(args.format),
+    )?;
 
     Ok(())
-}
-
-/// Verifies Priroda can start on the simplest passing Rust program and accept
-/// a scripted `quit` command.
-#[test]
-fn empty_main() -> Result<(), Box<dyn std::error::Error>> {
-    run_cli_test("../tests/pass/empty_main.rs", "tests/cli/empty_main")
-}
-
-/// Verifies EOF exits the debugger loop cleanly without requiring an explicit
-/// quit command.
-#[test]
-fn eof_exits_cleanly() -> Result<(), Box<dyn std::error::Error>> {
-    run_cli_test("../tests/pass/empty_main.rs", "tests/cli/eof_exits_cleanly")
-}
-
-/// Verifies unknown commands and malformed breakpoints are rejected without
-/// mutating debugger state.
-#[test]
-fn invalid_commands() -> Result<(), Box<dyn std::error::Error>> {
-    run_cli_test("../tests/pass/empty_main.rs", "tests/cli/invalid_commands")
-}
-
-/// Verifies breakpoint aliases and duplicate detection before execution starts.
-#[test]
-fn duplicate_breakpoint() -> Result<(), Box<dyn std::error::Error>> {
-    run_cli_test("../tests/pass/empty_main.rs", "tests/cli/duplicate_breakpoint")
-}
-
-/// Verifies continue can drive the interpreted program to normal completion.
-#[test]
-fn continue_finishes_program() -> Result<(), Box<dyn std::error::Error>> {
-    run_cli_test("../tests/pass/empty_main.rs", "tests/cli/continue_finishes_program")
-}
-
-/// Verifies continue stops when execution reaches a registered source-location
-/// breakpoint.
-#[test]
-fn continue_hits_breakpoint() -> Result<(), Box<dyn std::error::Error>> {
-    run_cli_test("../tests/pass/empty_main.rs", "tests/cli/continue_hits_breakpoint")
-}
-
-/// Verifies every current spelling of MIR-instruction stepping advances
-/// execution and reports a location.
-#[test]
-fn step_aliases() -> Result<(), Box<dyn std::error::Error>> {
-    run_cli_test("../tests/pass/empty_main.rs", "tests/cli/step_aliases")
-}
-
-/// Documents the current repeated-stop behavior when multiple MIR locations map
-/// to the same source breakpoint line.
-#[test]
-fn repeated_same_line_breakpoint() -> Result<(), Box<dyn std::error::Error>> {
-    run_cli_test("../tests/pass/empty_main.rs", "tests/cli/repeated_same_line_breakpoint")
 }
