@@ -46,24 +46,30 @@ fn layout_of<'tcx>(
     // the where bounds to their hidden types. This reduces overall uncached invocations
     // of `layout_of` and is thus a small performance improvement.
     let typing_env = typing_env.with_post_analysis_normalized(tcx);
+    // Changing typing env may reveal opaque types that's marked as rigid in other
+    // typing env.
+    let non_rigid_ty = ty::set_aliases_to_non_rigid(tcx, ty);
     let unnormalized_ty = ty;
 
     // FIXME: We might want to have two different versions of `layout_of`:
     // One that can be called after typecheck has completed and can use
     // `normalize_erasing_regions` here and another one that can be called
     // before typecheck has completed and uses `try_normalize_erasing_regions`.
-    let ty = match tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)) {
-        Ok(t) => t,
-        Err(normalization_error) => {
-            return Err(tcx
-                .arena
-                .alloc(LayoutError::NormalizationFailure(ty, normalization_error)));
-        }
-    };
+    let normalized_ty =
+        match tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(non_rigid_ty)) {
+            Ok(t) => t,
+            Err(normalization_error) => {
+                return Err(tcx
+                    .arena
+                    .alloc(LayoutError::NormalizationFailure(ty, normalization_error)));
+            }
+        };
 
-    if ty != unnormalized_ty {
+    if normalized_ty != unnormalized_ty {
+        // FIXME: our rigidness folding is redundant in this case.
+        //
         // Ensure this layout is also cached for the normalized type.
-        return tcx.layout_of(typing_env.as_query_input(ty));
+        return tcx.layout_of(typing_env.as_query_input(normalized_ty));
     }
 
     match typing_env.typing_mode() {
@@ -86,8 +92,8 @@ fn layout_of<'tcx>(
 
     let cx = LayoutCx::new(tcx, typing_env);
 
-    let layout = layout_of_uncached(&cx, ty)?;
-    let layout = TyAndLayout { ty, layout };
+    let layout = layout_of_uncached(&cx, normalized_ty)?;
+    let layout = TyAndLayout { ty: normalized_ty, layout };
 
     // If we are running with `-Zprint-type-sizes`, maybe record layouts
     // for dumping later.

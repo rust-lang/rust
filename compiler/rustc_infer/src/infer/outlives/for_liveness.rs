@@ -56,7 +56,7 @@ where
             // either `'static` or a unique outlives region, and if one is
             // found, we just need to prove that that region is still live.
             // If one is not found, then we continue to walk through the alias.
-            ty::Alias(ty::AliasTy { kind, args, .. }) => {
+            ty::Alias(alias_ty @ ty::AliasTy { kind, args, .. }) => {
                 let tcx = self.tcx;
                 let param_env = self.param_env;
                 let outlives_bounds: Vec<_> = tcx
@@ -76,7 +76,13 @@ where
                                 &outlives.map_bound(|ty::OutlivesPredicate(ty, bound)| {
                                     VerifyIfEq { ty, bound }
                                 }),
-                                ty,
+                                // FIXME(rigid_aliases_marker): We have alias relating in
+                                // `extract_verify_if_eq` which checks rigidness equality.
+                                // Types coming out of `item_bounds` are marked as non-rigid
+                                // while the visited ty can be rigid. We only set the outer
+                                // alias to non-rigid since the instantiation args can contain
+                                // rigid aliases.
+                                alias_ty.to_non_rigid().to_ty(tcx),
                             )
                         }
                     })

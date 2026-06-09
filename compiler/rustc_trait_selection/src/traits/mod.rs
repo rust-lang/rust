@@ -280,6 +280,9 @@ fn do_normalize_predicates<'tcx>(
     let infcx = tcx.infer_ctxt().ignoring_regions().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
     let predicates = ocx.normalize(&cause, elaborated_env, Unnormalized::new_wip(predicates));
+    // FIXME: opaque types in param env might be in defining scope but we're
+    // using non body analysis for here. So the rigidness marker is wrong.
+    let predicates = ty::set_aliases_to_non_rigid(tcx, predicates);
 
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
