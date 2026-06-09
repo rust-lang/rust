@@ -1968,28 +1968,37 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for UncoveredTyParam<'_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         let Self { param, local_ty } = self;
 
-        let mut diag = Diag::new(dcx, level, "").with_span(param.span);
+        let mut diag = Diag::new(dcx, level, "")
+            .with_span(param.span)
+            .with_span_label(param.span, "uncovered type parameter");
         if diag.is_error() {
             diag.code(E0210);
         }
 
-        let note = "implementing a foreign trait is only possible if at least one of the types for which it is implemented is local";
+        let note = "\
+            implementing a foreign trait is only possible if \
+            at least one of the types for which it is implemented is local";
+
         if let Some(local_ty) = local_ty {
-            let msg = format!(
-                "type parameter `{param}` must be covered by another type when it appears before the first local type (`{local_ty}`)"
-            );
-            diag.primary_message(msg.clone());
-            diag.span_label(param.span, msg);
-            diag.note(format!(
-                "{note}, and no uncovered type parameters appear before that first local type"
+            diag.primary_message(format!(
+                "type parameter `{param}` must be covered by another type when \
+                 it appears before the first local type (`{local_ty}`)"
             ));
-            diag.note("in this case, 'before' refers to the following order: `impl<..> ForeignTrait<T1, ..., Tn> for T0`, where `T0` is the first and `Tn` is the last");
-        } else {
-            let msg = format!(
-                "type parameter `{param}` must be used as the type parameter for some local type"
+
+            diag.note(format!(
+                "{note},\nand no uncovered type parameters appear before that first local type"
+            ));
+            diag.note(
+                "in this case, 'before' refers to the following order: \
+                 `impl<..> ForeignTrait<T1, ..., Tn> for T0`,\n\
+                 where `T0` is the first and `Tn` is the last",
             );
-            diag.primary_message(format!("{msg} (e.g., `MyStruct<{param}>`)"));
-            diag.span_label(param.span, msg);
+        } else {
+            diag.primary_message(format!(
+                "type parameter `{param}` must be used as an argument to \
+                 some local type (e.g., `MyStruct<{param}>`)"
+            ));
+
             diag.note(note);
             diag.note(
                 "only traits defined in the current crate can be implemented for a type parameter",
