@@ -2902,7 +2902,7 @@ impl str {
     /// assert!(!comp.eq_ignore_case_unnormalized(decomp));
     /// ```
     ///
-    /// [normalization]: https://www.unicode.org/faq/normalization
+    /// [normalization]: https://www.unicode.org/faq/normalization.html
     #[unstable(feature = "casefold", issue = "154742")]
     #[must_use]
     #[inline]
