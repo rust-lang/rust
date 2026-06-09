@@ -148,7 +148,7 @@ pub(crate) struct ClosureCannotBeStatic {
 }
 
 #[derive(Diagnostic)]
-#[diag("`move(expr)` is only supported in plain closures")]
+#[diag("`move(expr)` is only supported in closures")]
 pub(crate) struct MoveExprOnlyInPlainClosures {
     #[primary_span]
     pub span: Span,
