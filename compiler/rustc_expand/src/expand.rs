@@ -38,7 +38,7 @@ use smallvec::SmallVec;
 
 use crate::base::*;
 use crate::config::{StripUnconfigured, attr_into_trace};
-use crate::errors::{
+use crate::diagnostics::{
     EmptyDelegationMac, GlobDelegationOutsideImpls, GlobDelegationTraitlessQpath, IncompleteParse,
     RecursionLimitReached, RemoveExprNotSupported, RemoveNodeNotSupported, UnsupportedKeyValue,
     WrongFragmentKind,
@@ -2278,7 +2278,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     UNUSED_DOC_COMMENTS,
                     current_span,
                     self.cx.current_expansion.lint_node_id,
-                    crate::errors::MacroCallUnusedDocComment { span: attr.span },
+                    crate::diagnostics::MacroCallUnusedDocComment { span: attr.span },
                 );
             } else if rustc_attr_parsing::is_builtin_attr(attr)
                 && !AttributeParser::is_parsed_attribute(&attr.path())
@@ -2288,7 +2288,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     UNUSED_ATTRIBUTES,
                     attr.span,
                     self.cx.current_expansion.lint_node_id,
-                    crate::errors::UnusedBuiltinAttribute {
+                    crate::diagnostics::UnusedBuiltinAttribute {
                         attr_name,
                         macro_name: pprust::path_to_string(&call.path),
                         invoc_span: call.path.span,
