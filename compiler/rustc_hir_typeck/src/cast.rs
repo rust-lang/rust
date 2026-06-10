@@ -118,7 +118,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(&f) => self.pointer_kind(f, span)?,
             },
 
-            ty::UnsafeBinder(_) => todo!("FIXME(unsafe_binder)"),
+            ty::UnsafeBinder(_) => unimplemented!("FIXME(unsafe_binder)"),
 
             // Pointers to foreign types are thin, despite being unsized
             ty::Foreign(..) => Some(PointerKind::Thin),

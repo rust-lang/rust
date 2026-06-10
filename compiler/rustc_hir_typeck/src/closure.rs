@@ -195,7 +195,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         (bound_sig.skip_binder().output(), tcx.types.unit)
                     }
                     hir::CoroutineDesugaring::AsyncGen => {
-                        todo!("`async gen` closures not supported yet")
+                        unimplemented!("`async gen` closures not supported yet")
                     }
                 };
                 // Compute all of the variables that will be used to populate the coroutine.

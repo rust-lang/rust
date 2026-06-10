@@ -311,7 +311,7 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
 
     fn destructor(self, tcx: TyCtxt<'tcx>) -> Option<AdtDestructorKind> {
         Some(match tcx.constness(self.destructor(tcx)?.did) {
-            hir::Constness::Const { always: true } => todo!("FIXME(comptime)"),
+            hir::Constness::Const { always: true } => unimplemented!("FIXME(comptime)"),
             hir::Constness::Const { always: false } => AdtDestructorKind::Const,
             hir::Constness::NotConst => AdtDestructorKind::NotConst,
         })

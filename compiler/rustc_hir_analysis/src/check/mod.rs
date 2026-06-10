@@ -516,6 +516,7 @@ fn fn_sig_suggestion<'tcx>(
     // lifetimes between the `impl` and the `trait`, but this should be good enough to
     // fill in a significant portion of the missing code, and other subsequent
     // suggestions can help the user fix the code.
+    // ignore-tidy-todo
     format!("{safety}{asyncness}fn {ident}{generics}({args}){output}{where_clauses} {{ todo!() }}")
 }
 

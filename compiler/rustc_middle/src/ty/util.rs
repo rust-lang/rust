@@ -1265,7 +1265,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Error(_)
             | ty::FnPtr(..) => true,
             // FIXME(unsafe_binders):
-            ty::UnsafeBinder(_) => todo!(),
+            ty::UnsafeBinder(_) => unimplemented!(),
             ty::Tuple(fields) => fields.iter().all(Self::is_trivially_not_async_drop),
             ty::Pat(elem_ty, _) | ty::Slice(elem_ty) | ty::Array(elem_ty, _) => {
                 elem_ty.is_trivially_not_async_drop()

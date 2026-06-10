@@ -76,7 +76,7 @@ const ANNOTATIONS_TO_IGNORE: &[&str] = &[
 const LINELENGTH_CHECK: &str = "linelength";
 
 // If you edit this, also edit where it gets used in `check` (calling `contains_ignore_directives`)
-const CONFIGURABLE_CHECKS: [&str; 11] = [
+const CONFIGURABLE_CHECKS: [&str; 12] = [
     "cr",
     "undocumented-unsafe",
     "tab",
@@ -88,6 +88,7 @@ const CONFIGURABLE_CHECKS: [&str; 11] = [
     "copyright",
     "dbg",
     "odd-backticks",
+    "todo",
 ];
 
 fn generate_problems<'a>(
@@ -440,6 +441,7 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
             mut skip_copyright,
             mut skip_dbg,
             mut skip_odd_backticks,
+            mut skip_todo,
         ] = contains_ignore_directives(&path_str, can_contain, contents, CONFIGURABLE_CHECKS);
         let mut leading_new_lines = false;
         let mut trailing_new_lines = 0;
@@ -490,6 +492,21 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                     err,
                     skip_dbg,
                     "`dbg!` macro is intended as a debugging tool. It should not be in version control."
+                )
+            }
+
+            if trimmed.contains("todo!")
+                && !trimmed.starts_with("//")
+                && !file.ancestors().any(|a| {
+                    (a.ends_with("tests") && a.join("COMPILER_TESTS.md").exists())
+                        || a.ends_with("library/alloctests")
+                })
+                && filename != "tests.rs"
+            {
+                suppressible_tidy_err!(
+                    err,
+                    skip_todo,
+                    "the `todo!` macro is used for tasks that should be done before merging a PR. If you want to panic here, use `panic!`, `unimplemented!`, `unreachable!`, `rustc_middle::bug!` or an assertion"
                 )
             }
 

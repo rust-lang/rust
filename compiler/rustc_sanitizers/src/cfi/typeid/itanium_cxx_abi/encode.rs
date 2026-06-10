@@ -594,7 +594,7 @@ pub(crate) fn encode_ty<'tcx>(
 
         // FIXME(unsafe_binders): Implement this.
         ty::UnsafeBinder(_) => {
-            todo!()
+            unimplemented!()
         }
 
         // Trait types
