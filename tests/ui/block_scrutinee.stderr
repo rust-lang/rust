@@ -1,5 +1,5 @@
 error: this scrutinee is wrapped in a block
-  --> tests/ui/block_scrutinee.rs:11:22
+  --> tests/ui/block_scrutinee.rs:10:22
    |
 LL |     if let Some(x) = { my_function() } {
    |                      ^^^^^^^^^^^^^^^^^
@@ -20,7 +20,7 @@ LL ~     if let Some(x) = res {
    |
 
 error: this scrutinee is wrapped in a block
-  --> tests/ui/block_scrutinee.rs:16:11
+  --> tests/ui/block_scrutinee.rs:15:11
    |
 LL |     match { my_function() } {
    |           ^^^^^^^^^^^^^^^^^
@@ -39,7 +39,7 @@ LL ~     match res {
    |
 
 error: this scrutinee is wrapped in a block
-  --> tests/ui/block_scrutinee.rs:24:25
+  --> tests/ui/block_scrutinee.rs:23:25
    |
 LL |     while let Some(x) = { v.pop() } {
    |                         ^^^^^^^^^^^
@@ -58,7 +58,7 @@ LL ~     while let Some(x) = res {
    |
 
 error: this scrutinee is wrapped in a block
-  --> tests/ui/block_scrutinee.rs:41:22
+  --> tests/ui/block_scrutinee.rs:40:22
    |
 LL |       if let Some(x) = {
    |  ______________________^

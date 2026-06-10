@@ -1,7 +1,6 @@
 //@ edition: 2021
 #![warn(clippy::block_scrutinee)]
 #![allow(clippy::blocks_in_conditions)]
-#![allow(clippy::let_and_return)]
 
 fn my_function() -> Option<i32> {
     Some(1)
