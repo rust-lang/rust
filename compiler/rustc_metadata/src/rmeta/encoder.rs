@@ -35,8 +35,8 @@ use rustc_span::{
 };
 use tracing::{debug, instrument, trace};
 
+use crate::diagnostics::{FailCreateFileEncoder, FailWriteFile};
 use crate::eii::EiiMapEncodedKeyValue;
-use crate::errors::{FailCreateFileEncoder, FailWriteFile};
 use crate::rmeta::*;
 
 pub(super) struct EncodeContext<'a, 'tcx> {
