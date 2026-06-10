@@ -510,6 +510,67 @@ pub trait BuilderMethods<'a, 'tcx>:
         } else if !layout.is_zst() {
             let bytes = self.const_usize(layout.size.bytes());
             self.memcpy(dst.llval, dst.align, src.llval, src.align, bytes, flags, None);
+            self.zero_padding_of_typed_copy(dst, layout);
+        }
+    }
+
+    /// Zeroes small padding gaps in the destination after a typed memcpy.
+    ///
+    /// When LLVM's SROA decomposes a `memcpy` from a partially-initialized
+    /// alloca, it skips padding bytes (emitting `store undef` which DSE
+    /// removes), leaving non-contiguous stores that cannot be merged. By
+    /// explicitly zeroing the padding in the destination, all bytes become
+    /// defined, enabling LLVM to merge the stores into wider operations.
+    fn zero_padding_of_typed_copy(
+        &mut self,
+        dst: PlaceValue<Self::Value>,
+        layout: TyAndLayout<'tcx>,
+    ) {
+        use rustc_abi::{FieldsShape, Variants};
+
+        // Only struct-like layouts (`Arbitrary`) have meaningful inter-field
+        // padding. Other shapes (Primitive, Union, Array) either have no
+        // fields, share offset 0, or use a uniform stride with no gaps.
+        if !matches!(layout.fields, FieldsShape::Arbitrary { .. }) {
+            return;
+        }
+        // For multi-variant enums, the top-level field offsets describe one
+        // variant's view of the shared storage. Gaps between those fields
+        // may hold another variant's data, not padding — zeroing them would
+        // corrupt the enum's payload.
+        if !matches!(layout.variants, Variants::Single { .. }) {
+            return;
+        }
+        // Only worth zeroing for structs that fit in a wide integer (≤ 128
+        // bits). For larger structs, LLVM cannot merge all stores into a
+        // single wide store, so the memset is pure overhead.
+        if layout.size.bytes() > 16 {
+            return;
+        }
+
+        // Walk fields in memory order, emitting a memset for each padding
+        // gap (both inter-field and trailing). For small structs (≤ 16
+        // bytes), zeroing any padding lets LLVM merge adjacent stores into
+        // a single wide store.
+        let mut offset = Size::ZERO;
+        for i in layout.fields.index_by_increasing_offset() {
+            let target_offset = layout.fields.offset(i);
+            let field_layout = layout.field(self, i);
+            if target_offset > offset {
+                let ptr = self.inbounds_ptradd(dst.llval, self.const_usize(offset.bytes()));
+                let fill = self.const_u8(0);
+                let size = self.const_usize(target_offset.bytes() - offset.bytes());
+                self.memset(ptr, fill, size, Align::ONE, MemFlags::empty());
+            }
+            offset = target_offset + field_layout.size;
+        }
+
+        // Zero trailing padding.
+        if offset < layout.size {
+            let ptr = self.inbounds_ptradd(dst.llval, self.const_usize(offset.bytes()));
+            let fill = self.const_u8(0);
+            let size = self.const_usize(layout.size.bytes() - offset.bytes());
+            self.memset(ptr, fill, size, Align::ONE, MemFlags::empty());
         }
     }
 
