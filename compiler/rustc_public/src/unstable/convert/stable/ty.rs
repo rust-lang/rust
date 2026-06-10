@@ -454,7 +454,7 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
                 TyKind::RigidTy(RigidTy::FnPtr(sig_tys.with(*hdr).stable(tables, cx)))
             }
             // FIXME(unsafe_binders):
-            ty::UnsafeBinder(_) => todo!(),
+            ty::UnsafeBinder(_) => unimplemented!(),
             ty::Dynamic(existential_predicates, region) => TyKind::RigidTy(RigidTy::Dynamic(
                 existential_predicates
                     .iter()
@@ -466,7 +466,9 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
                 tables.closure_def(*def_id),
                 generic_args.stable(tables, cx),
             )),
-            ty::CoroutineClosure(..) => todo!("FIXME(async_closures): Lower these to SMIR"),
+            ty::CoroutineClosure(..) => {
+                unimplemented!("FIXME(async_closures): Lower these to SMIR")
+            }
             ty::Coroutine(def_id, generic_args) => TyKind::RigidTy(RigidTy::Coroutine(
                 tables.coroutine_def(*def_id),
                 generic_args.stable(tables, cx),
@@ -476,7 +478,7 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
                 fields.iter().map(|ty| ty.stable(tables, cx)).collect(),
             )),
             ty::Alias(_alias_ty) => {
-                todo!()
+                unimplemented!()
             }
             ty::Param(param_ty) => TyKind::Param(param_ty.stable(tables, cx)),
             ty::Bound(ty::BoundVarIndexKind::Canonical, _) => {
@@ -787,10 +789,10 @@ impl<'tcx> Stable<'tcx> for ty::ClauseKind<'tcx> {
                 crate::ty::ClauseKind::ConstEvaluatable(const_.stable(tables, cx))
             }
             ClauseKind::HostEffect(..) => {
-                todo!()
+                unimplemented!()
             }
             ClauseKind::UnstableFeature(_) => {
-                todo!()
+                unimplemented!()
             }
         }
     }

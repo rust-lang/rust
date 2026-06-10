@@ -760,7 +760,7 @@ where
 
             ty::UnsafeBinder(_) => {
                 // FIXME(unsafe_binder): Figure out how to handle pointee for unsafe binders.
-                todo!()
+                unimplemented!()
             }
 
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
@@ -970,7 +970,7 @@ where
 
             ty::UnsafeBinder(_) => {
                 // FIXME(unsafe_binders): instantiate this with placeholders?? i guess??
-                todo!("discr subgoal...")
+                unimplemented!("discr subgoal...")
             }
 
             // Given an alias, parameter, or placeholder we add an impl candidate normalizing to a rigid

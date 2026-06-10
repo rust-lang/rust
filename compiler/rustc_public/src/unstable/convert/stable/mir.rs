@@ -245,7 +245,7 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
                 crate::mir::Rvalue::Aggregate(agg_kind.stable(tables, cx), operands)
             }
             CopyForDeref(place) => crate::mir::Rvalue::CopyForDeref(place.stable(tables, cx)),
-            WrapUnsafeBinder(..) => todo!("FIXME(unsafe_binders):"),
+            WrapUnsafeBinder(..) => unimplemented!("FIXME(unsafe_binders):"),
         }
     }
 }
@@ -446,7 +446,7 @@ impl<'tcx> Stable<'tcx> for mir::PlaceElem<'tcx> {
             // found at https://github.com/rust-lang/rust/pull/117517#issuecomment-1811683486
             Downcast(_, idx) => crate::mir::ProjectionElem::Downcast(idx.stable(tables, cx)),
             OpaqueCast(ty) => crate::mir::ProjectionElem::OpaqueCast(ty.stable(tables, cx)),
-            UnwrapUnsafeBinder(..) => todo!("FIXME(unsafe_binders):"),
+            UnwrapUnsafeBinder(..) => unimplemented!("FIXME(unsafe_binders):"),
         }
     }
 }
@@ -748,7 +748,7 @@ impl<'tcx> Stable<'tcx> for mir::TerminatorKind<'tcx> {
                 target: target.map(|t| t.as_usize()),
                 unwind: unwind.stable(tables, cx),
             },
-            mir::TerminatorKind::TailCall { func: _, args: _, fn_span: _ } => todo!(),
+            mir::TerminatorKind::TailCall { func: _, args: _, fn_span: _ } => unimplemented!(),
             mir::TerminatorKind::Assert { cond, expected, msg, target, unwind } => {
                 TerminatorKind::Assert {
                     cond: cond.stable(tables, cx),

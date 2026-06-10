@@ -565,7 +565,7 @@ mod llvm_enzyme {
                 .iter()
                 .map(|arg| match arg.pat.kind {
                     PatKind::Ident(_, ident, _) => ecx.expr_path(ecx.path_ident(span, ident)),
-                    _ => todo!(),
+                    _ => unimplemented!(),
                 })
                 .collect::<ThinVec<_>>()
                 .into(),

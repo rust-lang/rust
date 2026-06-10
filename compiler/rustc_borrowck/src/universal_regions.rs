@@ -398,7 +398,7 @@ impl<'tcx> UniversalRegions<'tcx> {
                 });
             }
             DefiningTy::CoroutineClosure(..) => {
-                todo!()
+                unimplemented!()
             }
             DefiningTy::Coroutine(def_id, args) => {
                 let v = with_no_trimmed_paths!(
