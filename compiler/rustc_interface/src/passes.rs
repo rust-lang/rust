@@ -1076,8 +1076,6 @@ pub fn emit_delayed_lints(tcx: TyCtxt<'_>) {
 /// Runs all analyses that we guarantee to run, even if errors were reported in earlier analyses.
 /// This function never fails.
 fn run_required_analyses(tcx: TyCtxt<'_>) {
-    tcx.ensure_done().early_lint_checks(());
-
     if tcx.sess.opts.unstable_opts.input_stats {
         rustc_passes::input_stats::print_hir_stats(tcx);
     }
