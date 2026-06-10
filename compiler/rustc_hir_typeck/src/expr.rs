@@ -1463,16 +1463,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Ok(method) => {
                 self.write_method_call_and_enforce_effects(expr.hir_id, expr.span, method);
 
+                // Handle splatted method arguments
+                // self is already handled as `rcvr`, so it's never splatted here
+                let method_inputs = &method.sig.inputs()[1..];
+                let method_tuple_args_flag =
+                    TupleArgumentsFlag::with_fn_sig_kind(method.sig.fn_sig_kind, true);
+
                 self.check_argument_types(
                     segment.ident.span,
                     expr,
-                    &method.sig.inputs()[1..],
+                    method_inputs,
                     method.sig.output(),
                     expected,
                     args,
-                    method.sig.c_variadic(),
-                    TupleArgumentsFlag::DontTupleArguments,
+                    method.sig.fn_sig_kind.c_variadic(),
+                    method_tuple_args_flag,
                     Some(method.def_id),
+                    Some(method.args),
                 );
 
                 self.check_call_abi(method.sig.abi(), expr.span);
@@ -1495,6 +1502,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     false,
                     TupleArgumentsFlag::DontTupleArguments,
                     None,
+                    Some(GenericArgsRef::default()),
                 );
 
                 err_output
