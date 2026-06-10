@@ -35,10 +35,6 @@ fn main() {
     let os_str = OsString::with_capacity(0);
     //~^ ERROR: calling `with_capacity(0)` is equivalent to `new()`
 
-    // Constant folded capacity evaluates to 0
-    let v_const = Vec::<i32>::with_capacity(1 - 1);
-    //~^ ERROR: calling `with_capacity(0)` is equivalent to `new()`
-
     // Negative cases
     let v_non_zero = Vec::<i32>::with_capacity(10);
     let s_non_zero = String::with_capacity(5);

@@ -108,17 +108,5 @@ LL -     let os_str = OsString::with_capacity(0);
 LL +     let os_str = OsString::new();
    |
 
-error: calling `with_capacity(0)` is equivalent to `new()`
-  --> tests/ui/with_capacity_zero.rs:39:19
-   |
-LL |     let v_const = Vec::<i32>::with_capacity(1 - 1);
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: use `new()` instead
-   |
-LL -     let v_const = Vec::<i32>::with_capacity(1 - 1);
-LL +     let v_const = Vec::<i32>::new();
-   |
-
-error: aborting due to 10 previous errors
+error: aborting due to 9 previous errors
 

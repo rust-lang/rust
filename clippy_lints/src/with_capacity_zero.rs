@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::MaybeDef;
-use clippy_utils::{fn_def_id, is_integer_const, last_path_segment, span_contains_comment, sym};
+use clippy_utils::{fn_def_id, is_integer_literal, last_path_segment, span_contains_comment, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem};
 use rustc_lint::{LateContext, LateLintPass};
@@ -51,7 +51,7 @@ impl<'tcx> LateLintPass<'tcx> for WithCapacityZero {
             && let ExprKind::Call(func, [arg]) = expr.kind
             && let Some(def_id) = fn_def_id(cx, expr)
             && cx.tcx.item_name(def_id) == sym::with_capacity
-            && is_integer_const(cx, arg, 0)
+            && is_integer_literal(arg, 0)
             && let ExprKind::Path(ref qpath) = func.kind
             && let ty = cx.typeck_results().expr_ty(expr)
             && is_target_type(cx, ty)
