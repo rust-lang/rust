@@ -2098,6 +2098,7 @@ mod snapshot {
         [test] compiletest-assembly-llvm 1 <host>
         [test] compiletest-incremental 1 <host>
         [test] compiletest-debuginfo 1 <host>
+        [build] rustc 0 <host> -> CompiletestLintDriver 1 <host>
         [test] compiletest-ui-fulldeps 1 <host>
         [build] rustdoc 1 <host>
         [test] compiletest-rustdoc-html 1 <host>
@@ -2171,12 +2172,13 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("test")
                 .args(&["ui", "ui-fulldeps", "run-make", "rustdoc-html", "rustdoc-gui", "incremental"])
-                .render_steps(), @r"
+                .render_steps(), @"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 0 <host> -> Compiletest 1 <host>
         [test] compiletest-ui 1 <host>
+        [build] rustc 0 <host> -> CompiletestLintDriver 1 <host>
         [test] compiletest-ui-fulldeps 1 <host>
         [build] rustc 0 <host> -> RunMakeSupport 1 <host>
         [build] rustdoc 1 <host>
@@ -2195,7 +2197,7 @@ mod snapshot {
             ctx.config("test")
                 .args(&["ui", "ui-fulldeps", "run-make", "rustdoc-html", "rustdoc-gui", "incremental"])
                 .stage(2)
-                .render_steps(), @r"
+                .render_steps(), @"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
@@ -2204,6 +2206,7 @@ mod snapshot {
         [build] rustc 0 <host> -> Compiletest 1 <host>
         [test] compiletest-ui 2 <host>
         [build] rustc 2 <host> -> rustc 3 <host>
+        [build] rustc 2 <host> -> CompiletestLintDriver 3 <host>
         [test] compiletest-ui-fulldeps 2 <host>
         [build] rustc 0 <host> -> RunMakeSupport 1 <host>
         [build] rustdoc 2 <host>
@@ -2224,7 +2227,7 @@ mod snapshot {
                 .targets(&[TEST_TRIPLE_1])
                 .args(&["ui", "ui-fulldeps", "run-make", "rustdoc", "rustdoc-gui", "incremental"])
                 .stage(2)
-                .render_steps(), @r"
+                .render_steps(), @"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
@@ -2236,6 +2239,8 @@ mod snapshot {
         [test] compiletest-ui 2 <target1>
         [build] llvm <target1>
         [build] rustc 2 <host> -> rustc 3 <target1>
+        [build] rustc 2 <host> -> rustc 3 <host>
+        [build] rustc 2 <host> -> CompiletestLintDriver 3 <host>
         [test] compiletest-ui-fulldeps 2 <target1>
         [build] rustc 0 <host> -> RunMakeSupport 1 <host>
         [build] rustdoc 2 <host>
@@ -2279,6 +2284,7 @@ mod snapshot {
         [test] compiletest-incremental 2 <host>
         [test] compiletest-debuginfo 2 <host>
         [build] rustc 2 <host> -> rustc 3 <host>
+        [build] rustc 2 <host> -> CompiletestLintDriver 3 <host>
         [test] compiletest-ui-fulldeps 2 <host>
         [build] rustdoc 2 <host>
         [test] compiletest-rustdoc-html 2 <host>

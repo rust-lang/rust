@@ -2058,6 +2058,12 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             builder.ensure(compile::Rustc::new(test_compiler, target));
         }
 
+        let lint_driver_compiler = query_compiler.unwrap_or(test_compiler);
+        if suite == "ui-fulldeps" {
+            builder.std(lint_driver_compiler, target);
+            builder.std(lint_driver_compiler, lint_driver_compiler.host);
+        }
+
         if suite == "debuginfo" {
             builder.ensure(dist::DebuggerScripts {
                 sysroot: builder.sysroot(test_compiler).to_path_buf(),
@@ -2096,6 +2102,17 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         cmd.arg("--compile-lib-path").arg(builder.rustc_libdir(test_compiler));
         cmd.arg("--run-lib-path").arg(builder.sysroot_target_libdir(test_compiler, target));
         cmd.arg("--rustc-path").arg(builder.rustc(test_compiler));
+        if suite == "ui-fulldeps" {
+            let lint_driver: PathBuf = builder
+                .ensure(tool::CompiletestLintDriver {
+                    compiler: test_compiler,
+                    target: test_compiler.host,
+                })
+                .tool_path;
+            cmd.arg("--rustc-lint-driver-path").arg(lint_driver);
+            cmd.arg("--rustc-lint-driver-lib-path").arg(builder.rustc_libdir(lint_driver_compiler));
+            cmd.arg("--rustc-lint-driver-sysroot").arg(builder.sysroot(lint_driver_compiler));
+        }
         if let Some(query_compiler) = query_compiler {
             cmd.arg("--query-rustc-path").arg(builder.rustc(query_compiler));
         }

@@ -635,6 +635,47 @@ impl Step for ErrorIndex {
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct CompiletestLintDriver {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+}
+
+impl Step for CompiletestLintDriver {
+    type Output = ToolBuildResult;
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/compiletest-lint-driver")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(CompiletestLintDriver {
+            compiler: run.builder.compiler(0, run.builder.config.host_target),
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
+        builder.std(self.compiler, self.target);
+        builder.ensure(compile::Rustc::new(self.compiler, self.target));
+        builder.ensure(ToolBuild {
+            build_compiler: self.compiler,
+            target: self.target,
+            tool: "compiletest-lint-driver",
+            mode: Mode::ToolRustcPrivate,
+            path: "src/tools/compiletest-lint-driver",
+            source_type: SourceType::InTree,
+            extra_features: Vec::new(),
+            allow_features: "rustc_private",
+            cargo_args: Vec::new(),
+            artifact_kind: ToolArtifactKind::Binary,
+        })
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::build("CompiletestLintDriver", self.target).built_by(self.compiler))
+    }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct RemoteTestServer {
     pub build_compiler: Compiler,
     pub target: TargetSelection,

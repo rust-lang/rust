@@ -15,6 +15,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "aux-build",
     "aux-codegen-backend",
     "aux-crate",
+    "aux-lint",
     "build-aux-docs",
     "build-fail",
     "build-pass",

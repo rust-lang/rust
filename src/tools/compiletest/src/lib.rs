@@ -57,6 +57,9 @@ fn parse_config(args: Vec<String>) -> Config {
     opts.reqopt("", "compile-lib-path", "path to host shared libraries", "PATH")
         .reqopt("", "run-lib-path", "path to target shared libraries", "PATH")
         .reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH")
+        .optopt("", "rustc-lint-driver-path", "path to aux-lint rustc driver", "PATH")
+        .optopt("", "rustc-lint-driver-lib-path", "path to aux-lint rustc driver libdir", "PATH")
+        .optopt("", "rustc-lint-driver-sysroot", "path to aux-lint rustc driver sysroot", "PATH")
         .optopt("", "cargo-path", "path to cargo to use for compiling", "PATH")
         .optopt(
             "",
@@ -406,6 +409,13 @@ fn parse_config(args: Vec<String>) -> Config {
         host_compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
         target_run_lib_path: make_absolute(opt_path(matches, "run-lib-path")),
         rustc_path: opt_path(matches, "rustc-path"),
+        rustc_lint_driver_path: matches.opt_str("rustc-lint-driver-path").map(Utf8PathBuf::from),
+        rustc_lint_driver_lib_path: matches
+            .opt_str("rustc-lint-driver-lib-path")
+            .map(Utf8PathBuf::from),
+        rustc_lint_driver_sysroot: matches
+            .opt_str("rustc-lint-driver-sysroot")
+            .map(Utf8PathBuf::from),
         cargo_path: matches.opt_str("cargo-path").map(Utf8PathBuf::from),
         stage0_rustc_path: matches.opt_str("stage0-rustc-path").map(Utf8PathBuf::from),
         query_rustc_path: matches.opt_str("query-rustc-path").map(Utf8PathBuf::from),

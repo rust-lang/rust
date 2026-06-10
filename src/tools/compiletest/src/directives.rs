@@ -236,6 +236,7 @@ mod directives {
     pub(crate) const AUX_BIN: &str = "aux-bin";
     pub(crate) const AUX_BUILD: &str = "aux-build";
     pub(crate) const AUX_CRATE: &str = "aux-crate";
+    pub(crate) const AUX_LINT: &str = "aux-lint";
     pub(crate) const PROC_MACRO: &str = "proc-macro";
     pub(crate) const AUX_CODEGEN_BACKEND: &str = "aux-codegen-backend";
     pub(crate) const EXEC_ENV: &str = "exec-env";

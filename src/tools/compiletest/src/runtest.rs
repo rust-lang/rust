@@ -98,7 +98,7 @@ fn get_lib_name(name: &str, aux_type: AuxType) -> Option<String> {
         // In this case, the only path we can pass
         // with '--extern-meta' is the '.rlib' file
         AuxType::Lib => Some(format!("lib{name}.rlib")),
-        AuxType::Dylib | AuxType::ProcMacro => Some(dylib_name(name)),
+        AuxType::Dylib | AuxType::ProcMacro | AuxType::Lint => Some(dylib_name(name)),
     }
 }
 
@@ -255,11 +255,12 @@ enum Emit {
     LinkArgsAsm,
 }
 
-/// Indicates whether we are using `rustc` or `rustdoc` to compile an input file.
+/// Indicates whether we are using `rustc`, `rustdoc` or `compiletest-lint-driver`` to compile an input file.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum CompilerKind {
     Rustc,
     Rustdoc,
+    LintDriver,
 }
 
 impl<'test> TestCx<'test> {
@@ -1205,6 +1206,7 @@ impl<'test> TestCx<'test> {
         !self.props.aux.builds.is_empty()
             || !self.props.aux.crates.is_empty()
             || !self.props.aux.proc_macros.is_empty()
+            || !self.props.aux.lints.is_empty()
     }
 
     fn aux_output_dir(&self) -> Utf8PathBuf {
@@ -1238,12 +1240,33 @@ impl<'test> TestCx<'test> {
             self.build_auxiliary(rel_ab, &aux_dir, Some(AuxType::Bin));
         }
 
+        for lint in &self.props.aux.lints {
+            self.build_auxiliary(lint, &aux_dir, Some(AuxType::Lint));
+        }
+
         let path_to_crate_name = |path: &str| -> String {
             path.rsplit_once('/')
                 .map_or(path, |(_, tail)| tail)
                 .trim_end_matches(".rs")
                 .replace('-', "_")
         };
+
+        let lint_lib_paths = self
+            .props
+            .aux
+            .lints
+            .iter()
+            .filter_map(|p| {
+                if let Some(lib_name) = get_lib_name(&path_to_crate_name(p), AuxType::Lint) {
+                    Some(aux_dir.join(lib_name).to_string())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+        if !lint_lib_paths.is_empty() {
+            rustc.env("COMPILETEST_LINT_DRIVER_PATHS", lint_lib_paths.join(":"));
+        }
 
         let add_extern = |rustc: &mut Command,
                           extern_modifiers: Option<&str>,
@@ -1351,7 +1374,7 @@ impl<'test> TestCx<'test> {
     ) -> AuxType {
         let aux_path = self.resolve_aux_path(source_path);
         let mut aux_props = self.props.from_aux_file(&aux_path, self.revision, self.config);
-        if aux_type == Some(AuxType::ProcMacro) {
+        if matches!(aux_type, Some(AuxType::ProcMacro | AuxType::Lint)) {
             aux_props.force_host = true;
         }
         let mut aux_dir = aux_dir.to_path_buf();
@@ -1393,6 +1416,8 @@ impl<'test> TestCx<'test> {
             (AuxType::Bin, Some("bin"))
         } else if aux_type == Some(AuxType::ProcMacro) {
             (AuxType::ProcMacro, Some("proc-macro"))
+        } else if aux_type == Some(AuxType::Lint) {
+            (AuxType::Lint, Some("dylib"))
         } else if aux_type.is_some() {
             panic!("aux_type {aux_type:?} not expected");
         } else if aux_props.no_prefer_dynamic {
@@ -1495,9 +1520,16 @@ impl<'test> TestCx<'test> {
 
         command.stdout(Stdio::piped()).stderr(Stdio::piped()).stdin(Stdio::piped());
 
+        let lint_driver_path =
+            self.config.rustc_lint_driver_lib_path.as_ref().map(Utf8PathBuf::as_path);
         // Need to be sure to put both the lib_path and the aux path in the dylib
         // search path for the child.
-        add_dylib_path(&mut command, iter::once(lib_path).chain(aux_path));
+        add_dylib_path(
+            &mut command,
+            iter::once(lib_path)
+                .chain(aux_path)
+                .chain(lint_driver_path.filter(|_| !self.props.aux.lints.is_empty())),
+        );
 
         let mut child = disable_error_reporting(|| command.spawn())
             .unwrap_or_else(|e| panic!("failed to exec `{command:?}`: {e:?}"));
@@ -1528,6 +1560,9 @@ impl<'test> TestCx<'test> {
     /// Choose a compiler kind (rustc or rustdoc) for compiling test files,
     /// based on the test suite being tested.
     fn compiler_kind_for_non_aux(&self) -> CompilerKind {
+        if !self.props.aux.lints.is_empty() {
+            return CompilerKind::LintDriver;
+        }
         match self.config.suite {
             TestSuite::RustdocJs | TestSuite::RustdocJson | TestSuite::RustdocUi => {
                 CompilerKind::Rustdoc
@@ -1574,6 +1609,9 @@ impl<'test> TestCx<'test> {
             CompilerKind::Rustdoc => {
                 Command::new(&self.config.rustdoc_path.clone().expect("no rustdoc built yet"))
             }
+            CompilerKind::LintDriver => Command::new(
+                self.config.rustc_lint_driver_path.as_ref().expect("no rustc lint driver provided"),
+            ),
         };
         compiler.arg(input_file);
 
@@ -1611,8 +1649,14 @@ impl<'test> TestCx<'test> {
         if !self.props.compile_flags.iter().any(|flag| flag.starts_with("--sysroot"))
             && !self.config.host_rustcflags.iter().any(|flag| flag == "--sysroot")
         {
-            // In stage 0, make sure we use `stage0-sysroot` instead of the bootstrap sysroot.
-            compiler.arg("--sysroot").arg(&self.config.sysroot_base);
+            if compiler_kind == CompilerKind::LintDriver {
+                compiler
+                    .arg("--sysroot")
+                    .arg(self.config.rustc_lint_driver_sysroot.as_ref().unwrap());
+            } else {
+                // In stage 0, make sure we use `stage0-sysroot` instead of the bootstrap sysroot.
+                compiler.arg("--sysroot").arg(&self.config.sysroot_base);
+            }
         }
 
         // If the provided codegen backend is not LLVM, we need to pass it.
@@ -1846,7 +1890,7 @@ impl<'test> TestCx<'test> {
                     // `rustdoc` uses `-o` for the output directory.
                     compiler.arg("-o").arg(path);
                 }
-                CompilerKind::Rustc => {
+                CompilerKind::Rustc | CompilerKind::LintDriver => {
                     compiler.arg("--out-dir").arg(path);
                 }
             },
@@ -3013,6 +3057,7 @@ enum AuxType {
     Lib,
     Dylib,
     ProcMacro,
+    Lint,
 }
 
 /// Outcome of comparing a stream to a blessed file,
