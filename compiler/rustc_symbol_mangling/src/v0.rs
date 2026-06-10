@@ -84,6 +84,42 @@ pub(super) fn mangle<'tcx>(
     std::mem::take(&mut p.out)
 }
 
+pub fn mangle_cgu<'tcx>(tcx: TyCtxt<'tcx>, krate: CrateNum, cgu_name: Result<u64, &str>) -> String {
+    let prefix = "_R";
+    let mut p: V0SymbolMangler<'_> = V0SymbolMangler {
+        tcx,
+        start_offset: prefix.len(),
+        is_exportable: false,
+        paths: FxHashMap::default(),
+        types: FxHashMap::default(),
+        consts: FxHashMap::default(),
+        binders: vec![],
+        out: String::from(prefix),
+    };
+
+    match cgu_name {
+        Ok(cgu_index) => {
+            // If we have a CGU index, we can easily encode this with the shim mechanism.
+            p.path_append_ns(|p| p.print_def_path(krate.as_def_id(), &[]), 'S', cgu_index, "cgu")
+                .unwrap();
+        }
+        Err(name) => {
+            // In incremental compilation we just have a name and no index. Encode this as a str-typed generic argument to cgu shim for now.
+            p.out.push('I');
+            p.path_append_ns(|p| p.print_def_path(krate.as_def_id(), &[]), 'S', 0, "cgu").unwrap();
+            p.push("KRe");
+
+            for byte in name.as_bytes() {
+                let _ = write!(p.out, "{byte:02x}");
+            }
+
+            p.push("_E");
+        }
+    }
+
+    std::mem::take(&mut p.out)
+}
+
 pub fn mangle_internal_symbol<'tcx>(tcx: TyCtxt<'tcx>, item_name: &str) -> String {
     match item_name {
         // rust_eh_personality must not be renamed as LLVM hard-codes the name
