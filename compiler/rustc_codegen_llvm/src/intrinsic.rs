@@ -1889,7 +1889,8 @@ fn codegen_offload_preload_drop<'ll, 'tcx>(
 
     let target_symbol = cx.generate_local_symbol_name("");
     dbg!("done for now");
-    let offload_data = gen_define_handling(&cx, metadata, target_symbol, offload_globals, false);
+    let offload_data =
+        gen_define_handling(&cx, metadata, target_symbol, offload_globals, TransferType::End);
     let has_dynamic = metadata.iter().any(|m| !matches!(m.payload_size, OffloadSize::Static(_)));
     let (ty, ty2, a1, a2, a4) = crate::builder::gpu_helper::preper_datatransfers(
         bx,
@@ -1909,6 +1910,7 @@ fn codegen_offload_preload_drop<'ll, 'tcx>(
         offload_globals.mapper_fn_ty,
         1,
         offload_globals.ident_t_global,
+        TransferType::End,
     );
 }
 
@@ -1964,9 +1966,14 @@ fn codegen_offload_preload<'ll, 'tcx>(
         }
     };
     dbg!("asdf");
-    //let target_symbol = "asdf_I_ll_nameclash".to_owned();
     let target_symbol = cx.generate_local_symbol_name("");
-    let offload_data = gen_define_handling(&cx, metadata, target_symbol, offload_globals, false);
+    let offload_data = gen_define_handling(
+        &cx,
+        metadata,
+        target_symbol,
+        offload_globals,
+        TransferType::NowaitBegin,
+    );
     let has_dynamic = metadata.iter().any(|m| !matches!(m.payload_size, OffloadSize::Static(_)));
     let (ty, ty2, a1, a2, a4) = crate::builder::gpu_helper::preper_datatransfers(
         bx,
@@ -1982,11 +1989,18 @@ fn codegen_offload_preload<'ll, 'tcx>(
         bx,
         geps,
         offload_data.memtransfer_begin,
-        offload_globals.begin_mapper,
-        offload_globals.mapper_fn_ty,
+        offload_globals.nowait_begin_mapper,
+        offload_globals.nowait_mapper_fn_ty,
         1,
         offload_globals.ident_t_global,
+        TransferType::NowaitBegin,
     );
+}
+
+pub(crate) enum TransferType {
+    NowaitBegin,
+    Kernel,
+    End,
 }
 
 // Generates the LLVM code to offload a Rust function to a target device (e.g., GPU).
@@ -2056,7 +2070,8 @@ fn codegen_offload<'ll, 'tcx>(
             return;
         }
     };
-    let offload_data = gen_define_handling(&cx, &metadata, target_symbol, offload_globals, true);
+    let offload_data =
+        gen_define_handling(&cx, &metadata, target_symbol, offload_globals, TransferType::Kernel);
     gen_call_handling(
         bx,
         &offload_data,
