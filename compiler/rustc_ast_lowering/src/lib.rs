@@ -626,6 +626,12 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
         // The item did not exist in the AST, it was created by its parent.
         let mut parent_info = tcx.lower_to_hir(parent_id);
         if let hir::MaybeOwner::NonOwner(hir_id) = parent_info {
+            // `parent_id` points to the direct parent to `def_id`.
+            // `parent_id` could not be a owner either,
+            // for instance if `def_id` is an ADT constructor, an enum variant field,
+            // a constant inside a closure...
+            // In that case `hir_id.owner` point to the actual HIR owner
+            // and skips all non-owner parents, so fetch the HIR associated to it.
             parent_info = tcx.lower_to_hir(hir_id.owner);
         }
 
@@ -640,6 +646,9 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
     };
 
     let Some((resolver, node)) = resolver_and_node else {
+        // `ast_index` does not contain all definitions, only up-to the highest
+        // `LocalDefId` which has a non-trivial `AstOwner`. Gracefully handle
+        // other definitions, in particular those nested inside this highest definition.
         return fallback_to_parent(tcx.local_parent(def_id));
     };
 
