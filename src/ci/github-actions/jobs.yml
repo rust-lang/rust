@@ -559,6 +559,28 @@ auto:
       MACOSX_STD_DEPLOYMENT_TARGET: 11.0
     <<: *job-macos-15
 
+  # EXPERIMENT(#157687): we will try to run `aarch64-apple`-equivalent workload
+  # on `macos-26` runner images in parallel to evaluate the running times, since
+  # previous attempts have timed out multiple times. Remove/revert this job if
+  # this hangs or times out, or if it becomes the slowest Merge CI job, and let
+  # T-infra know.
+  - name: aarch64-apple-macos-26
+    doc_url: https://github.com/rust-lang/rust/issues/157687
+    env:
+      SCRIPT: >
+        ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin &&
+        ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin src/tools/cargo
+      RUST_CONFIGURE_ARGS: >-
+        --enable-sanitizers
+        --enable-profiler
+        --set rust.jemalloc
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+      # Aarch64 tooling only needs to support macOS 11.0 and up as nothing else
+      # supports the hardware, so only need to test it there.
+      MACOSX_DEPLOYMENT_TARGET: 11.0
+      MACOSX_STD_DEPLOYMENT_TARGET: 11.0
+    <<: *job-macos-26
+
   ######################
   #  Windows Builders  #
   ######################
