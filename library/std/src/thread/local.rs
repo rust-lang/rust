@@ -104,8 +104,8 @@ use crate::fmt;
 ///    If a process loads a Rust `cdylib`, it must not cause the Rust TLS destructor support
 //     to be initialized for the first time during process shutdown.
 ///
-///    When dynamically unloading a Rust `cdylib`, threads with pending TLS destructors
-///    may run during the unload or may be leaked.
+///    When dynamically unloading a Rust `cdylib`, pending TLS destructors may run
+//     during the unload or may be leaked.
 ///
 /// [converted into a fiber]: https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-convertthreadtofiber
 /// [converted back into a thread]: https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-convertfibertothread
