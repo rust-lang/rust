@@ -125,6 +125,7 @@ fn copy_recursive(from: &Path, to: &Path) {
 
 fn collect_compiler_flags(rustc_path: impl AsRef<Path>) -> Features {
     let mut rustc = Command::new(rustc_path.as_ref());
+    rustc.env("RUSTC_BOOTSTRAP", "1");
     rustc.arg("-Zhelp");
     let output = t!(rustc.output());
     let help_str = t!(String::from_utf8(output.stdout));
