@@ -879,8 +879,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let nodes = hir::OwnerNodes { opt_hash: bodies_hash, nodes, bodies };
         let attrs = hir::AttributeMap { map: attrs, opt_hash: attrs_hash, define_opaque };
 
-        let opt_hash = if self.tcx.needs_hir_hash() {
-            Some(self.tcx.with_stable_hashing_context(|mut hcx| {
+        let opt_hash = self.tcx.needs_hir_hash().then(|| {
+            self.tcx.with_stable_hashing_context(|mut hcx| {
                 let mut stable_hasher = StableHasher::new();
                 bodies_hash.unwrap().stable_hash(&mut hcx, &mut stable_hasher);
                 attrs_hash.unwrap().stable_hash(&mut hcx, &mut stable_hasher);
@@ -889,10 +889,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 trait_map.stable_hash(&mut hcx, &mut stable_hasher);
                 children.stable_hash(&mut hcx, &mut stable_hasher);
                 stable_hasher.finish()
-            }))
-        } else {
-            None
-        };
+            })
+        });
 
         self.arena.alloc(hir::OwnerInfo {
             opt_hash,
