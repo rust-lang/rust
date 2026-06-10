@@ -1282,32 +1282,10 @@ impl<'a> Parser<'a> {
         let seq = match self.parse_expr_paren_seq() {
             Ok(args) => Ok(self.mk_expr(lo.to(self.prev_token.span), self.mk_call(fun, args))),
             Err(err) if self.is_expected_raw_ref_mut() => {
-                let err_span = self.prev_token.span.to(self.token.span);
                 let guar = err.emit();
                 // Preserve the call expression so later passes can still diagnose the callee,
                 // while treating the malformed `&raw <expr>` argument as an error expression.
-                let mut args = thin_vec![self.mk_expr_err(err_span, guar)];
-                let mut depth = 0usize;
-                loop {
-                    if self.token == token::Eof {
-                        break;
-                    } else if depth == 0 && self.check(exp!(CloseParen)) {
-                        self.bump();
-                        break;
-                    } else if depth == 0 && self.check(exp!(Comma)) {
-                        let comma_span = self.token.span;
-                        self.bump();
-                        if !self.check(exp!(CloseParen)) {
-                            args.push(self.mk_expr_err(comma_span.shrink_to_hi(), guar));
-                        }
-                        continue;
-                    } else if self.token.kind.open_delim().is_some() {
-                        depth += 1;
-                    } else if self.token.kind.close_delim().is_some() && depth > 0 {
-                        depth -= 1;
-                    }
-                    self.bump();
-                }
+                let args = self.recover_raw_ref_call_args(guar);
                 return self.mk_expr(lo.to(self.prev_token.span), self.mk_call(fun, args));
             }
             Err(err) => Err(err),
@@ -1316,6 +1294,21 @@ impl<'a> Parser<'a> {
             Ok(expr) => expr,
             Err(err) => self.recover_seq_parse_error(exp!(OpenParen), exp!(CloseParen), lo, err),
         }
+    }
+
+    fn recover_raw_ref_call_args(&mut self, guar: ErrorGuaranteed) -> ThinVec<Box<Expr>> {
+        let err_span = self.prev_token.span.to(self.token.span);
+        let mut args = thin_vec![self.mk_expr_err(err_span, guar)];
+        while self.token != token::Eof && self.token != token::CloseParen {
+            if self.eat(exp!(Comma)) && self.token != token::Eof && self.token != token::CloseParen
+            {
+                args.push(self.mk_expr_err(self.prev_token.span.shrink_to_hi(), guar));
+            } else {
+                self.parse_token_tree();
+            }
+        }
+        let _ = self.eat(exp!(CloseParen));
+        args
     }
 
     /// If we encounter a parser state that looks like the user has written a `struct` literal with
