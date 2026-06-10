@@ -8,7 +8,6 @@ use std::fmt::Debug;
 
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::{Diag, EmissionGuarantee};
-use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::find_attr;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
@@ -758,10 +757,7 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
         let trait_ref = match predicate_kind {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(tr)) => tr.trait_ref,
             ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj))
-                if matches!(
-                    infcx.tcx.def_kind(proj.def_id()),
-                    DefKind::AssocTy | DefKind::AssocConst { .. }
-                ) =>
+                if proj.projection_term.kind.is_trait_projection() =>
             {
                 proj.projection_term.trait_ref(infcx.tcx)
             }

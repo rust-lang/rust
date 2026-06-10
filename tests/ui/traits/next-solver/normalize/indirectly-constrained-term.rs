@@ -37,7 +37,6 @@ impl<T: Unconstrained<Assoc = U>, U: NoImpl> Unconstrained for W<T> {
     type Assoc = U;
 }
 
-
 trait Overlap {}
 impl<T: Unconstrained<Assoc = ()>> Overlap for T {}
 impl<U> Overlap for W<U> {}

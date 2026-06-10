@@ -120,7 +120,7 @@ where
         &mut self,
         alias_term: AliasTerm<I>,
         has_escaping: HasEscapingBoundVars,
-    ) -> Result<I::Term, NoSolution> {
+    ) -> Result<Option<I::Term>, NoSolution> {
         let current_universe = self.infcx.universe();
         self.infcx.create_next_universe();
 
@@ -139,12 +139,12 @@ where
             normalized.visit_with(&mut visitor);
             let max_universe = visitor.max_universe();
             if current_universe.cannot_name(max_universe) {
-                return Ok(alias_term.to_term(self.cx()));
+                return Ok(None);
             }
         }
 
         self.stalled_goals.extend(ambig_goal);
-        Ok(normalized)
+        Ok(Some(normalized))
     }
 }
 
@@ -185,23 +185,27 @@ where
         if ty.has_escaping_bound_vars() {
             let (alias_ty, mapped_regions, mapped_types, mapped_consts) =
                 BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, alias_ty);
-            let result = ensure_sufficient_stack(|| {
+            let Some(result) = ensure_sufficient_stack(|| {
                 self.normalize_alias_term(alias_ty.into(), HasEscapingBoundVars::Yes)
             })?
-            .expect_ty();
+            else {
+                return Ok(ty);
+            };
+
             Ok(PlaceholderReplacer::replace_placeholders(
                 infcx,
                 mapped_regions,
                 mapped_types,
                 mapped_consts,
                 &self.universes,
-                result,
+                result.expect_ty(),
             ))
         } else {
             Ok(ensure_sufficient_stack(|| {
                 self.normalize_alias_term(alias_ty.into(), HasEscapingBoundVars::No)
             })?
-            .expect_ty())
+            .map(|term| term.expect_ty())
+            .unwrap_or(ty))
         }
     }
 
@@ -215,28 +219,31 @@ where
         // With eager normalization, we should normalize the args of alias before
         // normalizing the alias itself.
         let ct = ct.try_super_fold_with(self)?;
-        let ty::ConstKind::Unevaluated(uc) = ct.kind() else { return Ok(ct) };
+        let ty::ConstKind::Unevaluated(uv) = ct.kind() else { return Ok(ct) };
 
         if ct.has_escaping_bound_vars() {
-            let (uc, mapped_regions, mapped_types, mapped_consts) =
-                BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, uc);
-            let result = ensure_sufficient_stack(|| {
-                self.normalize_alias_term(uc.into(), HasEscapingBoundVars::Yes)
+            let (uv, mapped_regions, mapped_types, mapped_consts) =
+                BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, uv);
+            let Some(result) = ensure_sufficient_stack(|| {
+                self.normalize_alias_term(uv.into(), HasEscapingBoundVars::Yes)
             })?
-            .expect_const();
+            else {
+                return Ok(ct);
+            };
             Ok(PlaceholderReplacer::replace_placeholders(
                 infcx,
                 mapped_regions,
                 mapped_types,
                 mapped_consts,
                 &self.universes,
-                result,
+                result.expect_const(),
             ))
         } else {
             Ok(ensure_sufficient_stack(|| {
-                self.normalize_alias_term(uc.into(), HasEscapingBoundVars::No)
+                self.normalize_alias_term(uv.into(), HasEscapingBoundVars::No)
             })?
-            .expect_const())
+            .map(|term| term.expect_const())
+            .unwrap_or(ct))
         }
     }
 }
