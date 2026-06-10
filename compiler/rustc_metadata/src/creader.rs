@@ -653,7 +653,7 @@ impl CStore {
                 None => (&source, &crate_root),
             };
             let dlsym_dylib = dlsym_source.dylib.as_ref().expect("no dylib for a proc-macro crate");
-            Some(self.dlsym_proc_macros(tcx.sess, dlsym_dylib, dlsym_root.stable_crate_id())?)
+            Some(self.dlsym_proc_macros(dlsym_dylib, dlsym_root.stable_crate_id())?)
         } else {
             None
         };
@@ -948,11 +948,10 @@ impl CStore {
 
     fn dlsym_proc_macros(
         &self,
-        sess: &Session,
         path: &Path,
         stable_crate_id: StableCrateId,
     ) -> Result<&'static [ProcMacroClient], CrateError> {
-        let sym_name = sess.generate_proc_macro_decls_symbol(stable_crate_id);
+        let sym_name = rustc_session::generate_proc_macro_decls_symbol(stable_crate_id);
         debug!("trying to dlsym proc_macros {} for symbol `{}`", path.display(), sym_name);
 
         unsafe {

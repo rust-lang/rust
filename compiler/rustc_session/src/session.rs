@@ -416,10 +416,6 @@ impl Session {
         self.target.debuginfo_kind == DebuginfoKind::Dwarf
     }
 
-    pub fn generate_proc_macro_decls_symbol(&self, stable_crate_id: StableCrateId) -> String {
-        format!("__rustc_proc_macro_decls_{:08x}__", stable_crate_id.as_u64())
-    }
-
     pub fn target_filesearch(&self) -> &filesearch::FileSearch {
         &self.target_filesearch
     }
@@ -1138,6 +1134,10 @@ pub fn build_session(
     validate_commandline_args_with_session_available(&sess);
 
     sess
+}
+
+pub fn generate_proc_macro_decls_symbol(stable_crate_id: StableCrateId) -> String {
+    format!("__rustc_proc_macro_decls_{:08x}__", stable_crate_id.as_u64())
 }
 
 /// Validate command line arguments with a `Session`.
