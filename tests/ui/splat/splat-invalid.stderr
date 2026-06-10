@@ -73,5 +73,34 @@ LL |     fn splat_variadic4(..., #[splat] (_a, _b): (u32, i8)) {}
    |
    = help: remove `#[splat]` or remove `...`
 
-error: aborting due to 9 previous errors
+error[E0053]: method `has_splat` has an incompatible type for trait
+  --> $DIR/splat-invalid.rs:42:5
+   |
+LL |     fn has_splat(_: ()) {}
+   |     ^^^^^^^^^^^^^^^^^^^ expected fn with arg 0 splatted, found fn with no splatted arg
+   |
+note: type in trait
+  --> $DIR/splat-invalid.rs:34:5
+   |
+LL |     fn has_splat(#[splat] _: ());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected signature `fn(#[splat] ())`
+              found signature `fn(())`
 
+error[E0053]: method `no_splat` has an incompatible type for trait
+  --> $DIR/splat-invalid.rs:44:5
+   |
+LL |     fn no_splat(#[splat] _: (u32, f64)) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected fn with no splatted arg, found fn with arg 0 splatted
+   |
+note: type in trait
+  --> $DIR/splat-invalid.rs:36:5
+   |
+LL |     fn no_splat(_: (u32, f64));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected signature `fn((_, _))`
+              found signature `fn(#[splat] (_, _))`
+
+error: aborting due to 11 previous errors
+
+For more information about this error, try `rustc --explain E0053`.
