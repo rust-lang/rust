@@ -11,7 +11,7 @@ use rustc_span::profiling::SpannedEventArgRecorder;
 use rustc_span::{LocalExpnId, Span};
 
 use crate::base::{self, *};
-use crate::{errors, proc_macro_server};
+use crate::{diagnostics, proc_macro_server};
 
 fn exec_strategy(sess: &Session) -> impl pm::bridge::server::ExecutionStrategy + 'static {
     pm::bridge::server::MaybeCrossThread {
@@ -47,9 +47,11 @@ impl base::BangProcMacro for BangProcMacro {
         let strategy = exec_strategy(ecx.sess);
         let server = proc_macro_server::Rustc::new(ecx);
         self.client.run1(&strategy, server, input, proc_macro_backtrace).map_err(|e| {
-            ecx.dcx().emit_err(errors::ProcMacroPanicked {
+            ecx.dcx().emit_err(diagnostics::ProcMacroPanicked {
                 span,
-                message: e.into_string().map(|message| errors::ProcMacroPanickedHelp { message }),
+                message: e
+                    .into_string()
+                    .map(|message| diagnostics::ProcMacroPanickedHelp { message }),
             })
         })
     }
@@ -74,11 +76,11 @@ impl base::AttrProcMacro for AttrProcMacro {
         let server = proc_macro_server::Rustc::new(ecx);
         self.client.run2(&strategy, server, annotation, annotated, proc_macro_backtrace).map_err(
             |e| {
-                ecx.dcx().emit_err(errors::CustomAttributePanicked {
+                ecx.dcx().emit_err(diagnostics::CustomAttributePanicked {
                     span,
                     message: e
                         .into_string()
-                        .map(|message| errors::CustomAttributePanickedHelp { message }),
+                        .map(|message| diagnostics::CustomAttributePanickedHelp { message }),
                 })
             },
         )
@@ -154,7 +156,7 @@ impl MultiItemModifier for DeriveProcMacro {
 
         // fail if there have been errors emitted
         if ecx.dcx().err_count() > error_count_before {
-            ecx.dcx().emit_err(errors::ProcMacroDeriveTokens { span });
+            ecx.dcx().emit_err(diagnostics::ProcMacroDeriveTokens { span });
         }
 
         ExpandResult::Ready(items)
@@ -202,11 +204,11 @@ fn expand_derive_macro(
             let invoc_expn_data = invoc_id.expn_data();
             let span = invoc_expn_data.call_site;
             ecx.dcx().emit_err({
-                errors::ProcMacroDerivePanicked {
+                diagnostics::ProcMacroDerivePanicked {
                     span,
                     message: e
                         .into_string()
-                        .map(|message| errors::ProcMacroDerivePanickedHelp { message }),
+                        .map(|message| diagnostics::ProcMacroDerivePanickedHelp { message }),
                 }
             });
             Err(())

@@ -39,7 +39,7 @@ use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
 use rustc_target::spec::{PanicStrategy, Target};
 use tracing::{debug, info, trace};
 
-use crate::errors;
+use crate::diagnostics;
 use crate::locator::{CrateError, CrateLocator, CratePaths, CrateRejections};
 use crate::rmeta::{
     CrateDep, CrateMetadata, CrateNumMap, CrateRoot, MetadataBlob, TargetModifiers,
@@ -365,7 +365,7 @@ impl CStore {
 
             match (flag_local_value, flag_extern_value) {
                 (Some(local_value), Some(extern_value)) => {
-                    tcx.dcx().emit_err(errors::IncompatibleTargetModifiers {
+                    tcx.dcx().emit_err(diagnostics::IncompatibleTargetModifiers {
                         span,
                         extern_crate,
                         local_crate,
@@ -376,7 +376,7 @@ impl CStore {
                     })
                 }
                 (None, Some(extern_value)) => {
-                    tcx.dcx().emit_err(errors::IncompatibleTargetModifiersLMissed {
+                    tcx.dcx().emit_err(diagnostics::IncompatibleTargetModifiersLMissed {
                         span,
                         extern_crate,
                         local_crate,
@@ -386,7 +386,7 @@ impl CStore {
                     })
                 }
                 (Some(local_value), None) => {
-                    tcx.dcx().emit_err(errors::IncompatibleTargetModifiersRMissed {
+                    tcx.dcx().emit_err(diagnostics::IncompatibleTargetModifiersRMissed {
                         span,
                         extern_crate,
                         local_crate,
@@ -458,7 +458,7 @@ impl CStore {
     pub fn report_incompatible_target_modifiers(&self, tcx: TyCtxt<'_>, krate: &Crate) {
         for flag_name in &tcx.sess.opts.cg.unsafe_allow_abi_mismatch {
             if !OptionsTargetModifiers::is_target_modifier(flag_name) {
-                tcx.dcx().emit_err(errors::UnknownTargetModifierUnsafeAllowed {
+                tcx.dcx().emit_err(diagnostics::UnknownTargetModifierUnsafeAllowed {
                     span: krate.spans.inner_span.shrink_to_lo(),
                     flag_name: flag_name.clone(),
                 });
@@ -502,7 +502,7 @@ impl CStore {
                     }
                     *errors += 1;
 
-                    tcx.dcx().emit_err(errors::MitigationLessStrictInDependency {
+                    tcx.dcx().emit_err(diagnostics::MitigationLessStrictInDependency {
                         span: krate.spans.inner_span.shrink_to_lo(),
                         mitigation_name: my_mitigation.kind.to_string(),
                         mitigation_level: my_mitigation.level.level_str().to_string(),
@@ -525,7 +525,7 @@ impl CStore {
             if data.has_async_drops() {
                 let extern_crate = data.name();
                 let local_crate = tcx.crate_name(LOCAL_CRATE);
-                tcx.dcx().emit_warn(errors::AsyncDropTypesInDependency {
+                tcx.dcx().emit_warn(diagnostics::AsyncDropTypesInDependency {
                     span: krate.spans.inner_span.shrink_to_lo(),
                     extern_crate,
                     local_crate,
@@ -1034,11 +1034,13 @@ impl CStore {
         // Sanity check the loaded crate to ensure it is indeed a panic runtime
         // and the panic strategy is indeed what we thought it was.
         if !cdata.is_panic_runtime() {
-            tcx.dcx().emit_err(errors::CrateNotPanicRuntime { crate_name: name });
+            tcx.dcx().emit_err(diagnostics::CrateNotPanicRuntime { crate_name: name });
         }
         if cdata.required_panic_strategy() != Some(desired_strategy) {
-            tcx.dcx()
-                .emit_err(errors::NoPanicStrategy { crate_name: name, strategy: desired_strategy });
+            tcx.dcx().emit_err(diagnostics::NoPanicStrategy {
+                crate_name: name,
+                strategy: desired_strategy,
+            });
         }
 
         self.injected_panic_runtime = Some(cnum);
@@ -1074,7 +1076,7 @@ impl CStore {
 
         // Sanity check the loaded crate to ensure it is indeed a profiler runtime
         if !cdata.is_profiler_runtime() {
-            tcx.dcx().emit_err(errors::NotProfilerRuntime { crate_name: name });
+            tcx.dcx().emit_err(diagnostics::NotProfilerRuntime { crate_name: name });
         }
     }
 
@@ -1082,8 +1084,10 @@ impl CStore {
         self.has_global_allocator =
             match &*fn_spans(krate, Symbol::intern(&global_fn_name(sym::alloc))) {
                 [span1, span2, ..] => {
-                    tcx.dcx()
-                        .emit_err(errors::NoMultipleGlobalAlloc { span2: *span2, span1: *span1 });
+                    tcx.dcx().emit_err(diagnostics::NoMultipleGlobalAlloc {
+                        span2: *span2,
+                        span1: *span1,
+                    });
                     true
                 }
                 spans => !spans.is_empty(),
@@ -1091,8 +1095,10 @@ impl CStore {
         let alloc_error_handler = Symbol::intern(&global_fn_name(ALLOC_ERROR_HANDLER));
         self.has_alloc_error_handler = match &*fn_spans(krate, alloc_error_handler) {
             [span1, span2, ..] => {
-                tcx.dcx()
-                    .emit_err(errors::NoMultipleAllocErrorHandler { span2: *span2, span1: *span1 });
+                tcx.dcx().emit_err(diagnostics::NoMultipleAllocErrorHandler {
+                    span2: *span2,
+                    span1: *span1,
+                });
                 true
             }
             spans => !spans.is_empty(),
@@ -1130,7 +1136,7 @@ impl CStore {
             if data.has_global_allocator() {
                 match global_allocator {
                     Some(other_crate) => {
-                        tcx.dcx().emit_err(errors::ConflictingGlobalAlloc {
+                        tcx.dcx().emit_err(diagnostics::ConflictingGlobalAlloc {
                             crate_name: data.name(),
                             other_crate_name: other_crate,
                         });
@@ -1144,7 +1150,7 @@ impl CStore {
             if data.has_alloc_error_handler() {
                 match alloc_error_handler {
                     Some(other_crate) => {
-                        tcx.dcx().emit_err(errors::ConflictingAllocErrorHandler {
+                        tcx.dcx().emit_err(diagnostics::ConflictingAllocErrorHandler {
                             crate_name: data.name(),
                             other_crate_name: other_crate,
                         });
@@ -1164,7 +1170,7 @@ impl CStore {
             if !attr::contains_name(&krate.attrs, sym::default_lib_allocator)
                 && !self.iter_crate_data().any(|(_, data)| data.has_default_lib_allocator())
             {
-                tcx.dcx().emit_err(errors::GlobalAllocRequired);
+                tcx.dcx().emit_err(diagnostics::GlobalAllocRequired);
             }
             self.allocator_kind = Some(AllocatorKind::Default);
         }
@@ -1229,7 +1235,7 @@ impl CStore {
         // Sanity check that the loaded crate is `#![compiler_builtins]`
         let cdata = self.get_crate_data(cnum);
         if !cdata.is_compiler_builtins() {
-            tcx.dcx().emit_err(errors::CrateNotCompilerBuiltins { crate_name: cdata.name() });
+            tcx.dcx().emit_err(diagnostics::CrateNotCompilerBuiltins { crate_name: cdata.name() });
         }
     }
 
@@ -1261,7 +1267,7 @@ impl CStore {
                 lint::builtin::UNUSED_CRATE_DEPENDENCIES,
                 span,
                 ast::CRATE_NODE_ID,
-                errors::UnusedCrateDependency {
+                diagnostics::UnusedCrateDependency {
                     extern_crate: name_interned,
                     local_crate: tcx.crate_name(LOCAL_CRATE),
                 },
@@ -1298,7 +1304,7 @@ impl CStore {
             // Make a point span rather than covering the whole file
             let span = krate.spans.inner_span.shrink_to_lo();
 
-            tcx.sess.dcx().emit_err(errors::WasmCAbi { span });
+            tcx.sess.dcx().emit_err(diagnostics::WasmCAbi { span });
         }
     }
 

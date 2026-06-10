@@ -21,7 +21,7 @@ mod native_libs;
 mod rmeta;
 
 pub mod creader;
-pub mod errors;
+pub mod diagnostics;
 pub mod fs;
 pub mod locator;
 
