@@ -42,7 +42,7 @@ pub use self::coverageinfo::CoverageInfoBuilderMethods;
 pub use self::debuginfo::{DebugInfoBuilderMethods, DebugInfoCodegenMethods};
 pub use self::declare::PreDefineCodegenMethods;
 pub use self::intrinsic::IntrinsicCallBuilderMethods;
-pub use self::misc::MiscCodegenMethods;
+pub use self::misc::{AddressDiversity, MiscCodegenMethods, PacMetadata};
 pub use self::statics::{StaticBuilderMethods, StaticCodegenMethods};
 pub use self::type_::{
     ArgAbiBuilderMethods, BaseTypeCodegenMethods, DerivedTypeCodegenMethods,

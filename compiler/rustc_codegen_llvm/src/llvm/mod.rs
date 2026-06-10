@@ -475,3 +475,19 @@ pub(crate) fn add_alias<'ll>(
 ) -> &'ll Value {
     unsafe { LLVMAddAlias2(module, ty, address_space.0, aliasee, name.as_ptr()) }
 }
+
+/// Safe wrapper for `LLVMRustConstPtrAuth`.
+pub(crate) fn const_ptr_auth<'ll>(
+    ptr: &'ll Value,
+    key: u32,
+    disc: u64,
+    addr_diversity: Option<&'ll Value>,
+) -> &'ll Value {
+    unsafe {
+        let addr_div_ptr = addr_diversity.map_or(std::ptr::null(), |v| v as *const Value);
+        let deactivation_symbol = std::ptr::null();
+        let result =
+            LLVMRustConstPtrAuth(ptr as *const Value, key, disc, addr_div_ptr, deactivation_symbol);
+        &*result
+    }
+}
