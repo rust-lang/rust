@@ -1,7 +1,7 @@
 use rustc_infer::infer::at::At;
 use rustc_infer::traits::TraitEngine;
 use rustc_macros::extension;
-use rustc_middle::ty::{self, Ty, Unnormalized};
+use rustc_middle::ty::{self, Ty, TypeVisitableExt, Unnormalized};
 
 use crate::traits::{NormalizeExt, Obligation};
 
@@ -41,6 +41,11 @@ impl<'tcx> At<'_, 'tcx> {
 
         if self.infcx.next_trait_solver() {
             let term = term.skip_normalization();
+
+            if !self.infcx.tcx.renormalize_rigid_aliases() && !term.has_non_rigid_aliases() {
+                return Ok(term);
+            }
+
             if let None = term.to_alias_term() {
                 return Ok(term);
             }
