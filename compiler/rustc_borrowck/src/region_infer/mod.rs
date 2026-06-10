@@ -30,7 +30,7 @@ use crate::diagnostics::{RegionErrorKind, RegionErrors, UniverseInfo};
 use crate::handle_placeholders::{LoweredConstraints, RegionTracker};
 use crate::polonius::LiveLoans;
 use crate::polonius::legacy::PoloniusOutput;
-use crate::region_infer::values::{LivenessValues, RegionElement, RegionValues, ToElementIndex};
+use crate::region_infer::values::{LivenessValues, RegionElement, RegionValues};
 use crate::type_check::Locations;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::universal_regions::UniversalRegions;
@@ -379,12 +379,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     liveness_constraints.add_all_points(region);
 
                     // Add `end(X)` into the set for X.
-                    scc_values.add_element(scc, region);
+                    scc_values.add_free_region(scc, region);
                 }
 
                 NllRegionVariableOrigin::Placeholder(placeholder) => {
-                    // Placeholder region variables contain their placeholder.
-                    scc_values.add_element(scc, placeholder);
+                    scc_values.add_placeholder(scc, placeholder)
                 }
 
                 NllRegionVariableOrigin::Existential { .. } => {
@@ -444,9 +443,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Returns `true` if the region `r` contains the point `p`.
     ///
     /// Panics if called before `solve()` executes,
-    pub(crate) fn region_contains(&self, r: RegionVid, p: impl ToElementIndex<'tcx>) -> bool {
+    pub(crate) fn region_contains_point(&self, r: RegionVid, p: Location) -> bool {
         let scc = self.constraint_sccs.scc(r);
-        self.scc_values.contains(scc, p)
+        self.scc_values.contains_point(scc, p)
     }
 
     /// Returns the lowest statement index in `start..=end` which is not contained by `r`.
@@ -1592,10 +1591,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self.definitions[r]
     }
 
-    /// Check if the SCC of `r` contains `upper`.
+    /// Check if the SCC of `r` contains `upper`, a free region.
     pub(crate) fn upper_bound_in_region_scc(&self, r: RegionVid, upper: RegionVid) -> bool {
         let r_scc = self.constraint_sccs.scc(r);
-        self.scc_values.contains(r_scc, upper)
+        self.scc_values.contains_free_region(r_scc, upper)
     }
 
     pub(crate) fn universal_regions(&self) -> &UniversalRegions<'tcx> {

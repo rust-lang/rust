@@ -298,24 +298,12 @@ impl<'tcx, N: Idx> RegionValues<'tcx, N> {
         }
     }
 
-    /// Adds the given element to the value for the given region. Returns whether
-    /// the element is newly added (i.e., was not already present).
-    pub(crate) fn add_element(&mut self, r: N, elem: impl ToElementIndex<'tcx>) -> bool {
-        debug!("add(r={:?}, elem={:?})", r, elem);
-        elem.add_to_row(self, r)
-    }
-
     /// Adds all elements in `r_from` to `r_to` (because e.g., `r_to:
     /// r_from`).
     pub(crate) fn add_region(&mut self, r_to: N, r_from: N) -> bool {
         self.points.union_rows(r_from, r_to)
             | self.free_regions.union_rows(r_from, r_to)
             | self.placeholders.union_rows(r_from, r_to)
-    }
-
-    /// Returns `true` if the region `r` contains the given element.
-    pub(crate) fn contains(&self, r: N, elem: impl ToElementIndex<'tcx>) -> bool {
-        elem.contained_in_row(self, r)
     }
 
     /// Returns the lowest statement index in `start..=end` which is not contained by `r`.
@@ -398,47 +386,26 @@ impl<'tcx, N: Idx> RegionValues<'tcx, N> {
     pub(crate) fn region_value_str(&self, r: N) -> String {
         pretty_print_region_elements(self.elements_contained_in(r))
     }
-}
 
-pub(crate) trait ToElementIndex<'tcx>: Debug + Copy {
-    fn add_to_row<N: Idx>(self, values: &mut RegionValues<'tcx, N>, row: N) -> bool;
-
-    fn contained_in_row<N: Idx>(self, values: &RegionValues<'tcx, N>, row: N) -> bool;
-}
-
-impl ToElementIndex<'_> for Location {
-    fn add_to_row<N: Idx>(self, values: &mut RegionValues<'_, N>, row: N) -> bool {
-        let index = values.location_map.point_from_location(self);
-        values.points.insert(row, index)
+    /// Add a the free region with rvid `region` to SCC `scc`
+    pub(crate) fn add_free_region(&mut self, scc: N, region: RegionVid) {
+        self.free_regions.insert(scc, region);
     }
 
-    fn contained_in_row<N: Idx>(self, values: &RegionValues<'_, N>, row: N) -> bool {
-        let index = values.location_map.point_from_location(self);
-        values.points.contains(row, index)
-    }
-}
-
-impl ToElementIndex<'_> for RegionVid {
-    fn add_to_row<N: Idx>(self, values: &mut RegionValues<'_, N>, row: N) -> bool {
-        values.free_regions.insert(row, self)
+    pub(crate) fn add_placeholder(&mut self, scc: N, placeholder: ty::PlaceholderRegion<'tcx>) {
+        let index = self.placeholder_indices.lookup_index(placeholder);
+        self.placeholders.insert(scc, index);
     }
 
-    fn contained_in_row<N: Idx>(self, values: &RegionValues<'_, N>, row: N) -> bool {
-        values.free_regions.contains(row, self)
-    }
-}
-
-impl<'tcx> ToElementIndex<'tcx> for ty::PlaceholderRegion<'tcx> {
-    fn add_to_row<N: Idx>(self, values: &mut RegionValues<'tcx, N>, row: N) -> bool {
-        let placeholder: ty::PlaceholderRegion<'tcx> = self.into();
-        let index = values.placeholder_indices.lookup_index(placeholder);
-        values.placeholders.insert(row, index)
+    /// Determine if `scc` contains the CFG point `p`.
+    pub(crate) fn contains_point(&self, scc: N, p: Location) -> bool {
+        let index = self.location_map.point_from_location(p);
+        self.points.contains(scc, index)
     }
 
-    fn contained_in_row<N: Idx>(self, values: &RegionValues<'tcx, N>, row: N) -> bool {
-        let placeholder: ty::PlaceholderRegion<'tcx> = self.into();
-        let index = values.placeholder_indices.lookup_index(placeholder);
-        values.placeholders.contains(row, index)
+    /// Determine if `scc` contains the free region `free_region`.
+    pub(crate) fn contains_free_region(&self, scc: N, free_region: RegionVid) -> bool {
+        self.free_regions.contains(scc, free_region)
     }
 }
 
