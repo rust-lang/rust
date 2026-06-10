@@ -352,23 +352,23 @@ target | std | host | notes
 [`loongarch32-unknown-none-softfloat`](platform-support/loongarch-none.md) | * |  | LoongArch32 Bare-metal (ILP32S ABI)
 [`m68k-unknown-linux-gnu`](platform-support/m68k-unknown-linux-gnu.md) | ? |  | Motorola 680x0 Linux
 [`m68k-unknown-none-elf`](platform-support/m68k-unknown-none-elf.md) |  |  | Motorola 680x0
-`mips-unknown-linux-gnu` | ✓ | ✓ | MIPS Linux (kernel 4.4, glibc 2.23)
-`mips-unknown-linux-musl` | ✓ |  | MIPS Linux with musl 1.2.5
-`mips-unknown-linux-uclibc` | ✓ |  | MIPS Linux with uClibc
-[`mips64-openwrt-linux-musl`](platform-support/mips64-openwrt-linux-musl.md) | ? |  | MIPS64 for OpenWrt Linux musl 1.2.5
-`mips64-unknown-linux-gnuabi64` | ✓ | ✓ | MIPS64 Linux, N64 ABI (kernel 4.4, glibc 2.23)
-[`mips64-unknown-linux-muslabi64`](platform-support/mips64-unknown-linux-muslabi64.md) | ✓ | ✓ | MIPS64 Linux, N64 ABI, musl 1.2.5
-`mips64el-unknown-linux-gnuabi64` | ✓ | ✓ | MIPS64 (little endian) Linux, N64 ABI (kernel 4.4, glibc 2.23)
-`mips64el-unknown-linux-muslabi64` | ✓ |  | MIPS64 (little endian) Linux, N64 ABI, musl 1.2.5
-`mipsel-sony-psp` | * |  | MIPS (LE) Sony PlayStation Portable (PSP)
-[`mipsel-sony-psx`](platform-support/mipsel-sony-psx.md) | * |  | MIPS (LE) Sony PlayStation 1 (PSX)
-[`mipsel-unknown-linux-gnu`](platform-support/mipsel-unknown-linux-gnu.md) | ✓ | ✓ | MIPS (little endian) Linux (kernel 4.4, glibc 2.23)
-`mipsel-unknown-linux-musl` | ✓ |  | MIPS (little endian) Linux with musl 1.2.5
-`mipsel-unknown-linux-uclibc` | ✓ |  | MIPS (LE) Linux with uClibc
-[`mipsel-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | 32-bit MIPS (LE), requires mips32 cpu support
-`mipsel-unknown-none` | * |  | Bare MIPS (LE) softfloat
-[`mips-mti-none-elf`](platform-support/mips-mti-none-elf.md) | * |  | Bare MIPS32r2 (BE) softfloat
-[`mipsel-mti-none-elf`](platform-support/mips-mti-none-elf.md) | * |  | Bare MIPS32r2 (LE) softfloat
+`mips-unknown-linux-gnu` | ✓ | ✓ | MIPS Linux (kernel 4.4, glibc 2.23) [^snan-inverted]
+`mips-unknown-linux-musl` | ✓ |  | MIPS Linux with musl 1.2.5 [^snan-inverted]
+`mips-unknown-linux-uclibc` | ✓ |  | MIPS Linux with uClibc [^snan-inverted]
+[`mips64-openwrt-linux-musl`](platform-support/mips64-openwrt-linux-musl.md) | ? |  | MIPS64 for OpenWrt Linux musl 1.2.5 [^snan-inverted]
+`mips64-unknown-linux-gnuabi64` | ✓ | ✓ | MIPS64 Linux, N64 ABI (kernel 4.4, glibc 2.23) [^snan-inverted]
+[`mips64-unknown-linux-muslabi64`](platform-support/mips64-unknown-linux-muslabi64.md) | ✓ | ✓ | MIPS64 Linux, N64 ABI, musl 1.2.5 [^snan-inverted]
+`mips64el-unknown-linux-gnuabi64` | ✓ | ✓ | MIPS64 (little endian) Linux, N64 ABI (kernel 4.4, glibc 2.23) [^snan-inverted]
+`mips64el-unknown-linux-muslabi64` | ✓ |  | MIPS64 (little endian) Linux, N64 ABI, musl 1.2.5 [^snan-inverted]
+`mipsel-sony-psp` | * |  | MIPS (LE) Sony PlayStation Portable (PSP) [^snan-inverted]
+[`mipsel-sony-psx`](platform-support/mipsel-sony-psx.md) | * |  | MIPS (LE) Sony PlayStation 1 (PSX) [^snan-inverted]
+[`mipsel-unknown-linux-gnu`](platform-support/mipsel-unknown-linux-gnu.md) | ✓ | ✓ | MIPS (little endian) Linux (kernel 4.4, glibc 2.23) [^snan-inverted]
+`mipsel-unknown-linux-musl` | ✓ |  | MIPS (little endian) Linux with musl 1.2.5 [^snan-inverted]
+`mipsel-unknown-linux-uclibc` | ✓ |  | MIPS (LE) Linux with uClibc [^snan-inverted]
+[`mipsel-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | 32-bit MIPS (LE), requires mips32 cpu support [^snan-inverted]
+`mipsel-unknown-none` | * |  | Bare MIPS (LE) softfloat [^snan-inverted]
+[`mips-mti-none-elf`](platform-support/mips-mti-none-elf.md) | * |  | Bare MIPS32r2 (BE) softfloat [^snan-inverted]
+[`mipsel-mti-none-elf`](platform-support/mips-mti-none-elf.md) | * |  | Bare MIPS32r2 (LE) softfloat [^snan-inverted]
 [`mipsisa32r6-unknown-linux-gnu`](platform-support/mips-release-6.md) | ? |  | 32-bit MIPS Release 6 Big Endian
 [`mipsisa32r6el-unknown-linux-gnu`](platform-support/mips-release-6.md) | ? |  | 32-bit MIPS Release 6 Little Endian
 [`mipsisa64r6-unknown-linux-gnuabi64`](platform-support/mips-release-6.md) | ? |  | 64-bit MIPS Release 6 Big Endian
@@ -472,3 +472,7 @@ target | std | host | notes
 
 [runs on NVIDIA GPUs]: https://github.com/japaric-archived/nvptx#targets
 [the AMD GPU]: https://llvm.org/docs/AMDGPUUsage.html#processors
+
+[^snan-inverted]: On these targets, the treatment of floating-point NaN values is non-compliant. The bit representation for signaling NaNs is inverted compared to [what Rust expects](../std/primitive.f32.html). This means that operations that are expected to return a quiet NaN may return a signaling NaN. See [issue #68925][snan-issue].
+
+[snan-issue]: https://github.com/rust-lang/rust/issues/68925
