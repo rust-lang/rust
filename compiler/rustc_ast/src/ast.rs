@@ -31,7 +31,8 @@ use rustc_data_structures::tagged_ptr::Tag;
 use rustc_macros::{Decodable, Encodable, StableHash, Walkable};
 pub use rustc_span::AttrId;
 use rustc_span::{
-    ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, Span, Spanned, Symbol, kw, respan, sym,
+    ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, LocalExpnId, Span, Spanned, Symbol, kw, respan,
+    sym,
 };
 use thin_vec::{ThinVec, thin_vec};
 
@@ -3906,10 +3907,10 @@ pub struct EiiImpl {
     pub is_default: bool,
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, Walkable, PartialEq, Eq)]
+#[derive(Clone, Copy, Encodable, Decodable, Debug, PartialEq, Eq)]
 pub enum DelegationSource {
     Single,
-    List,
+    List(LocalExpnId),
     Glob,
 }
 
@@ -3923,6 +3924,7 @@ pub struct Delegation {
     pub rename: Option<Ident>,
     pub body: Option<Box<Block>>,
     /// The item was expanded from a glob delegation item.
+    #[visitable(ignore)]
     pub source: DelegationSource,
 }
 

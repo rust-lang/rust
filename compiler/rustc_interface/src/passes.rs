@@ -1083,6 +1083,8 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     // to use `hir_crate_items`.
     tcx.ensure_done().hir_crate_items(());
 
+    rustc_passes::delegation::check_glob_and_list_delegations_target_expr(tcx);
+
     let sess = tcx.sess;
     sess.time("misc_checking_1", || {
         par_fns(&mut [

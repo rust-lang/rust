@@ -5,9 +5,9 @@
 use std::debug_assert_matches;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::PathSegment;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{DelegationInfo, PathSegment};
 use rustc_middle::ty::{
     self, EarlyBinder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
@@ -71,19 +71,6 @@ enum SelfPositionKind {
     None,
 }
 
-pub fn opt_get_delegation_info(
-    tcx: TyCtxt<'_>,
-    delegation_id: LocalDefId,
-) -> Option<&DelegationInfo> {
-    tcx.hir_node(tcx.local_def_id_to_hir_id(delegation_id))
-        .fn_sig()
-        .and_then(|sig| sig.decl.opt_delegation_info())
-}
-
-fn get_delegation_info(tcx: TyCtxt<'_>, delegation_id: LocalDefId) -> &DelegationInfo {
-    opt_get_delegation_info(tcx, delegation_id).expect("processing delegation")
-}
-
 fn create_self_position_kind(
     tcx: TyCtxt<'_>,
     delegation_id: LocalDefId,
@@ -96,7 +83,7 @@ fn create_self_position_kind(
         | (FnKind::AssocTrait, FnKind::Free) => SelfPositionKind::Zero,
 
         (FnKind::Free, FnKind::AssocTrait) => {
-            let propagate_self_ty = get_delegation_info(tcx, delegation_id).propagate_self_ty;
+            let propagate_self_ty = tcx.hir_delegation_info(delegation_id).propagate_self_ty;
             SelfPositionKind::AfterLifetimes(propagate_self_ty)
         }
 
@@ -282,7 +269,7 @@ fn get_parent_and_inheritance_kind<'tcx>(
 }
 
 fn get_delegation_self_ty_or_err(tcx: TyCtxt<'_>, delegation_id: LocalDefId) -> Ty<'_> {
-    get_delegation_info(tcx, delegation_id)
+    tcx.hir_delegation_info(delegation_id)
         .self_ty_id
         .map(|id| {
             let ctx = ItemCtxt::new(tcx, delegation_id);
@@ -644,7 +631,7 @@ pub(crate) fn delegation_user_specified_args<'tcx>(
     tcx: TyCtxt<'tcx>,
     delegation_id: LocalDefId,
 ) -> (&'tcx [ty::GenericArg<'tcx>], &'tcx [ty::GenericArg<'tcx>]) {
-    let info = get_delegation_info(tcx, delegation_id);
+    let info = tcx.hir_delegation_info(delegation_id);
 
     let get_segment = |hir_id| -> Option<(&'tcx PathSegment<'tcx>, DefId)> {
         let segment = tcx.hir_node(hir_id).expect_path_segment();
