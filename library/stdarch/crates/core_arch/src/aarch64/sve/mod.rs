@@ -130,7 +130,7 @@ macro_rules! impl_internal_sve_predicate {
             #[target_feature(enable = "sve")]
             unsafe fn sve_into(self) -> svbool_t {
                 #[allow(improper_ctypes)]
-                unsafe extern "C" {
+                unsafe extern "unadjusted" {
                     #[cfg_attr(
                         target_arch = "aarch64",
                         link_name = concat!("llvm.aarch64.sve.convert.to.svbool.nxv", $elt, "i1")
@@ -147,7 +147,7 @@ macro_rules! impl_internal_sve_predicate {
             #[target_feature(enable = "sve")]
             unsafe fn sve_into(self) -> $name {
                 #[allow(improper_ctypes)]
-                unsafe extern "C" {
+                unsafe extern "unadjusted" {
                     #[cfg_attr(
                         target_arch = "aarch64",
                         link_name = concat!("llvm.aarch64.sve.convert.from.svbool.nxv", $elt, "i1")

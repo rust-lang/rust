@@ -1844,7 +1844,7 @@ pub fn svadrd_u64base_u64index(bases: svuint64_t, indices: svuint64_t) -> svuint
 #[cfg_attr(test, assert_instr(and))]
 pub fn svand_b_z(pg: svbool_t, op1: svbool_t, op2: svbool_t) -> svbool_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.and.z.nvx16i1")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.and.z.nxv16i1")]
         fn _svand_b_z(pg: svbool_t, op1: svbool_t, op2: svbool_t) -> svbool_t;
     }
     unsafe { _svand_b_z(pg, op1, op2) }
@@ -2936,7 +2936,7 @@ pub fn svasrd_n_s64_z<const IMM2: i32>(pg: svbool_t, op1: svint64_t) -> svint64_
 #[cfg_attr(test, assert_instr(bic))]
 pub fn svbic_b_z(pg: svbool_t, op1: svbool_t, op2: svbool_t) -> svbool_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.bic.z.nvx16i1")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.bic.z.nxv16i1")]
         fn _svbic_b_z(pg: svbool_t, op1: svbool_t, op2: svbool_t) -> svbool_t;
     }
     unsafe { _svbic_b_z(pg, op1, op2) }
@@ -4560,7 +4560,7 @@ pub fn svcmla_lane_f32<const IMM_INDEX: i32, const IMM_ROTATION: i32>(
     unsafe extern "unadjusted" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.fcmla.lane.x.nxv4f32"
+            link_name = "llvm.aarch64.sve.fcmla.lane.nxv4f32"
         )]
         fn _svcmla_lane_f32(
             op1: svfloat32_t,
@@ -7658,7 +7658,10 @@ pub fn svcvt_f64_f32_z(pg: svbool_t, op: svfloat32_t) -> svfloat64_t {
 #[cfg_attr(test, assert_instr(scvtf))]
 pub fn svcvt_f32_s32_m(inactive: svfloat32_t, pg: svbool_t, op: svint32_t) -> svfloat32_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.scvtf.f32i32")]
+        #[cfg_attr(
+            target_arch = "aarch64",
+            link_name = "llvm.aarch64.sve.scvtf.nxv4f32.nxv4i32"
+        )]
         fn _svcvt_f32_s32_m(inactive: svfloat32_t, pg: svbool4_t, op: svint32_t) -> svfloat32_t;
     }
     unsafe { _svcvt_f32_s32_m(inactive, pg.sve_into(), op) }
@@ -7680,6 +7683,108 @@ pub fn svcvt_f32_s32_x(pg: svbool_t, op: svint32_t) -> svfloat32_t {
 #[cfg_attr(test, assert_instr(scvtf))]
 pub fn svcvt_f32_s32_z(pg: svbool_t, op: svint32_t) -> svfloat32_t {
     svcvt_f32_s32_m(svdup_n_f32(0.0), pg, op)
+}
+#[doc = "Floating-point convert"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_f32[_u32]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+#[cfg_attr(test, assert_instr(ucvtf))]
+pub fn svcvt_f32_u32_m(inactive: svfloat32_t, pg: svbool_t, op: svuint32_t) -> svfloat32_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            target_arch = "aarch64",
+            link_name = "llvm.aarch64.sve.ucvtf.nxv4f32.nxv4i32"
+        )]
+        fn _svcvt_f32_u32_m(inactive: svfloat32_t, pg: svbool4_t, op: svint32_t) -> svfloat32_t;
+    }
+    unsafe { _svcvt_f32_u32_m(inactive, pg.sve_into(), op.as_signed()) }
+}
+#[doc = "Floating-point convert"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_f32[_u32]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+#[cfg_attr(test, assert_instr(ucvtf))]
+pub fn svcvt_f32_u32_x(pg: svbool_t, op: svuint32_t) -> svfloat32_t {
+    unsafe { svcvt_f32_u32_m(transmute_unchecked(op), pg, op) }
+}
+#[doc = "Floating-point convert"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_f32[_u32]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+#[cfg_attr(test, assert_instr(ucvtf))]
+pub fn svcvt_f32_u32_z(pg: svbool_t, op: svuint32_t) -> svfloat32_t {
+    svcvt_f32_u32_m(svdup_n_f32(0.0), pg, op)
+}
+#[doc = "Floating-point convert"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_f64[_s64]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+#[cfg_attr(test, assert_instr(scvtf))]
+pub fn svcvt_f64_s64_m(inactive: svfloat64_t, pg: svbool_t, op: svint64_t) -> svfloat64_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            target_arch = "aarch64",
+            link_name = "llvm.aarch64.sve.scvtf.nxv2f64.nxv2i64"
+        )]
+        fn _svcvt_f64_s64_m(inactive: svfloat64_t, pg: svbool2_t, op: svint64_t) -> svfloat64_t;
+    }
+    unsafe { _svcvt_f64_s64_m(inactive, pg.sve_into(), op) }
+}
+#[doc = "Floating-point convert"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_f64[_s64]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+#[cfg_attr(test, assert_instr(scvtf))]
+pub fn svcvt_f64_s64_x(pg: svbool_t, op: svint64_t) -> svfloat64_t {
+    unsafe { svcvt_f64_s64_m(transmute_unchecked(op), pg, op) }
+}
+#[doc = "Floating-point convert"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_f64[_s64]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+#[cfg_attr(test, assert_instr(scvtf))]
+pub fn svcvt_f64_s64_z(pg: svbool_t, op: svint64_t) -> svfloat64_t {
+    svcvt_f64_s64_m(svdup_n_f64(0.0), pg, op)
+}
+#[doc = "Floating-point convert"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_f64[_u64]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+#[cfg_attr(test, assert_instr(ucvtf))]
+pub fn svcvt_f64_u64_m(inactive: svfloat64_t, pg: svbool_t, op: svuint64_t) -> svfloat64_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            target_arch = "aarch64",
+            link_name = "llvm.aarch64.sve.ucvtf.nxv2f64.nxv2i64"
+        )]
+        fn _svcvt_f64_u64_m(inactive: svfloat64_t, pg: svbool2_t, op: svint64_t) -> svfloat64_t;
+    }
+    unsafe { _svcvt_f64_u64_m(inactive, pg.sve_into(), op.as_signed()) }
+}
+#[doc = "Floating-point convert"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_f64[_u64]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+#[cfg_attr(test, assert_instr(ucvtf))]
+pub fn svcvt_f64_u64_x(pg: svbool_t, op: svuint64_t) -> svfloat64_t {
+    unsafe { svcvt_f64_u64_m(transmute_unchecked(op), pg, op) }
+}
+#[doc = "Floating-point convert"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_f64[_u64]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+#[cfg_attr(test, assert_instr(ucvtf))]
+pub fn svcvt_f64_u64_z(pg: svbool_t, op: svuint64_t) -> svfloat64_t {
+    svcvt_f64_u64_m(svdup_n_f64(0.0), pg, op)
 }
 #[doc = "Floating-point convert"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_f32[_s64]_m)"]
@@ -7711,37 +7816,6 @@ pub fn svcvt_f32_s64_x(pg: svbool_t, op: svint64_t) -> svfloat32_t {
 #[cfg_attr(test, assert_instr(scvtf))]
 pub fn svcvt_f32_s64_z(pg: svbool_t, op: svint64_t) -> svfloat32_t {
     svcvt_f32_s64_m(svdup_n_f32(0.0), pg, op)
-}
-#[doc = "Floating-point convert"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_f32[_u32]_m)"]
-#[inline]
-#[target_feature(enable = "sve")]
-#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(ucvtf))]
-pub fn svcvt_f32_u32_m(inactive: svfloat32_t, pg: svbool_t, op: svuint32_t) -> svfloat32_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ucvtf.f32i32")]
-        fn _svcvt_f32_u32_m(inactive: svfloat32_t, pg: svbool4_t, op: svint32_t) -> svfloat32_t;
-    }
-    unsafe { _svcvt_f32_u32_m(inactive, pg.sve_into(), op.as_signed()) }
-}
-#[doc = "Floating-point convert"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_f32[_u32]_x)"]
-#[inline]
-#[target_feature(enable = "sve")]
-#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(ucvtf))]
-pub fn svcvt_f32_u32_x(pg: svbool_t, op: svuint32_t) -> svfloat32_t {
-    unsafe { svcvt_f32_u32_m(transmute_unchecked(op), pg, op) }
-}
-#[doc = "Floating-point convert"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_f32[_u32]_z)"]
-#[inline]
-#[target_feature(enable = "sve")]
-#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(ucvtf))]
-pub fn svcvt_f32_u32_z(pg: svbool_t, op: svuint32_t) -> svfloat32_t {
-    svcvt_f32_u32_m(svdup_n_f32(0.0), pg, op)
 }
 #[doc = "Floating-point convert"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_f32[_u64]_m)"]
@@ -7806,37 +7880,6 @@ pub fn svcvt_f64_s32_z(pg: svbool_t, op: svint32_t) -> svfloat64_t {
     svcvt_f64_s32_m(svdup_n_f64(0.0), pg, op)
 }
 #[doc = "Floating-point convert"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_f64[_s64]_m)"]
-#[inline]
-#[target_feature(enable = "sve")]
-#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(scvtf))]
-pub fn svcvt_f64_s64_m(inactive: svfloat64_t, pg: svbool_t, op: svint64_t) -> svfloat64_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.scvtf.f64i64")]
-        fn _svcvt_f64_s64_m(inactive: svfloat64_t, pg: svbool2_t, op: svint64_t) -> svfloat64_t;
-    }
-    unsafe { _svcvt_f64_s64_m(inactive, pg.sve_into(), op) }
-}
-#[doc = "Floating-point convert"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_f64[_s64]_x)"]
-#[inline]
-#[target_feature(enable = "sve")]
-#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(scvtf))]
-pub fn svcvt_f64_s64_x(pg: svbool_t, op: svint64_t) -> svfloat64_t {
-    unsafe { svcvt_f64_s64_m(transmute_unchecked(op), pg, op) }
-}
-#[doc = "Floating-point convert"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_f64[_s64]_z)"]
-#[inline]
-#[target_feature(enable = "sve")]
-#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(scvtf))]
-pub fn svcvt_f64_s64_z(pg: svbool_t, op: svint64_t) -> svfloat64_t {
-    svcvt_f64_s64_m(svdup_n_f64(0.0), pg, op)
-}
-#[doc = "Floating-point convert"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_f64[_u32]_m)"]
 #[inline]
 #[target_feature(enable = "sve")]
@@ -7868,37 +7911,6 @@ pub fn svcvt_f64_u32_z(pg: svbool_t, op: svuint32_t) -> svfloat64_t {
     svcvt_f64_u32_m(svdup_n_f64(0.0), pg, op)
 }
 #[doc = "Floating-point convert"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_f64[_u64]_m)"]
-#[inline]
-#[target_feature(enable = "sve")]
-#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(ucvtf))]
-pub fn svcvt_f64_u64_m(inactive: svfloat64_t, pg: svbool_t, op: svuint64_t) -> svfloat64_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ucvtf.f64i64")]
-        fn _svcvt_f64_u64_m(inactive: svfloat64_t, pg: svbool2_t, op: svint64_t) -> svfloat64_t;
-    }
-    unsafe { _svcvt_f64_u64_m(inactive, pg.sve_into(), op.as_signed()) }
-}
-#[doc = "Floating-point convert"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_f64[_u64]_x)"]
-#[inline]
-#[target_feature(enable = "sve")]
-#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(ucvtf))]
-pub fn svcvt_f64_u64_x(pg: svbool_t, op: svuint64_t) -> svfloat64_t {
-    unsafe { svcvt_f64_u64_m(transmute_unchecked(op), pg, op) }
-}
-#[doc = "Floating-point convert"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_f64[_u64]_z)"]
-#[inline]
-#[target_feature(enable = "sve")]
-#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(ucvtf))]
-pub fn svcvt_f64_u64_z(pg: svbool_t, op: svuint64_t) -> svfloat64_t {
-    svcvt_f64_u64_m(svdup_n_f64(0.0), pg, op)
-}
-#[doc = "Floating-point convert"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_s32[_f32]_m)"]
 #[inline]
 #[target_feature(enable = "sve")]
@@ -7906,7 +7918,10 @@ pub fn svcvt_f64_u64_z(pg: svbool_t, op: svuint64_t) -> svfloat64_t {
 #[cfg_attr(test, assert_instr(fcvtzs))]
 pub fn svcvt_s32_f32_m(inactive: svint32_t, pg: svbool_t, op: svfloat32_t) -> svint32_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.fcvtzs.i32f32")]
+        #[cfg_attr(
+            target_arch = "aarch64",
+            link_name = "llvm.aarch64.sve.fcvtzs.nxv4i32.nxv4f32"
+        )]
         fn _svcvt_s32_f32_m(inactive: svint32_t, pg: svbool4_t, op: svfloat32_t) -> svint32_t;
     }
     unsafe { _svcvt_s32_f32_m(inactive, pg.sve_into(), op) }
@@ -7928,6 +7943,108 @@ pub fn svcvt_s32_f32_x(pg: svbool_t, op: svfloat32_t) -> svint32_t {
 #[cfg_attr(test, assert_instr(fcvtzs))]
 pub fn svcvt_s32_f32_z(pg: svbool_t, op: svfloat32_t) -> svint32_t {
     svcvt_s32_f32_m(svdup_n_s32(0), pg, op)
+}
+#[doc = "Floating-point convert"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_s64[_f64]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+#[cfg_attr(test, assert_instr(fcvtzs))]
+pub fn svcvt_s64_f64_m(inactive: svint64_t, pg: svbool_t, op: svfloat64_t) -> svint64_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            target_arch = "aarch64",
+            link_name = "llvm.aarch64.sve.fcvtzs.nxv2i64.nxv2f64"
+        )]
+        fn _svcvt_s64_f64_m(inactive: svint64_t, pg: svbool2_t, op: svfloat64_t) -> svint64_t;
+    }
+    unsafe { _svcvt_s64_f64_m(inactive, pg.sve_into(), op) }
+}
+#[doc = "Floating-point convert"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_s64[_f64]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+#[cfg_attr(test, assert_instr(fcvtzs))]
+pub fn svcvt_s64_f64_x(pg: svbool_t, op: svfloat64_t) -> svint64_t {
+    unsafe { svcvt_s64_f64_m(transmute_unchecked(op), pg, op) }
+}
+#[doc = "Floating-point convert"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_s64[_f64]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+#[cfg_attr(test, assert_instr(fcvtzs))]
+pub fn svcvt_s64_f64_z(pg: svbool_t, op: svfloat64_t) -> svint64_t {
+    svcvt_s64_f64_m(svdup_n_s64(0), pg, op)
+}
+#[doc = "Floating-point convert"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_u32[_f32]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+#[cfg_attr(test, assert_instr(fcvtzu))]
+pub fn svcvt_u32_f32_m(inactive: svuint32_t, pg: svbool_t, op: svfloat32_t) -> svuint32_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            target_arch = "aarch64",
+            link_name = "llvm.aarch64.sve.fcvtzu.nxv4i32.nxv4f32"
+        )]
+        fn _svcvt_u32_f32_m(inactive: svint32_t, pg: svbool4_t, op: svfloat32_t) -> svint32_t;
+    }
+    unsafe { _svcvt_u32_f32_m(inactive.as_signed(), pg.sve_into(), op).as_unsigned() }
+}
+#[doc = "Floating-point convert"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_u32[_f32]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+#[cfg_attr(test, assert_instr(fcvtzu))]
+pub fn svcvt_u32_f32_x(pg: svbool_t, op: svfloat32_t) -> svuint32_t {
+    unsafe { svcvt_u32_f32_m(transmute_unchecked(op), pg, op) }
+}
+#[doc = "Floating-point convert"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_u32[_f32]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+#[cfg_attr(test, assert_instr(fcvtzu))]
+pub fn svcvt_u32_f32_z(pg: svbool_t, op: svfloat32_t) -> svuint32_t {
+    svcvt_u32_f32_m(svdup_n_u32(0), pg, op)
+}
+#[doc = "Floating-point convert"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_u64[_f64]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+#[cfg_attr(test, assert_instr(fcvtzu))]
+pub fn svcvt_u64_f64_m(inactive: svuint64_t, pg: svbool_t, op: svfloat64_t) -> svuint64_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            target_arch = "aarch64",
+            link_name = "llvm.aarch64.sve.fcvtzu.nxv2i64.nxv2f64"
+        )]
+        fn _svcvt_u64_f64_m(inactive: svint64_t, pg: svbool2_t, op: svfloat64_t) -> svint64_t;
+    }
+    unsafe { _svcvt_u64_f64_m(inactive.as_signed(), pg.sve_into(), op).as_unsigned() }
+}
+#[doc = "Floating-point convert"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_u64[_f64]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+#[cfg_attr(test, assert_instr(fcvtzu))]
+pub fn svcvt_u64_f64_x(pg: svbool_t, op: svfloat64_t) -> svuint64_t {
+    unsafe { svcvt_u64_f64_m(transmute_unchecked(op), pg, op) }
+}
+#[doc = "Floating-point convert"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_u64[_f64]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+#[cfg_attr(test, assert_instr(fcvtzu))]
+pub fn svcvt_u64_f64_z(pg: svbool_t, op: svfloat64_t) -> svuint64_t {
+    svcvt_u64_f64_m(svdup_n_u64(0), pg, op)
 }
 #[doc = "Floating-point convert"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_s32[_f64]_m)"]
@@ -7992,68 +8109,6 @@ pub fn svcvt_s64_f32_z(pg: svbool_t, op: svfloat32_t) -> svint64_t {
     svcvt_s64_f32_m(svdup_n_s64(0), pg, op)
 }
 #[doc = "Floating-point convert"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_s64[_f64]_m)"]
-#[inline]
-#[target_feature(enable = "sve")]
-#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(fcvtzs))]
-pub fn svcvt_s64_f64_m(inactive: svint64_t, pg: svbool_t, op: svfloat64_t) -> svint64_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.fcvtzs.i64f64")]
-        fn _svcvt_s64_f64_m(inactive: svint64_t, pg: svbool2_t, op: svfloat64_t) -> svint64_t;
-    }
-    unsafe { _svcvt_s64_f64_m(inactive, pg.sve_into(), op) }
-}
-#[doc = "Floating-point convert"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_s64[_f64]_x)"]
-#[inline]
-#[target_feature(enable = "sve")]
-#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(fcvtzs))]
-pub fn svcvt_s64_f64_x(pg: svbool_t, op: svfloat64_t) -> svint64_t {
-    unsafe { svcvt_s64_f64_m(transmute_unchecked(op), pg, op) }
-}
-#[doc = "Floating-point convert"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_s64[_f64]_z)"]
-#[inline]
-#[target_feature(enable = "sve")]
-#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(fcvtzs))]
-pub fn svcvt_s64_f64_z(pg: svbool_t, op: svfloat64_t) -> svint64_t {
-    svcvt_s64_f64_m(svdup_n_s64(0), pg, op)
-}
-#[doc = "Floating-point convert"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_u32[_f32]_m)"]
-#[inline]
-#[target_feature(enable = "sve")]
-#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(fcvtzu))]
-pub fn svcvt_u32_f32_m(inactive: svuint32_t, pg: svbool_t, op: svfloat32_t) -> svuint32_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.fcvtzu.i32f32")]
-        fn _svcvt_u32_f32_m(inactive: svint32_t, pg: svbool4_t, op: svfloat32_t) -> svint32_t;
-    }
-    unsafe { _svcvt_u32_f32_m(inactive.as_signed(), pg.sve_into(), op).as_unsigned() }
-}
-#[doc = "Floating-point convert"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_u32[_f32]_x)"]
-#[inline]
-#[target_feature(enable = "sve")]
-#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(fcvtzu))]
-pub fn svcvt_u32_f32_x(pg: svbool_t, op: svfloat32_t) -> svuint32_t {
-    unsafe { svcvt_u32_f32_m(transmute_unchecked(op), pg, op) }
-}
-#[doc = "Floating-point convert"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_u32[_f32]_z)"]
-#[inline]
-#[target_feature(enable = "sve")]
-#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(fcvtzu))]
-pub fn svcvt_u32_f32_z(pg: svbool_t, op: svfloat32_t) -> svuint32_t {
-    svcvt_u32_f32_m(svdup_n_u32(0), pg, op)
-}
-#[doc = "Floating-point convert"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_u32[_f64]_m)"]
 #[inline]
 #[target_feature(enable = "sve")]
@@ -8114,37 +8169,6 @@ pub fn svcvt_u64_f32_x(pg: svbool_t, op: svfloat32_t) -> svuint64_t {
 #[cfg_attr(test, assert_instr(fcvtzu))]
 pub fn svcvt_u64_f32_z(pg: svbool_t, op: svfloat32_t) -> svuint64_t {
     svcvt_u64_f32_m(svdup_n_u64(0), pg, op)
-}
-#[doc = "Floating-point convert"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_u64[_f64]_m)"]
-#[inline]
-#[target_feature(enable = "sve")]
-#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(fcvtzu))]
-pub fn svcvt_u64_f64_m(inactive: svuint64_t, pg: svbool_t, op: svfloat64_t) -> svuint64_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.fcvtzu.i64f64")]
-        fn _svcvt_u64_f64_m(inactive: svint64_t, pg: svbool2_t, op: svfloat64_t) -> svint64_t;
-    }
-    unsafe { _svcvt_u64_f64_m(inactive.as_signed(), pg.sve_into(), op).as_unsigned() }
-}
-#[doc = "Floating-point convert"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_u64[_f64]_x)"]
-#[inline]
-#[target_feature(enable = "sve")]
-#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(fcvtzu))]
-pub fn svcvt_u64_f64_x(pg: svbool_t, op: svfloat64_t) -> svuint64_t {
-    unsafe { svcvt_u64_f64_m(transmute_unchecked(op), pg, op) }
-}
-#[doc = "Floating-point convert"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvt_u64[_f64]_z)"]
-#[inline]
-#[target_feature(enable = "sve")]
-#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(fcvtzu))]
-pub fn svcvt_u64_f64_z(pg: svbool_t, op: svfloat64_t) -> svuint64_t {
-    svcvt_u64_f64_m(svdup_n_u64(0), pg, op)
 }
 #[doc = "Divide"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svdiv[_f32]_m)"]
@@ -10041,7 +10065,7 @@ pub fn svdupq_n_u8(
 #[cfg_attr(test, assert_instr(eor))]
 pub fn sveor_b_z(pg: svbool_t, op1: svbool_t, op2: svbool_t) -> svbool_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.eor.z.nvx16i1")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.eor.z.nxv16i1")]
         fn _sveor_b_z(pg: svbool_t, op1: svbool_t, op2: svbool_t) -> svbool_t;
     }
     unsafe { _sveor_b_z(pg, op1, op2) }
@@ -10592,7 +10616,7 @@ pub fn svexpa_f32(op: svuint32_t) -> svfloat32_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.fexpa.x.nxv4f32 "
+            link_name = "llvm.aarch64.sve.fexpa.x.nxv4f32"
         )]
         fn _svexpa_f32(op: svint32_t) -> svfloat32_t;
     }
@@ -10608,7 +10632,7 @@ pub fn svexpa_f64(op: svuint64_t) -> svfloat64_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
             target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.fexpa.x.nxv2f64 "
+            link_name = "llvm.aarch64.sve.fexpa.x.nxv2f64"
         )]
         fn _svexpa_f64(op: svint64_t) -> svfloat64_t;
     }
@@ -27372,7 +27396,10 @@ pub fn svmls_lane_f64<const IMM_INDEX: i32>(
 #[cfg_attr(test, assert_instr(fmmla))]
 pub fn svmmla_f32(op1: svfloat32_t, op2: svfloat32_t, op3: svfloat32_t) -> svfloat32_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.fmmla.nxv4f32")]
+        #[cfg_attr(
+            target_arch = "aarch64",
+            link_name = "llvm.aarch64.sve.fmmla.nxv4f32.nxv4f32"
+        )]
         fn _svmmla_f32(op1: svfloat32_t, op2: svfloat32_t, op3: svfloat32_t) -> svfloat32_t;
     }
     unsafe { _svmmla_f32(op1, op2, op3) }
@@ -27385,7 +27412,10 @@ pub fn svmmla_f32(op1: svfloat32_t, op2: svfloat32_t, op3: svfloat32_t) -> svflo
 #[cfg_attr(test, assert_instr(fmmla))]
 pub fn svmmla_f64(op1: svfloat64_t, op2: svfloat64_t, op3: svfloat64_t) -> svfloat64_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.fmmla.nxv2f64")]
+        #[cfg_attr(
+            target_arch = "aarch64",
+            link_name = "llvm.aarch64.sve.fmmla.nxv2f64.nxv2f64"
+        )]
         fn _svmmla_f64(op1: svfloat64_t, op2: svfloat64_t, op3: svfloat64_t) -> svfloat64_t;
     }
     unsafe { _svmmla_f64(op1, op2, op3) }
@@ -30261,7 +30291,7 @@ pub fn svnot_u64_z(pg: svbool_t, op: svuint64_t) -> svuint64_t {
 #[cfg_attr(test, assert_instr(orn))]
 pub fn svorn_b_z(pg: svbool_t, op1: svbool_t, op2: svbool_t) -> svbool_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.orn.z.nvx16i1")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.orn.z.nxv16i1")]
         fn _svorn_b_z(pg: svbool_t, op1: svbool_t, op2: svbool_t) -> svbool_t;
     }
     unsafe { _svorn_b_z(pg, op1, op2) }
@@ -30274,7 +30304,7 @@ pub fn svorn_b_z(pg: svbool_t, op1: svbool_t, op2: svbool_t) -> svbool_t {
 #[cfg_attr(test, assert_instr(orr))]
 pub fn svorr_b_z(pg: svbool_t, op1: svbool_t, op2: svbool_t) -> svbool_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.orr.z.nvx16i1")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.orr.z.nxv16i1")]
         fn _svorr_b_z(pg: svbool_t, op1: svbool_t, op2: svbool_t) -> svbool_t;
     }
     unsafe { _svorr_b_z(pg, op1, op2) }
@@ -34341,10 +34371,7 @@ pub fn svrecps_f64(op1: svfloat64_t, op2: svfloat64_t) -> svfloat64_t {
 #[cfg_attr(test, assert_instr(frecpx))]
 pub fn svrecpx_f32_m(inactive: svfloat32_t, pg: svbool_t, op: svfloat32_t) -> svfloat32_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.frecpx.x.nxv4f32"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.frecpx.nxv4f32")]
         fn _svrecpx_f32_m(inactive: svfloat32_t, pg: svbool4_t, op: svfloat32_t) -> svfloat32_t;
     }
     unsafe { _svrecpx_f32_m(inactive, pg.sve_into(), op) }
@@ -34375,10 +34402,7 @@ pub fn svrecpx_f32_z(pg: svbool_t, op: svfloat32_t) -> svfloat32_t {
 #[cfg_attr(test, assert_instr(frecpx))]
 pub fn svrecpx_f64_m(inactive: svfloat64_t, pg: svbool_t, op: svfloat64_t) -> svfloat64_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.frecpx.x.nxv2f64"
-        )]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.frecpx.nxv2f64")]
         fn _svrecpx_f64_m(inactive: svfloat64_t, pg: svbool2_t, op: svfloat64_t) -> svfloat64_t;
     }
     unsafe { _svrecpx_f64_m(inactive, pg.sve_into(), op) }

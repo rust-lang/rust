@@ -115,7 +115,7 @@ intrinsics:
     assert_instr: [[fcmla, "IMM_INDEX = 0, IMM_ROTATION = 90"]]
     compose:
       - LLVMLink:
-          name: fcmla.lane.x.{sve_type}
+          name: fcmla.lane.{sve_type}
           arguments:
             - "op1: {sve_type}"
             - "op2: {sve_type}"
@@ -4179,7 +4179,8 @@ intrinsics:
       ["inactive: {sve_type[0]}", "pg: {max_predicate}", "op: {sve_type[1]}"]
     return_type: "{sve_type[0]}"
     types:
-      - [[f32, f64], [i32, u32, i64, u64]]
+      - [f32, [i64, u64]]
+      - [f64, [i32, u32]]
     zeroing_method: { drop: inactive }
     substitutions:
       convert_from: { match_kind: "{type[1]}", default: s, unsigned: u }
@@ -4187,6 +4188,23 @@ intrinsics:
     compose:
       - LLVMLink:
           name: "{convert_from}cvtf.{type[0]}{type[1]}"
+  
+  - name: svcvt_{type[0]}[_{type[1]}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Floating-point convert
+    arguments:
+      ["inactive: {sve_type[0]}", "pg: {max_predicate}", "op: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [f32, [i32, u32]]
+      - [f64, [i64, u64]]
+    zeroing_method: { drop: inactive }
+    substitutions:
+      convert_from: { match_kind: "{type[1]}", default: s, unsigned: u }
+    assert_instr: ["{convert_from}cvtf"]
+    compose:
+      - LLVMLink:
+          name: "{convert_from}cvtf.{sve_type[0]}.{sve_type[1]}"
 
   - name: svcvt_{type[0]}[_{type[1]}]{_mxz}
     attr: [*sve-unstable]
@@ -4195,13 +4213,30 @@ intrinsics:
       ["inactive: {sve_type[0]}", "pg: {max_predicate}", "op: {sve_type[1]}"]
     return_type: "{sve_type[0]}"
     types:
-      - [[i32, u32, i64, u64], [f32, f64]]
+      - [[i32, u32], f64]
+      - [[i64, u64], f32]
     zeroing_method: { drop: inactive }
     substitutions:
       convert_to: { match_kind: "{type[0]}", default: s, unsigned: u }
     assert_instr: ["fcvtz{convert_to}"]
     compose:
       - LLVMLink: { name: "fcvtz{convert_to}.{type[0]}{type[1]}" }
+  
+  - name: svcvt_{type[0]}[_{type[1]}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Floating-point convert
+    arguments:
+      ["inactive: {sve_type[0]}", "pg: {max_predicate}", "op: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [[i32, u32], f32]
+      - [[i64, u64], f64]
+    zeroing_method: { drop: inactive }
+    substitutions:
+      convert_to: { match_kind: "{type[0]}", default: s, unsigned: u }
+    assert_instr: ["fcvtz{convert_to}"]
+    compose:
+      - LLVMLink: { name: "fcvtz{convert_to}.{sve_type[0]}.{sve_type[1]}" }
 
   - name: svcvt_{type[0]}[_{type[1]}]{_mxz}
     attr: [*sve-unstable]
@@ -4356,7 +4391,7 @@ intrinsics:
     return_type: svbool_t
     assert_instr: [and]
     compose:
-      - LLVMLink: { name: "and.z.nvx16i1" }
+      - LLVMLink: { name: "and.z.nxv16i1" }
 
   - name: svmov[_b]_z
     attr: [*sve-unstable]
@@ -4386,7 +4421,7 @@ intrinsics:
     return_type: svbool_t
     assert_instr: [bic]
     compose:
-      - LLVMLink: { name: "bic.z.nvx16i1" }
+      - LLVMLink: { name: "bic.z.nxv16i1" }
 
   - name: sveor[{_n}_{type}]{_mxz}
     attr: [*sve-unstable]
@@ -4417,7 +4452,7 @@ intrinsics:
     return_type: svbool_t
     assert_instr: [eor]
     compose:
-      - LLVMLink: { name: "eor.z.nvx16i1" }
+      - LLVMLink: { name: "eor.z.nxv16i1" }
 
   - name: svnot[_{type}]{_mxz}
     attr: [*sve-unstable]
@@ -4497,7 +4532,7 @@ intrinsics:
     return_type: svbool_t
     assert_instr: [orr]
     compose:
-      - LLVMLink: { name: "orr.z.nvx16i1" }
+      - LLVMLink: { name: "orr.z.nxv16i1" }
 
   - name: svorn[_b]_z
     attr: [*sve-unstable]
@@ -4506,7 +4541,7 @@ intrinsics:
     return_type: svbool_t
     assert_instr: [orn]
     compose:
-      - LLVMLink: { name: "orn.z.nvx16i1" }
+      - LLVMLink: { name: "orn.z.nxv16i1" }
 
   - name: svlsl[{_n}_{type[0]}]{_mxz}
     attr: [*sve-unstable]
@@ -4749,7 +4784,7 @@ intrinsics:
     assert_instr: [frecpx]
     zeroing_method: { drop: inactive }
     compose:
-      - LLVMLink: { name: "frecpx.x.{sve_type}" }
+      - LLVMLink: { name: "frecpx.{sve_type}" }
 
   - name: svrsqrte[_{type}]
     attr: [*sve-unstable]
@@ -5115,7 +5150,7 @@ intrinsics:
     types: [[f32, u32], [f64, u64]]
     assert_instr: [fexpa]
     compose:
-      - LLVMLink: { name: "fexpa.x.{sve_type[0]} " }
+      - LLVMLink: { name: "fexpa.x.{sve_type[0]}" }
 
   - name: svscale[{_n}_{type[0]}]{_mxz}
     attr: [*sve-unstable]
@@ -5139,7 +5174,7 @@ intrinsics:
     types: [f32]
     assert_instr: [fmmla]
     compose:
-      - LLVMLink: { name: "fmmla.{sve_type}" }
+      - LLVMLink: { name: "fmmla.{sve_type}.{sve_type}" }
 
   - name: svmmla[_{type}]
     attr: [*sve-unstable]
@@ -5150,7 +5185,7 @@ intrinsics:
     types: [f64]
     assert_instr: [fmmla]
     compose:
-      - LLVMLink: { name: "fmmla.{sve_type}" }
+      - LLVMLink: { name: "fmmla.{sve_type}.{sve_type}" }
 
   - name: svmmla[_{type[0]}]
     attr: [*sve-unstable]

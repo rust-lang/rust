@@ -5,7 +5,7 @@
 use stdarch_test::assert_instr;
 
 #[allow(improper_ctypes)]
-unsafe extern "C" {
+unsafe extern "unadjusted" {
     #[link_name = "llvm.x86.xsave"]
     fn xsave(p: *mut u8, hi: u32, lo: u32);
     #[link_name = "llvm.x86.xrstor"]
