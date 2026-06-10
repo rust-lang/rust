@@ -1683,7 +1683,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let kind = match assoc_tag {
             ty::AssocTag::Type => ty::AliasTermKind::InherentTy { def_id: assoc_item },
             ty::AssocTag::Const => {
-                // drop once `InherentConst` accepts IAC-shaped args (issue #156181)
+                // FIXME(mgca): drop once `InherentConst` accepts IAC-shaped args (issue #156181)
                 // without this, `new_from_args` errors (#155341).
                 self.require_type_const_attribute(assoc_item, span)?;
                 ty::AliasTermKind::InherentConst { def_id: assoc_item }
