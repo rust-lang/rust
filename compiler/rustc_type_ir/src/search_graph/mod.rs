@@ -263,6 +263,12 @@ impl CandidateHeadUsages {
 }
 
 #[derive(Debug, Clone, Copy)]
+pub enum IncreaseDepthForNested {
+    Yes,
+    No,
+}
+
+#[derive(Debug, Clone, Copy)]
 struct AvailableDepth(usize);
 impl AvailableDepth {
     /// Returns the remaining depth allowed for nested goals.
@@ -276,6 +282,13 @@ impl AvailableDepth {
         stack: &Stack<D::Cx>,
     ) -> Option<AvailableDepth> {
         if let Some(last) = stack.last() {
+            match last.increase_depth_for_nested {
+                IncreaseDepthForNested::Yes => {}
+                IncreaseDepthForNested::No => {
+                    return Some(last.available_depth);
+                }
+            }
+
             if last.available_depth.0 == 0 {
                 return None;
             }
@@ -625,7 +638,11 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         context: UpdateParentGoalCtxt<'_, X>,
     ) {
         if let Some((parent_index, parent)) = stack.last_mut_with_index() {
-            parent.required_depth = parent.required_depth.max(required_depth_for_nested + 1);
+            parent.required_depth =
+                parent.required_depth.max(match parent.increase_depth_for_nested {
+                    IncreaseDepthForNested::Yes => required_depth_for_nested + 1,
+                    IncreaseDepthForNested::No => required_depth_for_nested,
+                });
             parent.encountered_overflow |= encountered_overflow;
 
             for (head_index, head) in heads {
@@ -741,6 +758,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             available_depth,
             provisional_result: None,
             required_depth: 0,
+            increase_depth_for_nested: IncreaseDepthForNested::Yes,
             heads: Default::default(),
             encountered_overflow: false,
             usages: None,
@@ -761,6 +779,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         cx: X,
         input: X::Input,
         step_kind_from_parent: PathKind,
+        increase_depth_for_nested: IncreaseDepthForNested,
         inspect: &mut D::ProofTreeBuilder,
     ) -> X::Result {
         let Some(available_depth) =
@@ -817,6 +836,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             available_depth,
             provisional_result: None,
             required_depth: 0,
+            increase_depth_for_nested,
             heads: Default::default(),
             encountered_overflow: false,
             usages: None,
@@ -1408,6 +1428,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
                 // We can keep these goals from previous iterations as they are only
                 // ever read after finalizing this evaluation.
                 required_depth: stack_entry.required_depth,
+                increase_depth_for_nested: stack_entry.increase_depth_for_nested,
                 heads: stack_entry.heads,
                 nested_goals: stack_entry.nested_goals,
                 // We reset these two fields when rerunning this goal. We could

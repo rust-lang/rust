@@ -29,11 +29,7 @@ impl<'tcx> InferCtxt<'tcx> {
             self.next_const_var(span).into()
         };
 
-        let projection =
-            ty::PredicateKind::Clause(ty::ClauseKind::Projection(ty::ProjectionPredicate {
-                projection_term: alias_term,
-                term: infer_var,
-            }));
+        let projection = ty::ProjectionPredicate { projection_term: alias_term, term: infer_var };
         let obligation =
             Obligation::with_depth(self.tcx, cause, recursion_depth, param_env, projection);
         obligations.push(obligation);

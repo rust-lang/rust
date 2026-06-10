@@ -1,8 +1,10 @@
-error[E0284]: type annotations needed: cannot normalize `<T as Trait<'_>>::Type`
+error[E0284]: type annotations needed
   --> $DIR/ambiguity-due-to-uniquification-4.rs:17:44
    |
 LL | pub fn f<'a, 'b, T: Trait<'a> + Trait<'b>>(v: <T as Trait<'a>>::Type) {}
-   |                                            ^ cannot normalize `<T as Trait<'_>>::Type`
+   |                                            ^ cannot infer type
+   |
+   = note: cannot satisfy `<T as Trait<'_>>::Type == _`
 
 error: aborting due to 1 previous error
 

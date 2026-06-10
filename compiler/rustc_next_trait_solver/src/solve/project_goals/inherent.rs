@@ -1,4 +1,4 @@
-//! Computes a normalizes-to (projection) goal for inherent associated types,
+//! Computes a projection goal for inherent associated types,
 //! `#![feature(inherent_associated_type)]`. Since HIR ty lowering already determines
 //! which impl the IAT is being projected from, we just:
 //! 1. instantiate generic parameters,
@@ -18,11 +18,11 @@ where
 {
     pub(super) fn normalize_inherent_associated_term(
         &mut self,
-        goal: Goal<I, ty::NormalizesTo<I>>,
+        goal: Goal<I, ty::ProjectionPredicate<I>>,
         def_id: I::InherentAssocTermId,
     ) -> QueryResultOrRerunNonErased<I> {
         let cx = self.cx();
-        let inherent = goal.predicate.alias;
+        let inherent = goal.predicate.projection_term;
 
         let impl_def_id = cx.inherent_alias_term_parent(def_id);
         let impl_args = self.fresh_args_for_item(impl_def_id.into());
@@ -74,7 +74,7 @@ where
             }
             kind => panic!("expected inherent alias, found {kind:?}"),
         };
-        self.instantiate_normalizes_to_term(goal, normalized);
+        self.eq(goal.param_env, goal.predicate.term, normalized)?;
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 }

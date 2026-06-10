@@ -1840,6 +1840,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let pred = bound_predicate.rebind(pred);
                     // `<Foo as Iterator>::Item = String`.
                     let projection_term = pred.skip_binder().projection_term;
+                    if !projection_term.kind.is_trait_projection() {
+                        return None;
+                    }
+
                     let quiet_projection_term = projection_term
                         .with_replaced_self_ty(tcx, Ty::new_var(tcx, ty::TyVid::ZERO));
 

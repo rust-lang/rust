@@ -25,7 +25,7 @@
 // unconstrained.
 //
 // We fix this regression by returning the nested goals of `NormalizesTo` goals
-// to the `AliasRelate`. This results in us checking `(): NoImpl`, same as the
+// to the `Projection`. This results in us checking `(): NoImpl`, same as the
 // old solver.
 
 struct W<T: ?Sized>(T);
