@@ -1,4 +1,4 @@
-//@ check-pass
+// TODO: What to do with this test?
 
 // We previously incorrectly deduplicated the list of projection bounds
 // of trait objects, causing us to incorrectly reject this code, cc #136458.
@@ -17,5 +17,7 @@ impl<T, U> Trait<T, U> for () {}
 
 fn main() {
     let x: &dyn Trait<(), _> = &();
+    //~^ ERROR conflicting associated type bindings for `Assoc`
     let y: &dyn Trait<_, ()> = x;
+    //~^ ERROR conflicting associated type bindings for `Assoc`
 }

@@ -1,6 +1,5 @@
-//@build-pass
-// We currently accept conflicting associated type bounds with different generics,
-// which results in some weirdness.
+// We previously accepted conflicting associated type bounds with different generics,
+// which resulted in some weirdness.
 // See https://github.com/rust-lang/rust/issues/154662
 
 trait Dummy {
@@ -23,6 +22,7 @@ fn require_trait<D: Dummy, U: Super<D::DummyAssoc1> + ?Sized>() {}
 
 fn use_dyn<D: Dummy>() {
     require_trait::<D, dyn Sub<D>>();
+    //^ ERROR conflicting associated type bindings for `Assoc`
 }
 
 fn main() {

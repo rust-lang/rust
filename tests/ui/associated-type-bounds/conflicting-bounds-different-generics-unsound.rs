@@ -1,6 +1,5 @@
-//@build-pass
-// We currently accept conflicting associated type bounds with different generics,
-// which results in unsoundness.
+// We previously accepted conflicting associated type bounds with different generics,
+// which resulted in unsoundness.
 // See https://github.com/rust-lang/rust/issues/154662
 
 type Payload = Box<i32>;
@@ -39,6 +38,7 @@ fn require_trait<
 
 fn use_dyn<'a, A1, A2, C: Callback<A1, A2>>(payload: Src<'a>) -> Dst {
     require_trait::<'a, A1, A2, dyn Sub<'a, A1, A2>, C>(payload)
+    //^ ERROR conflicting associated type bindings for `Assoc`
 }
 
 fn extend<'a>(payload: Src<'a>) -> Dst {
