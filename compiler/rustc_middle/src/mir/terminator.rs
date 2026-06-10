@@ -366,7 +366,7 @@ impl<O: fmt::Debug> fmt::Display for AssertKind<O> {
                 write!(f, "`async fn` resumed after completion")
             }
             ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
-                todo!()
+                unimplemented!()
             }
             ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) => {
                 bug!("gen blocks can be resumed after they return and will keep returning `None`")
@@ -378,7 +378,7 @@ impl<O: fmt::Debug> fmt::Display for AssertKind<O> {
                 write!(f, "`async fn` resumed after panicking")
             }
             ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
-                todo!()
+                unimplemented!()
             }
             ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) => {
                 write!(f, "`gen` fn or block cannot be further iterated on after it panicked")
@@ -394,7 +394,7 @@ impl<O: fmt::Debug> fmt::Display for AssertKind<O> {
                 write!(f, "`async fn` resumed after async drop")
             }
             ResumedAfterDrop(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
-                todo!()
+                unimplemented!()
             }
             ResumedAfterDrop(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) => {
                 write!(f, "`gen` fn or block cannot be further iterated on after it async dropped")

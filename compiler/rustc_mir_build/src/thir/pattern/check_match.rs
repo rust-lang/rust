@@ -1376,9 +1376,11 @@ fn report_non_exhaustive_match<'p, 'tcx>(
             // Arms with a never pattern don't take a body.
             pattern
         } else {
+            // ignore-tidy-todo
             format!("{pattern} => todo!()")
         }
     } else {
+        // ignore-tidy-todo
         format!("_ => todo!()")
     };
     let mut suggestion = None;
