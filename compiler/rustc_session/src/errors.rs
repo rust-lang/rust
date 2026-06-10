@@ -308,6 +308,12 @@ pub(crate) struct CannotMixAndMatchSanitizers {
 pub(crate) struct CannotEnableCrtStaticLinux;
 
 #[derive(Diagnostic)]
+#[diag(
+    "pointer authentication requires dynamic linking. Statically linked libc is incompatible, disable it using `-C target-feature=-crt-static`"
+)]
+pub(crate) struct CannotEnableCrtStaticPointerAuth;
+
+#[derive(Diagnostic)]
 #[diag("`-Zsanitizer=cfi` requires `-Clto` or `-Clinker-plugin-lto`")]
 pub(crate) struct SanitizerCfiRequiresLto;
 
@@ -368,6 +374,20 @@ pub(crate) struct EmbedSourceRequiresDebugInfo;
 )]
 pub(crate) struct StackProtectorNotSupportedForTarget<'a> {
     pub(crate) stack_protector: StackProtector,
+    pub(crate) target_triple: &'a TargetTuple,
+}
+
+#[derive(Diagnostic)]
+#[diag("function pointer type discrimination is not supported")]
+pub(crate) struct PointerAuthenticationTypeDiscriminationNotSupportedForTarget<'a> {
+    pub(crate) target_triple: &'a TargetTuple,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "`-Z pointer-authentication` is not supported for target {$target_triple} and will be ignored"
+)]
+pub(crate) struct PointerAuthenticationNotSupportedForTarget<'a> {
     pub(crate) target_triple: &'a TargetTuple,
 }
 

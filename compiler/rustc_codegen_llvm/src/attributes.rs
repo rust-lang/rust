@@ -608,6 +608,13 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         }
     }
 
+    if sess.pointer_authentication() {
+        let cfg = sess.pointer_auth_config.as_ref().unwrap();
+        for ptrauth_attr in cfg.fn_attrs() {
+            to_add.push(llvm::CreateAttrString(cx.llcx, ptrauth_attr));
+        }
+    }
+
     to_add.extend(target_features_attr(cx, tcx, function_features));
 
     attributes::apply_to_llfn(llfn, Function, &to_add);

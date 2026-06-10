@@ -29,9 +29,9 @@ use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{RealFileName, Span, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{
-    Arch, CodeModel, DebuginfoKind, Os, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
-    SmallDataThresholdSupport, SplitDebuginfo, StackProtector, SymbolVisibility, Target,
-    TargetTuple, TlsModel, apple,
+    Arch, CfgAbi, CodeModel, DebuginfoKind, Os, PanicStrategy, RelocModel, RelroLevel,
+    SanitizerSet, SmallDataThresholdSupport, SplitDebuginfo, StackProtector, SymbolVisibility,
+    Target, TargetTuple, TlsModel, apple,
 };
 
 use crate::code_stats::CodeStats;
@@ -39,7 +39,7 @@ pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, Varian
 use crate::config::{
     self, Cfg, CheckCfg, CoverageLevel, CoverageOptions, CrateType, DebugInfo, ErrorOutputType,
     FunctionReturn, Input, InstrumentCoverage, OptLevel, OutFileName, OutputType,
-    SwitchWithOptPath,
+    PointerAuthOption, SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
 use crate::lint::LintId;
@@ -83,6 +83,245 @@ pub struct CompilerIO {
 pub trait DynLintStore: Any + DynSync + DynSend {
     /// Provides a way to access lint groups without depending on `rustc_lint`
     fn lint_groups_iter(&self) -> Box<dyn Iterator<Item = LintGroup> + '_>;
+}
+
+/// Hardware pointer-signing keys in ARM8.3.
+/// These values are the same as used in ptrauth.h.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PointerAuthARM8_3Key {
+    ASIA = 0,
+    ASIB = 1,
+    ASDA = 2,
+    ASDB = 3,
+}
+
+/// Forms of extra discrimination.
+pub enum PointerAuthDiscrimination {
+    /// No additional discrimination.
+    None,
+    /// Include a hash of the entity's type.
+    Type,
+    /// Include a hash of the entity's identity.
+    Decl,
+    /// Discriminate using a constant value.
+    Constant,
+}
+
+/// Types of address discrimination.
+pub enum PointerAuthAddressDiscriminator {
+    /// Enable/disable hardware address discrimination.
+    HardwareAddress(bool),
+    /// Use a synthetic value. For instance init/fini entries can not the address of the arrays,
+    /// they must use a synthetic value of `1`.
+    Synthetic(u64),
+}
+
+pub struct PointerAuthSchema {
+    pub is_address_discriminated: PointerAuthAddressDiscriminator,
+    pub discrimination_kind: PointerAuthDiscrimination,
+    pub key: PointerAuthARM8_3Key,
+    pub constant_discriminator: u16,
+}
+impl PointerAuthSchema {
+    pub fn function_pointers_default(target: &Target) -> Self {
+        assert!(target.cfg_abi == CfgAbi::Pauthtest);
+        return Self {
+            is_address_discriminated: PointerAuthAddressDiscriminator::HardwareAddress(false),
+            discrimination_kind: PointerAuthDiscrimination::None,
+            key: PointerAuthARM8_3Key::ASIA,
+            constant_discriminator: 0,
+        };
+    }
+    pub fn init_fini_default(target: &Target) -> Self {
+        assert!(target.cfg_abi == CfgAbi::Pauthtest);
+        return Self {
+            is_address_discriminated: PointerAuthAddressDiscriminator::Synthetic(1),
+            discrimination_kind: PointerAuthDiscrimination::None,
+            key: PointerAuthARM8_3Key::ASIA,
+            // ptrauth_string_discriminator("init_fini")
+            constant_discriminator: 0xd9d4,
+        };
+    }
+}
+
+pub struct PointerAuthConfig {
+    /// Should return addresses be authenticated?
+    pub return_addresses: bool,
+    /// Do authentication failures cause a trap?
+    pub auth_traps: bool,
+    /// Do indirect goto label addresses need to be authenticated?
+    pub indirect_gotos: bool,
+    /// Should ELF GOT entries be signed?
+    pub elf_got: bool,
+    /// Use hardened lowering for jump-table dispatch?
+    pub aarch64_jump_table_hardening: bool,
+    /// The ABI for C function pointers.
+    pub function_pointers: Option<PointerAuthSchema>,
+    /// The ABI for function addresses in .init_array and .fini_array
+    pub init_fini: Option<PointerAuthSchema>,
+    /// Use of pointer authentication intrinsics.
+    pub intrinsics: bool,
+    /// The following are used only for compatibility with C++ and control over generated abi
+    /// version. They do not control Rust code generation.
+    pub typeinfo_vt_ptr_discrimination: bool,
+    pub vt_ptr_addr_discrimination: bool,
+    pub vt_ptr_type_discrimination: bool,
+}
+impl PointerAuthConfig {
+    fn default(target: &Target) -> Self {
+        assert!(target.cfg_abi == CfgAbi::Pauthtest);
+        return Self {
+            return_addresses: true,
+            auth_traps: true,
+            indirect_gotos: true,
+            elf_got: false,
+            aarch64_jump_table_hardening: true,
+            function_pointers: Some(PointerAuthSchema::function_pointers_default(target)),
+            init_fini: Some(PointerAuthSchema::init_fini_default(target)),
+            intrinsics: true,
+            typeinfo_vt_ptr_discrimination: true,
+            vt_ptr_addr_discrimination: true,
+            vt_ptr_type_discrimination: true,
+        };
+    }
+    pub fn calculate_pauth_abi_version(&self, target: &Target) -> u32 {
+        assert!(target.cfg_abi == CfgAbi::Pauthtest);
+        // Bit positions of version flags for AARCH64_PAUTH_PLATFORM_LLVM_LINUX.
+        // NOTE: The enum values must stay in sync with clang, see:
+        // <llvm_root>/llvm/include/llvm/BinaryFormat/ELF.h
+        //
+        // We do not expect to use C++ virtual dispatch, but enable these flags
+        // for compatibility with C++ code. Intrinsics are also always enabled.
+        //
+        // Link to PAuth core info documentation:
+        // <https://github.com/ARM-software/abi-aa/blob/2025Q4/pauthabielf64/pauthabielf64.rst#core-information>
+        const INTRINSICS: u32 = 0;
+        const CALLS: u32 = 1;
+        const RETURNS: u32 = 2;
+        const AUTHTRAPS: u32 = 3;
+        const VT_PTR_ADDR_DISCR: u32 = 4;
+        const VT_PTR_TYPE_DISCR: u32 = 5;
+        const INIT_FINI: u32 = 6;
+        const INIT_FINI_ADDR_DISC: u32 = 7;
+        const GOT: u32 = 8;
+        const GOTOS: u32 = 9;
+        const TYPEINFO_VT_PTR_DISCR: u32 = 10;
+        // FIXME(jchlanda) We don't yet support function pointer type discrimination.
+        // const FPTR_TYPE_DISCR: u32 = 11;
+
+        let pauth_abi_version: u32 = (u32::from(self.intrinsics) << INTRINSICS)
+            | (u32::from(self.function_pointers.is_some()) << CALLS)
+            | (u32::from(self.return_addresses) << RETURNS)
+            | (u32::from(self.auth_traps) << AUTHTRAPS)
+            | (u32::from(self.vt_ptr_addr_discrimination) << VT_PTR_ADDR_DISCR)
+            | (u32::from(self.vt_ptr_type_discrimination) << VT_PTR_TYPE_DISCR)
+            | (u32::from(self.init_fini.is_some()) << INIT_FINI)
+            | (u32::from(self.init_fini.as_ref().is_some_and(|schema| {
+                matches!(
+                    schema.is_address_discriminated,
+                    PointerAuthAddressDiscriminator::HardwareAddress(true)
+                        | PointerAuthAddressDiscriminator::Synthetic(_)
+                )
+            })) << INIT_FINI_ADDR_DISC)
+            | (u32::from(self.elf_got) << GOT)
+            | (u32::from(self.indirect_gotos) << GOTOS)
+            | (u32::from(self.typeinfo_vt_ptr_discrimination) << TYPEINFO_VT_PTR_DISCR);
+
+        pauth_abi_version
+    }
+    pub fn from_raw(raw: &[(PointerAuthOption, bool)], target: &Target) -> Option<Self> {
+        if target.cfg_abi != CfgAbi::Pauthtest {
+            return None;
+        }
+
+        let mut cfg = Self::default(target);
+        if raw.is_empty() {
+            return Some(cfg);
+        }
+
+        for (opt, enabled) in raw {
+            match opt {
+                PointerAuthOption::Calls => {
+                    if *enabled {
+                        cfg.function_pointers.get_or_insert_with(|| {
+                            PointerAuthSchema::function_pointers_default(target)
+                        });
+                    } else {
+                        cfg.function_pointers = None;
+                    }
+                }
+                PointerAuthOption::FunctionPointerTypeDiscrimination => {
+                    if *enabled {
+                        let schema = cfg.function_pointers.get_or_insert_with(|| {
+                            PointerAuthSchema::function_pointers_default(target)
+                        });
+                        schema.discrimination_kind = PointerAuthDiscrimination::Type;
+                    } else if let Some(schema) = &mut cfg.function_pointers {
+                        schema.discrimination_kind = PointerAuthDiscrimination::None;
+                    }
+                }
+                PointerAuthOption::ReturnAddresses => cfg.return_addresses = *enabled,
+                PointerAuthOption::AuthTraps => cfg.auth_traps = *enabled,
+                PointerAuthOption::IndirectGotos => cfg.indirect_gotos = *enabled,
+                PointerAuthOption::ElfGot => cfg.elf_got = *enabled,
+                PointerAuthOption::Aarch64JumpTableHardening => {
+                    cfg.aarch64_jump_table_hardening = *enabled
+                }
+                PointerAuthOption::InitFini => {
+                    if *enabled {
+                        cfg.init_fini
+                            .get_or_insert_with(|| PointerAuthSchema::init_fini_default(target));
+                    } else {
+                        cfg.init_fini = None;
+                    }
+                }
+                PointerAuthOption::InitFiniAddressDiscrimination => {
+                    if *enabled {
+                        let schema = cfg
+                            .init_fini
+                            .get_or_insert_with(|| PointerAuthSchema::init_fini_default(target));
+                        schema.is_address_discriminated =
+                            PointerAuthAddressDiscriminator::HardwareAddress(true);
+                    } else if let Some(schema) = &mut cfg.init_fini {
+                        schema.is_address_discriminated =
+                            PointerAuthAddressDiscriminator::Synthetic(1);
+                    }
+                }
+
+                PointerAuthOption::Intrinsics => cfg.intrinsics = *enabled,
+                PointerAuthOption::TypeInfoVTPtrDisc => {
+                    cfg.typeinfo_vt_ptr_discrimination = *enabled
+                }
+                PointerAuthOption::VTPtrAddrDisc => cfg.vt_ptr_addr_discrimination = *enabled,
+                PointerAuthOption::VTPtrTypeDisc => cfg.vt_ptr_type_discrimination = *enabled,
+            }
+        }
+
+        Some(cfg)
+    }
+    pub fn fn_attrs(&self) -> Vec<&'static str> {
+        // FIXME(jchlanda) This is not an exhaustive list of all `ptrauth`-related attributes, but only
+        // those currently supported. The list is expected to grow as additional functionality is
+        // implemented, particularly for C++ interoperability.
+        let mut attrs = vec![];
+        if self.aarch64_jump_table_hardening {
+            attrs.push("aarch64-jump-table-hardening");
+        }
+        if self.auth_traps {
+            attrs.push("ptrauth-auth-traps");
+        }
+        if self.function_pointers.is_some() {
+            attrs.push("ptrauth-calls");
+        }
+        if self.indirect_gotos {
+            attrs.push("ptrauth-indirect-gotos");
+        }
+        if self.return_addresses {
+            attrs.push("ptrauth-returns");
+        }
+
+        attrs
+    }
 }
 
 /// Represents the data associated with a compilation
@@ -181,6 +420,8 @@ pub struct Session {
     ///
     /// The value is the `DepNodeIndex` of the node encodes the used feature.
     pub used_features: Lock<FxHashMap<Symbol, u32>>,
+
+    pub pointer_auth_config: Option<PointerAuthConfig>,
 }
 
 #[derive(Clone, Copy)]
@@ -945,6 +1186,18 @@ impl Session {
     pub fn sanitizers(&self) -> SanitizerSet {
         return self.opts.unstable_opts.sanitizer | self.target.options.default_sanitizers;
     }
+
+    pub fn pointer_authentication(&self) -> bool {
+        self.pointer_auth_config.is_some()
+    }
+
+    pub fn pointer_authentication_functions(&self) -> bool {
+        self.pointer_auth_config.as_ref().and_then(|cfg| cfg.function_pointers.as_ref()).is_some()
+    }
+
+    pub fn pointer_authentication_init_fini(&self) -> bool {
+        self.pointer_auth_config.as_ref().and_then(|cfg| cfg.init_fini.as_ref()).is_some()
+    }
 }
 
 // JUSTIFICATION: part of session construction
@@ -1100,6 +1353,9 @@ pub fn build_session(
 
     let timings = TimingSectionHandler::new(sopts.json_timings);
 
+    let pointer_auth_config: Option<PointerAuthConfig> =
+        PointerAuthConfig::from_raw(&sopts.unstable_opts.pointer_authentication, &target);
+
     let sess = Session {
         target,
         host,
@@ -1133,6 +1389,7 @@ pub fn build_session(
         thin_lto_supported: true,                  // filled by `run_compiler`
         mir_opt_bisect_eval_count: AtomicUsize::new(0),
         used_features: Lock::default(),
+        pointer_auth_config,
     };
 
     validate_commandline_args_with_session_available(&sess);
@@ -1159,6 +1416,25 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         && sess.target.is_like_windows
     {
         sess.dcx().emit_err(errors::LinkerPluginToWindowsNotSupported);
+    }
+
+    if sess
+        .pointer_auth_config
+        .as_ref()
+        .and_then(|cfg| cfg.function_pointers.as_ref())
+        .is_some_and(|schema| matches!(schema.discrimination_kind, PointerAuthDiscrimination::Type))
+    {
+        sess.dcx().emit_err(errors::PointerAuthenticationTypeDiscriminationNotSupportedForTarget {
+            target_triple: &sess.opts.target_triple,
+        });
+    }
+
+    if sess.target.cfg_abi != CfgAbi::Pauthtest
+        && !sess.opts.unstable_opts.pointer_authentication.is_empty()
+    {
+        sess.dcx().emit_warn(errors::PointerAuthenticationNotSupportedForTarget {
+            target_triple: &sess.opts.target_triple,
+        });
     }
 
     // Make sure that any given profiling data actually exists so LLVM can't
@@ -1218,6 +1494,13 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         && !sess.target.is_like_msvc
     {
         sess.dcx().emit_err(errors::CannotEnableCrtStaticLinux);
+    }
+
+    // FIXME(jchlanda) Pauthtest does not support static linking. It must be dynamically linked,
+    // with a dynamic linker acting as the ELF interpreter that can resolve pauth relocations and
+    // enforce pointer authentication constraints.
+    if sess.crt_static(None) && sess.target.cfg_abi == CfgAbi::Pauthtest {
+        sess.dcx().emit_err(errors::CannotEnableCrtStaticPointerAuth);
     }
 
     // LLVM CFI requires LTO.

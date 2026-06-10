@@ -752,6 +752,7 @@ mod desc {
     pub(crate) const parse_list: &str = "a space-separated list of strings";
     pub(crate) const parse_list_with_polarity: &str =
         "a comma-separated list of strings, with elements beginning with + or -";
+    pub(crate) const parse_pointer_authentication_list_with_polarity: &str = "a comma-separated list of options, each of the form `+<name>` or `-<name>`, where `<name>` is one of: `aarch64-jump-table-hardening`, `auth-traps`, `calls`, `elf-got`, `function-pointer-type-discrimination`, `indirect-gotos`, `init-fini`, `init-fini-address-discrimination`, `intrinsics`, `return-addresses`, `typeinfo-vt-ptr-discrimination`, `vt-ptr-addr-discrimination` or `vt-ptr-type-discrimination`";
     pub(crate) const parse_autodiff: &str = "a comma separated list of settings: `Enable`, `PrintSteps`, `PrintTA`, `PrintTAFn`, `PrintAA`, `PrintPerf`, `PrintModBefore`, `PrintModAfter`, `PrintModFinal`, `PrintPasses`, `NoPostopt`, `LooseTypes`, `Inline`, `NoTT`";
     pub(crate) const parse_offload: &str =
         "a comma separated list of settings: `Host=<Absolute-Path>`, `Device`, `Test`";
@@ -1007,6 +1008,28 @@ pub mod parse {
                 for s in s.split(',') {
                     let Some(pass_name) = s.strip_prefix(&['+', '-'][..]) else { return false };
                     slot.push((pass_name.to_string(), &s[..1] == "+"));
+                }
+                true
+            }
+            None => false,
+        }
+    }
+
+    pub(crate) fn parse_pointer_authentication_list_with_polarity(
+        slot: &mut Vec<(PointerAuthOption, bool)>,
+        v: Option<&str>,
+    ) -> bool {
+        match v {
+            Some(s) => {
+                for item in s.split(',') {
+                    let Some(name) = item.strip_prefix(&['+', '-'][..]) else {
+                        return false;
+                    };
+                    let Some(opt) = PointerAuthOption::parse(name) else {
+                        return false; // failed to parse, return.
+                    };
+                    let enabled = &item[..1] == "+";
+                    slot.push((opt, enabled));
                 }
                 true
             }
@@ -2560,6 +2583,22 @@ options! {
         "whether to use the PLT when calling into shared libraries;
         only has effect for PIC code on systems with ELF binaries
         (default: PLT is disabled if full relro is enabled on x86_64)"),
+    pointer_authentication: Vec<(PointerAuthOption, bool)> = (Vec::new(), parse_pointer_authentication_list_with_polarity, [TRACKED],
+        "A comma-separated list of pointer authentication options, each prefixed with `+` (enable) or `-` (disable). Available options:
+        `aarch64-jump-table-hardening` - enable hardened lowering for jump-table dispatch
+        `auth-traps` - trap immediately on pointer authentication failure
+        `calls` - enable signing and authentication of all indirect calls
+        `elf-got` - enable authentication of pointers from GOT (ELF only)
+        `function-pointer-type-discrimination` - enable type discrimination on C function pointers
+        `indirect-gotos` - enable signing and authentication of indirect goto targets
+        `init-fini` - enable signing of function pointers in init/fini arrays
+        `init-fini-address-discrimination` - enable address discrimination in init/fini arrays
+        `intrinsics` - pointer authentication intrinsics
+        `return-addresses` - enable signing and authentication of return addresses
+        `typeinfo-vt-ptr-discrimination - incorporate type and address discrimination in authenticated vtable pointers for std::type_info
+        `vt-ptr-addr-discrimination - incorporate address discrimination in authenticated vtable pointers
+        `vt-ptr-type-discrimination - incorporate type discrimination in authenticated vtable pointers
+        Example: `-Zpointer-authentication=+calls,-init-fini`."),
     polonius: Polonius = (Polonius::default(), parse_polonius, [TRACKED],
         "enable polonius-based borrow-checker (default: no)"),
     pre_link_arg: (/* redirected to pre_link_args */) = ((), parse_string_push, [UNTRACKED],

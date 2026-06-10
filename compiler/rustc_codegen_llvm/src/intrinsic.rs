@@ -43,7 +43,7 @@ use crate::errors::{
     AutoDiffWithoutEnable, AutoDiffWithoutLto, IntrinsicSignatureMismatch, IntrinsicWrongArch,
     OffloadWithoutEnable, OffloadWithoutFatLTO, UnknownIntrinsic,
 };
-use crate::llvm::{self, Type, Value};
+use crate::llvm::{self, Attribute, AttributePlace, Type, Value};
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
 
@@ -1705,6 +1705,16 @@ fn get_rust_try_fn<'a, 'll, 'tcx>(
         hir::Safety::Unsafe,
     ));
     let rust_try = gen_fn(cx, "__rust_try", rust_fn_sig, codegen);
+
+    if cx.sess().pointer_authentication() {
+        let cfg = cx.sess().pointer_auth_config.as_ref().unwrap();
+        let attrs: Vec<&Attribute> =
+            cfg.fn_attrs().into_iter().map(|name| llvm::CreateAttrString(cx.llcx, name)).collect();
+
+        let (_ty, rust_try_fn) = rust_try;
+        crate::attributes::apply_to_llfn(rust_try_fn, AttributePlace::Function, &attrs);
+    }
+
     cx.rust_try_fn.set(Some(rust_try));
     rust_try
 }

@@ -21,10 +21,10 @@ use rustc_middle::ty::layout::{
 };
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_session::Session;
 use rustc_session::config::{
     BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, FunctionReturn, PAuthKey, PacRet,
 };
+use rustc_session::{PointerAuthSchema, Session};
 use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, sym};
 use rustc_target::spec::{
     Arch, CfgAbi, Env, FramePointer, HasTargetSpec, Os, RelocModel, SmallDataThresholdSupport,
@@ -719,6 +719,47 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         }
     }
 
+    pub(crate) fn add_ptrauth_elf_got_flag(&self) {
+        llvm::add_module_flag_u32(
+            self.llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "ptrauth-elf-got",
+            1,
+        );
+    }
+
+    pub(crate) fn add_ptrauth_sign_personality_flag(&self) {
+        llvm::add_module_flag_u32(
+            self.llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "ptrauth-sign-personality",
+            1,
+        );
+    }
+
+    pub(crate) fn add_ptrauth_pauthabi_version_and_platform_flags(
+        &self,
+        aarch64_elf_pauthabi_version: u32,
+    ) {
+        // NOTE: This must correspond to llvm's AARCH64_PAUTH_PLATFORM_LLVM_LINUX, as defined in
+        // <llvm_root>/llvm/include/llvm/BinaryFormat/ELF.h.
+        // FIXME (jchlanda) extend possible values once we start supporting other platforms (for
+        // example: AARCH64_PAUTH_PLATFORM_BAREMETAL = 0x1);
+        const AARCH64_PAUTH_PLATFORM_LLVM_LINUX: u32 = 0x10000002;
+        llvm::add_module_flag_u32(
+            self.llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "aarch64-elf-pauthabi-platform",
+            AARCH64_PAUTH_PLATFORM_LLVM_LINUX,
+        );
+        llvm::add_module_flag_u32(
+            self.llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "aarch64-elf-pauthabi-version",
+            aarch64_elf_pauthabi_version,
+        );
+    }
+
     // We do our best here to match what Clang does when compiling Objective-C natively.
     // See Clang's `CGObjCCommonMac::EmitImageInfo`:
     // https://github.com/llvm/llvm-project/blob/llvmorg-20.1.8/clang/lib/CodeGen/CGObjCMac.cpp#L5085
@@ -863,8 +904,28 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         get_fn(self, instance)
     }
 
-    fn get_fn_addr(&self, instance: Instance<'tcx>) -> &'ll Value {
-        get_fn(self, instance)
+    fn get_fn_addr(
+        &self,
+        instance: Instance<'tcx>,
+        pointer_auth_schema: Option<&PointerAuthSchema>,
+    ) -> &'ll Value {
+        // When pointer authentication metadata is provided, `get_fn_addr` will
+        // attempt to sign the pointer using LLVM's `ConstPtrAuth` constant
+        // expression.
+        //
+        // FIXME(jchlanda) Currently, all function addresses requested from
+        // within LLVM codegen are signed. This behavior is too broad, resulting
+        // in the logic being applied to function values, not just pointers
+        // (addresses).
+        //
+        // See the discussion in the rust-lang issue:
+        // <https://github.com/rust-lang/rust/issues/152532>, and comment in
+        // builder's `ptrauth_operand_bundle`.
+        let llfn = get_fn(self, instance);
+        match pointer_auth_schema {
+            Some(schema) => common::maybe_sign_fn_ptr(self, instance, llfn, schema),
+            None => llfn,
+        }
     }
 
     fn eh_personality(&self) -> &'ll Value {
@@ -906,13 +967,19 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         let tcx = self.tcx;
         let llfn = match tcx.lang_items().eh_personality() {
-            Some(def_id) if name.is_none() => self.get_fn_addr(ty::Instance::expect_resolve(
-                tcx,
-                self.typing_env(),
-                def_id,
-                ty::List::empty(),
-                DUMMY_SP,
-            )),
+            Some(def_id) if name.is_none() => self.get_fn_addr(
+                ty::Instance::expect_resolve(
+                    tcx,
+                    self.typing_env(),
+                    def_id,
+                    ty::List::empty(),
+                    DUMMY_SP,
+                ),
+                tcx.sess
+                    .pointer_auth_config
+                    .as_ref()
+                    .and_then(|cfg| cfg.function_pointers.as_ref()),
+            ),
             _ => {
                 let name = name.unwrap_or("rust_eh_personality");
                 if let Some(llfn) = self.get_declared_value(name) {
