@@ -34,16 +34,9 @@ pub mod rfs {
 }
 
 // Re-exports of third-party library crates.
-pub use bstr;
-pub use gimli;
-pub use libc;
-pub use object;
-pub use regex;
-pub use rustdoc_json_types;
-pub use serde_json;
-pub use similar;
-pub use tempfile;
-pub use wasmparser;
+pub use {
+    bstr, gimli, libc, object, regex, rustdoc_json_types, serde_json, similar, tempfile, wasmparser,
+};
 
 // Helpers for building names of output artifacts that are potentially target-specific.
 pub use crate::artifact_names::{

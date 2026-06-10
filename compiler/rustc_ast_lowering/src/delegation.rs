@@ -43,17 +43,29 @@ use ast::visit::Visitor;
 use hir::def::{DefKind, Res};
 use hir::{BodyId, HirId};
 use rustc_abi::ExternAbi;
+<<<<<<< HEAD
 use rustc_ast as ast;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+=======
+use rustc_ast::*;
+use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::ErrorGuaranteed;
+>>>>>>> 665bf7d3863 (revert cargo fmt)
 use rustc_hir::attrs::{AttributeKind, InlineAttr};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, FnDeclFlags};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{Asyncness, PerOwnerResolverData, TyCtxt};
 use rustc_span::symbol::kw;
+<<<<<<< HEAD
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
+=======
+use rustc_span::{Ident, Span, Symbol};
+use smallvec::SmallVec;
+use {rustc_ast as ast, rustc_hir as hir};
+>>>>>>> 665bf7d3863 (revert cargo fmt)
 
 use crate::delegation::generics::{GenericsGenerationResult, GenericsGenerationResults};
 use crate::diagnostics::{

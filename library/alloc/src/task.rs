@@ -37,6 +37,10 @@ use crate::sync::Arc;
 ///      link ../../std/task/struct.Waker.html#impl-From%3CArc%3CW,+Global%3E%3E-for-Waker
 ///      without getting a link-checking error in CI. -->
 ///
+/// # Memory Ordering
+///
+/// To avoid missed wakeups, the runtime must adhere to the requirement described for [`Waker::wake`].
+///
 /// # Examples
 ///
 /// A basic `block_on` function that takes a future and runs it to completion on
