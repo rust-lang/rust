@@ -433,7 +433,7 @@ impl Waker {
     /// current task again.
     ///
     /// To avoid missed wakeups, runtimes must ensure that for any call to `wake`,
-    /// there is a subsequent call to `poll` such that the `wake()` return _happens-before_
+    /// there is a subsequent call to `poll` such that the `wake()` _happens-before_
     /// the beginning of the invocation of `poll`. 
     /// In particular, this means that if a task self-wakes (invokes `wake` on itself during `poll`),
     /// then the `poll` must be invoked again because the call to `wake` _happens-after_ the beginning
