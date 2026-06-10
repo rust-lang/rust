@@ -143,7 +143,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// also select obligations if it seems useful, in an effort
     /// to get more type information.
     // FIXME(-Znext-solver): A lot of the calls to this method should
-    // probably be `try_structurally_resolve_type` or `structurally_resolve_type` instead.
+    // probably be `resolve_vars_with_obligations` or `structurally_resolve_type` instead.
     #[instrument(skip(self), level = "debug", ret)]
     pub(crate) fn resolve_vars_with_obligations<T: TypeFoldable<TyCtxt<'tcx>>>(
         &self,
@@ -237,6 +237,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
+    pub(crate) fn write_splatted_resolution(
+        &self,
+        _hir_id: HirId,
+        _r: Result<() /* SplattedDef */, ErrorGuaranteed>,
+    ) {
+        // FIXME(splat): add side table and write to it here
+    }
+
+    #[instrument(level = "debug", skip(self))]
     pub(crate) fn write_method_call_and_enforce_effects(
         &self,
         hir_id: HirId,
@@ -246,6 +255,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.enforce_context_effects(Some(hir_id), span, method.def_id, method.args);
         self.write_resolution(hir_id, Ok((DefKind::AssocFn, method.def_id)));
         self.write_args(hir_id, method.args);
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    pub(crate) fn write_splatted_call(
+        &self,
+        hir_id: HirId,
+        span: Span,
+        callee_def_id: Option<DefId>,
+        callee_generic_args: Option<GenericArgsRef<'tcx>>,
+        first_tupled_arg_index: u16,
+        tupled_args_count: u16,
+    ) {
+        // FIXME(const_trait_impl): enforce constness using enforce_context_effects() and add
+        // _and_enforce_effects to this method's name
+
+        self.write_splatted_resolution(
+            hir_id,
+            // FIXME(splat): add side table and write to it here
+            Ok(()),
+        );
+        if let Some(callee_generic_args) = callee_generic_args {
+            self.write_args(hir_id, callee_generic_args);
+        }
     }
 
     fn write_args(&self, node_id: HirId, args: GenericArgsRef<'tcx>) {

@@ -317,6 +317,40 @@ impl<I: Interner> TyKind<I> {
         }
     }
 
+    pub fn def_id(self) -> Option<I::DefId> {
+        match self {
+            ty::Adt(adt, ..) => Some(adt.def_id().into()),
+            ty::Foreign(def_id) => Some(def_id.into()),
+            ty::FnDef(def_id, ..) => Some(def_id.into()),
+            ty::Closure(def_id, ..) => Some(def_id.into()),
+            ty::CoroutineClosure(def_id, ..) => Some(def_id.into()),
+            ty::Coroutine(def_id, ..) => Some(def_id.into()),
+            ty::CoroutineWitness(def_id, ..) => Some(def_id.into()),
+            ty::Alias(alias) => Some(alias.kind.def_id().into()),
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Str
+            | ty::Array(_, _)
+            | ty::Pat(_, _)
+            | ty::Slice(_)
+            | ty::RawPtr(_, _)
+            | ty::Ref(_, _, _)
+            | ty::FnPtr(..)
+            | ty::UnsafeBinder(_)
+            | ty::Dynamic(_, _)
+            | ty::Never
+            | ty::Tuple(_)
+            | ty::Param(_)
+            | ty::Bound(_, _)
+            | ty::Placeholder(_)
+            | ty::Infer(_)
+            | ty::Error(..) => None,
+        }
+    }
+
     /// Returns `true` when the outermost type cannot be further normalized,
     /// resolved, or instantiated.
     ///
