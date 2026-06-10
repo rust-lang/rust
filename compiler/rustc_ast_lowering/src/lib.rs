@@ -531,7 +531,7 @@ fn index_ast<'tcx>(
             node: impl FnOnce(Box<Item<K>>) -> AstOwner,
         ) {
             let dummy = self.make_dummy(item.id, item.span, dummy);
-            let item = std::mem::replace(item, *dummy);
+            let item = mem::replace(item, *dummy);
             self.insert(item.id, node(Box::new(item)));
         }
 
@@ -670,7 +670,7 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
         AstOwner::NonOwner => fallback_to_ancestor(tcx.local_parent(def_id)),
     };
 
-    tcx.sess.time("drop_ast", || std::mem::drop(node));
+    tcx.sess.time("drop_ast", || mem::drop(node));
 
     item
 }
@@ -797,24 +797,23 @@ impl<'hir> LoweringContext<'_, 'hir> {
             .map(|s| s.steal())
             .unwrap_or_else(|| PerParentDisambiguatorState::new(def_id));
 
-        let disambiguator = std::mem::replace(&mut self.current_disambiguator, new_disambig);
-        let current_ast_owner = std::mem::replace(&mut self.owner, &self.resolver.owners[&owner]);
-        let current_attrs = std::mem::take(&mut self.attrs);
-        let current_bodies = std::mem::take(&mut self.bodies);
-        let current_define_opaque = std::mem::take(&mut self.define_opaque);
-        let current_ident_and_label_to_local_id =
-            std::mem::take(&mut self.ident_and_label_to_local_id);
+        let disambiguator = mem::replace(&mut self.current_disambiguator, new_disambig);
+        let current_ast_owner = mem::replace(&mut self.owner, &self.resolver.owners[&owner]);
+        let current_attrs = mem::take(&mut self.attrs);
+        let current_bodies = mem::take(&mut self.bodies);
+        let current_define_opaque = mem::take(&mut self.define_opaque);
+        let current_ident_and_label_to_local_id = mem::take(&mut self.ident_and_label_to_local_id);
 
         #[cfg(debug_assertions)]
-        let current_node_id_to_local_id = std::mem::take(&mut self.node_id_to_local_id);
-        let current_trait_map = std::mem::take(&mut self.trait_map);
-        let current_owner = std::mem::replace(&mut self.current_hir_id_owner, owner_id);
+        let current_node_id_to_local_id = mem::take(&mut self.node_id_to_local_id);
+        let current_trait_map = mem::take(&mut self.trait_map);
+        let current_owner = mem::replace(&mut self.current_hir_id_owner, owner_id);
         let current_local_counter =
-            std::mem::replace(&mut self.item_local_id_counter, hir::ItemLocalId::new(1));
-        let current_impl_trait_defs = std::mem::take(&mut self.impl_trait_defs);
-        let current_impl_trait_bounds = std::mem::take(&mut self.impl_trait_bounds);
-        let current_delayed_lints = std::mem::take(&mut self.delayed_lints);
-        let current_children = std::mem::take(&mut self.children);
+            mem::replace(&mut self.item_local_id_counter, hir::ItemLocalId::new(1));
+        let current_impl_trait_defs = mem::take(&mut self.impl_trait_defs);
+        let current_impl_trait_bounds = mem::take(&mut self.impl_trait_bounds);
+        let current_delayed_lints = mem::take(&mut self.delayed_lints);
+        let current_children = mem::take(&mut self.children);
 
         // Do not reset `next_node_id` and `node_id_to_def_id`:
         // we want `f` to be able to refer to the `LocalDefId`s that the caller created.
@@ -859,12 +858,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn make_owner_info(&mut self, node: hir::OwnerNode<'hir>) -> &'hir hir::OwnerInfo<'hir> {
-        let attrs = std::mem::take(&mut self.attrs);
-        let mut bodies = std::mem::take(&mut self.bodies);
-        let define_opaque = std::mem::take(&mut self.define_opaque);
-        let trait_map = std::mem::take(&mut self.trait_map);
-        let delayed_lints = Steal::new(std::mem::take(&mut self.delayed_lints).into_boxed_slice());
-        let children = std::mem::take(&mut self.children);
+        let attrs = mem::take(&mut self.attrs);
+        let mut bodies = mem::take(&mut self.bodies);
+        let define_opaque = mem::take(&mut self.define_opaque);
+        let trait_map = mem::take(&mut self.trait_map);
+        let delayed_lints = Steal::new(mem::take(&mut self.delayed_lints).into_boxed_slice());
+        let children = mem::take(&mut self.children);
 
         #[cfg(debug_assertions)]
         for (id, attrs) in attrs.iter() {
