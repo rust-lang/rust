@@ -22,6 +22,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   clang \
   && rm -rf /var/lib/apt/lists/*
 
+RUN git config --system --add safe.directory '*'
+
 # Install Intel SDE for AVX-512 emulation
 RUN curl -L http://ci-mirrors.rust-lang.org/sde-external-10.8.0-2026-03-15-lin.tar.xz -o /tmp/sde.tar.xz \
   && mkdir -p /intel-sde \
