@@ -583,7 +583,7 @@ impl FromClean<clean::Type> for Type {
                 __pat_unstable_do_not_use: p.to_string(),
             },
             // FIXME(FRTs): implement
-            clean::Type::FieldOf(..) => todo!(),
+            clean::Type::FieldOf(..) => unimplemented!(),
             ImplTrait(g) => Type::ImplTrait(g.into_json(renderer)),
             Infer => Type::Infer,
             RawPointer(mutability, type_) => Type::RawPointer {
@@ -597,7 +597,7 @@ impl FromClean<clean::Type> for Type {
             },
             QPath(qpath) => qpath.into_json(renderer),
             // FIXME(unsafe_binder): Implement rustdoc-json.
-            UnsafeBinder(_) => todo!(),
+            UnsafeBinder(_) => unimplemented!(),
         }
     }
 }
