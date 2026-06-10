@@ -38,18 +38,16 @@ fn expr<T: Trait0>() {
 
     //@ has - '//a[@href="#12"]' 'Ty0'
     let _: <T as Trait0>::Ty0;      // Expr, AssocTy,    Resolved
-    // FIXME: Support this:
-    //@ !has - '//a[@href="#13"]' 'Ty1'
+    //@ has - '//a[@href="#13"]' 'Ty1'
     let _: T::Ty1;                  // Expr, AssocTy,    TypeRelative
 
     //@ has - '//a[@href="#14"]' 'Ty2'
     //@ has - '//a[@href="#19"]' 'fn0'
     let _ = <T as Trait0>::Ty2::fn0();
 
-    // FIXME: Support this:
-    //@ !has - '//a[@href="#14"]' 'Ty3'
+    //@ has - '//a[@href="#15"]' 'Ty3'
     //@ has - '//a[@href="#20"]' 'CT0'
-    let _ = T::Ty2::CT0;
+    let _ = T::Ty3::CT0;
 }
 
 trait Trait1 {
@@ -62,11 +60,11 @@ trait Trait1 {
 
 
 fn pat() {
-    //@ has - '//a[@href="#56"]' 'CT0'
+    //@ has - '//a[@href="#54"]' 'CT0'
     if let <() as Trait1>::CT0 = 0 {}   // Pat,  AssocConst, Resolved
 
     match 0 {
-        //@ has - '//a[@href="#57"]' 'CT1'
+        //@ has - '//a[@href="#55"]' 'CT1'
         <() as Trait1>::CT1 => {}       // Pat,  AssocConst, Resolved
         _ => {}
     }
@@ -78,7 +76,7 @@ impl Trait1 for () {
     const CT2: usize = 2;
 
     fn scope() {
-        //@ has - '//a[@href="#58"]' 'CT2'
+        //@ has - '//a[@href="#56"]' 'CT2'
         if let Self::CT2 = 0 {}         // Pat,  AssocConst, TypeRelative
     }
 }
@@ -96,11 +94,11 @@ impl Trait2 for () {
 }
 
 struct Item<T: Trait2> {
-    //@ has - '//a[@href="#87"]' 'CT0'
+    //@ has - '//a[@href="#85"]' 'CT0'
     f0: [(); <() as Trait2>::CT0],   // Item, AssocConst, Resolved
-    //@ has - '//a[@href="#88"]' 'Ty0'
+    //@ has - '//a[@href="#86"]' 'Ty0'
     f1: <T as Trait2>::Ty0,          // Item, AssocTy,    Resolved
     // FIXME: Support this:
-    //@ !has - '//a[@href="#89"]' 'Ty1'
+    //@ !has - '//a[@href="#87"]' 'Ty1'
     f2: T::Ty1,                      // Item, AssocTy,    TypeRelative
 }

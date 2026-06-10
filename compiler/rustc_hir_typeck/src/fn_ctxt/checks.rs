@@ -1263,15 +1263,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> (Res, LoweredTy<'tcx>) {
         let ResolvedStructPath { res: result, ty } =
             self.lowerer().lower_path_for_struct_expr(*qpath, path_span, hir_id);
-        match *qpath {
+        match qpath {
             QPath::Resolved(_, path) => (path.res, LoweredTy::from_raw(self, path_span, ty)),
             QPath::TypeRelative(_, _) => {
                 let ty = LoweredTy::from_raw(self, path_span, ty);
+
+                // FIXME(fmease): Get rid of this. For some reason this is still
+                // necessary in some cases (e.g., pattern(!) `Self::X {}`). Note
+                // that we're currently double-registering certain resolutions.
                 let resolution =
                     result.map(|res: Res| (self.tcx().def_kind(res.def_id()), res.def_id()));
-
                 // Write back the new resolution.
-                self.write_resolution(hir_id, resolution);
+                self.record_res(hir_id, resolution);
 
                 (result.unwrap_or(Res::Err), ty)
             }

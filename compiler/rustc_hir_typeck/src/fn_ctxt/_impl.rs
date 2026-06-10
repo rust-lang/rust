@@ -228,15 +228,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub(crate) fn write_resolution(
-        &self,
-        hir_id: HirId,
-        r: Result<(DefKind, DefId), ErrorGuaranteed>,
-    ) {
-        self.typeck_results.borrow_mut().type_dependent_defs_mut().insert(hir_id, r);
-    }
-
-    #[instrument(level = "debug", skip(self))]
     pub(crate) fn write_method_call_and_enforce_effects(
         &self,
         hir_id: HirId,
@@ -244,7 +235,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         method: MethodCallee<'tcx>,
     ) {
         self.enforce_context_effects(Some(hir_id), span, method.def_id, method.args);
-        self.write_resolution(hir_id, Ok((DefKind::AssocFn, method.def_id)));
+        self.record_res(hir_id, Ok((DefKind::AssocFn, method.def_id)));
         self.write_args(hir_id, method.args);
     }
 
@@ -807,7 +798,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             });
 
         // Write back the new resolution.
-        self.write_resolution(hir_id, result);
+        self.record_res(hir_id, result);
         (
             result.map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id)),
             Some(ty),

@@ -537,8 +537,12 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         ty.ty_adt_def()
     }
 
-    fn record_ty(&self, _hir_id: hir::HirId, _ty: Ty<'tcx>, _span: Span) {
-        // There's no place to record types from signatures?
+    fn record_ty(&self, _: hir::HirId, _: Ty<'tcx>, _: Span) {
+        // There's no place to record types from signatures.
+    }
+
+    fn record_res(&self, _: HirId, _: Result<(DefKind, DefId), ErrorGuaranteed>) {
+        // FIXME(#156711): There's no place to record resolutions from signatures.
     }
 
     fn infcx(&self) -> Option<&InferCtxt<'tcx>> {

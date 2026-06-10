@@ -268,9 +268,6 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
     fn visit_qpath(&mut self, qpath: &QPath<'tcx>, id: HirId, _span: rustc_span::Span) {
         match *qpath {
             QPath::TypeRelative(qself, segment) => {
-                // FIXME: This doesn't work for paths in *types* since HIR ty lowering currently
-                //        doesn't write back the resolution of type-relative paths. Updating it to
-                //        do so should be a simple fix.
                 // FIXME: This obviously doesn't support item signatures / non-bodies. Sadly, rustc
                 //        currently doesn't keep around that information & thus can't provide an API
                 //        for it.
