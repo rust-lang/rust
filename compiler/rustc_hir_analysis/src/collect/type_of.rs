@@ -437,6 +437,15 @@ fn infer_placeholder_type<'tcx>(
     let guar = cx
         .dcx()
         .try_steal_modify_and_emit_err(ty_span, StashKey::ItemNoType, |err| {
+            // HACK(#69396): A macro can expand to several missing-type items that all
+            // collide on one stashed `(span, ItemNoType)` diagnostic. They can infer
+            // different types, so there is no single concrete type to suggest, and which
+            // one wins the steal is not even stable under the parallel front-end. Keep the
+            // parser's generic suggestion instead. The fallback arm below additionally
+            // checks `is_empty` for explicit `_` spans.
+            if ty_span.from_expansion() {
+                return;
+            }
             if !ty.references_error() {
                 // Only suggest adding `:` if it was missing (and suggested by parsing diagnostic).
                 let colon = if ty_span == item_ident.span.shrink_to_hi() { ":" } else { "" };
