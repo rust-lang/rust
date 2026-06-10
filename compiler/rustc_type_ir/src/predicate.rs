@@ -8,10 +8,12 @@ use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
 };
 
+use crate::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder};
 use crate::inherent::*;
+use crate::ty::AliasTerm;
 use crate::upcast::{Upcast, UpcastFrom};
-use crate::visit::TypeVisitableExt as _;
-use crate::{self as ty, AliasTyKind, Interner, UnevaluatedConstKind};
+use crate::visit::{TypeVisitable, TypeVisitableExt as _, TypeVisitor};
+use crate::{self as ty, Alias, AliasTyKind, Interner, UnevaluatedConstKind, try_visit};
 
 /// `A: 'region`
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, A)]
@@ -544,7 +546,7 @@ impl<I: Interner> ty::Binder<I, ExistentialProjection<I>> {
 }
 
 #[derive_where(Clone, Copy, PartialEq, Eq, Hash, Debug; I: Interner)]
-#[derive(Lift_Generic, GenericTypeVisitable)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic, GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
@@ -661,41 +663,6 @@ impl<I: Interner> From<ty::UnevaluatedConstKind<I>> for AliasTermKind<I> {
     }
 }
 
-/// Represents the unprojected term of a projection goal.
-///
-/// * For a projection, this would be `<Ty as Trait<...>>::N<...>`.
-/// * For an inherent projection, this would be `Ty::N<...>`.
-/// * For an opaque type, there is no explicit syntax.
-#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
-#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
-#[cfg_attr(
-    feature = "nightly",
-    derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
-)]
-pub struct AliasTerm<I: Interner> {
-    /// The parameters of the associated or opaque item.
-    ///
-    /// For a projection, these are the generic parameters for the trait and the
-    /// GAT parameters, if there are any.
-    ///
-    /// For an inherent projection, they consist of the self type and the GAT parameters,
-    /// if there are any.
-    ///
-    /// For RPIT the generic parameters are for the generics of the function,
-    /// while for TAIT it is used for the generic parameters of the alias.
-    pub args: I::GenericArgs,
-
-    #[type_foldable(identity)]
-    #[type_visitable(ignore)]
-    pub kind: AliasTermKind<I>,
-
-    /// This field exists to prevent the creation of `AliasTerm` without using [`AliasTerm::new_from_args`].
-    #[derive_where(skip(Debug))]
-    _use_alias_term_new_instead: (),
-}
-
-impl<I: Interner> Eq for AliasTerm<I> {}
-
 impl<I: Interner> AliasTerm<I> {
     pub fn new_from_args(
         interner: I,
@@ -703,7 +670,7 @@ impl<I: Interner> AliasTerm<I> {
         args: I::GenericArgs,
     ) -> AliasTerm<I> {
         interner.debug_assert_args_compatible(kind.def_id(), args);
-        AliasTerm { kind, args, _use_alias_term_new_instead: () }
+        AliasTerm { kind, args, _use_alias_new_instead: () }
     }
 
     pub fn new(
@@ -733,7 +700,7 @@ impl<I: Interner> AliasTerm<I> {
                 panic!("Cannot turn `{}` into `AliasTy`", kind.descr())
             }
         };
-        ty::AliasTy { kind, args: self.args, _use_alias_ty_new_instead: () }
+        ty::AliasTy { kind, args: self.args, _use_alias_new_instead: () }
     }
 
     pub fn expect_ct(self) -> ty::UnevaluatedConst<I> {
@@ -884,21 +851,13 @@ impl<I: Interner> AliasTerm<I> {
 
 impl<I: Interner> From<ty::AliasTy<I>> for AliasTerm<I> {
     fn from(ty: ty::AliasTy<I>) -> Self {
-        AliasTerm {
-            args: ty.args,
-            kind: AliasTermKind::from(ty.kind),
-            _use_alias_term_new_instead: (),
-        }
+        AliasTerm { args: ty.args, kind: AliasTermKind::from(ty.kind), _use_alias_new_instead: () }
     }
 }
 
 impl<I: Interner> From<ty::UnevaluatedConst<I>> for AliasTerm<I> {
     fn from(ty: ty::UnevaluatedConst<I>) -> Self {
-        AliasTerm {
-            args: ty.args,
-            kind: AliasTermKind::from(ty.kind),
-            _use_alias_term_new_instead: (),
-        }
+        AliasTerm { args: ty.args, kind: AliasTermKind::from(ty.kind), _use_alias_new_instead: () }
     }
 }
 
@@ -977,18 +936,36 @@ impl<I: Interner> fmt::Debug for ProjectionPredicate<I> {
 
 /// Used by the new solver to normalize an alias. This always expects the `term` to
 /// be an unconstrained inference variable which is used as the output.
-#[derive_where(Clone, Copy, Hash, PartialEq; I: Interner)]
-#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
+#[derive_where(Clone, Copy, Hash, Eq, PartialEq; I: Interner, K)]
+#[derive(GenericTypeVisitable, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
 )]
-pub struct NormalizesTo<I: Interner> {
-    pub alias: AliasTerm<I>,
+pub struct NormalizesTo<I: Interner, K = AliasTermKind<I>> {
+    pub alias: Alias<I, K>,
     pub term: I::Term,
 }
 
-impl<I: Interner> Eq for NormalizesTo<I> {}
+impl<I: Interner, K: TypeVisitable<I>> TypeVisitable<I> for NormalizesTo<I, K> {
+    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
+        try_visit!(self.alias.visit_with(visitor));
+        self.term.visit_with(visitor)
+    }
+}
+
+impl<I: Interner, K: TypeFoldable<I>> TypeFoldable<I> for NormalizesTo<I, K> {
+    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        Ok(NormalizesTo {
+            alias: self.alias.try_fold_with(folder)?,
+            term: self.term.try_fold_with(folder)?,
+        })
+    }
+
+    fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
+        NormalizesTo { alias: self.alias.fold_with(folder), term: self.term.fold_with(folder) }
+    }
+}
 
 impl<I: Interner> NormalizesTo<I> {
     pub fn self_ty(self) -> I::Ty {
@@ -1008,7 +985,7 @@ impl<I: Interner> NormalizesTo<I> {
     }
 }
 
-impl<I: Interner> fmt::Debug for NormalizesTo<I> {
+impl<I: Interner, K: fmt::Debug> fmt::Debug for NormalizesTo<I, K> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "NormalizesTo({:?}, {:?})", self.alias, self.term)
     }

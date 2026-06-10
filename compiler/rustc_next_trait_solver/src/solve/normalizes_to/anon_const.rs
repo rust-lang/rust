@@ -13,10 +13,16 @@ where
     #[instrument(level = "trace", skip(self), ret)]
     pub(super) fn normalize_anon_const(
         &mut self,
-        goal: Goal<I, ty::NormalizesTo<I>>,
-        def_id: I::UnevaluatedConstId,
+        goal: Goal<I, ty::NormalizesTo<I, I::UnevaluatedConstId>>,
     ) -> QueryResultOrRerunNonErased<I> {
-        let uv = goal.predicate.alias.expect_ct();
+        let cx = self.cx();
+        let uv = ty::UnevaluatedConst::new(
+            cx,
+            ty::UnevaluatedConstKind::Anon { def_id: goal.predicate.alias.kind },
+            goal.predicate.alias.args,
+        );
+        let alias = ty::AliasTerm::from(uv);
+        let goal = goal.with(cx, ty::NormalizesTo { alias, term: goal.predicate.term });
         self.evaluate_const_and_instantiate_normalizes_to_term(goal, uv)
     }
 }
