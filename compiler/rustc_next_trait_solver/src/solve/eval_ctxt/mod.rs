@@ -54,14 +54,20 @@ enum CurrentGoalKind {
     /// These are currently the only goals whose impl where-clauses are considered to be
     /// productive steps.
     CoinductiveTrait,
-    /// Unlike other goals, `NormalizesTo` goals act like functions with the expected term
-    /// always being fully unconstrained. This would weaken inference however, as the nested
-    /// goals never get the inference constraints from the actual normalized-to type.
+    // FIXME: Consider renaming `PredicateKind::NormalizesTo` to match with this
+    /// Unlike other goals, `NormalizesTo` goals aren't independent goals but just implementation
+    /// details for handling projections of associated terms. When we encounter a `Projection` goal
+    /// whose `projection_term` is an associated term, we create a `NormalizesTo` goal whose
+    /// expected term is fully unconstrained and evaluate it.
     ///
-    /// Because of this we return any ambiguous nested goals from `NormalizesTo` to the
-    /// caller when then adds these to its own context. The caller is always an `Projection`
-    /// goal so this never leaks out of the solver.
-    NormalizesTo,
+    /// This would weaken inference however, as the nested goals of normalizes-to never get the
+    /// inference constraints from the actual expected term. We just gather candidates from the
+    /// normalizes-to goal and return any ambiguous nested goals of it to the caller (`Projection
+    /// goal`). The caller handle and evaluate them as if they were its own nested goals.
+    ///
+    /// Because of this, evaluating a normalizes-to goal is computing candidates for projection of
+    /// an associated term and it never leaks out of the solver.
+    ProjectionComputeAssocTermCandidate,
 }
 
 impl CurrentGoalKind {
@@ -74,7 +80,9 @@ impl CurrentGoalKind {
                     CurrentGoalKind::Misc
                 }
             }
-            ty::PredicateKind::NormalizesTo(_) => CurrentGoalKind::NormalizesTo,
+            ty::PredicateKind::NormalizesTo(_) => {
+                CurrentGoalKind::ProjectionComputeAssocTermCandidate
+            }
             _ => CurrentGoalKind::Misc,
         }
     }
@@ -315,7 +323,7 @@ where
                 //
                 // See tests/ui/traits/next-solver/cycles/normalizes-to-is-not-productive.rs
                 // for how this can go wrong.
-                CurrentGoalKind::NormalizesTo => PathKind::Inductive,
+                CurrentGoalKind::ProjectionComputeAssocTermCandidate => PathKind::Inductive,
                 // We probably want to make all traits coinductive in the future,
                 // so we treat cycles involving where-clauses of not-yet coinductive
                 // traits as ambiguous for now.
@@ -675,10 +683,9 @@ where
                 // to recompute this goal.
                 HasChanged::Yes => None,
                 HasChanged::No => {
-                    let mut stalled_vars = orig_values;
-
                     // Remove the canonicalized universal vars, since we only care about stalled existentials.
                     let mut sub_roots = Vec::new();
+                    let mut stalled_vars = orig_values;
                     stalled_vars.retain(|arg| match arg.kind() {
                         // Lifetimes can never stall goals.
                         ty::GenericArgKind::Lifetime(_) => false,
@@ -905,7 +912,10 @@ where
         let mut unchanged_certainty = Some(Certainty::Yes);
         for (source, goal, stalled_on) in mem::take(&mut self.nested_goals) {
             // We never handle `NormalizesTo` as a nested goal
-            assert!(!matches!(goal.predicate.kind().skip_binder(), PredicateKind::NormalizesTo(_)));
+            debug_assert!(!matches!(
+                goal.predicate.kind().skip_binder(),
+                PredicateKind::NormalizesTo(_)
+            ));
 
             if !self.delegate.disable_trait_solver_fast_paths()
                 && let Some(certainty) =
@@ -948,20 +958,13 @@ where
         self.delegate.cx()
     }
 
-    pub(super) fn add_goal(&mut self, source: GoalSource, goal: Goal<I, I::Predicate>) {
-        self.add_goal_raw(source, goal, true);
+    pub(super) fn add_goal(&mut self, source: GoalSource, mut goal: Goal<I, I::Predicate>) {
+        goal.predicate = self.replace_alias_with_infer(goal.predicate, source, goal.param_env);
+        self.add_goal_raw(source, goal);
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn add_goal_raw(
-        &mut self,
-        source: GoalSource,
-        mut goal: Goal<I, I::Predicate>,
-        replace_alias: bool,
-    ) {
-        if replace_alias {
-            goal.predicate = self.replace_alias_with_infer(goal.predicate, source, goal.param_env);
-        }
+    fn add_goal_raw(&mut self, source: GoalSource, goal: Goal<I, I::Predicate>) {
         self.inspect.add_goal(self.delegate, self.max_input_universe, source, goal);
         self.nested_goals.push((source, goal, None));
     }
@@ -1546,7 +1549,7 @@ where
                 // need to recompute the `NormalizesTo` goal afterwards to avoid repeatedly
                 // uplifting its nested goals. This is the case if the `shallow_certainty` is
                 // `Certainty::Yes`.
-                (CurrentGoalKind::NormalizesTo, Certainty::Yes) => {
+                (CurrentGoalKind::ProjectionComputeAssocTermCandidate, Certainty::Yes) => {
                     let goals = std::mem::take(&mut self.nested_goals);
                     // As we return all ambiguous nested goals, we can ignore the certainty
                     // returned by `self.try_evaluate_added_goals()`.
@@ -1679,6 +1682,8 @@ where
     }
 }
 
+// FIXME: This should be eventually removed in favor of proper normalization.
+// cc #156742
 /// Eagerly replace aliases with inference variables, emitting `AliasRelate`
 /// goals, used when adding goals to the `EvalCtxt`. We compute the
 /// `AliasRelate` goals before evaluating the actual goal to get all the
@@ -1744,7 +1749,6 @@ where
                 self.ecx.add_goal_raw(
                     self.normalization_goal_source,
                     Goal::new(self.cx(), self.param_env, projection),
-                    false,
                 );
                 infer_ty
             }
@@ -1771,7 +1775,6 @@ where
                 self.ecx.add_goal_raw(
                     self.normalization_goal_source,
                     Goal::new(self.cx(), self.param_env, projection),
-                    false,
                 );
                 infer_ct
             }

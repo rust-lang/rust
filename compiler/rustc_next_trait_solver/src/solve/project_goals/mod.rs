@@ -29,6 +29,26 @@ where
                 let normalizes_to =
                     goal.with(self.cx(), ty::NormalizesTo { alias, term: unconstrained_term });
 
+                // In the new solver, nested goals are evaluated eagerly and the ambiguous nested
+                // goals aren't propagated back to the caller but discarded.
+                //
+                // This behavior made some unfortunate regressions when proving some associated
+                // projection goal, as we may lose the nested goals from the impl candidate's
+                // header which were preserved in the old solver. (See #122687)
+                //
+                // To avoid this, we create a `NormalizesTo` whose expected term is fully
+                // unconstrained and evaluate it as if we are calling a function rather than
+                // evaluating a nested goal, and register its ambiguous nested goals to the
+                // caller's context instead of discarding them.
+                //
+                // This may feel incorrect as we don't reevaluate the ambiguous `NormalizesTo` goal
+                // like other ordinary nested goals. Will we be in trouble if equating
+                // `unconstrained_term` with the expected term results in inference constraints in
+                // the impl header, which should be result in `Certainty::Yes` if we reevaluate it?
+                // Hopefully not, because we apply the certainty of nested `NormalizesTo` goal as
+                // the shallow certainty of the outer associated projection goal. If `NormalizesTo`
+                // returns ambiguity, the caller will do so as well and it and its `NormalizesTo`
+                // will be evaluated again by the caller's outer context.
                 let (
                     NestedNormalizationGoals(nested_goals),
                     GoalEvaluation { goal: _, certainty, stalled_on: _, has_changed: _ },
@@ -36,6 +56,8 @@ where
 
                 trace!(?nested_goals);
 
+                // FIXME: We shouldn't be doing this in the long term in favor of eager
+                // normalization.
                 // Normalize alias types in rhs. This is done in `EvalCtxt::add_goal` for nested
                 // goals, but we might be evaluating the root goal.
                 let term =
