@@ -31,6 +31,8 @@ ENV RUST_CONFIGURE_ARGS \
  --enable-compiler-docs \
  --set llvm.libzstd=true
 
+# Compile each test sequentially to achieve max thread utilization by a single rustc process
+ENV RUST_TEST_THREADS 1
+
 # Build the toolchain with multiple parallel frontend threads and then run tests
-# Tests are still compiled serially at the moment (intended to be changed in follow-ups).
-ENV SCRIPT python3 ../x.py --stage 2 test --set rust.parallel-frontend-threads=4
+ENV SCRIPT python3 ../x.py --stage 2 test --set rust.parallel-frontend-threads=4 -- --parallel-frontend-threads=4 --iteration-count=2
