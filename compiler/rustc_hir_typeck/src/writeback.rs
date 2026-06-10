@@ -663,6 +663,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             self.typeck_results.type_dependent_defs_mut().insert(hir_id, def);
         }
 
+        // FIXME(splat): add side table and write to it here
+
         // Resolve any borrowings for the node with id `node_id`
         self.visit_adjustments(span, hir_id);
 
