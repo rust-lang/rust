@@ -1,10 +1,6 @@
 //@ edition: 2024
 
-#![feature(
-    min_generic_const_args,
-    type_alias_impl_trait,
-    return_type_notation
-)]
+#![feature(min_generic_const_args, type_alias_impl_trait, return_type_notation)]
 #![expect(incomplete_features)]
 #![allow(refining_impl_trait_internal)]
 
@@ -77,27 +73,21 @@ fn uncallable(_: impl Iterator<Item = i32, Item = u32>) {}
 
 fn uncallable_const(_: impl Trait<ASSOC = 3, ASSOC = 4>) {}
 
-fn uncallable_rtn(
-    _: impl Trait<foo(..): Trait<ASSOC = 3>, foo(..): Trait<ASSOC = 4>>
-) {}
+fn uncallable_rtn(_: impl Trait<foo(..): Trait<ASSOC = 3>, foo(..): Trait<ASSOC = 4>>) {}
 
 type MustFail = dyn Iterator<Item = i32, Item = u32>;
-//~^ ERROR [E0719]
-//~| ERROR conflicting associated type bindings
+//~^ ERROR conflicting associated type bindings
 
 trait Trait2 {
     type const ASSOC: u32;
 }
 
 type MustFail2 = dyn Trait2<ASSOC = 3u32, ASSOC = 4u32>;
-//~^ ERROR [E0719]
-//~| ERROR conflicting associated constant bindings
+//~^ ERROR conflicting associated constant bindings
 
-type MustFail3 = dyn Iterator<Item = i32, Item = i32>;
-//~^ ERROR [E0719]
+type Allowed = dyn Iterator<Item = i32, Item = i32>;
 
-type MustFail4 = dyn Trait2<ASSOC = 3u32, ASSOC = 3u32>;
-//~^ ERROR [E0719]
+type Allowed2 = dyn Trait2<ASSOC = 3u32, ASSOC = 3u32>;
 
 trait Trait3 {
     fn foo() -> impl Iterator<Item = i32, Item = u32>;
