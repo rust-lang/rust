@@ -201,7 +201,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             item_local_id_counter: hir::ItemLocalId::new(1),
             ident_and_label_to_local_id: Default::default(),
             #[cfg(debug_assertions)]
-            node_id_to_local_id: [(owner, hir::ItemLocalId::ZERO)].into_iter().collect(),
+            node_id_to_local_id: Default::default(),
             trait_map: Default::default(),
             next_node_id: resolver.next_node_id,
             node_id_to_def_id: NodeMap::default(),
