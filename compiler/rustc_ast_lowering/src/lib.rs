@@ -579,6 +579,10 @@ fn index_ast<'tcx>(
             mut_visit::walk_flat_map_stmt_kind(self, kind)
                 .into_iter()
                 .map(|kind| {
+                    // Expanding the current statement is a nested `use` item,
+                    // it is expanded into several flat `use` items.
+                    // Create new NodeIds for the corresponding statements
+                    // as two statements cannot have the same.
                     let id = id.take().unwrap_or_else(|| {
                         let next = self.next_node_id;
                         self.next_node_id.increment_by(1);
