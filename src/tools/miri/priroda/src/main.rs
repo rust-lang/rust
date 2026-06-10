@@ -168,20 +168,25 @@ impl<'tcx> PrirodaContext<'tcx> {
         location.local_path(source_map)
     }
 
+    fn current_source_position(&self) -> Option<(PathBuf, usize)> {
+        let location = self.current_location.as_ref()?;
+        Some((self.local_path(location)?, location.line))
+    }
+
+    // Used to treat `continue` like a source-level step for breakpoint checks:
+    // several MIR locations can point at one source line, but they should only
+    // report that source breakpoint once.
+    fn last_source_position(&self) -> Option<(PathBuf, usize)> {
+        let location = self.last_location.as_ref()?;
+        Some((self.local_path(location)?, location.line))
+    }
+
     /// Step to the next visible MIR instruction.
     fn stepi(&mut self) -> InterpResult<'tcx, StepResult> {
         self.resume(ResumeMode::MirInstruction)
     }
     fn step(&mut self) -> InterpResult<'tcx, StepResult> {
-        let Some(location) = &self.current_location else {
-            return self.resume(ResumeMode::SourceLine(None));
-        };
-
-        let Some(path) = self.local_path(location) else {
-            return self.resume(ResumeMode::SourceLine(None));
-        };
-
-        self.resume(ResumeMode::SourceLine(Some((path, location.line))))
+        self.resume(ResumeMode::SourceLine(self.current_source_position()))
     }
 
     /// Continue execution until reaching a breakpoint or propagating termination.
@@ -288,20 +293,20 @@ impl<'tcx> PrirodaContext<'tcx> {
     }
 
     fn is_at_breakpoint(&self) -> bool {
-        // FIXME: avoid repeated stops when one source line maps to multiple MIR statements.
-        let Some(location) = &self.current_location else {
+        let Some(bp) = self.current_breakpoint() else {
             return false;
         };
 
-        let Some(path) = &self.local_path(location) else {
-            return false;
-        };
+        // If the previous interpreter step had the same source position, this
+        // is another MIR location for the breakpoint we just reported.
+        self.last_source_position().as_ref() != Some(&bp)
+    }
 
-        let lines = match self.breakpoints.get(path) {
-            Some(lines) => lines,
-            None => return false,
-        };
-        lines.contains(&location.line)
+    fn current_breakpoint(&self) -> Option<(PathBuf, usize)> {
+        let (path, line) = self.current_source_position()?;
+        let lines = self.breakpoints.get(&path)?;
+
+        if lines.contains(&line) { Some((path, line)) } else { None }
     }
 
     fn resolve_current_location(&self) -> Option<SourceLocation> {
