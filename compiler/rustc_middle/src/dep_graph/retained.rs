@@ -9,6 +9,7 @@ use super::{DepNode, DepNodeIndex};
 /// Normally, dependencies recorded during the current session are written to
 /// disk and then forgotten, to avoid wasting memory on information that is
 /// not needed when the compiler is working correctly.
+#[derive(Clone)]
 pub struct RetainedDepGraph {
     pub inner: LinkedGraph<DepNode, ()>,
     pub indices: FxHashMap<DepNode, NodeIndex>,
