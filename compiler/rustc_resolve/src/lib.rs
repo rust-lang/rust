@@ -1506,7 +1506,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// Generic args to suggest for required params (e.g. `<'_>`, `<_, _>`), if any.
     item_required_generic_args_suggestions: FxHashMap<LocalDefId, String> = default::fx_hash_map(),
     delegation_fn_sigs: LocalDefIdMap<DelegationFnSig> = Default::default(),
-    delegation_infos: LocalDefIdMap<DelegationInfo> = Default::default(),
+    delegation_infos: FxIndexMap<LocalDefId, DelegationInfo>,
 
     main_def: Option<MainDefinition> = None,
     trait_impls: FxIndexMap<DefId, Vec<LocalDefId>>,
@@ -1871,6 +1871,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             doc_link_traits_in_scope: Default::default(),
             current_crate_outer_attr_insert_span,
             disambiguators: Default::default(),
+            delegation_infos: Default::default(),
             ..
         };
 
@@ -1991,6 +1992,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             doc_link_traits_in_scope: self.doc_link_traits_in_scope,
             all_macro_rules: self.all_macro_rules,
             stripped_cfg_items,
+            delegation_infos: self.delegation_infos,
         };
         let ast_lowering = ty::ResolverAstLowering {
             partial_res_map: self.partial_res_map,
@@ -1998,7 +2000,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             next_node_id: self.next_node_id,
             owners: self.owners,
             lint_buffer: Steal::new(self.lint_buffer),
-            delegation_infos: self.delegation_infos,
             disambiguators,
         };
         ResolverOutputs { global_ctxt, ast_lowering }

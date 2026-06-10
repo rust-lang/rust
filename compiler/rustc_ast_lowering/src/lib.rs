@@ -62,7 +62,7 @@ use rustc_macros::extension;
 use rustc_middle::hir::{self as mid_hir};
 use rustc_middle::queries::Providers;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{DelegationInfo, PerOwnerResolverData, ResolverAstLowering, TyCtxt};
+use rustc_middle::ty::{PerOwnerResolverData, ResolverAstLowering, TyCtxt};
 use rustc_session::errors::add_feature_diagnostics;
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, DesugaringKind, Span};
@@ -304,10 +304,6 @@ impl<'tcx> ResolverAstLowering<'tcx> {
     /// should appear at the enclosing `PolyTraitRef`.
     fn extra_lifetime_params(&self, id: NodeId) -> &[(Ident, NodeId, MissingLifetimeKind)] {
         self.extra_lifetime_params_map.get(&id).map_or(&[], |v| &v[..])
-    }
-
-    fn delegation_info(&self, id: LocalDefId) -> Option<&DelegationInfo> {
-        self.delegation_infos.get(&id)
     }
 
     fn owner_def_id(&self, id: NodeId) -> LocalDefId {
