@@ -218,6 +218,9 @@ pub trait HirTyLowerer<'tcx> {
     /// Record the lowered type of a HIR node in this context.
     fn record_ty(&self, hir_id: HirId, ty: Ty<'tcx>, span: Span);
 
+    /// Record the resolution of a type-dependent HIR node.
+    fn record_res(&self, hir_id: HirId, res: Result<(DefKind, DefId), ErrorGuaranteed>);
+
     /// The inference context of the lowering context if applicable.
     fn infcx(&self) -> Option<&InferCtxt<'tcx>>;
 
@@ -1338,7 +1341,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     // NOTE: When this function starts resolving `Trait::AssocTy` successfully
     // it should also start reporting the `BARE_TRAIT_OBJECTS` lint.
     #[instrument(level = "debug", skip_all, ret)]
-    pub fn lower_type_relative_ty_path(
+    fn lower_type_relative_ty_path(
         &self,
         self_ty: Ty<'tcx>,
         hir_self_ty: &'tcx hir::Ty<'tcx>,
@@ -1364,7 +1367,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 );
                 let ty = Ty::new_alias(tcx, alias_ty);
                 let ty = self.check_param_uses_if_mcg(ty, span, false);
-                Ok((ty, tcx.def_kind(def_id), def_id))
+                let def_kind = tcx.def_kind(def_id);
+                Ok((ty, def_kind, def_id))
             }
             TypeRelativePath::Variant { adt, variant_did } => {
                 let adt = self.check_param_uses_if_mcg(adt, span, false);
@@ -1495,6 +1499,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 span,
                 mode.assoc_tag(),
             )? {
+                self.record_res(qpath_hir_id, Ok((tcx.def_kind(did), did)));
                 return Ok(TypeRelativePath::AssocItem(did, args));
             }
         }
@@ -1596,6 +1601,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let assoc_item = self
             .probe_assoc_item(segment.ident, assoc_tag, qpath_hir_id, span, bound.def_id())
             .expect("failed to find associated item");
+
+        self.record_res(qpath_hir_id, Ok((assoc_item.kind.as_def_kind(), assoc_item.def_id)));
 
         Ok((assoc_item.def_id, bound))
     }

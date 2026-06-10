@@ -314,6 +314,13 @@ rustc_queries! {
         feedable
     }
 
+    query type_of_with_type_dep_defs(
+        key: LocalDefId,
+    ) -> (ty::EarlyBinder<'tcx, Ty<'tcx>>, &'tcx ty::TypeDepDefs) {
+        desc { "computing type and type-dependent definitions of `{}`", tcx.def_path_str(key) }
+        cache_on_disk
+    }
+
     /// Returns the *hidden type* of the opaque type given by `DefId`.
     ///
     /// # Panics
@@ -467,6 +474,16 @@ rustc_queries! {
         cache_on_disk
         separate_provide_extern
         feedable
+    }
+
+    query explicit_item_bounds_with_type_dep_defs(
+        key: LocalDefId,
+    ) -> (ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]>, &'tcx ty::TypeDepDefs) {
+        desc {
+            "finding item bounds and type-dependent definitions for `{}`",
+            tcx.def_path_str(key)
+        }
+        cache_on_disk
     }
 
     /// Returns the explicitly user-written *bounds* that share the `Self` type of the item.
@@ -789,6 +806,16 @@ rustc_queries! {
         desc { "computing explicit predicates of trait `{}`", tcx.def_path_str(key) }
     }
 
+    query trait_explicit_predicates_and_bounds_with_type_dep_defs(
+        key: LocalDefId,
+    ) -> (ty::GenericPredicates<'tcx>, &'tcx ty::TypeDepDefs) {
+        desc {
+            "computing explicit predicates and type-dependent definitions of trait `{}`",
+            tcx.def_path_str(key)
+        }
+        cache_on_disk
+    }
+
     /// Returns the explicitly user-written *predicates* of the definition given by `DefId`
     /// that must be proven true at usage sites (and which can be assumed at definition site).
     ///
@@ -799,6 +826,16 @@ rustc_queries! {
         cache_on_disk
         separate_provide_extern
         feedable
+    }
+
+    query explicit_predicates_of_with_type_dep_defs(
+        key: LocalDefId,
+    ) -> (ty::GenericPredicates<'tcx>, &'tcx ty::TypeDepDefs) {
+        desc {
+            "computing explicit predicates and type-dependent definitions of `{}`",
+            tcx.def_path_str(key)
+        }
+        cache_on_disk
     }
 
     /// Returns the *inferred outlives-predicates* of the item given by `DefId`.
@@ -1097,6 +1134,13 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    query impl_trait_header_with_type_dep_defs(
+        impl_id: LocalDefId,
+    ) -> (ty::ImplTraitHeader<'tcx>, &'tcx ty::TypeDepDefs) {
+        desc { "computing trait implemented by `{}` and type-dependent definitions", tcx.def_path_str(impl_id) }
+        cache_on_disk
+    }
+
     /// Given an `impl_def_id`, return true if the self type is guaranteed to be unsized due
     /// to either being one of the built-in unsized types (str/slice/dyn) or to be a struct
     /// whose tail is one of those types.
@@ -1153,6 +1197,15 @@ rustc_queries! {
         cache_on_disk
         handle_cycle_error
         separate_provide_extern
+    }
+
+    /// Computes the signature of the function.
+    query fn_sig_with_type_dep_defs(
+        key: LocalDefId,
+    ) -> (ty::EarlyBinder<'tcx, ty::PolyFnSig<'tcx>>, &'tcx ty::TypeDepDefs) {
+        desc { "computing function signature and type-dependent definitions of `{}`", tcx.def_path_str(key) }
+        cache_on_disk
+        handle_cycle_error
     }
 
     /// Performs lint checking for the module.

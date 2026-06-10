@@ -14,7 +14,7 @@
 //! At present, however, we do run collection across all items in the
 //! crate as a kind of pass. This should eventually be factored away.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::ops::ControlFlow;
 use std::{assert_matches, iter};
 
@@ -27,7 +27,9 @@ use rustc_errors::{
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, InferKind, Visitor, VisitorExt};
-use rustc_hir::{self as hir, GenericParamKind, HirId, Node, PreciseCapturingArgKind, find_attr};
+use rustc_hir::{
+    self as hir, GenericParamKind, HirId, ItemLocalMap, Node, PreciseCapturingArgKind, find_attr,
+};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{DynCompatibilityViolation, ObligationCause};
 use rustc_middle::hir::nested_filter;
@@ -63,11 +65,14 @@ pub(crate) fn provide(providers: &mut Providers) {
     resolve_bound_vars::provide(providers);
     *providers = Providers {
         type_of: type_of::type_of,
+        type_of_with_type_dep_defs: type_of::type_of_with_type_dep_defs,
         type_of_opaque: type_of::type_of_opaque,
         type_of_opaque_hir_typeck: type_of::type_of_opaque_hir_typeck,
         type_alias_is_lazy: type_of::type_alias_is_lazy,
         item_bounds: item_bounds::item_bounds,
         explicit_item_bounds: item_bounds::explicit_item_bounds,
+        explicit_item_bounds_with_type_dep_defs:
+            item_bounds::explicit_item_bounds_with_type_dep_defs,
         item_self_bounds: item_bounds::item_self_bounds,
         explicit_item_self_bounds: item_bounds::explicit_item_self_bounds,
         item_non_self_bounds: item_bounds::item_non_self_bounds,
@@ -75,18 +80,24 @@ pub(crate) fn provide(providers: &mut Providers) {
         generics_of: generics_of::generics_of,
         predicates_of: predicates_of::predicates_of,
         explicit_predicates_of: predicates_of::explicit_predicates_of,
+        explicit_predicates_of_with_type_dep_defs:
+            predicates_of::explicit_predicates_of_with_type_dep_defs,
         explicit_super_predicates_of: predicates_of::explicit_super_predicates_of,
         explicit_implied_predicates_of: predicates_of::explicit_implied_predicates_of,
         explicit_supertraits_containing_assoc_item:
             predicates_of::explicit_supertraits_containing_assoc_item,
         trait_explicit_predicates_and_bounds: predicates_of::trait_explicit_predicates_and_bounds,
+        trait_explicit_predicates_and_bounds_with_type_dep_defs:
+            predicates_of::trait_explicit_predicates_and_bounds_with_type_dep_defs,
         const_conditions: predicates_of::const_conditions,
         explicit_implied_const_bounds: predicates_of::explicit_implied_const_bounds,
         type_param_predicates: predicates_of::type_param_predicates,
         trait_def,
         adt_def,
         fn_sig,
+        fn_sig_with_type_dep_defs,
         impl_trait_header,
+        impl_trait_header_with_type_dep_defs,
         coroutine_kind,
         coroutine_for_closure,
         opaque_ty_origin,
@@ -132,6 +143,7 @@ pub(crate) struct ItemCtxt<'tcx> {
     item_def_id: LocalDefId,
     tainted_by_errors: Cell<Option<ErrorGuaranteed>>,
     lowering_delegation_segment: bool,
+    type_dependent_defs: RefCell<ItemLocalMap<Result<(DefKind, DefId), ErrorGuaranteed>>>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -255,6 +267,7 @@ impl<'tcx> ItemCtxt<'tcx> {
             item_def_id,
             tainted_by_errors: Cell::new(None),
             lowering_delegation_segment: delegation,
+            type_dependent_defs: Default::default(),
         }
     }
 
@@ -272,6 +285,10 @@ impl<'tcx> ItemCtxt<'tcx> {
 
     pub(crate) fn node(&self) -> hir::Node<'tcx> {
         self.tcx.hir_node(self.hir_id())
+    }
+
+    fn take_type_dependent_defs(&self) -> ItemLocalMap<Result<(DefKind, DefId), ErrorGuaranteed>> {
+        self.type_dependent_defs.take()
     }
 
     fn check_tainted_by_errors(&self) -> Result<(), ErrorGuaranteed> {
@@ -538,7 +555,11 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
     }
 
     fn record_ty(&self, _hir_id: hir::HirId, _ty: Ty<'tcx>, _span: Span) {
-        // There's no place to record types from signatures?
+        // There's no place to record types from signatures.
+    }
+
+    fn record_res(&self, hir: HirId, res: Result<(DefKind, DefId), ErrorGuaranteed>) {
+        self.type_dependent_defs.borrow_mut().insert(hir.local_id, res);
     }
 
     fn infcx(&self) -> Option<&InferCtxt<'tcx>> {
@@ -1003,6 +1024,14 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
 
 #[instrument(level = "debug", skip(tcx), ret)]
 fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, ty::PolyFnSig<'_>> {
+    tcx.fn_sig_with_type_dep_defs(def_id).0
+}
+
+#[instrument(level = "debug", skip(tcx), ret)]
+fn fn_sig_with_type_dep_defs(
+    tcx: TyCtxt<'_>,
+    def_id: LocalDefId,
+) -> (ty::EarlyBinder<'_, ty::PolyFnSig<'_>>, &'_ ty::TypeDepDefs) {
     use rustc_hir::Node::*;
     use rustc_hir::*;
 
@@ -1053,7 +1082,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, ty::PolyFn
 
         ForeignItem(&hir::ForeignItem { kind: ForeignItemKind::Fn(sig, _, _), .. }) => {
             let abi = tcx.hir_get_foreign_abi(hir_id);
-            compute_sig_of_foreign_fn_decl(tcx, def_id, sig.decl, abi, sig.header.safety())
+            compute_sig_of_foreign_fn_decl(&icx, sig.decl, abi, sig.header.safety())
         }
 
         Ctor(data) => {
@@ -1085,7 +1114,13 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, ty::PolyFn
             bug!("unexpected sort of node in fn_sig(): {:?}", x);
         }
     };
-    ty::EarlyBinder::bind(output)
+    (
+        ty::EarlyBinder::bind(output),
+        tcx.arena.alloc(ty::TypeDepDefs {
+            hir_owner: hir_id.owner,
+            type_dependent_defs: icx.take_type_dependent_defs(),
+        }),
+    )
 }
 
 fn lower_fn_sig_recovering_infer_ret_ty<'tcx>(
@@ -1390,8 +1425,12 @@ pub fn suggest_impl_trait<'tcx>(
     None
 }
 
-fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplTraitHeader<'_> {
+fn impl_trait_header_with_type_dep_defs(
+    tcx: TyCtxt<'_>,
+    def_id: LocalDefId,
+) -> (ty::ImplTraitHeader<'_>, &'_ ty::TypeDepDefs) {
     let icx = ItemCtxt::new(tcx, def_id);
+    let hir_owner = icx.hir_id().owner;
     let item = tcx.hir_expect_item(def_id);
     let impl_ = item.expect_impl();
     let of_trait = impl_
@@ -1404,12 +1443,24 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplTraitHeader
 
     let trait_ref = icx.lowerer().lower_impl_trait_ref(&of_trait.trait_ref, selfty);
 
-    ty::ImplTraitHeader {
+    let header = ty::ImplTraitHeader {
         trait_ref: ty::EarlyBinder::bind(trait_ref),
         safety: of_trait.safety,
         polarity: polarity_of_impl(tcx, of_trait, is_rustc_reservation),
         constness: impl_.constness,
-    }
+    };
+
+    (
+        header,
+        tcx.arena.alloc(ty::TypeDepDefs {
+            hir_owner,
+            type_dependent_defs: icx.take_type_dependent_defs(),
+        }),
+    )
+}
+
+fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplTraitHeader<'_> {
+    tcx.impl_trait_header_with_type_dep_defs(def_id).0
 }
 
 fn check_impl_constness(
@@ -1493,15 +1544,15 @@ fn early_bound_lifetimes_from_generics<'a, 'tcx>(
 }
 
 fn compute_sig_of_foreign_fn_decl<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
+    icx: &ItemCtxt<'tcx>,
     decl: &'tcx hir::FnDecl<'tcx>,
     abi: ExternAbi,
     safety: hir::Safety,
 ) -> ty::PolyFnSig<'tcx> {
+    let tcx = icx.tcx();
+    let def_id = icx.item_def_id;
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
-    let fty =
-        ItemCtxt::new(tcx, def_id).lowerer().lower_fn_ty(hir_id, safety, abi, decl, None, None);
+    let fty = icx.lowerer().lower_fn_ty(hir_id, safety, abi, decl, None, None);
 
     // Feature gate SIMD types in FFI, since I am not sure that the
     // ABIs are handled at all correctly. -huonw

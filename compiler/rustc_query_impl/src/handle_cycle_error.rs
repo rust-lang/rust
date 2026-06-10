@@ -48,6 +48,19 @@ pub(crate) fn fn_sig<'tcx>(
     ))
 }
 
+pub(crate) fn fn_sig_with_type_dep_defs<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+    cycle: Cycle<'tcx>,
+    err: Diag<'_>,
+) -> (ty::EarlyBinder<'tcx, ty::PolyFnSig<'tcx>>, &'tcx ty::TypeDepDefs) {
+    let hir_owner = tcx.local_def_id_to_hir_id(def_id).owner;
+    (
+        fn_sig(tcx, def_id.to_def_id(), cycle, err),
+        tcx.arena.alloc(ty::TypeDepDefs { hir_owner, type_dependent_defs: Default::default() }),
+    )
+}
+
 pub(crate) fn check_representability<'tcx>(
     tcx: TyCtxt<'tcx>,
     _key: LocalDefId,

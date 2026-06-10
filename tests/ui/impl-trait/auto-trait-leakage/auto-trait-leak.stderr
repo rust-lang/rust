@@ -72,7 +72,7 @@ LL |     send(cycle1().clone());
    |     ^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which requires evaluating trait selection obligation `cycle1::{opaque#0}: core::marker::Send`...
    = note: ...which again requires computing type of opaque `cycle1::{opaque#0}`, completing the cycle
-note: cycle used when computing type of `cycle1::{opaque#0}`
+note: cycle used when computing type and type-dependent definitions of `cycle1::{opaque#0}`
   --> $DIR/auto-trait-leak.rs:11:16
    |
 LL | fn cycle1() -> impl Clone {

@@ -490,6 +490,7 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for &'tcx ty::List<LocalDefId> {
 
 impl_decodable_via_ref! {
     &'tcx ty::TypeckResults<'tcx>,
+    &'tcx ty::TypeDepDefs,
     &'tcx ty::List<Ty<'tcx>>,
     &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     &'tcx traits::ImplSource<'tcx, ()>,

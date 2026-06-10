@@ -9,6 +9,11 @@ note: ...which requires computing type of `<impl at $DIR/unknown-lifetime-ice-11
    |
 LL | impl Foo for Box<dyn Foo> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires computing type and type-dependent definitions of `<impl at $DIR/unknown-lifetime-ice-119827.rs:8:1: 8:26>`...
+  --> $DIR/unknown-lifetime-ice-119827.rs:8:1
+   |
+LL | impl Foo for Box<dyn Foo> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which again requires finding trait impls of `Foo`, completing the cycle
 note: cycle used when checking that `Foo` is well-formed
   --> $DIR/unknown-lifetime-ice-119827.rs:1:1

@@ -19,8 +19,21 @@ mod opaque;
 
 #[instrument(level = "debug", skip(tcx), ret)]
 pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, Ty<'_>> {
+    tcx.type_of_with_type_dep_defs(def_id).0
+}
+
+#[instrument(level = "debug", skip(tcx), ret)]
+pub(super) fn type_of_with_type_dep_defs(
+    tcx: TyCtxt<'_>,
+    def_id: LocalDefId,
+) -> (ty::EarlyBinder<'_, Ty<'_>>, &'_ ty::TypeDepDefs) {
     use rustc_hir::*;
     use rustc_middle::ty::Ty;
+
+    let hir_id = tcx.local_def_id_to_hir_id(def_id);
+    let type_dep_defs = |type_dependent_defs| {
+        tcx.arena.alloc(ty::TypeDepDefs { hir_owner: hir_id.owner, type_dependent_defs })
+    };
 
     // If we are computing `type_of` the synthesized associated type for an RPITIT in the impl
     // side, use `collect_return_position_impl_trait_in_trait_tys` to infer the value of the
@@ -30,29 +43,33 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
             match tcx.collect_return_position_impl_trait_in_trait_tys(fn_def_id) {
                 Ok(map) => {
                     let trait_item_def_id = tcx.trait_item_of(def_id).unwrap();
-                    return map[&trait_item_def_id];
+                    return (map[&trait_item_def_id], type_dep_defs(Default::default()));
                 }
                 Err(_) => {
-                    return ty::EarlyBinder::bind(Ty::new_error_with_message(
-                        tcx,
-                        DUMMY_SP,
-                        "Could not collect return position impl trait in trait tys",
-                    ));
+                    return (
+                        ty::EarlyBinder::bind(Ty::new_error_with_message(
+                            tcx,
+                            DUMMY_SP,
+                            "Could not collect return position impl trait in trait tys",
+                        )),
+                        type_dep_defs(Default::default()),
+                    );
                 }
             }
         }
         // For an RPITIT in a trait, just return the corresponding opaque.
         Some(ty::ImplTraitInTraitData::Trait { opaque_def_id, .. }) => {
-            return ty::EarlyBinder::bind(Ty::new_opaque(
-                tcx,
-                opaque_def_id,
-                ty::GenericArgs::identity_for_item(tcx, opaque_def_id),
-            ));
+            return (
+                ty::EarlyBinder::bind(Ty::new_opaque(
+                    tcx,
+                    opaque_def_id,
+                    ty::GenericArgs::identity_for_item(tcx, opaque_def_id),
+                )),
+                type_dep_defs(Default::default()),
+            );
         }
         None => {}
     }
-
-    let hir_id = tcx.local_def_id_to_hir_id(def_id);
 
     let icx = ItemCtxt::new(tcx, def_id);
 
@@ -236,13 +253,15 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
             bug!("unexpected sort of node in type_of(): {:?}", x);
         }
     };
-    if let Err(e) = icx.check_tainted_by_errors()
+    let ty = if let Err(e) = icx.check_tainted_by_errors()
         && !output.references_error()
     {
         ty::EarlyBinder::bind(Ty::new_error(tcx, e))
     } else {
         ty::EarlyBinder::bind(output)
-    }
+    };
+
+    (ty, type_dep_defs(icx.take_type_dependent_defs()))
 }
 
 pub(super) fn type_of_opaque(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<'_, Ty<'_>> {

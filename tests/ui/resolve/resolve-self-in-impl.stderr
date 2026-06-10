@@ -20,7 +20,12 @@ error[E0391]: cycle detected when computing trait implemented by `<impl at $DIR/
 LL | impl Tr<Self::A> for S {}
    | ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: ...which immediately requires computing trait implemented by `<impl at $DIR/resolve-self-in-impl.rs:19:1: 19:23>` again
+note: ...which requires computing trait implemented by `<impl at $DIR/resolve-self-in-impl.rs:19:1: 19:23>` and type-dependent definitions...
+  --> $DIR/resolve-self-in-impl.rs:19:1
+   |
+LL | impl Tr<Self::A> for S {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires computing trait implemented by `<impl at $DIR/resolve-self-in-impl.rs:19:1: 19:23>`, completing the cycle
 note: cycle used when building specialization graph of trait `Tr`
   --> $DIR/resolve-self-in-impl.rs:4:1
    |
