@@ -7,6 +7,7 @@ use rustc_middle::middle::codegen_fn_attrs::{
     TargetFeature,
 };
 use rustc_middle::ty::{self, Instance, TyCtxt};
+use rustc_sanitizers::ignorelist::SanitizerIgnoreList;
 use rustc_session::config::{
     BranchProtection, FunctionReturn, InstrumentMcount, InstrumentMcountOpts, OptLevel, PAuthKey,
     PacRet,
@@ -137,9 +138,24 @@ pub(crate) fn sanitize_attrs<'ll, 'tcx>(
     cx: &SimpleCx<'ll>,
     tcx: TyCtxt<'tcx>,
     sanitizer_fn_attr: SanitizerFnAttrs,
+    instance: Option<ty::Instance<'tcx>>,
+    sanitizer_ignorelist: Option<&SanitizerIgnoreList>,
 ) -> SmallVec<[&'ll Attribute; 4]> {
     let mut attrs = SmallVec::new();
-    let enabled = tcx.sess.sanitizers() - sanitizer_fn_attr.disabled;
+    let mut enabled = tcx.sess.sanitizers() - sanitizer_fn_attr.disabled;
+    if let Some(ignorelist) = sanitizer_ignorelist {
+        if let Some(instance) = instance {
+            let result = ignorelist.filter_instance_sanitizers(tcx, instance, enabled);
+            enabled = result.enabled;
+            if result.ignore_cfi {
+                attrs.push(llvm::CreateAttrString(cx.llcx, "no-sanitize-cfi"));
+            }
+            if result.ignore_kcfi {
+                attrs.push(llvm::CreateAttrString(cx.llcx, "no-sanitize-kcfi"));
+            }
+        }
+    }
+
     if enabled.contains(SanitizerSet::ADDRESS) || enabled.contains(SanitizerSet::KERNELADDRESS) {
         attrs.push(llvm::AttributeKind::SanitizeAddress.create_attr(cx.llcx));
     }
@@ -476,6 +492,7 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     llfn: &'ll Value,
     codegen_fn_attrs: &CodegenFnAttrs,
     instance: Option<ty::Instance<'tcx>>,
+    sanitizer_ignorelist: Option<&SanitizerIgnoreList>,
 ) {
     let sess = tcx.sess;
     let mut to_add = SmallVec::<[_; 16]>::new();
@@ -537,7 +554,13 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         // not used.
     } else {
         // Do not set sanitizer attributes for naked functions.
-        to_add.extend(sanitize_attrs(cx, tcx, codegen_fn_attrs.sanitizers));
+        to_add.extend(sanitize_attrs(
+            cx,
+            tcx,
+            codegen_fn_attrs.sanitizers,
+            instance,
+            sanitizer_ignorelist,
+        ));
 
         // For non-naked functions, set branch protection attributes on aarch64.
         if let Some(BranchProtection { bti, pac_ret, gcs }) = sess.branch_protection() {
