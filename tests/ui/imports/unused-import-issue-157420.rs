@@ -5,7 +5,7 @@
 #![warn(unused_imports)]
 
 pub use inner::*;
-use crate::outer::*; //~ WARN unused import: `crate::outer`
+use crate::outer::*;
 
 mod outer {
     pub mod inner {

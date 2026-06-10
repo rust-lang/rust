@@ -105,6 +105,7 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
         let def_id = self.r.owner_def_id(id);
         if self.r.effective_visibilities.is_exported(def_id) {
             self.check_import_as_underscore(use_tree, id);
+            self.r.maybe_unused_trait_imports.swap_remove(&def_id);
             return;
         }
 
