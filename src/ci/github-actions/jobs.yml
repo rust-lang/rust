@@ -22,7 +22,7 @@ runners:
     os: ubuntu-24.04-16core-64gb
     <<: *base-job
 
-  - &job-macos
+  - &job-macos-15
     os: macos-15 # macOS 15 Arm64
     <<: *base-job
 
@@ -476,7 +476,7 @@ auto:
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-macos
+    <<: *job-macos-15
 
   - name: dist-apple-various
     env:
@@ -513,7 +513,7 @@ auto:
       MACOSX_DEPLOYMENT_TARGET: 10.12
       MACOSX_STD_DEPLOYMENT_TARGET: 10.12
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
-    <<: *job-macos
+    <<: *job-macos-15
 
   - name: dist-aarch64-apple
     env:
@@ -537,7 +537,7 @@ auto:
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-macos
+    <<: *job-macos-15
 
   - name: aarch64-apple
     env:
@@ -553,7 +553,7 @@ auto:
       # supports the hardware, so only need to test it there.
       MACOSX_DEPLOYMENT_TARGET: 11.0
       MACOSX_STD_DEPLOYMENT_TARGET: 11.0
-    <<: *job-macos
+    <<: *job-macos-15
 
   ######################
   #  Windows Builders  #
