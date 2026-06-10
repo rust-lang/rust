@@ -3319,7 +3319,7 @@ impl<'hir> TraitItem<'hir> {
 
     expect_methods_self_kind! {
         expect_const, (&'hir Ty<'hir>, Option<ConstItemRhs<'hir>>),
-            TraitItemKind::Const(ty, rhs, _), (ty, *rhs);
+            TraitItemKind::Const(ty, rhs), (ty, *rhs);
 
         expect_fn, (&FnSig<'hir>, &TraitFn<'hir>),
             TraitItemKind::Fn(ty, trfn), (ty, trfn);
@@ -3339,32 +3339,11 @@ pub enum TraitFn<'hir> {
     Provided(BodyId),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, StableHash)]
-pub enum IsTypeConst {
-    No,
-    Yes,
-}
-
-impl From<bool> for IsTypeConst {
-    fn from(value: bool) -> Self {
-        if value { Self::Yes } else { Self::No }
-    }
-}
-
-impl From<IsTypeConst> for bool {
-    fn from(value: IsTypeConst) -> Self {
-        matches!(value, IsTypeConst::Yes)
-    }
-}
-
 /// Represents a trait method or associated constant or type
 #[derive(Debug, Clone, Copy, StableHash)]
 pub enum TraitItemKind<'hir> {
-    // FIXME(mgca) eventually want to move the option that is around `ConstItemRhs<'hir>`
-    // into `ConstItemRhs`, much like `ast::ConstItemRhsKind`, but for now mark whether
-    // this node is a TypeConst with a flag.
     /// An associated constant with an optional value (otherwise `impl`s must contain a value).
-    Const(&'hir Ty<'hir>, Option<ConstItemRhs<'hir>>, IsTypeConst),
+    Const(&'hir Ty<'hir>, Option<ConstItemRhs<'hir>>),
     /// An associated function with an optional body.
     Fn(FnSig<'hir>, TraitFn<'hir>),
     /// An associated type with (possibly empty) bounds and optional concrete
@@ -5009,7 +4988,7 @@ impl<'hir> OwnerNode<'hir> {
             | OwnerNode::TraitItem(TraitItem {
                 kind:
                     TraitItemKind::Fn(_, TraitFn::Provided(body))
-                    | TraitItemKind::Const(_, Some(ConstItemRhs::Body(body)), _),
+                    | TraitItemKind::Const(_, Some(ConstItemRhs::Body(body))),
                 ..
             })
             | OwnerNode::ImplItem(ImplItem {
@@ -5236,7 +5215,7 @@ impl<'hir> Node<'hir> {
                 _ => None,
             },
             Node::TraitItem(it) => match it.kind {
-                TraitItemKind::Const(ty, _, _) => Some(ty),
+                TraitItemKind::Const(ty, _) => Some(ty),
                 TraitItemKind::Type(_, ty) => ty,
                 _ => None,
             },
@@ -5280,7 +5259,7 @@ impl<'hir> Node<'hir> {
             | Node::TraitItem(TraitItem {
                 owner_id,
                 kind:
-                    TraitItemKind::Const(_, Some(ConstItemRhs::Body(body)), _)
+                    TraitItemKind::Const(_, Some(ConstItemRhs::Body(body)))
                     | TraitItemKind::Fn(_, TraitFn::Provided(body)),
                 ..
             })
