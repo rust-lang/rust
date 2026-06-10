@@ -568,6 +568,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             orig_ident_span,
             warn_ambiguity,
             |this, resolution| {
+                if res == Res::Err
+                    && let Some(old_decl) = resolution.best_decl()
+                    && old_decl.res() != Res::Err
+                {
+                    // Do not override real declarations with `Res::Err`s from error recovery.
+                    // FIXME: this special case shouldn't be necessary, but removing it triggers an ICE
+                    // due to some other issues (#157406, tests/ui/imports/dummy-import-ice.rs).
+                    return Ok(());
+                }
                 if decl.is_glob_import() {
                     resolution.glob_decl = Some(match resolution.glob_decl {
                         Some(old_decl) => this.select_glob_decl(
