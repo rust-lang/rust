@@ -364,11 +364,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn param_info(&self, def_id: DefId) -> ParamInfo {
         let sig = self.tcx.fn_sig(def_id).skip_binder().skip_binder();
 
-        // FIXME(splat): use `sig.splatted()` once FnSig has it
         ParamInfo {
             param_count: sig.inputs().len() + usize::from(sig.c_variadic()),
             c_variadic: sig.c_variadic(),
-            splatted: None,
+            splatted: sig.splatted(),
         }
     }
 
