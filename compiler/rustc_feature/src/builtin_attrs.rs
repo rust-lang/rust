@@ -379,6 +379,7 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::rustc_strict_coherence,
     sym::rustc_dump_variances,
     sym::rustc_dump_variances_of_opaques,
+    sym::rustc_dump_generics,
     sym::rustc_dump_hidden_type_of_opaques,
     sym::rustc_dump_layout,
     sym::rustc_abi,
