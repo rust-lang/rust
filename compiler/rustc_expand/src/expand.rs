@@ -8,9 +8,9 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, AssocCtxt, Visitor, VisitorResult, try_visit, walk_list};
 use rustc_ast::{
     self as ast, AssocItemKind, AstNodeWrapper, AttrArgs, AttrItemKind, AttrStyle, AttrVec,
-    DUMMY_NODE_ID, DelegationSuffixes, EarlyParsedAttribute, ExprKind, ForeignItemKind, HasAttrs,
-    HasNodeId, Inline, ItemKind, MacStmtStyle, MetaItemInner, MetaItemKind, ModKind, NodeId,
-    PatKind, StmtKind, TyKind, token,
+    DUMMY_NODE_ID, DelegationSource, DelegationSuffixes, EarlyParsedAttribute, ExprKind,
+    ForeignItemKind, HasAttrs, HasNodeId, Inline, ItemKind, MacStmtStyle, MetaItemInner,
+    MetaItemKind, ModKind, NodeId, PatKind, StmtKind, TyKind, token,
 };
 use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::parser::AllowExprMetavar;
@@ -992,7 +992,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
                 type Node = AstNodeWrapper<Box<ast::AssocItem>, ImplItemTag>;
                 let single_delegations = build_single_delegations::<Node>(
-                    self.cx, deleg, &item, &suffixes, item.span, true,
+                    self.cx,
+                    deleg,
+                    &item,
+                    &suffixes,
+                    item.span,
+                    DelegationSource::Glob,
                 );
                 // `-Zmacro-stats` ignores these because they don't seem important.
                 fragment_kind.expect_from_annotatables(single_delegations.map(|item| {
@@ -2041,8 +2046,12 @@ fn build_single_delegations<'a, Node: InvocationCollectorNode>(
     item: &'a ast::Item<Node::ItemKind>,
     suffixes: &'a [(Ident, Option<Ident>)],
     item_span: Span,
-    from_glob: bool,
+    source: DelegationSource,
 ) -> impl Iterator<Item = ast::Item<Node::ItemKind>> + 'a {
+    debug_assert_ne!(source, DelegationSource::Single);
+
+    let from_glob = source == DelegationSource::Glob;
+
     if suffixes.is_empty() {
         // Report an error for now, to avoid keeping stem for resolution and
         // stability checks.
@@ -2066,11 +2075,7 @@ fn build_single_delegations<'a, Node: InvocationCollectorNode>(
                 ident: rename.unwrap_or(ident),
                 rename,
                 body: deleg.body.clone(),
-                source: if from_glob {
-                    ast::DelegationSource::Glob
-                } else {
-                    ast::DelegationSource::List
-                },
+                source,
             })),
             tokens: None,
         }
@@ -2414,7 +2419,12 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     };
 
                     let single_delegations = build_single_delegations::<Node>(
-                        self.cx, deleg, item, suffixes, item.span, false,
+                        self.cx,
+                        deleg,
+                        item,
+                        suffixes,
+                        item.span,
+                        DelegationSource::List(LocalExpnId::fresh_empty()),
                     );
                     Node::flatten_outputs(single_delegations.map(|item| {
                         let mut item = Node::from_item(item);

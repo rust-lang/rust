@@ -11,6 +11,7 @@ mod check_attr;
 mod check_export;
 pub mod dead;
 mod debugger_visualizer;
+pub mod delegation;
 mod diagnostic_items;
 mod eii;
 pub mod entry;
