@@ -45,6 +45,7 @@ pub use diagnostic_impls::{
 };
 pub use emitter::ColorConfig;
 use emitter::{DynEmitter, Emitter};
+use rustc_ast::attr::version::RustcVersion;
 use rustc_data_structures::AtomicRef;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hash::StableHasher;
@@ -363,6 +364,9 @@ struct DiagCtxtInner {
     /// The file where the ICE information is stored. This allows delayed_span_bug backtraces to be
     /// stored along side the main panic backtrace.
     ice_file: Option<PathBuf>,
+
+    /// Controlled by `-Z lint-rust-version`; this allows avoiding emitting lints which would raise MSRV.
+    msrv: Option<RustcVersion>,
 }
 
 /// A key denoting where from a diagnostic was stashed.
@@ -477,6 +481,11 @@ impl DiagCtxt {
         self
     }
 
+    pub fn with_msrv(mut self, msrv: RustcVersion) -> Self {
+        self.inner.get_mut().msrv = Some(msrv);
+        self
+    }
+
     pub fn new(emitter: Box<DynEmitter>) -> Self {
         Self { inner: Lock::new(DiagCtxtInner::new(emitter)) }
     }
@@ -524,6 +533,7 @@ impl DiagCtxt {
             future_breakage_diagnostics,
             fulfilled_expectations,
             ice_file: _,
+            msrv: _,
         } = inner.deref_mut();
 
         // For the `Vec`s and `HashMap`s, we overwrite with an empty container to free the
@@ -1170,6 +1180,7 @@ impl DiagCtxtInner {
             future_breakage_diagnostics: Vec::new(),
             fulfilled_expectations: Default::default(),
             ice_file: None,
+            msrv: None,
         }
     }
 
@@ -1282,6 +1293,12 @@ impl DiagCtxtInner {
                     return None;
                 }
             }
+        }
+
+        if let (Some(msrv), Some(diag_msrv)) = (self.msrv, diagnostic.rust_version)
+            && diag_msrv > msrv
+        {
+            return None;
         }
 
         TRACK_DIAGNOSTIC(diagnostic, &mut |mut diagnostic| {
