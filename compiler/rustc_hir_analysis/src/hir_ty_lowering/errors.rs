@@ -115,7 +115,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     pub(super) fn report_unresolved_assoc_item<I>(
         &self,
         all_candidates: impl Fn() -> I,
-        qself: AssocItemQSelf,
+        qself: AssocItemQSelf<'tcx>,
         assoc_tag: ty::AssocTag,
         assoc_ident: Ident,
         span: Span,
@@ -408,7 +408,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         bound1: ty::PolyTraitRef<'tcx>,
         bound2: ty::PolyTraitRef<'tcx>,
         matching_candidates: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
-        qself: AssocItemQSelf,
+        qself: AssocItemQSelf<'tcx>,
         assoc_tag: ty::AssocTag,
         assoc_ident: Ident,
         span: Span,
