@@ -1050,11 +1050,13 @@ pub fn make_projection<'tcx>(
         #[cfg(debug_assertions)]
         assert_generic_args_match(tcx, assoc_item.def_id, args);
 
-        Some(AliasTy::new_from_args(
-            tcx,
-            ty::AliasTyKind::new_from_def_id(tcx, assoc_item.def_id),
-            args,
-        ))
+        let kind = if let DefKind::Impl { of_trait: false } = tcx.def_kind(tcx.parent(assoc_item.def_id)) {
+            ty::AliasTyKind::Inherent { def_id: assoc_item.def_id }
+        } else {
+            ty::AliasTyKind::Projection { def_id: assoc_item.def_id }
+        };
+
+        Some(AliasTy::new_from_args(tcx, kind, args))
     }
     helper(
         tcx,
