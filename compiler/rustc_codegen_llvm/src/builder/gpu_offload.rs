@@ -11,6 +11,7 @@ use rustc_middle::ty::offload_meta::{MappingFlags, OffloadMetadata, OffloadSize}
 use crate::builder::Builder;
 use crate::builder::gpu_helper::*;
 use crate::common::CodegenCx;
+use crate::intrinsic::TransferType;
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, Linkage, Type, Value};
 use crate::{SimpleCx, attributes};
@@ -28,6 +29,9 @@ pub(crate) struct OffloadGlobals<'ll> {
     pub end_mapper: &'ll llvm::Value,
     pub mapper_fn_ty: &'ll llvm::Type,
 
+    pub nowait_begin_mapper: &'ll llvm::Value,
+    pub nowait_mapper_fn_ty: &'ll llvm::Type,
+
     pub ident_t_global: &'ll llvm::Value,
 }
 
@@ -37,6 +41,7 @@ impl<'ll> OffloadGlobals<'ll> {
         let kernel_args_ty = KernelArgsTy::new_decl(cx);
         let offload_entry_ty = TgtOffloadEntry::new_decl(cx);
         let (begin_mapper, _, end_mapper, mapper_fn_ty) = gen_tgt_data_mappers(cx);
+        let (nowait_begin_mapper, nowait_mapper_fn_ty) = gen_tgt_data_nowait_mappers(cx);
         let ident_t_global = generate_at_one(cx);
 
         // We want LLVM's openmp-opt pass to pick up and optimize this module, since it covers both
@@ -49,8 +54,10 @@ impl<'ll> OffloadGlobals<'ll> {
             kernel_args_ty,
             offload_entry_ty,
             begin_mapper,
+            nowait_begin_mapper,
             end_mapper,
             mapper_fn_ty,
+            nowait_mapper_fn_ty,
             ident_t_global,
         }
     }
@@ -352,6 +359,24 @@ pub(crate) struct OffloadKernelGlobals<'ll> {
     pub region_id: &'ll llvm::Value,
 }
 
+fn gen_tgt_data_nowait_mappers<'ll>(
+    cx: &CodegenCx<'ll, '_>,
+) -> (&'ll llvm::Value, &'ll llvm::Type) {
+    let tptr = cx.type_ptr();
+    let ti64 = cx.type_i64();
+    let ti32 = cx.type_i32();
+
+    let args = vec![tptr, ti64, ti32, tptr, tptr, tptr, tptr, tptr, tptr, ti32, tptr, ti32, tptr];
+    let mapper_fn_ty = cx.type_func(&args, cx.type_void());
+    let mapper_begin = "__tgt_target_data_begin_nowait_mapper";
+    let begin_mapper_decl = declare_offload_fn(&cx, mapper_begin, mapper_fn_ty);
+
+    let nounwind = llvm::AttributeKind::NoUnwind.create_attr(cx.llcx);
+    attributes::apply_to_llfn(begin_mapper_decl, Function, &[nounwind]);
+
+    (begin_mapper_decl, mapper_fn_ty)
+}
+
 fn gen_tgt_data_mappers<'ll>(
     cx: &CodegenCx<'ll, '_>,
 ) -> (&'ll llvm::Value, &'ll llvm::Value, &'ll llvm::Value, &'ll llvm::Type) {
@@ -419,13 +444,14 @@ pub(crate) fn gen_define_handling<'ll>(
     metadata: &[OffloadMetadata],
     symbol: String,
     offload_globals: &OffloadGlobals<'ll>,
-    gen_kernel: bool,
+    transfer: TransferType,
 ) -> OffloadKernelGlobals<'ll> {
     if let Some(entry) = cx.offload_kernel_cache.borrow().get(&symbol) {
         return *entry;
     }
 
     let offload_entry_ty = offload_globals.offload_entry_ty;
+    let gen_kernel = matches!(transfer, TransferType::Kernel);
 
     let (sizes, transfer): (Vec<_>, Vec<_>) =
         metadata.iter().map(|m| (m.payload_size, m.mode)).unzip();
@@ -479,7 +505,6 @@ pub(crate) fn gen_define_handling<'ll>(
     } else {
         None
     };
-    //dbg!(&transfer_from);
     let memtransfer_end =
         add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{symbol}.end"), &transfer_from);
 
@@ -622,6 +647,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
         fn_ty,
         num_args,
         s_ident_t,
+        TransferType::Kernel,
     );
     let values = KernelArgsTy::new(
         &cx,
@@ -666,5 +692,6 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
         fn_ty,
         num_args,
         s_ident_t,
+        TransferType::Kernel,
     );
 }

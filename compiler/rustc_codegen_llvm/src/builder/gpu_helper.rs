@@ -1,5 +1,6 @@
 use crate::SimpleCx;
 use crate::builder::Builder;
+use crate::intrinsic::TransferType;
 use crate::llvm;
 use crate::llvm::{Type, Value};
 use rustc_abi::Align;
@@ -67,13 +68,18 @@ pub(crate) fn generate_mapper_call<'ll, 'tcx>(
     fn_ty: &'ll Type,
     num_args: u64,
     s_ident_t: &'ll Value,
+    transfer: TransferType,
 ) {
     let cx = builder.cx;
     let nullptr = cx.const_null(cx.type_ptr());
     let i64_max = cx.get_const_i64(u64::MAX);
     let num_args = cx.get_const_i32(num_args);
-    let args =
+    let mut args =
         vec![s_ident_t, i64_max, num_args, geps[0], geps[1], geps[2], o_type, nullptr, nullptr];
+    if matches!(transfer, TransferType::NowaitBegin) {
+        let i32_0 = cx.get_const_i32(0);
+        args.append(&mut vec![i32_0, nullptr, i32_0, nullptr]);
+    }
     builder.call(fn_ty, None, None, fn_to_call, &args, None, None);
 }
 
