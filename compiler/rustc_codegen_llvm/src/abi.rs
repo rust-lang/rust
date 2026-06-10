@@ -595,6 +595,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 llfn,
                 &cx.tcx.codegen_instance_attrs(instance.def),
                 Some(instance),
+                cx.sanitizer_ignorelist.as_ref(),
             );
         }
     }

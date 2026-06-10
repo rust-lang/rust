@@ -358,6 +358,52 @@ pub(crate) fn build_byte_buffer(f: impl FnOnce(&RustString)) -> Vec<u8> {
     RustString::build_byte_buffer(f)
 }
 
+pub(crate) struct SanitizerIgnoreList {
+    inner: *mut ffi::Opaque,
+}
+
+impl SanitizerIgnoreList {
+    pub(crate) fn new(paths: &[String]) -> Result<Self, String> {
+        use std::ffi::CString;
+        let c_paths: Vec<CString> =
+            paths.iter().map(|p| CString::new(p.as_str()).unwrap()).collect();
+        let c_ptrs: Vec<*const libc::c_char> = c_paths.iter().map(|c| c.as_ptr()).collect();
+
+        let mut inner = std::ptr::null_mut();
+        let err = build_string(|err| unsafe {
+            inner = ffi::LLVMRustSpecialCaseListCreate(c_ptrs.as_ptr(), c_ptrs.len(), err);
+        });
+
+        let err = err.unwrap_or_else(|e| format!("utf8 error: {}", e));
+        if inner.is_null() { Err(err) } else { Ok(Self { inner }) }
+    }
+
+    pub(crate) fn contains_prefix(
+        &self,
+        section: &std::ffi::CStr,
+        prefix: &std::ffi::CStr,
+        query: &str,
+    ) -> bool {
+        let query = std::ffi::CString::new(query).unwrap();
+        unsafe {
+            ffi::LLVMRustSpecialCaseListContainsPrefix(
+                self.inner,
+                section.as_ptr(),
+                prefix.as_ptr(),
+                query.as_ptr(),
+            )
+        }
+    }
+}
+
+impl Drop for SanitizerIgnoreList {
+    fn drop(&mut self) {
+        unsafe {
+            ffi::LLVMRustSpecialCaseListDestroy(self.inner);
+        }
+    }
+}
+
 pub(crate) fn twine_to_string(tr: &Twine) -> String {
     unsafe {
         build_string(|s| LLVMRustWriteTwineToString(tr, s)).expect("got a non-UTF8 Twine from LLVM")

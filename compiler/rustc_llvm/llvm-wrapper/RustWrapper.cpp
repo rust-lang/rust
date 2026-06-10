@@ -34,8 +34,10 @@
 #include "llvm/Support/JSON.h"
 #include "llvm/Support/ModRef.h"
 #include "llvm/Support/Signals.h"
+#include "llvm/Support/SpecialCaseList.h"
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/ToolOutputFile.h"
+#include "llvm/Support/VirtualFileSystem.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/ValueMapper.h"
 #include <iostream>
@@ -1895,3 +1897,35 @@ FIXED_MD_KIND(MD_noalias_addrspace, 41)
 // LLVM versions, it's fine to omit them from this list; in that case Rust-side
 // code cannot declare them as fixed IDs and must look them up by name instead.
 #undef FIXED_MD_KIND
+
+extern "C" LLVMSpecialCaseListRef
+LLVMRustSpecialCaseListCreate(const char **Paths, size_t NumPaths,
+                              RustStringRef ErrorMsg) {
+  std::string Error;
+  std::vector<std::string> PathsVec(Paths, Paths + NumPaths);
+  std::unique_ptr<llvm::SpecialCaseList> SCL = llvm::SpecialCaseList::create(
+      PathsVec, *llvm::vfs::getRealFileSystem(), Error);
+  if (!SCL) {
+    LLVMRustStringWriteImpl(ErrorMsg, Error.data(), Error.size());
+    return nullptr;
+  }
+  return reinterpret_cast<LLVMSpecialCaseListRef>(SCL.release());
+}
+
+extern "C" void LLVMRustSpecialCaseListDestroy(LLVMSpecialCaseListRef List) {
+  delete reinterpret_cast<llvm::SpecialCaseList *>(List);
+}
+
+extern "C" bool
+LLVMRustSpecialCaseListContainsPrefix(LLVMSpecialCaseListRef List,
+                                      const char *Section, const char *Prefix,
+                                      const char *Query) {
+  auto *SCL = reinterpret_cast<llvm::SpecialCaseList *>(List);
+  std::pair<unsigned, unsigned> NoSan =
+      SCL->inSectionBlame(Section, Prefix, Query);
+  if (NoSan.second == 0)
+    return false;
+  std::pair<unsigned, unsigned> San =
+      SCL->inSectionBlame(Section, Prefix, Query, "sanitize");
+  return San.second == 0 || NoSan > San;
+}

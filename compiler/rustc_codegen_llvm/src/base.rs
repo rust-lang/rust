@@ -123,7 +123,12 @@ pub(crate) fn compile_codegen_unit(
             if let Some(entry) =
                 maybe_create_entry_wrapper::<Builder<'_, '_, '_>>(&cx, cx.codegen_unit)
             {
-                let attrs = attributes::sanitize_attrs(&cx, tcx, SanitizerFnAttrs::default());
+                let attrs = attributes::sanitize_attrs(
+                    &cx,
+                    tcx,
+                    SanitizerFnAttrs::default(),
+                    tcx.sess.sanitizers(),
+                );
                 attributes::apply_to_llfn(entry, llvm::AttributePlace::Function, &attrs);
             }
 

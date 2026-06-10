@@ -509,6 +509,52 @@ impl<'ll> CodegenCx<'ll, '_> {
 
         base::set_variable_sanitizer_attrs(g, attrs);
 
+        if let Some(ignorelist) = &self.sanitizer_ignorelist {
+            let instance = ty::Instance::mono(self.tcx, def_id);
+            let sym_name = self.tcx.symbol_name(instance).name;
+            let span = self.tcx.def_span(def_id);
+            let source_map = self.tcx.sess.source_map();
+            let filename =
+                source_map.span_to_filename(span).prefer_local_unconditionally().to_string();
+            let ty_name = rustc_middle::ty::print::with_no_trimmed_paths!(
+                self.tcx.type_of(def_id).skip_binder().to_string()
+            );
+            let mainfile = self
+                .tcx
+                .sess
+                .local_crate_source_file()
+                .and_then(|path| path.local_path().map(|p| p.display().to_string()))
+                .unwrap_or_default();
+
+            let is_ignored = |section: &std::ffi::CStr| -> bool {
+                ignorelist.contains_prefix(section, c"global", sym_name)
+                    || ignorelist.contains_prefix(section, c"src", &filename)
+                    || (!mainfile.is_empty()
+                        && ignorelist.contains_prefix(section, c"mainfile", &mainfile))
+                    || ignorelist.contains_prefix(section, c"type", &ty_name)
+            };
+
+            let sanitizers = self.tcx.sess.sanitizers();
+            let ignore_address = is_ignored(c"address");
+            let ignore_kernel_address = ignore_address || is_ignored(c"kernel-address");
+            let ignore_hwaddress = is_ignored(c"hwaddress");
+            let ignore_kernel_hwaddress = ignore_hwaddress || is_ignored(c"kernel-hwaddress");
+
+            if (sanitizers.contains(rustc_target::spec::SanitizerSet::ADDRESS) && ignore_address)
+                || (sanitizers.contains(rustc_target::spec::SanitizerSet::KERNELADDRESS)
+                    && ignore_kernel_address)
+            {
+                unsafe { llvm::LLVMRustSetNoSanitizeAddress(g) };
+            }
+            if (sanitizers.contains(rustc_target::spec::SanitizerSet::HWADDRESS)
+                && ignore_hwaddress)
+                || (sanitizers.contains(rustc_target::spec::SanitizerSet::KERNELHWADDRESS)
+                    && ignore_kernel_hwaddress)
+            {
+                unsafe { llvm::LLVMRustSetNoSanitizeHWAddress(g) };
+            }
+        }
+
         if attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER) {
             // `USED` and `USED_LINKER` can't be used together.
             assert!(!attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER));
