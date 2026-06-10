@@ -291,3 +291,56 @@ impl Client {
         }
     }
 }
+
+#[cfg(target_family = "wasm")]
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+fn __rustc_proc_macro_alloc_buffer(len: usize) -> *mut Buffer {
+    Box::into_raw(Box::new(Buffer::from(vec![0; len])))
+}
+
+#[cfg(target_family = "wasm")]
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+unsafe fn __rustc_proc_macro_buffer_replace(buffer: *mut Buffer, len: usize) {
+    unsafe { (*buffer) = Buffer::from(vec![0; len]) }
+}
+
+#[cfg(target_family = "wasm")]
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+unsafe fn __rustc_proc_macro_buffer_ptr(buffer: *mut Buffer) -> *mut u8 {
+    unsafe { (*buffer).as_mut_ptr() }
+}
+
+#[cfg(target_family = "wasm")]
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+unsafe fn __rustc_proc_macro_buffer_len(buffer: *mut Buffer) -> usize {
+    unsafe { (&*buffer).len() }
+}
+
+#[cfg(target_family = "wasm")]
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+fn __rustc_proc_macro_call_client(
+    input: &mut Buffer,
+    client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
+) -> *mut Buffer {
+    #[link(wasm_import_module = "env")]
+    unsafe extern "C" {
+        fn __rustc_proc_macro_dispatch(input: &Buffer, output: &mut Buffer);
+    }
+
+    let dispatch = closure::Closure::from(Box::leak(Box::new(|input| {
+        let mut output = Buffer::new();
+        unsafe { __rustc_proc_macro_dispatch(&input, &mut output) }
+        output
+    })));
+
+    Box::into_raw(Box::new(client(BridgeConfig {
+        input: input.take(),
+        dispatch,
+        force_show_panics: false,
+    })))
+}
