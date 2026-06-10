@@ -3,7 +3,7 @@
 
 use std::iter;
 
-use super::directives::{AUX_BIN, AUX_BUILD, AUX_CODEGEN_BACKEND, AUX_CRATE, PROC_MACRO};
+use super::directives::{AUX_BIN, AUX_BUILD, AUX_CODEGEN_BACKEND, AUX_CRATE, AUX_LINT, PROC_MACRO};
 use crate::common::Config;
 use crate::directives::DirectiveLine;
 use crate::util::static_regex;
@@ -52,17 +52,20 @@ pub(crate) struct AuxProps {
     /// Similar to `builds`, but also uses the resulting dylib as a
     /// `-Zcodegen-backend` when compiling the test file.
     pub(crate) codegen_backend: Option<String>,
+    /// Similar to `builds`, with the resulting dylibs passed to the lint test driver
+    pub(crate) lints: Vec<String>,
 }
 
 impl AuxProps {
     /// Yields all of the paths (relative to `./auxiliary/`) that have been
     /// specified in `aux-*` directives for this test.
     pub(crate) fn all_aux_path_strings(&self) -> impl Iterator<Item = &str> {
-        let Self { builds, bins, crates, proc_macros, codegen_backend } = self;
+        let Self { builds, bins, crates, proc_macros, codegen_backend, lints } = self;
 
         iter::empty()
             .chain(builds.iter().map(String::as_str))
             .chain(bins.iter().map(String::as_str))
+            .chain(lints.iter().map(String::as_str))
             .chain(crates.iter().map(|c| c.path.as_str()))
             .chain(proc_macros.iter().map(|p| p.path.as_str()))
             .chain(codegen_backend.iter().map(String::as_str))
@@ -84,6 +87,7 @@ pub(super) fn parse_and_update_aux(
 
     config.push_name_value_directive(ln, AUX_BUILD, &mut aux.builds, |r| r.trim().to_string());
     config.push_name_value_directive(ln, AUX_BIN, &mut aux.bins, |r| r.trim().to_string());
+    config.push_name_value_directive(ln, AUX_LINT, &mut aux.lints, |r| r.trim().to_string());
     config.push_name_value_directive(ln, AUX_CRATE, &mut aux.crates, parse_aux_crate);
     config.push_name_value_directive(ln, PROC_MACRO, &mut aux.proc_macros, parse_proc_macro);
 
