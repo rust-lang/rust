@@ -22,7 +22,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 use tracing::{debug, info, instrument, trace};
 
-use crate::errors::*;
+use crate::diagnostics::*;
 use crate::thir::cx::ThirBuildCx;
 
 impl<'tcx> ThirBuildCx<'tcx> {
