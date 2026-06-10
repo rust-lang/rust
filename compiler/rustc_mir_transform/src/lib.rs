@@ -511,7 +511,18 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
     };
 
     let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::Const { always });
-    pm::run_passes(tcx, &mut body, &[&ctfe_limit::CtfeLimit], None, pm::Optimizations::Allowed);
+    // FIXME(reflection): probably need to look at this for comptime closures
+    let passes: &[&dyn MirPass<'_>] = if matches!(tcx.def_kind(def), DefKind::Fn | DefKind::AssocFn)
+        && matches!(tcx.constness(def), hir::Constness::Const { always: true })
+    {
+        // Need to generate mentioned items, as all functions are expected to have them, but for const
+        // fns we just look at the optimized MIR, which generates it. For comptime fns, there is no
+        // optimized MIR.
+        &[&ctfe_limit::CtfeLimit, &mentioned_items::MentionedItems]
+    } else {
+        &[&ctfe_limit::CtfeLimit]
+    };
+    pm::run_passes(tcx, &mut body, passes, None, pm::Optimizations::Allowed);
 
     body
 }
