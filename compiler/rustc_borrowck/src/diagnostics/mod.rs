@@ -537,9 +537,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     Some(self.infcx.tcx.hir_name(var_id).to_string())
                 }
                 _ => {
-                    // Might need a revision when the fields in trait RFC is implemented
-                    // (https://github.com/rust-lang/rfcs/pull/1546)
-                    bug!("End-user description not implemented for field access on `{:?}`", ty);
+                    // This can happen for field accesses on `Box<T>`: the field is
+                    // described from the boxed type, which may have no named fields
+                    Some(field.index().to_string())
                 }
             }
         }
