@@ -429,13 +429,6 @@ impl<I: Interner> ExistentialTraitRef<I> {
     /// Therefore, you must specify *some* self type to perform the conversion.
     /// A common choice is the trait object type itself or some kind of dummy type.
     pub fn with_self_ty(self, interner: I, self_ty: I::Ty) -> TraitRef<I> {
-        // FIXME(#157122): This assertion was accidentally commented out in refactoring PR #53816
-        //                 back in 2018 but nowadays it can actually trigger. Either remove this
-        //                 comment entirely if the assertion is incorrect or uncomment it and fix
-        //                 the fallout!
-        // otherwise the escaping vars would be captured by the binder
-        //debug_assert!(!self_ty.has_escaping_bound_vars());
-
         TraitRef::new(interner, self.def_id, [self_ty.into()].into_iter().chain(self.args.iter()))
     }
 }
