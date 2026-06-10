@@ -699,23 +699,49 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
             return;
         }
 
-        let Some(debug) = cx.tcx.get_diagnostic_item(sym::Debug) else { return };
+        let Some(debug_trait_def_id) = cx.tcx.get_diagnostic_item(sym::Debug) else { return };
 
-        let has_impl = cx
+        let ty = cx.tcx.type_of(item.owner_id);
+
+        // FIXME: unaudited potential fast path
+        if cx
             .tcx
             .non_blanket_impls_for_ty(
-                debug,
-                cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip(),
+                debug_trait_def_id,
+                ty.instantiate_identity().skip_normalization(),
             )
             .next()
-            .is_some();
-        if !has_impl {
-            cx.emit_span_lint(
-                MISSING_DEBUG_IMPLEMENTATIONS,
-                item.span,
-                BuiltinMissingDebugImpl { tcx: cx.tcx, def_id: debug },
-            );
+            .is_some()
+        {
+            return;
         }
+
+        // FIXME: unaudited
+
+        let (infcx, param_env) = cx.tcx.infer_ctxt().build_with_typing_env(cx.typing_env());
+        let ty = ty
+            .instantiate(cx.tcx, infcx.fresh_args_for_item(item.span, item.owner_id.to_def_id()))
+            .skip_normalization();
+
+        let trait_ref = ty::TraitRef::new(cx.tcx, debug_trait_def_id, [ty]);
+        let obligation = traits::Obligation {
+            cause: traits::ObligationCause::dummy(),
+            param_env,
+            recursion_depth: 0,
+            predicate: trait_ref.upcast(cx.tcx),
+        };
+
+        // FIXME: `predicate_must_hold_modulo_regions` is too strict but ideally we would use that
+        //        wouldn't we? Kinda bad that free alias types "throw off" PMHMR, no?
+        if infcx.predicate_may_hold(&obligation) {
+            return;
+        }
+
+        cx.emit_span_lint(
+            MISSING_DEBUG_IMPLEMENTATIONS,
+            item.span,
+            BuiltinMissingDebugImpl { tcx: cx.tcx, def_id: debug_trait_def_id },
+        );
     }
 }
 
