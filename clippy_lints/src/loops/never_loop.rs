@@ -26,9 +26,9 @@ pub(super) fn check<'tcx>(
 ) {
     match never_loop_block(cx, block, &mut Vec::new(), loop_id) {
         NeverLoopResult::Diverging {
-            ref break_spans,
-            ref never_spans,
-            ref non_obvious_exprs,
+            break_spans,
+            never_spans,
+            non_obvious_exprs,
         } => {
             span_lint_and_then(cx, NEVER_LOOP, span, "this loop never actually loops", |diag| {
                 if let Some(ForLoop {
@@ -56,7 +56,7 @@ pub(super) fn check<'tcx>(
                         for_to_if_let_sugg(cx, iterator, pat),
                     )];
                     // Make sure to clear up the diverging sites when we remove a loop.
-                    suggestions.extend(break_spans.iter().map(|span| (*span, String::new())));
+                    suggestions.extend(break_spans.into_iter().map(|span| (span, String::new())));
                     diag.multipart_suggestion(
                         "if you need the first element of the iterator, try writing",
                         suggestions,
@@ -65,15 +65,15 @@ pub(super) fn check<'tcx>(
 
                     for span in never_spans {
                         diag.span_help(
-                            *span,
+                            span,
                             "this code is unreachable. Consider moving the reachable parts out",
                         );
                     }
                 }
 
                 let non_obvious_spans = non_obvious_exprs
-                    .iter()
-                    .map(|hir_id| cx.tcx.hir_expect_expr(*hir_id))
+                    .into_iter()
+                    .map(|hir_id| cx.tcx.hir_expect_expr(hir_id))
                     .flat_map(|expr| find_non_obvious_spans(cx, expr));
 
                 for span in non_obvious_spans {
