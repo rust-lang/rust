@@ -137,9 +137,9 @@ use crate::sys::{FromInner, IntoInner, time};
 /// if available, which is the case for all [tier 1] platforms.
 /// In practice such guarantees are – under rare circumstances – broken by hardware, virtualization
 /// or operating system bugs. To work around these bugs and platforms not offering monotonic clocks
-/// [`duration_since`], [`elapsed`] and [`sub`] saturate to zero. In older Rust versions this
-/// lead to a panic instead. [`checked_duration_since`] can be used to detect and handle situations
-/// where monotonicity is violated, or `Instant`s are subtracted in the wrong order.
+/// [`duration_since`], [`elapsed`] and [`sub`](#impl-Sub-for-Instant) saturate to zero. In older
+/// Rust versions this lead to a panic instead. [`checked_duration_since`] can be used to detect and
+/// handle situations where monotonicity is violated, or `Instant`s are subtracted in the wrong order.
 ///
 /// This workaround obscures programming errors where earlier and later instants are accidentally
 /// swapped. For this reason future Rust versions may reintroduce panics.
