@@ -206,13 +206,6 @@ To measure time for from-scratch analysis, use something like this:
 cargo run --release -p rust-analyzer -- analysis-stats ../chalk/
 ```
 
-For measuring time of incremental analysis, use either of these:
-
-```bash
-cargo run --release -p rust-analyzer -- analysis-bench ../chalk/ --highlight ../chalk/chalk-engine/src/logic.rs
-cargo run --release -p rust-analyzer -- analysis-bench ../chalk/ --complete ../chalk/chalk-engine/src/logic.rs:94:0
-```
-
 Look for `fn benchmark_xxx` tests for a quick way to reproduce performance problems.
 
 ## Release Process
