@@ -1927,59 +1927,55 @@ fn simd_contains(needle: &str, haystack: &str) -> Option<bool> {
 #[inline]
 unsafe fn small_slice_eq(x: &[u8], y: &[u8]) -> bool {
     debug_assert_eq!(x.len(), y.len());
-    // This function is adapted from
-    // https://github.com/BurntSushi/memchr/blob/8037d11b4357b0f07be2bb66dc2659d9cf28ad32/src/memmem/util.rs#L32
 
-    // If we don't have enough bytes to do 4-byte at a time loads, then
-    // fall back to the naive slow version.
-    //
-    // Potential alternative: We could do a copy_nonoverlapping combined with a mask instead
-    // of a loop. Benchmark it.
-    if x.len() < 4 {
-        for (&b1, &b2) in x.iter().zip(y) {
-            if b1 != b2 {
-                return false;
-            }
-        }
-        return true;
-    }
-    // When we have 4 or more bytes to compare, then proceed in chunks of 4 at
-    // a time using unaligned loads.
-    //
-    // Also, why do 4 byte loads instead of, say, 8 byte loads? The reason is
-    // that this particular version of memcmp is likely to be called with tiny
-    // needles. That means that if we do 8 byte loads, then a higher proportion
-    // of memcmp calls will use the slower variant above. With that said, this
-    // is a hypothesis and is only loosely supported by benchmarks. There's
-    // likely some improvement that could be made here. The main thing here
-    // though is to optimize for latency, not throughput.
+    let mut n = x.len();
+    let mut px = x.as_ptr();
+    let mut py = y.as_ptr();
 
-    // SAFETY: Via the conditional above, we know that both `px` and `py`
-    // have the same length, so `px < pxend` implies that `py < pyend`.
-    // Thus, dereferencing both `px` and `py` in the loop below is safe.
-    //
-    // Moreover, we set `pxend` and `pyend` to be 4 bytes before the actual
-    // end of `px` and `py`. Thus, the final dereference outside of the
-    // loop is guaranteed to be valid. (The final comparison will overlap with
-    // the last comparison done in the loop for lengths that aren't multiples
-    // of four.)
-    //
-    // Finally, we needn't worry about alignment here, since we do unaligned
-    // loads.
+    // SAFETY: The caller guarantees that `x` and `y` are valid for reads
+    // up to `x.len()` (which equals `n`). All pointer arithmetic and reads
+    // remain strictly within these allocated boundaries.
     unsafe {
-        let (mut px, mut py) = (x.as_ptr(), y.as_ptr());
-        let (pxend, pyend) = (px.add(x.len() - 4), py.add(y.len() - 4));
-        while px < pxend {
-            let vx = (px as *const u32).read_unaligned();
-            let vy = (py as *const u32).read_unaligned();
+        // This structural optimization is adapted from the upstream memchr improvement:
+        // https://github.com/BurntSushi/memchr/commit/e77f0bf07ae3445d77776aabe233a9352dd753c5
+        //
+        // When we have 4 or more bytes to compare, then proceed in chunks of 4 at
+        // a time using unaligned loads. This leverages integer down-counting (`n -= 4`),
+        // which allows the compiler (LLVM) to optimize register reuse and loop mechanics.
+        while n >= 4 {
+            let vx = px.cast::<u32>().read_unaligned();
+            let vy = py.cast::<u32>().read_unaligned();
             if vx != vy {
                 return false;
             }
             px = px.add(4);
             py = py.add(4);
+            n -= 4;
         }
-        let vx = (pxend as *const u32).read_unaligned();
-        let vy = (pyend as *const u32).read_unaligned();
-        vx == vy
+
+        // Handle remaining 2-byte chunk if present. We read a `u16` in a single
+        // hardware operation rather than falling back to a byte-by-byte loop,
+        // which would introduce additional pipeline-stalling branches.
+        if n >= 2 {
+            let vx = px.cast::<u16>().read_unaligned();
+            let vy = py.cast::<u16>().read_unaligned();
+            if vx != vy {
+                return false;
+            }
+            px = px.add(2);
+            py = py.add(2);
+            n -= 2;
+        }
+
+        // Handle any remaining single trailing byte. At this point, `n` can only
+        // be 0 or 1, making this branch highly predictable for the hardware
+        // branch predictor.
+        if n > 0 {
+            if px.read() != py.read() {
+                return false;
+            }
+        }
     }
+
+    true
 }
