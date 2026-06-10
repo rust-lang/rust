@@ -65,7 +65,7 @@ use rustc_target::spec::PanicStrategy;
 use tracing::info;
 
 use crate::creader::CStore;
-use crate::errors::{
+use crate::diagnostics::{
     BadPanicStrategy, CrateDepMultiple, IncompatiblePanicInDropStrategy,
     IncompatibleWithImmediateAbort, IncompatibleWithImmediateAbortCore, LibRequired,
     NonStaticCrateDep, RequiredPanicStrategy, RlibRequired, RustcLibRequired, TwoPanicRuntimes,
