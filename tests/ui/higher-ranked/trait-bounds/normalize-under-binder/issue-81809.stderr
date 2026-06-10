@@ -1,0 +1,20 @@
+error: conflicting associated type bindings for `Output`
+  --> $DIR/issue-81809.rs:17:34
+   |
+LL | fn foo(st: &impl StoreIndex) -> &dyn StoreIndex {
+   |                                  ^^^^^^^^^^^^^^
+   |
+   = note: `Output` is specified to be `u16`
+   = note: `Output` is also specified to be `u8`
+
+error: conflicting associated type bindings for `Output`
+  --> $DIR/issue-81809.rs:19:12
+   |
+LL |     st as &dyn StoreIndex
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: `Output` is specified to be `u16`
+   = note: `Output` is also specified to be `u8`
+
+error: aborting due to 2 previous errors
+

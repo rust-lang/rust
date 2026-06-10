@@ -1,0 +1,11 @@
+error: conflicting associated type bindings for `Assoc`
+  --> $DIR/conflicting-bounds-different-generics-unsound.rs:40:33
+   |
+LL |     require_trait::<'a, A1, A2, dyn Sub<'a, A1, A2>, C>(payload)
+   |                                 ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Assoc` is specified to be `&'static Box<i32>`
+   = note: `Assoc` is also specified to be `&'a Box<i32>`
+
+error: aborting due to 1 previous error
+
