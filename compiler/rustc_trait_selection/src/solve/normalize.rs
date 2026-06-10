@@ -136,15 +136,15 @@ impl<'me, 'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceAliasWithInfer<'me, 'tcx> {
         }
 
         let ct = ct.super_fold_with(self);
-        let ty::ConstKind::Unevaluated(uc) = ct.kind() else { return ct };
+        let ty::ConstKind::Unevaluated(uv) = ct.kind() else { return ct };
 
         if ct.has_escaping_bound_vars() {
             let (replaced, ..) =
-                BoundVarReplacer::replace_bound_vars(self.at.infcx, &mut self.universes, uc);
+                BoundVarReplacer::replace_bound_vars(self.at.infcx, &mut self.universes, uv);
             let _ = self.term_to_infer(replaced.into());
             ct
         } else {
-            self.term_to_infer(uc.into()).expect_const()
+            self.term_to_infer(uv.into()).expect_const()
         }
     }
 }

@@ -1,3 +1,5 @@
+use std::debug_assert_matches;
+
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem};
@@ -30,23 +32,11 @@ where
         goal: Goal<I, NormalizesTo<I>>,
     ) -> QueryResultOrRerunNonErased<I> {
         debug_assert!(self.term_is_fully_unconstrained(goal));
-        match goal.predicate.alias.kind {
-            ty::AliasTermKind::ProjectionTy { .. } | ty::AliasTermKind::ProjectionConst { .. } => {
-                self.normalize_associated_term(goal)
-            }
-            ty::AliasTermKind::InherentTy { .. }
-            | ty::AliasTermKind::InherentConst { .. }
-            | ty::AliasTermKind::OpaqueTy { .. }
-            | ty::AliasTermKind::FreeTy { .. }
-            | ty::AliasTermKind::FreeConst { .. }
-            | ty::AliasTermKind::AnonConst { .. } => unreachable!(),
-        }
-    }
+        debug_assert_matches!(
+            goal.predicate.alias.kind,
+            ty::AliasTermKind::ProjectionTy { .. } | ty::AliasTermKind::ProjectionConst { .. }
+        );
 
-    fn normalize_associated_term(
-        &mut self,
-        goal: Goal<I, NormalizesTo<I>>,
-    ) -> QueryResultOrRerunNonErased<I> {
         let cx = self.cx();
 
         let trait_ref = goal.predicate.alias.trait_ref(cx);

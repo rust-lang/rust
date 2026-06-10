@@ -215,11 +215,11 @@ where
         // With eager normalization, we should normalize the args of alias before
         // normalizing the alias itself.
         let ct = ct.try_super_fold_with(self)?;
-        let ty::ConstKind::Unevaluated(uc) = ct.kind() else { return Ok(ct) };
+        let ty::ConstKind::Unevaluated(uv) = ct.kind() else { return Ok(ct) };
 
         if ct.has_escaping_bound_vars() {
             let (uc, mapped_regions, mapped_types, mapped_consts) =
-                BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, uc);
+                BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, uv);
             let result = ensure_sufficient_stack(|| {
                 self.normalize_alias_term(uc.into(), HasEscapingBoundVars::Yes)
             })?
@@ -234,7 +234,7 @@ where
             ))
         } else {
             Ok(ensure_sufficient_stack(|| {
-                self.normalize_alias_term(uc.into(), HasEscapingBoundVars::No)
+                self.normalize_alias_term(uv.into(), HasEscapingBoundVars::No)
             })?
             .expect_const())
         }
