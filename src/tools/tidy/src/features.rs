@@ -35,6 +35,7 @@ pub enum Status {
     Accepted,
     Removed,
     Unstable,
+    Renamed,
 }
 
 impl fmt::Display for Status {
@@ -43,6 +44,7 @@ impl fmt::Display for Status {
             Status::Accepted => "accepted",
             Status::Unstable => "unstable",
             Status::Removed => "removed",
+            Status::Renamed => "renamed",
         };
         fmt::Display::fmt(as_str, f)
     }
@@ -272,14 +274,49 @@ fn test_filen_gate<'f>(filen_underscore: &'f str, features: &mut Features) -> Op
 
 pub fn collect_lang_features(base_compiler_path: &Path, check: &mut RunningCheck) -> Features {
     let mut features = Features::new();
-    collect_lang_features_in(&mut features, base_compiler_path, "accepted.rs", check);
-    collect_lang_features_in(&mut features, base_compiler_path, "removed.rs", check);
-    collect_lang_features_in(&mut features, base_compiler_path, "unstable.rs", check);
+    let mut renamed_features = Vec::new();
+
+    collect_lang_features_in(
+        &mut features,
+        &mut renamed_features,
+        base_compiler_path,
+        "accepted.rs",
+        check,
+    );
+    collect_lang_features_in(
+        &mut features,
+        &mut renamed_features,
+        base_compiler_path,
+        "removed.rs",
+        check,
+    );
+    collect_lang_features_in(
+        &mut features,
+        &mut renamed_features,
+        base_compiler_path,
+        "unstable.rs",
+        check,
+    );
+    collect_lang_features_in(
+        &mut features,
+        &mut renamed_features,
+        base_compiler_path,
+        "renamed.rs",
+        check,
+    );
+
+    for (old_name, new_name) in renamed_features {
+        if !features.keys().any(|feature| *feature == new_name) {
+            check.error(format!("feature `{old_name}` was renamed to `{new_name}`, but feature `{new_name}` does not exist"));
+        }
+    }
+
     features
 }
 
 fn collect_lang_features_in(
     features: &mut Features,
+    renamed_features: &mut Vec<(String, String)>,
     base: &Path,
     file: &str,
     check: &mut RunningCheck,
@@ -341,11 +378,23 @@ fn collect_lang_features_in(
             Some("unstable") => Status::Unstable,
             Some("incomplete") => Status::Unstable,
             Some("internal") => Status::Unstable,
+            Some("renamed") => Status::Renamed,
             Some("removed") => Status::Removed,
             Some("accepted") => Status::Accepted,
             _ => continue,
         };
-        let name = parts.next().unwrap().trim();
+
+        let name = if level == Status::Renamed {
+            let part = parts.next().unwrap().trim();
+
+            let (old_name, new_name) = part.split_once("=>").unwrap();
+            let old_name = old_name.trim().to_string();
+            renamed_features.push((old_name.clone(), new_name.trim().to_string()));
+
+            old_name
+        } else {
+            parts.next().unwrap().trim().to_string()
+        };
 
         let since_str = parts.next().unwrap().trim().trim_matches('"');
         let since = match since_str.parse() {
@@ -394,7 +443,7 @@ fn collect_lang_features_in(
                     path.display(),
                 ));
             }
-            prev_names.push(name);
+            prev_names.push(name.clone());
         }
 
         let issue_str = parts.next().unwrap().trim();

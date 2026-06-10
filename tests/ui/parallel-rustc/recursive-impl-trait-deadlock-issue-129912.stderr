@@ -4,14 +4,16 @@ error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found
 LL |         x virtual ;
    |           ^^^^^^^ expected one of 8 possible tokens
 
-error[E0557]: feature has been removed
+error[E0557]: feature was renamed
   --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:3:12
    |
 LL | #![feature(generators)]
-   |            ^^^^^^^^^^ feature has been removed
+   |            ^^^^^^^^^^
+   |            |
+   |            feature was renamed
+   |            help: update to the new name: `coroutines`
    |
-   = note: removed in 1.75.0; see <https://github.com/rust-lang/rust/pull/116958> for more information
-   = note: renamed to `coroutines`
+   = note: renamed in 1.75.0; see <https://github.com/rust-lang/rust/pull/116958> for more information
 
 error[E0423]: expected value, found trait `Sized`
   --> $DIR/recursive-impl-trait-deadlock-issue-129912.rs:8:62
