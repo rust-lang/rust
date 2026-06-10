@@ -14,7 +14,6 @@ use rustc_middle::ty::{
 };
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw};
 use rustc_trait_selection::traits;
-use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
 use crate::errors;
@@ -83,19 +82,6 @@ fn search_bounds_for<'tcx>(
             }
         }
     }
-}
-
-fn collect_relaxed_bounds<'tcx>(
-    hir_bounds: &'tcx [hir::GenericBound<'tcx>],
-    context: ImpliedBoundsContext<'tcx>,
-) -> SmallVec<[&'tcx PolyTraitRef<'tcx>; 1]> {
-    let mut relaxed_bounds: SmallVec<[_; 1]> = SmallVec::new();
-    search_bounds_for(hir_bounds, context, |ptr| {
-        if matches!(ptr.modifiers.polarity, hir::BoundPolarity::Maybe(_)) {
-            relaxed_bounds.push(ptr);
-        }
-    });
-    relaxed_bounds
 }
 
 fn collect_bounds<'a, 'tcx>(
@@ -192,18 +178,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
             }
             ImpliedBoundsContext::TyParam(..) | ImpliedBoundsContext::AssociatedTypeOrImplTrait => {
-                // Report invalid relaxed bounds.
-                // FIXME: Since we only call this validation function here in this function, we only
-                //        fully validate relaxed bounds in contexts where we perform
-                //        "sized elaboration". In most cases that doesn't matter because we *usually*
-                //        reject such relaxed bounds outright during AST lowering.
-                //        However, this can easily get out of sync! Ideally, we would perform this step
-                //        where we are guaranteed to catch *all* bounds like in
-                //        `Self::lower_poly_trait_ref`. List of concrete issues:
-                //        FIXME(more_maybe_bounds): We don't call this for trait object tys, supertrait
-                //                                  bounds, trait alias bounds, assoc type bounds (ATB)!
-                let bounds = collect_relaxed_bounds(hir_bounds, context);
-                self.reject_duplicate_relaxed_bounds(bounds);
             }
         }
 
@@ -285,28 +259,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> bool {
         let collected = collect_bounds(hir_bounds, context, trait_def_id);
         !find_attr!(self.tcx(), crate, RustcNoImplicitBounds) && !collected.any()
-    }
-
-    fn reject_duplicate_relaxed_bounds(&self, relaxed_bounds: SmallVec<[&PolyTraitRef<'_>; 1]>) {
-        let tcx = self.tcx();
-
-        let mut grouped_bounds = FxIndexMap::<_, Vec<_>>::default();
-
-        for bound in &relaxed_bounds {
-            if let Res::Def(DefKind::Trait, trait_def_id) = bound.trait_ref.path.res {
-                grouped_bounds.entry(trait_def_id).or_default().push(bound.span);
-            }
-        }
-
-        for (trait_def_id, spans) in grouped_bounds {
-            if spans.len() > 1 {
-                let name = tcx.item_name(trait_def_id);
-                self.dcx()
-                    .struct_span_err(spans, format!("duplicate relaxed `{name}` bounds"))
-                    .with_code(E0203)
-                    .emit();
-            }
-        }
     }
 
     pub(crate) fn require_bound_to_relax_default_trait(

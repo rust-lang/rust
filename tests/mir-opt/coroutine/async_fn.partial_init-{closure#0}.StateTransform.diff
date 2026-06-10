@@ -4,6 +4,9 @@
 - fn partial_init::{closure#0}(_1: {async fn body of partial_init()}, _2: std::future::ResumeTy) -> u32
 - yields ()
 -  {
+-     debug _task_context => _2;
+-     debug x => (_1.0: u32);
+-     let mut _0: u32;
 + fn partial_init::{closure#0}(_1: Pin<&mut {async fn body of partial_init()}>, _2: &mut Context<'_>) -> Poll<u32> {
 +     coroutine layout {
 +         field _s0: u32;
@@ -17,9 +20,7 @@
 +         }
 +         storage_conflicts = BitMatrix(3x3) {(_s0, _s0), (_s0, _s1), (_s0, _s2), (_s1, _s0), (_s1, _s1), (_s1, _s2), (_s2, _s0), (_s2, _s1), (_s2, _s2)}
 +     }
-      debug _task_context => _2;
--     debug x => (_1.0: u32);
--     let mut _0: u32;
++     debug _task_context => _29;
 +     debug x => ((*_28).0: u32);
 +     coroutine debug x => _s0;
 +     let mut _0: std::task::Poll<u32>;
@@ -38,16 +39,16 @@
       let mut _17: &mut {async block@$DIR/async_fn.rs:80:50: 80:55};
       let mut _18: &mut std::task::Context<'_>;
       let mut _19: &mut std::task::Context<'_>;
--     let mut _20: std::future::ResumeTy;
-+     let mut _20: &mut std::task::Context<'_>;
+      let mut _20: std::future::ResumeTy;
       let mut _21: isize;
       let mut _23: !;
--     let mut _24: std::future::ResumeTy;
-+     let mut _24: &mut std::task::Context<'_>;
+      let mut _24: std::future::ResumeTy;
       let mut _25: ();
 +     let mut _26: u32;
 +     let mut _27: u32;
 +     let mut _28: &mut {async fn body of partial_init()};
++     let mut _29: std::future::ResumeTy;
++     let mut _30: std::ptr::NonNull<std::task::Context<'_>>;
       scope 1 {
 -         debug x => _3;
 +         debug x => (((*_28) as variant#3).0: u32);
@@ -76,6 +77,8 @@
 -         StorageLive(_5);
 -         StorageLive(_6);
 -         _6 = String::new() -> [return: bb1, unwind: bb30];
++         _30 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
++         _29 = std::future::ResumeTy(move _30);
 +         _28 = copy (_1.0: &mut {async fn body of partial_init()});
 +         _27 = discriminant((*_28));
 +         switchInt(move _27) -> [0: bb32, 1: bb31, 2: bb30, 3: bb29, otherwise: bb7];
@@ -121,9 +124,10 @@
           StorageLive(_18);
           StorageLive(_19);
           StorageLive(_20);
-          _20 = copy _2;
+-         _20 = copy _2;
 -         _19 = std::future::get_context::<'_, '_>(move _20) -> [return: bb5, unwind: bb20];
-+         _19 = move _20;
++         _20 = copy _29;
++         _19 = copy (_20.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb5;
       }
   
@@ -180,7 +184,8 @@
   
       bb10: {
           StorageDead(_25);
-          _2 = move _24;
+-         _2 = move _24;
++         _29 = move _24;
           StorageDead(_24);
           _12 = const ();
           goto -> bb3;
@@ -335,7 +340,7 @@
 +         StorageLive(_8);
 +         StorageLive(_24);
 +         StorageLive(_25);
-+         _24 = move _2;
++         _24 = move _29;
 +         goto -> bb10;
       }
   

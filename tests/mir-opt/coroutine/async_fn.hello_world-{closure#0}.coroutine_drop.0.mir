@@ -3,7 +3,7 @@
 fn hello_world::{closure#0}(_1: &mut {async fn body of hello_world()}) -> () {
     debug _task_context => _2;
     let mut _0: ();
-    let mut _2: &mut std::task::Context<'_>;
+    let mut _2: std::future::ResumeTy;
     let _3: [u8; 1];
     let _5: &[u8];
     let mut _6: &[u8; 1];
@@ -25,10 +25,10 @@ fn hello_world::{closure#0}(_1: &mut {async fn body of hello_world()}) -> () {
     let mut _24: &mut {async fn body of read_exact()};
     let mut _25: &mut std::task::Context<'_>;
     let mut _26: &mut std::task::Context<'_>;
-    let mut _27: &mut std::task::Context<'_>;
+    let mut _27: std::future::ResumeTy;
     let mut _28: isize;
     let mut _30: !;
-    let mut _31: &mut std::task::Context<'_>;
+    let mut _31: std::future::ResumeTy;
     let mut _32: ();
     let mut _33: ();
     let mut _34: u32;
