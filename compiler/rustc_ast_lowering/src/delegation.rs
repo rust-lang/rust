@@ -62,7 +62,7 @@ use crate::diagnostics::{
 };
 use crate::{
     AllowReturnTypeNotation, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
-    ResolverAstLoweringExt, index_crate,
+    index_crate,
 };
 
 mod generics;
@@ -126,7 +126,7 @@ pub(crate) fn delegations_resolutions(
         let delegation = ast_index[def_id].delegation().expect("processing delegations");
         let span = delegation.last_segment_span();
 
-        if let Some(info) = resolver.delegation_info(def_id) {
+        if let Some(info) = tcx.resolutions(()).delegation_infos.get(&def_id) {
             let res = info.resolution_id.map(|id| check_for_cycles(tcx, id, span).map(|_| id));
             result.insert(def_id, res.flatten());
         } else {
@@ -143,8 +143,6 @@ pub(crate) fn delegations_resolutions(
 fn check_for_cycles(tcx: TyCtxt<'_>, mut def_id: DefId, span: Span) -> Result<(), ErrorGuaranteed> {
     let mut visited: FxHashSet<DefId> = Default::default();
 
-    let (resolver, _) = &*tcx.hir_crate(()).delayed_resolver.borrow();
-
     loop {
         visited.insert(def_id);
 
@@ -152,7 +150,7 @@ fn check_for_cycles(tcx: TyCtxt<'_>, mut def_id: DefId, span: Span) -> Result<()
         // it means that we refer to another delegation as a callee, so in order to obtain
         // a signature DefId we obtain NodeId of the callee delegation and try to get signature from it.
         if let Some(local_id) = def_id.as_local()
-            && let Some(info) = resolver.delegation_info(local_id)
+            && let Some(info) = tcx.resolutions(()).delegation_infos.get(&local_id)
             && let Ok(id) = info.resolution_id
         {
             def_id = id;
@@ -209,10 +207,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let mut generics = self.uplift_delegation_generics(delegation, sig_id, is_method);
 
-        let (body_id, call_expr_id) =
+        let (body_id, call_expr_id, unused_target_expr) =
             self.lower_delegation_body(delegation, sig_id, param_count, &mut generics, span);
 
         let decl = self.lower_delegation_decl(
+            delegation.source,
             sig_id,
             param_count,
             c_variadic,
@@ -220,6 +219,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             &generics,
             delegation.id,
             call_expr_id,
+            unused_target_expr,
         );
 
         let sig = self.lower_delegation_sig(sig_id, decl, span);
@@ -375,6 +375,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_delegation_decl(
         &mut self,
+        source: DelegationSource,
         sig_id: DefId,
         param_count: usize,
         c_variadic: bool,
@@ -382,6 +383,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         generics: &GenericsGenerationResults<'hir>,
         call_path_node_id: NodeId,
         call_expr_id: HirId,
+        unused_target_expr: bool,
     ) -> &'hir hir::FnDecl<'hir> {
         // The last parameter in C variadic functions is skipped in the signature,
         // like during regular lowering.
@@ -406,6 +408,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     parent_args_segment_id: generics.parent.args_segment_id,
                     self_ty_id: generics.self_ty_id,
                     propagate_self_ty: generics.propagate_self_ty,
+                    group_id: {
+                        let id = match source {
+                            DelegationSource::Single => None,
+                            DelegationSource::List(expn_id) => Some(expn_id),
+                            DelegationSource::Glob => {
+                                Some(self.tcx.expn_that_defined(self.owner.def_id).expect_local())
+                            }
+                        };
+
+                        id.map(|id| (id, unused_target_expr))
+                    },
                 })),
             )),
             span,
@@ -504,9 +517,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         param_count: usize,
         generics: &mut GenericsGenerationResults<'hir>,
         span: Span,
-    ) -> (BodyId, HirId) {
+    ) -> (BodyId, HirId, bool) {
         let block = delegation.body.as_deref();
         let mut call_expr_id = HirId::INVALID;
+        let mut unused_target_expr = false;
 
         let block_id = self.lower_body(|this| {
             let mut parameters: Vec<hir::Param<'_>> = Vec::with_capacity(param_count);
@@ -514,6 +528,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let mut stmts: &[hir::Stmt<'hir>] = &[];
 
             let is_method = this.is_method(sig_id, span);
+            let should_generate_block = this.should_generate_block(delegation, sig_id, is_method);
+
+            // Consider non-specified target expression as generated,
+            // as we do not want to emit error when target expression is
+            // not specified.
+            unused_target_expr = block.is_some() && (param_count == 0 || !should_generate_block);
 
             for idx in 0..param_count {
                 let (param, pat_node_id) = this.generate_param(is_method, idx, span);
@@ -524,7 +544,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 let arg = if let Some(block) = block
                     && idx == 0
-                    && this.should_generate_block(delegation, sig_id, is_method)
+                    && should_generate_block
                 {
                     let mut self_resolver = SelfResolver {
                         ctxt: this,
@@ -565,7 +585,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         debug_assert_ne!(call_expr_id, HirId::INVALID);
 
-        (block_id, call_expr_id)
+        (block_id, call_expr_id, unused_target_expr)
     }
 
     fn finalize_body_lowering(
