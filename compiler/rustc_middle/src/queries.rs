@@ -49,10 +49,8 @@ use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use rustc_abi as abi;
 use rustc_abi::Align;
 use rustc_arena::TypedArena;
-use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -60,8 +58,12 @@ use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
+<<<<<<< HEAD
 use rustc_errors::{ErrorGuaranteed, catch_fatal_errors};
 use rustc_hir as hir;
+=======
+use rustc_errors::ErrorGuaranteed;
+>>>>>>> 665bf7d3863 (revert cargo fmt)
 use rustc_hir::attrs::{EiiDecl, EiiImpl, StrippedCfgItem};
 use rustc_hir::def::{DefKind, DocLinkResMap};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdSet, LocalModDefId};
@@ -79,6 +81,7 @@ use rustc_session::lint::StableLintExpectationId;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{DUMMY_SP, LocalExpnId, Span, Spanned, Symbol};
 use rustc_target::spec::PanicStrategy;
+use {rustc_abi as abi, rustc_ast as ast, rustc_hir as hir};
 
 use crate::hir::Crate;
 use crate::infer::canonical::{self, Canonical};

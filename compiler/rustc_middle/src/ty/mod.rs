@@ -69,6 +69,7 @@ pub use rustc_type_ir::*;
 use rustc_type_ir::{InferCtxtLike, Interner};
 use tracing::{debug, instrument, trace};
 pub use vtable::*;
+use {rustc_ast as ast, rustc_hir as hir};
 
 pub use self::closure::{
     BorrowKind, CAPTURE_STRUCT_LOCAL, CaptureInfo, CapturedPlace, ClosureTypeInfo,
