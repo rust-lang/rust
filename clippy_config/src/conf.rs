@@ -39,6 +39,7 @@ const DEFAULT_DOC_VALID_IDENTS: &[&str] = &[
     "PowerPC", "PowerShell", "WebAssembly",
     "NaN", "NaNs",
     "OAuth", "GraphQL",
+    "SQLite", "MySQL", "PostgreSQL", "MariaDB", "MongoDB",
     "OCaml",
     "OpenAL", "OpenDNS", "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap", "OpenTelemetry",
     "OpenType",
