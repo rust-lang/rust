@@ -342,7 +342,6 @@ pub(crate) struct HashableCrateRoot {
     pub(crate) public_api_hash_opt_enabled: bool,
 
     pub(crate) impls: Hashed<EncodedTraitImpls>,
-    pub(crate) interpret_alloc_index: Hashed<LazyArray<u64>>,
 
     // =========== global hash  ============
     // Any change in these fields will cause a recompile of all downstream dependencies
@@ -397,6 +396,14 @@ pub(crate) struct HashableCrateRoot {
     pub(crate) syntax_contexts: GraphHashed<SyntaxContextTable>,
     pub(crate) expn_data: GraphHashed<ExpnDataTable>,
     pub(crate) expn_hashes: GraphHashed<ExpnHashTable>,
+
+    // Mir interpreter allocations for const eval. Haven't looked too much into this, but the
+    // allocations can include types (and other stuff?), so we include this in the reachability
+    // graph to be sure.
+    // FIXME Does stable hashing the AllocId already include the stable hash of everything we
+    // need for the reachability graph? We might not need to include these explicitly as
+    // reachability graph nodes.
+    pub(crate) interpret_alloc_index: GraphHashed<LazyArray<u64>>,
 
     // =========== not needed in the public hash ==============
     // proc macro, ignored. We use the full crate hash as public hash for proc macros
@@ -471,7 +478,7 @@ impl HashableCrateRoot {
             traits: self.traits.value,
             impls: self.impls.value,
             incoherent_impls: self.incoherent_impls.value,
-            interpret_alloc_index: self.interpret_alloc_index.value,
+            interpret_alloc_index: self.interpret_alloc_index.0,
             proc_macro_data: self.proc_macro_data.value,
 
             tables: self.tables.0,
@@ -665,7 +672,7 @@ impl ReachabilityGraphHashes {
             Node::Span(_) => todo!(),
             Node::Ty(_) => unimplemented!(),
             Node::Predicate(_) => unimplemented!(),
-            Node::AllocId(_) => todo!(),
+            Node::AllocId(_) => unimplemented!(),
         };
         *current_hash = hash.combine_commutative(hash);
     }
@@ -695,7 +702,9 @@ impl ReachabilityGraphHashes {
             Node::Span(_) => todo!(),
             Node::Ty(_) => None,
             Node::Predicate(_) => None,
-            Node::AllocId(_) => todo!(),
+            Node::AllocId(id) => Some(tcx.with_stable_hashing_context(|mut hcx| {
+                stable_hash(&mut hcx, &tcx.global_alloc(*id))
+            })),
         }
     }
 }
@@ -902,7 +911,7 @@ fn build_public_hashes<'tcx>(
             Node::Ty(_) => (),
             Node::Predicate(_) => (),
             Node::Span(_) => todo!(),
-            Node::AllocId(_) => todo!(),
+            Node::AllocId(_) => (),
         }
     }
     for &node_index in &graph.roots {
