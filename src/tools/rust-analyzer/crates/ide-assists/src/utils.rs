@@ -1177,6 +1177,15 @@ pub fn is_body_const(sema: &Semantics<'_, RootDatabase>, expr: &ast::Expr) -> bo
     is_const
 }
 
+pub(crate) fn original_range_in(
+    file_id: hir::EditionedFileId,
+    sema: &Semantics<'_, RootDatabase>,
+    value: &SyntaxNode,
+) -> Option<TextRange> {
+    let original = sema.original_range_opt(value)?;
+    (original.file_id == file_id).then_some(original.range)
+}
+
 // FIXME: #20460 When hir-ty can analyze the `never` statement at the end of block, remove it
 pub(crate) fn is_never_block(
     sema: &Semantics<'_, RootDatabase>,

@@ -1,5 +1,5 @@
 use either::{Either, for_both};
-use hir::{PathResolution, Semantics};
+use hir::{EditionedFileId, PathResolution, Semantics};
 use ide_db::{
     RootDatabase,
     defs::Definition,
@@ -14,7 +14,7 @@ use syntax::{
 use crate::{
     AssistId,
     assist_context::{AssistContext, Assists},
-    utils::cover_edit_range,
+    utils::{cover_edit_range, original_range_in},
 };
 
 // Assist: inline_local_variable
@@ -34,13 +34,14 @@ use crate::{
 // }
 // ```
 pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
+    let file_id = ctx.file_id();
     let source = ctx.source_file().syntax();
     let range = ctx.selection_trimmed();
     let InlineData { let_stmt, delete_let, references, target } =
         if let Some(path_expr) = ctx.find_node_at_offset_with_descend::<ast::PathExpr>() {
-            inline_usage(&ctx.sema, path_expr, range)
+            inline_usage(&ctx.sema, path_expr, range, file_id)
         } else if let Some(let_stmt) = ctx.find_node_at_offset_with_descend() {
-            inline_let(&ctx.sema, let_stmt, range)
+            inline_let(&ctx.sema, let_stmt, range, file_id)
         } else {
             None
         }?;
@@ -63,12 +64,14 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_, '
     acc.add(
         AssistId::refactor_inline("inline_local_variable"),
         "Inline variable",
-        target.range,
+        target,
         |builder| {
             let editor = builder.make_editor(source);
             let make = editor.make();
-            if delete_let && let Some(original) = ctx.sema.original_range_opt(let_stmt.syntax()) {
-                let place = cover_edit_range(source, original.range);
+            if delete_let
+                && let Some(original) = original_range_in(file_id, &ctx.sema, let_stmt.syntax())
+            {
+                let place = cover_edit_range(source, original);
                 editor.delete_all(place.clone());
 
                 // Processing let-expr in let-chain
@@ -115,7 +118,7 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_, '
 struct InlineData {
     let_stmt: Either<ast::LetStmt, ast::LetExpr>,
     delete_let: bool,
-    target: hir::FileRange,
+    target: TextRange,
     references: Vec<FileReference>,
 }
 
@@ -123,6 +126,7 @@ fn inline_let(
     sema: &Semantics<'_, RootDatabase>,
     let_stmt: Either<ast::LetStmt, ast::LetExpr>,
     range: TextRange,
+    file_id: EditionedFileId,
 ) -> Option<InlineData> {
     let bind_pat = match for_both!(&let_stmt, it => it.pat())? {
         ast::Pat::IdentPat(pat) => pat,
@@ -132,8 +136,8 @@ fn inline_let(
         cov_mark::hit!(test_not_inline_mut_variable);
         return None;
     }
-    let target = sema.original_range_opt(bind_pat.name()?.syntax())?;
-    if !target.range.contains_range(range) {
+    let target = original_range_in(file_id, sema, bind_pat.name()?.syntax())?;
+    if !target.contains_range(range) {
         cov_mark::hit!(not_applicable_outside_of_bind_pat);
         return None;
     }
@@ -155,11 +159,12 @@ fn inline_usage(
     sema: &Semantics<'_, RootDatabase>,
     path_expr: ast::PathExpr,
     range: TextRange,
+    file_id: EditionedFileId,
 ) -> Option<InlineData> {
     let path = path_expr.path()?;
     let name = path.as_single_name_ref()?;
-    let target = sema.original_range_opt(name.syntax())?;
-    if !target.range.contains_range(range) {
+    let target = original_range_in(file_id, sema, name.syntax())?;
+    if !target.contains_range(range) {
         cov_mark::hit!(test_not_inline_selection_too_broad);
         return None;
     }
