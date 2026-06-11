@@ -56,7 +56,7 @@
 #[doc(alias = "[")]
 #[doc(alias = "[]")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-pub const trait Index<Idx: ?Sized> {
+pub const trait Index<Idx> {
     /// The returned type after indexing.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "IndexOutput"]
@@ -167,7 +167,7 @@ see chapter in The Book <https://doc.rust-lang.org/book/ch08-02-strings.html#ind
 #[doc(alias = "]")]
 #[doc(alias = "[]")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-pub const trait IndexMut<Idx: ?Sized>: [const] Index<Idx> {
+pub const trait IndexMut<Idx>: [const] Index<Idx> {
     /// Performs the mutable indexing (`container[index]`) operation.
     ///
     /// # Panics
