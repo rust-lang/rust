@@ -1648,14 +1648,14 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	font-size: initial;
 }
 
-.impl-label-trait-full-badge-container {
+.notable-trait-badge-container {
 	padding: 0.5rem 0;
 	display: flex;
 	flex-wrap: wrap;
 	gap: 0.5rem;
 }
 
-.impl-label-trait-full-badge {
+.notable-trait-badge {
 	display: flex;
 	align-items: center;
 	width: fit-content;

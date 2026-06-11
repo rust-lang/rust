@@ -1790,15 +1790,16 @@ fn notable_traits_json<'a>(tys: impl Iterator<Item = &'a clean::Type>, cx: &Cont
     serde_json::to_string(&mp).expect("serialize (string, string) -> json object cannot fail")
 }
 
-pub(crate) struct LabelTraitInfo {
+pub(crate) struct NotableTraitBadge {
     pub name: String,
     pub full_path: String,
     /// Relative URL to the trait page, or `None` if it cannot be linked.
     pub href: Option<String>,
 }
 
-/// Returns all `#[doc(label_trait)]` traits that `item` implements.
-pub(crate) fn label_traits_for_item(item: &clean::Item, cx: &Context<'_>) -> Vec<LabelTraitInfo> {
+/// Returns all `#[doc(notable_trait)]` traits that `item` implements, to be
+/// rendered as badges at the top of the item's page.
+pub(crate) fn notable_trait_badges(item: &clean::Item, cx: &Context<'_>) -> Vec<NotableTraitBadge> {
     let Some(did) = item.def_id() else { return Vec::new() };
 
     if Some(did) == cx.tcx().lang_items().owned_box()
@@ -1816,7 +1817,7 @@ pub(crate) fn label_traits_for_item(item: &clean::Item, cx: &Context<'_>) -> Vec
         .filter_map(|impl_| {
             let path_ = impl_.trait_.as_ref()?;
             let trait_did = path_.def_id();
-            if !cx.cache().traits.get(&trait_did)?.is_label_trait(cx.tcx()) {
+            if !cx.cache().traits.get(&trait_did)?.is_notable_trait(cx.tcx()) {
                 return None;
             }
             let name = cx.tcx().item_name(trait_did).to_string();
@@ -1824,9 +1825,9 @@ pub(crate) fn label_traits_for_item(item: &clean::Item, cx: &Context<'_>) -> Vec
                 Ok(info) => (join_path_syms(&info.rust_path), Some(info.url)),
                 Err(_) => (cx.tcx().def_path_str(trait_did), None),
             };
-            Some((name.clone(), LabelTraitInfo { name, full_path, href }))
+            Some((name.clone(), NotableTraitBadge { name, full_path, href }))
         })
-        .collect::<BTreeMap<String, LabelTraitInfo>>()
+        .collect::<BTreeMap<String, NotableTraitBadge>>()
         .into_values()
         .collect()
 }

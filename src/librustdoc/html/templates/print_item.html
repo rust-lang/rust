@@ -3,7 +3,7 @@
     <div class="rustdoc-breadcrumbs">
         {% for (i, component) in path_components.iter().enumerate() %}
             {% if i != 0 %}
-         ::<wbr>
+                ::<wbr>
             {% endif %}
             <a href="{{component.path|safe}}index.html">{{component.name}}</a>
         {% endfor %}
@@ -11,7 +11,7 @@
     {% endif %}
     <h1>
         {{typ}}
-        <span{% if item_type !="mod" +%} class="{{item_type}}" {% endif %}>
+        <span{% if item_type != "mod" +%} class="{{item_type}}"{% endif %}>
         {{name|wrapped|safe}}
         </span>&nbsp;{# #}
         <button id="copy-path" title="Copy item path to clipboard"> {# #}
@@ -20,12 +20,12 @@
     </h1> {# #}
     <rustdoc-toolbar></rustdoc-toolbar> {# #}
     <span class="sub-heading">
-        {% if !impl_label_traits.is_empty() %}
-        <div class="impl-label-trait-full-badge-container">
-            {% for label_trait in impl_label_traits.iter() %}
-            <a class="impl-label-trait-full-badge" {# #} {% if !label_trait.href.is_empty()
-                %}href="{{label_trait.href|safe}}" {% endif %} {#+ #} title="{{label_trait.full_path}}" {#+ #}
-                {{label_trait.style_attr|safe}}>{{label_trait.name}}</a>
+        {% if !notable_trait_badges.is_empty() %}
+        <div class="notable-trait-badge-container">
+            {% for badge in notable_trait_badges.iter() %}
+            <a class="notable-trait-badge" {# #} {% if !badge.href.is_empty()
+                %}href="{{badge.href|safe}}" {% endif %} {#+ #} title="{{badge.full_path}}" {#+ #}
+                {{badge.style_attr|safe}}>{{badge.name}}</a>
             {% endfor %}
         </div>
         {% endif %}

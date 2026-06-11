@@ -39,7 +39,7 @@ use crate::html::format::{
 };
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 use crate::html::render::sidebar::filters;
-use crate::html::render::{document_full, document_item_info, label_traits_for_item};
+use crate::html::render::{document_full, document_item_info, notable_trait_badges};
 use crate::html::url_parts_builder::UrlPartsBuilder;
 
 const ITEM_TABLE_OPEN: &str = "<dl class=\"item-table\">";
@@ -52,7 +52,7 @@ struct PathComponent {
     name: Symbol,
 }
 
-struct LabelTraitVars {
+struct NotableTraitBadgeVars {
     name: String,
     full_path: String,
     /// Relative URL to the trait page, or empty when not linkable.
@@ -69,7 +69,7 @@ struct ItemVars<'a> {
     item_type: &'a str,
     path_components: Vec<PathComponent>,
     stability_since_raw: &'a str,
-    impl_label_traits: Vec<LabelTraitVars>,
+    notable_trait_badges: Vec<NotableTraitBadgeVars>,
     src_href: Option<&'a str>,
 }
 
@@ -123,11 +123,11 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
         let src_href =
             if cx.info.include_sources && !item.is_primitive() { cx.src_href(item) } else { None };
 
-        let impl_label_traits: Vec<LabelTraitVars> = label_traits_for_item(item, cx)
+        let notable_trait_badges: Vec<NotableTraitBadgeVars> = notable_trait_badges(item, cx)
             .into_iter()
             .map(|info| {
-                // Stable per-trait color from a hash of the DefId so the same
-                // trait gets the same badge color across pages.
+                // Stable per-trait color from a hash of the trait path so the
+                // same trait gets the same badge color across pages.
                 // This won't be stable between releases though.
                 let mut h = DefaultHasher::new();
                 info.full_path.hash(&mut h);
@@ -138,7 +138,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
                     (v >> 8) as u8,
                     (v >> 16) as u8,
                 );
-                LabelTraitVars {
+                NotableTraitBadgeVars {
                     name: info.name,
                     full_path: info.full_path,
                     href: info.href.unwrap_or_default(),
@@ -170,7 +170,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
             item_type: &item.type_().to_string(),
             path_components,
             stability_since_raw: &stability_since_raw,
-            impl_label_traits,
+            notable_trait_badges,
             src_href: src_href.as_deref(),
         };
 
