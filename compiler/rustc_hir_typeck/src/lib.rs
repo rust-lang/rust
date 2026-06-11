@@ -286,9 +286,7 @@ fn extend_err_with_const_context(
 ) {
     match node {
         hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(ty, _), .. })
-        | hir::Node::TraitItem(hir::TraitItem {
-            kind: hir::TraitItemKind::Const(ty, _, _), ..
-        }) => {
+        | hir::Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Const(ty, _), .. }) => {
             // Point at the `Type` in `const NAME: Type = value;`.
             err.span_label(ty.span, "expected because of the type of the associated constant");
         }

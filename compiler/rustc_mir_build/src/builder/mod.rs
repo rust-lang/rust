@@ -577,7 +577,7 @@ fn construct_const<'a, 'tcx>(
         })
         | Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(ty, _), span, .. })
         | Node::TraitItem(hir::TraitItem {
-            kind: hir::TraitItemKind::Const(ty, Some(_), _),
+            kind: hir::TraitItemKind::Const(ty, Some(_)),
             span,
             ..
         }) => (*span, ty.span),

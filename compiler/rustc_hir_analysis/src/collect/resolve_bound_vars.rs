@@ -860,7 +860,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     }
                 })
             }
-            Const(_, _, _) => self.visit_early(trait_item.hir_id(), trait_item.generics, |this| {
+            Const(_, _) => self.visit_early(trait_item.hir_id(), trait_item.generics, |this| {
                 intravisit::walk_trait_item(this, trait_item)
             }),
         }

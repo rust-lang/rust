@@ -1000,7 +1000,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         } else {
                             None
                         };
-                        hir::TraitItemKind::Const(ty, rhs, rhs_kind.is_type_const().into())
+                        hir::TraitItemKind::Const(ty, rhs)
                     },
                 );
 
