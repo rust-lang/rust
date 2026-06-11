@@ -1,6 +1,6 @@
 //! XDG (X Desktop Group) related functionality for Unix platforms.
 //!
-//! The [XDG Base Directory Specification][basedir] defines where a set of base
+//! The [XDG Base Directory Specification][basedir] defines a set of base
 //! directories, relative to which user-specific files should be looked for. The
 //! functions in this module provide those directory paths as configured by
 //! the environment.
