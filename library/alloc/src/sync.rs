@@ -389,8 +389,12 @@ struct ArcInner<T: ?Sized> {
     strong: Atomic<usize>,
 
     // the value usize::MAX acts as a sentinel for temporarily "locking" the
-    // ability to upgrade weak pointers or downgrade strong ones; this is used
-    // to avoid races in `make_mut` and `get_mut`.
+    // weak count, preventing `Arc::downgrade` from racing to create new
+    // `Weak` references. `Arc::is_unique` (which backs `Arc::get_mut`)
+    // needs to observe both the strong and weak counts as indicating
+    // uniqueness in one logical atomic step; since they live in separate
+    // atomic words, it locks the weak count while reading the strong
+    // count to keep the two reads consistent.
     weak: Atomic<usize>,
 
     data: T,
