@@ -413,7 +413,7 @@ impl<'tcx> Body<'tcx> {
     }
 
     pub fn typing_env(&self, tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
-        if tcx.use_typing_mode_borrowck() {
+        if tcx.use_typing_mode_post_typeck_until_borrowck() {
             match self.phase {
                 MirPhase::Built if let Some(def_id) = self.source.def_id().as_local() => {
                     TypingEnv::new(

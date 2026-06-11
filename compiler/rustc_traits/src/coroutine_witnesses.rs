@@ -49,9 +49,9 @@ fn compute_assumptions<'tcx>(
     def_id: DefId,
     bound_tys: &'tcx ty::List<Ty<'tcx>>,
 ) -> &'tcx ty::List<ty::ArgOutlivesPredicate<'tcx>> {
-    let infcx = tcx.infer_ctxt().build(ty::TypingMode::Analysis {
-        defining_opaque_types_and_generators: ty::List::empty(),
-    });
+    let infcx = tcx
+        .infer_ctxt()
+        .build(ty::TypingMode::Typeck { defining_opaque_types_and_generators: ty::List::empty() });
     with_replaced_escaping_bound_vars(&infcx, &mut vec![None], bound_tys, |bound_tys| {
         let param_env = tcx.param_env(def_id);
         let ocx = ObligationCtxt::new(&infcx);
