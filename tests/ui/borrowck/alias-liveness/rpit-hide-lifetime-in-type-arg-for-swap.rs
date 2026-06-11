@@ -4,8 +4,6 @@
 //@ [edition2024] edition: 2024
 //@ [polonius_alpha] edition: 2024
 //@ [polonius_alpha] compile-flags: -Zpolonius=next
-//@ [polonius_alpha] known-bug: #153215
-//@ [polonius_alpha] check-pass
 
 // Like rpit-hide-lifetime-for-swap, but the invariant lifetime is hidden
 // inside a *type* argument of the opaque rather than being captured as a
@@ -32,7 +30,7 @@ fn dangle() -> &'static [i32; 3] {
     let mut res = &[4, 5, 6];
     let x = [1, 2, 3];
     hide(&lock, &mut res).swap(hide(&lock, &mut &x));
-    res //[edition2015,edition2024]~ ERROR cannot return value referencing local variable `x`
+    res //[edition2015,edition2024,polonius_alpha]~ ERROR cannot return value referencing local variable `x`
 }
 
 fn main() {
