@@ -1074,6 +1074,10 @@ impl<'tcx> TypingEnv<'tcx> {
         Self::new(ParamEnv::empty(), TypingMode::PostAnalysis)
     }
 
+    pub fn borrowck(tcx: TyCtxt<'tcx>, body_def_id: LocalDefId) -> TypingEnv<'tcx> {
+        Self::new(tcx.param_env(body_def_id), TypingMode::borrowck(tcx, body_def_id).into())
+    }
+
     /// Create a typing environment for use during analysis outside of a body.
     ///
     /// Using a typing environment inside of bodies is not supported as the body
