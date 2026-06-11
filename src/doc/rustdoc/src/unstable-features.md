@@ -56,18 +56,6 @@ It is also not emitted for foreign items, aliases, extern crates and imports.
 These features operate by extending the `#[doc]` attribute, and thus can be caught by the compiler
 and enabled with a `#![feature(...)]` attribute in your crate.
 
-### Making your trait more discoverable
-
- * Tracking issue: [#156865](https://github.com/rust-lang/rust/issues/156865)
-
-Important traits can be difficult to discover when lost in the noise.
-This `#![feature(doc_label_trait)]` allows you to tag traits important for your code base.
-
-The traits with the attribute #![doc(label_trait)]` are rendered with a colored badge at the top of their dedicated page.
-
-Consider lookint into the `notable_trait` unstable attribure, which help with
-discoverability in other ways.
-
 ### Adding your trait to the "Notable traits" dialog
 
  * Tracking issue: [#45040](https://github.com/rust-lang/rust/issues/45040)
@@ -85,6 +73,10 @@ In the standard library, some of the traits that are part of this list are
 implemented as a hard-coded list, these traits have a special marker attribute
 on them: `#[doc(notable_trait)]`. This means that you can apply this attribute
 to your own trait to include it in the "Notable traits" dialog in documentation.
+
+In addition to the "Notable traits" dialog, every type that implements a
+`#[doc(notable_trait)]` trait renders a colored badge for that trait at the top
+of its page, making the relationship easy to spot when browsing the type.
 
 The `#[doc(notable_trait)]` attribute currently requires the `#![feature(doc_notable_trait)]`
 feature gate. For more information, see [its chapter in the Unstable Book][unstable-notable_trait]
