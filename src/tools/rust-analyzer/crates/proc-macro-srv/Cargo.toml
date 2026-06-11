@@ -35,7 +35,7 @@ line-index.workspace = true
 proc-macro-test.path = "./proc-macro-test"
 
 [features]
-default = ["in-rust-tree"]
+default = []
 in-rust-tree = []
 
 [lints]
