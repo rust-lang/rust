@@ -1,9 +1,11 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/21245>.
+//!
+//! Check that we are able to infer the types in these examples correctly.
+//! It used to be that insufficient type propagation caused the type of the
+//! iterator to be incorrectly unified with the `*const` type to which it is coerced.
+
 //@ check-pass
 #![allow(dead_code)]
-// Regression test for issue #21245. Check that we are able to infer
-// the types in these examples correctly. It used to be that
-// insufficient type propagation caused the type of the iterator to be
-// incorrectly unified with the `*const` type to which it is coerced.
 
 
 use std::ptr;
