@@ -1,4 +1,5 @@
 use quote::{ToTokens, quote};
+use rustc_data_structures::fx::FxIndexSet;
 use syn::visit_mut::VisitMut;
 use syn::{Attribute, parse_quote};
 use synstructure::decl_derive;
@@ -19,7 +20,7 @@ decl_derive!(
 
 struct TransformedTy {
     ty: syn::Type,
-    generic_parameter_bounds: Vec<syn::Ident>,
+    generic_parameter_bounds: FxIndexSet<syn::Ident>,
 }
 
 enum TypeParameterPath {
@@ -32,8 +33,11 @@ enum TypeParameterTransform {
     Stop,
 }
 
-type TypeParameterVisitor =
-    fn(TypeParameterPath, &mut syn::TypePath, &mut Vec<syn::Ident>) -> TypeParameterTransform;
+type TypeParameterVisitor = fn(
+    TypeParameterPath,
+    &mut syn::TypePath,
+    &mut FxIndexSet<syn::Ident>,
+) -> TypeParameterTransform;
 
 fn has_ignore_attr(attrs: &[Attribute], name: &'static str, meta: &'static str) -> bool {
     let mut ignored = false;
@@ -106,7 +110,7 @@ fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::Toke
     s.add_bounds(synstructure::AddBounds::Fields);
     let generic_parameters =
         s.ast().generics.type_params().map(|ty| ty.ident.clone()).collect::<Vec<_>>();
-    let mut generic_parameter_bounds = vec![];
+    let mut generic_parameter_bounds = FxIndexSet::default();
     s.bind_with(|_| synstructure::BindStyle::Move);
     let body_try_fold = s.each_variant(|vi| {
         let bindings = vi.bindings();
@@ -120,7 +124,7 @@ fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::Toke
                 for param in
                     type_foldable_generic_parameters(bind.ast().ty.clone(), &generic_parameters)
                 {
-                    push_unique(&mut generic_parameter_bounds, param);
+                    generic_parameter_bounds.insert(param);
                 }
 
                 quote! {
@@ -177,10 +181,10 @@ fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::Toke
 fn type_foldable_generic_parameters(
     ty: syn::Type,
     generic_parameters: &[syn::Ident],
-) -> Vec<syn::Ident> {
+) -> FxIndexSet<syn::Ident> {
     transform_type_parameters(ty, generic_parameters, |path, _, generic_parameter_bounds| {
         if let TypeParameterPath::GenericParameter(param) = path {
-            push_unique(generic_parameter_bounds, param);
+            generic_parameter_bounds.insert(param);
         }
         TypeParameterTransform::Continue
     })
@@ -297,7 +301,7 @@ fn lift(ty: syn::Type, generic_parameters: &[syn::Ident]) -> TransformedTy {
                 TypeParameterTransform::Continue
             }
             TypeParameterPath::GenericParameter(param) => {
-                push_unique(generic_parameter_bounds, param.clone());
+                generic_parameter_bounds.insert(param.clone());
                 *ty = parse_quote! { <#param as ::rustc_type_ir::lift::Lift<J>>::Lifted };
                 TypeParameterTransform::Stop
             }
@@ -312,7 +316,7 @@ fn transform_type_parameters(
 ) -> TransformedTy {
     struct TypeParameterTransformer<'a> {
         generic_parameters: &'a [syn::Ident],
-        generic_parameter_bounds: Vec<syn::Ident>,
+        generic_parameter_bounds: FxIndexSet<syn::Ident>,
         visit: TypeParameterVisitor,
     }
 
@@ -325,7 +329,7 @@ fn transform_type_parameters(
                         Some(TypeParameterPath::Interner)
                     } else if segments_len == 1
                         && matches!(first.arguments, syn::PathArguments::None)
-                        && self.generic_parameters.iter().any(|param| first.ident == *param)
+                        && self.generic_parameters.contains(&first.ident)
                     {
                         Some(TypeParameterPath::GenericParameter(first.ident.clone()))
                     } else {
@@ -348,16 +352,13 @@ fn transform_type_parameters(
         }
     }
 
-    let mut visitor =
-        TypeParameterTransformer { generic_parameters, generic_parameter_bounds: vec![], visit };
+    let mut visitor = TypeParameterTransformer {
+        generic_parameters,
+        generic_parameter_bounds: FxIndexSet::default(),
+        visit,
+    };
     visitor.visit_type_mut(&mut ty);
     TransformedTy { ty, generic_parameter_bounds: visitor.generic_parameter_bounds }
-}
-
-fn push_unique(params: &mut Vec<syn::Ident>, param: syn::Ident) {
-    if !params.iter().any(|prev| *prev == param) {
-        params.push(param);
-    }
 }
 
 #[cfg(not(feature = "nightly"))]
