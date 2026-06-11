@@ -24,7 +24,7 @@ mod trait_goals;
 use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 pub use rustc_type_ir::solve::*;
-use rustc_type_ir::{self as ty, Interner, TyVid, TypeVisitableExt, TypingMode};
+use rustc_type_ir::{self as ty, Interner, TyVid, TypingMode};
 use tracing::instrument;
 
 pub use self::eval_ctxt::{
@@ -366,15 +366,16 @@ where
         param_env: I::ParamEnv,
         term: I::Term,
     ) -> Result<I::Term, NoSolutionOrRerunNonErased> {
-        // We rely on normalizing opaques to update `opaque_accesses` in erased typing mode.
-        if !self.cx().renormalize_rigid_aliases()
-            && !term.has_non_rigid_aliases()
-            && !(term.has_opaque_types() && self.typing_mode().is_erased_not_coherence())
-        {
-            return Ok(term);
-        }
+        if let Some(alias_term) = term.to_alias_term() {
+            // We rely on normalizing opaques to update `opaque_accesses` in erased typing mode.
+            if !self.cx().renormalize_rigid_aliases()
+                && alias_term.is_rigid == ty::IsRigid::Yes
+                && !(matches!(alias_term.kind, ty::AliasTermKind::OpaqueTy { .. })
+                    && self.typing_mode().is_erased_not_coherence())
+            {
+                return Ok(term);
+            }
 
-        if let Some(_) = term.to_alias_term() {
             let normalized_term = self.next_term_infer_of_kind(term);
             let alias_relate_goal = Goal::new(
                 self.cx(),

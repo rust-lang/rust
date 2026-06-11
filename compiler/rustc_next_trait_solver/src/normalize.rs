@@ -190,6 +190,11 @@ where
         // normalizing the alias itself.
         let folded_ty = ty.try_super_fold_with(self)?;
         let ty::Alias(alias_ty) = folded_ty.kind() else { return Ok(folded_ty) };
+        // We support ambiguous aliases inside rigid alias. So we still recognize
+        // the rigidness of the outer alias.
+        if !self.cx().renormalize_rigid_aliases() && alias_ty.is_rigid == ty::IsRigid::Yes {
+            return Ok(folded_ty);
+        }
 
         let result = if alias_ty.has_escaping_bound_vars() {
             let (alias_ty, mapped_regions, mapped_types, mapped_consts) =
@@ -241,6 +246,11 @@ where
         // normalizing the alias itself.
         let ct = ct.try_super_fold_with(self)?;
         let ty::ConstKind::Unevaluated(uv) = ct.kind() else { return Ok(ct) };
+        // We support ambiguous aliases inside rigid alias. So we still recognize
+        // the rigidness of the outer alias.
+        if !self.cx().renormalize_rigid_aliases() && uv.is_rigid == ty::IsRigid::Yes {
+            return Ok(ct);
+        }
 
         if ct.has_escaping_bound_vars() {
             let (uv, mapped_regions, mapped_types, mapped_consts) =
