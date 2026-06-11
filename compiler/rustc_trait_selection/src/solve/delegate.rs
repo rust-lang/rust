@@ -197,7 +197,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         }
     }
 
-    fn fresh_var_for_kind_in_universe(
+    fn fresh_var_for_kind(
         &self,
         arg: ty::GenericArg<'tcx>,
         span: Span,

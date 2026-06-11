@@ -25,7 +25,7 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
         span: <Self::Interner as Interner>::Span,
     ) -> Option<Certainty>;
 
-    fn fresh_var_for_kind_in_universe(
+    fn fresh_var_for_kind(
         &self,
         arg: <Self::Interner as Interner>::GenericArg,
         span: <Self::Interner as Interner>::Span,

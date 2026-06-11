@@ -273,7 +273,14 @@ where
     prev_universe
 }
 
-fn max_input_universe_for_replay<D, I>(
+// Recover the caller-side max input universe for replaying a canonical state.
+//
+// We want the base universe the canonical state was relative to when it was
+// first recorded, not the max universe of the current resolved contents of
+// `orig_values`. Resolved inference vars may now point at placeholders from
+// later replay work, so looking through them would overestimate the base
+// universe and shift the replayed placeholders.
+fn max_input_universe_for_canonical_state<D, I>(
     delegate: &D,
     orig_values: &[I::GenericArg],
 ) -> ty::UniverseIndex
@@ -348,16 +355,6 @@ where
         value.visit_with(&mut visitor);
     }
     visitor.max_universe
-}
-
-fn ensure_universes_through<D, I>(delegate: &D, max_universe: ty::UniverseIndex)
-where
-    D: SolverDelegate<Interner = I>,
-    I: Interner,
-{
-    while delegate.universe() < max_universe {
-        delegate.create_next_universe();
-    }
 }
 
 /// Unify the `original_values` with the `var_values` returned by the canonical query..
@@ -474,13 +471,15 @@ where
 {
     // In case any fresh inference variables have been created between `state`
     // and the previous instantiation, extend `orig_values` for it.
-    let prev_universe = max_input_universe_for_replay(delegate, orig_values);
+    let prev_universe = max_input_universe_for_canonical_state(delegate, orig_values);
     let max_universe = prev_universe + state.max_universe.index();
-    ensure_universes_through(delegate, max_universe);
+    while delegate.universe() < max_universe {
+        delegate.create_next_universe();
+    }
     orig_values.extend(
         state.value.var_values.var_values.as_slice()[orig_values.len()..]
             .iter()
-            .map(|&arg| delegate.fresh_var_for_kind_in_universe(arg, span, max_universe)),
+            .map(|&arg| delegate.fresh_var_for_kind(arg, span, max_universe)),
     );
 
     let instantiation = compute_query_response_instantiation_values_in_universe(
