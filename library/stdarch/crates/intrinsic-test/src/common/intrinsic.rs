@@ -17,6 +17,9 @@ pub struct Intrinsic<T: IntrinsicTypeDefinition> {
 
     /// Any architecture-specific tags.
     pub arch_tags: Vec<String>,
+
+    /// Specific extension that the intrinsic is from
+    pub extension: String,
 }
 
 /// Invokes `f` for each combination of the values in the constraint ranges.

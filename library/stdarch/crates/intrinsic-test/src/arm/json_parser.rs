@@ -145,6 +145,7 @@ fn json_to_intrinsic(
         arguments,
         results: result_ty,
         arch_tags: intr.architectures,
+        extension: intr.simd_isa,
     })
 }
 

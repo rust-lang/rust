@@ -37,6 +37,7 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
     }
 
     fn create(cli_options: &ProcessedCli) -> Self {
+        let big_endian = cli_options.target.starts_with("aarch64_be");
         let a32 = cli_options.target.starts_with("armv7");
         let mut intrinsics =
             get_neon_intrinsics(&cli_options.filename).expect("Error parsing input file");
@@ -99,6 +100,8 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
             .filter(|i| !cli_options.skip.contains(&i.name))
             // Skip A64-specific intrinsics on A32
             .filter(|i| !(a32 && i.arch_tags == vec!["A64".to_string()]))
+            // Skip SVE intrinsics on big endian
+            .filter(|i| !(big_endian && (i.extension == "SVE" || i.extension == "SVE2")))
             .take(sample_size)
             .collect::<Vec<_>>();
 

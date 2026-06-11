@@ -145,5 +145,6 @@ fn xml_to_intrinsic(
         arguments,
         results: result.unwrap(),
         arch_tags: intr.cpuid,
+        extension: intr.tech,
     })
 }
