@@ -43,6 +43,18 @@ Priroda's CLI tests also need `MIRI_SYSROOT`. Run them from `miri/priroda/`:
 cargo test
 ```
 
+If the CLI tests fail due to mismatched output, you can update the expected output files by running the tests with the `--bless` flag:
+
+```sh
+cargo test -- --bless
+```
+
+or 
+
+```sh
+RUSTC_BLESS=1 cargo test
+```
+
 ## Commands
 
 | Command | Description |

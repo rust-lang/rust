@@ -10,6 +10,7 @@ edition = "2024"
 [[bin]]
 name = "priroda"
 path = "src/main.rs"
+test = false         # Disable unit tests to avoid errors with --bless
 doctest = false      # and no doc tests
 
 [[test]]

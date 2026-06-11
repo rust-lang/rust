@@ -43,7 +43,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     config.comment_defaults.base().exit_status = Spanned::dummy(0).into();
     config.comment_defaults.base().require_annotations = Spanned::dummy(false).into();
 
-    let args = ui_test::Args::test()?;
+    let mut args = ui_test::Args::test()?;
+    args.bless |= env::var_os("RUSTC_BLESS").is_some_and(|v| v != "0");
     config.with_args(&args);
 
     run_tests_generic(
