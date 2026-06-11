@@ -657,12 +657,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.select_obligations_where_possible(|_| {});
 
         let defining_opaque_types_and_generators = match self.typing_mode() {
-            ty::TypingMode::Analysis { defining_opaque_types_and_generators } => {
+            ty::TypingMode::Typeck { defining_opaque_types_and_generators } => {
                 defining_opaque_types_and_generators
             }
             ty::TypingMode::Coherence
-            | ty::TypingMode::Borrowck { .. }
-            | ty::TypingMode::PostBorrowckAnalysis { .. }
+            | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+            | ty::TypingMode::PostBorrowck { .. }
             | ty::TypingMode::PostAnalysis
             | ty::TypingMode::Codegen => {
                 bug!()
