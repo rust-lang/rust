@@ -6,7 +6,6 @@ use std::{fmt, iter, slice};
 use Chunk::*;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
-use smallvec::{SmallVec, smallvec};
 
 use crate::{Idx, IndexVec};
 
@@ -14,7 +13,6 @@ use crate::{Idx, IndexVec};
 mod tests;
 
 type Word = u64;
-type DenseBitSetWords = SmallVec<[Word; 1]>;
 const WORD_BYTES: usize = size_of::<Word>();
 const WORD_BITS: usize = WORD_BYTES * 8;
 
@@ -80,13 +78,7 @@ fn inclusive_start_end<T: Idx>(
 #[derive(Eq, PartialEq, Hash)]
 pub struct DenseBitSet<T> {
     domain_size: usize,
-<<<<<<< HEAD
     words: Box<[Word]>,
-||||||| parent of b8be5c33c90 (Try and use a small vec as opposed to `vec![...]`)
-    words: Vec<Word>,
-=======
-    words: DenseBitSetWords,
->>>>>>> b8be5c33c90 (Try and use a small vec as opposed to `vec![...]`)
     marker: PhantomData<T>,
 }
 
@@ -102,36 +94,22 @@ impl<T: Idx> DenseBitSet<T> {
     #[inline]
     pub fn new_empty(domain_size: usize) -> DenseBitSet<T> {
         let num_words = num_words(domain_size);
-<<<<<<< HEAD
         DenseBitSet {
             domain_size,
             words: vec![0; num_words].into_boxed_slice(),
             marker: PhantomData,
         }
-||||||| parent of b8be5c33c90 (Try and use a small vec as opposed to `vec![...]`)
-        DenseBitSet { domain_size, words: vec![0; num_words], marker: PhantomData }
-=======
-        DenseBitSet { domain_size, words: smallvec![0; num_words], marker: PhantomData }
->>>>>>> b8be5c33c90 (Try and use a small vec as opposed to `vec![...]`)
     }
 
     /// Creates a new, filled bitset with a given `domain_size`.
     #[inline]
     pub fn new_filled(domain_size: usize) -> DenseBitSet<T> {
         let num_words = num_words(domain_size);
-<<<<<<< HEAD
         let mut result = DenseBitSet {
             domain_size,
             words: vec![!0; num_words].into_boxed_slice(),
             marker: PhantomData,
         };
-||||||| parent of b8be5c33c90 (Try and use a small vec as opposed to `vec![...]`)
-        let mut result =
-            DenseBitSet { domain_size, words: vec![!0; num_words], marker: PhantomData };
-=======
-        let mut result =
-            DenseBitSet { domain_size, words: smallvec![!0; num_words], marker: PhantomData };
->>>>>>> b8be5c33c90 (Try and use a small vec as opposed to `vec![...]`)
         result.clear_excess_bits();
         result
     }
