@@ -1,6 +1,5 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::MaybeDef;
-use clippy_utils::source::snippet;
 use clippy_utils::{fn_def_id, is_integer_const, last_path_segment, span_contains_comment, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem};
@@ -38,13 +37,12 @@ declare_lint_pass!(WithCapacityZero => [WITH_CAPACITY_ZERO]);
 fn is_target_type(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
     let ty = ty.peel_refs();
     ty.is_lang_item(cx, LangItem::String)
-        || ty.is_diag_item(cx, sym::Vec)
-        || ty.is_diag_item(cx, sym::HashMap)
-        || ty.is_diag_item(cx, sym::HashSet)
-        || ty.is_diag_item(cx, sym::VecDeque)
-        || ty.is_diag_item(cx, sym::BinaryHeap)
-        || ty.is_diag_item(cx, sym::PathBuf)
-        || ty.is_diag_item(cx, sym::OsString)
+        || matches!(
+            ty.opt_diag_name(cx),
+            Some(
+                sym::Vec | sym::HashMap | sym::HashSet | sym::VecDeque | sym::BinaryHeap | sym::PathBuf | sym::OsString
+            )
+        )
 }
 
 impl<'tcx> LateLintPass<'tcx> for WithCapacityZero {
@@ -55,29 +53,26 @@ impl<'tcx> LateLintPass<'tcx> for WithCapacityZero {
             && cx.tcx.item_name(def_id) == sym::with_capacity
             && is_integer_const(cx, arg, 0)
             && let ExprKind::Path(ref qpath) = func.kind
+            && let ty = cx.typeck_results().expr_ty(expr)
+            && is_target_type(cx, ty)
         {
-            let ty = cx.typeck_results().expr_ty(expr);
-            if is_target_type(cx, ty) {
-                let last_seg = last_path_segment(qpath);
-                let prefix_span = expr.span.with_hi(last_seg.ident.span.lo());
-                let app = if span_contains_comment(cx, expr.span) {
-                    Applicability::Unspecified
-                } else {
-                    Applicability::MachineApplicable
-                };
+            let last_seg = last_path_segment(qpath);
+            let sugg_span = last_seg.ident.span.with_hi(expr.span.hi());
+            let app = if span_contains_comment(cx, expr.span) {
+                Applicability::MaybeIncorrect
+            } else {
+                Applicability::MachineApplicable
+            };
 
-                let sugg = format!("{}new()", snippet(cx, prefix_span, ".."));
-
-                span_lint_and_sugg(
-                    cx,
-                    WITH_CAPACITY_ZERO,
-                    expr.span,
-                    "calling `with_capacity(0)` is equivalent to `new()`",
-                    "use `new()` instead",
-                    sugg,
-                    app,
-                );
-            }
+            span_lint_and_then(
+                cx,
+                WITH_CAPACITY_ZERO,
+                expr.span,
+                "calling `with_capacity(0)` is equivalent to `new()`",
+                |diag| {
+                    diag.span_suggestion_verbose(sugg_span, "use `new()` instead", "new()", app);
+                },
+            );
         }
     }
 }
