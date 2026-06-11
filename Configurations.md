@@ -1257,7 +1257,7 @@ Control the case of the letters in hexadecimal literal values
 
 - **Default value**: `Preserve`
 - **Possible values**: `Preserve`, `Upper`, `Lower`
-- **Stable**: No (tracking issue: [#5081](https://github.com/rust-lang/rustfmt/issues/5081))
+- **Stable**: Yes
 
 ## `float_literal_trailing_zero`
 
