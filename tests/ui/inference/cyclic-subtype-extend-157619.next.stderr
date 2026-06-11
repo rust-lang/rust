@@ -1,0 +1,17 @@
+error[E0277]: the trait bound `Vec<(&_,)>: Extend<(_,)>` is not satisfied
+  --> $DIR/cyclic-subtype-extend-157619.rs:18:13
+   |
+LL |     samples.extend(packet_buf.iter().map(|&x| (x,)));
+   |             ^^^^^^ the trait `Extend<(_,)>` is not implemented for `Vec<(&_,)>`
+   |
+help: `Vec<T, A>` implements trait `Extend<A>`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+   |
+   = note: `Extend<T>`
+  ::: $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+   |
+   = note: `Extend<&T>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

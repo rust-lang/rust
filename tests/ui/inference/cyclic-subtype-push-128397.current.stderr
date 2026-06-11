@@ -1,0 +1,9 @@
+error[E0275]: overflow evaluating whether `&_` is well-formed
+  --> $DIR/cyclic-subtype-push-128397.rs:16:13
+   |
+LL |     let x = v.last().unwrap();
+   |             ^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

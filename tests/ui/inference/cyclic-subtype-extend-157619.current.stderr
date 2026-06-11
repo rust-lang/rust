@@ -1,0 +1,9 @@
+error[E0275]: overflow evaluating whether `&_` is well-formed
+  --> $DIR/cyclic-subtype-extend-157619.rs:14:23
+   |
+LL |     let mut samples = Vec::new();
+   |                       ^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.
