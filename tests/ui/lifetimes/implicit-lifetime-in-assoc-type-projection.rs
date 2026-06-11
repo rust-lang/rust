@@ -1,7 +1,8 @@
-// Regression test for #20831: debruijn index account was thrown off
-// by the (anonymous) lifetime in `<Self as Publisher>::Output`
-// below. Note that changing to a named lifetime made the problem go
-// away.
+//! Regression test for <https://github.com/rust-lang/rust/issues/20831>.
+//!
+//! DeBruijn index account was thrown off by the (anonymous) lifetime
+//! in `<Self as Publisher>::Output` below. Note that changing to a
+//! named lifetime made the problem go away.
 
 use std::cell::RefCell;
 use std::ops::{Shl, Shr};

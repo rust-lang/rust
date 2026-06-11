@@ -1,21 +1,21 @@
 error[E0803]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
-  --> $DIR/issue-20831-debruijn.rs:28:33
+  --> $DIR/implicit-lifetime-in-assoc-type-projection.rs:29:33
    |
 LL |     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: first, the lifetime cannot outlive the anonymous lifetime as defined here...
-  --> $DIR/issue-20831-debruijn.rs:28:67
+  --> $DIR/implicit-lifetime-in-assoc-type-projection.rs:29:67
    |
 LL |     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
    |                                                                   ^^^^^^^^^
 note: ...but the lifetime must also be valid for the lifetime `'a` as defined here...
-  --> $DIR/issue-20831-debruijn.rs:26:6
+  --> $DIR/implicit-lifetime-in-assoc-type-projection.rs:27:6
    |
 LL | impl<'a> Publisher<'a> for MyStruct<'a> {
    |      ^^
 note: ...so that the types are compatible
-  --> $DIR/issue-20831-debruijn.rs:28:33
+  --> $DIR/implicit-lifetime-in-assoc-type-projection.rs:29:33
    |
 LL |     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL |     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher
               found `<MyStruct<'_> as Publisher<'_>>`
 
 error: lifetime may not live long enough
-  --> $DIR/issue-20831-debruijn.rs:28:5
+  --> $DIR/implicit-lifetime-in-assoc-type-projection.rs:29:5
    |
 LL | impl<'a> Publisher<'a> for MyStruct<'a> {
    |      -- lifetime `'a` defined here
@@ -35,7 +35,7 @@ LL |     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher
    |     requires that `'a` must outlive `'1`
 
 error: lifetime may not live long enough
-  --> $DIR/issue-20831-debruijn.rs:28:5
+  --> $DIR/implicit-lifetime-in-assoc-type-projection.rs:29:5
    |
 LL | impl<'a> Publisher<'a> for MyStruct<'a> {
    |      -- lifetime `'a` defined here
