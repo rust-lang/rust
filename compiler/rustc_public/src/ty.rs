@@ -900,6 +900,11 @@ impl VariantDef {
     pub fn idx(&self) -> VariantIdx {
         self.idx
     }
+
+    /// Returns the `AdtDef` which this variant comes from.
+    pub fn adt_def(&self) -> AdtDef {
+        self.adt_def
+    }
 }
 
 crate_def_with_ty! {
