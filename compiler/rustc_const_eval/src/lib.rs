@@ -32,9 +32,9 @@ fn assert_typing_mode(typing_mode: ty::TypingMode<'_>) {
             // Const eval always happens in PostAnalysis or Codegen mode. See the comment in
             // `InterpCx::new` for more details.
             ty::TypingMode::Coherence
-            | ty::TypingMode::Analysis { .. }
-            | ty::TypingMode::Borrowck { .. }
-            | ty::TypingMode::PostBorrowckAnalysis { .. } => bug!(
+            | ty::TypingMode::Typeck { .. }
+            | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+            | ty::TypingMode::PostBorrowck { .. } => bug!(
                 "Const eval should always happens in PostAnalysis or Codegen mode. See the comment on `assert_typing_mode` for more details."
             ),
         }

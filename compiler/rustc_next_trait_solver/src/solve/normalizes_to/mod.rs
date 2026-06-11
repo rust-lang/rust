@@ -353,9 +353,9 @@ where
                                 .map_err(Into::into);
                         }
                         // Outside of coherence, we treat the associated item as rigid instead.
-                        ty::TypingMode::Analysis { .. }
-                        | ty::TypingMode::Borrowck { .. }
-                        | ty::TypingMode::PostBorrowckAnalysis { .. }
+                        ty::TypingMode::Typeck { .. }
+                        | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+                        | ty::TypingMode::PostBorrowck { .. }
                         | ty::TypingMode::PostAnalysis
                         | ty::TypingMode::Codegen => {
                             ecx.structurally_instantiate_normalizes_to_term(
