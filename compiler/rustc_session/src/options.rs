@@ -726,7 +726,29 @@ fn build_options<O: Default>(
                 }
                 if let Some(tmod) = *tmod {
                     let v = value.map_or(String::new(), ToOwned::to_owned);
-                    collected_options.target_modifiers.insert(tmod, v);
+
+                    // Accumulate all the -Zsanitizer flags into a single target modifier.
+                    match tmod {
+                        OptionsTargetModifiers::UnstableOptions(
+                            UnstableOptionsTargetModifiers::Sanitizer,
+                        ) => {
+                            collected_options
+                                .target_modifiers
+                                .entry(tmod)
+                                .and_modify(|existing| {
+                                    if !existing.is_empty() && !v.is_empty() {
+                                        existing.push(',');
+                                        existing.push_str(&v);
+                                    } else if existing.is_empty() {
+                                        *existing = v.clone();
+                                    }
+                                })
+                                .or_insert(v);
+                        }
+                        _ => {
+                            collected_options.target_modifiers.insert(tmod, v);
+                        }
+                    }
                 }
                 if let Some(mitigation) = mitigation {
                     collected_options.mitigations.reset_mitigation(*mitigation, index);
