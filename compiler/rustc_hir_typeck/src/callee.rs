@@ -7,7 +7,6 @@ use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId, LangItem, find_attr};
 use rustc_hir_analysis::autoderef::Autoderef;
-use rustc_hir_analysis::delegation::opt_get_delegation_info;
 use rustc_infer::infer::BoundRegionConversionTime;
 use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::adjustment::{
@@ -701,7 +700,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // by comparing their hir ids (otherwise we will encounter errors in nested delegations,
         // see tests\ui\delegation\impl-reuse-pass.rs:237).
         let parent_def = self.tcx.hir_get_parent_item(call_expr.hir_id).def_id;
-        let Some(info) = opt_get_delegation_info(self.tcx, parent_def) else { return None };
+        let Some(info) = self.tcx.hir_opt_delegation_info(parent_def) else {
+            return None;
+        };
 
         if call_expr.hir_id != info.call_expr_id {
             return None;
