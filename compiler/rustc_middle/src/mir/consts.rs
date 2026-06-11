@@ -320,7 +320,7 @@ impl<'tcx> Const<'tcx> {
     ) -> Result<ConstValue, ErrorHandled> {
         match self {
             Const::Ty(_, c) => {
-                if c.has_non_region_param() {
+                if c.has_non_region_param() || c.has_non_region_placeholders() {
                     return Err(ErrorHandled::TooGeneric(span));
                 }
 

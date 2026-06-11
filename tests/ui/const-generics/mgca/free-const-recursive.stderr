@@ -4,12 +4,21 @@ error[E0271]: type mismatch resolving `A normalizes-to _`
 LL | type const A: () = A;
    | ^^^^^^^^^^^^^^^^ types differ
 
-error: the constant `A` is not of type `()`
+error[E0275]: overflow evaluating the requirement `A == _`
   --> $DIR/free-const-recursive.rs:7:1
    |
 LL | type const A: () = A;
-   | ^^^^^^^^^^^^^^^^ expected `()`, found a different `()`
+   | ^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 2 previous errors
+error[E0284]: type annotations needed
+  --> $DIR/free-const-recursive.rs:7:1
+   |
+LL | type const A: () = A;
+   | ^^^^^^^^^^^^^^^^ cannot infer the value of the constant `_`
 
-For more information about this error, try `rustc --explain E0271`.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0275, E0284.
+For more information about an error, try `rustc --explain E0275`.
