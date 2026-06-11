@@ -30,7 +30,7 @@ jobs:
       extensive_matrix: ${{ steps.script.outputs.extensive_matrix }}
       may_skip_libm_ci: ${{ steps.script.outputs.may_skip_libm_ci }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
           fetch-depth: 500
@@ -132,7 +132,7 @@ jobs:
       if: matrix.os == 'ubuntu-24.04-ppc64le' || matrix.os == 'ubuntu-24.04-s390x'
       run: sudo apt-get update && sudo apt-get install -y rustup
 
-    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       with: { persist-credentials: false }
     - name: Install Rust (rustup)
       shell: bash
@@ -144,7 +144,7 @@ jobs:
         rustup default "$channel"
         rustup target add "$JOB_TARGET"
 
-    - uses: taiki-e/install-action@920ab1831fbf4fb3ef75c8ead83556c918bb7290 # v2.79.8
+    - uses: taiki-e/install-action@7a79fe8c3a13344501c80d99cae481c1c9085912 # v2.81.10
       with:
         tool: nextest@0.9.131
 
@@ -152,19 +152,19 @@ jobs:
       with:
         key: ${{ matrix.target }}
     - name: Cache Docker layers
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       if: ${{ env.RUN_IN_DOCKER == 'true' }}
       with:
         path: /tmp/.buildx-cache
         key: ${{ matrix.target }}-buildx-${{ github.sha }}
         restore-keys: ${{ matrix.target }}-buildx-
     # Configure buildx to use Docker layer caching
-    - uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
+    - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
       if: ${{ env.RUN_IN_DOCKER == 'true' }}
 
     - name: Cache compiler-rt
       id: cache-compiler-rt
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: compiler-rt
         key: ${{ runner.os }}-compiler-rt-${{ hashFiles('ci/download-compiler-rt.sh') }}
@@ -216,7 +216,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       with: { persist-credentials: false }
     # Unlike rustfmt, stable clippy does not work on code with nightly features.
     - name: Install nightly `clippy`
@@ -236,16 +236,16 @@ jobs:
       security-events: write
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with: { persist-credentials: false }
-      - uses: zizmorcore/zizmor-action@71321a20a9ded102f6e9ce5718a2fcec2c4f70d8 # v0.5.2
+      - uses: zizmorcore/zizmor-action@5f14fd08f7cf1cb1609c1e344975f152c7ee938d # v0.5.6
 
   build-custom:
     name: Build custom target
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       with: { persist-credentials: false }
     - name: Install Rust
       run: |
@@ -267,7 +267,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       with: { persist-credentials: false }
     - name: Install Rust
       run: |
@@ -298,9 +298,9 @@ jobs:
     env:
       JOB_TARGET: ${{ matrix.target }}
     steps:
-    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       with: { persist-credentials: false }
-    - uses: taiki-e/install-action@920ab1831fbf4fb3ef75c8ead83556c918bb7290 # v2.79.8
+    - uses: taiki-e/install-action@7a79fe8c3a13344501c80d99cae481c1c9085912 # v2.81.10
       with:
         tool: cargo-binstall@1.17.7
 
@@ -319,7 +319,7 @@ jobs:
       run: ./ci/bench-icount.sh "$JOB_TARGET"
 
     - name: Upload the benchmark baseline
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: ${{ env.BASELINE_NAME }}
         path: ${{ env.BASELINE_NAME }}.tar.xz
@@ -334,7 +334,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       with: { persist-credentials: false }
     - name: Install Rust (rustup)
       run: rustup update nightly --no-self-update && rustup default nightly
@@ -351,7 +351,7 @@ jobs:
     env:
       RUSTFLAGS: # No need to check warnings on old MSRV, unset `-Dwarnings`
     steps:
-    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       with: { persist-credentials: false }
     - name: Install Rust
       run: |
@@ -370,7 +370,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       with: { persist-credentials: false }
     - name: Install nightly `rustfmt`
       run: rustup set profile minimal && rustup default nightly && rustup component add rustfmt
@@ -394,7 +394,7 @@ jobs:
     env:
       TO_TEST: ${{ matrix.to_test }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with: { persist-credentials: false }
       - name: Install Rust
         run: |
