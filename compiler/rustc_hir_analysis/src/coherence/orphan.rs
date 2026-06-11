@@ -16,7 +16,7 @@ use rustc_trait_selection::traits::{
 };
 use tracing::{debug, instrument};
 
-use crate::errors;
+use crate::diagnostics;
 
 #[instrument(level = "debug", skip(tcx))]
 pub(crate) fn orphan_check_impl(
@@ -242,7 +242,7 @@ pub(crate) fn orphan_check_impl(
             match local_impl {
                 LocalImpl::Allow => {}
                 LocalImpl::Disallow { problematic_kind } => {
-                    return Err(tcx.dcx().emit_err(errors::TraitsWithDefaultImpl {
+                    return Err(tcx.dcx().emit_err(diagnostics::TraitsWithDefaultImpl {
                         span: tcx.def_span(impl_def_id),
                         traits: tcx.def_path_str(trait_def_id),
                         problematic_kind,
@@ -254,13 +254,13 @@ pub(crate) fn orphan_check_impl(
             match nonlocal_impl {
                 NonlocalImpl::Allow => {}
                 NonlocalImpl::DisallowBecauseNonlocal => {
-                    return Err(tcx.dcx().emit_err(errors::CrossCrateTraitsDefined {
+                    return Err(tcx.dcx().emit_err(diagnostics::CrossCrateTraitsDefined {
                         span: tcx.def_span(impl_def_id),
                         traits: tcx.def_path_str(trait_def_id),
                     }));
                 }
                 NonlocalImpl::DisallowOther => {
-                    return Err(tcx.dcx().emit_err(errors::CrossCrateTraits {
+                    return Err(tcx.dcx().emit_err(diagnostics::CrossCrateTraits {
                         span: tcx.def_span(impl_def_id),
                         traits: tcx.def_path_str(trait_def_id),
                         self_ty,
@@ -374,11 +374,11 @@ fn emit_orphan_check_error<'tcx>(
 
             let span = tcx.def_span(impl_def_id);
             let mut diag = tcx.dcx().create_err(match trait_ref.self_ty().kind() {
-                ty::Adt(..) => errors::OnlyCurrentTraits::Outside { span, note: () },
+                ty::Adt(..) => diagnostics::OnlyCurrentTraits::Outside { span, note: () },
                 _ if trait_ref.self_ty().is_primitive() => {
-                    errors::OnlyCurrentTraits::Primitive { span, note: () }
+                    diagnostics::OnlyCurrentTraits::Primitive { span, note: () }
                 }
-                _ => errors::OnlyCurrentTraits::Arbitrary { span, note: () },
+                _ => diagnostics::OnlyCurrentTraits::Arbitrary { span, note: () },
             });
 
             for &(mut ty, is_target_ty) in &tys {
@@ -398,9 +398,9 @@ fn emit_orphan_check_error<'tcx>(
                 match *ty.kind() {
                     ty::Slice(_) => {
                         if is_foreign {
-                            diag.subdiagnostic(errors::OnlyCurrentTraitsForeign { span });
+                            diag.subdiagnostic(diagnostics::OnlyCurrentTraitsForeign { span });
                         } else {
-                            diag.subdiagnostic(errors::OnlyCurrentTraitsName {
+                            diag.subdiagnostic(diagnostics::OnlyCurrentTraitsName {
                                 span,
                                 name: "slices",
                             });
@@ -408,9 +408,9 @@ fn emit_orphan_check_error<'tcx>(
                     }
                     ty::Array(..) => {
                         if is_foreign {
-                            diag.subdiagnostic(errors::OnlyCurrentTraitsForeign { span });
+                            diag.subdiagnostic(diagnostics::OnlyCurrentTraitsForeign { span });
                         } else {
-                            diag.subdiagnostic(errors::OnlyCurrentTraitsName {
+                            diag.subdiagnostic(diagnostics::OnlyCurrentTraitsName {
                                 span,
                                 name: "arrays",
                             });
@@ -418,36 +418,39 @@ fn emit_orphan_check_error<'tcx>(
                     }
                     ty::Tuple(..) => {
                         if is_foreign {
-                            diag.subdiagnostic(errors::OnlyCurrentTraitsForeign { span });
+                            diag.subdiagnostic(diagnostics::OnlyCurrentTraitsForeign { span });
                         } else {
-                            diag.subdiagnostic(errors::OnlyCurrentTraitsName {
+                            diag.subdiagnostic(diagnostics::OnlyCurrentTraitsName {
                                 span,
                                 name: "tuples",
                             });
                         }
                     }
                     ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }) => {
-                        diag.subdiagnostic(errors::OnlyCurrentTraitsOpaque { span });
+                        diag.subdiagnostic(diagnostics::OnlyCurrentTraitsOpaque { span });
                     }
                     ty::RawPtr(ptr_ty, mutbl) => {
                         if !trait_ref.self_ty().has_param() {
-                            diag.subdiagnostic(errors::OnlyCurrentTraitsPointerSugg {
+                            diag.subdiagnostic(diagnostics::OnlyCurrentTraitsPointerSugg {
                                 wrapper_span: impl_.self_ty.span,
                                 struct_span: item.span.shrink_to_lo(),
                                 mut_key: mutbl.prefix_str(),
                                 ptr_ty,
                             });
                         }
-                        diag.subdiagnostic(errors::OnlyCurrentTraitsPointer { span, pointer: ty });
+                        diag.subdiagnostic(diagnostics::OnlyCurrentTraitsPointer {
+                            span,
+                            pointer: ty,
+                        });
                     }
                     ty::Adt(adt_def, _) => {
-                        diag.subdiagnostic(errors::OnlyCurrentTraitsAdt {
+                        diag.subdiagnostic(diagnostics::OnlyCurrentTraitsAdt {
                             span,
                             name: tcx.def_path_str(adt_def.did()),
                         });
                     }
                     _ => {
-                        diag.subdiagnostic(errors::OnlyCurrentTraitsTy { span, ty });
+                        diag.subdiagnostic(diagnostics::OnlyCurrentTraitsTy { span, ty });
                     }
                 }
             }
@@ -461,13 +464,15 @@ fn emit_orphan_check_error<'tcx>(
                 let span = name.span;
 
                 reported.get_or_insert(match local_ty {
-                    Some(local_type) => tcx.dcx().emit_err(errors::TyParamFirstLocal {
+                    Some(local_type) => tcx.dcx().emit_err(diagnostics::TyParamFirstLocal {
                         span,
                         note: (),
                         param: name,
                         local_type,
                     }),
-                    None => tcx.dcx().emit_err(errors::TyParamSome { span, note: (), param: name }),
+                    None => {
+                        tcx.dcx().emit_err(diagnostics::TyParamSome { span, note: (), param: name })
+                    }
                 });
             }
             reported.unwrap() // FIXME(fmease): This is very likely reachable.
@@ -491,13 +496,13 @@ fn lint_uncovered_ty_params<'tcx>(
                 UNCOVERED_PARAM_IN_PROJECTION,
                 hir_id,
                 span,
-                errors::TyParamFirstLocalLint { span, note: (), param: name, local_type },
+                diagnostics::TyParamFirstLocalLint { span, note: (), param: name, local_type },
             ),
             None => tcx.emit_node_span_lint(
                 UNCOVERED_PARAM_IN_PROJECTION,
                 hir_id,
                 span,
-                errors::TyParamSomeLint { span, note: (), param: name },
+                diagnostics::TyParamSomeLint { span, note: (), param: name },
             ),
         };
     }

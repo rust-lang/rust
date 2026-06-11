@@ -30,7 +30,7 @@ use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{Ident, Span, sym};
 use tracing::{debug, debug_span, instrument};
 
-use crate::errors;
+use crate::diagnostics;
 use crate::hir::definitions::PerParentDisambiguatorState;
 
 #[extension(trait RegionExt)]
@@ -482,7 +482,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 if !infer_spans.is_empty() {
                     self.tcx
                         .dcx()
-                        .emit_err(errors::ClosureImplicitHrtb { spans: infer_spans, for_sp });
+                        .emit_err(diagnostics::ClosureImplicitHrtb { spans: infer_spans, for_sp });
                 }
             }
 
@@ -669,7 +669,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 LifetimeKind::ImplicitObjectLifetimeDefault
                 | LifetimeKind::Infer
                 | LifetimeKind::Static => {
-                    self.tcx.dcx().emit_err(errors::BadPreciseCapture {
+                    self.tcx.dcx().emit_err(diagnostics::BadPreciseCapture {
                         span: lt.ident.span,
                         kind: "lifetime",
                         found: format!("`{}`", lt.ident.name),
@@ -682,7 +682,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     self.resolve_type_ref(def_id.expect_local(), param.hir_id);
                 }
                 Res::SelfTyAlias { alias_to, .. } => {
-                    self.tcx.dcx().emit_err(errors::PreciseCaptureSelfAlias {
+                    self.tcx.dcx().emit_err(diagnostics::PreciseCaptureSelfAlias {
                         span: param.ident.span,
                         self_span: self.tcx.def_span(alias_to),
                         what: self.tcx.def_descr(alias_to),
@@ -1380,7 +1380,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 let def_span = self.tcx.def_span(param_def_id);
                 let guar = match self.tcx.def_kind(param_def_id) {
                     DefKind::LifetimeParam => {
-                        self.tcx.dcx().emit_err(errors::CannotCaptureLateBound::Lifetime {
+                        self.tcx.dcx().emit_err(diagnostics::CannotCaptureLateBound::Lifetime {
                             use_span,
                             def_span,
                             what,
@@ -1435,7 +1435,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 Scope::Binder {
                     where_bound_origin: Some(hir::PredicateOrigin::ImplTrait), ..
                 } => {
-                    self.tcx.dcx().emit_err(errors::LateBoundInApit::Lifetime {
+                    self.tcx.dcx().emit_err(diagnostics::LateBoundInApit::Lifetime {
                         span: lifetime_ref.ident.span,
                         param_span: self.tcx.def_span(region_def_id),
                     });
@@ -1526,7 +1526,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         let decl_span = rustc_errors::MultiSpan::from_spans(errors.decl_spans);
 
         // Ensure that the parent of the def is an item, not HRTB
-        let guar = self.tcx.dcx().emit_err(errors::OpaqueCapturesHigherRankedLifetime {
+        let guar = self.tcx.dcx().emit_err(diagnostics::OpaqueCapturesHigherRankedLifetime {
             span,
             label: Some(errors.capture_spans[0]),
             decl_span,
@@ -1634,14 +1634,14 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 let def_span = self.tcx.def_span(param_def_id);
                 let guar = match self.tcx.def_kind(param_def_id) {
                     DefKind::ConstParam => {
-                        self.tcx.dcx().emit_err(errors::CannotCaptureLateBound::Const {
+                        self.tcx.dcx().emit_err(diagnostics::CannotCaptureLateBound::Const {
                             use_span,
                             def_span,
                             what,
                         })
                     }
                     DefKind::TyParam => {
-                        self.tcx.dcx().emit_err(errors::CannotCaptureLateBound::Type {
+                        self.tcx.dcx().emit_err(diagnostics::CannotCaptureLateBound::Type {
                             use_span,
                             def_span,
                             what,
@@ -1676,11 +1676,11 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     where_bound_origin: Some(hir::PredicateOrigin::ImplTrait), ..
                 } => {
                     let guar = self.tcx.dcx().emit_err(match self.tcx.def_kind(param_def_id) {
-                        DefKind::TyParam => errors::LateBoundInApit::Type {
+                        DefKind::TyParam => diagnostics::LateBoundInApit::Type {
                             span: self.tcx.hir_span(hir_id),
                             param_span: self.tcx.def_span(param_def_id),
                         },
-                        DefKind::ConstParam => errors::LateBoundInApit::Const {
+                        DefKind::ConstParam => diagnostics::LateBoundInApit::Const {
                             span: self.tcx.hir_span(hir_id),
                             param_span: self.tcx.def_span(param_def_id),
                         },

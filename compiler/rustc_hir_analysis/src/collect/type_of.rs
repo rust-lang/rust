@@ -154,9 +154,10 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
             ItemKind::TyAlias(_, _, self_ty) => icx.lower_ty(self_ty),
             ItemKind::Impl(hir::Impl { self_ty, .. }) => match self_ty.find_self_aliases() {
                 spans if spans.len() > 0 => {
-                    let guar = tcx
-                        .dcx()
-                        .emit_err(crate::errors::SelfInImplSelf { span: spans.into(), note: () });
+                    let guar = tcx.dcx().emit_err(crate::diagnostics::SelfInImplSelf {
+                        span: spans.into(),
+                        note: (),
+                    });
                     Ty::new_error(tcx, guar)
                 }
                 _ => icx.lower_ty(self_ty),
