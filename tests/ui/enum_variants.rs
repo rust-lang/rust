@@ -1,5 +1,5 @@
 #![warn(clippy::enum_variant_names)]
-#![allow(non_camel_case_types, clippy::upper_case_acronyms)]
+#![expect(non_camel_case_types, clippy::upper_case_acronyms)]
 
 enum FakeCallType {
     CALL,

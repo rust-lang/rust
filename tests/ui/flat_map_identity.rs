@@ -1,4 +1,4 @@
-#![allow(unused_imports, clippy::needless_return)]
+#![allow(clippy::needless_return)]
 #![warn(clippy::flat_map_identity)]
 
 use std::convert;

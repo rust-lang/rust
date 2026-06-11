@@ -1,6 +1,5 @@
 #![warn(clippy::unwrap_used)]
 #![allow(clippy::unnecessary_literal_unwrap)]
-#![allow(unused_variables)]
 use std::sync::Mutex;
 
 fn main() {

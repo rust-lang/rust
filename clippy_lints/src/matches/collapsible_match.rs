@@ -157,18 +157,6 @@ fn check_arm<'tcx>(
             inner_expr.span,
             "this `if` can be collapsed into the outer `match`",
             |diag| {
-                let outer_then_open_bracket = outer_then_body
-                    .span
-                    .split_at(1)
-                    .0
-                    .with_leading_whitespace(cx)
-                    .into_span();
-                let outer_then_closing_bracket = {
-                    let end = outer_then_body.span.shrink_to_hi();
-                    end.with_lo(end.lo() - BytePos(1))
-                        .with_leading_whitespace(cx)
-                        .into_span()
-                };
                 let outer_arrow_end = if let Some(outer_guard) = outer_guard {
                     outer_guard.span.shrink_to_hi()
                 } else {
@@ -176,11 +164,25 @@ fn check_arm<'tcx>(
                 };
                 let (paren_start, inner_if_span, paren_end) = peel_parens(cx, inner_expr.span);
                 let inner_if = inner_if_span.split_at(2).0;
-                let mut sugg = vec![
-                    (inner.then.span.shrink_to_lo(), "=> ".to_string()),
-                    (outer_arrow_end.to(outer_then_open_bracket), String::new()),
-                    (outer_then_closing_bracket, String::new()),
-                ];
+                let mut sugg = vec![(inner.then.span.shrink_to_lo(), "=> ".to_string())];
+                if matches!(outer_then_body.kind, ExprKind::Block(..)) {
+                    let outer_then_open_bracket = outer_then_body
+                        .span
+                        .split_at(1)
+                        .0
+                        .with_leading_whitespace(cx)
+                        .into_span();
+                    let outer_then_closing_bracket = {
+                        let end = outer_then_body.span.shrink_to_hi();
+                        end.with_lo(end.lo() - BytePos(1))
+                            .with_leading_whitespace(cx)
+                            .into_span()
+                    };
+                    sugg.push((outer_arrow_end.to(outer_then_open_bracket), String::new()));
+                    sugg.push((outer_then_closing_bracket, String::new()));
+                } else {
+                    sugg.push((outer_arrow_end.until(inner_if), " ".to_string()));
+                }
 
                 if let Some(outer_guard) = outer_guard {
                     sugg.extend(parens_around(outer_guard));

@@ -57,6 +57,15 @@ impl<'de, const REPLACEMENT_ALLOWED: bool> Deserialize<'de> for DisallowedPath<R
     }
 }
 
+#[derive(Debug, Default, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
+pub struct DisallowedProfile {
+    #[serde(default, alias = "disallowed_methods")]
+    pub disallowed_methods: Vec<DisallowedPath>,
+    #[serde(default, alias = "disallowed_types")]
+    pub disallowed_types: Vec<DisallowedPath>,
+}
+
 // `DisallowedPathEnum` is an implementation detail to enable the `Deserialize` implementation just
 // above. `DisallowedPathEnum` is not meant to be used outside of this file.
 #[derive(Debug, Deserialize, Serialize)]

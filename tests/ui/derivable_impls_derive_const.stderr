@@ -1,5 +1,5 @@
 error: this `impl` can be derived
-  --> tests/ui/derivable_impls_derive_const.rs:11:5
+  --> tests/ui/derivable_impls_derive_const.rs:10:5
    |
 LL | /     const impl Default for Foo {
 LL | |
@@ -20,7 +20,7 @@ LL ~
    |
 
 error: this `impl` can be derived
-  --> tests/ui/derivable_impls_derive_const.rs:24:5
+  --> tests/ui/derivable_impls_derive_const.rs:23:5
    |
 LL | /     const impl Default for Bar {
 LL | |

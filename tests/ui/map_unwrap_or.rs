@@ -1,7 +1,7 @@
 //@aux-build:option_helpers.rs
 //@no-rustfix
 #![warn(clippy::map_unwrap_or)]
-#![allow(clippy::uninlined_format_args, clippy::unnecessary_lazy_evaluations)]
+#![expect(clippy::uninlined_format_args, clippy::unnecessary_lazy_evaluations)]
 
 #[macro_use]
 extern crate option_helpers;
