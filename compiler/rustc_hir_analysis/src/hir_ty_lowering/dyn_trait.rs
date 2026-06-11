@@ -23,7 +23,7 @@ use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
 use super::HirTyLowerer;
-use crate::errors::DynTraitAssocItemBindingMentionsSelf;
+use crate::diagnostics::DynTraitAssocItemBindingMentionsSelf;
 use crate::hir_ty_lowering::{
     GenericArgCountMismatch, ImpliedBoundsContext, OverlappingAsssocItemConstraints,
     PredicateFilter, RegionInferReason,
@@ -297,7 +297,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     UNUSED_ASSOCIATED_TYPE_BOUNDS,
                     hir_id,
                     span,
-                    crate::errors::UnusedAssociatedTypeBounds { span },
+                    crate::diagnostics::UnusedAssociatedTypeBounds { span },
                 );
             }
         }
@@ -557,7 +557,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // error.
         let r = derived_region_bounds[0];
         if derived_region_bounds[1..].iter().any(|r1| r != *r1) {
-            self.dcx().emit_err(crate::errors::AmbiguousLifetimeBound { span });
+            self.dcx().emit_err(crate::diagnostics::AmbiguousLifetimeBound { span });
         }
         Some(r)
     }

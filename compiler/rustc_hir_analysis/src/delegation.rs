@@ -14,7 +14,7 @@ use rustc_middle::ty::{
 use rustc_span::{ErrorGuaranteed, Span, kw};
 
 use crate::collect::ItemCtxt;
-use crate::errors::DelegationSelfTypeNotSpecified;
+use crate::diagnostics::DelegationSelfTypeNotSpecified;
 use crate::hir_ty_lowering::HirTyLowerer;
 
 type RemapTable = FxHashMap<u32, u32>;
@@ -586,7 +586,7 @@ fn check_constraints<'tcx>(
     let mut ret = Ok(());
 
     let mut emit = |descr| {
-        ret = Err(tcx.dcx().emit_err(crate::errors::UnsupportedDelegation {
+        ret = Err(tcx.dcx().emit_err(crate::diagnostics::UnsupportedDelegation {
             span: tcx.def_span(def_id),
             descr,
             callee_span: tcx.def_span(sig_id),

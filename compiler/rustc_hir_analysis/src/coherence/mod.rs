@@ -16,7 +16,7 @@ use rustc_span::{ErrorGuaranteed, sym};
 use tracing::debug;
 
 use crate::check::always_applicable;
-use crate::errors;
+use crate::diagnostics;
 
 mod builtin;
 mod inherent_impls;
@@ -97,12 +97,14 @@ fn enforce_trait_manually_implementable(
             && !impl_header_span.allows_unstable(sym::specialization)
             && !impl_header_span.allows_unstable(sym::min_specialization)
         {
-            return Err(tcx.dcx().emit_err(errors::SpecializationTrait { span: impl_header_span }));
+            return Err(tcx
+                .dcx()
+                .emit_err(diagnostics::SpecializationTrait { span: impl_header_span }));
         }
     }
 
     if !trait_def.impl_restriction.is_allowed_in(impl_def_id.to_def_id(), tcx) {
-        return Err(tcx.dcx().emit_err(errors::ImplOfRestrictedTrait {
+        return Err(tcx.dcx().emit_err(diagnostics::ImplOfRestrictedTrait {
             impl_span: impl_header_span,
             restriction_span: trait_def.impl_restriction.expect_span(),
             restriction_path: trait_def.impl_restriction.restriction_path(tcx),

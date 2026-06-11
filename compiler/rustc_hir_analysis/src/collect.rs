@@ -44,7 +44,7 @@ use rustc_trait_selection::traits::{
 };
 use tracing::{debug, instrument};
 
-use crate::errors::{self, ElidedLifetimesAreNotAllowedInDelegations};
+use crate::diagnostics::{self, ElidedLifetimesAreNotAllowedInDelegations};
 use crate::hir_ty_lowering::{HirTyLowerer, InherentAssocCandidate, RegionInferReason};
 
 pub(crate) mod dump;
@@ -235,7 +235,7 @@ fn bad_placeholder<'cx, 'tcx>(
     let kind = if kind.ends_with('s') { format!("{kind}es") } else { format!("{kind}s") };
 
     spans.sort();
-    cx.dcx().create_err(errors::PlaceholderNotAllowedItemSignatures { spans, kind })
+    cx.dcx().create_err(diagnostics::PlaceholderNotAllowedItemSignatures { spans, kind })
 }
 
 impl<'tcx> ItemCtxt<'tcx> {
@@ -479,7 +479,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
                                 [] => (generics.span, format!("<{lt_name}>")),
                                 [bound, ..] => (bound.span.shrink_to_lo(), format!("{lt_name}, ")),
                             };
-                            mpart_sugg = Some(errors::AssociatedItemTraitUninferredGenericParamsMultipartSuggestion {
+                            mpart_sugg = Some(diagnostics::AssociatedItemTraitUninferredGenericParamsMultipartSuggestion {
                                 fspan: lt_sp,
                                 first: sugg,
                                 sspan: span.with_hi(item_segment.ident.span.lo()),
@@ -520,13 +520,15 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
                 _ => {}
             }
 
-            Err(self.tcx().dcx().emit_err(errors::AssociatedItemTraitUninferredGenericParams {
-                span,
-                inferred_sugg,
-                bound,
-                mpart_sugg,
-                what: self.tcx.def_descr(item_def_id),
-            }))
+            Err(self.tcx().dcx().emit_err(
+                diagnostics::AssociatedItemTraitUninferredGenericParams {
+                    span,
+                    inferred_sugg,
+                    bound,
+                    mpart_sugg,
+                    what: self.tcx.def_descr(item_def_id),
+                },
+            ))
         }
     }
 
@@ -666,7 +668,7 @@ pub(super) fn check_enum_variant_types(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             Some(discr)
         } else {
             let span = tcx.def_span(variant.def_id);
-            tcx.dcx().emit_err(errors::EnumDiscriminantOverflowed {
+            tcx.dcx().emit_err(diagnostics::EnumDiscriminantOverflowed {
                 span,
                 discr: prev_discr.unwrap().to_string(),
                 item_name: tcx.item_ident(variant.def_id),
@@ -728,8 +730,8 @@ struct NestedSpan {
 }
 
 impl NestedSpan {
-    fn to_field_already_declared_nested_help(&self) -> errors::FieldAlreadyDeclaredNestedHelp {
-        errors::FieldAlreadyDeclaredNestedHelp { span: self.span }
+    fn to_field_already_declared_nested_help(&self) -> diagnostics::FieldAlreadyDeclaredNestedHelp {
+        diagnostics::FieldAlreadyDeclaredNestedHelp { span: self.span }
     }
 }
 
@@ -767,14 +769,14 @@ impl<'tcx> FieldUniquenessCheckContext<'tcx> {
         let field_name = field_name.normalize_to_macros_2_0();
         match (field_decl, self.seen_fields.get(&field_name).copied()) {
             (NotNested(span), Some(NotNested(prev_span))) => {
-                self.tcx.dcx().emit_err(errors::FieldAlreadyDeclared::NotNested {
+                self.tcx.dcx().emit_err(diagnostics::FieldAlreadyDeclared::NotNested {
                     field_name,
                     span,
                     prev_span,
                 });
             }
             (NotNested(span), Some(Nested(prev))) => {
-                self.tcx.dcx().emit_err(errors::FieldAlreadyDeclared::PreviousNested {
+                self.tcx.dcx().emit_err(diagnostics::FieldAlreadyDeclared::PreviousNested {
                     field_name,
                     span,
                     prev_span: prev.span,
@@ -786,7 +788,7 @@ impl<'tcx> FieldUniquenessCheckContext<'tcx> {
                 Nested(current @ NestedSpan { span, nested_field_span, .. }),
                 Some(NotNested(prev_span)),
             ) => {
-                self.tcx.dcx().emit_err(errors::FieldAlreadyDeclared::CurrentNested {
+                self.tcx.dcx().emit_err(diagnostics::FieldAlreadyDeclared::CurrentNested {
                     field_name,
                     span,
                     nested_field_span,
@@ -795,7 +797,7 @@ impl<'tcx> FieldUniquenessCheckContext<'tcx> {
                 });
             }
             (Nested(current @ NestedSpan { span, nested_field_span }), Some(Nested(prev))) => {
-                self.tcx.dcx().emit_err(errors::FieldAlreadyDeclared::BothNested {
+                self.tcx.dcx().emit_err(diagnostics::FieldAlreadyDeclared::BothNested {
                     field_name,
                     span,
                     nested_field_span,
@@ -945,7 +947,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
 
     let paren_sugar = find_attr!(attrs, RustcParenSugar);
     if paren_sugar && !tcx.features().unboxed_closures() {
-        tcx.dcx().emit_err(errors::ParenSugarAttribute { span: item.span });
+        tcx.dcx().emit_err(diagnostics::ParenSugarAttribute { span: item.span });
     }
 
     // Only regular traits can be marker.
@@ -1442,7 +1444,7 @@ fn check_impl_constness(
         }
         (None, _) | (_, false) => (None, ""),
     };
-    tcx.dcx().emit_err(errors::ConstImplForNonConstTrait {
+    tcx.dcx().emit_err(diagnostics::ConstImplForNonConstTrait {
         trait_ref_span: hir_trait_ref.path.span,
         trait_name,
         suggestion,
@@ -1511,7 +1513,8 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
                     .source_map()
                     .span_to_snippet(hir_ty.span)
                     .map_or_else(|_| String::new(), |s| format!(" `{s}`"));
-                tcx.dcx().emit_err(errors::SIMDFFIHighlyExperimental { span: hir_ty.span, snip });
+                tcx.dcx()
+                    .emit_err(diagnostics::SIMDFFIHighlyExperimental { span: hir_ty.span, snip });
             }
         };
         for (input, ty) in iter::zip(decl.inputs, fty.inputs().skip_binder()) {
