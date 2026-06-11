@@ -107,12 +107,11 @@ pub enum TypingMode<I: Interner, S: TypingModeErasedStatus = MayBeErased> {
     /// }
     /// ```
     Typeck { defining_opaque_types_and_generators: I::LocalDefIds },
-    /// `PostTypeckUntilBorrowck` is used after `Typeck` has finished, up to
-    /// and including borrowck. This is the behavior that's used mainly in borrowck,
-    /// but, for example, also in late lints and other analyses while building MIR.
-    /// The behavior of `PostTypeckUntilBorrowck` is identical to `TypingMode::Typeck`
-    /// except that the initial value for opaque types is the type computed during
-    /// HIR typeck with unique unconstrained region inference variables.
+    /// `PostTypeckUntilBorrowck` is used after `Typeck` has finished, up to and including borrowck,
+    /// for anything that accesses typeck results. This is the behavior that's used mainly in borrowck,
+    /// but, for example, also in late lints and other analyses while building MIR. The behavior of
+    /// `PostTypeckUntilBorrowck` is identical to `TypingMode::Typeck` except that the initial value for
+    /// opaque types is the type computed during HIR typeck with unique unconstrained region inference variables.
     ///
     /// This is currently only used by the new solver as it results in new
     /// non-universal defining uses of opaque types, which is a breaking change.
