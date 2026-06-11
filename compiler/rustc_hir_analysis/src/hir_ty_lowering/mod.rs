@@ -297,7 +297,7 @@ pub enum PermitVariants {
 
 #[derive(Debug, Clone, Copy)]
 enum TypeRelativePath<'tcx> {
-    AssocItem(DefId, GenericArgsRef<'tcx>),
+    AssocItem(ty::AliasTerm<'tcx>),
     Variant { adt: Ty<'tcx>, variant_did: DefId },
     Ctor { ctor_def_id: DefId, args: GenericArgsRef<'tcx> },
 }
@@ -1356,15 +1356,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             span,
             LowerTypeRelativePathMode::Type(permit_variants),
         )? {
-            TypeRelativePath::AssocItem(def_id, args) => {
-                let alias_ty = ty::AliasTy::new_from_args(
-                    tcx,
-                    ty::AliasTyKind::new_from_def_id(tcx, def_id),
-                    args,
-                );
-                let ty = Ty::new_alias(tcx, alias_ty);
+            TypeRelativePath::AssocItem(alias_term) => {
+                let ty = alias_term.expect_ty().to_ty(tcx);
                 let ty = self.check_param_uses_if_mcg(ty, span, false);
-                Ok((ty, tcx.def_kind(def_id), def_id))
+                Ok((ty, tcx.def_kind(alias_term.def_id()), alias_term.def_id()))
             }
             TypeRelativePath::Variant { adt, variant_did } => {
                 let adt = self.check_param_uses_if_mcg(adt, span, false);
@@ -1396,16 +1391,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             span,
             LowerTypeRelativePathMode::Const,
         )? {
-            TypeRelativePath::AssocItem(def_id, args) => {
-                self.require_type_const_attribute(def_id, span)?;
-                let ct = Const::new_unevaluated(
-                    tcx,
-                    ty::UnevaluatedConst::new(
-                        tcx,
-                        ty::UnevaluatedConstKind::new_from_def_id(tcx, def_id),
-                        args,
-                    ),
-                );
+            TypeRelativePath::AssocItem(alias_term) => {
+                self.require_type_const_attribute(alias_term.def_id(), span)?;
+                let ct = Const::new_unevaluated(tcx, alias_term.expect_ct());
                 let ct = self.check_param_uses_if_mcg(ct, span, false);
                 Ok(ct)
             }
@@ -1487,7 +1475,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
 
             // FIXME(inherent_associated_types, #106719): Support self types other than ADTs.
-            if let Some((did, args)) = self.probe_inherent_assoc_item(
+            if let Some(alias_term) = self.probe_inherent_assoc_item(
                 segment,
                 adt_def.did(),
                 self_ty,
@@ -1495,7 +1483,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 span,
                 mode.assoc_tag(),
             )? {
-                return Ok(TypeRelativePath::AssocItem(did, args));
+                return Ok(TypeRelativePath::AssocItem(alias_term));
             }
         }
 
@@ -1529,7 +1517,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             );
         }
 
-        Ok(TypeRelativePath::AssocItem(item_def_id, args))
+        Ok(TypeRelativePath::AssocItem(ty::AliasTerm::new_from_def_id(tcx, item_def_id, args)))
     }
 
     /// Resolve a [type-relative](hir::QPath::TypeRelative) (and type-level) path.
@@ -1609,7 +1597,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         block: HirId,
         span: Span,
         assoc_tag: ty::AssocTag,
-    ) -> Result<Option<(DefId, GenericArgsRef<'tcx>)>, ErrorGuaranteed> {
+    ) -> Result<Option<ty::AliasTerm<'tcx>>, ErrorGuaranteed> {
         let tcx = self.tcx();
 
         if !tcx.features().inherent_associated_types() {
@@ -1692,7 +1680,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .chain(args.into_iter().skip(parent_args.len())),
         );
 
-        Ok(Some((assoc_item, args)))
+        let kind = match assoc_tag {
+            ty::AssocTag::Type => ty::AliasTermKind::InherentTy { def_id: assoc_item },
+            ty::AssocTag::Const => {
+                // FIXME(mgca): drop once `InherentConst` accepts IAC-shaped args (issue #156181)
+                // without this, `new_from_args` errors (#155341).
+                self.require_type_const_attribute(assoc_item, span)?;
+                ty::AliasTermKind::InherentConst { def_id: assoc_item }
+            }
+            ty::AssocTag::Fn => unreachable!(),
+        };
+
+        Ok(Some(ty::AliasTerm::new_from_args(tcx, kind, args)))
     }
 
     /// Given name and kind search for the assoc item in the provided scope and check if it's accessible[^1].
