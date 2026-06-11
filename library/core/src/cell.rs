@@ -2225,7 +2225,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 ///
 /// Note that the only valid way to obtain a `*mut T` pointer to the contents of a
 /// _shared_ `UnsafeCell<T>` is through [`.get()`]  or [`.raw_get()`]. An `&T` or `&mut T` reference
-/// can then be obtained from that pointer, as long as the alasing rules outlined above are obeyed.
+/// can then be obtained from that pointer, as long as the aliasing rules outlined above are obeyed.
 /// Even though `T` and `UnsafeCell<T>` have the
 /// same memory layout, the following is not allowed and undefined behavior:
 ///
