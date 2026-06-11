@@ -216,11 +216,11 @@ pub(crate) fn expand_include_str(
         Err(guar) => return ExpandResult::Ready(DummyResult::any(sp, guar)),
     };
     ExpandResult::Ready(match load_binary_file(cx, path.as_str().as_ref(), sp, path_span) {
-        Ok((bytes, bsp)) => match std::str::from_utf8(&bytes) {
+        Ok((bytes, _bsp)) => match std::str::from_utf8(&bytes) {
             Ok(src) => {
                 let interned_src = Symbol::intern(src);
                 // MacEager converts the expr into a pat if need be.
-                MacEager::expr(cx.expr_str(cx.with_def_site_ctxt(bsp), interned_src))
+                MacEager::expr(cx.expr_str(sp, interned_src))
             }
             Err(utf8err) => {
                 let mut err = cx.dcx().struct_span_err(sp, format!("`{path}` wasn't a utf-8 file"));
