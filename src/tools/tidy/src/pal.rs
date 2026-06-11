@@ -41,6 +41,7 @@ const EXCEPTION_PATHS: &[&str] = &[
     "library/windows_link",
     "library/panic_abort",
     "library/panic_unwind",
+    "library/proc_macro/src/bridge/client.rs",
     "library/unwind",
     "library/rtstartup", // Not sure what to do about this. magic stuff for mingw
     "library/test",      // Probably should defer to unstable `std::sys` APIs.
