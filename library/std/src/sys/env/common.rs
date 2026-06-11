@@ -17,9 +17,6 @@ impl fmt::Debug for Env {
     }
 }
 
-impl !Send for Env {}
-impl !Sync for Env {}
-
 impl Iterator for Env {
     type Item = (OsString, OsString);
     fn next(&mut self) -> Option<(OsString, OsString)> {
