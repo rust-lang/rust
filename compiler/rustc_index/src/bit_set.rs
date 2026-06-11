@@ -913,7 +913,7 @@ impl<'a, T: Idx> Iterator for BitIter<'a, T> {
                 // Get the position of the next set bit in the current word,
                 // then clear the bit.
                 let bit_pos = self.word.trailing_zeros() as usize;
-                self.word ^= 1 << bit_pos;
+                self.word &= self.word - 1;
                 return Some(T::new(bit_pos + self.offset));
             }
 
