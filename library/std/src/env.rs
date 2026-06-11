@@ -101,6 +101,12 @@ pub struct VarsOs {
     inner: env_imp::Env,
 }
 
+#[stable(feature = "env_vars_unimpl_send_sync", since = "CURRENT_RUSTC_VERSION")]
+impl !Send for VarsOs {}
+
+#[stable(feature = "env_vars_unimpl_send_sync", since = "CURRENT_RUSTC_VERSION")]
+impl !Sync for VarsOs {}
+
 /// Returns an iterator of (variable, value) pairs of strings, for all the
 /// environment variables of the current process.
 ///
