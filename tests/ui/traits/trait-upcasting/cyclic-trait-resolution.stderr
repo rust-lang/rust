@@ -10,7 +10,7 @@ note: cycle used when checking that `A` is well-formed
    |
 LL | trait A: B + A {}
    | ^^^^^^^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 
 error[E0391]: cycle detected when computing the implied predicates of `A`
   --> $DIR/cyclic-trait-resolution.rs:1:14
@@ -24,7 +24,7 @@ note: cycle used when checking that `<impl at $DIR/cyclic-trait-resolution.rs:7:
    |
 LL | impl A for () {}
    | ^^^^^^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 
 error: aborting due to 2 previous errors
 
