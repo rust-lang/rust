@@ -620,6 +620,14 @@ impl<T: 'static> LocalKey<Cell<T>> {
 
     /// Updates the contained value using a function.
     ///
+    /// This will lazily initialize the value if this thread has not referenced
+    /// this key yet.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the key currently has its destructor running,
+    /// and it **may** panic if the destructor has previously been run for this thread.
+    ///
     /// # Examples
     ///
     /// ```
