@@ -110,55 +110,77 @@ impl TypeDefinition for ArmType {
     }
 
     fn comparison_function(&self) -> String {
-        match self.num_lanes() {
-            SimdLen::Scalable => {
-                // There isn't a `svcmpeq` for `svbool_t`, so do an XOR instead and test it is
-                // empty..
-                if self.kind() == TypeKind::Bool {
-                    return format!(
-                        r#"
-let eq = sveor_b_z({PREDICATE_LOCAL}, __rust_return_value, __c_return_value);
-assert!(!svptest_any({PREDICATE_LOCAL}, eq), "{{}}", id);
-                    "#,
-                    );
-                }
+        if let SimdLen::Fixed(num_lanes) = self.num_lanes() {
+            return default_fixed_vector_comparison(self, num_lanes);
+        }
 
-                // Use `svcmpeq` to compare the return values of Rust and C invocations
-                match self.num_vectors() {
-                    1 => {
-                        format!(
+        if self.kind() == TypeKind::Bool {
+            // There isn't a `svcmpeq` for `svbool_t` and there aren't `svboolxN_t` types, so just
+            // do an XOR and test it is empty.
+            return format!(
+                r#"
+let __eq = sveor_b_z({PREDICATE_LOCAL}, __rust_return_value, __c_return_value);
+assert!(!svptest_any({PREDICATE_LOCAL}, __eq), "{{}}", id);
+                    "#
+            );
+        }
+
+        // Returns `of` when `num_vectors == 1` otherwise returns the appropriate `svget` invocation
+        // for `of`.
+        let get = |num_vectors: u32, idx: u32, from: &'static str| -> String {
+            if num_vectors == 1 {
+                return from.to_string();
+            }
+
+            format!(
+                "svget{num_vectors}_{ty}{bl}::<{idx}>({from})",
+                ty = self.rust_intrinsic_name_prefix(),
+                bl = self.inner_size(),
+            )
+        };
+
+        let n = self.num_vectors();
+        (0..n)
+            .format_with("\n", |i, fmt| {
+                match self.kind() {
+                    TypeKind::Float | TypeKind::BFloat => {
+                        // Floats need special handling because `NaN != NaN` normally - this
+                        // effectively does `(rust == c) || (isnan(rust) && isnan(c))`
+                        fmt(&format_args!(
                             r#"
-let eq = svcmpeq_{ty}{bl}({PREDICATE_LOCAL}, __rust_return_value, __c_return_value);
-assert!(svptest_any(__pred, eq), "{{}}", id);
-                        "#,
+let __rust_eq_return_value = {rust_return_value};
+let __c_eq_return_value = {c_return_value};
+let __eq_sans_nan = svcmpeq_{ty}{bl}({PREDICATE_LOCAL}, __rust_eq_return_value, __c_eq_return_value);
+let __rust_nan = svcmpuo_{ty}{bl}({PREDICATE_LOCAL}, __rust_eq_return_value, __rust_eq_return_value);
+let __c_nan = svcmpuo_{ty}{bl}({PREDICATE_LOCAL}, __c_eq_return_value, __c_eq_return_value);
+let __both_nan = svand_b_z({PREDICATE_LOCAL}, __rust_nan, __c_nan);
+let __eq = svorr_b_z({PREDICATE_LOCAL}, __eq_sans_nan, __both_nan);
+assert!(svptest_any(__pred, __eq), "{{}}-{i_plus_one}/{n}", id);
+"#,
                             ty = self.rust_intrinsic_name_prefix(),
                             bl = self.inner_size(),
-                        )
+                            rust_return_value = get(n, i, "__rust_return_value"),
+                            c_return_value = get(n, i, "__c_return_value"),
+                            i_plus_one = i + 1, // so that the output is "1/2" and "2/2"
+                        ))
                     }
-                    // For tuples of vectors, do multiple comparisons, each with a `svget` to
-                    // extract the Nth vector.
-                    n @ (2 | 3 | 4) => (0..n)
-                        .format_with("\n", |i, fmt| {
-                            fmt(&format_args!(
-                                r#"
-let eq = svcmpeq_{ty}{bl}(
-    {PREDICATE_LOCAL},
-    svget{n}_{ty}{bl}::<{i}>(__rust_return_value),
-    svget{n}_{ty}{bl}::<{i}>(__c_return_value)
-);
-assert!(svptest_any(__pred, eq), "{{}}-{i_plus_one}/{n}", id);
-                            "#,
-                                ty = self.rust_intrinsic_name_prefix(),
-                                bl = self.inner_size(),
-                                i_plus_one = i + 1, // so that the output is "1/2" and "2/2"
-                            ))
-                        })
-                        .to_string(),
-                    _ => unreachable!(),
+                    _ => {
+                        // Most types can just use `svcmpeq`
+                        fmt(&format_args!(
+                            r#"
+let __eq = svcmpeq_{ty}{bl}({PREDICATE_LOCAL}, {rust_return_value}, {c_return_value});
+assert!(svptest_any(__pred, __eq), "{{}}-{i_plus_one}/{n}", id);
+"#,
+                            ty = self.rust_intrinsic_name_prefix(),
+                            bl = self.inner_size(),
+                            rust_return_value = get(n, i, "__rust_return_value"),
+                            c_return_value = get(n, i, "__c_return_value"),
+                            i_plus_one = i + 1, // so that the output is "1/2" and "2/2"
+                        ))
+                    }
                 }
-            }
-            SimdLen::Fixed(num_lanes) => default_fixed_vector_comparison(self, num_lanes),
-        }
+            })
+            .to_string()
     }
 }
 
