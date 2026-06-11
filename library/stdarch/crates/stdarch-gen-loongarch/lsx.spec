@@ -2133,41 +2133,49 @@ asm-fmts = vd, vj
 data-types = V2DI, V2DI
 
 /// lsx_vmuh_b
+impl = portable
 name = lsx_vmuh_b
 asm-fmts = vd, vj, vk
 data-types = V16QI, V16QI, V16QI
 
 /// lsx_vmuh_h
+impl = portable
 name = lsx_vmuh_h
 asm-fmts = vd, vj, vk
 data-types = V8HI, V8HI, V8HI
 
 /// lsx_vmuh_w
+impl = portable
 name = lsx_vmuh_w
 asm-fmts = vd, vj, vk
 data-types = V4SI, V4SI, V4SI
 
 /// lsx_vmuh_d
+impl = portable
 name = lsx_vmuh_d
 asm-fmts = vd, vj, vk
 data-types = V2DI, V2DI, V2DI
 
 /// lsx_vmuh_bu
+impl = portable
 name = lsx_vmuh_bu
 asm-fmts = vd, vj, vk
 data-types = UV16QI, UV16QI, UV16QI
 
 /// lsx_vmuh_hu
+impl = portable
 name = lsx_vmuh_hu
 asm-fmts = vd, vj, vk
 data-types = UV8HI, UV8HI, UV8HI
 
 /// lsx_vmuh_wu
+impl = portable
 name = lsx_vmuh_wu
 asm-fmts = vd, vj, vk
 data-types = UV4SI, UV4SI, UV4SI
 
 /// lsx_vmuh_du
+impl = portable
 name = lsx_vmuh_du
 asm-fmts = vd, vj, vk
 data-types = UV2DI, UV2DI, UV2DI

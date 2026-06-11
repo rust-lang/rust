@@ -35,16 +35,26 @@ impl_simd_ext!(u8x16, u8);
 impl_simd_ext!(u8x32, u8);
 impl_simd_ext!(i16x8, i16);
 impl_simd_ext!(i16x16, i16);
+impl_simd_ext!(i16x32, i16);
 impl_simd_ext!(u16x8, u16);
 impl_simd_ext!(u16x16, u16);
+impl_simd_ext!(u16x32, u16);
 impl_simd_ext!(i32x4, i32);
 impl_simd_ext!(i32x8, i32);
+impl_simd_ext!(i32x16, i32);
 impl_simd_ext!(u32x4, u32);
 impl_simd_ext!(u32x8, u32);
+impl_simd_ext!(u32x16, u32);
 impl_simd_ext!(i64x2, i64);
 impl_simd_ext!(i64x4, i64);
+impl_simd_ext!(i64x8, i64);
 impl_simd_ext!(u64x2, u64);
 impl_simd_ext!(u64x4, u64);
+impl_simd_ext!(u64x8, u64);
+impl_simd_ext!(i128x2, i128);
+impl_simd_ext!(u128x2, u128);
+impl_simd_ext!(i128x4, i128);
+impl_simd_ext!(u128x4, u128);
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
@@ -154,6 +164,18 @@ pub(super) const unsafe fn simd_madd<T: Copy>(a: T, b: T, c: T) -> T {
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub(super) const unsafe fn simd_msub<T: Copy>(a: T, b: T, c: T) -> T {
     is::simd_sub(a, is::simd_mul(b, c))
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(super) const unsafe fn simd_muh<T: Copy, W: Copy + const SimdExt>(a: T, b: T) -> T {
+    let a: W = is::simd_cast(a);
+    let b: W = is::simd_cast(b);
+    let p = is::simd_mul(a, b);
+    is::simd_cast(is::simd_shr(
+        p,
+        ls::simd_splat((size_of::<W::Elem>() * 8 / 2) as i64),
+    ))
 }
 
 #[inline(always)]
@@ -308,6 +330,19 @@ macro_rules! impl_vvv {
                 let a: $ity = transmute(a);
                 let b: $ity = transmute(b);
                 let r: $ity = $op(a, b);
+                transmute(r)
+            }
+        }
+    };
+    ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ty, $wty:ty) => {
+        #[inline]
+        #[target_feature(enable = $ft)]
+        #[unstable(feature = "stdarch_loongarch", issue = "117427")]
+        pub fn $name(a: $oty, b: $oty) -> $oty {
+            unsafe {
+                let a: $ity = transmute(a);
+                let b: $ity = transmute(b);
+                let r: $ity = $op::<$ity, $wty>(a, b);
                 transmute(r)
             }
         }
