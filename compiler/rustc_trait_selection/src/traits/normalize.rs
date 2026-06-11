@@ -339,7 +339,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
                 }),
         );
         self.depth += 1;
-        let res = if free.kind.is_type() {
+        let res: ty::Term<'tcx> = if free.kind.is_type() {
             infcx
                 .tcx
                 .type_of(free.def_id())
@@ -356,6 +356,19 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
                 .fold_with(self)
                 .into()
         };
+        // When normalizing a free const alias, register a `ConstArgHasType`
+        // obligation to ensure the const value's type matches the declared type.
+        if let Some(ct) = res.as_const() {
+            let expected_ty =
+                infcx.tcx.type_of(free.def_id()).instantiate(infcx.tcx, free.args).skip_norm_wip();
+            self.obligations.push(Obligation::with_depth(
+                infcx.tcx,
+                self.cause.clone(),
+                self.depth,
+                self.param_env,
+                ty::ClauseKind::ConstArgHasType(ct, expected_ty),
+            ));
+        }
         self.depth -= 1;
         res
     }
