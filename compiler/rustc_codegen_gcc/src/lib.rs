@@ -30,7 +30,6 @@ extern crate rustc_data_structures;
 extern crate rustc_errors;
 extern crate rustc_fs_util;
 extern crate rustc_hir;
-extern crate rustc_index;
 #[cfg(feature = "master")]
 extern crate rustc_interface;
 extern crate rustc_log;
