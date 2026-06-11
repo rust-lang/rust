@@ -432,7 +432,7 @@ impl Waker {
     /// executor’s choice which task to run and the executor may choose to run the
     /// current task again.
     ///
-    /// To avoid missed wakeups, runtimes must ensure that for any call to
+    /// To avoid missed wakeups, executors must ensure that for any call to
     /// `wake`, there is a subsequent call to `poll` such that the call to
     /// `wake()` _happens-before_ the beginning of the invocation of `poll`. In
     /// particular, this means that if a task self-wakes (invokes `wake` on
