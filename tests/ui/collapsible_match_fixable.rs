@@ -45,3 +45,35 @@ fn issue16875(a: Option<&str>, b: i32) -> i32 {
     }
     res
 }
+
+#[rustfmt::skip]
+fn issue16716(n: u32) {
+    match n {
+        0 | 1 => if false { println!("hello world"); },
+        //~^ collapsible_match
+        _ => (),
+    }
+
+    let opt = Some(1);
+    let _ = match opt {
+        Some(s) => if s == 1 { s } else { 1 }
+        //~^ collapsible_match
+        _ => 1,
+    };
+}
+
+#[rustfmt::skip]
+fn issue16894() {
+    let a = 5_u8;
+    let b = a;
+    _ = match a {
+        11 => 0,
+        13 => if a > b { 1 } else { 0 }, _ => 0,
+        //~^ collapsible_match
+    };
+
+    _ = match a {
+        11 => 0, 12 => if a == b { 1 } else { 0 }, _ => 0,
+        //~^ collapsible_match
+    };
+}
