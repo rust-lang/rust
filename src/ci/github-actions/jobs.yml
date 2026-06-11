@@ -467,6 +467,7 @@ auto:
         --enable-profiler
         --disable-docs
         --set rust.jemalloc
+        --set llvm.link-shared=true
         --set rust.lto=thin
         --set rust.codegen-units=1
       # Ensure that host tooling is built to support our minimum support macOS version.

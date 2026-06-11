@@ -4,7 +4,7 @@ use rustc_session::lint::builtin::MISPLACED_DIAGNOSTIC_ATTRIBUTES;
 
 use crate::attributes::diagnostic::*;
 use crate::attributes::prelude::*;
-use crate::errors::DiagnosticOnConstOnlyForTraitImpls;
+use crate::diagnostics::DiagnosticOnConstOnlyForTraitImpls;
 #[derive(Default)]
 pub(crate) struct OnConstParser {
     span: Option<Span>,

@@ -359,7 +359,7 @@ struct UnresolvedImportError {
     note: Option<String>,
     suggestion: Option<Suggestion>,
     candidates: Option<Vec<ImportSuggestion>>,
-    segment: Option<Symbol>,
+    segment: Option<Ident>,
     /// comes from `PathRes::Failed { module }`
     module: Option<DefId>,
     on_unknown_attr: Option<OnUnknownData>,
@@ -1081,7 +1081,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             Some(def_id) if self.mods_with_parse_errors.contains(&def_id) => false,
             // If we've encountered something like `use _;`, we've already emitted an error stating
             // that `_` is not a valid identifier, so we ignore that resolve error.
-            _ => err.segment != Some(kw::Underscore),
+            _ => err.segment.map(|s| s.name) != Some(kw::Underscore),
         });
         if errors.is_empty() {
             self.tcx.dcx().delayed_bug("expected a parse or \"`_` can't be an identifier\" error");
@@ -1109,7 +1109,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let this = errors.iter().map(|(_import, err)| {
 
                     // Is this unwrap_or reachable?
-                    err.segment.unwrap_or(kw::Underscore)
+                    err.segment.map(|s|s.name).unwrap_or(kw::Underscore)
                 }).join(", ");
 
                 let args = FormatArgs {
@@ -1144,10 +1144,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         const MAX_LABEL_COUNT: usize = 10;
 
         for (import, err) in errors.into_iter().take(MAX_LABEL_COUNT) {
+            let label_span = match err.segment {
+                Some(segment) => segment.span,
+                None => err.span,
+            };
             if let Some(label) = &label {
-                diag.span_label(err.span, label.clone());
+                diag.span_label(label_span, label.clone());
             } else if let Some(label) = &err.label {
-                diag.span_label(err.span, label.clone());
+                diag.span_label(label_span, label.clone());
             }
 
             if let Some((suggestions, msg, applicability)) = err.suggestion {
@@ -1192,7 +1196,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 && let Some(segment) = err.segment
                 && let Some(module) = err.module
             {
-                self.find_cfg_stripped(&mut diag, &segment, module)
+                self.find_cfg_stripped(&mut diag, &segment.name, module)
             }
         }
 
@@ -1329,7 +1333,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             PathResult::Failed {
                 is_error_from_last_segment: false,
                 span,
-                segment_name,
+                segment,
                 label,
                 suggestion,
                 module,
@@ -1344,7 +1348,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     self.report_error(
                         span,
                         ResolutionError::FailedToResolve {
-                            segment: segment_name,
+                            segment: segment.name,
                             label,
                             suggestion,
                             module,
@@ -1360,7 +1364,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 label,
                 suggestion,
                 module,
-                segment_name,
+                segment,
                 note,
                 ..
             } => {
@@ -1386,7 +1390,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 Applicability::MaybeIncorrect,
                             )),
                             candidates: None,
-                            segment: Some(segment_name),
+                            segment: Some(segment),
                             module,
                             on_unknown_attr: import.on_unknown_attr.clone(),
                         },
@@ -1396,7 +1400,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             note,
                             suggestion,
                             candidates: None,
-                            segment: Some(segment_name),
+                            segment: Some(segment),
                             module,
                             on_unknown_attr: import.on_unknown_attr.clone(),
                         },
@@ -1691,7 +1695,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             None
                         }
                     }),
-                    segment: Some(ident.name),
+                    segment: Some(ident),
                     on_unknown_attr: import.on_unknown_attr.clone(),
                 })
             } else {

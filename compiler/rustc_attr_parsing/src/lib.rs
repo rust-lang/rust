@@ -97,14 +97,15 @@
 mod attributes;
 mod check_cfg;
 mod context;
+mod diagnostics;
 mod early_parsed;
-mod errors;
 mod interface;
 pub mod parser;
 mod safety;
 mod session_diagnostics;
 mod stability;
 mod target_checking;
+mod template;
 pub mod validate_attr;
 
 pub use attributes::AttributeSafety;
@@ -117,3 +118,4 @@ pub use context::{OmitDoc, ShouldEmit};
 pub use interface::{AttributeParser, EmitAttribute};
 pub use rustc_parse::parser::Recovery;
 pub use session_diagnostics::ParsedDescription;
+pub use template::{AttrSuggestionStyle, AttributeTemplate};

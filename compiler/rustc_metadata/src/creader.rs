@@ -23,7 +23,7 @@ use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::ty::data_structures::IndexSet;
 use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
-use rustc_proc_macro::bridge::client::ProcMacro;
+use rustc_proc_macro::bridge::client::Client as ProcMacroClient;
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigationLevel;
 use rustc_session::config::{
     CrateType, ExtendedTargetModifierInfo, ExternLocation, Externs, OptionsTargetModifiers,
@@ -951,12 +951,13 @@ impl CStore {
         sess: &Session,
         path: &Path,
         stable_crate_id: StableCrateId,
-    ) -> Result<&'static [ProcMacro], CrateError> {
+    ) -> Result<&'static [ProcMacroClient], CrateError> {
         let sym_name = sess.generate_proc_macro_decls_symbol(stable_crate_id);
         debug!("trying to dlsym proc_macros {} for symbol `{}`", path.display(), sym_name);
 
         unsafe {
-            let result = load_symbol_from_dylib::<*const &[ProcMacro]>(path, &sym_name);
+            // FIXME(bjorn3) this depends on the unstable slice memory layout
+            let result = load_symbol_from_dylib::<*const &[ProcMacroClient]>(path, &sym_name);
             match result {
                 Ok(result) => {
                     debug!("loaded dlsym proc_macros {} for symbol `{}`", path.display(), sym_name);

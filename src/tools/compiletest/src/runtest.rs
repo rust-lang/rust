@@ -2719,8 +2719,10 @@ impl<'test> TestCx<'test> {
                 (&tmp.0, &tmp.1)
             }
         } else if compare_output_by_lines {
-            let mut actual_lines: Vec<&str> = actual.lines().collect();
-            let mut expected_lines: Vec<&str> = expected.lines().collect();
+            // Filter out padded empty code lines
+            let mut actual_lines: Vec<&str> = actual.lines().filter(|l| l.trim() != "|").collect();
+            let mut expected_lines: Vec<&str> =
+                expected.lines().filter(|l| l.trim() != "|").collect();
             actual_lines.sort_unstable();
             expected_lines.sort_unstable();
             if actual_lines == expected_lines {

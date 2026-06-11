@@ -180,7 +180,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             AngleBrackets::Missing => 0,
             // Only lifetime arguments can be implied
             AngleBrackets::Implied => self.gen_args.args.len(),
-            AngleBrackets::Available => self.gen_args.num_lifetime_params(),
+            AngleBrackets::Available => self.gen_args.num_lifetime_args(),
         }
     }
 

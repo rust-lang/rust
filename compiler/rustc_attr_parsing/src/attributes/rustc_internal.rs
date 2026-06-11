@@ -11,7 +11,7 @@ use rustc_span::Symbol;
 
 use super::prelude::*;
 use super::util::parse_single_integer;
-use crate::errors;
+use crate::diagnostics;
 use crate::session_diagnostics::{
     AttributeRequiresOpt, CguFieldsMissing, RustcScalableVectorCountOutOfRange, UnknownLangItem,
 };
@@ -58,7 +58,8 @@ impl SingleAttributeParser for RustcMustImplementOneOfParser {
             };
 
             let Some(ident) = meta.ident() else {
-                cx.dcx().emit_err(errors::MustBeNameOfAssociatedFunction { span: meta.span() });
+                cx.dcx()
+                    .emit_err(diagnostics::MustBeNameOfAssociatedFunction { span: meta.span() });
                 errored = true;
                 continue;
             };

@@ -1311,6 +1311,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_coinductive]`.
     RustcCoinductive,
 
+    /// Represents `#[rustc_comptime]`
+    RustcComptime(Span),
+
     /// Represents `#[rustc_confusables]`.
     RustcConfusables {
         confusables: ThinVec<Symbol>,
@@ -1358,6 +1361,9 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_dump_def_path]`
     RustcDumpDefPath(Span),
+
+    /// Represents `#[rustc_dump_generics]`
+    RustcDumpGenerics,
 
     /// Represents `#[rustc_dump_hidden_type_of_opaques]`
     RustcDumpHiddenTypeOfOpaques,
@@ -1585,6 +1591,9 @@ pub enum AttributeKind {
     ShouldPanic {
         reason: Option<Symbol>,
     },
+
+    /// Represents `#[splat]`
+    Splat(Span),
 
     /// Represents `#[stable]`, `#[unstable]` and `#[rustc_allowed_through_unstable_modules]`.
     Stability {

@@ -236,7 +236,7 @@ use tracing::{debug, info};
 
 use crate::creader::{Library, MetadataLoader};
 use crate::errors;
-use crate::rmeta::{METADATA_HEADER, MetadataBlob, rustc_version};
+use crate::rmeta::{METADATA_HEADER, MetadataBlob, ProcMacroKind, rustc_version};
 
 #[derive(Clone)]
 pub(crate) struct CrateLocator<'a> {
@@ -821,7 +821,7 @@ fn get_metadata_section<'p>(
     crate_name: Option<Symbol>,
 ) -> Result<MetadataBlob, MetadataError<'p>> {
     if !filename.exists() {
-        return Err(MetadataError::NotPresent(filename));
+        return Err(MetadataError::NotPresent(filename.into()));
     }
     let raw_bytes = match flavor {
         CrateFlavor::Rlib => {
@@ -978,6 +978,20 @@ fn get_flavor_from_path(path: &Path) -> CrateFlavor {
     }
 }
 
+/// A function to get information about all macros inside a proc-macro crate.
+///
+/// Used by rust-analyzer-proc-macro-srv.
+pub fn get_proc_macro_info<'p>(
+    target: &Target,
+    path: &'p Path,
+    metadata_loader: &dyn MetadataLoader,
+    cfg_version: &'static str,
+) -> Result<Vec<ProcMacroKind>, MetadataError<'p>> {
+    let metadata =
+        get_metadata_section(target, CrateFlavor::Dylib, path, metadata_loader, cfg_version, None)?;
+    Ok(metadata.get_proc_macro_info())
+}
+
 // ------------------------------------------ Error reporting -------------------------------------
 
 #[derive(Clone, Debug)]
@@ -1024,9 +1038,10 @@ pub(crate) enum CrateError {
     NotFound(Symbol),
 }
 
-enum MetadataError<'a> {
+#[derive(Debug)]
+pub enum MetadataError<'a> {
     /// The file was missing.
-    NotPresent(&'a Path),
+    NotPresent(Cow<'a, Path>),
     /// The file was present and invalid.
     LoadFailure(String),
     /// The file was present, but compiled with a different rustc version.

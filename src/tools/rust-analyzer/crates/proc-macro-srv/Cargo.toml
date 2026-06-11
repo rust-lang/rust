@@ -36,7 +36,6 @@ proc-macro-test.path = "./proc-macro-test"
 
 [features]
 default = []
-# default = ["in-rust-tree"]
 in-rust-tree = []
 
 [lints]

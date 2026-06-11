@@ -897,26 +897,11 @@ impl VariantDef {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-pub struct FieldDef {
-    /// The field definition.
-    pub(crate) def: DefId,
-
-    /// The field name.
-    pub name: Symbol,
-}
-
-impl FieldDef {
-    /// Retrieve the type of this field instantiating and normalizing it with the given arguments.
-    ///
-    /// This will assume the type can be instantiated with these arguments.
-    pub fn ty_with_args(&self, args: &GenericArgs) -> Ty {
-        with(|cx| cx.def_ty_with_args(self.def, args))
-    }
-
-    /// Retrieve the type of this field.
-    pub fn ty(&self) -> Ty {
-        with(|cx| cx.def_ty(self.def))
+crate_def_with_ty! {
+    #[derive(Serialize)]
+    pub FieldDef {
+        /// The field name.
+        pub name: Symbol,
     }
 }
 
@@ -1117,13 +1102,13 @@ impl FnSig {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum Constness {
-    Const,
+    Const { always: bool },
     NotConst,
 }
 
 impl Constness {
     pub fn is_const(self) -> bool {
-        matches!(self, Constness::Const)
+        matches!(self, Constness::Const { always: false })
     }
 }
 

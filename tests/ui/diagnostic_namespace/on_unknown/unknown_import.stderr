@@ -2,7 +2,9 @@ error[E0432]: first message
   --> $DIR/unknown_import.rs:12:5
    |
 LL | use foo::Foo;
-   |     ^^^^^^^^ first label
+   |     ^^^^^---
+   |          |
+   |          first label
    |
    = note: unresolved import `foo::Foo`
    = note: custom note

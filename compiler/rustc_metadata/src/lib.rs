@@ -31,4 +31,4 @@ pub use native_libs::{
     NativeLibSearchFallback, find_native_static_library, try_find_native_dynamic_library,
     try_find_native_static_library, walk_native_lib_search_dirs,
 };
-pub use rmeta::{EncodedMetadata, METADATA_HEADER, encode_metadata, rendered_const};
+pub use rmeta::{EncodedMetadata, METADATA_HEADER, ProcMacroKind, encode_metadata, rendered_const};

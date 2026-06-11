@@ -1,4 +1,5 @@
 //@ compile-flags: -C opt-level=3
+//@ ignore-bpf: BPF does not support C variadics
 
 #![crate_type = "lib"]
 #![feature(c_variadic)]

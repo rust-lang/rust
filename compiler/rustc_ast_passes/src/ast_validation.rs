@@ -352,7 +352,8 @@ impl<'a> AstValidator<'a> {
 
     fn check_fn_decl(&self, fn_decl: &FnDecl, self_semantic: SelfSemantic) {
         self.check_decl_num_args(fn_decl);
-        self.check_decl_cvariadic_pos(fn_decl);
+        let c_variadic_span = self.check_decl_cvariadic_pos(fn_decl);
+        self.check_decl_splatting(fn_decl, c_variadic_span);
         self.check_decl_attrs(fn_decl);
         self.check_decl_self_param(fn_decl, self_semantic);
     }
@@ -370,16 +371,58 @@ impl<'a> AstValidator<'a> {
     /// Emits an error if a function declaration has a variadic parameter in the
     /// beginning or middle of parameter list.
     /// Example: `fn foo(..., x: i32)` will emit an error.
-    fn check_decl_cvariadic_pos(&self, fn_decl: &FnDecl) {
+    /// If a C-variadic parameter is found, returns its span.
+    fn check_decl_cvariadic_pos(&self, fn_decl: &FnDecl) -> Option<Span> {
+        let mut c_variadic_span = None;
+
         match &*fn_decl.inputs {
             [ps @ .., _] => {
                 for Param { ty, span, .. } in ps {
                     if let TyKind::CVarArgs = ty.kind {
+                        c_variadic_span = Some(*span);
                         self.dcx().emit_err(diagnostics::FnParamCVarArgsNotLast { span: *span });
                     }
                 }
             }
             _ => {}
+        }
+
+        if let Some(Param { ty, span, .. }) = &fn_decl.inputs.last()
+            && let TyKind::CVarArgs = ty.kind
+        {
+            c_variadic_span = Some(*span);
+        }
+
+        c_variadic_span
+    }
+
+    /// Emits an error if a function declaration has more than one splatted argument, with a
+    /// C-variadic parameter, or a splat at an unsupported index (for performance).
+    /// Example: `fn foo(#[splat] x: (), #[splat] y: ())` will emit an error.
+    fn check_decl_splatting(&self, fn_decl: &FnDecl, c_variadic_span: Option<Span>) {
+        let (splatted_arg_indexes, mut splatted_spans): (Vec<u16>, Vec<Span>) = fn_decl
+            .inputs
+            .iter()
+            .enumerate()
+            .filter_map(|(index, arg)| {
+                arg.attrs
+                    .iter()
+                    .any(|attr| attr.has_name(sym::splat))
+                    .then_some((u16::try_from(index).unwrap(), arg.span))
+            })
+            .unzip();
+
+        // Multiple splatted arguments are invalid: we can't know which arguments go in each splat.
+        if splatted_arg_indexes.len() > 1 {
+            self.dcx()
+                .emit_err(diagnostics::DuplicateSplattedArgs { spans: splatted_spans.clone() });
+        }
+
+        if let Some(c_variadic_span) = c_variadic_span
+            && !splatted_spans.is_empty()
+        {
+            splatted_spans.push(c_variadic_span);
+            self.dcx().emit_err(diagnostics::CVarArgsAndSplat { spans: splatted_spans });
         }
     }
 
@@ -396,6 +439,7 @@ impl<'a> AstValidator<'a> {
                     sym::deny,
                     sym::expect,
                     sym::forbid,
+                    sym::splat,
                     sym::warn,
                 ];
                 !attr.has_any_name(&arr) && rustc_attr_parsing::is_builtin_attr(*attr)
