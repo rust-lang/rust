@@ -135,7 +135,7 @@ impl DepGraph {
         session: &Session,
         prev_graph: Arc<SerializedDepGraph>,
         prev_work_products: WorkProductMap,
-        encoder: FileEncoder,
+        encoder: FileEncoder<'static>,
     ) -> DepGraph {
         let prev_graph_node_count = prev_graph.node_count();
 
@@ -1137,7 +1137,7 @@ impl CurrentDepGraph {
     fn new(
         session: &Session,
         prev_graph_node_count: usize,
-        encoder: FileEncoder,
+        encoder: FileEncoder<'static>,
         previous: Arc<SerializedDepGraph>,
     ) -> Self {
         let mut stable_hasher = StableHasher::new();
