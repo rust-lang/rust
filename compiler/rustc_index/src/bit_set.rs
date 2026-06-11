@@ -6,7 +6,6 @@ use std::{fmt, iter, slice};
 use Chunk::*;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
-use smallvec::{SmallVec, smallvec};
 
 use crate::{Idx, IndexVec};
 
@@ -14,7 +13,6 @@ use crate::{Idx, IndexVec};
 mod tests;
 
 type Word = u64;
-type DenseBitSetWords = SmallVec<[Word; 1]>;
 const WORD_BYTES: usize = size_of::<Word>();
 const WORD_BITS: usize = WORD_BYTES * 8;
 
@@ -117,7 +115,7 @@ macro_rules! bit_relations_inherent_impls {
 #[derive(Eq, PartialEq, Hash)]
 pub struct DenseBitSet<T> {
     domain_size: usize,
-    words: DenseBitSetWords,
+    words: Vec<Word>,
     marker: PhantomData<T>,
 }
 
@@ -133,7 +131,7 @@ impl<T: Idx> DenseBitSet<T> {
     #[inline]
     pub fn new_empty(domain_size: usize) -> DenseBitSet<T> {
         let num_words = num_words(domain_size);
-        DenseBitSet { domain_size, words: smallvec![0; num_words], marker: PhantomData }
+        DenseBitSet { domain_size, words: vec![0; num_words], marker: PhantomData }
     }
 
     /// Creates a new, filled bitset with a given `domain_size`.
@@ -141,7 +139,7 @@ impl<T: Idx> DenseBitSet<T> {
     pub fn new_filled(domain_size: usize) -> DenseBitSet<T> {
         let num_words = num_words(domain_size);
         let mut result =
-            DenseBitSet { domain_size, words: smallvec![!0; num_words], marker: PhantomData };
+            DenseBitSet { domain_size, words: vec![!0; num_words], marker: PhantomData };
         result.clear_excess_bits();
         result
     }
