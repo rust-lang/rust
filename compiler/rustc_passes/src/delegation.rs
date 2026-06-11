@@ -1,7 +1,7 @@
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_macros::Diagnostic;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::Span;
+
+use crate::errors::GlobOrListDelegationUnusedTargetExpr;
 
 pub fn check_glob_and_list_delegations_target_expr(tcx: TyCtxt<'_>) {
     let mut delegations_by_group_id = FxIndexMap::default();
@@ -19,14 +19,7 @@ pub fn check_glob_and_list_delegations_target_expr(tcx: TyCtxt<'_>) {
 
     for (_, (unused_target_expr, span)) in delegations_by_group_id {
         if unused_target_expr {
-            tcx.dcx().emit_err(DelegationTargetExprDeletedEverywhere { span });
+            tcx.dcx().emit_err(GlobOrListDelegationUnusedTargetExpr { span });
         }
     }
-}
-
-#[derive(Diagnostic)]
-#[diag("unused target expression is specified for glob or list delegation")]
-struct DelegationTargetExprDeletedEverywhere {
-    #[primary_span]
-    pub span: Span,
 }
