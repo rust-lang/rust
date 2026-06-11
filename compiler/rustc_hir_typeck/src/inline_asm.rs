@@ -465,7 +465,8 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     if let InlineAsmRegClass::Err = reg_class {
                         continue;
                     }
-                    for &(_, feature) in reg_class.supported_types(asm_arch, allow_experimental_reg)
+                    for &(_, feature) in
+                        reg_class.supported_types(asm_arch, allow_experimental_reg).as_ref()
                     {
                         match feature {
                             Some(feature) => {
