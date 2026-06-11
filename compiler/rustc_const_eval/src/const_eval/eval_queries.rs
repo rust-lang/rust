@@ -41,9 +41,9 @@ fn retry_codegen_mode_with_postanalysis<'tcx, K: TypeVisitable<TyCtxt<'tcx>>, V>
             }
         }
         ty::TypingMode::Coherence
-        | ty::TypingMode::Analysis { .. }
-        | ty::TypingMode::Borrowck { .. }
-        | ty::TypingMode::PostBorrowckAnalysis { .. }
+        | ty::TypingMode::Typeck { .. }
+        | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+        | ty::TypingMode::PostBorrowck { .. }
         | ty::TypingMode::PostAnalysis => {}
     }
 
