@@ -154,6 +154,27 @@ impl<'tcx> Visitor<'tcx> for AsyncFnVisitor<'_, 'tcx> {
     }
 }
 
+/// Find all return value expressions (in order to replace them).
+struct ReturnValueVisitor<'tcx> {
+    exprs: Vec<&'tcx Expr<'tcx>>,
+}
+
+impl<'tcx> Visitor<'tcx> for ReturnValueVisitor<'tcx> {
+    fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) -> Self::Result {
+        match ex.kind {
+            ExprKind::Ret(expr) => {
+                if let Some(expr) = expr {
+                    self.exprs.push(expr);
+
+                    // Unlikely, but someone could potentially hide another return statement in this expression.
+                    walk_expr(self, expr);
+                }
+            },
+            _ => walk_expr(self, ex),
+        }
+    }
+}
+
 impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
     fn check_fn(
         &mut self,
@@ -287,11 +308,23 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
                             let signature_snippet = snippet_with_applicability(cx, signature_span, "_", &mut app);
                             let tail_snippet = snippet_with_applicability(cx, tail_span, "_", &mut app).to_string();
 
-                            let sugg = vec![
+                            let mut sugg = vec![
                                 (async_span, String::new()),
                                 (signature_span, format!("impl Future<Output = {signature_snippet}>")),
                                 (tail_span, format!("{builtin_crate}::future::ready({tail_snippet})")),
                             ];
+
+                            let mut visitor = ReturnValueVisitor { exprs: vec![] };
+                            visitor.visit_block(block);
+
+                            sugg.extend(visitor.exprs.into_iter().filter_map(|expr| {
+                                walk_span_to_context(expr.span, ctxt).map(|expr_span| {
+                                    let expr_snippet =
+                                        snippet_with_applicability(cx, expr_span, "_", &mut app).to_string();
+
+                                    (expr_span, format!("{builtin_crate}::future::ready({expr_snippet})"))
+                                })
+                            }));
 
                             diag.multipart_suggestion(
                                 format!(

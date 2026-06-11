@@ -46,6 +46,7 @@ mod check_proc_macro;
 pub mod comparisons;
 pub mod consts;
 pub mod diagnostics;
+pub mod disallowed_profiles;
 pub mod eager_or_lazy;
 pub mod higher;
 mod hir_utils;
@@ -242,7 +243,10 @@ pub fn is_inside_always_const_context(tcx: TyCtxt<'_>, hir_id: HirId) -> bool {
     };
     match ctx {
         ConstFn => false,
-        Static(_) | Const { allow_const_fn_promotion: _ } => true,
+        Static(_)
+        | Const {
+            allow_const_fn_promotion: _,
+        } => true,
     }
 }
 
