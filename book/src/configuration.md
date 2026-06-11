@@ -98,8 +98,7 @@ To deny `clippy::enum_glob_use`, put the following in the `Cargo.toml`:
 enum_glob_use = "deny"
 ```
 
-For more details and options, refer to the [Cargo
-documentation](https://doc.rust-lang.org/cargo/reference/manifest.html#the-lints-section).
+For more details and options, refer to the Cargo documentation.
 
 ### Specifying the minimum supported Rust version
 
