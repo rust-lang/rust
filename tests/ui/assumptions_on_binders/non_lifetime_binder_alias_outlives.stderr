@@ -1,0 +1,20 @@
+error[E0284]: type annotations needed: cannot satisfy `<T as Trait>::Assoc: 'static`
+  --> $DIR/non_lifetime_binder_alias_outlives.rs:16:5
+   |
+LL | /     type Ref
+LL | |     where
+LL | |         for<T> T: Trait<Assoc: 'static>;
+   | |________________________________________^ cannot satisfy `<T as Trait>::Assoc: 'static`
+   |
+note: required by a bound in `Trait::Ref`
+  --> $DIR/non_lifetime_binder_alias_outlives.rs:18:32
+   |
+LL |     type Ref
+   |          --- required by a bound in this associated type
+LL |     where
+LL |         for<T> T: Trait<Assoc: 'static>;
+   |                                ^^^^^^^ required by this bound in `Trait::Ref`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0284`.

@@ -654,8 +654,18 @@ fn pull_region_outlives_constraints_out_of_universe<
     use RegionConstraint::*;
     match constraint {
         Ambiguity | PlaceholderTyOutlives(..) | AliasTyOutlivesViaEnv(..) => {
-            assert!(max_universe(infcx, constraint.clone()) < u);
-            constraint
+            // With only lifetime binders the rewrite step lowers these constraints out of `u`
+            // (or destructures them), so we expect `max_universe < u` here. A non-lifetime
+            // binder (`for<T>`) instead introduces a placeholder type in `u`, which
+            // `PlaceholderReplacer` (region-only, see its `fold_region`) cannot pull out,
+            // leaving e.g. `<!T as Trait>::Assoc: 'r` stranded in `u`. The assumptions-on-binders
+            // machinery is region-outlives-only and can't decide such a constraint, so report
+            // ambiguity rather than ICE.
+            if max_universe(infcx, constraint.clone()) < u {
+                constraint
+            } else {
+                RegionConstraint::Ambiguity
+            }
         }
         RegionOutlives(region_1, region_2) => {
             let region_1_u = max_universe(infcx, region_1);
