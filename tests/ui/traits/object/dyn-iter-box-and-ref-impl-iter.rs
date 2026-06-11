@@ -1,3 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/20953>.
+//! Ensure both boxed and ref Iterator trait object implement Iterator.
+
 //@ run-pass
 #![allow(unused_mut)]
 #![allow(unused_variables)]
