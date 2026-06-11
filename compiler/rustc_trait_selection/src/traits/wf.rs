@@ -801,6 +801,16 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 // Simple cases that are WF if their type args are WF.
             }
 
+            // FIXME: HACK: this is very sad :(
+            // ty::Alias(ty::AliasTy { kind: ty::Free { def_id }, args, .. })
+            //     if !tcx.type_alias_is_lazy(def_id) =>
+            // {
+            //     // FIXME likely stackoverflow-prone but we can't `expand_free_alias_tys`
+            //     // since that would "expand away" checked ones, too!
+            //     let ty = tcx.type_of(def_id).instantiate(tcx, args).skip_normalization();
+            //     // FIXME: we're likely not wfcking args corresp. to unused params.
+            //     return ty.visit_with(self);
+            // }
             ty::Alias(ty::AliasTy {
                 kind: ty::Projection { def_id } | ty::Opaque { def_id } | ty::Free { def_id },
                 args,
