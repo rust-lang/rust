@@ -8,7 +8,8 @@ documentation].
 This chapter provides details about the different lint categories, which kind
 of lints they offer, and recommended actions when you should see a lint out of
 that category. For examples, see the [Clippy lint documentation] and filter by
-category. For an overview of these categories, see the [introduction](..).
+category. For an overview of these categories, see the
+[introduction](index.md).
 
 The different lint groups were defined in the [Clippy 1.0 RFC].
 
