@@ -9,6 +9,7 @@ This is not our moderation policy; see [Forge][LLM policy].
 - Configure LLM review tools to reduce false positives and excessive focus on trivialities, as these are common, exhausting failure modes.
 - Wherever possible, ask an LLM to *generate a linter*, which you then tell it to run.
   This both saves on token costs, and allows people who are not using an LLM to run the analysis.
+- Note that LLMs sometimes demonstrate a preference for LLM output, particularly output from the same model.
 
 ## LLM-authored code
 
