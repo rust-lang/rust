@@ -1031,14 +1031,26 @@ impl Step for IntrinsicTest {
             );
             (
                 builder.src.join("library/stdarch/intrinsics_data/x86-intel.xml"),
-                builder.src.join("library/stdarch/crates/intrinsic-test/missing_x86.txt"),
+                [
+                    builder
+                        .src
+                        .join("library/stdarch/crates/intrinsic-test/missing_x86_common.txt"),
+                    builder.src.join("library/stdarch/crates/intrinsic-test/missing_x86_gcc.txt"),
+                ],
                 "-I/usr/include/x86_64-linux-gnu/",
                 Some(sde_runner),
             )
         } else if host.contains("aarch64-unknown-linux") {
             (
                 builder.src.join("library/stdarch/intrinsics_data/arm_intrinsics.json"),
-                builder.src.join("library/stdarch/crates/intrinsic-test/missing_aarch64.txt"),
+                [
+                    builder
+                        .src
+                        .join("library/stdarch/crates/intrinsic-test/missing_aarch64_common.txt"),
+                    builder
+                        .src
+                        .join("library/stdarch/crates/intrinsic-test/missing_aarch64_gcc.txt"),
+                ],
                 "-I/usr/aarch64-linux-gnu/include/",
                 None,
             )
@@ -1065,10 +1077,31 @@ impl Step for IntrinsicTest {
         cmd.current_dir(&out_dir);
         cmd.arg(&input_file);
         cmd.arg("--target").arg(&*host.triple);
-        cmd.arg("--skip").arg(&skip_file);
+        for skip in &skip_file {
+            cmd.arg("--skip").arg(skip);
+        }
         cmd.arg("--sample-percentage").arg("10");
+        cmd.arg("--cc-arg-style").arg("gcc");
         cmd.env("CC", builder.cc(host));
         cmd.env("CFLAGS", cflags);
+        // intrinsic-test shells out to `cargo` and `rustfmt` make bootstrap's
+        // managed binaries findable by prepending their dirs to PATH.
+        let rustfmt_path = builder.config.initial_rustfmt.clone().unwrap_or_else(|| {
+            eprintln!("intrinsic-test: rustfmt is required but not available on this channel");
+            crate::exit!(1);
+        });
+
+        let mut path_dirs: Vec<PathBuf> = Vec::new();
+        if let Some(cargo_dir) = builder.initial_cargo.parent() {
+            path_dirs.push(cargo_dir.to_path_buf());
+        }
+        if let Some(rustfmt_dir) = rustfmt_path.parent() {
+            path_dirs.push(rustfmt_dir.to_path_buf());
+        }
+        let old_path = env::var_os("PATH").unwrap_or_default();
+        let new_path = env::join_paths(path_dirs.into_iter().chain(env::split_paths(&old_path)))
+            .expect("could not build PATH for intrinsic-test");
+        cmd.env("PATH", new_path);
         cmd.run(builder);
 
         let manifest = out_dir.join("rust_programs/Cargo.toml");

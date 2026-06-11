@@ -19,7 +19,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   mingw-w64 \
   zlib1g-dev \
   libzstd-dev \
-  clang \
   && rm -rf /var/lib/apt/lists/*
 
 RUN git config --system --add safe.directory '*'
@@ -38,4 +37,5 @@ ENV RUST_CONFIGURE_ARGS="--build=x86_64-unknown-linux-gnu \
  --enable-profiler \
  --enable-compiler-docs \
  --set llvm.libzstd=true"
-ENV SCRIPT="python3 ../x.py --stage 2 test"
+ENV SCRIPT="python3 ../x.py --stage 2 test && \
+            python3 ../x.py --stage 2 test library/stdarch/crates/intrinsic-test"
