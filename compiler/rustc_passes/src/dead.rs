@@ -5,6 +5,7 @@
 
 use std::mem;
 use std::ops::ControlFlow;
+use std::sync::atomic::Ordering;
 
 use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
 use rustc_abi::FieldIdx;
@@ -921,6 +922,21 @@ fn create_and_seed_worklist(tcx: TyCtxt<'_>) -> SeedWorklists {
     let mut worklist = Vec::new();
 
     if let Some((def_id, _)) = tcx.entry_fn(())
+        && let Some(local_def_id) = def_id.as_local()
+    {
+        worklist.push(WorkItem {
+            id: local_def_id,
+            propagated: ComesFromAllowExpect::No,
+            own: ComesFromAllowExpect::No,
+        });
+    }
+
+    // Under `--test`, what `main` resolves to is the would-be entry point of a normal build,
+    // so keep it live, unless a stripped user `#[rustc_main]` would have been the entry instead.
+    if tcx.sess.is_test_crate()
+        && !tcx.sess.removed_rustc_main_attr.load(Ordering::Relaxed)
+        && let Some(main_def) = tcx.resolutions(()).main_def
+        && let Some(def_id) = main_def.opt_fn_def_id()
         && let Some(local_def_id) = def_id.as_local()
     {
         worklist.push(WorkItem {

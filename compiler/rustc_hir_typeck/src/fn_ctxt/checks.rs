@@ -13,7 +13,6 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{Expr, ExprKind, FnRetTy, HirId, LangItem, Node, QPath, is_range_literal};
 use rustc_hir_analysis::check::potentially_plural_count;
-use rustc_hir_analysis::delegation::opt_get_delegation_info;
 use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, ResolvedStructPath};
 use rustc_index::IndexVec;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TypeTrace};
@@ -341,7 +340,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // If we are processing first arg of delegation then we could have adjusted it
             // in `execute_delegation_aware_arguments_check`.
-            let checked_ty = opt_get_delegation_info(self.tcx, self.body_id)
+            let checked_ty = self
+                .tcx
+                .hir_opt_delegation_info(self.body_id)
                 .and_then(|_| self.typeck_results.borrow().node_type_opt(provided_arg.hir_id))
                 .unwrap_or_else(|| self.check_expr_with_expectation(provided_arg, expectation));
 
@@ -902,6 +903,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Type check the pattern. Override if necessary to avoid knock-on errors.
         self.check_pat_top(decl.pat, decl_ty, ty_span, origin_expr, Some(decl.origin));
+        if decl.ty.is_none()
+            && decl.init.is_none()
+            && !matches!(decl.pat.kind, hir::PatKind::Binding(.., None) | hir::PatKind::Wild)
+        {
+            self.register_wf_obligation(
+                decl_ty.into(),
+                decl.pat.span,
+                ObligationCauseCode::WellFormed(None),
+            );
+        }
         let pat_ty = self.node_ty(decl.pat.hir_id);
         self.overwrite_local_ty_if_err(decl.hir_id, decl.pat, pat_ty);
 
