@@ -54,7 +54,7 @@ where
                 .map(|pred| goal.with(cx, pred)),
         );
 
-        let normalized = match inherent.kind {
+        let normalized: I::Term = match inherent.kind {
             ty::AliasTermKind::InherentTy { def_id } => {
                 cx.type_of(def_id.into()).instantiate(cx, inherent_args).skip_norm_wip().into()
             }
@@ -74,6 +74,7 @@ where
             }
             kind => panic!("expected inherent alias, found {kind:?}"),
         };
+
         self.instantiate_normalizes_to_term(goal, normalized);
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
