@@ -135,6 +135,16 @@ pub enum MappingKind {
     Code { bcb: BasicCoverageBlock },
     /// Associates a branch region with separate counters for true and false.
     Branch { true_bcb: BasicCoverageBlock, false_bcb: BasicCoverageBlock },
+    /// Associates a condition region to a decision graph node and its true
+    /// and false outcomes.
+    MCDCCondition {
+        true_bcb: BasicCoverageBlock,
+        false_bcb: BasicCoverageBlock,
+        mcdc_mappings: mcdc::ConditionInfo,
+    },
+    /// Associate a decision region with its index in the entire MC/DC bitmap,
+    /// and its number of conditions,
+    MCDCDecision { bitmap_idx: u32, num_conditions: u16 },
 }
 
 #[derive(Clone, Debug)]
