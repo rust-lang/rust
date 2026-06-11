@@ -74,7 +74,7 @@ pub use self::closure::{
     BorrowKind, CAPTURE_STRUCT_LOCAL, CaptureInfo, CapturedPlace, ClosureTypeInfo,
     MinCaptureInformationMap, MinCaptureList, RootVariableMinCaptureList, UpvarCapture, UpvarId,
     UpvarPath, analyze_coroutine_closure_captures, is_ancestor_or_same_capture,
-    place_to_string_for_capture,
+    child_prefix_matches_parent_projections, place_to_string_for_capture,
 };
 pub use self::consts::{
     AtomicOrdering, Const, ConstInt, ConstKind, ConstToValTreeResult, Expr, ExprKind,
