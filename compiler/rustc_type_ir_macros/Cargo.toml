@@ -13,6 +13,7 @@ nightly = []
 # tidy-alphabetical-start
 proc-macro2 = "1"
 quote = "1"
+rustc_data_structures = { path = "../rustc_data_structures" }
 syn = { version = "2.0.9", features = ["full", "visit-mut"] }
 synstructure = "0.13.0"
 # tidy-alphabetical-end
