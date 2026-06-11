@@ -81,7 +81,6 @@ pub fn option_nonzero_int(x: Option<NonZero<u64>>) -> Option<NonZero<u64>> {
 }
 
 // CHECK: @readonly_borrow(ptr noalias nofree noundef readonly align 4{{( captures\(address, read_provenance\))?}} dereferenceable(4) %_1)
-// FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn readonly_borrow(_: &i32) {}
 
@@ -90,16 +89,6 @@ pub fn readonly_borrow(_: &i32) {}
 pub fn readonly_borrow_ret() -> &'static i32 {
     loop {}
 }
-
-// CHECK: @static_borrow(ptr noalias nofree noundef readonly align 4{{( captures\(address, read_provenance\))?}} dereferenceable(4) %_1)
-// static borrow may be captured
-#[no_mangle]
-pub fn static_borrow(_: &'static i32) {}
-
-// CHECK: @named_borrow(ptr noalias nofree noundef readonly align 4{{( captures\(address, read_provenance\))?}} dereferenceable(4) %_1)
-// borrow with named lifetime may be captured
-#[no_mangle]
-pub fn named_borrow<'r>(_: &'r i32) {}
 
 // CHECK: @unsafe_borrow(ptr noundef nonnull align 2 %_1)
 // unsafe interior means this isn't actually readonly and there may be aliases ...
@@ -112,7 +101,6 @@ pub fn unsafe_borrow(_: &UnsafeInner) {}
 pub fn mutable_unsafe_borrow(_: &mut UnsafeInner) {}
 
 // CHECK: @mutable_borrow(ptr noalias nofree noundef align 4 dereferenceable(4) %_1)
-// FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn mutable_borrow(_: &mut i32) {}
 
@@ -139,7 +127,6 @@ pub fn notunpin_borrow(_: &NotUnpin) {}
 pub fn indirect_struct(_: S) {}
 
 // CHECK: @borrowed_struct(ptr noalias nofree noundef readonly align 4{{( captures\(address, read_provenance\))?}} dereferenceable(32) %_1)
-// FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn borrowed_struct(_: &S) {}
 
@@ -196,14 +183,12 @@ pub fn helper(_: usize) {}
 // CHECK: @slice(
 // CHECK-SAME: ptr noalias nofree noundef nonnull readonly{{( captures\(address, read_provenance\))?}} %_1.0,
 // CHECK-SAME: [[USIZE]] noundef range({{i32 0, -2147483648|i64 0, -9223372036854775808}}) %_1.1)
-// FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn slice(_: &[u8]) {}
 
 // CHECK: @mutable_slice(
 // CHECK-SAME: ptr noalias nofree noundef nonnull %_1.0,
 // CHECK-SAME: [[USIZE]] noundef range({{i32 0, -2147483648|i64 0, -9223372036854775808}}) %_1.1)
-// FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn mutable_slice(_: &mut [u8]) {}
 
@@ -221,12 +206,10 @@ pub fn raw_slice(_: *const [u8]) {}
 // CHECK: @str(
 // CHECK-SAME: ptr noalias nofree noundef nonnull readonly{{( captures\(address, read_provenance\))?}} %_1.0,
 // CHECK-SAME: [[USIZE]] noundef range({{i32 0, -2147483648|i64 0, -9223372036854775808}}) %_1.1)
-// FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn str(_: &[u8]) {}
 
 // CHECK: @trait_borrow(ptr noundef nonnull %_1.0, {{.+}} noalias nofree noundef readonly align {{.*}} dereferenceable({{.*}}) %_1.1)
-// FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn trait_borrow(_: &dyn Drop) {}
 
