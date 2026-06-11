@@ -885,18 +885,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
             (params, res)
         });
 
-        let explicit_captures: &'hir [hir::ExplicitCapture] =
-            if let Some(move_expr_state) = self.move_expr_bindings.last().and_then(Option::as_ref) {
-                self.arena.alloc_from_iter(move_expr_state.occurrences.iter().filter_map(
-                    |occurrence| {
-                        occurrence
-                            .explicit_capture
-                            .then_some(hir::ExplicitCapture { var_hir_id: occurrence.binding })
-                    },
-                ))
-            } else {
-                &[]
-            };
+        let explicit_captures: &'hir [hir::ExplicitCapture] = if let Some(move_expr_state) =
+            self.move_expr_bindings.last().and_then(Option::as_ref)
+        {
+            self.arena.alloc_from_iter(move_expr_state.occurrences.iter().filter_map(
+                |occurrence| {
+                    occurrence
+                        .explicit_capture
+                        .then_some(hir::ExplicitCapture { var_hir_id: occurrence.binding })
+                },
+            ))
+        } else {
+            &[]
+        };
 
         // `static |<_task_context?>| -> <return_ty> { <body> }`:
         hir::ExprKind::Closure(self.arena.alloc(hir::Closure {
