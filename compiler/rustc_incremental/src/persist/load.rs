@@ -112,7 +112,7 @@ fn load_dep_graph(sess: &Session) -> LoadResult {
                 return LoadResult::DataOutOfDate;
             }
 
-            let prev_graph = SerializedDepGraph::decode(&mut decoder);
+            let prev_graph = SerializedDepGraph::decode(&mut decoder, &sess.prof);
 
             LoadResult::Ok { prev_graph, prev_work_products }
         }
