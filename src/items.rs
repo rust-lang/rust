@@ -2589,13 +2589,13 @@ fn rewrite_fn_base(
             .map_or(false, |last_line| last_line.contains("//"));
 
         if context.config.style_edition() >= StyleEdition::Edition2024 {
-            if closing_paren_overflow_max_width {
-                result.push(')');
+            if params_last_line_contains_comment {
                 result.push_str(&indent.to_string_with_newline(context.config));
+                result.push(')');
                 no_params_and_over_max_width = true;
-            } else if params_last_line_contains_comment {
-                result.push_str(&indent.to_string_with_newline(context.config));
+            } else if closing_paren_overflow_max_width {
                 result.push(')');
+                result.push_str(&indent.to_string_with_newline(context.config));
                 no_params_and_over_max_width = true;
             } else {
                 result.push(')');
@@ -2678,7 +2678,12 @@ fn rewrite_fn_base(
                 .unwrap_or(ret_shape)
         };
 
-        if multi_line_ret_str || ret_should_indent {
+        let exceeds_max_width = last_line_width(&result) + ret_str_len > context.config.max_width();
+
+        if multi_line_ret_str
+            || ret_should_indent
+            || (context.config.style_edition() >= StyleEdition::Edition2027 && exceeds_max_width)
+        {
             // Now that we know the proper indent and width, we need to
             // re-layout the return type.
             let ret_str = fd.output.rewrite_result(context, ret_shape)?;

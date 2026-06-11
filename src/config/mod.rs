@@ -78,7 +78,7 @@ create_config! {
         "Format the bodies of declarative macro definitions";
     skip_macro_invocations: SkipMacroInvocations, false,
         "Skip formatting the bodies of macros invoked with the following names.";
-    hex_literal_case: HexLiteralCaseConfig, false, "Format hexadecimal integer literals";
+    hex_literal_case: HexLiteralCaseConfig, true, "Format hexadecimal integer literals";
     float_literal_trailing_zero: FloatLiteralTrailingZeroConfig, false,
         "Add or remove trailing zero in floating-point literals";
 

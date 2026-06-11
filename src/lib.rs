@@ -3,7 +3,6 @@
 #![warn(unreachable_pub)]
 #![recursion_limit = "256"]
 #![allow(clippy::match_like_matches_macro)]
-#![allow(unreachable_pub)]
 
 // N.B. these crates are loaded from the sysroot, so they need extern crate.
 extern crate rustc_ast;
@@ -72,6 +71,7 @@ mod emitter;
 mod expr;
 mod format_report_formatter;
 pub(crate) mod formatting;
+pub(crate) mod header;
 mod ignore_path;
 mod imports;
 mod items;
@@ -84,6 +84,7 @@ mod overflow;
 mod pairs;
 mod parse;
 mod patterns;
+mod range;
 mod release_channel;
 mod reorder;
 mod rewrite;

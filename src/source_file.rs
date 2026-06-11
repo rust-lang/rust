@@ -3,10 +3,10 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::sync::Arc;
 
-use crate::NewlineStyle;
 use crate::config::FileName;
 use crate::emitter::{self, Emitter};
 use crate::parse::session::ParseSess;
+use crate::{NewlineStyle, StyleEdition};
 
 #[cfg(test)]
 use crate::config::Config;
@@ -16,8 +16,25 @@ use crate::create_emitter;
 use crate::formatting::FileRecord;
 
 // Append a newline to the end of each file.
-pub(crate) fn append_newline(s: &mut String) {
+pub(crate) fn append_newline(s: &mut String, style_edition: StyleEdition) {
+    if style_edition >= StyleEdition::Edition2027 && s.is_empty() {
+        return;
+    }
     s.push('\n');
+}
+
+#[test]
+fn append_newline_adds_newlines_before_2027() {
+    let mut text = String::new();
+    append_newline(&mut text, StyleEdition::Edition2024);
+    assert_eq!(text, "\n");
+}
+
+#[test]
+fn append_newline_leaves_empty_files_empty_in_2027() {
+    let mut text = String::new();
+    append_newline(&mut text, StyleEdition::Edition2027);
+    assert!(text.is_empty());
 }
 
 #[cfg(test)]

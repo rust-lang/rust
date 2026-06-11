@@ -664,10 +664,6 @@ impl GetOptsOptions {
             }
         }
 
-        if let Some(ref edition_str) = matches.opt_str("style-edition") {
-            options.style_edition = Some(style_edition_from_style_edition_str(edition_str)?);
-        }
-
         Ok(options)
     }
 

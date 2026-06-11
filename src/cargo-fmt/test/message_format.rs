@@ -1,7 +1,10 @@
 use super::*;
 
+use rustfmt_config_proc_macro::{nightly_only_test, stable_only_test};
+
+#[nightly_only_test]
 #[test]
-fn invalid_message_format() {
+fn invalid_message_format_nightly() {
     assert_eq!(
         convert_message_format_to_rustfmt_args("awesome", &mut vec![]),
         Err(String::from(
@@ -10,6 +13,18 @@ fn invalid_message_format() {
     );
 }
 
+#[stable_only_test]
+#[test]
+fn invalid_message_format_stable() {
+    assert_eq!(
+        convert_message_format_to_rustfmt_args("awesome", &mut vec![]),
+        Err(String::from(
+            "invalid --message-format value: awesome. Allowed values are: short|human"
+        )),
+    );
+}
+
+#[nightly_only_test]
 #[test]
 fn json_message_format_and_check_arg() {
     let mut args = vec![String::from("--check")];
@@ -21,6 +36,7 @@ fn json_message_format_and_check_arg() {
     );
 }
 
+#[nightly_only_test]
 #[test]
 fn json_message_format_and_emit_arg() {
     let mut args = vec![String::from("--emit"), String::from("checkstyle")];
@@ -32,6 +48,18 @@ fn json_message_format_and_emit_arg() {
     );
 }
 
+#[stable_only_test]
+#[test]
+fn json_message_format_non_nightly() {
+    assert_eq!(
+        convert_message_format_to_rustfmt_args("json", &mut vec![]),
+        Err(String::from(
+            "--message-format json is only supported in nightly builds"
+        )),
+    );
+}
+
+#[nightly_only_test]
 #[test]
 fn json_message_format() {
     let mut args = vec![String::from("--edition"), String::from("2018")];

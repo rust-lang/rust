@@ -49,6 +49,7 @@ const FILE_SKIP_LIST: &[&str] = &[
     "cfg_mod/bar.rs",
     "cfg_mod/foo.rs",
     "cfg_mod/wasm32.rs",
+    "reorder_modules_2027",
     "skip/foo.rs",
 ];
 
@@ -163,6 +164,58 @@ fn verify_config_test_names() {
             }
         }
     }
+}
+
+// Collects all file and directory paths under `root` (relative to `root`).
+fn collect_paths(root: &Path) -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        for entry in fs::read_dir(&dir).expect(&format!("couldn't read {}", dir.display())) {
+            let entry = entry.expect("couldn't get DirEntry");
+            let path = entry.path();
+            paths.push(path.strip_prefix(root).unwrap().to_path_buf());
+            if path.is_dir() {
+                stack.push(path);
+            }
+        }
+    }
+    paths
+}
+
+#[test]
+fn no_case_insensitive_path_collisions() {
+    // Ensure no two paths in test directories differ only by case,
+    // which causes warnings when cloning on case-insensitive filesystems
+    // (e.g. Windows, macOS).
+    let test_dirs = [Path::new("tests/source"), Path::new("tests/target")];
+    let mut collisions = Vec::new();
+
+    for root in &test_dirs {
+        let mut seen: HashMap<String, PathBuf> = HashMap::new();
+        for path in collect_paths(root) {
+            let key = path.to_string_lossy().to_lowercase();
+            if let Some(existing) = seen.get(&key) {
+                if *existing != path {
+                    collisions.push(format!(
+                        "{}/{} collides with {}/{}",
+                        root.display(),
+                        existing.display(),
+                        root.display(),
+                        path.display(),
+                    ));
+                }
+            } else {
+                seen.insert(key, path);
+            }
+        }
+    }
+
+    assert!(
+        collisions.is_empty(),
+        "Case-insensitive path collisions found (these cause warnings on Windows/macOS):\n  {}",
+        collisions.join("\n  ")
+    );
 }
 
 // This writes to the terminal using the same approach (via `term::stdout` or
@@ -1077,8 +1130,23 @@ fn rustfmt() -> PathBuf {
     let mut me = env::current_exe().expect("failed to get current executable");
     // Chop of the test name.
     me.pop();
-    // Chop off `deps`.
-    me.pop();
+
+    // Handle Cargo's old and new filesystem layouts
+    // * v1: `target/<profile>/deps/test-bin-[HASH][EXE]`
+    // * v2: `target/<profile>/build/<pkgname>/[HASH]/out/test-bin-[HASH][EXE]`
+    if me.ends_with("deps") {
+        // Chop off `deps`.
+        me.pop();
+    } else if me.ends_with("out") {
+        // Chop off `out`.
+        me.pop();
+        // Chop off `<hash>`.
+        me.pop();
+        // Chop off `<pkgname>`.
+        me.pop();
+        // Chop off `build`.
+        me.pop();
+    }
 
     me.push("rustfmt");
     assert!(
