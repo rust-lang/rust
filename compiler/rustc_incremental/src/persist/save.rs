@@ -131,7 +131,7 @@ pub fn save_work_product_index(
     });
 }
 
-fn encode_work_product_index(work_products: &WorkProductMap, encoder: &mut FileEncoder) {
+fn encode_work_product_index(work_products: &WorkProductMap, encoder: &mut FileEncoder<'_>) {
     let serialized_products: Vec<_> = work_products
         .to_sorted_stable_ord()
         .into_iter()
