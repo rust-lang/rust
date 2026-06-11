@@ -34,7 +34,7 @@ mod test_2 {
 
     impl Trait for S {
         reuse Trait::* { &self.0 }
-        //~^ ERROR: this function takes 0 arguments but 1 argument was supplied
+        //~^ ERROR: unused target expression is specified for glob or list delegation
         fn bar(&self) -> u8 { 2 }
     }
 }

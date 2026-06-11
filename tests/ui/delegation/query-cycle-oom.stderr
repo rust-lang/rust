@@ -42,6 +42,12 @@ error[E0220]: associated type `Assoc` not found for `Self`
 LL |         fn foo(&self) -> Self::Assoc<3> {
    |                                ^^^^^ associated type `Assoc` not found
 
+error: unused target expression is specified for glob or list delegation
+  --> $DIR/query-cycle-oom.rs:36:22
+   |
+LL |         reuse Trait::* { &self.0 }
+   |                      ^
+
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/query-cycle-oom.rs:61:19
    |
@@ -73,23 +79,6 @@ LL |         reuse to_reuse::foo { &self.0 }
    |
    = help: you might be missing a crate named `to_reuse`
 
-error[E0061]: this function takes 0 arguments but 1 argument was supplied
-  --> $DIR/query-cycle-oom.rs:36:22
-   |
-LL |         reuse Trait::* { &self.0 }
-   |                      ^   ------- unexpected argument
-   |
-note: associated function defined here
-  --> $DIR/query-cycle-oom.rs:23:12
-   |
-LL |         fn foo() -> Self::Assoc;
-   |            ^^^
-help: remove the extra argument
-   |
-LL -         reuse Trait::* { &self.0 }
-LL +         reuse Trait::&self.0 }
-   |
-
 error[E0277]: the trait bound `(): test_3::Trait` is not satisfied
   --> $DIR/query-cycle-oom.rs:50:22
    |
@@ -104,5 +93,5 @@ LL |     trait Trait {
 
 error: aborting due to 10 previous errors
 
-Some errors have detailed explanations: E0046, E0061, E0107, E0121, E0220, E0277, E0390, E0433.
+Some errors have detailed explanations: E0046, E0107, E0121, E0220, E0277, E0390, E0433.
 For more information about an error, try `rustc --explain E0046`.
