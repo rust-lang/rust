@@ -3,7 +3,7 @@ use std::hash::Hash;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::DefIndex;
 use rustc_index::{Idx, IndexVec};
-use rustc_middle::ty::{Binder, EarlyBinder, Region};
+use rustc_middle::ty::{Binder, EarlyBinder, GenericArg, Region};
 use rustc_span::Symbol;
 
 use crate::rmeta::{LazyArray, LazyValue};
@@ -52,6 +52,10 @@ impl ParameterizedOverTcx for Region<'static> {
     type Value<'tcx> = Region<'tcx>;
 }
 
+impl ParameterizedOverTcx for GenericArg<'static> {
+    type Value<'tcx> = GenericArg<'tcx>;
+}
+
 macro_rules! trivially_parameterized_over_tcx {
     ($($ty:ty),+ $(,)?) => {
         $(
@@ -65,6 +69,7 @@ macro_rules! trivially_parameterized_over_tcx {
 
 trivially_parameterized_over_tcx! {
     bool,
+    u32,
     u64,
     usize,
     std::string::String,

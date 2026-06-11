@@ -1610,6 +1610,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.tables
                     .type_alias_is_lazy
                     .set(def_id.index, self.tcx.type_alias_is_lazy(def_id));
+                if self.tcx.type_alias_is_lazy(def_id) {
+                    record!(self.tables.args_known_to_outlive_alias_params[def_id] <- tcx.args_known_to_outlive_alias_params(def_id));
+                }
             }
             if let DefKind::OpaqueTy = def_kind {
                 self.encode_explicit_item_bounds(def_id);
@@ -1620,7 +1623,20 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
                         <- tcx.explicit_implied_const_bounds(def_id).skip_binder());
                 }
-                record!(self.tables.live_regions_for_opaque_from_outlives_bounds[def_id] <- tcx.live_regions_for_opaque_from_outlives_bounds(def_id));
+                record!(self.tables.live_args_for_alias_from_outlives_bounds[def_id] <- tcx.live_args_for_alias_from_outlives_bounds(def_id));
+            }
+            if let DefKind::AssocTy = def_kind {
+                let assoc_item = tcx.associated_item(def_id);
+                match assoc_item.container {
+                    ty::AssocContainer::Trait => {
+                        record!(self.tables.live_args_for_alias_from_outlives_bounds[def_id] <- tcx.live_args_for_alias_from_outlives_bounds(def_id));
+                        record!(self.tables.args_known_to_outlive_alias_params[def_id] <- tcx.args_known_to_outlive_alias_params(def_id));
+                    }
+                    ty::AssocContainer::InherentImpl => {
+                        record!(self.tables.args_known_to_outlive_alias_params[def_id] <- tcx.args_known_to_outlive_alias_params(def_id));
+                    }
+                    ty::AssocContainer::TraitImpl(_) => {}
+                }
             }
             if let DefKind::AnonConst = def_kind {
                 record!(self.tables.anon_const_kind[def_id] <- self.tcx.anon_const_kind(def_id));

@@ -2118,7 +2118,9 @@ rustc_queries! {
         desc { "listing captured lifetimes for opaque `{}`", tcx.def_path_str(def_id) }
     }
 
-    /// For an opaque type, return the list of potentially live args from the set of outlives bounds on that opaque.
+    /// For an opaque type or trait associated type, return the list of potentially live
+    /// (identity) generic args from the set of outlives bounds on that alias. Callers should
+    /// instantiate the returned args with the concrete args of the alias.
     /// ```ignore (illustrative)
     /// // Edition 2024: all args are captured
     /// fn foo<'a, 'b, T: 'static>(&'a &'b T) -> impl Sized + 'a {}
@@ -2128,11 +2130,22 @@ rustc_queries! {
     ///
     /// In the above:
     ///   - `foo` outlives `'a`, but we know that `'b: 'a` holds, so `'b` is *also* potentially live
-    ///   - `bar` outlives `'static`, so we know that all lifetimes are potentially live and we can return an empty set
-    ///   - `baz` has not outlives bound, so return `None` and let the caller decide what to do
-    query live_regions_for_opaque_from_outlives_bounds(def_id: DefId) -> &'tcx Option<ty::EarlyBinder<'tcx, Vec<ty::Region<'tcx>>>> {
+    ///     (and so is `T`, since `T: 'static` implies `T: 'a`)
+    ///   - `bar` outlives `'static`, so we know that no args are potentially live and we can return an empty set
+    ///   - `baz` has no outlives bound, so return `None` and let the caller decide what to do
+    query live_args_for_alias_from_outlives_bounds(def_id: DefId) -> &'tcx Option<ty::EarlyBinder<'tcx, Vec<ty::GenericArg<'tcx>>>> {
         arena_cache
-        desc { "identifying live args for opaque `{}`", tcx.def_path_str(def_id) }
+        desc { "identifying live args for alias `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
+    }
+
+    /// For each region param of an alias, the identity args that are known to
+    /// outlive it given only the alias's declared where-clauses. Used for liveness:
+    /// these are the only args whose regions the underlying type of the alias
+    /// could capture while satisfying an outlives bound on that param.
+    query args_known_to_outlive_alias_params(def_id: DefId) -> &'tcx ty::EarlyBinder<'tcx, Vec<(ty::Region<'tcx>, Vec<ty::GenericArg<'tcx>>)>> {
+        arena_cache
+        desc { "computing the args known to outlive each region param of alias `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
 

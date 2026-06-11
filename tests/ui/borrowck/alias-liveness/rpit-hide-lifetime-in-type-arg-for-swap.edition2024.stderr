@@ -1,5 +1,5 @@
 error[E0515]: cannot return value referencing local variable `x`
-  --> $DIR/rpit-hide-lifetime-in-type-arg-for-swap.rs:35:5
+  --> $DIR/rpit-hide-lifetime-in-type-arg-for-swap.rs:33:5
    |
 LL |     hide(&lock, &mut res).swap(hide(&lock, &mut &x));
    |                                                 -- `x` is borrowed here

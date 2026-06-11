@@ -4,8 +4,6 @@
 //@ [edition2024] edition: 2024
 //@ [polonius_alpha] edition: 2024
 //@ [polonius_alpha] compile-flags: -Zpolonius=next
-//@ [polonius_alpha] known-bug: #153215
-//@ [polonius_alpha] check-pass
 
 // Like gat-hide-lifetime-for-swap, but the invariant lifetime is hidden
 // inside a *type* argument of the GAT rather than being a region argument.
@@ -32,7 +30,7 @@ fn dangle<H: Hider>(h: &H) -> &'static [i32; 3] {
     let mut res = &[4, 5, 6];
     let x = [1, 2, 3];
     h.hide(&mut res).swap(h.hide(&mut &x));
-    res //[edition2015,edition2024]~ ERROR cannot return value referencing local variable `x`
+    res //[edition2015,edition2024,polonius_alpha]~ ERROR cannot return value referencing local variable `x`
 }
 struct H;
 impl Hider for H {

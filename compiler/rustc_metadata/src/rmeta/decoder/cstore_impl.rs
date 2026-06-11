@@ -416,7 +416,8 @@ provide! { tcx, def_id, other, cdata,
     }
     anon_const_kind => { table }
     const_of_item => { table }
-    live_regions_for_opaque_from_outlives_bounds => { table }
+    live_args_for_alias_from_outlives_bounds => { table }
+    args_known_to_outlive_alias_params => { table }
 }
 
 pub(in crate::rmeta) fn provide(providers: &mut Providers) {
