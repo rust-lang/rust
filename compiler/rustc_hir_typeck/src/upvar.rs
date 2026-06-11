@@ -457,14 +457,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 // reborrow from the parent coroutine-closure env.
                                 self.tcx.lifetimes.re_erased
                             } else {
-                                let Some(parent_capture) = parent_captures.iter().copied().find(
-                                    |parent_capture| {
+                                let Some(parent_capture) =
+                                    parent_captures.iter().copied().find(|parent_capture| {
                                         ty::child_prefix_matches_parent_projections(
                                             parent_capture,
                                             child_capture,
                                         )
-                                    },
-                                ) else {
+                                    })
+                                else {
                                     bug!("child capture did not match a parent coroutine capture");
                                 };
 
