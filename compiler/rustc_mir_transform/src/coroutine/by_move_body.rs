@@ -125,10 +125,20 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
         .tupled_inputs_ty
         .tuple_fields()
         .len();
+    let explicit_captures =
+        tcx.hir_node_by_def_id(coroutine_def_id).expect_closure().explicit_captures;
 
     let field_remapping: UnordMap<_, _> = ty::analyze_coroutine_closure_captures(
         tcx.closure_captures(parent_def_id).iter().copied(),
-        tcx.closure_captures(coroutine_def_id).iter().skip(num_args).copied(),
+        tcx.closure_captures(coroutine_def_id)
+            .iter()
+            .skip(num_args)
+            .filter(|capture| {
+                !explicit_captures
+                    .iter()
+                    .any(|explicit| explicit.var_hir_id == capture.get_root_variable())
+            })
+            .copied(),
         |(parent_field_idx, parent_capture), (child_field_idx, child_capture)| {
             // Store this set of additional projections (fields and derefs).
             // We need to re-apply them later.
