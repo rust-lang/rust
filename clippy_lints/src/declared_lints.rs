@@ -361,6 +361,7 @@ pub static LINTS: &[&::declare_clippy_lint::LintInfo] = &[
     crate::mem_replace::MEM_REPLACE_WITH_DEFAULT_INFO,
     crate::mem_replace::MEM_REPLACE_WITH_UNINIT_INFO,
     crate::methods::BIND_INSTEAD_OF_MAP_INFO,
+    crate::methods::BY_REF_PEEKABLE_PEEK_INFO,
     crate::methods::BYTES_COUNT_TO_LEN_INFO,
     crate::methods::BYTES_NTH_INFO,
     crate::methods::CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS_INFO,
