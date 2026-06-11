@@ -1,6 +1,6 @@
 //@compile-flags: --test
 
-#![allow(clippy::from_iter_instead_of_collect, clippy::get_first, clippy::useless_vec)]
+#![allow(clippy::get_first, clippy::useless_vec)]
 #![warn(clippy::get_unwrap, clippy::unwrap_used)]
 
 use std::collections::{BTreeMap, HashMap, VecDeque};
