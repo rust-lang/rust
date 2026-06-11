@@ -1,4 +1,3 @@
-#![feature(arbitrary_self_types_pointers)]
 #![feature(arbitrary_self_types)]
 
 pub struct A;
@@ -9,7 +8,6 @@ impl A {
     pub fn f(self: Wrapper<Self>) -> i32 { 1 }
     pub fn g(self: &Wrapper<Self>) -> i32 { 2 }
     pub fn h(self: &mut Wrapper<Self>) -> i32 { 3 }
-    pub fn i(self: *const Wrapper<Self>) -> i32 { 4 }
 }
 
 // The receiver of the potentially shadowed method is a reference
@@ -38,7 +36,6 @@ impl<T> Wrapper<T> {
     pub fn f(self) -> i32 { 5 }
     pub fn g(&self) -> i32 { 6 }
     pub fn h(&mut self) -> i32 { 7 }
-    pub fn i(self: *const Self) -> i32 { 8 }
 }
 
 fn main() {
@@ -47,10 +44,6 @@ fn main() {
     assert_eq!(Wrapper(A).g(), 2);
     //~^ ERROR: multiple applicable items in scope
     assert_eq!(Wrapper(A).h(), 3);
-    //~^ ERROR: multiple applicable items in scope
-    let a = Wrapper(A);
-    let a_ptr = &a as *const Wrapper<A>;
-    assert_eq!(a_ptr.i(), 4);
     //~^ ERROR: multiple applicable items in scope
     assert_eq!(Wrapper(B).f(), 9);
     //~^ ERROR: multiple applicable items in scope

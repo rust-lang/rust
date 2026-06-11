@@ -82,7 +82,6 @@ define_unstable_features! {
     exhaustive_patterns,
     generic_associated_type_extended,
     arbitrary_self_types,
-    arbitrary_self_types_pointers,
     supertrait_item_shadowing,
     new_range,
     never_type_fallback,

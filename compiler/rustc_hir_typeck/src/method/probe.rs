@@ -469,10 +469,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     similar_candidate: None,
                     mode,
                 }));
-            } else if bad_ty.reached_raw_pointer
-                && !self.tcx.features().arbitrary_self_types_pointers()
-                && !self.tcx.sess.at_least_rust_2018()
-            {
+            } else if bad_ty.reached_raw_pointer && !self.tcx.sess.at_least_rust_2018() {
                 // this case used to be allowed by the compiler,
                 // so we do a future-compat lint here for the 2015 edition
                 // (see https://github.com/rust-lang/rust/issues/46906)
@@ -642,8 +639,7 @@ pub(crate) fn method_autoderef_steps<'tcx>(
             .silence_errors();
 
     let mut reached_raw_pointer = false;
-    let arbitrary_self_types_enabled =
-        tcx.features().arbitrary_self_types() || tcx.features().arbitrary_self_types_pointers();
+    let arbitrary_self_types_enabled = tcx.features().arbitrary_self_types();
     let (mut steps, reached_recursion_limit): (Vec<_>, bool) = if arbitrary_self_types_enabled {
         let reachable_via_deref =
             autoderef_via_deref.by_ref().map(|_| true).chain(std::iter::repeat(false));
@@ -1435,9 +1431,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // The errors emitted by this function are part of
         // the arbitrary self types work, and should not impact
         // other users.
-        if !self.tcx.features().arbitrary_self_types()
-            && !self.tcx.features().arbitrary_self_types_pointers()
-        {
+        if !self.tcx.features().arbitrary_self_types() {
             return Ok(());
         }
 
