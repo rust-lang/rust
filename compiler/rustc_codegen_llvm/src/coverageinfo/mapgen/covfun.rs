@@ -151,8 +151,8 @@ fn fill_region_tables<'tcx>(
         code_regions,
         expansion_regions: _, // FIXME(Zalathar): Fill out support for expansion regions
         branch_regions,
-        mcdc_condition_regions: _, // FIXME(RenjiSann): Fill MCDC region
-        mcdc_decision_regions: _,
+        mcdc_condition_regions,
+        mcdc_decision_regions,
     } = &mut covfun.regions;
 
     // For each counter/region pair in this function+file, convert it to a
@@ -172,8 +172,20 @@ fn fill_region_tables<'tcx>(
                     false_counter: counter_for_bcb(false_bcb),
                 });
             }
-            MappingKind::MCDCCondition { .. } => unimplemented!(),
-            MappingKind::MCDCDecision { .. } => unimplemented!(),
+            MappingKind::MCDCCondition { true_bcb, false_bcb, mcdc_mappings } => {
+                mcdc_condition_regions.push(ffi::mcdc::ConditionRegion {
+                    cov_span,
+                    true_counter: counter_for_bcb(true_bcb),
+                    false_counter: counter_for_bcb(false_bcb),
+                    params: mcdc_mappings.into(),
+                });
+            }
+            MappingKind::MCDCDecision { bitmap_idx, num_conditions } => {
+                mcdc_decision_regions.push(ffi::mcdc::DecisionRegion {
+                    cov_span,
+                    params: ffi::mcdc::DecisionParameters { bitmap_idx, num_conditions },
+                });
+            }
         }
     }
 }
