@@ -14,7 +14,11 @@ use rustc_data_structures::owned_slice::OwnedSlice;
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
-use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, DeriveProcMacro};
+use rustc_expand::proc_macro::{
+    AttrProcMacro, BangProcMacro, DeriveProcMacro, WasmAttrProcMacro, WasmBangProcMacro,
+    WasmDeriveProcMacro,
+};
+use rustc_expand::wasm_proc_macro::RustcProcMacro;
 use rustc_hir::Safety;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -26,7 +30,6 @@ use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::ty::Visibility;
 use rustc_middle::ty::codec::TyDecoder;
 use rustc_middle::{bug, implement_ty_decoder};
-use rustc_proc_macro::bridge::client::Client as ProcMacroClient;
 use rustc_serialize::opaque::MemDecoder;
 use rustc_serialize::{Decodable, Decoder};
 use rustc_session::config::TargetModifier;
@@ -105,7 +108,7 @@ pub(crate) struct CrateMetadata {
     /// or `#[rustc_allow_incoherent_impl]`.
     incoherent_impls: FxIndexMap<SimplifiedType, LazyArray<DefIndex>>,
     /// Proc macro function pointers for this crate, if it's a proc macro crate.
-    raw_proc_macros: Option<&'static [ProcMacroClient]>,
+    raw_proc_macros: Option<Vec<RustcProcMacro>>,
     /// Source maps for code from the crate.
     source_map_import_info: Lock<Vec<Option<ImportedSourceFile>>>,
     /// For every definition in this crate, maps its `DefPathHash` to its `DefIndex`.
@@ -986,7 +989,7 @@ impl CrateMetadata {
         bug!("missing `{descr}` for {:?}", self.local_def_id(id))
     }
 
-    fn raw_proc_macro(&self, tcx: TyCtxt<'_>, id: DefIndex) -> (ProcMacroClient, ProcMacroKind) {
+    fn raw_proc_macro(&self, tcx: TyCtxt<'_>, id: DefIndex) -> (RustcProcMacro, ProcMacroKind) {
         // DefIndex's in root.proc_macro_data have a one-to-one correspondence
         // with items in 'raw_proc_macros'.
         let (pos, (_id, kind)) = self
@@ -999,7 +1002,7 @@ impl CrateMetadata {
             .enumerate()
             .find(|(_pos, (i, _))| *i == id)
             .unwrap();
-        (self.raw_proc_macros.unwrap()[pos], kind.decode((self, tcx)))
+        (self.raw_proc_macros.as_ref().unwrap()[pos].clone(), kind.decode((self, tcx)))
     }
 
     fn opt_item_name(&self, item_index: DefIndex) -> Option<Symbol> {
@@ -1058,21 +1061,56 @@ impl CrateMetadata {
 
     fn load_proc_macro<'tcx>(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> SyntaxExtension {
         let (name, kind, helper_attrs) = match self.raw_proc_macro(tcx, id) {
-            (client, ProcMacroKind::CustomDerive { trait_name, attributes }) => {
+            (
+                RustcProcMacro::WasmExpand1 { client },
+                ProcMacroKind::CustomDerive { trait_name, attributes },
+            ) => {
                 let helper_attrs =
-                    attributes.into_iter().map(|attr| Symbol::intern(&attr)).collect();
+                    attributes.iter().cloned().map(|s| Symbol::intern(&s)).collect::<Vec<_>>();
                 (
-                    trait_name,
-                    SyntaxExtensionKind::Derive(Arc::new(DeriveProcMacro { client })),
+                    Symbol::intern(&trait_name),
+                    SyntaxExtensionKind::Derive(Arc::new(WasmDeriveProcMacro {
+                        client: client.clone(),
+                    })),
                     helper_attrs,
                 )
             }
-            (client, ProcMacroKind::Attr { name }) => {
-                (name, SyntaxExtensionKind::Attr(Arc::new(AttrProcMacro { client })), Vec::new())
+            (RustcProcMacro::WasmExpand2 { client }, ProcMacroKind::Attr { name }) => (
+                Symbol::intern(&name),
+                SyntaxExtensionKind::Attr(Arc::new(WasmAttrProcMacro { client: client.clone() })),
+                Vec::new(),
+            ),
+            (RustcProcMacro::WasmExpand1 { client }, ProcMacroKind::Bang { name }) => (
+                Symbol::intern(&name),
+                SyntaxExtensionKind::Bang(Arc::new(WasmBangProcMacro { client: client.clone() })),
+                Vec::new(),
+            ),
+
+            (
+                RustcProcMacro::Dylib { client },
+                ProcMacroKind::CustomDerive { trait_name, attributes },
+            ) => {
+                let helper_attrs =
+                    attributes.iter().cloned().map(|s| Symbol::intern(&s)).collect::<Vec<_>>();
+                (
+                    Symbol::intern(&trait_name),
+                    SyntaxExtensionKind::Derive(Arc::new(DeriveProcMacro {
+                        client: client.clone(),
+                    })),
+                    helper_attrs,
+                )
             }
-            (client, ProcMacroKind::Bang { name }) => {
-                (name, SyntaxExtensionKind::Bang(Arc::new(BangProcMacro { client })), Vec::new())
-            }
+            (RustcProcMacro::Dylib { client }, ProcMacroKind::Attr { name }) => (
+                Symbol::intern(&name),
+                SyntaxExtensionKind::Attr(Arc::new(AttrProcMacro { client: client.clone() })),
+                Vec::new(),
+            ),
+            (RustcProcMacro::Dylib { client }, ProcMacroKind::Bang { name }) => (
+                Symbol::intern(&name),
+                SyntaxExtensionKind::Bang(Arc::new(BangProcMacro { client: client.clone() })),
+                Vec::new(),
+            ),
+            _ => unreachable!(),
         };
 
         let sess = tcx.sess;
@@ -1083,7 +1121,7 @@ impl CrateMetadata {
             self.get_span(tcx, id),
             helper_attrs,
             self.root.edition,
-            Symbol::intern(&name),
+            name,
             &attrs,
             false,
         )
@@ -1883,7 +1921,7 @@ impl CrateMetadata {
         tcx: TyCtxt<'_>,
         blob: MetadataBlob,
         root: CrateRoot,
-        raw_proc_macros: Option<&'static [ProcMacroClient]>,
+        raw_proc_macros: Option<Vec<RustcProcMacro>>,
         cnum: CrateNum,
         cnum_map: CrateNumMap,
         dep_kind: CrateDepKind,

@@ -58,6 +58,7 @@ impl Symbol {
 
     /// Clear out the thread-local symbol interner, making all previously
     /// created symbols invalid such that `with` will panic when called on them.
+    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn invalidate_all() {
         INTERNER.with_borrow_mut(|i| i.clear());
     }
@@ -93,24 +94,28 @@ impl fmt::Display for Symbol {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl<S> Encode<S> for Symbol {
     fn encode(self, w: &mut Buffer, s: &mut S) {
         self.with(|sym| sym.encode(w, s))
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl<S: server::Server> Decode<'_, '_, server::HandleStore<S>> for server::MarkedSymbol<S> {
     fn decode(r: &mut &[u8], s: &mut server::HandleStore<S>) -> Self {
         Mark::mark(S::intern_symbol(<&str>::decode(r, s)))
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl<S: server::Server> Encode<server::HandleStore<S>> for server::MarkedSymbol<S> {
     fn encode(self, w: &mut Buffer, s: &mut server::HandleStore<S>) {
         S::with_symbol_string(&self.unmark(), |sym| sym.encode(w, s))
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl<S> Decode<'_, '_, S> for Symbol {
     fn decode(r: &mut &[u8], s: &mut S) -> Self {
         Symbol::new(<&str>::decode(r, s))
@@ -177,6 +182,7 @@ impl Interner {
 
     /// Clear all symbols from the store, invalidating them such that `get` will
     /// panic if they are accessed in the future.
+    #[cfg(not(target_arch = "wasm32"))]
     fn clear(&mut self) {
         // NOTE: Be careful not to panic here, as we may be called on the client
         // when a `catch_unwind` isn't installed.

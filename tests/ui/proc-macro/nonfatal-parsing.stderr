@@ -40,14 +40,6 @@ LL |     nonfatal_parsing::run!();
    = note: prefixed identifiers and literals are reserved since Rust 2021
    = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: found invalid character; only `#` is allowed in raw string delimitation: \u{0}
-  --> $DIR/nonfatal-parsing.rs:15:5
-   |
-LL |     nonfatal_parsing::run!();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
-
 error: invalid digit for a base 2 literal
   --> $DIR/nonfatal-parsing.rs:15:5
    |
@@ -98,14 +90,6 @@ LL -     nonfatal_parsing::run!();
 LL +     nonfatal_parsing::run!(\n;
    |
 
-error: too many `#` symbols: raw strings may be delimited by up to 255 `#` symbols, but found 256
-  --> $DIR/nonfatal-parsing.rs:15:5
-   |
-LL |     nonfatal_parsing::run!();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
-
 error: invalid digit for a base 2 literal
   --> $DIR/nonfatal-parsing.rs:15:5
    |
@@ -114,12 +98,6 @@ LL |     nonfatal_parsing::run!();
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
    = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: found invalid character; only `#` is allowed in raw string delimitation: \u{0}
-  --> <proc-macro source code>:1:1
-   |
-LL | r#
-   | ^^
 
 error: invalid digit for a base 2 literal
   --> <proc-macro source code>:1:3
@@ -163,18 +141,12 @@ help: escape the character
 LL | '\n'
    |  ++
 
-error: too many `#` symbols: raw strings may be delimited by up to 255 `#` symbols, but found 256
-  --> <proc-macro source code>:1:1
-   |
-LL | r############################################...#############################################
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^...^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error: invalid digit for a base 2 literal
   --> <proc-macro source code>:1:9
    |
 LL | /*a*/ 0b2 //
    |         ^
 
-error: aborting due to 20 previous errors
+error: aborting due to 16 previous errors
 
 For more information about this error, try `rustc --explain E0768`.

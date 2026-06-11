@@ -2058,6 +2058,9 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             builder.ensure(compile::Rustc::new(test_compiler, target));
         }
 
+        builder
+            .ensure(compile::Std::new(test_compiler, TargetSelection::from_user("wasm32-wasip2")));
+
         if suite == "debuginfo" {
             builder.ensure(dist::DebuggerScripts {
                 sysroot: builder.sysroot(test_compiler).to_path_buf(),

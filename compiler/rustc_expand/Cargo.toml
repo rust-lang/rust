@@ -32,4 +32,10 @@ scoped-tls = "1.0"
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 thin-vec = "0.2.15"
 tracing = "0.1"
+wasmtime-wasi = "38"
 # tidy-alphabetical-end
+
+[dependencies.wasmtime]
+version = "38"
+default-features = false
+features = ["runtime", "winch", "component-model", "std", "cranelift"]

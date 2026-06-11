@@ -217,9 +217,11 @@ dependencies = [
 name = "proc_macro"
 version = "0.0.0"
 dependencies = [
+ "alloc",
  "core",
  "rustc-literal-escaper",
  "std",
+ "wit-bindgen",
 ]
 
 [[package]]

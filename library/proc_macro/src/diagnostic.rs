@@ -161,15 +161,37 @@ impl Diagnostic {
     /// Emit the diagnostic.
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
     pub fn emit(self) {
-        fn to_internal(diag: Diagnostic) -> crate::bridge::Diagnostic<crate::bridge::client::Span> {
-            crate::bridge::Diagnostic {
-                level: diag.level,
-                message: diag.message,
-                spans: diag.spans.into_iter().map(|s| s.0).collect(),
-                children: diag.children.into_iter().map(to_internal).collect(),
+        cfg_select! {
+            target_arch = "wasm32" => {
+                fn to_internal(diag: Diagnostic) -> crate::bridge::client::host::Diagnostic {
+                    use crate::bridge::client::host;
+                    host::Diagnostic::new(host::DiagnosticInner {
+                        level: match diag.level {
+                            Level::Error => host::Level::Error,
+                            Level::Warning => host::Level::Warning,
+                            Level::Note => host::Level::Note,
+                            Level::Help => host::Level::Help,
+                        },
+                        message: diag.message,
+                        spans: diag.spans.into_iter().map(|s| s.0.span).collect(),
+                        children: diag.children.into_iter().map(to_internal).collect(),
+                    })
+                }
+
+                crate::bridge::client::host::emit_diagnostic(to_internal(self))
+            }
+            _ => {
+                fn to_internal(diag: Diagnostic) -> crate::bridge::Diagnostic<crate::bridge::client::Span> {
+                    crate::bridge::Diagnostic {
+                        level: diag.level,
+                        message: diag.message,
+                        spans: diag.spans.into_iter().map(|s| s.0).collect(),
+                        children: diag.children.into_iter().map(to_internal).collect(),
+                    }
+                }
+
+                crate::bridge::client::Methods::emit_diagnostic(to_internal(self));
             }
         }
-
-        crate::bridge::client::Methods::emit_diagnostic(to_internal(self));
     }
 }

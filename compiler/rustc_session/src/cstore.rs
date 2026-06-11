@@ -22,6 +22,7 @@ use rustc_span::{Span, Symbol};
 #[derive(PartialEq, Clone, Debug, StableHash, Encodable, Decodable)]
 pub struct CrateSource {
     pub dylib: Option<PathBuf>,
+    pub wasm: Option<PathBuf>,
     pub rlib: Option<PathBuf>,
     pub rmeta: Option<PathBuf>,
     pub sdylib_interface: Option<PathBuf>,

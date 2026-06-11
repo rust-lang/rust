@@ -340,9 +340,9 @@ impl Cargo {
             self.rustdocflags.arg(&arg);
         }
 
-        if !builder.config.dry_run() && builder.cc[&target].args().iter().any(|arg| arg == "-gz") {
-            self.rustflags.arg("-Clink-arg=-gz");
-        }
+        // if !builder.config.dry_run() && builder.cc[&target].args().iter().any(|arg| arg == "-gz") {
+        //     self.rustflags.arg("-Clink-arg=-gz");
+        // }
 
         // Ignore linker warnings for now. These are complicated to fix and don't affect the build.
         // FIXME: we should really investigate these...
