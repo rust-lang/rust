@@ -12,7 +12,9 @@ use rustc_infer::traits::Obligation;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::span_bug;
 use rustc_middle::thir::{FieldPat, Pat, PatKind};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitableExt, TypeVisitor};
+use rustc_middle::ty::{
+    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitableExt, TypeVisitor, Unnormalized,
+};
 use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, Span};
 use rustc_trait_selection::traits::ObligationCause;
@@ -106,72 +108,92 @@ impl<'tcx> ConstToPat<'tcx> {
             self.tcx.erase_and_anonymize_regions(self.typing_env).with_codegen_normalized(self.tcx);
         let uv = self.tcx.erase_and_anonymize_regions(uv);
 
-        // try to resolve e.g. associated constants to their definition on an impl, and then
-        // evaluate the const.
-        let valtree = match self.tcx.const_eval_resolve_for_typeck(typing_env, uv, self.span) {
-            Ok(Ok(c)) => c,
-            Err(ErrorHandled::Reported(_, _)) => {
-                // Let's tell the use where this failing const occurs.
-                let mut err =
-                    self.tcx.dcx().create_err(CouldNotEvalConstPattern { span: self.span });
-                // We've emitted an error on the original const, it would be redundant to complain
-                // on its use as well.
-                if let ty::ConstKind::Unevaluated(uv) = self.c.kind()
-                    && let ty::UnevaluatedConstKind::Projection { .. }
-                    | ty::UnevaluatedConstKind::Inherent { .. }
-                    | ty::UnevaluatedConstKind::Free { .. } = uv.kind
-                {
-                    err.downgrade_to_delayed_bug();
-                }
+        // FIXME(gca): This will become insufficient once associated constants can be
+        // implemented as `type` consts (project-const-generics#76). At that point it'll
+        // become necessary to just use type system normalization for all const patterns
+        // but that's not yet possible.
+        let mut thir_pat = if uv.kind.is_type_const(self.tcx) {
+            let Ok(normalize) = self
+                .tcx
+                .try_normalize_erasing_regions(self.typing_env, Unnormalized::new_wip(self.c))
+            else {
+                let err = self.tcx.dcx().create_err(CouldNotEvalConstPattern { span: self.span });
                 return self.mk_err(err, ty);
-            }
-            Err(ErrorHandled::TooGeneric(_)) => {
-                let mut e = self
-                    .tcx
-                    .dcx()
-                    .create_err(ConstPatternDependsOnGenericParameter { span: self.span });
-                for arg in uv.args {
-                    if let ty::GenericArgKind::Type(ty) = arg.kind()
-                        && let ty::Param(param_ty) = ty.kind()
+            };
+
+            let ty::ConstKind::Value(value) = normalize.kind() else {
+                let err = self.tcx.dcx().create_err(CouldNotEvalConstPattern { span: self.span });
+                return self.mk_err(err, ty);
+            };
+            self.valtree_to_pat(value)
+        } else {
+            // try to resolve e.g. associated constants to their definition on an impl, and then
+            // evaluate the const.
+            let valtree = match self.tcx.const_eval_resolve_for_typeck(typing_env, uv, self.span) {
+                Ok(Ok(c)) => c,
+                Err(ErrorHandled::Reported(_, _)) => {
+                    // Let's tell the use where this failing const occurs.
+                    let mut err =
+                        self.tcx.dcx().create_err(CouldNotEvalConstPattern { span: self.span });
+                    // We've emitted an error on the original const, it would be redundant to complain
+                    // on its use as well.
+                    if let ty::ConstKind::Unevaluated(uv) = self.c.kind()
+                        && let ty::UnevaluatedConstKind::Projection { .. }
+                        | ty::UnevaluatedConstKind::Inherent { .. }
+                        | ty::UnevaluatedConstKind::Free { .. } = uv.kind
                     {
-                        let def_id = self.tcx.hir_enclosing_body_owner(self.id);
-                        let generics = self.tcx.generics_of(def_id);
-                        let param = generics.type_param(*param_ty, self.tcx);
-                        let span = self.tcx.def_span(param.def_id);
-                        e.span_label(span, "constant depends on this generic parameter");
-                        if let Some(ident) = self.tcx.def_ident_span(def_id)
-                            && self.tcx.sess.source_map().is_multiline(ident.between(span))
+                        err.downgrade_to_delayed_bug();
+                    }
+                    return self.mk_err(err, ty);
+                }
+                Err(ErrorHandled::TooGeneric(_)) => {
+                    let mut e = self
+                        .tcx
+                        .dcx()
+                        .create_err(ConstPatternDependsOnGenericParameter { span: self.span });
+                    for arg in uv.args {
+                        if let ty::GenericArgKind::Type(ty) = arg.kind()
+                            && let ty::Param(param_ty) = ty.kind()
                         {
-                            // Display the `fn` name as well in the diagnostic, as the generic isn't
-                            // in the same line and it could be confusing otherwise.
-                            e.span_label(ident, "");
+                            let def_id = self.tcx.hir_enclosing_body_owner(self.id);
+                            let generics = self.tcx.generics_of(def_id);
+                            let param = generics.type_param(*param_ty, self.tcx);
+                            let span = self.tcx.def_span(param.def_id);
+                            e.span_label(span, "constant depends on this generic parameter");
+                            if let Some(ident) = self.tcx.def_ident_span(def_id)
+                                && self.tcx.sess.source_map().is_multiline(ident.between(span))
+                            {
+                                // Display the `fn` name as well in the diagnostic, as the generic isn't
+                                // in the same line and it could be confusing otherwise.
+                                e.span_label(ident, "");
+                            }
                         }
                     }
+                    return self.mk_err(e, ty);
                 }
-                return self.mk_err(e, ty);
-            }
-            Ok(Err(bad_ty)) => {
-                // The pattern cannot be turned into a valtree.
-                let e = match bad_ty.kind() {
-                    ty::Adt(def, ..) => {
-                        assert!(def.is_union());
-                        self.tcx.dcx().create_err(UnionPattern { span: self.span })
-                    }
-                    ty::FnPtr(..) | ty::RawPtr(..) => {
-                        self.tcx.dcx().create_err(PointerPattern { span: self.span })
-                    }
-                    _ => self.tcx.dcx().create_err(InvalidPattern {
-                        span: self.span,
-                        non_sm_ty: bad_ty,
-                        prefix: bad_ty.prefix_string(self.tcx).to_string(),
-                    }),
-                };
-                return self.mk_err(e, ty);
-            }
-        };
+                Ok(Err(bad_ty)) => {
+                    // The pattern cannot be turned into a valtree.
+                    let e = match bad_ty.kind() {
+                        ty::Adt(def, ..) => {
+                            assert!(def.is_union());
+                            self.tcx.dcx().create_err(UnionPattern { span: self.span })
+                        }
+                        ty::FnPtr(..) | ty::RawPtr(..) => {
+                            self.tcx.dcx().create_err(PointerPattern { span: self.span })
+                        }
+                        _ => self.tcx.dcx().create_err(InvalidPattern {
+                            span: self.span,
+                            non_sm_ty: bad_ty,
+                            prefix: bad_ty.prefix_string(self.tcx).to_string(),
+                        }),
+                    };
+                    return self.mk_err(e, ty);
+                }
+            };
 
-        // Lower the valtree to a THIR pattern.
-        let mut thir_pat = self.valtree_to_pat(ty::Value { ty, valtree });
+            // Lower the valtree to a THIR pattern.
+            self.valtree_to_pat(ty::Value { ty, valtree })
+        };
 
         if !thir_pat.references_error() {
             // Always check for `PartialEq` if we had no other errors yet.
