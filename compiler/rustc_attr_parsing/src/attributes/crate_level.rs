@@ -5,7 +5,7 @@ use rustc_span::Symbol;
 use rustc_span::edit_distance::find_best_match_for_name;
 
 use super::prelude::*;
-use crate::errors::{UnknownCrateTypes, UnknownCrateTypesSuggestion};
+use crate::diagnostics::{UnknownCrateTypes, UnknownCrateTypesSuggestion};
 
 pub(crate) struct CrateNameParser;
 

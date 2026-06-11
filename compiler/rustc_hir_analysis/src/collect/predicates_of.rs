@@ -415,8 +415,11 @@ fn const_evaluatable_predicates_of<'tcx>(
         preds: FxIndexSet<(ty::Clause<'tcx>, Span)>,
     }
 
-    fn is_const_param_default(tcx: TyCtxt<'_>, def: LocalDefId) -> bool {
-        let hir_id = tcx.local_def_id_to_hir_id(def);
+    fn is_const_param_default(tcx: TyCtxt<'_>, kind: ty::UnevaluatedConstKind<'_>) -> bool {
+        let ty::UnevaluatedConstKind::Anon { def_id } = kind else { return false };
+        let Some(local) = def_id.as_local() else { return false };
+
+        let hir_id = tcx.local_def_id_to_hir_id(local);
         let (_, parent_node) = tcx
             .hir_parent_iter(hir_id)
             .skip_while(|(_, n)| matches!(n, Node::ConstArg(..)))
@@ -431,9 +434,7 @@ fn const_evaluatable_predicates_of<'tcx>(
     impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ConstCollector<'tcx> {
         fn visit_const(&mut self, c: ty::Const<'tcx>) {
             if let ty::ConstKind::Unevaluated(uv) = c.kind() {
-                if let Some(local) = uv.kind.def_id().as_local()
-                    && is_const_param_default(self.tcx, local)
-                {
+                if is_const_param_default(self.tcx, uv.kind) {
                     // Do not look into const param defaults,
                     // these get checked when they are actually instantiated.
                     //
@@ -445,11 +446,11 @@ fn const_evaluatable_predicates_of<'tcx>(
                 }
 
                 // Skip type consts as mGCA doesn't support evaluatable clauses.
-                if self.tcx.is_type_const(uv.kind.def_id()) {
+                if uv.kind.is_type_const(self.tcx) {
                     return;
                 }
 
-                let span = self.tcx.def_span(uv.kind.def_id());
+                let span = uv.kind.def_span(self.tcx);
                 self.preds.insert((ty::ClauseKind::ConstEvaluatable(c).upcast(self.tcx), span));
             }
         }

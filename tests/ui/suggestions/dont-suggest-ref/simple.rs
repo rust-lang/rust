@@ -10,6 +10,26 @@ struct X(Y);
 #[derive(Clone)]
 struct Y;
 
+struct Wrap<T>(T);
+
+struct WrappedField {
+    field: Option<X>,
+}
+
+impl<T> std::ops::Deref for Wrap<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T> std::ops::DerefMut for Wrap<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
 pub fn main() {
     let e = Either::One(X(Y));
     let mut em = Either::One(X(Y));
@@ -140,6 +160,14 @@ pub fn main() {
         Either::Two(ref mut _t) => (),
         // FIXME: should suggest removing `ref` too
     }
+
+    let wrapped_field = Wrap(WrappedField { field: Some(X(Y)) });
+    if let Some(mut _t) = (&wrapped_field).field { }
+    //~^ ERROR cannot move
+
+    let wrapped_index = Wrap([Some(X(Y))]);
+    if let Some(mut _t) = (&wrapped_index)[0] { }
+    //~^ ERROR cannot move
 
     // move from &Either/&X place
 

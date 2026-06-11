@@ -35,7 +35,7 @@ pub use crate::error::*;
 use crate::mir::mono::StaticDef;
 use crate::mir::{Body, Mutability};
 use crate::ty::{
-    AssocItem, FnDef, ForeignModuleDef, ImplDef, ProvenanceMap, Span, TraitDef, Ty,
+    AdtDef, AssocItem, FnDef, ForeignModuleDef, ImplDef, ProvenanceMap, Span, TraitDef, Ty,
     serialize_index_impl,
 };
 use crate::unstable::Stable;
@@ -113,6 +113,11 @@ impl Crate {
     /// Return a list of static items defined in this crate independent on their visibility.
     pub fn statics(&self) -> Vec<StaticDef> {
         with(|cx| cx.crate_statics(self.id))
+    }
+
+    /// Return a list of ADTs defined in this crate independent on their visibility.
+    pub fn adts(&self) -> Vec<AdtDef> {
+        with(|cx| cx.crate_adts(self.id))
     }
 }
 

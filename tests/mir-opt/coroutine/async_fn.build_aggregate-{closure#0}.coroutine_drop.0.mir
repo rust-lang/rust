@@ -7,7 +7,7 @@ fn build_aggregate::{closure#0}(_1: &mut {async fn body of build_aggregate()}) -
     debug c => ((*_1).2: u32);
     debug d => ((*_1).3: u32);
     let mut _0: ();
-    let mut _2: &mut std::task::Context<'_>;
+    let mut _2: std::future::ResumeTy;
     let _3: u32;
     let mut _8: u32;
     let mut _9: {async fn body of add()};
@@ -22,10 +22,10 @@ fn build_aggregate::{closure#0}(_1: &mut {async fn body of build_aggregate()}) -
     let mut _19: &mut {async fn body of add()};
     let mut _20: &mut std::task::Context<'_>;
     let mut _21: &mut std::task::Context<'_>;
-    let mut _22: &mut std::task::Context<'_>;
+    let mut _22: std::future::ResumeTy;
     let mut _23: isize;
     let mut _25: !;
-    let mut _26: &mut std::task::Context<'_>;
+    let mut _26: std::future::ResumeTy;
     let mut _27: ();
     let mut _28: u32;
     let mut _29: {async fn body of add()};
@@ -39,10 +39,10 @@ fn build_aggregate::{closure#0}(_1: &mut {async fn body of build_aggregate()}) -
     let mut _38: &mut {async fn body of add()};
     let mut _39: &mut std::task::Context<'_>;
     let mut _40: &mut std::task::Context<'_>;
-    let mut _41: &mut std::task::Context<'_>;
+    let mut _41: std::future::ResumeTy;
     let mut _42: isize;
     let mut _44: !;
-    let mut _45: &mut std::task::Context<'_>;
+    let mut _45: std::future::ResumeTy;
     let mut _46: ();
     let mut _47: u32;
     let mut _48: u32;

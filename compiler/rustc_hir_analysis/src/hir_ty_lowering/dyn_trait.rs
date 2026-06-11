@@ -434,36 +434,41 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         // N.b. principal, projections, auto traits
         // FIXME: This is actually wrong with multiple principals in regards to symbol mangling
-        let mut v = principal_trait_ref
+        let mut predicates = principal_trait_ref
             .into_iter()
             .chain(existential_projections)
             .chain(auto_trait_predicates)
             .collect::<SmallVec<[_; 8]>>();
-        v.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
-        let existential_predicates = tcx.mk_poly_existential_predicates(&v);
+        predicates.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
+        let predicates = tcx.mk_poly_existential_predicates(&predicates);
 
-        // Use explicitly-specified region bound, unless the bound is missing.
-        let region_bound = if !lifetime.is_elided() {
-            self.lower_lifetime(lifetime, RegionInferReason::ExplicitObjectLifetime)
+        let region_bound = self.lower_trait_object_lifetime(lifetime, predicates, span);
+
+        Ty::new_dynamic(tcx, predicates, region_bound)
+    }
+
+    fn lower_trait_object_lifetime(
+        &self,
+        lifetime: &hir::Lifetime,
+        predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
+        span: Span,
+    ) -> ty::Region<'tcx> {
+        // Curiously, we also use the *object region bound* for `Infer` (`'_`)
+        // while we obviously don't use the *object lifetime default* for it...
+        if let hir::LifetimeKind::ImplicitObjectLifetimeDefault | hir::LifetimeKind::Infer =
+            lifetime.kind
+            && let Some(region) = self.compute_object_lifetime_bound(span, predicates)
+        {
+            return region;
+        }
+
+        let reason = if let hir::LifetimeKind::ImplicitObjectLifetimeDefault = lifetime.kind {
+            RegionInferReason::ObjectLifetimeDefault(span.shrink_to_hi())
         } else {
-            self.compute_object_lifetime_bound(span, existential_predicates).unwrap_or_else(|| {
-                // Curiously, we prefer object lifetime default for `+ '_`...
-                if tcx.named_bound_var(lifetime.hir_id).is_some() {
-                    self.lower_lifetime(lifetime, RegionInferReason::ExplicitObjectLifetime)
-                } else {
-                    let reason =
-                        if let hir::LifetimeKind::ImplicitObjectLifetimeDefault = lifetime.kind {
-                            RegionInferReason::ObjectLifetimeDefault(span.shrink_to_hi())
-                        } else {
-                            RegionInferReason::ExplicitObjectLifetime
-                        };
-                    self.re_infer(span, reason)
-                }
-            })
+            RegionInferReason::ExplicitObjectLifetime
         };
-        debug!(?region_bound);
 
-        Ty::new_dynamic(tcx, existential_predicates, region_bound)
+        self.lower_lifetime(lifetime, reason)
     }
 
     /// Check that elaborating the principal of a trait ref doesn't lead to projections

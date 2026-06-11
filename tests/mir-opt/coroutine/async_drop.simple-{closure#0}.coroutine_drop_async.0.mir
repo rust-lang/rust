@@ -1,29 +1,31 @@
 // MIR for `simple::{closure#0}` 0 coroutine_drop_async
 
 fn simple::{closure#0}(_1: Pin<&mut {async fn body of simple()}>, _2: &mut Context<'_>) -> Poll<()> {
-    debug _task_context => _2;
+    debug _task_context => _25;
     let mut _0: std::task::Poll<()>;
     let _3: SyncInt;
     let mut _5: impl std::future::Future<Output = ()>;
-    let mut _6: &mut std::task::Context<'_>;
+    let mut _6: std::future::ResumeTy;
     let mut _7: std::task::Poll<()>;
     let mut _8: isize;
     let mut _9: std::pin::Pin<&mut impl std::future::Future<Output = ()>>;
     let mut _10: &mut std::task::Context<'_>;
-    let mut _11: &mut std::task::Context<'_>;
+    let mut _11: std::future::ResumeTy;
     let mut _12: &mut impl std::future::Future<Output = ()>;
-    let mut _13: &mut std::task::Context<'_>;
+    let mut _13: std::future::ResumeTy;
     let mut _14: std::task::Poll<()>;
     let mut _15: isize;
     let mut _16: std::pin::Pin<&mut impl std::future::Future<Output = ()>>;
     let mut _17: &mut std::task::Context<'_>;
-    let mut _18: &mut std::task::Context<'_>;
+    let mut _18: std::future::ResumeTy;
     let mut _19: &mut impl std::future::Future<Output = ()>;
     let mut _20: std::pin::Pin<&mut AsyncInt>;
     let mut _21: &mut AsyncInt;
     let mut _22: ();
     let mut _23: u32;
     let mut _24: &mut {async fn body of simple()};
+    let mut _25: std::future::ResumeTy;
+    let mut _26: std::ptr::NonNull<std::task::Context<'_>>;
     scope 1 {
         debug sync_int => (((*_24) as variant#4).1: SyncInt);
         let _4: AsyncInt;
@@ -33,6 +35,8 @@ fn simple::{closure#0}(_1: Pin<&mut {async fn body of simple()}>, _2: &mut Conte
     }
 
     bb0: {
+        _26 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
+        _25 = std::future::ResumeTy(move _26);
         _24 = copy (_1.0: &mut {async fn body of simple()});
         _23 = discriminant((*_24));
         switchInt(move _23) -> [0: bb18, 2: bb23, 3: bb21, 4: bb22, otherwise: bb24];
@@ -78,7 +82,7 @@ fn simple::{closure#0}(_1: Pin<&mut {async fn body of simple()}>, _2: &mut Conte
     }
 
     bb9: {
-        _2 = move _6;
+        _25 = move _6;
         StorageDead(_6);
         goto -> bb15;
     }
@@ -105,8 +109,8 @@ fn simple::{closure#0}(_1: Pin<&mut {async fn body of simple()}>, _2: &mut Conte
     }
 
     bb14: {
-        _11 = move _2;
-        _10 = move _11;
+        _11 = move _25;
+        _10 = copy (_11.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
         goto -> bb13;
     }
 
@@ -116,7 +120,7 @@ fn simple::{closure#0}(_1: Pin<&mut {async fn body of simple()}>, _2: &mut Conte
     }
 
     bb16: {
-        _2 = move _13;
+        _25 = move _13;
         StorageDead(_13);
         goto -> bb15;
     }
@@ -141,13 +145,13 @@ fn simple::{closure#0}(_1: Pin<&mut {async fn body of simple()}>, _2: &mut Conte
 
     bb21: {
         StorageLive(_6);
-        _6 = move _2;
+        _6 = move _25;
         goto -> bb9;
     }
 
     bb22: {
         StorageLive(_13);
-        _13 = move _2;
+        _13 = move _25;
         goto -> bb16;
     }
 

@@ -1533,7 +1533,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if let Some(name) = tcx.intrinsic(def_id) {
                 record!(self.tables.intrinsic[def_id] <- name);
             }
-            if let DefKind::TyParam = def_kind {
+            if let DefKind::TyParam | DefKind::Trait = def_kind {
                 let default = self.tcx.object_lifetime_default(def_id);
                 record!(self.tables.object_lifetime_default[def_id] <- default);
             }
@@ -1984,8 +1984,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let tcx = self.tcx;
             let proc_macro_decls_static = tcx.proc_macro_decls_static(()).unwrap().local_def_index;
             let stability = tcx.lookup_stability(CRATE_DEF_ID);
-            let macros =
-                self.lazy_array(tcx.resolutions(()).proc_macros.iter().map(|p| p.local_def_index));
             for (i, span) in self.tcx.sess.proc_macro_quoted_spans() {
                 let span = self.lazy(span);
                 self.tables.proc_macro_quoted_spans.set_some(i, span);
@@ -2007,6 +2005,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record_array!(self.tables.doc_link_traits_in_scope[LOCAL_CRATE.as_def_id()] <- traits);
             }
 
+            let mut macros = vec![];
+
             // Normally, this information is encoded when we walk the items
             // defined in this crate. However, we skip doing that for proc-macro crates,
             // so we manually encode just the information that we need
@@ -2018,18 +2018,29 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 // Proc-macros may have attributes like `#[allow_internal_unstable]`,
                 // so downstream crates need access to them.
                 let attrs = tcx.hir_attrs(proc_macro);
-                let macro_kind = if find_attr!(attrs, ProcMacro) {
-                    MacroKind::Bang
+                let (macro_kind, kind) = if find_attr!(attrs, ProcMacro) {
+                    (MacroKind::Bang, ProcMacroKind::Bang { name: name.as_str().to_owned() })
                 } else if find_attr!(attrs, ProcMacroAttribute) {
-                    MacroKind::Attr
-                } else if let Some(trait_name) =
-                    find_attr!(attrs, ProcMacroDerive { trait_name, ..} => trait_name)
+                    (MacroKind::Attr, ProcMacroKind::Attr { name: name.as_str().to_owned() })
+                } else if let Some((trait_name, helper_attrs)) = find_attr!(attrs,
+                    ProcMacroDerive { trait_name, helper_attrs } => (trait_name, helper_attrs))
                 {
                     name = *trait_name;
-                    MacroKind::Derive
+                    (
+                        MacroKind::Derive,
+                        ProcMacroKind::CustomDerive {
+                            trait_name: name.as_str().to_owned(),
+                            attributes: helper_attrs
+                                .iter()
+                                .map(|attr| attr.as_str().to_owned())
+                                .collect(),
+                        },
+                    )
                 } else {
                     bug!("Unknown proc-macro type for item {:?}", id);
                 };
+
+                macros.push((id.local_def_index, self.lazy(kind)));
 
                 let mut def_key = self.tcx.hir_def_key(id);
                 def_key.disambiguated_data.data = DefPathData::MacroNs(name);
@@ -2045,6 +2056,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     record!(self.tables.lookup_stability[def_id] <- stability);
                 }
             }
+
+            let macros = self.lazy_array(macros);
 
             Some(ProcMacroData { proc_macro_decls_static, stability, macros })
         } else {

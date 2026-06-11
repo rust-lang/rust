@@ -8,7 +8,7 @@ use rustc_hir::{AttrItem, Attribute, MethodKind, Target};
 use rustc_span::{BytePos, FileName, RemapPathScopeComponents, Span, Symbol, sym};
 
 use crate::context::AcceptContext;
-use crate::errors::{
+use crate::diagnostics::{
     InvalidAttrAtCrateLevel, ItemFollowingInnerAttr, UnsupportedAttributesInWhere,
 };
 use crate::session_diagnostics::{InvalidTarget, InvalidTargetHelp};
@@ -209,7 +209,7 @@ impl<'sess> AttributeParser<'sess> {
             })
             .unwrap_or_default();
 
-        let diag = crate::errors::InvalidAttrStyle {
+        let diag = crate::diagnostics::InvalidAttrStyle {
             name,
             is_used_as_inner,
             target_span: (!is_used_as_inner).then_some(target_span),

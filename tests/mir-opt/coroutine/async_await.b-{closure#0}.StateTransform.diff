@@ -4,6 +4,8 @@
 - fn b::{closure#0}(_1: {async fn body of b()}, _2: std::future::ResumeTy) -> ()
 - yields ()
 -  {
+-     debug _task_context => _2;
+-     let mut _0: ();
 + fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) -> Poll<()> {
 +     coroutine layout {
 +         field _s0: {async fn body of a()};
@@ -17,8 +19,7 @@
 +         }
 +         storage_conflicts = BitMatrix(2x2) {(_s0, _s0), (_s1, _s1)}
 +     }
-      debug _task_context => _2;
--     let mut _0: ();
++     debug _task_context => _40;
 +     coroutine debug __awaitee => _s0;
 +     coroutine debug __awaitee => _s1;
 +     let mut _0: std::task::Poll<()>;
@@ -34,12 +35,10 @@
       let mut _12: &mut {async fn body of a()};
       let mut _13: &mut std::task::Context<'_>;
       let mut _14: &mut std::task::Context<'_>;
--     let mut _15: std::future::ResumeTy;
-+     let mut _15: &mut std::task::Context<'_>;
+      let mut _15: std::future::ResumeTy;
       let mut _16: isize;
       let mut _18: !;
--     let mut _19: std::future::ResumeTy;
-+     let mut _19: &mut std::task::Context<'_>;
+      let mut _19: std::future::ResumeTy;
       let mut _20: ();
       let mut _21: {async fn body of a()};
       let mut _22: {async fn body of a()};
@@ -51,16 +50,16 @@
       let mut _28: &mut {async fn body of a()};
       let mut _29: &mut std::task::Context<'_>;
       let mut _30: &mut std::task::Context<'_>;
--     let mut _31: std::future::ResumeTy;
-+     let mut _31: &mut std::task::Context<'_>;
+      let mut _31: std::future::ResumeTy;
       let mut _32: isize;
       let mut _34: !;
--     let mut _35: std::future::ResumeTy;
-+     let mut _35: &mut std::task::Context<'_>;
+      let mut _35: std::future::ResumeTy;
       let mut _36: ();
 +     let mut _37: ();
 +     let mut _38: u32;
 +     let mut _39: &mut {async fn body of b()};
++     let mut _40: std::future::ResumeTy;
++     let mut _41: std::ptr::NonNull<std::task::Context<'_>>;
       scope 1 {
 -         debug __awaitee => _6;
 +         debug __awaitee => (((*_39) as variant#3).0: {async fn body of a()});
@@ -83,6 +82,8 @@
 -         StorageLive(_4);
 -         StorageLive(_5);
 -         _5 = a() -> [return: bb1, unwind: bb47];
++         _41 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
++         _40 = std::future::ResumeTy(move _41);
 +         _39 = copy (_1.0: &mut {async fn body of b()});
 +         _38 = discriminant((*_39));
 +         switchInt(move _38) -> [0: bb47, 1: bb46, 2: bb45, 3: bb43, 4: bb44, otherwise: bb7];
@@ -121,9 +122,10 @@
           StorageLive(_13);
           StorageLive(_14);
           StorageLive(_15);
-          _15 = copy _2;
+-         _15 = copy _2;
 -         _14 = std::future::get_context::<'_, '_>(move _15) -> [return: bb5, unwind: bb41];
-+         _14 = move _15;
++         _15 = copy _40;
++         _14 = copy (_15.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb5;
       }
   
@@ -180,7 +182,8 @@
   
       bb10: {
           StorageDead(_20);
-          _2 = move _19;
+-         _2 = move _19;
++         _40 = move _19;
           StorageDead(_19);
           _7 = const ();
           goto -> bb3;
@@ -234,9 +237,10 @@
           StorageLive(_29);
           StorageLive(_30);
           StorageLive(_31);
-          _31 = copy _2;
+-         _31 = copy _2;
 -         _30 = std::future::get_context::<'_, '_>(move _31) -> [return: bb17, unwind: bb33];
-+         _30 = move _31;
++         _31 = copy _40;
++         _30 = copy (_31.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb17;
       }
   
@@ -289,7 +293,8 @@
   
       bb21: {
           StorageDead(_36);
-          _2 = move _35;
+-         _2 = move _35;
++         _40 = move _35;
           StorageDead(_35);
           _7 = const ();
           goto -> bb15;
@@ -501,7 +506,7 @@
 +         StorageLive(_4);
 +         StorageLive(_19);
 +         StorageLive(_20);
-+         _19 = move _2;
++         _19 = move _40;
 +         goto -> bb10;
       }
   
@@ -512,7 +517,7 @@
 +         StorageLive(_21);
 +         StorageLive(_35);
 +         StorageLive(_36);
-+         _35 = move _2;
++         _35 = move _40;
 +         goto -> bb21;
       }
   

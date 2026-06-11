@@ -540,10 +540,18 @@ impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
                 }
             }
             ty::ConstKind::Param(param) => crate::ty::TyConstKind::Param(param.stable(tables, cx)),
-            ty::ConstKind::Unevaluated(uv) => crate::ty::TyConstKind::Unevaluated(
-                tables.const_def(uv.kind.def_id()),
-                uv.args.stable(tables, cx),
-            ),
+            ty::ConstKind::Unevaluated(uv) => {
+                let Some(def_id) = uv.kind.opt_def_id() else {
+                    // FIXME: implement (both AliasTy and UnevaluatedConst will be needing this soon)
+                    panic!(
+                        "non-defid unevaluated constants are not supported by rustc_public at the moment"
+                    )
+                };
+                crate::ty::TyConstKind::Unevaluated(
+                    tables.const_def(def_id),
+                    uv.args.stable(tables, cx),
+                )
+            }
             ty::ConstKind::Error(_) => unreachable!(),
             ty::ConstKind::Infer(_) => unreachable!(),
             ty::ConstKind::Bound(_, _) => unimplemented!(),

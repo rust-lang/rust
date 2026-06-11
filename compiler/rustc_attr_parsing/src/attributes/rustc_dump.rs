@@ -45,6 +45,35 @@ impl SingleAttributeParser for RustcDumpDefPathParser {
     }
 }
 
+pub(crate) struct RustcDumpGenericsParser;
+
+impl NoArgsAttributeParser for RustcDumpGenericsParser {
+    const PATH: &[Symbol] = &[sym::rustc_dump_generics];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Struct),
+        Allow(Target::Enum),
+        Allow(Target::Union),
+        Allow(Target::Trait),
+        Allow(Target::TraitAlias),
+        Allow(Target::Fn),
+        Allow(Target::Closure),
+        Allow(Target::TyAlias),
+        Allow(Target::Const),
+        Allow(Target::AssocConst),
+        Allow(Target::AssocTy),
+        Allow(Target::Impl { of_trait: false }),
+        Allow(Target::Impl { of_trait: true }),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Delegation { mac: false }),
+        Allow(Target::Delegation { mac: true }),
+    ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpGenerics;
+}
+
 pub(crate) struct RustcDumpHiddenTypeOfOpaquesParser;
 
 impl NoArgsAttributeParser for RustcDumpHiddenTypeOfOpaquesParser {

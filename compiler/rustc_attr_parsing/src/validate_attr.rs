@@ -9,7 +9,7 @@ use rustc_ast::{
     self as ast, AttrArgs, Attribute, DelimArgs, MetaItem, MetaItemInner, MetaItemKind, Safety,
 };
 use rustc_errors::{Applicability, Diagnostic, PResult};
-use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP, template};
+use rustc_feature::BUILTIN_ATTRIBUTE_MAP;
 use rustc_hir::AttrPath;
 use rustc_parse::parse_in;
 use rustc_session::errors::report_lit_error;
@@ -17,7 +17,7 @@ use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_session::parse::ParseSess;
 use rustc_span::{Span, Symbol, sym};
 
-use crate::{AttributeParser, session_diagnostics as errors};
+use crate::{AttributeParser, AttributeTemplate, session_diagnostics as errors, template};
 
 pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
     if attr.is_doc_comment() || attr.has_name(sym::cfg_trace) || attr.has_name(sym::cfg_attr_trace)
@@ -215,7 +215,7 @@ pub fn emit_malformed_attribute(
             span,
             ast::CRATE_NODE_ID,
             move |dcx, level| {
-                crate::errors::IllFormedAttributeInput::new(&suggestions, template.docs, None)
+                crate::diagnostics::IllFormedAttributeInput::new(&suggestions, template.docs, None)
                     .into_diag(dcx, level)
             },
         );

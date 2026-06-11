@@ -5,7 +5,7 @@ fn includes_never::{closure#0}(_1: &mut {async fn body of includes_never()}) -> 
     debug crash => ((*_1).0: bool);
     debug x => ((*_1).1: u32);
     let mut _0: ();
-    let mut _2: &mut std::task::Context<'_>;
+    let mut _2: std::future::ResumeTy;
     let _3: bool;
     let mut _6: {async block@$DIR/async_fn.rs:61:18: 61:23};
     let mut _7: {async block@$DIR/async_fn.rs:61:18: 61:23};
@@ -18,10 +18,10 @@ fn includes_never::{closure#0}(_1: &mut {async fn body of includes_never()}) -> 
     let mut _15: &mut {async block@$DIR/async_fn.rs:61:18: 61:23};
     let mut _16: &mut std::task::Context<'_>;
     let mut _17: &mut std::task::Context<'_>;
-    let mut _18: &mut std::task::Context<'_>;
+    let mut _18: std::future::ResumeTy;
     let mut _19: isize;
     let mut _21: !;
-    let mut _22: &mut std::task::Context<'_>;
+    let mut _22: std::future::ResumeTy;
     let mut _23: ();
     let _24: ();
     let mut _25: bool;

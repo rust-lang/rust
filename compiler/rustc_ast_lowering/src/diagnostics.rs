@@ -123,6 +123,17 @@ pub(crate) struct AwaitOnlyInAsyncFnAndBlocks {
 }
 
 #[derive(Diagnostic)]
+#[diag("a function cannot be both `comptime` and `const`")]
+pub(crate) struct ConstComptimeFn {
+    #[primary_span]
+    #[suggestion("remove the `const`", applicability = "machine-applicable", code = "")]
+    #[note("`const` implies the function can be called at runtime, too")]
+    pub span: Span,
+    #[label("`comptime` because of this")]
+    pub attr_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("too many parameters for a coroutine (expected 0 or 1 parameters)", code = E0628)]
 pub(crate) struct CoroutineTooManyParameters {
     #[primary_span]

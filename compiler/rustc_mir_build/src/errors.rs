@@ -1241,12 +1241,14 @@ pub(crate) struct PatternNotCovered<'s, 'tcx> {
     pub(crate) misc_suggestion: Option<MiscPatternSuggestion>,
 }
 
-#[derive(Subdiagnostic)]
+#[derive(Subdiagnostic, Debug)]
 #[note(
-    "`let` bindings require an \"irrefutable pattern\", like a `struct` or an `enum` with only one variant"
+    "{$descr} require an \"irrefutable pattern\", like a `struct` or an `enum` with only one variant"
 )]
 #[note("for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html")]
-pub(crate) struct Inform;
+pub(crate) struct Inform {
+    pub(crate) descr: &'static str,
+}
 
 #[derive(Subdiagnostic)]
 #[label(

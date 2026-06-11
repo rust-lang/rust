@@ -777,8 +777,10 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                 if has_default {
                     // need to store default and type of default
                     let ct = tcx.const_param_default(param.def_id).skip_binder();
-                    if let ty::ConstKind::Unevaluated(uv) = ct.kind() {
-                        tcx.ensure_ok().type_of(uv.kind.def_id());
+                    if let ty::ConstKind::Unevaluated(uv) = ct.kind()
+                        && let Some(def_id) = uv.kind.opt_def_id()
+                    {
+                        tcx.ensure_ok().type_of(def_id);
                     }
                 }
             }
@@ -1633,6 +1635,16 @@ fn check_scalable_vector(tcx: TyCtxt<'_>, span: Span, def_id: LocalDefId, scalab
 pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: ty::AdtDef<'_>) {
     let repr = def.repr();
     if repr.packed() {
+        // `#[pin_v2]` on a packed type is unsound: drop glue for a packed type moves an
+        // over-aligned field to an aligned location before running its destructor, which would
+        // move a structurally pinned field out from under a `Pin<&mut _>` that was handed out.
+        if def.is_pin_project() {
+            tcx.dcx().emit_err(errors::PinV2OnPacked {
+                span: sp,
+                pin_v2_span: find_attr!(tcx, def.did(), PinV2(span) => *span),
+                adt_name: tcx.item_name(def.did()),
+            });
+        }
         if let Some(reprs) = find_attr!(tcx, def.did(), Repr { reprs, .. } => reprs) {
             for (r, _) in reprs {
                 if let ReprPacked(pack) = r

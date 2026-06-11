@@ -470,7 +470,7 @@ impl ArchiveBuilderBuilder for DummyArchiveBuilderBuilder {
         output_path: &Path,
     ) {
         // Build an empty static library to avoid calling an external dlltool on mingw
-        ArArchiveBuilderBuilder.new_archive_builder(sess).build(output_path);
+        ArArchiveBuilderBuilder.new_archive_builder(sess).build(output_path, None);
     }
 }
 

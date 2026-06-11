@@ -854,6 +854,22 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                     self.set_metadata_node(store, llvm::MD_nontemporal, &[one]);
                 }
             }
+            if flags.contains(MemFlags::CAPTURES_READ_ONLY)
+                && crate::llvm_util::get_version() >= (22, 0, 0)
+            {
+                assert!(
+                    self.type_kind(self.val_ty(val)) == TypeKind::Pointer,
+                    "CAPTURED_READ_ONLY is only supported on pointer stores"
+                );
+                let args = [
+                    self.cx.create_metadata(b"address"),
+                    self.cx.create_metadata(b"read_provenance"),
+                ];
+                // FIXME: Switch this to use MD_captures once LLVM 22 is the minimum.
+                let id = self.get_md_kind_id("captures");
+                let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, args.as_ptr(), args.len());
+                self.set_metadata(store, id, md);
+            }
             store
         }
     }
