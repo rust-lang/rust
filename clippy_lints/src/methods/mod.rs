@@ -5277,8 +5277,10 @@ impl Methods {
                                 manual_str_repeat::check(cx, expr, recv, take_self_arg, take_arg);
                             }
                         },
-                        Some((sym::drain, recv, args, ..)) => {
-                            drain_collect::check(cx, args, expr, recv);
+                        Some((sym::drain, recv, args, ..)) => match args {
+                            [arg] => drain_collect::check(cx, Some(arg), expr, recv),
+                            [] => drain_collect::check(cx, None, expr, recv),
+                            _ => {},
                         },
                         _ => {},
                     }
