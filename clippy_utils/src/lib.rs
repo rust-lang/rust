@@ -120,7 +120,6 @@ use source::{SpanRangeExt, walk_span_to_context};
 use visitors::{Visitable, for_each_unconsumed_temporary};
 
 use crate::ast_utils::unordered_over;
-use crate::consts::ConstEvalCtxt;
 use crate::higher::Range;
 use crate::msrvs::Msrv;
 use crate::res::{MaybeDef, MaybeQPath, MaybeResPath};
@@ -1329,59 +1328,23 @@ pub fn is_else_clause_in_let_else(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
     })
 }
 
-/// Checks whether the given `Expr` is a range equivalent to a `RangeFull`.
-///
-/// For the lower bound, this means that:
-/// - either there is none
-/// - or it is the smallest value that can be represented by the range's integer type
-///
-/// For the upper bound, this means that:
-/// - either there is none
-/// - or it is the largest value that can be represented by the range's integer type and is
-///   inclusive
-/// - or it is a call to some container's `len` method and is exclusive, and the range is passed to
-///   a method call on that same container (e.g. `v.drain(..v.len())`)
-///
-/// If the given `Expr` is not some kind of range, the function returns `false`.
-pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Option<&Path<'_>>) -> bool {
-    let ty = cx.typeck_results().expr_ty(expr);
+/// Checks whether the given `Expr` is a range over the entire container.
+pub fn is_full_collection_range(cx: &LateContext<'_>, container: Option<HirId>, expr: &Expr<'_>) -> bool {
     if let Some(Range { start, end, limits, .. }) = Range::hir(cx, expr) {
-        let start_is_none_or_min = start.is_none_or(|start| {
-            if let rustc_ty::Adt(_, subst) = ty.kind()
-                && let bnd_ty = subst.type_at(0)
-                && let Some(start_const) = ConstEvalCtxt::new(cx).eval(start)
-            {
-                start_const.is_numeric_min(cx.tcx, bnd_ty)
-            } else {
-                false
-            }
-        });
-        let end_is_none_or_max = end.is_none_or(|end| match limits {
-            RangeLimits::Closed => {
-                if let rustc_ty::Adt(_, subst) = ty.kind()
-                    && let bnd_ty = subst.type_at(0)
-                    && let Some(end_const) = ConstEvalCtxt::new(cx).eval(end)
+        start.is_none_or(|start| is_integer_literal(start, 0))
+            && end.is_none_or(|end| {
+                if limits == RangeLimits::HalfOpen
+                    && let Some(container) = container
+                    && let ExprKind::MethodCall(seg, recv, [], _) = end.kind
                 {
-                    end_const.is_numeric_max(cx.tcx, bnd_ty)
+                    seg.ident.name == sym::len && recv.res_local_id() == Some(container)
                 } else {
                     false
                 }
-            },
-            RangeLimits::HalfOpen => {
-                if let Some(container_path) = container_path
-                    && let ExprKind::MethodCall(name, self_arg, [], _) = end.kind
-                    && name.ident.name == sym::len
-                    && let ExprKind::Path(QPath::Resolved(None, path)) = self_arg.kind
-                {
-                    container_path.res == path.res
-                } else {
-                    false
-                }
-            },
-        });
-        return start_is_none_or_min && end_is_none_or_max;
+            })
+    } else {
+        false
     }
-    false
 }
 
 /// Checks whether the given expression is a constant literal of the given value.
