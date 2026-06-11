@@ -16,18 +16,13 @@ use super::intrinsic_helpers::TypeDefinition;
 /// ```
 pub fn write_wrapper_c<A: SupportedArchitecture>(
     w: &mut impl std::io::Write,
-    notice: &str,
-    platform_headers: &[&str],
     intrinsics: &[Intrinsic<A>],
 ) -> std::io::Result<()> {
-    write!(w, "{notice}")?;
+    write!(w, "{}", A::NOTICE)?;
 
     writeln!(w, "#include <stdint.h>")?;
     writeln!(w, "#include <stddef.h>")?;
-
-    for header in platform_headers {
-        writeln!(w, "#include <{header}>")?;
-    }
+    writeln!(w, "{}", A::C_PRELUDE)?;
 
     for intrinsic in intrinsics {
         intrinsic.iter_specializations(|imm_values| {

@@ -116,14 +116,11 @@ pub fn write_lib_rs<A: SupportedArchitecture>(
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
-{cfg}
+{prelude}
 {COMMON_RUST_DEFINITIONS}
-
-{definitions}
 "#,
         notice = A::NOTICE,
-        cfg = A::PLATFORM_RUST_CFGS,
-        definitions = A::PLATFORM_RUST_DEFINITIONS,
+        prelude = A::RUST_PRELUDE,
     )?;
 
     let mut seen = std::collections::HashSet::new();
