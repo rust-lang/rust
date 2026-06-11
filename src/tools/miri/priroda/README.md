@@ -28,10 +28,31 @@ export MIRI_SYSROOT="$(cargo +miri miri setup --print-sysroot)"
 
 ## Run
 
-Priroda currently reads `MIRI_SYSROOT` directly. After setup:
+Priroda currently reads `MIRI_SYSROOT` directly. After setup, run Priroda
+from `miri/priroda/`:
 
 ```sh
-cargo run -p priroda -- tests/pass/empty_main.rs
+cargo run -- ../tests/pass/empty_main.rs
+```
+
+## Test
+
+Priroda's CLI tests also need `MIRI_SYSROOT`. Run them from `miri/priroda/`:
+
+```sh
+cargo test
+```
+
+If the CLI tests fail due to mismatched output, you can update the expected output files by running the tests with the `--bless` flag:
+
+```sh
+cargo test -- --bless
+```
+
+or 
+
+```sh
+RUSTC_BLESS=1 cargo test
 ```
 
 ## Commands

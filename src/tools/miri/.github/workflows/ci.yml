@@ -157,15 +157,22 @@ jobs:
 
   # This job is intentionally separate from `test` so that Priroda can be
   # developed as a separate crate inside the Miri repository for now.
-  priroda-build:
+  priroda:
     name: Priroda
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: ./.github/workflows/setup
+      - name: install Miri driver
+        run: ./miri install
       - name: build Priroda
         working-directory: priroda
         run: cargo build --locked
+      - name: test Priroda
+        working-directory: priroda
+        run: |
+          sysroot="$(cargo miri setup --print-sysroot)"
+          MIRI_SYSROOT="$sysroot" cargo test --locked
 
   coverage:
     name: coverage report
@@ -180,7 +187,7 @@ jobs:
   # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
   # And they should be added below in `cron-fail-notify` as well.
   conclusion:
-    needs: [test, style, bootstrap, coverage, priroda-build]
+    needs: [test, style, bootstrap, coverage, priroda]
     # We need to ensure this job does *not* get skipped if its dependencies fail,
     # because a skipped job is considered a success by GitHub. So we have to
     # overwrite `if:`. We use `!cancelled()` to ensure the job does still not get run
@@ -264,7 +271,7 @@ jobs:
   cron-fail-notify:
     name: cronjob failure notification
     runs-on: ubuntu-latest
-    needs: [test, style, bootstrap, coverage, priroda-build]
+    needs: [test, style, bootstrap, coverage, priroda]
     if: ${{ github.event_name == 'schedule' && failure() }}
     steps:
       # Send a Zulip notification
