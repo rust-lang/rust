@@ -29,7 +29,7 @@ where
                 .iter_instantiated(cx, free_alias.args)
                 .map(Unnormalized::skip_norm_wip)
                 .map(|pred| goal.with(cx, pred)),
-        );
+        )?;
 
         let actual = match free_alias.kind {
             ty::AliasTermKind::FreeTy { def_id } => {

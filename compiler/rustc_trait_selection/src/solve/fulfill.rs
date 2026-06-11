@@ -6,7 +6,7 @@ use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::{
     FromSolverError, PredicateObligation, PredicateObligations, TraitEngine,
 };
-use rustc_middle::ty::{TyCtxt, TypeVisitableExt, TypingMode};
+use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_next_trait_solver::delegate::SolverDelegate as _;
 use rustc_next_trait_solver::solve::{
     GoalEvaluation, GoalStalledOn, HasChanged, MaybeInfo, SolverDelegateEvalExt as _,
@@ -18,7 +18,7 @@ use tracing::instrument;
 use self::derive_errors::*;
 use super::Certainty;
 use super::delegate::SolverDelegate;
-use crate::traits::{FulfillmentError, ScrubbedTraitError};
+use crate::traits::{FulfillmentError, ObligationCtxt, ScrubbedTraitError};
 
 mod derive_errors;
 
@@ -151,9 +151,16 @@ where
     fn register_predicate_obligation(
         &mut self,
         infcx: &InferCtxt<'tcx>,
-        obligation: PredicateObligation<'tcx>,
+        mut obligation: PredicateObligation<'tcx>,
     ) {
         assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
+        let ocx = ObligationCtxt::new(infcx);
+        obligation.predicate = ocx.normalize(
+            &obligation.cause,
+            obligation.param_env,
+            ty::Unnormalized::new_wip(obligation.predicate),
+        );
+        self.register_predicate_obligations(infcx, ocx.into_pending_obligations());
         self.obligations.register(obligation, None);
     }
 

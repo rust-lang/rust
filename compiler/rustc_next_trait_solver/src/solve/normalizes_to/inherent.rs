@@ -52,7 +52,7 @@ where
                 .iter_instantiated(cx, inherent_args)
                 .map(Unnormalized::skip_norm_wip)
                 .map(|pred| goal.with(cx, pred)),
-        );
+        )?;
 
         let normalized = match inherent.kind {
             ty::AliasTermKind::InherentTy { def_id } => {

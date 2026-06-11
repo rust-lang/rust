@@ -11,7 +11,8 @@ trait Trait {
 impl Trait for () {
     type const A: () = <() as Trait>::A;
     //~^ ERROR: overflow evaluating the requirement `<() as Trait>::A == _`
-    //~| ERROR: overflow evaluating the requirement `the constant `<() as Trait>::A` has type `()``
+    //~| ERROR: overflow evaluating the requirement `<() as Trait>::A == _`
+    //~| ERROR: type annotations needed
 }
 
 fn main() {

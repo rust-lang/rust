@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 
 #[cfg(feature = "nightly")]
 use rustc_macros::StableHash;
-use rustc_type_ir::data_structures::{HashMap, HashSet};
+use rustc_type_ir::data_structures::HashSet;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::region_constraint::RegionConstraint;
 use rustc_type_ir::relate::Relate;
@@ -1034,11 +1034,19 @@ where
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub(super) fn add_goal(&mut self, source: GoalSource, mut goal: Goal<I, I::Predicate>) {
-        goal.predicate =
-            goal.predicate.fold_with(&mut ReplaceAliasWithInfer::new(self, source, goal.param_env));
+    pub(super) fn add_goal(
+        &mut self,
+        source: GoalSource,
+        mut goal: Goal<I, I::Predicate>,
+    ) -> Result<(), NoSolutionOrRerunNonErased> {
+        goal.predicate = self.normalize(
+            GoalSource::NormalizeGoal(self.step_kind_for_source(source)),
+            goal.param_env,
+            goal.predicate,
+        )?;
         self.inspect.add_goal(self.delegate, self.max_input_universe, source, goal);
         self.nested_goals.push((source, goal, None));
+        Ok(())
     }
 
     #[instrument(level = "trace", skip(self, goals))]
@@ -1046,10 +1054,11 @@ where
         &mut self,
         source: GoalSource,
         goals: impl IntoIterator<Item = Goal<I, I::Predicate>>,
-    ) {
+    ) -> Result<(), NoSolutionOrRerunNonErased> {
         for goal in goals {
-            self.add_goal(source, goal);
+            self.add_goal(source, goal)?;
         }
+        Ok(())
     }
 
     pub(super) fn next_region_var(&mut self) -> I::Region {
@@ -1212,7 +1221,7 @@ where
         param_env: I::ParamEnv,
         lhs: T,
         rhs: T,
-    ) -> Result<(), NoSolution> {
+    ) -> Result<(), NoSolutionOrRerunNonErased> {
         self.relate(param_env, lhs, ty::Variance::Invariant, rhs)
     }
 
@@ -1228,7 +1237,7 @@ where
         alias: ty::AliasTerm<I>,
         variance: ty::Variance,
         term: I::Term,
-    ) -> Result<(), NoSolution> {
+    ) -> Result<(), NoSolutionOrRerunNonErased> {
         // NOTE: this check is purely an optimization, the structural eq would
         // always fail if the term is not an inference variable.
         if term.is_infer() {
@@ -1253,7 +1262,7 @@ where
             debug_assert!(obligations.is_empty());
             self.relate(param_env, alias, variance, rigid_ctor)
         } else {
-            Err(NoSolution)
+            Err(NoSolutionOrRerunNonErased::NoSolution(NoSolution))
         }
     }
 
@@ -1283,7 +1292,7 @@ where
         param_env: I::ParamEnv,
         sub: T,
         sup: T,
-    ) -> Result<(), NoSolution> {
+    ) -> Result<(), NoSolutionOrRerunNonErased> {
         self.relate(param_env, sub, ty::Variance::Covariant, sup)
     }
 
@@ -1294,7 +1303,7 @@ where
         lhs: T,
         variance: ty::Variance,
         rhs: T,
-    ) -> Result<(), NoSolution> {
+    ) -> Result<(), NoSolutionOrRerunNonErased> {
         let goals = self.delegate.relate(param_env, lhs, variance, rhs, self.origin_span)?;
         for &goal in goals.iter() {
             let source = match goal.predicate.kind().skip_binder() {
@@ -1305,7 +1314,7 @@ where
                 ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => GoalSource::Misc,
                 p => unreachable!("unexpected nested goal in `relate`: {p:?}"),
             };
-            self.add_goal(source, goal);
+            self.add_goal(source, goal)?;
         }
         Ok(())
     }
@@ -1446,7 +1455,7 @@ where
         opaque_args: I::GenericArgs,
         param_env: I::ParamEnv,
         hidden_ty: I::Ty,
-    ) {
+    ) -> Result<(), NoSolutionOrRerunNonErased> {
         let mut goals = Vec::new();
         self.delegate.add_item_bounds_for_hidden_type(
             opaque_def_id,
@@ -1455,7 +1464,8 @@ where
             hidden_ty,
             &mut goals,
         );
-        self.add_goals(GoalSource::AliasWellFormed, goals);
+        self.add_goals(GoalSource::AliasWellFormed, goals)?;
+        Ok(())
     }
 
     // Try to evaluate a const, or return `None` if the const is too generic.
@@ -1773,125 +1783,6 @@ where
             Ok((self.resolve_vars_if_possible(infer_term), normalization_was_ambiguous))
         });
         value.try_fold_with(&mut folder)
-    }
-}
-
-/// Eagerly replace aliases with inference variables, emitting `AliasRelate`
-/// goals, used when adding goals to the `EvalCtxt`. We compute the
-/// `AliasRelate` goals before evaluating the actual goal to get all the
-/// constraints we can.
-///
-/// This is a performance optimization to more eagerly detect cycles during trait
-/// solving. See tests/ui/traits/next-solver/cycles/cycle-modulo-ambig-aliases.rs.
-///
-/// The emitted goals get evaluated in the context of the parent goal; by
-/// replacing aliases in nested goals we essentially pull the normalization out of
-/// the nested goal. We want to treat the goal as if the normalization still happens
-/// inside of the nested goal by inheriting the `step_kind` of the nested goal and
-/// storing it in the `GoalSource` of the emitted `AliasRelate` goals.
-/// This is necessary for tests/ui/sized/coinductive-1.rs to compile.
-struct ReplaceAliasWithInfer<'me, 'a, D, I>
-where
-    D: SolverDelegate<Interner = I>,
-    I: Interner,
-{
-    ecx: &'me mut EvalCtxt<'a, D>,
-    param_env: I::ParamEnv,
-    normalization_goal_source: GoalSource,
-    cache: HashMap<I::Ty, I::Ty>,
-}
-
-impl<'me, 'a, D, I> ReplaceAliasWithInfer<'me, 'a, D, I>
-where
-    D: SolverDelegate<Interner = I>,
-    I: Interner,
-{
-    fn new(
-        ecx: &'me mut EvalCtxt<'a, D>,
-        for_goal_source: GoalSource,
-        param_env: I::ParamEnv,
-    ) -> Self {
-        let step_kind = ecx.step_kind_for_source(for_goal_source);
-        ReplaceAliasWithInfer {
-            ecx,
-            param_env,
-            normalization_goal_source: GoalSource::NormalizeGoal(step_kind),
-            cache: Default::default(),
-        }
-    }
-}
-
-impl<D, I> TypeFolder<I> for ReplaceAliasWithInfer<'_, '_, D, I>
-where
-    D: SolverDelegate<Interner = I>,
-    I: Interner,
-{
-    fn cx(&self) -> I {
-        self.ecx.cx()
-    }
-
-    fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
-        if !self.cx().renormalize_rigid_aliases() && !ty.has_non_rigid_aliases() {
-            return ty;
-        }
-
-        match ty.kind() {
-            ty::Alias(..) if !ty.has_escaping_bound_vars() => {
-                let infer_ty = self.ecx.next_ty_infer();
-                let normalizes_to = ty::PredicateKind::AliasRelate(
-                    ty.into(),
-                    infer_ty.into(),
-                    ty::AliasRelationDirection::Equate,
-                );
-                self.ecx.add_goal(
-                    self.normalization_goal_source,
-                    Goal::new(self.cx(), self.param_env, normalizes_to),
-                );
-                infer_ty
-            }
-            _ => {
-                if !ty.has_aliases() {
-                    ty
-                } else if let Some(&entry) = self.cache.get(&ty) {
-                    return entry;
-                } else {
-                    let res = ty.super_fold_with(self);
-                    assert!(self.cache.insert(ty, res).is_none());
-                    res
-                }
-            }
-        }
-    }
-
-    fn fold_const(&mut self, ct: I::Const) -> I::Const {
-        if !self.cx().renormalize_rigid_aliases() && !ct.has_non_rigid_aliases() {
-            return ct;
-        }
-
-        match ct.kind() {
-            ty::ConstKind::Unevaluated(..) if !ct.has_escaping_bound_vars() => {
-                let infer_ct = self.ecx.next_const_infer();
-                let normalizes_to = ty::PredicateKind::AliasRelate(
-                    ct.into(),
-                    infer_ct.into(),
-                    ty::AliasRelationDirection::Equate,
-                );
-                self.ecx.add_goal(
-                    self.normalization_goal_source,
-                    Goal::new(self.cx(), self.param_env, normalizes_to),
-                );
-                infer_ct
-            }
-            _ => ct.super_fold_with(self),
-        }
-    }
-
-    fn fold_predicate(&mut self, predicate: I::Predicate) -> I::Predicate {
-        if !self.cx().renormalize_rigid_aliases() && !predicate.has_non_rigid_aliases() {
-            return predicate;
-        }
-
-        if predicate.allow_normalization() { predicate.super_fold_with(self) } else { predicate }
     }
 }
 

@@ -4,12 +4,21 @@ error[E0275]: overflow evaluating the requirement `<() as Trait>::A == _`
 LL |     type const A: () = <() as Trait>::A;
    |     ^^^^^^^^^^^^^^^^
 
-error[E0275]: overflow evaluating the requirement `the constant `<() as Trait>::A` has type `()``
+error[E0275]: overflow evaluating the requirement `<() as Trait>::A == _`
   --> $DIR/projection-const-recursive.rs:12:5
    |
 LL |     type const A: () = <() as Trait>::A;
    |     ^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 2 previous errors
+error[E0284]: type annotations needed
+  --> $DIR/projection-const-recursive.rs:12:5
+   |
+LL |     type const A: () = <() as Trait>::A;
+   |     ^^^^^^^^^^^^^^^^ cannot infer the value of the constant `_`
 
-For more information about this error, try `rustc --explain E0275`.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0275, E0284.
+For more information about an error, try `rustc --explain E0275`.
