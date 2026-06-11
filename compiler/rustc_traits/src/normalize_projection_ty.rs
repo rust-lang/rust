@@ -29,7 +29,7 @@ fn const_arg_has_type_obligation<'tcx>(
     goal: ty::AliasTerm<'tcx>,
 ) -> Option<traits::PredicateObligation<'tcx>> {
     let ct = normalized_term.as_const()?;
-    let expected_ty = tcx.type_of(goal.def_id()).instantiate(tcx, goal.args).skip_norm_wip();
+    let expected_ty = goal.expect_ct().type_of(tcx).skip_norm_wip();
     Some(traits::Obligation::new(
         tcx,
         ObligationCause::dummy(),
@@ -63,7 +63,7 @@ fn normalize_canonicalized_projection<'tcx>(
                 tcx,
                 param_env,
                 normalized_term,
-                goal.into(),
+                goal,
             ));
             ocx.register_obligations(obligations);
             // #112047: With projections and opaques, we are able to create opaques that
@@ -100,7 +100,8 @@ fn normalize_canonicalized_free_alias<'tcx>(
     tcx.infer_ctxt().enter_canonical_trait_query(
         &goal,
         |ocx, ParamEnvAnd { param_env, value: goal }| {
-            let obligations = tcx.predicates_of(goal.def_id()).instantiate_own(tcx, goal.args).map(
+            let def_id = goal.expect_free_def_id();
+            let obligations = tcx.predicates_of(def_id).instantiate_own(tcx, goal.args).map(
                 |(predicate, span)| {
                     traits::Obligation::new(
                         tcx,
@@ -112,15 +113,15 @@ fn normalize_canonicalized_free_alias<'tcx>(
             );
             ocx.register_obligations(obligations);
             let normalized_term: ty::Term<'tcx> = if goal.kind.is_type() {
-                tcx.type_of(goal.def_id()).instantiate(tcx, goal.args).skip_norm_wip().into()
+                tcx.type_of(def_id).instantiate(tcx, goal.args).skip_norm_wip().into()
             } else {
-                tcx.const_of_item(goal.def_id()).instantiate(tcx, goal.args).skip_norm_wip().into()
+                tcx.const_of_item(def_id).instantiate(tcx, goal.args).skip_norm_wip().into()
             };
             ocx.register_obligations(const_arg_has_type_obligation(
                 tcx,
                 param_env,
                 normalized_term,
-                goal.into(),
+                goal,
             ));
             Ok(NormalizationResult { normalized_term })
         },
@@ -151,7 +152,7 @@ fn normalize_canonicalized_inherent_projection<'tcx>(
                 tcx,
                 param_env,
                 normalized_term,
-                goal.into(),
+                goal,
             ));
             ocx.register_obligations(obligations);
 

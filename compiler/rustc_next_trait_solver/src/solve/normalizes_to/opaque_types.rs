@@ -17,11 +17,11 @@ where
     pub(super) fn normalize_opaque_type(
         &mut self,
         goal: Goal<I, ty::NormalizesTo<I>>,
-        def_id: I::OpaqueTyId,
     ) -> QueryResultOrRerunNonErased<I> {
         let cx = self.cx();
         let opaque_ty = goal.predicate.alias;
         let expected = goal.predicate.term.as_type().expect("no such thing as an opaque const");
+        let def_id = opaque_ty.expect_opaque_ty_def_id();
 
         match self.typing_mode() {
             TypingMode::Coherence => {
@@ -113,10 +113,9 @@ where
                     .map_err(Into::into)
             }
             TypingMode::PostBorrowck { defined_opaque_types } => {
-                let Some(def_id) = opaque_ty
-                    .def_id()
+                let Some(def_id) = def_id
                     .as_local()
-                    .filter(|&def_id| defined_opaque_types.contains(&def_id))
+                    .filter(|&def_id| defined_opaque_types.contains(&def_id.into()))
                 else {
                     self.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
                     return self
@@ -146,15 +145,13 @@ where
                     .map_err(Into::into)
             }
             TypingMode::ErasedNotCoherence(MayBeErased) => {
-                let def_id = opaque_ty.def_id().as_local();
-
                 // If we have a local defid, in other typing modes we check whether
                 // this is the defining scope, and otherwise treat it as rigid.
                 // However, in `ErasedNotcoherence` we *always* treat it as rigid.
                 // This is the same as other modes if def_id is None, but wrong if we do have a DefId.
                 // So, if we have one, we register in the EvalCtxt that we may need that defid.
                 // We might then decide to rerun in the correct typing mode.
-                if let Some(def_id) = def_id {
+                if let Some(def_id) = def_id.as_local() {
                     self.opaque_accesses.rerun_if_opaque_in_opaque_type_storage(
                         RerunReason::NormalizeOpaqueType,
                         def_id,

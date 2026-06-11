@@ -1240,7 +1240,17 @@ where
             //
             // Alternatively we could modify `Equate` for this case by adding another
             // variant to `StructurallyRelateAliases`.
-            let identity_args = self.fresh_args_for_item(alias.def_id());
+            let def_id = match alias.kind {
+                ty::AliasTermKind::ProjectionTy { def_id } => def_id.into(),
+                ty::AliasTermKind::InherentTy { def_id } => def_id.into(),
+                ty::AliasTermKind::OpaqueTy { def_id } => def_id.into(),
+                ty::AliasTermKind::FreeTy { def_id } => def_id.into(),
+                ty::AliasTermKind::AnonConst { def_id } => def_id.into(),
+                ty::AliasTermKind::ProjectionConst { def_id } => def_id.into(),
+                ty::AliasTermKind::FreeConst { def_id } => def_id.into(),
+                ty::AliasTermKind::InherentConst { def_id } => def_id.into(),
+            };
+            let identity_args = self.fresh_args_for_item(def_id);
             let rigid_ctor = alias.with_args(cx, identity_args);
             let ctor_term = rigid_ctor.to_term(cx);
             let obligations = self.delegate.eq_structurally_relating_aliases(

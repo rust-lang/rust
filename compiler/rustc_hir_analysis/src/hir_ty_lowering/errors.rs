@@ -487,9 +487,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                     // FIXME(mgca): code duplication with other places we lower
                                     // the rhs' of associated const bindings
                                     let ty = projection_term.map_bound(|alias| {
-                                        tcx.type_of(alias.def_id())
-                                            .instantiate(tcx, alias.args)
-                                            .skip_norm_wip()
+                                        alias.expect_ct().type_of(tcx).skip_norm_wip()
                                     });
                                     let ty = super::bounds::check_assoc_const_binding_type(
                                         self,
