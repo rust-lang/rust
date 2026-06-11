@@ -51,4 +51,4 @@ macro_rules! impl_splatted_shifts {
 
 // In the past there were inference issues when generically splatting arguments.
 // Enumerate them instead.
-impl_splatted_shifts! { i8, i16, i32, i64, isize, u8, u16, u32, u64, usize }
+impl_splatted_shifts! { i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize }

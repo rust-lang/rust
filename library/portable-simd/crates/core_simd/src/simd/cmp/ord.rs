@@ -105,7 +105,7 @@ macro_rules! impl_integer {
     }
 }
 
-impl_integer! { u8, u16, u32, u64, usize, i8, i16, i32, i64, isize }
+impl_integer! { u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize }
 
 macro_rules! impl_float {
     { $($float:ty),* } => {
@@ -144,7 +144,7 @@ macro_rules! impl_float {
     }
 }
 
-impl_float! { f16, f32, f64 }
+impl_float! { f16, f32, f64, f128 }
 
 macro_rules! impl_mask {
     { $($integer:ty),* } => {
@@ -206,7 +206,7 @@ macro_rules! impl_mask {
     }
 }
 
-impl_mask! { i8, i16, i32, i64, isize }
+impl_mask! { i8, i16, i32, i64, i128, isize }
 
 impl<T, const N: usize> SimdPartialOrd for Simd<*const T, N> {
     #[inline]

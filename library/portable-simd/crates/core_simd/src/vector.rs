@@ -1104,6 +1104,13 @@ unsafe impl SimdElement for u64 {
     type Mask = i64;
 }
 
+impl Sealed for u128 {}
+
+// Safety: u128 is a valid SIMD element type, and is supported by this API
+unsafe impl SimdElement for u128 {
+    type Mask = i128;
+}
+
 impl Sealed for usize {}
 
 // Safety: usize is a valid SIMD element type, and is supported by this API
@@ -1139,6 +1146,13 @@ unsafe impl SimdElement for i64 {
     type Mask = i64;
 }
 
+impl Sealed for i128 {}
+
+// Safety: i128 is a valid SIMD element type, and is supported by this API
+unsafe impl SimdElement for i128 {
+    type Mask = i128;
+}
+
 impl Sealed for isize {}
 
 // Safety: isize is a valid SIMD element type, and is supported by this API
@@ -1165,6 +1179,13 @@ impl Sealed for f64 {}
 // Safety: f64 is a valid SIMD element type, and is supported by this API
 unsafe impl SimdElement for f64 {
     type Mask = i64;
+}
+
+impl Sealed for f128 {}
+
+// Safety: f128 is a valid SIMD element type, and is supported by this API
+unsafe impl SimdElement for f128 {
+    type Mask = i128;
 }
 
 impl<T> Sealed for *const T {}
@@ -1207,10 +1228,10 @@ where
     M: MaskElement,
 {
     let index = lane_indices::<N>();
-    let max_value: u64 = M::max_unsigned();
+    let max_value: u128 = M::max_unsigned();
     macro_rules! case {
         ($ty:ty) => {
-            if N < <$ty>::MAX as usize && max_value as $ty as u64 == max_value {
+            if N < <$ty>::MAX as usize && max_value as $ty as u128 == max_value {
                 return index.cast().simd_lt(Simd::splat(len.min(N) as $ty)).cast();
             }
         };

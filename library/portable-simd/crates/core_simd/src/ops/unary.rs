@@ -25,6 +25,8 @@ neg! {
 
     impl<const N: usize> Neg for Simd<f64, N>
 
+    impl<const N: usize> Neg for Simd<f128, N>
+
     impl<const N: usize> Neg for Simd<i8, N>
 
     impl<const N: usize> Neg for Simd<i16, N>
@@ -32,6 +34,8 @@ neg! {
     impl<const N: usize> Neg for Simd<i32, N>
 
     impl<const N: usize> Neg for Simd<i64, N>
+
+    impl<const N: usize> Neg for Simd<i128, N>
 
     impl<const N: usize> Neg for Simd<isize, N>
 }
@@ -61,6 +65,8 @@ not! {
 
     impl<const N: usize> Not for Simd<i64, N>
 
+    impl<const N: usize> Not for Simd<i128, N>
+
     impl<const N: usize> Not for Simd<isize, N>
 
     impl<const N: usize> Not for Simd<u8, N>
@@ -70,6 +76,8 @@ not! {
     impl<const N: usize> Not for Simd<u32, N>
 
     impl<const N: usize> Not for Simd<u64, N>
+
+    impl<const N: usize> Not for Simd<u128, N>
 
     impl<const N: usize> Not for Simd<usize, N>
 }

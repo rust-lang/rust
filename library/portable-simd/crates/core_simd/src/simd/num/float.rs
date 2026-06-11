@@ -444,4 +444,9 @@ macro_rules! impl_trait {
     }
 }
 
-impl_trait! { f16 { bits: u16, mask: i16 }, f32 { bits: u32, mask: i32 }, f64 { bits: u64, mask: i64 } }
+impl_trait! {
+    f16 { bits: u16, mask: i16 },
+    f32 { bits: u32, mask: i32 },
+    f64 { bits: u64, mask: i64 },
+    f128 { bits: u128, mask: i128 }
+}

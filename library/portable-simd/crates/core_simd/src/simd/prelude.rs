@@ -28,6 +28,10 @@ pub use super::{f64x1, f64x2, f64x4, f64x8, f64x16, f64x32, f64x64};
 
 #[rustfmt::skip]
 #[doc(no_inline)]
+pub use super::{f128x1, f128x2, f128x4, f128x8, f128x16, f128x32, f128x64};
+
+#[rustfmt::skip]
+#[doc(no_inline)]
 pub use super::{i8x1, i8x2, i8x4, i8x8, i8x16, i8x32, i8x64};
 
 #[rustfmt::skip]
@@ -41,6 +45,10 @@ pub use super::{i32x1, i32x2, i32x4, i32x8, i32x16, i32x32, i32x64};
 #[rustfmt::skip]
 #[doc(no_inline)]
 pub use super::{i64x1, i64x2, i64x4, i64x8, i64x16, i64x32, i64x64};
+
+#[rustfmt::skip]
+#[doc(no_inline)]
+pub use super::{i128x1, i128x2, i128x4, i128x8, i128x16, i128x32, i128x64};
 
 #[rustfmt::skip]
 #[doc(no_inline)]
@@ -64,6 +72,10 @@ pub use super::{u64x1, u64x2, u64x4, u64x8, u64x16, u64x32, u64x64};
 
 #[rustfmt::skip]
 #[doc(no_inline)]
+pub use super::{u128x1, u128x2, u128x4, u128x8, u128x16, u128x32, u128x64};
+
+#[rustfmt::skip]
+#[doc(no_inline)]
 pub use super::{usizex1, usizex2, usizex4, usizex8, usizex16, usizex32, usizex64};
 
 #[rustfmt::skip]
@@ -81,6 +93,10 @@ pub use super::{mask32x1, mask32x2, mask32x4, mask32x8, mask32x16, mask32x32, ma
 #[rustfmt::skip]
 #[doc(no_inline)]
 pub use super::{mask64x1, mask64x2, mask64x4, mask64x8, mask64x16, mask64x32, mask64x64};
+
+#[rustfmt::skip]
+#[doc(no_inline)]
+pub use super::{mask128x1, mask128x2, mask128x4, mask128x8, mask128x16, mask128x32, mask128x64};
 
 #[rustfmt::skip]
 #[doc(no_inline)]

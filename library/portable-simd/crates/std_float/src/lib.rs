@@ -3,6 +3,7 @@
     feature(core_intrinsics),
     feature(portable_simd),
     feature(f16),
+    feature(f128),
     allow(internal_features)
 )]
 #[cfg(not(feature = "as_crate"))]
@@ -173,6 +174,7 @@ pub trait StdFloat: Sealed + Sized {
 impl<const N: usize> Sealed for Simd<f16, N> {}
 impl<const N: usize> Sealed for Simd<f32, N> {}
 impl<const N: usize> Sealed for Simd<f64, N> {}
+impl<const N: usize> Sealed for Simd<f128, N> {}
 
 impl<const N: usize> StdFloat for Simd<f16, N> {
     #[inline]
@@ -189,6 +191,13 @@ impl<const N: usize> StdFloat for Simd<f32, N> {
 }
 
 impl<const N: usize> StdFloat for Simd<f64, N> {
+    #[inline]
+    fn fract(self) -> Self {
+        self - self.trunc()
+    }
+}
+
+impl<const N: usize> StdFloat for Simd<f128, N> {
     #[inline]
     fn fract(self) -> Self {
         self - self.trunc()

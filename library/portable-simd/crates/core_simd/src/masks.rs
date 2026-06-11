@@ -27,7 +27,7 @@ macro_rules! impl_fix_endianness {
     }
 }
 
-impl_fix_endianness! { u8, u16, u32, u64 }
+impl_fix_endianness! { u8, u16, u32, u64, u128 }
 
 mod sealed {
     use super::*;
@@ -46,7 +46,7 @@ mod sealed {
         fn eq(self, other: Self) -> bool;
 
         fn to_usize(self) -> usize;
-        fn max_unsigned() -> u64;
+        fn max_unsigned() -> u128;
 
         type Unsigned: SimdElement;
 
@@ -90,8 +90,8 @@ macro_rules! impl_element {
             }
 
             #[inline]
-            fn max_unsigned() -> u64 {
-                <$unsigned>::MAX as u64
+            fn max_unsigned() -> u128 {
+                <$unsigned>::MAX as u128
             }
 
             type Unsigned = $unsigned;
@@ -109,6 +109,7 @@ impl_element! { i8, u8 }
 impl_element! { i16, u16 }
 impl_element! { i32, u32 }
 impl_element! { i64, u64 }
+impl_element! { i128, u128 }
 impl_element! { isize, usize }
 
 /// A SIMD vector mask for `N` elements of width specified by `Element`.
@@ -662,8 +663,9 @@ macro_rules! impl_from {
         )*
     }
 }
-impl_from! { i8 => i16, i32, i64, isize }
-impl_from! { i16 => i32, i64, isize, i8 }
-impl_from! { i32 => i64, isize, i8, i16 }
-impl_from! { i64 => isize, i8, i16, i32 }
-impl_from! { isize => i8, i16, i32, i64 }
+impl_from! { i8 => i16, i32, i64, i128, isize }
+impl_from! { i16 => i32, i64, i128, isize, i8 }
+impl_from! { i32 => i64, i128, isize, i8, i16 }
+impl_from! { i64 => i128, isize, i8, i16, i32 }
+impl_from! { i128 => isize, i8, i16, i32, i64 }
+impl_from! { isize => i8, i16, i32, i64, i128 }

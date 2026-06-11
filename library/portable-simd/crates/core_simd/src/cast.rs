@@ -26,6 +26,9 @@ impl SimdCast for i32 {}
 unsafe impl Sealed for i64 {}
 impl SimdCast for i64 {}
 // Safety: primitive number types can be cast to other primitive number types
+unsafe impl Sealed for i128 {}
+impl SimdCast for i128 {}
+// Safety: primitive number types can be cast to other primitive number types
 unsafe impl Sealed for isize {}
 impl SimdCast for isize {}
 // Safety: primitive number types can be cast to other primitive number types
@@ -41,6 +44,9 @@ impl SimdCast for u32 {}
 unsafe impl Sealed for u64 {}
 impl SimdCast for u64 {}
 // Safety: primitive number types can be cast to other primitive number types
+unsafe impl Sealed for u128 {}
+impl SimdCast for u128 {}
+// Safety: primitive number types can be cast to other primitive number types
 unsafe impl Sealed for usize {}
 impl SimdCast for usize {}
 // Safety: primitive number types can be cast to other primitive number types
@@ -52,3 +58,6 @@ impl SimdCast for f32 {}
 // Safety: primitive number types can be cast to other primitive number types
 unsafe impl Sealed for f64 {}
 impl SimdCast for f64 {}
+// Safety: primitive number types can be cast to other primitive number types
+unsafe impl Sealed for f128 {}
+impl SimdCast for f128 {}

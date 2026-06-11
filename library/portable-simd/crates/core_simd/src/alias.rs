@@ -93,6 +93,16 @@ alias! {
         i64x64 64
     }
 
+    i128 = {
+        i128x1 1
+        i128x2 2
+        i128x4 4
+        i128x8 8
+        i128x16 16
+        i128x32 32
+        i128x64 64
+    }
+
     isize = {
         isizex1 1
         isizex2 2
@@ -143,6 +153,16 @@ alias! {
         u64x64 64
     }
 
+    u128 = {
+        u128x1 1
+        u128x2 2
+        u128x4 4
+        u128x8 8
+        u128x16 16
+        u128x32 32
+        u128x64 64
+    }
+
     usize = {
         usizex1 1
         usizex2 2
@@ -181,6 +201,16 @@ alias! {
         f64x16 16
         f64x32 32
         f64x64 64
+    }
+
+    f128 = {
+        f128x1 1
+        f128x2 2
+        f128x4 4
+        f128x8 8
+        f128x16 16
+        f128x32 32
+        f128x64 64
     }
 }
 
@@ -223,6 +253,16 @@ mask_alias! {
         mask64x16 16
         mask64x32 32
         mask64x64 64
+    }
+
+    i128 : "128-bit" = {
+        mask128x1 1
+        mask128x2 2
+        mask128x4 4
+        mask128x8 8
+        mask128x16 16
+        mask128x32 32
+        mask128x64 64
     }
 
     isize : "pointer-sized" = {

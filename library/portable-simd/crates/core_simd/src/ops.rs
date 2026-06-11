@@ -184,7 +184,7 @@ macro_rules! for_base_ops {
 // Integers can always accept add, mul, sub, bitand, bitor, and bitxor.
 // For all of these operations, simd_* intrinsics apply wrapping logic.
 for_base_ops! {
-    T = (i8, i16, i32, i64, isize, u8, u16, u32, u64, usize);
+    T = (i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
     type Lhs = Simd<T, N>;
     type Rhs = Simd<T, N>;
     type Output = Self;
@@ -245,7 +245,7 @@ for_base_ops! {
 // We don't need any special precautions here:
 // Floats always accept arithmetic ops, but may become NaN.
 for_base_ops! {
-    T = (f16, f32, f64);
+    T = (f16, f32, f64, f128);
     type Lhs = Simd<T, N>;
     type Rhs = Simd<T, N>;
     type Output = Self;

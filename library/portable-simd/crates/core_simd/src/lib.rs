@@ -2,6 +2,7 @@
 #![feature(
     convert_float_to_int,
     f16,
+    f128,
     core_intrinsics,
     decl_macro,
     repr_simd,

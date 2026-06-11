@@ -42,7 +42,7 @@ macro_rules! impl_number {
     }
 }
 
-impl_number! { f16, f32, f64, u8, u16, u32, u64, usize, i8, i16, i32, i64, isize }
+impl_number! { f16, f32, f64, f128, u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize }
 
 macro_rules! impl_mask {
     { $($integer:ty),* } => {
@@ -69,7 +69,7 @@ macro_rules! impl_mask {
     }
 }
 
-impl_mask! { i8, i16, i32, i64, isize }
+impl_mask! { i8, i16, i32, i64, i128, isize }
 
 impl<T, const N: usize> SimdPartialEq for Simd<*const T, N> {
     type Mask = Mask<isize, N>;
