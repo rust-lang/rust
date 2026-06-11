@@ -657,30 +657,35 @@ fn register_builtins(store: &mut LintStore) {
 }
 
 fn register_internals(store: &mut LintStore) {
-    store.register_lints(&LintPassImpl::lint_vec());
-    store.register_early_pass(|| Box::new(LintPassImpl));
-    store.register_lints(&DefaultHashTypes::lint_vec());
-    store.register_late_mod_pass(|_| Box::new(DefaultHashTypes));
-    store.register_lints(&QueryStability::lint_vec());
-    store.register_late_mod_pass(|_| Box::new(QueryStability));
-    store.register_lints(&TyTyKind::lint_vec());
-    store.register_late_mod_pass(|_| Box::new(TyTyKind));
-    store.register_lints(&TypeIr::lint_vec());
-    store.register_late_mod_pass(|_| Box::new(TypeIr));
-    store.register_lints(&BadOptAccess::lint_vec());
-    store.register_late_mod_pass(|_| Box::new(BadOptAccess));
-    store.register_lints(&DisallowedPassByRef::lint_vec());
-    store.register_late_mod_pass(|_| Box::new(DisallowedPassByRef));
-    store.register_lints(&SpanUseEqCtxt::lint_vec());
-    store.register_late_mod_pass(|_| Box::new(SpanUseEqCtxt));
-    store.register_lints(&SymbolInternStringLiteral::lint_vec());
-    store.register_late_mod_pass(|_| Box::new(SymbolInternStringLiteral));
-    store.register_lints(&ImplicitSysrootCrateImport::lint_vec());
-    store.register_early_pass(|| Box::new(ImplicitSysrootCrateImport));
-    store.register_lints(&BadUseOfFindAttr::lint_vec());
-    store.register_early_pass(|| Box::new(BadUseOfFindAttr));
-    store.register_lints(&RustcMustMatchExhaustively::lint_vec());
-    store.register_late_pass(|_| Box::new(RustcMustMatchExhaustively));
+    macro_rules! early {
+        ($register:ident, $lint:ident) => {
+            store.register_lints(&$lint::lint_vec());
+            store.$register(|| Box::new($lint));
+        };
+    }
+
+    macro_rules! late {
+        ($register:ident, $lint:ident) => {
+            store.register_lints(&$lint::lint_vec());
+            store.$register(|_| Box::new($lint));
+        };
+    }
+
+    early!(register_early_pass, LintPassImpl);
+    early!(register_early_pass, ImplicitSysrootCrateImport);
+    early!(register_early_pass, BadUseOfFindAttr);
+
+    late!(register_late_mod_pass, DefaultHashTypes);
+    late!(register_late_mod_pass, QueryStability);
+    late!(register_late_mod_pass, TyTyKind);
+    late!(register_late_mod_pass, TypeIr);
+    late!(register_late_mod_pass, BadOptAccess);
+    late!(register_late_mod_pass, DisallowedPassByRef);
+    late!(register_late_mod_pass, SpanUseEqCtxt);
+    late!(register_late_mod_pass, SymbolInternStringLiteral);
+
+    late!(register_late_pass, RustcMustMatchExhaustively);
+
     store.register_group(
         false,
         "rustc::internal",
