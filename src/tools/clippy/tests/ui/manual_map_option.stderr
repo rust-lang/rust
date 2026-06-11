@@ -1,5 +1,5 @@
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option.rs:14:5
+  --> tests/ui/manual_map_option.rs:6:5
    |
 LL | /     match Some(0) {
 LL | |
@@ -12,7 +12,7 @@ LL | |     };
    = help: to override `-D warnings` add `#[allow(clippy::manual_map)]`
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option.rs:20:5
+  --> tests/ui/manual_map_option.rs:12:5
    |
 LL | /     match Some(0) {
 LL | |
@@ -22,7 +22,7 @@ LL | |     };
    | |_____^ help: try: `Some(0).map(|x| x + 1)`
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option.rs:26:5
+  --> tests/ui/manual_map_option.rs:18:5
    |
 LL | /     match Some("") {
 LL | |
@@ -32,7 +32,7 @@ LL | |     };
    | |_____^ help: try: `Some("").map(|x| x.is_empty())`
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option.rs:32:5
+  --> tests/ui/manual_map_option.rs:24:5
    |
 LL | /     if let Some(x) = Some(0) {
 LL | |
@@ -43,7 +43,7 @@ LL | |     };
    | |_____^ help: try: `Some(0).map(|x| !x)`
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option.rs:40:5
+  --> tests/ui/manual_map_option.rs:32:5
    |
 LL | /     match Some(0) {
 LL | |
@@ -53,7 +53,7 @@ LL | |     };
    | |_____^ help: try: `Some(0).map(std::convert::identity)`
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option.rs:46:5
+  --> tests/ui/manual_map_option.rs:38:5
    |
 LL | /     match Some(&String::new()) {
 LL | |
@@ -63,7 +63,7 @@ LL | |     };
    | |_____^ help: try: `Some(&String::new()).map(|x| str::len(x))`
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option.rs:57:5
+  --> tests/ui/manual_map_option.rs:49:5
    |
 LL | /     match &Some([0, 1]) {
 LL | |
@@ -73,7 +73,7 @@ LL | |     };
    | |_____^ help: try: `Some([0, 1]).as_ref().map(|x| x[0])`
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option.rs:63:5
+  --> tests/ui/manual_map_option.rs:55:5
    |
 LL | /     match &Some(0) {
 LL | |
@@ -83,7 +83,7 @@ LL | |     };
    | |_____^ help: try: `Some(0).map(|x| x * 2)`
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option.rs:69:5
+  --> tests/ui/manual_map_option.rs:61:5
    |
 LL | /     match Some(String::new()) {
 LL | |
@@ -93,7 +93,7 @@ LL | |     };
    | |_____^ help: try: `Some(String::new()).as_ref().map(|x| x.is_empty())`
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option.rs:75:5
+  --> tests/ui/manual_map_option.rs:67:5
    |
 LL | /     match &&Some(String::new()) {
 LL | |
@@ -103,7 +103,7 @@ LL | |     };
    | |_____^ help: try: `Some(String::new()).as_ref().map(|x| x.len())`
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option.rs:81:5
+  --> tests/ui/manual_map_option.rs:73:5
    |
 LL | /     match &&Some(0) {
 LL | |
@@ -113,7 +113,7 @@ LL | |     };
    | |_____^ help: try: `Some(0).map(|x| x + x)`
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option.rs:95:9
+  --> tests/ui/manual_map_option.rs:87:9
    |
 LL | /         match &mut Some(String::new()) {
 LL | |
@@ -123,7 +123,7 @@ LL | |         };
    | |_________^ help: try: `Some(String::new()).as_mut().map(|x| x.push_str(""))`
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option.rs:102:5
+  --> tests/ui/manual_map_option.rs:94:5
    |
 LL | /     match &mut Some(String::new()) {
 LL | |
@@ -133,7 +133,7 @@ LL | |     };
    | |_____^ help: try: `Some(String::new()).as_ref().map(|x| x.len())`
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option.rs:108:5
+  --> tests/ui/manual_map_option.rs:100:5
    |
 LL | /     match &mut &Some(String::new()) {
 LL | |
@@ -143,7 +143,7 @@ LL | |     };
    | |_____^ help: try: `Some(String::new()).as_ref().map(|x| x.is_empty())`
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option.rs:114:5
+  --> tests/ui/manual_map_option.rs:106:5
    |
 LL | /     match Some((0, 1, 2)) {
 LL | |
@@ -153,7 +153,7 @@ LL | |     };
    | |_____^ help: try: `Some((0, 1, 2)).map(|(x, y, z)| x + y + z)`
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option.rs:120:5
+  --> tests/ui/manual_map_option.rs:112:5
    |
 LL | /     match Some([1, 2, 3]) {
 LL | |
@@ -163,7 +163,7 @@ LL | |     };
    | |_____^ help: try: `Some([1, 2, 3]).map(|[first, ..]| first)`
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option.rs:126:5
+  --> tests/ui/manual_map_option.rs:118:5
    |
 LL | /     match &Some((String::new(), "test")) {
 LL | |
@@ -173,7 +173,7 @@ LL | |     };
    | |_____^ help: try: `Some((String::new(), "test")).as_ref().map(|(x, y)| (y, x))`
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option.rs:185:5
+  --> tests/ui/manual_map_option.rs:177:5
    |
 LL | /     match Some(0) {
 LL | |
@@ -183,7 +183,7 @@ LL | |     };
    | |_____^ help: try: `Some(0).map(|x| vec![x])`
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option.rs:197:5
+  --> tests/ui/manual_map_option.rs:189:5
    |
 LL | /     match option_env!("") {
 LL | |
@@ -193,7 +193,7 @@ LL | |     };
    | |_____^ help: try: `option_env!("").map(String::from)`
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option.rs:218:12
+  --> tests/ui/manual_map_option.rs:210:12
    |
 LL |       } else if let Some(x) = Some(0) {
    |  ____________^
@@ -205,7 +205,7 @@ LL | |     };
    | |_____^ help: try: `{ Some(0).map(|x| x + 1) }`
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option.rs:227:12
+  --> tests/ui/manual_map_option.rs:219:12
    |
 LL |       } else if let Some(x) = Some(0) {
    |  ____________^

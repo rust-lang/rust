@@ -1,5 +1,5 @@
 error: use of `#[inline]` on trait method `default_inline` which has no body
-  --> tests/ui/inline_fn_without_body.rs:5:5
+  --> tests/ui/inline_fn_without_body.rs:4:5
    |
 LL |       #[inline]
    |  _____-^^^^^^^^
@@ -10,7 +10,7 @@ LL | |
    = help: to override `-D warnings` add `#[allow(clippy::inline_fn_without_body)]`
 
 error: use of `#[inline]` on trait method `always_inline` which has no body
-  --> tests/ui/inline_fn_without_body.rs:9:5
+  --> tests/ui/inline_fn_without_body.rs:8:5
    |
 LL |       #[inline(always)]
    |  _____-^^^^^^^^^^^^^^^^
@@ -18,7 +18,7 @@ LL | |
    | |____- help: remove
 
 error: use of `#[inline]` on trait method `never_inline` which has no body
-  --> tests/ui/inline_fn_without_body.rs:13:5
+  --> tests/ui/inline_fn_without_body.rs:12:5
    |
 LL |       #[inline(never)]
    |  _____-^^^^^^^^^^^^^^^

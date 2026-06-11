@@ -5,10 +5,11 @@ and idiomatic Rust code. A full list of all lints, that can be filtered by
 category, lint level or keywords, can be found in the [Clippy lint
 documentation].
 
-This chapter will give an overview of the different lint categories, which kind
-of lints they offer and recommended actions when you should see a lint out of
+This chapter provides details about the different lint categories, which kind
+of lints they offer, and recommended actions when you should see a lint out of
 that category. For examples, see the [Clippy lint documentation] and filter by
-category.
+category. For an overview of these categories, see the
+[introduction](index.md).
 
 The different lint groups were defined in the [Clippy 1.0 RFC].
 

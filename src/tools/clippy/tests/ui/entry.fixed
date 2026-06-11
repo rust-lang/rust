@@ -1,6 +1,5 @@
 //@needs-asm-support
 
-#![allow(unused, clippy::needless_pass_by_value, clippy::collapsible_if)]
 #![warn(clippy::map_entry)]
 
 use std::arch::asm;

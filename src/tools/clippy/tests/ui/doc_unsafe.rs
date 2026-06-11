@@ -1,6 +1,5 @@
 //@aux-build:proc_macros.rs
 
-#![allow(clippy::let_unit_value, clippy::needless_pass_by_ref_mut)]
 #![deny(clippy::unnecessary_safety_doc)]
 #![expect(incomplete_features)]
 #![feature(unsafe_fields)]

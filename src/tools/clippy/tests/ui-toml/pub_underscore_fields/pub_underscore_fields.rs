@@ -2,7 +2,6 @@
 //@[all_pub_fields] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/pub_underscore_fields/all_pub_fields
 //@[exported] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/pub_underscore_fields/exported
 
-#![allow(unused)]
 #![warn(clippy::pub_underscore_fields)]
 
 use std::marker::PhantomData;
