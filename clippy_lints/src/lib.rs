@@ -403,6 +403,7 @@ mod vec_init_then_push;
 mod visibility;
 mod volatile_composites;
 mod wildcard_imports;
+mod with_capacity_zero;
 mod write;
 mod zero_div_zero;
 mod zero_repeat_side_effects;
@@ -860,6 +861,7 @@ rustc_lint::late_lint_methods!(
         ManualNoopWaker: manual_noop_waker::ManualNoopWaker = manual_noop_waker::ManualNoopWaker::new(conf),
         ByteCharSlice: byte_char_slices::ByteCharSlice = byte_char_slices::ByteCharSlice,
         ManualAssertEq: manual_assert_eq::ManualAssertEq = manual_assert_eq::ManualAssertEq,
+        WithCapacityZero: with_capacity_zero::WithCapacityZero = with_capacity_zero::WithCapacityZero,
         // add late passes here, used by `cargo dev new_lint`
     ]]
 );
