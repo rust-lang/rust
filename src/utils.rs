@@ -2,8 +2,8 @@ use std::borrow::Cow;
 
 use rustc_ast::YieldKind;
 use rustc_ast::ast::{
-    self, Attribute, MetaItem, MetaItemInner, MetaItemKind, NodeId, Path, Visibility,
-    VisibilityKind,
+    self, Attribute, ImplRestriction, MetaItem, MetaItemInner, MetaItemKind, MutRestriction,
+    NodeId, Path, RestrictionKind, Visibility, VisibilityKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_span::{BytePos, LocalExpnId, Span, Symbol, SyntaxContext, sym, symbol};
@@ -74,6 +74,47 @@ pub(crate) fn format_visibility(
     }
 }
 
+pub(crate) fn format_impl_restriction(
+    context: &RewriteContext<'_>,
+    impl_restriction: &ImplRestriction,
+) -> String {
+    format_restriction("impl", context, &impl_restriction.kind)
+}
+
+pub(crate) fn format_mut_restriction(
+    context: &RewriteContext<'_>,
+    mut_restriction: &MutRestriction,
+) -> String {
+    format_restriction("mut", context, &mut_restriction.kind)
+}
+
+fn format_restriction(
+    kw: &'static str,
+    context: &RewriteContext<'_>,
+    restriction: &RestrictionKind,
+) -> String {
+    match restriction {
+        RestrictionKind::Unrestricted => String::new(),
+        RestrictionKind::Restricted {
+            ref path,
+            id: _,
+            shorthand,
+        } => {
+            let Path { ref segments, .. } = **path;
+            let mut segments_iter = segments.iter().map(|seg| rewrite_ident(context, seg.ident));
+            if path.is_global() && segments_iter.next().is_none() {
+                panic!("non-global path in {kw}(restricted)?");
+            }
+            // FIXME use `segments_iter.intersperse("::").collect::<String>()` once
+            // `#![feature(iter_intersperse)]` is re-stabilized.
+            let path = itertools::join(segments_iter, "::");
+            let in_str = if *shorthand { "" } else { "in " };
+
+            format!("{kw}({in_str}{path}) ")
+        }
+    }
+}
+
 #[inline]
 pub(crate) fn format_coro(coroutine_kind: &ast::CoroutineKind) -> &'static str {
     match coroutine_kind {
@@ -87,14 +128,6 @@ pub(crate) fn format_coro(coroutine_kind: &ast::CoroutineKind) -> &'static str {
 pub(crate) fn format_constness(constness: ast::Const) -> &'static str {
     match constness {
         ast::Const::Yes(..) => "const ",
-        ast::Const::No => "",
-    }
-}
-
-#[inline]
-pub(crate) fn format_constness_right(constness: ast::Const) -> &'static str {
-    match constness {
-        ast::Const::Yes(..) => " const",
         ast::Const::No => "",
     }
 }
@@ -528,6 +561,7 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::Field(..)
         | ast::ExprKind::IncludedBytes(..)
         | ast::ExprKind::InlineAsm(..)
+        | ast::ExprKind::Move(..)
         | ast::ExprKind::OffsetOf(..)
         | ast::ExprKind::UnsafeBinderCast(..)
         | ast::ExprKind::Let(..)

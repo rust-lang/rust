@@ -236,7 +236,7 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
             .file_lines()
             .contains_line(&path, num_newlines + 1)
         {
-            source_file::append_newline(&mut visitor.buffer, self.config.style_edition());
+            source_file::append_newline(&mut visitor.buffer);
         }
 
         format_lines(

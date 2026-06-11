@@ -484,16 +484,6 @@ impl Rewrite for ast::WherePredicate {
                 ref lifetime,
                 ref bounds,
             }) => rewrite_bounded_lifetime(lifetime, bounds, self.span, context, shape)?,
-            ast::WherePredicateKind::EqPredicate(ast::WhereEqPredicate {
-                ref lhs_ty,
-                ref rhs_ty,
-                ..
-            }) => {
-                let lhs_ty_str = lhs_ty
-                    .rewrite_result(context, shape)
-                    .map(|lhs| lhs + " =")?;
-                rewrite_assign_rhs(context, lhs_ty_str, &**rhs_ty, &RhsAssignKind::Ty, shape)?
-            }
         };
 
         let mut result = String::with_capacity(attrs_str.len() + pred_str.len() + 1);
@@ -1029,6 +1019,14 @@ impl Rewrite for ast::Ty {
                 let ty = ty.rewrite_result(context, shape)?;
                 let pat = pat.rewrite_result(context, shape)?;
                 Ok(format!("{ty} is {pat}"))
+            }
+            ast::TyKind::FieldOf(ref ty, ref variant, ref field) => {
+                let ty = ty.rewrite_result(context, shape)?;
+                if let Some(variant) = variant {
+                    Ok(format!("builtin # field_of({ty}, {variant}.{field})"))
+                } else {
+                    Ok(format!("builtin # field_of({ty}, {field})"))
+                }
             }
             ast::TyKind::UnsafeBinder(ref binder) => {
                 let mut result = String::new();

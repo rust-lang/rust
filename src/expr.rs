@@ -126,6 +126,16 @@ pub(crate) fn format_expr(
             let callee_str = callee.rewrite_result(context, shape)?;
             rewrite_call(context, &callee_str, args, inner_span, shape)
         }
+        ast::ExprKind::Move(ref subexpr, move_kw_span) => {
+            let inner_span = mk_sp(move_kw_span.hi(), expr.span.hi());
+            rewrite_call(
+                context,
+                "move",
+                std::slice::from_ref(subexpr),
+                inner_span,
+                shape,
+            )
+        }
         ast::ExprKind::Paren(ref subexpr) => rewrite_paren(context, subexpr, shape, expr.span),
         ast::ExprKind::Binary(op, ref lhs, ref rhs) => {
             // FIXME: format comments between operands and operator
@@ -1489,7 +1499,10 @@ pub(crate) fn can_be_overflowed_expr(
         }
 
         // Handle always block-like expressions
-        ast::ExprKind::Gen(..) | ast::ExprKind::Block(..) | ast::ExprKind::Closure(..) => true,
+        ast::ExprKind::Gen(..)
+        | ast::ExprKind::Block(..)
+        | ast::ExprKind::Closure(..)
+        | ast::ExprKind::TryBlock(..) => true,
 
         // Handle `[]` and `{}`-like expressions
         ast::ExprKind::Array(..) | ast::ExprKind::Struct(..) => {
@@ -1745,7 +1758,7 @@ fn rewrite_struct_lit<'a>(
             match struct_rest {
                 ast::StructRest::Base(expr) => Some(StructLitField::Base(&**expr)),
                 ast::StructRest::Rest(span) => Some(StructLitField::Rest(*span)),
-                ast::StructRest::None => None,
+                ast::StructRest::None | ast::StructRest::NoneWithError(_) => None,
             }
             .into_iter(),
         );

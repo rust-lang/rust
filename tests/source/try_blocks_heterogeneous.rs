@@ -35,5 +35,15 @@ fn baz() -> Option<i32> {
 
     let x = try bikeshed Foo<Bar, Bar, Bar, Bar, Bar, Bar, Bar, Bar, Bar, Bar, Bar, Bar, Bar, Bar> {};
 
+    let x = try bikeshed Result<VeryVeryVeryVeryVeryLongTypeForSuccess, VeryVeryVeryVeryVeryLongTypeForFailure> {};
+
+    let _ = overflowed_expr(
+        x,
+        try bikeshed Option<_> {
+            foo()?;
+            bar()?;
+        },
+    );
+
     return None;
 }
