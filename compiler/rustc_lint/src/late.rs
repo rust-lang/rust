@@ -14,7 +14,6 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::Session;
 use rustc_session::lint::LintPass;
-use rustc_session::lint::builtin::HardwiredLints;
 use rustc_span::Span;
 use tracing::debug;
 
@@ -433,7 +432,6 @@ fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
             // If the pass doesn't have a single needed lint, omit it
             !lints.iter().all(|lint| lints_that_dont_need_to_run.contains(&LintId::of(lint)))
     });
-    passes.push(Box::new(HardwiredLints));
 
     let pass = RuntimeCombinedLateLintPass { passes };
     let mut cx = LateContextAndPass { context, pass };
