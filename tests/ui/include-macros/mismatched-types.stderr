@@ -1,8 +1,8 @@
 error[E0308]: mismatched types
-  --> $DIR/file.txt:0:1
+  --> $DIR/file.txt:1:1
    |
-LL |
-   | ^ expected `&[u8]`, found `&str`
+LL | hello
+   | ^^^^^ expected `&[u8]`, found `&str`
    |
   ::: $DIR/mismatched-types.rs:2:12
    |
@@ -18,12 +18,12 @@ error[E0308]: mismatched types
   --> $DIR/mismatched-types.rs:3:19
    |
 LL |     let s: &str = include_bytes!("file.txt");
-   |            ----   ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&str`, found `&[u8; 0]`
+   |            ----   ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&str`, found `&[u8; 5]`
    |            |
    |            expected due to this
    |
    = note: expected reference `&str`
-              found reference `&'static [u8; 0]`
+              found reference `&'static [u8; 5]`
 
 error: aborting due to 2 previous errors
 
