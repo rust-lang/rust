@@ -1016,8 +1016,9 @@ impl<'a, 'b, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'b, 'db, D> {
                     }
                 }
                 Pat::Expr(expr) => {
-                    // Destructuring assignment.
                     this.mutate_expr(expr)?;
+                    // Destructuring assignment moves
+                    this.consume_or_copy(place);
                 }
                 Pat::Or(_)
                 | Pat::Box { .. }
