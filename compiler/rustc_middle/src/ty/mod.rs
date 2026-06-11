@@ -1127,9 +1127,9 @@ impl<'tcx> TypingEnv<'tcx> {
         let TypingEnv { typing_mode, param_env } = self;
         match typing_mode.0.assert_not_erased() {
             TypingMode::Coherence
-            | TypingMode::Analysis { .. }
-            | TypingMode::Borrowck { .. }
-            | TypingMode::PostBorrowckAnalysis { .. } => {}
+            | TypingMode::Typeck { .. }
+            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::PostBorrowck { .. } => {}
             TypingMode::PostAnalysis | TypingMode::Codegen => return self,
         }
 
@@ -1143,9 +1143,9 @@ impl<'tcx> TypingEnv<'tcx> {
         let TypingEnv { typing_mode, param_env } = self;
         match typing_mode.0.assert_not_erased() {
             TypingMode::Coherence
-            | TypingMode::Analysis { .. }
-            | TypingMode::Borrowck { .. }
-            | TypingMode::PostBorrowckAnalysis { .. }
+            | TypingMode::Typeck { .. }
+            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis => {}
             TypingMode::Codegen => return self,
         }
