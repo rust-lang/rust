@@ -2172,16 +2172,16 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// - If you create a safe reference with lifetime `'a` (either a `&T` or `&mut T` reference), then
 ///   you must not access the data in any way that contradicts that reference for the remainder of
 ///   `'a`. For example, this means that if you take the `*mut T` from an `UnsafeCell<T>` and cast it
-///   to an `&T`, then the data in `T` must remain immutable (modulo any `UnsafeCell` data found
+///   to a `&T`, then the data in `T` must remain immutable (modulo any `UnsafeCell` data found
 ///   within `T`, of course) until that reference's lifetime expires. Similarly, if you create a
 ///   `&mut T` reference, then you must not access the data within the
 ///   `UnsafeCell` until that reference expires.
 ///
 /// - For both `&T` without `UnsafeCell<_>` and `&mut T`, you must also not deallocate the data
-///   until the reference expires. As a special exception, given an `&T`, any part of it that is
+///   until the reference expires. As a special exception, given a `&T`, any part of it that is
 ///   inside an `UnsafeCell<_>` may be deallocated during the lifetime of the reference, after the
 ///   last time the reference is used (dereferenced or reborrowed). Since you cannot deallocate a part
-///   of what a reference points to, this means the memory an `&T` points to can be deallocated only if
+///   of what a reference points to, this means the memory a `&T` points to can be deallocated only if
 ///   *every part of it* (including padding) is inside an `UnsafeCell`.
 ///
 /// However, whenever a `&UnsafeCell<T>` is constructed or dereferenced, it must still point to
@@ -2197,7 +2197,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// 2. A `&mut T` reference may be released to safe code provided neither other `&mut T` nor `&T`
 ///    co-exist with it. A `&mut T` must always be unique.
 ///
-/// Note that whilst mutating the contents of an `&UnsafeCell<T>` (even while other
+/// Note that whilst mutating the contents of a `&UnsafeCell<T>` (even while other
 /// `&UnsafeCell<T>` references alias the cell) is
 /// ok (provided you enforce the above invariants some other way), it is still undefined behavior
 /// to have multiple `&mut UnsafeCell<T>` aliases. That is, `UnsafeCell` is a wrapper
@@ -2224,7 +2224,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// thus this can cause distortions in the type size in these cases.
 ///
 /// Note that the only valid way to obtain a `*mut T` pointer to the contents of a
-/// _shared_ `UnsafeCell<T>` is through [`.get()`]  or [`.raw_get()`]. An `&T` or `&mut T` reference
+/// _shared_ `UnsafeCell<T>` is through [`.get()`]  or [`.raw_get()`]. A `&T` or `&mut T` reference
 /// can then be obtained from that pointer, as long as the aliasing rules outlined above are obeyed.
 /// Even though `T` and `UnsafeCell<T>` have the
 /// same memory layout, the following is not allowed and undefined behavior:
