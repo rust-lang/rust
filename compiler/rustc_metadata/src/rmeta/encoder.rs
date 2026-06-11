@@ -699,6 +699,7 @@ impl<'a, 'tcx, M: MetadataEncoder<'tcx>> TyEncoder<'tcx> for EncodeContext<'a, '
         let (index, _) = self.interpret_allocs.insert_full(*alloc_id);
 
         index.encode(self);
+        self.record_encoded_index(*alloc_id);
     }
 }
 
@@ -1065,7 +1066,6 @@ where
         let interpret_alloc_index = stat!("interpret-alloc-index", || {
             let mut interpret_alloc_index = Vec::new();
             let mut n = 0;
-            let mut hasher = PublicApiHasher::default();
             trace!("beginning to encode alloc ids");
             loop {
                 let new_n = self.encoder.interpret_allocs.len();
@@ -1079,17 +1079,13 @@ where
                     let id = self.encoder.interpret_allocs[idx];
                     let pos = self.position() as u64;
                     interpret_alloc_index.push(pos);
-                    if self.hcx.enabled() {
-                        hasher.digest(tcx.global_alloc(id), self.hcx);
-                    }
-                    interpret::specialized_encode_alloc_id(self.encoder, tcx, id);
+                    self.with_record_mode(RecordMode::From(id.into()), |this| {
+                        interpret::specialized_encode_alloc_id(this.encoder, tcx, id);
+                    });
                 }
                 n = new_n;
             }
-            Hashed {
-                value: self.encoder.lazy_array(interpret_alloc_index),
-                hash: hasher.finish(self.hcx),
-            }
+            GraphHashed(self.lazy_array(interpret_alloc_index))
         });
 
         // Encode the proc macro data. This affects `tables`, so we need to do this before we
