@@ -1,3 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/21160>.
+//! Ensure we don't use existing hash method internally in hash derive.
+
 struct Bar;
 
 impl Bar {

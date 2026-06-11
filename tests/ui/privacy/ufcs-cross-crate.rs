@@ -1,6 +1,9 @@
-//@ aux-build:issue-21202.rs
+//! Regression test for <https://github.com/rust-lang/rust/issues/21202>.
+//! Tests cross-crate ufcs doesn't bypass privacy checks.
+//!
+//@ aux-build:ufcs-cross-crate.rs
 
-extern crate issue_21202 as crate1;
+extern crate ufcs_cross_crate as crate1;
 
 use crate1::A;
 

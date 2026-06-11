@@ -1,10 +1,10 @@
 error[E0624]: method `foo` is private
-  --> $DIR/issue-21202.rs:10:14
+  --> $DIR/ufcs-cross-crate.rs:13:14
    |
 LL |         Foo::foo(&f);
    |              ^^^ private method
    |
-  ::: $DIR/auxiliary/issue-21202.rs:4:9
+  ::: $DIR/auxiliary/ufcs-cross-crate.rs:4:9
    |
 LL |         fn foo(&self) { }
    |         ------------- private method defined here
