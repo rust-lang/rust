@@ -35,4 +35,4 @@ ENV RUST_CONFIGURE_ARGS \
 ENV RUST_TEST_THREADS 1
 
 # Build the toolchain with multiple parallel frontend threads and then run tests
-ENV SCRIPT python3 ../x.py --stage 2 test --set rust.parallel-frontend-threads=4 -- --parallel-frontend-threads=4 --iteration-count=2
+ENV SCRIPT python3 ../x.py --stage 2 test --set rust.parallel-frontend-threads=4 "--" --parallel-frontend-threads=4 --iteration-count=2
