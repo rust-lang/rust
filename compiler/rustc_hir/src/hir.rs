@@ -25,7 +25,8 @@ use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{
-    BytePos, DUMMY_SP, DesugaringKind, ErrorGuaranteed, Ident, Span, Spanned, Symbol, kw, sym,
+    BytePos, DUMMY_SP, DesugaringKind, ErrorGuaranteed, Ident, LocalExpnId, Span, Spanned, Symbol,
+    kw, sym,
 };
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use smallvec::SmallVec;
@@ -3877,6 +3878,7 @@ pub struct DelegationInfo {
     pub child_args_segment_id: Option<HirId>,
     pub self_ty_id: Option<HirId>,
     pub propagate_self_ty: bool,
+    pub group_id: Option<(LocalExpnId, bool /* unused_target_expr */)>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, StableHash)]
