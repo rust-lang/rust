@@ -17,7 +17,7 @@ use rustc_target::asm::{
 use rustc_trait_selection::infer::InferCtxtExt;
 
 use crate::FnCtxt;
-use crate::errors::RegisterTypeUnstable;
+use crate::diagnostics::RegisterTypeUnstable;
 
 pub(crate) struct InlineAsmCtxt<'a, 'tcx> {
     target_features: &'tcx FxIndexSet<Symbol>,

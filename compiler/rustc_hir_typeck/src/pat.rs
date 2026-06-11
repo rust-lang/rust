@@ -35,7 +35,7 @@ use ty::adjustment::{PatAdjust, PatAdjustment};
 use super::report_unexpected_variant_res;
 use crate::expectation::Expectation;
 use crate::gather_locals::DeclOrigin;
-use crate::{FnCtxt, errors};
+use crate::{FnCtxt, diagnostics};
 
 const CANNOT_IMPLICITLY_DEREF_POINTER_TRAIT_OBJ: &str = "\
 This error indicates that a pointer to a trait type cannot be implicitly dereferenced by a \
@@ -1533,7 +1533,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             let def_span: Option<Span> = self.tcx.hir_span_if_local(adt.did());
             let sugg_span = def_span.map(|span| span.shrink_to_lo());
-            self.dcx().emit_err(crate::errors::ProjectOnNonPinProjectType {
+            self.dcx().emit_err(crate::diagnostics::ProjectOnNonPinProjectType {
                 span: pat.span,
                 def_span,
                 sugg_span,
@@ -2147,10 +2147,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Report an error if an incorrect number of fields was specified.
         if adt.is_union() {
             if fields.len() != 1 {
-                self.dcx().emit_err(errors::UnionPatMultipleFields { span: pat.span });
+                self.dcx().emit_err(diagnostics::UnionPatMultipleFields { span: pat.span });
             }
             if has_rest_pat {
-                self.dcx().emit_err(errors::UnionPatDotDot { span: pat.span });
+                self.dcx().emit_err(diagnostics::UnionPatDotDot { span: pat.span });
             }
         } else if !unmentioned_fields.is_empty() {
             let accessible_unmentioned_fields: Vec<_> = unmentioned_fields
@@ -3275,17 +3275,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         || self.tcx.is_diagnostic_item(sym::Result, adt_def.did()) =>
                 {
                     // Slicing won't work here, but `.as_deref()` might (issue #91328).
-                    as_deref = Some(errors::AsDerefSuggestion { span: span.shrink_to_hi() });
+                    as_deref = Some(diagnostics::AsDerefSuggestion { span: span.shrink_to_hi() });
                 }
                 _ => (),
             }
 
             let is_top_level = current_depth <= 1;
             if is_slice_or_array_or_vector && is_top_level {
-                slicing = Some(errors::SlicingSuggestion { span: span.shrink_to_hi() });
+                slicing = Some(diagnostics::SlicingSuggestion { span: span.shrink_to_hi() });
             }
         }
-        self.dcx().emit_err(errors::ExpectedArrayOrSlice {
+        self.dcx().emit_err(diagnostics::ExpectedArrayOrSlice {
             span,
             ty: expected_ty,
             slice_pat_semantics,
