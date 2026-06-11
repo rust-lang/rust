@@ -6,6 +6,10 @@ LL |     let _: &'static _ = &String::new();
 LL |
 LL | };
    | - value is dropped here
+   |
+   = note: see issue #133214 <https://github.com/rust-lang/rust/issues/133214> for more information
+   = help: add `#![feature(const_destruct)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0493]: destructor of `String` cannot be evaluated at compile-time
   --> $DIR/promoted_const_call3.rs:8:30
@@ -14,6 +18,10 @@ LL |     let _: &'static _ = &id(&String::new());
    |                              ^^^^^^^^^^^^^ - value is dropped here
    |                              |
    |                              the destructor for this type cannot be evaluated in constants
+   |
+   = note: see issue #133214 <https://github.com/rust-lang/rust/issues/133214> for more information
+   = help: add `#![feature(const_destruct)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promoted_const_call3.rs:13:26
