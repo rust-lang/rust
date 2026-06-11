@@ -3497,6 +3497,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         debug!(?output_ty);
 
+        debug!(?abi, ?safety, ?decl.fn_decl_kind, input_tys_len = ?input_tys.len());
+        // FIXME(splat): use `set_splatted()` once FnSig has it
         let fn_sig_kind = FnSigKind::default()
             .set_abi(abi)
             .set_safety(safety)
