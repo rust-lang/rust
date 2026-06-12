@@ -47,7 +47,7 @@ use tracing::{debug, info, instrument};
 
 use super::probe::{AutorefOrPtrAdjustment, IsSuggestion, Mode, ProbeScope};
 use super::{CandidateSource, MethodError, NoMatchData};
-use crate::errors::{self, CandidateTraitNote, NoAssociatedItem};
+use crate::diagnostics::{self, CandidateTraitNote, NoAssociatedItem};
 use crate::expr_use_visitor::expr_place;
 use crate::method::probe::UnsatisfiedPredicates;
 use crate::{Expectation, FnCtxt};
@@ -2956,15 +2956,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                     if pick.is_ok() {
                         let range_span = parent_expr.span.with_hi(expr.span.hi());
-                        return Err(self.dcx().emit_err(errors::MissingParenthesesInRange {
+                        return Err(self.dcx().emit_err(diagnostics::MissingParenthesesInRange {
                             span,
                             ty: actual,
                             method_name: item_name.as_str().to_string(),
-                            add_missing_parentheses: Some(errors::AddMissingParenthesesInRange {
-                                func_name: item_name.name.as_str().to_string(),
-                                left: range_span.shrink_to_lo(),
-                                right: range_span.shrink_to_hi(),
-                            }),
+                            add_missing_parentheses: Some(
+                                diagnostics::AddMissingParenthesesInRange {
+                                    func_name: item_name.name.as_str().to_string(),
+                                    left: range_span.shrink_to_lo(),
+                                    right: range_span.shrink_to_hi(),
+                                },
+                            ),
                         }));
                     }
                 }

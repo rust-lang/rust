@@ -16,7 +16,7 @@ use rustc_middle::ty::fast_reject::{SimplifiedType, TreatParams, simplify_type};
 use rustc_middle::ty::{self, CrateInherentImpls, Ty, TyCtxt};
 use rustc_span::ErrorGuaranteed;
 
-use crate::errors;
+use crate::diagnostics;
 
 /// On-demand query: yields a map containing all types mapped to their inherent impls.
 pub(crate) fn crate_inherent_impls(
@@ -80,14 +80,17 @@ impl<'tcx> InherentCollect<'tcx> {
         if self.tcx.features().rustc_attrs() {
             if !find_attr!(self.tcx, ty_def_id, RustcHasIncoherentInherentImpls) {
                 let impl_span = self.tcx.def_span(impl_def_id);
-                return Err(self.tcx.dcx().emit_err(errors::InherentTyOutside { span: impl_span }));
+                return Err(self
+                    .tcx
+                    .dcx()
+                    .emit_err(diagnostics::InherentTyOutside { span: impl_span }));
             }
 
             let items = self.tcx.associated_item_def_ids(impl_def_id);
             for &impl_item in items {
                 if !find_attr!(self.tcx, impl_item, RustcAllowIncoherentImpl(_)) {
                     let impl_span = self.tcx.def_span(impl_def_id);
-                    return Err(self.tcx.dcx().emit_err(errors::InherentTyOutsideRelevant {
+                    return Err(self.tcx.dcx().emit_err(diagnostics::InherentTyOutsideRelevant {
                         span: impl_span,
                         help_span: self.tcx.def_span(impl_item),
                     }));
@@ -103,7 +106,7 @@ impl<'tcx> InherentCollect<'tcx> {
             Ok(())
         } else {
             let impl_span = self.tcx.def_span(impl_def_id);
-            let mut err = errors::InherentTyOutsideNew { span: impl_span, note: None };
+            let mut err = diagnostics::InherentTyOutsideNew { span: impl_span, note: None };
 
             if let hir::TyKind::Path(rustc_hir::QPath::Resolved(_, path)) =
                 self.tcx.hir_node_by_def_id(impl_def_id).expect_item().expect_impl().self_ty.kind
@@ -111,7 +114,7 @@ impl<'tcx> InherentCollect<'tcx> {
             {
                 let ty_name = self.tcx.def_path_str(def_id);
                 let alias_ty_name = self.tcx.type_of(def_id).skip_binder().to_string();
-                err.note = Some(errors::InherentTyOutsideNewAliasNote {
+                err.note = Some(diagnostics::InherentTyOutsideNewAliasNote {
                     span: self.tcx.def_span(def_id),
                     ty_name,
                     alias_ty_name,
@@ -133,19 +136,24 @@ impl<'tcx> InherentCollect<'tcx> {
                 for &impl_item in items {
                     if !find_attr!(self.tcx, impl_item, RustcAllowIncoherentImpl(_)) {
                         let span = self.tcx.def_span(impl_def_id);
-                        return Err(self.tcx.dcx().emit_err(errors::InherentTyOutsidePrimitive {
-                            span,
-                            help_span: self.tcx.def_span(impl_item),
-                        }));
+                        return Err(self.tcx.dcx().emit_err(
+                            diagnostics::InherentTyOutsidePrimitive {
+                                span,
+                                help_span: self.tcx.def_span(impl_item),
+                            },
+                        ));
                     }
                 }
             } else {
                 let span = self.tcx.def_span(impl_def_id);
                 let mut note = None;
                 if let ty::Ref(_, subty, _) = ty.kind() {
-                    note = Some(errors::InherentPrimitiveTyNote { subty: *subty });
+                    note = Some(diagnostics::InherentPrimitiveTyNote { subty: *subty });
                 }
-                return Err(self.tcx.dcx().emit_err(errors::InherentPrimitiveTy { span, note }));
+                return Err(self
+                    .tcx
+                    .dcx()
+                    .emit_err(diagnostics::InherentPrimitiveTy { span, note }));
             }
         }
 
@@ -178,7 +186,7 @@ impl<'tcx> InherentCollect<'tcx> {
                 self.check_def_id(id, self_ty, data.principal_def_id().unwrap())
             }
             ty::Dynamic(..) => {
-                Err(self.tcx.dcx().emit_err(errors::InherentDyn { span: item_span }))
+                Err(self.tcx.dcx().emit_err(diagnostics::InherentDyn { span: item_span }))
             }
             ty::Pat(_, _) => unreachable!(),
             ty::Bool
@@ -200,7 +208,7 @@ impl<'tcx> InherentCollect<'tcx> {
                 ..
             })
             | ty::Param(_) => {
-                Err(self.tcx.dcx().emit_err(errors::InherentNominal { span: item_span }))
+                Err(self.tcx.dcx().emit_err(diagnostics::InherentNominal { span: item_span }))
             }
             ty::FnDef(..)
             | ty::Closure(..)
