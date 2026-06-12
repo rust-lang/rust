@@ -688,8 +688,7 @@ pub fn try_evaluate_const<'tcx>(
 
                     (args, typing_env)
                 }
-                Some((_, ty::AnonConstKind::GCA))
-                | Some((_, ty::AnonConstKind::MCG))
+                Some((_, ty::AnonConstKind::MCG))
                 | Some((_, ty::AnonConstKind::NonTypeSystem))
                 | None => {
                     // We are only dealing with "truly" generic/uninferred constants here:
