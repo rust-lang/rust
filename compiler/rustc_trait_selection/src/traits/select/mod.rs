@@ -2294,11 +2294,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         }
     }
 
-    fn coroutine_is_gen(&mut self, self_ty: Ty<'tcx>) -> bool {
-        matches!(*self_ty.kind(), ty::Coroutine(did, ..)
-            if self.tcx().coroutine_is_gen(did))
-    }
-
     /// For default impls, we need to break apart a type into its
     /// "constituent types" -- meaning, the types that it contains.
     ///

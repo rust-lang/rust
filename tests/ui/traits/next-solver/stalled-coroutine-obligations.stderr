@@ -29,7 +29,7 @@ note: captured value does not implement `Valid`
 LL |     let foo: T = async { a };
    |                          ^ has type `False` which does not implement `Valid`
 
-error[E0271]: type mismatch resolving `impl Future + Send == {async block@$DIR/stalled-coroutine-obligations.rs:41:9: 41:19}`
+error[E0271]: type mismatch resolving `impl Future + Send == {async block@stalled-coroutine-obligations.rs:41:9}`
   --> $DIR/stalled-coroutine-obligations.rs:39:43
    |
 LL |     fn stalled_send(&self, b: *mut ()) -> impl Future + Send {

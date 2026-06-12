@@ -2,8 +2,8 @@ use std::{assert_matches, iter};
 
 use rustc_abi::Primitive::Pointer;
 use rustc_abi::{Align, BackendRepr, ExternAbi, PointerKind, Scalar, Size};
+use rustc_hir::find_attr;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{self as hir, find_attr};
 use rustc_middle::bug;
 use rustc_middle::middle::deduced_param_attrs::DeducedParamAttrs;
 use rustc_middle::query::Providers;
@@ -115,8 +115,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                 sig.fn_sig_kind,
             )
         }
-        ty::Coroutine(did, args) => {
-            let coroutine_kind = tcx.coroutine_kind(did).unwrap();
+        ty::Coroutine(_, args) => {
             let sig = args.as_coroutine().sig();
 
             let env_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, ty);
@@ -124,102 +123,16 @@ fn fn_sig_for_fn_abi<'tcx>(
             let pin_did = tcx.require_lang_item(LangItem::Pin, DUMMY_SP);
             let pin_adt_ref = tcx.adt_def(pin_did);
             let pin_args = tcx.mk_args(&[env_ty.into()]);
-            let env_ty = match coroutine_kind {
-                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _) => {
-                    // Iterator::next doesn't accept a pinned argument,
-                    // unlike for all other coroutine kinds.
-                    env_ty
-                }
-                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)
-                | hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _)
-                | hir::CoroutineKind::Coroutine(_) => Ty::new_adt(tcx, pin_adt_ref, pin_args),
-            };
+            let env_ty = Ty::new_adt(tcx, pin_adt_ref, pin_args);
 
             // The `FnSig` and the `ret_ty` here is for a coroutines main
-            // `Coroutine::resume(...) -> CoroutineState` function in case we
-            // have an ordinary coroutine, the `Future::poll(...) -> Poll`
-            // function in case this is a special coroutine backing an async construct
-            // or the `Iterator::next(...) -> Option` function in case this is a
-            // special coroutine backing a gen construct.
-            let (resume_ty, ret_ty) = match coroutine_kind {
-                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _) => {
-                    // The signature should be `Future::poll(_, &mut Context<'_>) -> Poll<Output>`
-                    assert_eq!(sig.yield_ty, tcx.types.unit);
-
-                    let poll_did = tcx.require_lang_item(LangItem::Poll, DUMMY_SP);
-                    let poll_adt_ref = tcx.adt_def(poll_did);
-                    let poll_args = tcx.mk_args(&[sig.return_ty.into()]);
-                    let ret_ty = Ty::new_adt(tcx, poll_adt_ref, poll_args);
-
-                    // We have to replace the `ResumeTy` that is used for type and borrow checking
-                    // with `&mut Context<'_>` which is used in codegen.
-                    #[cfg(debug_assertions)]
-                    {
-                        if let ty::Adt(resume_ty_adt, _) = sig.resume_ty.kind() {
-                            let expected_adt =
-                                tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, DUMMY_SP));
-                            assert_eq!(*resume_ty_adt, expected_adt);
-                        } else {
-                            panic!("expected `ResumeTy`, found `{:?}`", sig.resume_ty);
-                        };
-                    }
-                    let context_mut_ref = Ty::new_task_context(tcx);
-
-                    (Some(context_mut_ref), ret_ty)
-                }
-                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _) => {
-                    // The signature should be `Iterator::next(_) -> Option<Yield>`
-                    let option_did = tcx.require_lang_item(LangItem::Option, DUMMY_SP);
-                    let option_adt_ref = tcx.adt_def(option_did);
-                    let option_args = tcx.mk_args(&[sig.yield_ty.into()]);
-                    let ret_ty = Ty::new_adt(tcx, option_adt_ref, option_args);
-
-                    assert_eq!(sig.return_ty, tcx.types.unit);
-                    assert_eq!(sig.resume_ty, tcx.types.unit);
-
-                    (None, ret_ty)
-                }
-                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _) => {
-                    // The signature should be
-                    // `AsyncIterator::poll_next(_, &mut Context<'_>) -> Poll<Option<Output>>`
-                    assert_eq!(sig.return_ty, tcx.types.unit);
-
-                    // Yield type is already `Poll<Option<yield_ty>>`
-                    let ret_ty = sig.yield_ty;
-
-                    // We have to replace the `ResumeTy` that is used for type and borrow checking
-                    // with `&mut Context<'_>` which is used in codegen.
-                    #[cfg(debug_assertions)]
-                    {
-                        if let ty::Adt(resume_ty_adt, _) = sig.resume_ty.kind() {
-                            let expected_adt =
-                                tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, DUMMY_SP));
-                            assert_eq!(*resume_ty_adt, expected_adt);
-                        } else {
-                            panic!("expected `ResumeTy`, found `{:?}`", sig.resume_ty);
-                        };
-                    }
-                    let context_mut_ref = Ty::new_task_context(tcx);
-
-                    (Some(context_mut_ref), ret_ty)
-                }
-                hir::CoroutineKind::Coroutine(_) => {
-                    // The signature should be `Coroutine::resume(_, Resume) -> CoroutineState<Yield, Return>`
-                    let state_did = tcx.require_lang_item(LangItem::CoroutineState, DUMMY_SP);
-                    let state_adt_ref = tcx.adt_def(state_did);
-                    let state_args = tcx.mk_args(&[sig.yield_ty.into(), sig.return_ty.into()]);
-                    let ret_ty = Ty::new_adt(tcx, state_adt_ref, state_args);
-
-                    (Some(sig.resume_ty), ret_ty)
-                }
-            };
-
-            if let Some(resume_ty) = resume_ty {
-                tcx.mk_fn_sig_safe_rust_abi([env_ty, resume_ty], ret_ty)
-            } else {
-                // `Iterator::next` doesn't have a `resume` argument.
-                tcx.mk_fn_sig_safe_rust_abi([env_ty], ret_ty)
-            }
+            // `Coroutine::resume(...) -> CoroutineState` function.
+            // The signature should be `Coroutine::resume(_, Resume) -> CoroutineState<Yield, Return>`
+            let state_did = tcx.require_lang_item(LangItem::CoroutineState, DUMMY_SP);
+            let state_adt_ref = tcx.adt_def(state_did);
+            let state_args = tcx.mk_args(&[sig.yield_ty.into(), sig.return_ty.into()]);
+            let ret_ty = Ty::new_adt(tcx, state_adt_ref, state_args);
+            tcx.mk_fn_sig_safe_rust_abi([env_ty, sig.resume_ty], ret_ty)
         }
         _ => bug!("unexpected type {:?} in Instance::fn_sig", ty),
     }

@@ -210,34 +210,24 @@ impl<'tcx> TransformVisitor<'tcx> {
                 span_bug!(body.span, "`Future`s are not fused inherently")
             }
             CoroutineKind::Coroutine(_) => span_bug!(body.span, "`Coroutine`s cannot be fused"),
-            // `gen` continues return `None`
-            CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {
-                let option_def_id = self.tcx.require_lang_item(LangItem::Option, body.span);
+            // `gen` and `async gen` continue to return `CoroutineState::Complete(())`.
+            CoroutineKind::Desugared(
+                CoroutineDesugaring::Gen | CoroutineDesugaring::AsyncGen,
+                _,
+            ) => {
+                let coroutine_state_def_id =
+                    self.tcx.require_lang_item(LangItem::CoroutineState, source_info.span);
+                let args = self.tcx.mk_args(&[self.old_yield_ty.into(), self.old_ret_ty.into()]);
+                let val = Operand::Constant(Box::new(ConstOperand {
+                    span: source_info.span,
+                    user_ty: None,
+                    const_: Const::zero_sized(self.tcx.types.unit),
+                }));
                 make_aggregate_adt(
-                    option_def_id,
-                    VariantIdx::ZERO,
-                    self.tcx.mk_args(&[self.old_yield_ty.into()]),
-                    IndexVec::new(),
-                )
-            }
-            // `async gen` continues to return `Poll::Ready(None)`
-            CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _) => {
-                let ty::Adt(_poll_adt, args) = *self.old_yield_ty.kind() else { bug!() };
-                let ty::Adt(_option_adt, args) = *args.type_at(0).kind() else { bug!() };
-                let yield_ty = args.type_at(0);
-                Rvalue::Use(
-                    Operand::Constant(Box::new(ConstOperand {
-                        span: source_info.span,
-                        const_: Const::Unevaluated(
-                            UnevaluatedConst::new(
-                                self.tcx.require_lang_item(LangItem::AsyncGenFinished, body.span),
-                                self.tcx.mk_args(&[yield_ty.into()]),
-                            ),
-                            self.old_yield_ty,
-                        ),
-                        user_ty: None,
-                    })),
-                    WithRetag::Yes,
+                    coroutine_state_def_id,
+                    VariantIdx::from_usize(1),
+                    args,
+                    indexvec![val],
                 )
             }
         };
@@ -269,67 +259,16 @@ impl<'tcx> TransformVisitor<'tcx> {
         is_return: bool,
         statements: &mut Vec<Statement<'tcx>>,
     ) {
-        const ZERO: VariantIdx = VariantIdx::ZERO;
-        const ONE: VariantIdx = VariantIdx::from_usize(1);
-        let rvalue = match self.coroutine_kind {
-            CoroutineKind::Desugared(CoroutineDesugaring::Async, _) => {
-                let poll_def_id = self.tcx.require_lang_item(LangItem::Poll, source_info.span);
-                let args = self.tcx.mk_args(&[self.old_ret_ty.into()]);
-                let (variant_idx, operands) = if is_return {
-                    (ZERO, indexvec![val]) // Poll::Ready(val)
-                } else {
-                    (ONE, IndexVec::new()) // Poll::Pending
-                };
-                make_aggregate_adt(poll_def_id, variant_idx, args, operands)
-            }
-            CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {
-                let option_def_id = self.tcx.require_lang_item(LangItem::Option, source_info.span);
-                let args = self.tcx.mk_args(&[self.old_yield_ty.into()]);
-                let (variant_idx, operands) = if is_return {
-                    (ZERO, IndexVec::new()) // None
-                } else {
-                    (ONE, indexvec![val]) // Some(val)
-                };
-                make_aggregate_adt(option_def_id, variant_idx, args, operands)
-            }
-            CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _) => {
-                if is_return {
-                    let ty::Adt(_poll_adt, args) = *self.old_yield_ty.kind() else { bug!() };
-                    let ty::Adt(_option_adt, args) = *args.type_at(0).kind() else { bug!() };
-                    let yield_ty = args.type_at(0);
-                    Rvalue::Use(
-                        Operand::Constant(Box::new(ConstOperand {
-                            span: source_info.span,
-                            const_: Const::Unevaluated(
-                                UnevaluatedConst::new(
-                                    self.tcx.require_lang_item(
-                                        LangItem::AsyncGenFinished,
-                                        source_info.span,
-                                    ),
-                                    self.tcx.mk_args(&[yield_ty.into()]),
-                                ),
-                                self.old_yield_ty,
-                            ),
-                            user_ty: None,
-                        })),
-                        WithRetag::Yes,
-                    )
-                } else {
-                    Rvalue::Use(val, WithRetag::Yes)
-                }
-            }
-            CoroutineKind::Coroutine(_) => {
-                let coroutine_state_def_id =
-                    self.tcx.require_lang_item(LangItem::CoroutineState, source_info.span);
-                let args = self.tcx.mk_args(&[self.old_yield_ty.into(), self.old_ret_ty.into()]);
-                let variant_idx = if is_return {
-                    ONE // CoroutineState::Complete(val)
-                } else {
-                    ZERO // CoroutineState::Yielded(val)
-                };
-                make_aggregate_adt(coroutine_state_def_id, variant_idx, args, indexvec![val])
-            }
+        let coroutine_state_def_id =
+            self.tcx.require_lang_item(LangItem::CoroutineState, source_info.span);
+        let args = self.tcx.mk_args(&[self.old_yield_ty.into(), self.old_ret_ty.into()]);
+        let variant_idx = if is_return {
+            VariantIdx::from_usize(1) // CoroutineState::Complete(val)
+        } else {
+            VariantIdx::ZERO // CoroutineState::Yielded(val)
         };
+
+        let rvalue = make_aggregate_adt(coroutine_state_def_id, variant_idx, args, indexvec![val]);
 
         // Assign to `new_ret_local`, which will be replaced by `RETURN_PLACE` later.
         statements.push(Statement::new(
@@ -551,64 +490,6 @@ fn make_coroutine_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
     );
 }
 
-/// Async desugaring uses an unsafe binder type `ResumeTy` to circumvert borrow-checking.
-/// The `ResumeTy` hides a `&mut Context<'_>` behind an unsafe raw pointer, and the
-/// `get_context` function is being used to convert that back to a `&mut Context<'_>`.
-///
-/// The actual should be `&mut Context<'_>`. This performs the substitution:
-/// - create a new local `_r` of type `ResumeTy`;
-/// - assign `ResumeTy(transmute::<&mut Context<'_>, NonNull<Context<'_>>>(_2))` to that local;
-/// - let all the code use `_r` instead of `_2`.
-///
-/// Ideally the async lowering would not use the `ResumeTy`/`get_context` indirection,
-/// but rather directly use `&mut Context<'_>`, however that would currently
-/// lead to higher-kinded lifetime errors.
-/// See <https://github.com/rust-lang/rust/issues/105501>.
-///
-/// The async lowering step and the type / lifetime inference / checking are
-/// still using the `ResumeTy` indirection for the time being, and that indirection
-/// is removed here. After this transform, the coroutine body only knows about `&mut Context<'_>`.
-#[tracing::instrument(level = "trace", skip(tcx, body), ret)]
-fn transform_async_context<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let context_mut_ref = Ty::new_task_context(tcx);
-    let resume_ty_def_id = tcx.require_lang_item(LangItem::ResumeTy, body.span);
-    let resume_nonnull_ty = tcx.instantiate_and_normalize_erasing_regions(
-        ty::GenericArgs::empty(),
-        body.typing_env(tcx),
-        tcx.type_of(tcx.adt_def(resume_ty_def_id).non_enum_variant().fields[FieldIdx::ZERO].did),
-    );
-
-    // Replace all occurrences of `CTX_ARG` with `resume_local: ResumeTy`,
-    // and set `CTX_ARG: &mut Context<'_>`.
-    let resume_local = body.local_decls.push(LocalDecl::new(context_mut_ref, body.span));
-    body.local_decls.swap(CTX_ARG, resume_local);
-    RenameLocalVisitor { from: CTX_ARG, to: resume_local, tcx }.visit_body(body);
-
-    // Now `CTX_ARG` is `&mut Context` and `resume_local` is a `ResumeTy`.
-    // Insert a `resume_local = ResumeTy(CTX_ARG as *mut Context<'static>)`
-    // at the function entry to make the bridge.
-    let source_info = SourceInfo::outermost(body.span);
-    let nonnull_local = body.local_decls.push(LocalDecl::new(resume_nonnull_ty, body.span));
-    let nonnull_rhs =
-        Rvalue::Cast(CastKind::Transmute, Operand::Move(CTX_ARG.into()), resume_nonnull_ty);
-    let nonnull_assign = StatementKind::Assign(Box::new((nonnull_local.into(), nonnull_rhs)));
-    let resume_rhs = Rvalue::Aggregate(
-        Box::new(AggregateKind::Adt(
-            resume_ty_def_id,
-            VariantIdx::ZERO,
-            ty::GenericArgs::empty(),
-            None,
-            None,
-        )),
-        indexvec![Operand::Move(nonnull_local.into())],
-    );
-    let resume_assign = StatementKind::Assign(Box::new((resume_local.into(), resume_rhs)));
-    body.basic_blocks.as_mut_preserves_cfg()[START_BLOCK].statements.splice(
-        0..0,
-        [Statement::new(source_info, nonnull_assign), Statement::new(source_info, resume_assign)],
-    );
-}
-
 /// HIR uses `get_context` to unwrap a `&mut Context<'_>` from a `ResumeTy`.
 /// Both types are just a single pointer, but liveness analysis does not know that and
 /// supposes that the operand and the destination are live at the same time.
@@ -702,19 +583,17 @@ fn insert_term_block<'tcx>(body: &mut Body<'tcx>, kind: TerminatorKind<'tcx>) ->
 }
 
 fn return_poll_ready_assign<'tcx>(tcx: TyCtxt<'tcx>, source_info: SourceInfo) -> Statement<'tcx> {
-    // Poll::Ready(())
-    let poll_def_id = tcx.require_lang_item(LangItem::Poll, source_info.span);
-    let args = tcx.mk_args(&[tcx.types.unit.into()]);
+    // Coroutine::Complete(const ())
+    let coroutine_state_def_id = tcx.require_lang_item(LangItem::CoroutineState, source_info.span);
+    let args = tcx.mk_args(&[tcx.types.unit.into(), tcx.types.unit.into()]);
     let val = Operand::Constant(Box::new(ConstOperand {
         span: source_info.span,
         user_ty: None,
         const_: Const::zero_sized(tcx.types.unit),
     }));
-    let ready_val = Rvalue::Aggregate(
-        Box::new(AggregateKind::Adt(poll_def_id, VariantIdx::from_usize(0), args, None, None)),
-        indexvec![val],
-    );
-    Statement::new(source_info, StatementKind::Assign(Box::new((Place::return_place(), ready_val))))
+    let rvalue =
+        make_aggregate_adt(coroutine_state_def_id, VariantIdx::from_usize(1), args, indexvec![val]);
+    Statement::new(source_info, StatementKind::Assign(Box::new((Place::return_place(), rvalue))))
 }
 
 fn insert_poll_ready_block<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> BasicBlock {
@@ -854,18 +733,7 @@ fn create_coroutine_resume_function<'tcx>(
     let default_block = insert_term_block(body, TerminatorKind::Unreachable);
     insert_switch(body, cases, &transform, default_block);
 
-    match transform.coroutine_kind {
-        CoroutineKind::Coroutine(_)
-        | CoroutineKind::Desugared(CoroutineDesugaring::Async | CoroutineDesugaring::AsyncGen, _) =>
-        {
-            make_coroutine_state_argument_pinned(tcx, body);
-        }
-        // Iterator::next doesn't accept a pinned argument,
-        // unlike for all other coroutine kinds.
-        CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {
-            make_coroutine_state_argument_indirect(tcx, body);
-        }
-    }
+    make_coroutine_state_argument_pinned(tcx, body);
 
     // Make sure we remove dead blocks to remove
     // unrelated code from the drop part of the function
@@ -875,10 +743,6 @@ fn create_coroutine_resume_function<'tcx>(
 
     // Run derefer to fix Derefs that are not in the first place
     deref_finder(tcx, body, false);
-
-    if transform.coroutine_kind.is_async_desugaring() {
-        transform_async_context(tcx, body);
-    }
 
     if let Some(dumper) = MirDumper::new(tcx, "coroutine_resume", body) {
         dumper.dump_mir(body);
@@ -990,33 +854,11 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         };
         let discr_ty = args.as_coroutine().discr_ty(tcx);
 
-        let new_ret_ty = match coroutine_kind {
-            CoroutineKind::Desugared(CoroutineDesugaring::Async, _) => {
-                // Compute Poll<return_ty>
-                let poll_did = tcx.require_lang_item(LangItem::Poll, body.span);
-                let poll_adt_ref = tcx.adt_def(poll_did);
-                let poll_args = tcx.mk_args(&[old_ret_ty.into()]);
-                Ty::new_adt(tcx, poll_adt_ref, poll_args)
-            }
-            CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {
-                // Compute Option<yield_ty>
-                let option_did = tcx.require_lang_item(LangItem::Option, body.span);
-                let option_adt_ref = tcx.adt_def(option_did);
-                let option_args = tcx.mk_args(&[old_yield_ty.into()]);
-                Ty::new_adt(tcx, option_adt_ref, option_args)
-            }
-            CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _) => {
-                // The yield ty is already `Poll<Option<yield_ty>>`
-                old_yield_ty
-            }
-            CoroutineKind::Coroutine(_) => {
-                // Compute CoroutineState<yield_ty, return_ty>
-                let state_did = tcx.require_lang_item(LangItem::CoroutineState, body.span);
-                let state_adt_ref = tcx.adt_def(state_did);
-                let state_args = tcx.mk_args(&[old_yield_ty.into(), old_ret_ty.into()]);
-                Ty::new_adt(tcx, state_adt_ref, state_args)
-            }
-        };
+        // Compute CoroutineState<yield_ty, return_ty>
+        let state_did = tcx.require_lang_item(LangItem::CoroutineState, body.span);
+        let state_adt_ref = tcx.adt_def(state_did);
+        let state_args = tcx.mk_args(&[old_yield_ty.into(), old_ret_ty.into()]);
+        let new_ret_ty = Ty::new_adt(tcx, state_adt_ref, state_args);
 
         // We need to insert clean drop for unresumed state and perform drop elaboration
         // (finally in open_drop_for_tuple) before async drop expansion.
@@ -1092,18 +934,6 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
             }),
         );
 
-        // Remove the context argument within generator bodies.
-        if matches!(coroutine_kind, CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) {
-            body.arg_count = 1;
-        }
-
-        // The original arguments to the function are no longer arguments, mark them as such.
-        // Otherwise they'll conflict with our new arguments, which although they don't have
-        // argument_index set, will get emitted as unnamed arguments.
-        for var in &mut body.var_debug_info {
-            var.argument_index = None;
-        }
-
         body.coroutine.as_mut().unwrap().yield_ty = None;
         body.coroutine.as_mut().unwrap().resume_ty = None;
         body.coroutine.as_mut().unwrap().coroutine_layout = Some(layout);
@@ -1141,7 +971,7 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
             body.coroutine.as_mut().unwrap().coroutine_drop = Some(drop_shim);
 
             // For coroutine with sync drop, generating async proxy for `future_drop_poll` call
-            let proxy_shim = create_coroutine_drop_shim_proxy_async(tcx, body, coroutine_kind);
+            let proxy_shim = create_coroutine_drop_shim_proxy_async(tcx, body);
             body.coroutine.as_mut().unwrap().coroutine_drop_proxy_async = Some(proxy_shim);
         }
 

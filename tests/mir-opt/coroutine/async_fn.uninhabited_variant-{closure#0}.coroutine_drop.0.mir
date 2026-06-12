@@ -1,79 +1,80 @@
 // MIR for `uninhabited_variant::{closure#0}` 0 coroutine_drop
 
-fn uninhabited_variant::{closure#0}(_1: &mut {async fn body of uninhabited_variant()}) -> () {
+fn uninhabited_variant::{closure#0}(_1: &mut {static coroutine body of uninhabited_variant()}) -> () {
     debug _task_context => _2;
     let mut _0: ();
     let mut _2: std::future::ResumeTy;
     let _3: {async block@$DIR/async_fn.rs:106:13: 106:18};
-    let mut _4: std::option::Option<Never>;
-    let mut _5: isize;
-    let _6: ();
-    let mut _7: {async block@$DIR/async_fn.rs:106:13: 106:18};
+    let mut _4: {static coroutine@$DIR/async_fn.rs:106:13: 106:18};
+    let mut _5: std::option::Option<Never>;
+    let mut _6: isize;
+    let _7: ();
     let mut _8: {async block@$DIR/async_fn.rs:106:13: 106:18};
-    let mut _10: ();
-    let _11: ();
-    let mut _12: std::task::Poll<()>;
-    let mut _13: std::pin::Pin<&mut {async block@$DIR/async_fn.rs:106:13: 106:18}>;
-    let mut _14: &mut {async block@$DIR/async_fn.rs:106:13: 106:18};
+    let mut _9: {async block@$DIR/async_fn.rs:106:13: 106:18};
+    let mut _11: ();
+    let _12: ();
+    let mut _13: std::task::Poll<()>;
+    let mut _14: std::pin::Pin<&mut {async block@$DIR/async_fn.rs:106:13: 106:18}>;
     let mut _15: &mut {async block@$DIR/async_fn.rs:106:13: 106:18};
-    let mut _16: &mut std::task::Context<'_>;
+    let mut _16: &mut {async block@$DIR/async_fn.rs:106:13: 106:18};
     let mut _17: &mut std::task::Context<'_>;
-    let mut _18: std::future::ResumeTy;
-    let mut _19: isize;
-    let mut _21: !;
-    let mut _22: std::future::ResumeTy;
-    let mut _23: ();
-    let _25: ();
-    let mut _26: {async fn body of uninhabited_variant::{closure#0}::unreachable()};
+    let mut _18: &mut std::task::Context<'_>;
+    let mut _19: std::future::ResumeTy;
+    let mut _20: isize;
+    let mut _22: !;
+    let mut _23: std::future::ResumeTy;
+    let mut _24: ();
+    let _26: ();
     let mut _27: {async fn body of uninhabited_variant::{closure#0}::unreachable()};
-    let mut _28: Never;
-    let _30: ();
-    let mut _31: std::task::Poll<()>;
-    let mut _32: std::pin::Pin<&mut {async fn body of uninhabited_variant::{closure#0}::unreachable()}>;
-    let mut _33: &mut {async fn body of uninhabited_variant::{closure#0}::unreachable()};
+    let mut _28: {async fn body of uninhabited_variant::{closure#0}::unreachable()};
+    let mut _29: Never;
+    let _31: ();
+    let mut _32: std::task::Poll<()>;
+    let mut _33: std::pin::Pin<&mut {async fn body of uninhabited_variant::{closure#0}::unreachable()}>;
     let mut _34: &mut {async fn body of uninhabited_variant::{closure#0}::unreachable()};
-    let mut _35: &mut std::task::Context<'_>;
+    let mut _35: &mut {async fn body of uninhabited_variant::{closure#0}::unreachable()};
     let mut _36: &mut std::task::Context<'_>;
-    let mut _37: std::future::ResumeTy;
-    let mut _38: isize;
-    let mut _40: !;
-    let mut _41: std::future::ResumeTy;
-    let mut _42: ();
-    let mut _43: bool;
-    let mut _44: ();
-    let mut _45: u32;
+    let mut _37: &mut std::task::Context<'_>;
+    let mut _38: std::future::ResumeTy;
+    let mut _39: isize;
+    let mut _41: !;
+    let mut _42: std::future::ResumeTy;
+    let mut _43: ();
+    let mut _44: bool;
+    let mut _45: ();
+    let mut _46: u32;
     scope 1 {
         debug c => (((*_1) as variant#4).0: {async block@$DIR/async_fn.rs:106:13: 106:18});
-        let mut _9: {async block@$DIR/async_fn.rs:106:13: 106:18};
-        let _24: Never;
+        let mut _10: {async block@$DIR/async_fn.rs:106:13: 106:18};
+        let _25: Never;
         scope 2 {
             debug __awaitee => (((*_1) as variant#3).0: {async block@$DIR/async_fn.rs:106:13: 106:18});
-            let _20: ();
+            let _21: ();
             scope 3 {
-                debug result => _20;
+                debug result => _21;
             }
         }
         scope 4 {
-            debug r => _24;
-            let mut _29: {async fn body of uninhabited_variant::{closure#0}::unreachable()};
+            debug r => _25;
+            let mut _30: {async fn body of uninhabited_variant::{closure#0}::unreachable()};
             scope 5 {
                 debug __awaitee => (((*_1) as variant#4).1: {async fn body of uninhabited_variant::{closure#0}::unreachable()});
-                let _39: ();
+                let _40: ();
                 scope 6 {
-                    debug result => _39;
+                    debug result => _40;
                 }
             }
         }
     }
 
     bb0: {
-        _45 = discriminant((*_1));
-        switchInt(move _45) -> [0: bb22, 3: bb25, 4: bb26, otherwise: bb27];
+        _46 = discriminant((*_1));
+        switchInt(move _46) -> [0: bb22, 3: bb25, 4: bb26, otherwise: bb27];
     }
 
     bb1: {
+        StorageDead(_43);
         StorageDead(_42);
-        StorageDead(_41);
         drop((((*_1) as variant#4).1: {async fn body of uninhabited_variant::{closure#0}::unreachable()})) -> [return: bb2, unwind: bb11];
     }
 
@@ -83,15 +84,15 @@ fn uninhabited_variant::{closure#0}(_1: &mut {async fn body of uninhabited_varia
     }
 
     bb3: {
+        StorageDead(_27);
         StorageDead(_26);
         StorageDead(_25);
-        StorageDead(_24);
         goto -> bb7;
     }
 
     bb4: {
+        StorageDead(_24);
         StorageDead(_23);
-        StorageDead(_22);
         drop((((*_1) as variant#3).0: {async block@$DIR/async_fn.rs:106:13: 106:18})) -> [return: bb5, unwind: bb13];
     }
 
@@ -101,13 +102,13 @@ fn uninhabited_variant::{closure#0}(_1: &mut {async fn body of uninhabited_varia
     }
 
     bb6: {
+        StorageDead(_8);
         StorageDead(_7);
-        StorageDead(_6);
         goto -> bb7;
     }
 
     bb7: {
-        StorageDead(_4);
+        StorageDead(_5);
         goto -> bb18;
     }
 
@@ -131,9 +132,9 @@ fn uninhabited_variant::{closure#0}(_1: &mut {async fn body of uninhabited_varia
     }
 
     bb12 (cleanup): {
+        StorageDead(_27);
         StorageDead(_26);
         StorageDead(_25);
-        StorageDead(_24);
         goto -> bb15;
     }
 
@@ -143,13 +144,13 @@ fn uninhabited_variant::{closure#0}(_1: &mut {async fn body of uninhabited_varia
     }
 
     bb14 (cleanup): {
+        StorageDead(_8);
         StorageDead(_7);
-        StorageDead(_6);
         goto -> bb15;
     }
 
     bb15 (cleanup): {
-        StorageDead(_4);
+        StorageDead(_5);
         goto -> bb20;
     }
 
@@ -192,21 +193,21 @@ fn uninhabited_variant::{closure#0}(_1: &mut {async fn body of uninhabited_varia
     }
 
     bb25: {
-        StorageLive(_4);
-        StorageLive(_6);
+        StorageLive(_5);
         StorageLive(_7);
-        StorageLive(_22);
+        StorageLive(_8);
         StorageLive(_23);
+        StorageLive(_24);
         goto -> bb4;
     }
 
     bb26: {
-        StorageLive(_4);
-        StorageLive(_24);
+        StorageLive(_5);
         StorageLive(_25);
         StorageLive(_26);
-        StorageLive(_41);
+        StorageLive(_27);
         StorageLive(_42);
+        StorageLive(_43);
         goto -> bb1;
     }
 

@@ -273,15 +273,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // we have no captures, we automatically implement `FnOnce`. This
                 // impl forces the closure kind to `FnOnce` i.e. `u8`.
                 let kind_ty = self.next_ty_var(callee_expr.span);
+                let inner_coroutine = coroutine_closure_sig.to_coroutine(
+                    self.tcx,
+                    closure_args.parent_args(),
+                    kind_ty,
+                    self.tcx.coroutine_for_closure(def_id),
+                    tupled_upvars_ty,
+                );
                 let call_sig = self.tcx.mk_fn_sig(
                     [coroutine_closure_sig.tupled_inputs_ty],
-                    coroutine_closure_sig.to_coroutine(
-                        self.tcx,
-                        closure_args.parent_args(),
-                        kind_ty,
-                        self.tcx.coroutine_for_closure(def_id),
-                        tupled_upvars_ty,
-                    ),
+                    self.tcx.coroutine_desugared_type(inner_coroutine),
                     coroutine_closure_sig.fn_sig_kind,
                 );
                 let adjustments = self.adjust_steps(autoderef);
@@ -470,29 +471,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else if let Some((
             _,
             hir::Node::Expr(&hir::Expr {
-                hir_id: parent_hir_id,
                 kind:
                     hir::ExprKind::Closure(&hir::Closure {
-                        kind:
-                            hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
-                                hir::CoroutineDesugaring::Async,
-                                hir::CoroutineSource::Closure,
-                            )),
+                        fn_decl_span,
+                        kind: hir::ClosureKind::CoroutineClosure(_),
                         ..
                     }),
                 ..
             }),
-        )) = self.tcx.hir_parent_iter(hir_id).nth(3)
+        )) = self.tcx.hir_parent_iter(hir_id).nth(5)
         {
-            // Actually need to unwrap one more layer of HIR to get to
-            // the _real_ closure...
-            let hir::Node::Expr(&hir::Expr {
-                kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }),
-                ..
-            }) = self.tcx.parent_hir_node(parent_hir_id)
-            else {
-                return;
-            };
             fn_decl_span
         } else {
             return;

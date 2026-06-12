@@ -220,9 +220,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .into(),
             allow_pattern_type: [sym::pattern_types, sym::pattern_type_range_trait].into(),
             allow_gen_future: if tcx.features().async_fn_track_caller() {
-                [sym::gen_future, sym::closure_track_caller].into()
+                [sym::gen_future, sym::coroutine_trait, sym::closure_track_caller].into()
             } else {
-                [sym::gen_future].into()
+                [sym::gen_future, sym::coroutine_trait].into()
             },
             allow_for_await: [sym::async_gen_internals, sym::async_iterator].into(),
             allow_async_fn_traits: [sym::async_fn_traits].into(),

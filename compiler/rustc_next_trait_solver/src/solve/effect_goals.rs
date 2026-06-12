@@ -364,34 +364,6 @@ where
         unreachable!("Pointee is not const")
     }
 
-    fn consider_builtin_future_candidate(
-        _ecx: &mut EvalCtxt<'_, D>,
-        _goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
-        unreachable!("Future is not const")
-    }
-
-    fn consider_builtin_iterator_candidate(
-        _ecx: &mut EvalCtxt<'_, D>,
-        _goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
-        Err(NoSolutionOrRerunNonErased::NoSolution(NoSolution))
-    }
-
-    fn consider_builtin_fused_iterator_candidate(
-        _ecx: &mut EvalCtxt<'_, D>,
-        _goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
-        unreachable!("FusedIterator is not const")
-    }
-
-    fn consider_builtin_async_iterator_candidate(
-        _ecx: &mut EvalCtxt<'_, D>,
-        _goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
-        unreachable!("AsyncIterator is not const")
-    }
-
     fn consider_builtin_coroutine_candidate(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,

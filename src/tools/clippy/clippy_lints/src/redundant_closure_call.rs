@@ -1,14 +1,13 @@
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir};
-use clippy_utils::get_parent_expr;
+use clippy_utils::{get_async_closure_expr, get_parent_expr};
 use clippy_utils::sugg::Sugg;
 use hir::Param;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{Visitor as HirVisitor, Visitor};
-use rustc_hir::{ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, ExprKind, intravisit as hir_visit};
+use rustc_hir::{ClosureKind, CoroutineDesugaring, ExprKind, intravisit as hir_visit};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::ExpnKind;
 use std::ops::ControlFlow;
@@ -52,21 +51,6 @@ impl<'tcx> Visitor<'tcx> for ReturnVisitor {
     }
 }
 
-/// Checks if the body is owned by an async closure.
-/// Returns true for `async || whatever_expression`, but false for `|| async { whatever_expression
-/// }`.
-fn is_async_closure(body: &hir::Body<'_>) -> bool {
-    if let ExprKind::Closure(innermost_closure_generated_by_desugar) = body.value.kind
-        // checks whether it is `async || whatever_expression`
-        && let ClosureKind::Coroutine(CoroutineKind::Desugared(CoroutineDesugaring::Async, CoroutineSource::Closure))
-            = innermost_closure_generated_by_desugar.kind
-    {
-        true
-    } else {
-        false
-    }
-}
-
 /// Tries to find the innermost closure:
 /// ```rust,ignore
 /// (|| || || || 42)()()()()
@@ -82,7 +66,7 @@ fn find_innermost_closure<'tcx>(
 ) -> Option<(
     &'tcx hir::Expr<'tcx>,
     &'tcx hir::FnDecl<'tcx>,
-    ty::Asyncness,
+    ClosureKind,
     &'tcx [Param<'tcx>],
 )> {
     let mut data = None;
@@ -99,11 +83,7 @@ fn find_innermost_closure<'tcx>(
         data = Some((
             body.value,
             closure.fn_decl,
-            if is_async_closure(body) {
-                ty::Asyncness::Yes
-            } else {
-                ty::Asyncness::No
-            },
+            closure.kind,
             body.params,
         ));
         steps -= 1;
@@ -171,22 +151,11 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                         let mut hint =
                             Sugg::hir_with_context(cx, body, full_expr.span.ctxt(), "..", &mut applicability);
 
-                        if coroutine_kind.is_async()
-                            && let ExprKind::Closure(closure) = body.kind
+                        if let ClosureKind::CoroutineClosure(CoroutineDesugaring::Async) = coroutine_kind
+                            && let Some(body_expr) = get_async_closure_expr(cx.tcx, body)
                         {
                             // Like `async fn`, async closures are wrapped in an additional block
                             // to move all of the closure's arguments into the future.
-
-                            let async_closure_body = cx.tcx.hir_body(closure.body).value;
-                            let ExprKind::Block(block, _) = async_closure_body.kind else {
-                                return;
-                            };
-                            let Some(block_expr) = block.expr else {
-                                return;
-                            };
-                            let ExprKind::DropTemps(body_expr) = block_expr.kind else {
-                                return;
-                            };
 
                             // `async x` is a syntax error, so it becomes `async { x }`
                             if !matches!(body_expr.kind, ExprKind::Block(_, _)) {

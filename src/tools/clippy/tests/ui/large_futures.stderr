@@ -64,7 +64,6 @@ error: large future with a size of 65540 bytes
   --> tests/ui/large_futures.rs:64:13
    |
 LL | /             async {
-LL | |
 LL | |                 let x = [0i32; 1024 * 16];
 LL | |                 async {}.await;
 LL | |                 println!("macro: {:?}", x);
@@ -78,7 +77,6 @@ LL |       macro_!().await
 help: consider `Box::pin` on it
    |
 LL ~             Box::pin(async {
-LL +
 LL +                 let x = [0i32; 1024 * 16];
 LL +                 async {}.await;
 LL +                 println!("macro: {:?}", x);

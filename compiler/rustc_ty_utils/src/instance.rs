@@ -406,7 +406,7 @@ fn resolve_associated_item<'tcx>(
                     bug!("unexpected associated associated item")
                 }
             } else {
-                Instance::try_resolve_item_for_coroutine(tcx, trait_item_id, trait_id, rcvr_args)
+                Instance::try_resolve_item_for_coroutine(tcx, trait_item_id, rcvr_args)
             }
         }
         traits::ImplSource::Param(..)

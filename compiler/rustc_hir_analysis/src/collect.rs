@@ -1541,6 +1541,7 @@ fn coroutine_kind(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<hir::CoroutineK
     }
 }
 
+#[instrument(level = "debug", skip(tcx), ret)]
 fn coroutine_for_closure(tcx: TyCtxt<'_>, def_id: LocalDefId) -> DefId {
     let &rustc_hir::Closure { kind: hir::ClosureKind::CoroutineClosure(_), body, .. } =
         tcx.hir_node_by_def_id(def_id).expect_closure()
@@ -1548,7 +1549,12 @@ fn coroutine_for_closure(tcx: TyCtxt<'_>, def_id: LocalDefId) -> DefId {
         bug!()
     };
 
-    let &hir::Expr {
+    let &hir::Expr { kind: hir::ExprKind::Call(_, &[closure_expr]), .. } = tcx.hir_body(body).value
+    else {
+        bug!()
+    };
+
+    let hir::Expr {
         kind:
             hir::ExprKind::Closure(&rustc_hir::Closure {
                 def_id,
@@ -1556,7 +1562,7 @@ fn coroutine_for_closure(tcx: TyCtxt<'_>, def_id: LocalDefId) -> DefId {
                 ..
             }),
         ..
-    } = tcx.hir_body(body).value
+    } = closure_expr
     else {
         bug!()
     };

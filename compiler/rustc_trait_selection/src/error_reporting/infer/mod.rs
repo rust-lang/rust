@@ -1042,6 +1042,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         // process starts here
         match (t1.kind(), t2.kind()) {
+            // Comparing types sees through the desugaring of coroutines,
+            // so we need to re-sugar them to get a more user-friendly output.
+            _ if let Some(t1) = self.tcx.try_unwrap_desugared_coroutine(t1)
+                && let Some(t2) = self.tcx.try_unwrap_desugared_coroutine(t2) =>
+            {
+                let t1 = self.tcx.coroutine_desugared_type(Ty::new_coroutine(self.tcx, t1.0, t1.1));
+                let t2 = self.tcx.coroutine_desugared_type(Ty::new_coroutine(self.tcx, t2.0, t2.1));
+                let mut strs = (DiagStyledString::new(), DiagStyledString::new());
+                maybe_highlight(t1, t2, &mut strs, self.tcx);
+                strs
+            }
+
             (&ty::Adt(def1, sub1), &ty::Adt(def2, sub2)) => {
                 let did1 = def1.did();
                 let did2 = def2.did();
@@ -2421,13 +2433,16 @@ impl fmt::Display for TyCategory {
 }
 
 impl TyCategory {
-    pub fn from_ty(tcx: TyCtxt<'_>, ty: Ty<'_>) -> Option<(Self, DefId)> {
+    pub fn from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<(Self, DefId)> {
         match *ty.kind() {
             ty::Closure(def_id, _) => Some((Self::Closure, def_id)),
             ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }) => {
                 let kind =
                     if tcx.ty_is_opaque_future(ty) { Self::OpaqueFuture } else { Self::Opaque };
                 Some((kind, def_id))
+            }
+            ty::Adt(..) if let Some((def_id, _)) = tcx.try_unwrap_desugared_coroutine(ty) => {
+                Some((Self::Coroutine(tcx.coroutine_kind(def_id).unwrap()), def_id))
             }
             ty::Coroutine(def_id, ..) => {
                 Some((Self::Coroutine(tcx.coroutine_kind(def_id).unwrap()), def_id))

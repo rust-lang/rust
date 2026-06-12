@@ -7,16 +7,18 @@ pub const fn not_stably_const() {
     // For now we use `async`, eventually we might have to add a auxiliary crate
     // as a dependency just to be sure we have something const-unstable.
     let _x = async { 15 };
+    //~^ ERROR cannot be evaluated at compile-time
 }
 
 #[rustc_const_stable_indirect]
 pub const fn expose_on_stable() {
     // Calling `not_stably_const` here is *not* okay.
     not_stably_const();
-    //~^ERROR: cannot use `#[feature(rustc_private)]`
+    //~^ ERROR: cannot use `#[feature(rustc_private)]`
     // Also directly using const-unstable things is not okay.
     let _x = async { 15 };
-    //~^ERROR: cannot use `#[feature(const_async_blocks)]`
+    //~^ ERROR: cannot use `#[feature(const_async_blocks)]`
+    //~| ERROR cannot be evaluated at compile-time
 }
 
 fn main() {

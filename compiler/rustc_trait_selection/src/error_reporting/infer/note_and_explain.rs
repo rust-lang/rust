@@ -36,9 +36,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         diag.note("no two closures, even if identical, have the same type");
                         diag.help("consider boxing your closure and/or using it as a trait object");
                     }
-                    (ty::Coroutine(def_id1, ..), ty::Coroutine(def_id2, ..))
-                        if self.tcx.coroutine_is_async(def_id1)
-                            && self.tcx.coroutine_is_async(def_id2) =>
+                    _ if let Some((def_id1, _)) =
+                        self.tcx.try_unwrap_desugared_coroutine(values.expected)
+                        && let Some((def_id2, _)) =
+                            self.tcx.try_unwrap_desugared_coroutine(values.found)
+                        && self.tcx.coroutine_is_async(def_id1)
+                        && self.tcx.coroutine_is_async(def_id2) =>
                     {
                         diag.note("no two async blocks, even if identical, have the same type");
                         diag.help(

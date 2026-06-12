@@ -433,7 +433,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // closure wrapped in a block.
                 // See <https://github.com/rust-lang/rust/issues/112225>.
                 let is_closure = if let ExprKind::Closure(closure) = arg.kind {
-                    !tcx.coroutine_is_async(closure.def_id.to_def_id())
+                    matches!(
+                        closure.kind,
+                        hir::ClosureKind::Closure | hir::ClosureKind::CoroutineClosure(_)
+                    )
                 } else {
                     false
                 };

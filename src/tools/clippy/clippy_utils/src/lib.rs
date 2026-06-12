@@ -114,7 +114,7 @@ use rustc_middle::ty::{
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{Ident, Symbol, kw};
-use rustc_span::{InnerSpan, Span, SyntaxContext};
+use rustc_span::{InnerSpan, Span, SyntaxContext, DesugaringKind};
 use source::{SpanRangeExt, walk_span_to_context};
 use visitors::{Visitable, for_each_unconsumed_temporary};
 
@@ -1789,24 +1789,41 @@ pub fn if_sequence<'tcx>(mut expr: &'tcx Expr<'tcx>) -> (Vec<&'tcx Expr<'tcx>>, 
     (conds, blocks)
 }
 
-/// Peels away all the compiler generated code surrounding the body of an async closure.
+/// Get the inner expression of the body of an async function.
+///
+/// If it is not an async function, returns `None`.
+///
+/// An async function like
+/// ```rs
+/// async fn get_random_number() -> i64 {
+///    do_something();
+///    4
+/// }
+/// ```
+/// (roughly) desugars to
+/// ```rs
+/// fn get_random_number() -> impl Future<Output = i64> {
+///     async move {
+///         do_something();
+///         4
+///     }
+/// }
+/// ```
+///
+/// We first get to the `async move {}` block,
+/// which is the one and only expression in the body of the function.
+/// This block is a coroutine wrapped in a closure.
+/// The expression in this block is contained in a terminating scope.
+///
+/// This function returns that expression in `Some(...)` if this body indeed is an async function.
 pub fn get_async_closure_expr<'tcx>(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
-    if let ExprKind::Closure(&Closure {
-        body,
-        kind: hir::ClosureKind::Coroutine(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)),
-        ..
-    }) = expr.kind
-        && let ExprKind::Block(
-            Block {
-                expr:
-                    Some(Expr {
-                        kind: ExprKind::DropTemps(inner_expr),
-                        ..
-                    }),
-                ..
-            },
-            _,
-        ) = tcx.hir_body(body).value.kind
+    if expr.span.is_desugaring(DesugaringKind::Async)
+        && let ExprKind::Call(_, [closure]) = expr.kind
+        && let ExprKind::Closure(closure) = closure.kind
+        && let hir::ClosureKind::Coroutine(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) = closure.kind
+        && let ExprKind::Block(block, _) = tcx.hir_body(closure.body).value.kind
+        && let Some(block_expr) = block.expr
+        && let ExprKind::DropTemps(inner_expr) = block_expr.kind
     {
         Some(inner_expr)
     } else {
@@ -1817,6 +1834,20 @@ pub fn get_async_closure_expr<'tcx>(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Optio
 /// Peels away all the compiler generated code surrounding the body of an async function,
 pub fn get_async_fn_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Option<&'tcx Expr<'tcx>> {
     get_async_closure_expr(tcx, body.value)
+}
+
+/// If `expr` is a desugared `async` block, return the original expression.
+pub fn desugared_async_block<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<(LocalDefId, &'tcx Body<'tcx>)> {
+    if expr.span.is_desugaring(DesugaringKind::Async)
+        && let ExprKind::Call(_, [closure]) = expr.kind
+        && let ExprKind::Closure(&Closure { kind, body, def_id, .. }) = closure.kind
+        && let hir::ClosureKind::Coroutine(CoroutineKind::Desugared(CoroutineDesugaring::Async, CoroutineSource::Block)) =
+            kind
+    {
+        return Some((def_id, cx.tcx.hir_body(body)));
+    }
+
+    None
 }
 
 // check if expr is calling method or function with #[must_use] attribute

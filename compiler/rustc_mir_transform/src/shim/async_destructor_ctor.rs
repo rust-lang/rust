@@ -14,6 +14,7 @@ use crate::patch::MirPatch;
 
 const SELF_ARG: Local = Local::arg(0);
 
+#[tracing::instrument(level = "trace", skip(tcx))]
 pub(super) fn build_async_destructor_ctor_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
@@ -166,6 +167,7 @@ pub(super) fn build_async_drop_shim<'tcx>(
 // * For async drop of "async drop coroutine" (`async_drop_in_place<T>::{closure}`):
 // Correct drop of such coroutine means normal execution of nested async drop.
 // async_drop(async_drop(T))::future_drop_poll() => async_drop(T)::poll().
+#[tracing::instrument(level = "trace", skip(tcx))]
 pub(super) fn build_future_drop_poll_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
@@ -190,6 +192,7 @@ pub(super) fn build_future_drop_poll_shim<'tcx>(
 // `async_drop_in_place<T>::{closure}.poll()` is converted into `T.future_drop_poll()`.
 // Every coroutine has its `poll` (calculate yourself a little further)
 // and its `future_drop_poll` (drop yourself a little further).
+#[tracing::instrument(level = "trace", skip(tcx))]
 fn build_adrop_for_coroutine_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
     proxy_ty: Ty<'tcx>,
@@ -283,6 +286,7 @@ fn build_adrop_for_coroutine_shim<'tcx>(
 
 // When dropping async drop coroutine, we continue its execution.
 // async_drop(async_drop(T))::future_drop_poll() => async_drop(T)::poll()
+#[tracing::instrument(level = "trace", skip(tcx))]
 fn build_adrop_for_adrop_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
     proxy_ty: Ty<'tcx>,
@@ -297,18 +301,24 @@ fn build_adrop_for_adrop_shim<'tcx>(
         Place::from(SELF_ARG).project_deeper(&[PlaceElem::Field(FieldIdx::ZERO, proxy_ref)], tcx);
     let cor_ref = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, impl_ty);
 
-    // ret_ty = `Poll<()>`
-    let poll_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Poll, span));
-    let ret_ty = Ty::new_adt(tcx, poll_adt_ref, tcx.mk_args(&[tcx.types.unit.into()]));
+    // ret_ty = `CoroutineState<(), ()>`
+    let state_did = tcx.require_lang_item(LangItem::CoroutineState, span);
+    let state_adt_ref = tcx.adt_def(state_did);
+    let state_args = tcx.mk_args(&[tcx.types.unit.into(), tcx.types.unit.into()]);
+    let ret_ty = Ty::new_adt(tcx, state_adt_ref, state_args);
     // env_ty = `Pin<&mut proxy_ty>`
     let pin_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Pin, span));
     let env_ty = Ty::new_adt(tcx, pin_adt_ref, tcx.mk_args(&[proxy_ref.into()]));
+    // resume_ty = `ResumeTy`
+    let resume_adt = tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, span));
+    let resume_ty = Ty::new_adt(tcx, resume_adt, ty::List::empty());
     // sig = `fn (Pin<&mut proxy_ty>, &mut Context) -> Poll<()>`
-    let sig = tcx.mk_fn_sig_safe_rust_abi([env_ty, Ty::new_task_context(tcx)], ret_ty);
+    let sig = tcx.mk_fn_sig_safe_rust_abi([env_ty, resume_ty], ret_ty);
     // This function will be called with pinned proxy coroutine layout.
     // We need to extract `Arg0.0` to get proxy layout, and then get `.0`
     // further to receive impl coroutine (may be needed)
     let mut locals = local_decls_for_sig(&sig, span);
+
     let mut blocks = IndexVec::with_capacity(3);
 
     let proxy_ref_local = locals.push(LocalDecl::new(proxy_ref, span));
@@ -380,13 +390,18 @@ fn build_adrop_for_adrop_shim<'tcx>(
     ));
     // When dropping async drop coroutine, we continue its execution:
     // we call impl::poll (impl_layout, ctx)
-    let poll_fn = tcx.require_lang_item(LangItem::FuturePoll, span);
+    let resume_fn = tcx.require_lang_item(LangItem::CoroutineResume, span);
     let resume_ctx = Place::from(Local::new(2));
     blocks.push(BasicBlockData::new(
         Some(Terminator {
             source_info,
             kind: TerminatorKind::Call {
-                func: Operand::function_handle(tcx, poll_fn, [impl_ty.into()], span),
+                func: Operand::function_handle(
+                    tcx,
+                    resume_fn,
+                    [impl_ty.into(), resume_ty.into()],
+                    span,
+                ),
                 args: [
                     dummy_spanned(Operand::Move(cor_pin_place)),
                     dummy_spanned(Operand::Move(resume_ctx)),

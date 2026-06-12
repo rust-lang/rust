@@ -1,5 +1,14 @@
+error[E0493]: destructor of `{async block@$DIR/recursive_const_stab_unstable_if_unmarked.rs:9:14: 9:19}` cannot be evaluated at compile-time
+  --> $DIR/recursive_const_stab_unstable_if_unmarked.rs:9:9
+   |
+LL |     let _x = async { 15 };
+   |         ^^ the destructor for this type cannot be evaluated in constant functions
+LL |
+LL | }
+   | - value is dropped here
+
 error: const function that might be (indirectly) exposed to stable cannot use `#[feature(rustc_private)]`
-  --> $DIR/recursive_const_stab_unstable_if_unmarked.rs:15:5
+  --> $DIR/recursive_const_stab_unstable_if_unmarked.rs:16:5
    |
 LL |     not_stably_const();
    |     ^^^^^^^^^^^^^^^^^^
@@ -12,7 +21,7 @@ LL | pub const fn expose_on_stable() {
    |
 
 error: const function that might be (indirectly) exposed to stable cannot use `#[feature(const_async_blocks)]`
-  --> $DIR/recursive_const_stab_unstable_if_unmarked.rs:18:14
+  --> $DIR/recursive_const_stab_unstable_if_unmarked.rs:19:14
    |
 LL |     let _x = async { 15 };
    |              ^^^^^^^^^^^^
@@ -23,5 +32,15 @@ LL + #[rustc_const_unstable(feature = "...", issue = "...")]
 LL | pub const fn expose_on_stable() {
    |
 
-error: aborting due to 2 previous errors
+error[E0493]: destructor of `{async block@$DIR/recursive_const_stab_unstable_if_unmarked.rs:19:14: 19:19}` cannot be evaluated at compile-time
+  --> $DIR/recursive_const_stab_unstable_if_unmarked.rs:19:9
+   |
+LL |     let _x = async { 15 };
+   |         ^^ the destructor for this type cannot be evaluated in constant functions
+...
+LL | }
+   | - value is dropped here
 
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0493`.

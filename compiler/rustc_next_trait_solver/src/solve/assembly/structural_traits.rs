@@ -379,7 +379,8 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
                 )
             };
 
-            Ok(Some(args.coroutine_closure_sig().rebind((sig.tupled_inputs_ty, coroutine_ty))))
+            let output_ty = cx.coroutine_desugared_type(coroutine_ty);
+            Ok(Some(args.coroutine_closure_sig().rebind((sig.tupled_inputs_ty, output_ty))))
         }
 
         ty::Bool
@@ -475,11 +476,12 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
                     cx, goal_kind, env_region, def_id, args, sig,
                 )
             };
+            let wrapped_coroutine_ty = cx.coroutine_desugared_type(coroutine_ty);
 
             Ok((
                 args.coroutine_closure_sig().rebind(AsyncCallableRelevantTypes {
                     tupled_inputs_ty: sig.tupled_inputs_ty,
-                    output_coroutine_ty: coroutine_ty,
+                    output_coroutine_ty: wrapped_coroutine_ty,
                     coroutine_return_ty: sig.return_ty,
                 }),
                 nested,

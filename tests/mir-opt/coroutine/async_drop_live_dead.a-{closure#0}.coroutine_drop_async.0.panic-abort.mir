@@ -1,9 +1,9 @@
 // MIR for `a::{closure#0}` 0 coroutine_drop_async
 
-fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>) -> Poll<()> {
-    debug _task_context => _24;
+fn a::{closure#0}(_1: Pin<&mut {static coroutine body of a<T>()}>, _2: std::future::ResumeTy) -> CoroutineState<(), ()> {
+    debug _task_context => _2;
     debug x => ((*_23).0: T);
-    let mut _0: std::task::Poll<()>;
+    let mut _0: std::ops::CoroutineState<(), ()>;
     let _3: T;
     let mut _4: impl std::future::Future<Output = ()>;
     let mut _5: std::future::ResumeTy;
@@ -24,17 +24,13 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>)
     let mut _20: &mut T;
     let mut _21: ();
     let mut _22: u32;
-    let mut _23: &mut {async fn body of a<T>()};
-    let mut _24: std::future::ResumeTy;
-    let mut _25: std::ptr::NonNull<std::task::Context<'_>>;
+    let mut _23: &mut {static coroutine body of a<T>()};
     scope 1 {
         debug x => (((*_23) as variant#4).1: T);
     }
 
     bb0: {
-        _25 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
-        _24 = std::future::ResumeTy(move _25);
-        _23 = copy (_1.0: &mut {async fn body of a<T>()});
+        _23 = copy (_1.0: &mut {static coroutine body of a<T>()});
         _22 = discriminant((*_23));
         switchInt(move _22) -> [0: bb13, 3: bb16, 4: bb17, otherwise: bb18];
     }
@@ -45,7 +41,7 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>)
     }
 
     bb2: {
-        _0 = Poll::<()>::Ready(const ());
+        _0 = CoroutineState::<(), ()>::Complete(const ());
         return;
     }
 
@@ -55,14 +51,14 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>)
     }
 
     bb4: {
-        _24 = move _5;
+        _2 = move _5;
         StorageDead(_5);
         goto -> bb10;
     }
 
     bb5: {
         StorageLive(_5);
-        _0 = Poll::<()>::Pending;
+        _0 = CoroutineState::<(), ()>::Yielded(const ());
         StorageDead(_5);
         discriminant((*_23)) = 3;
         return;
@@ -82,7 +78,7 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>)
     }
 
     bb9: {
-        _10 = move _24;
+        _10 = move _2;
         _9 = copy (_10.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
         goto -> bb8;
     }
@@ -93,13 +89,13 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>)
     }
 
     bb11: {
-        _24 = move _12;
+        _2 = move _12;
         StorageDead(_12);
         goto -> bb10;
     }
 
     bb12: {
-        _0 = Poll::<()>::Ready(const ());
+        _0 = CoroutineState::<(), ()>::Complete(const ());
         return;
     }
 
@@ -117,18 +113,18 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>)
 
     bb16: {
         StorageLive(_5);
-        _5 = move _24;
+        _5 = move _2;
         goto -> bb4;
     }
 
     bb17: {
         StorageLive(_12);
-        _12 = move _24;
+        _12 = move _2;
         goto -> bb11;
     }
 
     bb18: {
-        _0 = Poll::<()>::Ready(const ());
+        _0 = CoroutineState::<(), ()>::Complete(const ());
         return;
     }
 }
