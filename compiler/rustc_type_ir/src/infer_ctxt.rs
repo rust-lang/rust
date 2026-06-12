@@ -406,7 +406,16 @@ pub trait InferCtxtLike: Sized {
         value: ty::Binder<Self::Interner, T>,
     ) -> T;
 
-    fn enter_forall<T: TypeFoldable<Self::Interner>, U>(
+    fn enter_forall_without_assumptions<T: TypeFoldable<Self::Interner>, U>(
+        &self,
+        value: ty::Binder<Self::Interner, T>,
+        f: impl FnOnce(T) -> U,
+    ) -> U;
+
+    /// FIXME(-Zassumptions-on-binders): Any usage of this method is likely wrong
+    /// and should be replaced in the long term by actually taking assumptions into
+    /// account.
+    fn enter_forall_with_empty_assumptions<T: TypeFoldable<Self::Interner>, U>(
         &self,
         value: ty::Binder<Self::Interner, T>,
         f: impl FnOnce(T) -> U,
