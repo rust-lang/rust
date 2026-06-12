@@ -450,7 +450,7 @@ fn fn_sig_suggestion<'tcx>(
         .iter()
         .enumerate()
         .map(|(i, ty)| {
-            Some(match ty.kind() {
+            let arg_ty = match ty.kind() {
                 ty::Param(_) if assoc.is_method() && i == 0 => "self".to_string(),
                 ty::Ref(reg, ref_ty, mutability) if i == 0 => {
                     let reg = format!("{reg} ");
@@ -477,7 +477,8 @@ fn fn_sig_suggestion<'tcx>(
                         format!("_: {ty}")
                     }
                 }
-            })
+            };
+            Some(format!("{arg_ty}"))
         })
         .chain(std::iter::once(if sig.c_variadic() { Some("...".to_string()) } else { None }))
         .flatten()

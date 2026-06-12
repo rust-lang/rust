@@ -412,6 +412,18 @@ impl<'a> AstValidator<'a> {
             })
             .unzip();
 
+        // A splatted argument at the "no splatted" marker index is not supported (this is an
+        // unlikely edge case).
+        if let (Some(&splatted_arg_index), Some(&splatted_span)) =
+            (splatted_arg_indexes.last(), splatted_spans.last())
+            && splatted_arg_index == FnDecl::NO_SPLATTED_ARG_INDEX
+        {
+            self.dcx().emit_err(diagnostics::InvalidSplattedArg {
+                splatted_arg_index,
+                span: splatted_span,
+            });
+        }
+
         // Multiple splatted arguments are invalid: we can't know which arguments go in each splat.
         if splatted_arg_indexes.len() > 1 {
             self.dcx()
