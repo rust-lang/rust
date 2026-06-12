@@ -50,7 +50,6 @@ pub struct NavigationTarget {
     pub kind: Option<SymbolKind>,
     pub container_name: Option<Symbol>,
     pub description: Option<String>,
-    // FIXME: Use the database lifetime here.
     pub docs: Option<Documentation<'static>>,
     /// In addition to a `name` field, a `NavigationTarget` may also be aliased
     /// In such cases we want a `NavigationTarget` to be accessible by its alias
