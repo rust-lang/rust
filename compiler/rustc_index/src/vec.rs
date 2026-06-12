@@ -1,5 +1,5 @@
 use std::borrow::{Borrow, BorrowMut};
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
 use std::ops::{Deref, DerefMut, RangeBounds};
@@ -36,7 +36,6 @@ use crate::{Idx, IndexSlice, static_assert_size};
 /// This allows to index the IndexVec with the new index type.
 ///
 /// [`newtype_index!`]: ../macro.newtype_index.html
-#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct IndexVec<I: Idx, T> {
     data: *mut T,
     len: I,
@@ -45,6 +44,27 @@ pub struct IndexVec<I: Idx, T> {
     _marker: PhantomData<fn(&I)>,
     _marker2: PhantomData<T>,
 }
+
+impl<I: Idx, T: Clone> Clone for IndexVec<I, T> {
+    fn clone(&self) -> Self {
+        IndexVec::from_raw(self.as_slice().raw.to_vec())
+    }
+}
+
+impl<I: Idx, T: PartialEq> PartialEq for IndexVec<I, T> {
+    fn eq(&self, other: &Self<>) -> bool{
+        self.as_slice().eq(other.as_slice())
+    }
+}
+
+impl<I: Idx, T: PartialEq> Eq for IndexVec<I, T> {}
+
+impl<I: Idx, T: Hash> Hash for IndexVec<I, T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.as_slice().hash(state);
+    }
+}
+
 
 unsafe impl<I: Idx, #[may_dangle] T> Drop for IndexVec<I, T> {
     fn drop(&mut self) {
