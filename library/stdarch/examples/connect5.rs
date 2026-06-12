@@ -33,8 +33,8 @@
 #![cfg_attr(target_arch = "x86_64", feature(stdarch_internal))]
 #![feature(stmt_expr_attributes)]
 
+use rand::rng;
 use rand::seq::SliceRandom;
-use rand::thread_rng;
 
 use std::cmp;
 use std::time::Instant;
@@ -374,7 +374,7 @@ impl List {
     }
 
     pub fn shuffle(&mut self) {
-        let mut rng = thread_rng();
+        let mut rng = rng();
         let num = self.p_size as usize;
 
         self.p_move[..num].shuffle(&mut rng);
