@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::MaybeDef;
-use clippy_utils::source::snippet;
+use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::{eager_or_lazy, is_from_proc_macro, usage};
 use hir::FnRetTy;
 use rustc_errors::Applicability;
@@ -18,6 +18,7 @@ pub(super) fn check<'tcx>(
     recv: &'tcx hir::Expr<'_>,
     arg: &'tcx hir::Expr<'_>,
     simplify_using: &str,
+    use_turbofish: bool,
 ) -> bool {
     let is_option = cx.typeck_results().expr_ty(recv).is_diag_item(cx, sym::Option);
     let is_result = cx.typeck_results().expr_ty(recv).is_diag_item(cx, sym::Result);
@@ -46,23 +47,38 @@ pub(super) fn check<'tcx>(
             } else {
                 "unnecessary closure used with `bool::then`"
             };
-            let applicability = if body
+            let mut applicability = Applicability::MachineApplicable;
+            let (ascription, turbofish) = if body
                 .params
                 .iter()
                 // bindings are checked to be unused above
                 .all(|param| matches!(param.pat.kind, hir::PatKind::Binding(..) | hir::PatKind::Wild))
-                && matches!(
-                    fn_decl.output,
+            {
+                match fn_decl.output {
                     FnRetTy::DefaultReturn(_)
-                        | FnRetTy::Return(hir::Ty {
-                            kind: hir::TyKind::Infer(()),
-                            ..
-                        })
-                ) {
-                Applicability::MachineApplicable
+                    | FnRetTy::Return(hir::Ty {
+                        kind: hir::TyKind::Infer(()),
+                        ..
+                    }) => {
+                        // type ascription is definitely not needed here
+                        (String::new(), String::new())
+                    },
+                    FnRetTy::Return(ty) => {
+                        // explicit type was given on the closure
+                        // try to use turbofish for this, since it's less dangerous,
+                        // but, failing that, use `as`
+                        let ty = snippet_with_applicability(cx, ty.span, "_", &mut applicability);
+                        if use_turbofish {
+                            (String::new(), format!("::<{ty}>"))
+                        } else {
+                            (format!(" as {ty}"), String::new())
+                        }
+                    },
+                }
             } else {
-                // replacing the lambda may break type inference
-                Applicability::MaybeIncorrect
+                // can't infer the actual type
+                applicability = Applicability::MaybeIncorrect;
+                (String::new(), String::new())
             };
 
             // This is a duplicate of what's happening in clippy_lints::methods::method_call,
@@ -73,7 +89,10 @@ pub(super) fn check<'tcx>(
                     diag.span_suggestion_verbose(
                         span,
                         format!("use `{simplify_using}` instead"),
-                        format!("{simplify_using}({})", snippet(cx, body_expr.span, "..")),
+                        format!(
+                            "{simplify_using}{turbofish}({}{ascription})",
+                            snippet(cx, body_expr.span, "..")
+                        ),
                         applicability,
                     );
                 });

@@ -5238,7 +5238,7 @@ impl Methods {
                     let biom_option_linted = bind_instead_of_map::check_and_then_some(cx, expr, recv, arg);
                     let biom_result_linted = bind_instead_of_map::check_and_then_ok(cx, expr, recv, arg);
                     if !biom_option_linted && !biom_result_linted {
-                        let ule_and_linted = unnecessary_lazy_eval::check(cx, expr, recv, arg, "and");
+                        let ule_and_linted = unnecessary_lazy_eval::check(cx, expr, recv, arg, "and", true);
                         if !ule_and_linted {
                             return_and_then::check(cx, expr, recv, arg);
                         }
@@ -5474,7 +5474,7 @@ impl Methods {
                     get_last_with_len::check(cx, expr, recv, arg);
                 },
                 (sym::get_or_insert_with, [arg]) => {
-                    unnecessary_lazy_eval::check(cx, expr, recv, arg, "get_or_insert");
+                    unnecessary_lazy_eval::check(cx, expr, recv, arg, "get_or_insert", false);
                 },
                 (sym::hash, [arg]) => {
                     unit_hash::check(cx, expr, recv, arg);
@@ -5629,14 +5629,14 @@ impl Methods {
                     ptr_offset_by_literal::check(cx, expr, self.msrv);
                 },
                 (sym::ok_or_else, [arg]) => {
-                    unnecessary_lazy_eval::check(cx, expr, recv, arg, "ok_or");
+                    unnecessary_lazy_eval::check(cx, expr, recv, arg, "ok_or", true);
                 },
                 (sym::open, [_]) => {
                     open_options::check(cx, expr, recv);
                 },
                 (sym::or_else, [arg]) => {
                     if !bind_instead_of_map::check_or_else_err(cx, expr, recv, arg) {
-                        unnecessary_lazy_eval::check(cx, expr, recv, arg, "or");
+                        unnecessary_lazy_eval::check(cx, expr, recv, arg, "or", false);
                     }
                 },
                 (sym::peek, []) => {
@@ -5737,7 +5737,7 @@ impl Methods {
                     if !self.msrv.meets(cx, msrvs::BOOL_THEN_SOME) {
                         return;
                     }
-                    unnecessary_lazy_eval::check(cx, expr, recv, arg, "then_some");
+                    unnecessary_lazy_eval::check(cx, expr, recv, arg, "then_some", true);
                 },
                 (sym::try_into, []) if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::TryInto) => {
                     unnecessary_fallible_conversions::check_method(cx, expr);
@@ -5827,7 +5827,7 @@ impl Methods {
                             );
                         },
                         _ => {
-                            unnecessary_lazy_eval::check(cx, expr, recv, u_arg, "unwrap_or");
+                            unnecessary_lazy_eval::check(cx, expr, recv, u_arg, "unwrap_or", false);
                         },
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
