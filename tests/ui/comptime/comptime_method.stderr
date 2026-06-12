@@ -1,0 +1,19 @@
+error: `#[rustc_comptime]` attribute cannot be used on inherent impl blocks
+  --> $DIR/comptime_method.rs:5:1
+   |
+LL | #[rustc_comptime]
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_comptime]` can only be applied to functions
+
+error[E0015]: cannot call non-const method `Bar::boo` in constants
+  --> $DIR/comptime_method.rs:12:9
+   |
+LL |     Bar.boo();
+   |         ^^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0015`.
