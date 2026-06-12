@@ -13,7 +13,7 @@ use super::data::*;
 use super::fs::*;
 use super::{clean, file_format, work_product};
 use crate::assert_dep_graph::assert_dep_graph;
-use crate::errors;
+use crate::diagnostics;
 
 /// Saves and writes the [`DepGraph`] to the file system.
 ///
@@ -45,7 +45,7 @@ pub(crate) fn save_dep_graph(tcx: TyCtxt<'_>) {
             move || {
                 sess.time("incr_comp_persist_dep_graph", || {
                     if let Err(err) = fs::rename(&staging_dep_graph_path, &dep_graph_path) {
-                        sess.dcx().emit_err(errors::MoveDepGraph {
+                        sess.dcx().emit_err(diagnostics::MoveDepGraph {
                             from: &staging_dep_graph_path,
                             to: &dep_graph_path,
                             err,

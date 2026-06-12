@@ -11,7 +11,7 @@ use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_session::Session;
 use tracing::debug;
 
-use crate::errors;
+use crate::diagnostics;
 use crate::persist::fs::*;
 
 /// Copies a CGU work product to the incremental compilation directory, so next compilation can
@@ -40,7 +40,7 @@ pub fn copy_cgu_workproduct_to_incr_comp_cache_dir(
                 let _ = saved_files.insert(ext.to_string(), file_name);
             }
             Err(err) => {
-                sess.dcx().emit_warn(errors::CopyWorkProductToCache {
+                sess.dcx().emit_warn(diagnostics::CopyWorkProductToCache {
                     from: path,
                     to: &path_in_incr_dir,
                     err,
@@ -60,7 +60,7 @@ pub(crate) fn delete_workproduct_files(sess: &Session, work_product: &WorkProduc
     for (_, path) in work_product.saved_files.items().into_sorted_stable_ord() {
         let path = in_incr_comp_dir_sess(sess, path);
         if let Err(err) = std_fs::remove_file(&path) {
-            sess.dcx().emit_warn(errors::DeleteWorkProduct { path: &path, err });
+            sess.dcx().emit_warn(diagnostics::DeleteWorkProduct { path: &path, err });
         }
     }
 }
