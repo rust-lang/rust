@@ -246,7 +246,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     }
 
     /// Returns the "root" variable of `vid` in the `sub_unification_table`
-    /// equivalence table. All type variables that have been are related via
+    /// equivalence table. All type variables that have been related via
     /// equality or subtyping will yield the same root variable (per the
     /// union-find algorithm), so `sub_unification_table_root_var(a)
     /// == sub_unification_table_root_var(b)` implies that:

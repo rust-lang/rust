@@ -720,14 +720,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(crate) fn type_var_is_sized(&self, self_ty: ty::TyVid) -> bool {
         let sized_did = self.tcx.lang_items().sized_trait();
-        self.obligations_for_self_ty(self_ty).into_iter().any(|obligation| {
-            match obligation.predicate.kind().skip_binder() {
+
+        // NB: `T: Sized` implies that all subtypes and all supertypes of `T` are also sized,
+        //     so it's valid to use subtyping here. (subtyping has to preserve layout and
+        //     `T <: U => &T <: &U`, so subtyping can't change sizedness)
+        self.obligations_for_self_ty(self_ty, super::UseSubtyping::Yes).into_iter().any(
+            |obligation| match obligation.predicate.kind().skip_binder() {
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
                     Some(data.def_id()) == sized_did
                 }
                 _ => false,
-            }
-        })
+            },
+        )
     }
 
     pub(crate) fn err_args(&self, len: usize, guar: ErrorGuaranteed) -> Vec<Ty<'tcx>> {
