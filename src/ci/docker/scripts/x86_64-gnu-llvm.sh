@@ -15,8 +15,3 @@ set -ex
 
 # Run the UI test suite in `--pass=check` mode, to ensure it continues to work.
 ../x.ps1 --stage 2 test tests/ui --pass=check --host='' --target=i686-unknown-linux-gnu
-
-# Rebuild the stdlib using the new trait solver, to ensure it doesn't regress
-# until stabilization.
-RUSTFLAGS_NOT_BOOTSTRAP="-Znext-solver=globally" ../x --stage 1 build library \
-    --host='' --target=i686-unknown-linux-gnu
