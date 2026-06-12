@@ -63,11 +63,11 @@ impl<'tcx> MirPass<'tcx> for ImpossiblePredicates {
             trace!("found unsatisfiable predicates");
             // Clear the body to only contain a single `unreachable` statement.
             let bbs = body.basic_blocks.as_mut();
-            bbs.raw.truncate(1);
+            bbs.truncate(1);
             bbs[START_BLOCK].statements.clear();
             bbs[START_BLOCK].terminator_mut().kind = TerminatorKind::Unreachable;
             body.var_debug_info.clear();
-            body.local_decls.raw.truncate(body.arg_count + 1);
+            body.local_decls.truncate(body.arg_count + 1);
         }
     }
 

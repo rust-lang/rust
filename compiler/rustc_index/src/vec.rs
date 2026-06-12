@@ -3,11 +3,11 @@ use std::hash::Hash;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut, RangeBounds};
 use std::{fmt, slice, vec};
-
+use std::mem::ManuallyDrop;
 #[cfg(feature = "nightly")]
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
-use crate::{Idx, IndexSlice};
+use crate::{static_assert_size, Idx, IndexSlice};
 
 /// An owned contiguous collection of `T`s, indexed by `I` rather than by `usize`.
 ///
@@ -36,23 +36,47 @@ use crate::{Idx, IndexSlice};
 ///
 /// [`newtype_index!`]: ../macro.newtype_index.html
 #[derive(Clone, PartialEq, Eq, Hash)]
-#[repr(transparent)]
 pub struct IndexVec<I: Idx, T> {
-    pub raw: Vec<T>,
+    data: *mut T,
+    len: I,
+    capacity: I,
+
     _marker: PhantomData<fn(&I)>,
+    _marker2: PhantomData<T>,
+}
+
+unsafe impl<I: Idx, #[may_dangle] T> Drop for IndexVec<I, T> {
+    fn drop(&mut self) {
+        std::mem::take(self).into_vec();
+    }
 }
 
 impl<I: Idx, T> IndexVec<I, T> {
     /// Constructs a new, empty `IndexVec<I, T>`.
     #[inline]
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         IndexVec::from_raw(Vec::new())
     }
 
     /// Constructs a new `IndexVec<I, T>` from a `Vec<T>`.
     #[inline]
-    pub const fn from_raw(raw: Vec<T>) -> Self {
-        IndexVec { raw, _marker: PhantomData }
+    pub fn from_raw(raw: Vec<T>) -> Self {
+        let (data, len, capacity) = raw.into_raw_parts();
+
+        IndexVec {
+            data,
+            len: I::new(len),
+            capacity: I::new(capacity),
+
+            _marker: PhantomData,
+            _marker2: PhantomData,
+        }
+    }
+
+    pub fn into_vec(self) -> Vec<T> {
+        let me = ManuallyDrop::new(self);
+        // fixme this is unsound because we rely on correct Idx trait impls
+        unsafe { Vec::from_raw_parts(me.data, me.len.index(), me.capacity.index()) }
     }
 
     #[inline]
@@ -100,30 +124,30 @@ impl<I: Idx, T> IndexVec<I, T> {
 
     #[inline]
     pub fn as_slice(&self) -> &IndexSlice<I, T> {
-        IndexSlice::from_raw(&self.raw)
+        IndexSlice::from_raw(unsafe { std::slice::from_raw_parts(self.data, self.len.index()) })
     }
 
     #[inline]
     pub fn as_mut_slice(&mut self) -> &mut IndexSlice<I, T> {
-        IndexSlice::from_raw_mut(&mut self.raw)
+        IndexSlice::from_raw_mut(unsafe { std::slice::from_raw_parts_mut(self.data, self.len.index()) })
     }
 
     /// Pushes an element to the array returning the index where it was pushed to.
     #[inline]
     pub fn push(&mut self, d: T) -> I {
         let idx = self.next_index();
-        self.raw.push(d);
+        self.mutate(|vec| vec.push(d));
         idx
     }
 
     #[inline]
     pub fn pop(&mut self) -> Option<T> {
-        self.raw.pop()
+        self.mutate(|raw| raw.pop())
     }
 
     #[inline]
     pub fn into_iter(self) -> vec::IntoIter<T> {
-        self.raw.into_iter()
+        self.into_vec().into_iter()
     }
 
     #[inline]
@@ -132,35 +156,29 @@ impl<I: Idx, T> IndexVec<I, T> {
     ) -> impl DoubleEndedIterator<Item = (I, T)> + ExactSizeIterator {
         // Allow the optimizer to elide the bounds checking when creating each index.
         let _ = I::new(self.len());
-        self.raw.into_iter().enumerate().map(|(n, t)| (I::new(n), t))
+        self.into_iter().enumerate().map(|(n, t)| (I::new(n), t))
     }
 
     #[inline]
-    pub fn drain<R: RangeBounds<usize>>(&mut self, range: R) -> impl Iterator<Item = T> {
-        self.raw.drain(range)
+    pub fn drain_into<R: RangeBounds<usize>>(&mut self, range: R, target: &mut IndexVec<I, T>) {
+        self.mutate(|raw| target.extend(raw.drain(range)))
     }
 
-    #[inline]
-    pub fn drain_enumerated<R: RangeBounds<usize>>(
-        &mut self,
-        range: R,
-    ) -> impl Iterator<Item = (I, T)> {
-        let begin = match range.start_bound() {
-            std::ops::Bound::Included(i) => *i,
-            std::ops::Bound::Excluded(i) => i.checked_add(1).unwrap(),
-            std::ops::Bound::Unbounded => 0,
-        };
-        self.raw.drain(range).enumerate().map(move |(n, t)| (I::new(begin + n), t))
+    pub fn mutate<U, F: FnOnce(&mut Vec<T>) -> U>(&mut self, f: F) -> U {
+        let mut vec = std::mem::take(self).into_vec();
+        let v = f(&mut vec);
+        let _ = std::mem::replace(self, IndexVec::from_raw(vec));
+        v
     }
 
     #[inline]
     pub fn shrink_to_fit(&mut self) {
-        self.raw.shrink_to_fit()
+        self.mutate(|vec| vec.shrink_to_fit());
     }
 
     #[inline]
     pub fn truncate(&mut self, a: usize) {
-        self.raw.truncate(a)
+        self.mutate(|vec| vec.truncate(a))
     }
 
     /// Grows the index vector so that it contains an entry for
@@ -173,7 +191,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     pub fn ensure_contains_elem(&mut self, elem: I, fill_value: impl FnMut() -> T) -> &mut T {
         let min_new_len = elem.index() + 1;
         if self.len() < min_new_len {
-            self.raw.resize_with(min_new_len, fill_value);
+            self.mutate(|vec| vec.resize_with(min_new_len, fill_value));
         }
 
         &mut self[elem]
@@ -184,18 +202,22 @@ impl<I: Idx, T> IndexVec<I, T> {
     where
         T: Clone,
     {
-        self.raw.resize(new_len, value)
+        self.mutate(|vec| vec.resize(new_len, value))
     }
 
     #[inline]
     pub fn resize_to_elem(&mut self, elem: I, fill_value: impl FnMut() -> T) {
         let min_new_len = elem.index() + 1;
-        self.raw.resize_with(min_new_len, fill_value);
+        self.mutate(|vec| vec.resize_with(min_new_len, fill_value));
     }
 
     #[inline]
     pub fn append(&mut self, other: &mut Self) {
-        self.raw.append(&mut other.raw);
+        self.mutate(|vec| {
+            other.mutate(|other| {
+                vec.append(other)
+            })
+        });
     }
 }
 
@@ -259,19 +281,19 @@ impl<I: Idx, T> BorrowMut<IndexSlice<I, T>> for IndexVec<I, T> {
 impl<I: Idx, T> Extend<T> for IndexVec<I, T> {
     #[inline]
     fn extend<J: IntoIterator<Item = T>>(&mut self, iter: J) {
-        self.raw.extend(iter);
+        self.mutate(|vec| vec.extend(iter));
     }
 
     #[inline]
     #[cfg(feature = "nightly")]
     fn extend_one(&mut self, item: T) {
-        self.raw.push(item);
+        self.mutate(|vec| vec.push(item));
     }
 
     #[inline]
     #[cfg(feature = "nightly")]
     fn extend_reserve(&mut self, additional: usize) {
-        self.raw.reserve(additional);
+        self.mutate(|vec| vec.reserve(additional));
     }
 }
 
@@ -291,7 +313,7 @@ impl<I: Idx, T> IntoIterator for IndexVec<I, T> {
 
     #[inline]
     fn into_iter(self) -> vec::IntoIter<T> {
-        self.raw.into_iter()
+        self.into_vec().into_iter()
     }
 }
 
@@ -346,6 +368,9 @@ impl<D: Decoder, I: Idx, T: Decodable<D>> Decodable<D> for IndexVec<I, T> {
 // Whether `IndexVec` is `Send` depends only on the data,
 // not the phantom data.
 unsafe impl<I: Idx, T> Send for IndexVec<I, T> where T: Send {}
+
+static_assert_size!(IndexVec<u32, u8>, 16);
+static_assert_size!(IndexVec<usize, u8>, 24);
 
 #[cfg(test)]
 mod tests;
