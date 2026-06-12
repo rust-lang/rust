@@ -1,5 +1,5 @@
 #![warn(clippy::iter_on_single_items)]
-#![allow(clippy::iter_next_slice, clippy::redundant_clone)]
+#![allow(clippy::iter_next_slice)]
 
 fn array() {
     assert_eq!(std::iter::once(123).next(), Some(123));
@@ -41,7 +41,6 @@ macro_rules! in_macros {
 
 // Don't trigger on a `Some` that isn't std's option
 mod custom_option {
-    #[allow(unused)]
     enum CustomOption {
         Some(i32),
         None,

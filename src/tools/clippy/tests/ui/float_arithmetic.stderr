@@ -1,5 +1,5 @@
 error: floating-point arithmetic detected
-  --> tests/ui/float_arithmetic.rs:15:5
+  --> tests/ui/float_arithmetic.rs:9:5
    |
 LL |     f * 2.0;
    |     ^^^^^^^
@@ -8,97 +8,97 @@ LL |     f * 2.0;
    = help: to override `-D warnings` add `#[allow(clippy::float_arithmetic)]`
 
 error: floating-point arithmetic detected
-  --> tests/ui/float_arithmetic.rs:20:5
+  --> tests/ui/float_arithmetic.rs:14:5
    |
 LL |     1.0 + f;
    |     ^^^^^^^
 
 error: floating-point arithmetic detected
-  --> tests/ui/float_arithmetic.rs:23:5
+  --> tests/ui/float_arithmetic.rs:17:5
    |
 LL |     f * 2.0;
    |     ^^^^^^^
 
 error: floating-point arithmetic detected
-  --> tests/ui/float_arithmetic.rs:26:5
+  --> tests/ui/float_arithmetic.rs:20:5
    |
 LL |     f / 2.0;
    |     ^^^^^^^
 
 error: floating-point arithmetic detected
-  --> tests/ui/float_arithmetic.rs:29:5
+  --> tests/ui/float_arithmetic.rs:23:5
    |
 LL |     f - 2.0 * 4.2;
    |     ^^^^^^^^^^^^^
 
 error: floating-point arithmetic detected
-  --> tests/ui/float_arithmetic.rs:32:5
+  --> tests/ui/float_arithmetic.rs:26:5
    |
 LL |     -f;
    |     ^^
 
 error: floating-point arithmetic detected
-  --> tests/ui/float_arithmetic.rs:36:5
+  --> tests/ui/float_arithmetic.rs:30:5
    |
 LL |     f += 1.0;
    |     ^^^^^^^^
 
 error: floating-point arithmetic detected
-  --> tests/ui/float_arithmetic.rs:39:5
+  --> tests/ui/float_arithmetic.rs:33:5
    |
 LL |     f -= 1.0;
    |     ^^^^^^^^
 
 error: floating-point arithmetic detected
-  --> tests/ui/float_arithmetic.rs:42:5
+  --> tests/ui/float_arithmetic.rs:36:5
    |
 LL |     f *= 2.0;
    |     ^^^^^^^^
 
 error: floating-point arithmetic detected
-  --> tests/ui/float_arithmetic.rs:45:5
+  --> tests/ui/float_arithmetic.rs:39:5
    |
 LL |     f /= 2.0;
    |     ^^^^^^^^
 
 error: floating-point arithmetic detected
-  --> tests/ui/float_arithmetic.rs:53:5
+  --> tests/ui/float_arithmetic.rs:47:5
    |
 LL |     3.1_f32 + &1.2_f32;
    |     ^^^^^^^^^^^^^^^^^^
 
 error: floating-point arithmetic detected
-  --> tests/ui/float_arithmetic.rs:56:5
+  --> tests/ui/float_arithmetic.rs:50:5
    |
 LL |     &3.4_f32 + 1.5_f32;
    |     ^^^^^^^^^^^^^^^^^^
 
 error: floating-point arithmetic detected
-  --> tests/ui/float_arithmetic.rs:59:5
+  --> tests/ui/float_arithmetic.rs:53:5
    |
 LL |     &3.5_f32 + &1.3_f32;
    |     ^^^^^^^^^^^^^^^^^^^
 
 error: floating-point arithmetic detected
-  --> tests/ui/float_arithmetic.rs:65:5
+  --> tests/ui/float_arithmetic.rs:59:5
    |
 LL |     a + f
    |     ^^^^^
 
 error: floating-point arithmetic detected
-  --> tests/ui/float_arithmetic.rs:70:5
+  --> tests/ui/float_arithmetic.rs:64:5
    |
 LL |     f1 + f2
    |     ^^^^^^^
 
 error: floating-point arithmetic detected
-  --> tests/ui/float_arithmetic.rs:75:5
+  --> tests/ui/float_arithmetic.rs:69:5
    |
 LL |     f1 + f2
    |     ^^^^^^^
 
 error: floating-point arithmetic detected
-  --> tests/ui/float_arithmetic.rs:80:5
+  --> tests/ui/float_arithmetic.rs:74:5
    |
 LL |     (&f1 + &f2)
    |     ^^^^^^^^^^^

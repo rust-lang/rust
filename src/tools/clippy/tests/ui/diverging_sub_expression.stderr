@@ -1,5 +1,5 @@
 error: sub-expression diverges
-  --> tests/ui/diverging_sub_expression.rs:20:10
+  --> tests/ui/diverging_sub_expression.rs:21:10
    |
 LL |     b || diverge();
    |          ^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     b || diverge();
    = help: to override `-D warnings` add `#[allow(clippy::diverging_sub_expression)]`
 
 error: sub-expression diverges
-  --> tests/ui/diverging_sub_expression.rs:23:10
+  --> tests/ui/diverging_sub_expression.rs:24:10
    |
 LL |     b || A.foo();
    |          ^^^^^^^

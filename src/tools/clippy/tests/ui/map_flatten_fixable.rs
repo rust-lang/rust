@@ -1,10 +1,5 @@
-#![allow(
-    clippy::let_underscore_untyped,
-    clippy::missing_docs_in_private_items,
-    clippy::map_identity,
-    clippy::redundant_closure,
-    clippy::unnecessary_wraps
-)]
+#![warn(clippy::map_flatten)]
+#![allow(clippy::map_identity)]
 
 fn main() {
     // mapping to Option on Iterator

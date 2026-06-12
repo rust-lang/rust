@@ -1,5 +1,3 @@
-#![allow(clippy::needless_ifs)]
-
 #[derive(Default)]
 struct A<T> {
     a: Vec<A<T>>,

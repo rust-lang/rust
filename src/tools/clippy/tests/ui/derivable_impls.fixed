@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 #![feature(const_trait_impl)]
 #![feature(const_default)]
 

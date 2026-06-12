@@ -89,7 +89,7 @@ cargo clippy -- -A clippy::all -W clippy::useless_format -W clippy::...
 #### Lints Section in `Cargo.toml`
 
 Finally, lints can be allowed/denied using [the lints
-section](https://doc.rust-lang.org/nightly/cargo/reference/manifest.html#the-lints-section)) in the `Cargo.toml` file:
+section](https://doc.rust-lang.org/nightly/cargo/reference/manifest.html#the-lints-section) in the `Cargo.toml` file:
 
 To deny `clippy::enum_glob_use`, put the following in the `Cargo.toml`:
 
