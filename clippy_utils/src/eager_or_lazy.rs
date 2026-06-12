@@ -11,15 +11,15 @@
 
 use crate::consts::{ConstEvalCtxt, FullInt};
 use crate::sym;
-use crate::ty::{all_predicates_of, is_copy};
+use crate::ty::all_predicates_of;
 use crate::visitors::is_const_evaluatable;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, QPath, UnOp};
 use rustc_lint::LateContext;
-use rustc_middle::ty;
 use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Symbol;
 use std::{cmp, ops};
 
@@ -48,17 +48,17 @@ impl ops::BitOrAssign for EagernessSuggestion {
 }
 
 /// Determine the eagerness of the given function call.
-fn fn_eagerness(cx: &LateContext<'_>, fn_id: DefId, name: Symbol, have_one_arg: bool) -> EagernessSuggestion {
+fn fn_eagerness(tcx: TyCtxt<'_>, fn_id: DefId, name: Symbol, have_one_arg: bool) -> EagernessSuggestion {
     use EagernessSuggestion::{Eager, Lazy, NoChange};
 
-    let ty = match cx.tcx.impl_of_assoc(fn_id) {
-        Some(id) => cx.tcx.type_of(id).instantiate_identity().skip_norm_wip(),
+    let ty = match tcx.impl_of_assoc(fn_id) {
+        Some(id) => tcx.type_of(id).instantiate_identity().skip_norm_wip(),
         None => return Lazy,
     };
 
     if (matches!(name, sym::is_empty | sym::len) || name.as_str().starts_with("as_")) && have_one_arg {
         if matches!(
-            cx.tcx.crate_name(fn_id.krate),
+            tcx.crate_name(fn_id.krate),
             sym::std | sym::core | sym::alloc | sym::proc_macro
         ) {
             Eager
@@ -71,22 +71,20 @@ fn fn_eagerness(cx: &LateContext<'_>, fn_id: DefId, name: Symbol, have_one_arg: 
         // Due to the limited operations on these types functions should be fairly cheap.
         if def.variants().iter().flat_map(|v| v.fields.iter()).any(|x| {
             matches!(
-                cx.tcx
-                    .type_of(x.did)
+                tcx.type_of(x.did)
                     .instantiate_identity()
                     .skip_norm_wip()
                     .peel_refs()
                     .kind(),
                 ty::Param(_)
             )
-        }) && all_predicates_of(cx.tcx, fn_id).all(|(pred, _)| match pred.kind().skip_binder() {
-            ty::ClauseKind::Trait(pred) => cx.tcx.trait_def(pred.trait_ref.def_id).is_marker,
+        }) && all_predicates_of(tcx, fn_id).all(|(pred, _)| match pred.kind().skip_binder() {
+            ty::ClauseKind::Trait(pred) => tcx.trait_def(pred.trait_ref.def_id).is_marker,
             _ => true,
         }) && subs.types().all(|x| matches!(x.peel_refs().kind(), ty::Param(_)))
         {
             // Limit the function to either `(self) -> bool` or `(&self) -> bool`
-            match &**cx
-                .tcx
+            match &**tcx
                 .fn_sig(fn_id)
                 .instantiate_identity()
                 .skip_norm_wip()
@@ -104,14 +102,12 @@ fn fn_eagerness(cx: &LateContext<'_>, fn_id: DefId, name: Symbol, have_one_arg: 
     }
 }
 
-fn res_has_significant_drop(res: Res, cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
+fn res_has_significant_drop(res: Res, ecx: &ConstEvalCtxt<'_>, e: &Expr<'_>) -> bool {
     if let Res::Def(DefKind::Ctor(..) | DefKind::Variant | DefKind::Enum | DefKind::Struct, _)
     | Res::SelfCtor(_)
     | Res::SelfTyAlias { .. } = res
     {
-        cx.typeck_results()
-            .expr_ty(e)
-            .has_significant_drop(cx.tcx, cx.typing_env())
+        ecx.typeck.expr_ty(e).has_significant_drop(ecx.tcx, ecx.typing_env)
     } else {
         false
     }
@@ -119,12 +115,12 @@ fn res_has_significant_drop(res: Res, cx: &LateContext<'_>, e: &Expr<'_>) -> boo
 
 #[expect(clippy::too_many_lines)]
 fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessSuggestion {
-    struct V<'cx, 'tcx> {
-        cx: &'cx LateContext<'tcx>,
+    struct V<'tcx> {
+        ecx: ConstEvalCtxt<'tcx>,
         eagerness: EagernessSuggestion,
     }
 
-    impl<'tcx> Visitor<'tcx> for V<'_, 'tcx> {
+    impl<'tcx> Visitor<'tcx> for V<'tcx> {
         fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
             use EagernessSuggestion::{ForceNoChange, Lazy, NoChange};
             if self.eagerness == ForceNoChange {
@@ -134,8 +130,8 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
             // Autoderef through a user-defined `Deref` impl can have side-effects,
             // so don't suggest changing it.
             if self
-                .cx
-                .typeck_results()
+                .ecx
+                .typeck
                 .expr_adjustments(e)
                 .iter()
                 .any(|adj| matches!(adj.kind, Adjust::Deref(DerefAdjustKind::Overloaded(_))))
@@ -152,58 +148,62 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                         ..
                     },
                     args,
-                ) => match self.cx.qpath_res(path, hir_id) {
+                ) => match self.ecx.typeck.qpath_res(path, hir_id) {
                     res @ (Res::Def(DefKind::Ctor(..) | DefKind::Variant, _) | Res::SelfCtor(_)) => {
-                        if res_has_significant_drop(res, self.cx, e) {
+                        if res_has_significant_drop(res, &self.ecx, e) {
                             self.eagerness = ForceNoChange;
                             return;
                         }
                     },
-                    Res::Def(_, id) if self.cx.tcx.is_promotable_const_fn(id) => (),
+                    Res::Def(_, id) if self.ecx.tcx.is_promotable_const_fn(id) => (),
                     // No need to walk the arguments here, `is_const_evaluatable` already did
-                    Res::Def(..) if is_const_evaluatable(self.cx.tcx, self.cx.typeck_results(), e) => {
+                    Res::Def(..) if is_const_evaluatable(self.ecx.tcx, self.ecx.typeck, e) => {
                         self.eagerness |= NoChange;
                         return;
                     },
                     Res::Def(_, id) => match path {
                         QPath::Resolved(_, p) => {
-                            self.eagerness |=
-                                fn_eagerness(self.cx, id, p.segments.last().unwrap().ident.name, !args.is_empty());
+                            self.eagerness |= fn_eagerness(
+                                self.ecx.tcx,
+                                id,
+                                p.segments.last().unwrap().ident.name,
+                                !args.is_empty(),
+                            );
                         },
                         QPath::TypeRelative(_, name) => {
-                            self.eagerness |= fn_eagerness(self.cx, id, name.ident.name, !args.is_empty());
+                            self.eagerness |= fn_eagerness(self.ecx.tcx, id, name.ident.name, !args.is_empty());
                         },
                     },
                     _ => self.eagerness = Lazy,
                 },
                 // No need to walk the arguments here, `is_const_evaluatable` already did
-                ExprKind::MethodCall(..) if is_const_evaluatable(self.cx.tcx, self.cx.typeck_results(), e) => {
+                ExprKind::MethodCall(..) if is_const_evaluatable(self.ecx.tcx, self.ecx.typeck, e) => {
                     self.eagerness |= NoChange;
                     return;
                 },
                 #[expect(clippy::match_same_arms)] // arm pattern can't be merged due to `ref`, see rust#105778
                 ExprKind::Struct(path, ..) => {
-                    if res_has_significant_drop(self.cx.qpath_res(path, e.hir_id), self.cx, e) {
+                    if res_has_significant_drop(self.ecx.typeck.qpath_res(path, e.hir_id), &self.ecx, e) {
                         self.eagerness = ForceNoChange;
                         return;
                     }
                 },
                 ExprKind::Path(ref path) => {
-                    if res_has_significant_drop(self.cx.qpath_res(path, e.hir_id), self.cx, e) {
+                    if res_has_significant_drop(self.ecx.typeck.qpath_res(path, e.hir_id), &self.ecx, e) {
                         self.eagerness = ForceNoChange;
                         return;
                     }
                 },
                 ExprKind::MethodCall(name, ..) => {
                     self.eagerness |= self
-                        .cx
-                        .typeck_results()
+                        .ecx
+                        .typeck
                         .type_dependent_def_id(e.hir_id)
-                        .map_or(Lazy, |id| fn_eagerness(self.cx, id, name.ident.name, true));
+                        .map_or(Lazy, |id| fn_eagerness(self.ecx.tcx, id, name.ident.name, true));
                 },
                 ExprKind::Index(_, e, _) => {
-                    let ty = self.cx.typeck_results().expr_ty_adjusted(e);
-                    if is_copy(self.cx, ty) && !ty.is_ref() {
+                    let ty = self.ecx.typeck.expr_ty_adjusted(e);
+                    if self.ecx.tcx.type_is_copy_modulo_regions(self.ecx.typing_env, ty) && !ty.is_ref() {
                         self.eagerness |= NoChange;
                     } else {
                         self.eagerness = Lazy;
@@ -211,24 +211,19 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 },
 
                 // `-i32::MIN` panics with overflow checks
-                ExprKind::Unary(UnOp::Neg, right) if ConstEvalCtxt::new(self.cx).eval(right).is_none() => {
+                ExprKind::Unary(UnOp::Neg, right) if self.ecx.eval(right).is_none() => {
                     self.eagerness |= NoChange;
                 },
 
                 // Custom `Deref` impl might have side effects
-                ExprKind::Unary(UnOp::Deref, e)
-                    if self.cx.typeck_results().expr_ty(e).builtin_deref(true).is_none() =>
-                {
+                ExprKind::Unary(UnOp::Deref, e) if self.ecx.typeck.expr_ty(e).builtin_deref(true).is_none() => {
                     self.eagerness |= NoChange;
                 },
                 // Dereferences should be cheap, but dereferencing a raw pointer earlier may not be safe.
-                ExprKind::Unary(UnOp::Deref, e) if !self.cx.typeck_results().expr_ty(e).is_raw_ptr() => (),
+                ExprKind::Unary(UnOp::Deref, e) if !self.ecx.typeck.expr_ty(e).is_raw_ptr() => (),
                 ExprKind::Unary(UnOp::Deref, _) => self.eagerness |= NoChange,
                 ExprKind::Unary(_, e)
-                    if matches!(
-                        self.cx.typeck_results().expr_ty(e).kind(),
-                        ty::Bool | ty::Int(_) | ty::Uint(_),
-                    ) => {},
+                    if matches!(self.ecx.typeck.expr_ty(e).kind(), ty::Bool | ty::Int(_) | ty::Uint(_),) => {},
 
                 // `>>` and `<<` panic when the right-hand side is greater than or equal to the number of bits in the
                 // type of the left-hand side, or is negative.
@@ -236,18 +231,16 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 // overflow with constants, the compiler emits an error for it and the programmer will have to fix it.
                 // Thus, we would realistically only delay the lint.
                 ExprKind::Binary(op, _, right)
-                    if matches!(op.node, BinOpKind::Shl | BinOpKind::Shr)
-                        && ConstEvalCtxt::new(self.cx).eval(right).is_none() =>
+                    if matches!(op.node, BinOpKind::Shl | BinOpKind::Shr) && self.ecx.eval(right).is_none() =>
                 {
                     self.eagerness |= NoChange;
                 },
 
                 ExprKind::Binary(op, left, right)
                     if matches!(op.node, BinOpKind::Div | BinOpKind::Rem)
-                        && let right_ty = self.cx.typeck_results().expr_ty(right)
-                        && let ecx = ConstEvalCtxt::new(self.cx)
-                        && let left = ecx.eval(left)
-                        && let right = ecx.eval(right).and_then(|c| c.int_value(self.cx.tcx, right_ty))
+                        && let right_ty = self.ecx.typeck.expr_ty(right)
+                        && let left = self.ecx.eval(left)
+                        && let right = self.ecx.eval(right).and_then(|c| c.int_value(self.ecx.tcx, right_ty))
                         && matches!(
                             (left, right),
                             // `1 / x`: x might be zero
@@ -265,16 +258,14 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 // error and it's good to have the eagerness warning up front when the user fixes the logic error.
                 ExprKind::Binary(op, left, right)
                     if matches!(op.node, BinOpKind::Add | BinOpKind::Sub | BinOpKind::Mul)
-                        && !self.cx.typeck_results().expr_ty(e).is_floating_point()
-                        && let ecx = ConstEvalCtxt::new(self.cx)
-                        && (ecx.eval(left).is_none() || ecx.eval(right).is_none()) =>
+                        && !self.ecx.typeck.expr_ty(e).is_floating_point()
+                        && (self.ecx.eval(left).is_none() || self.ecx.eval(right).is_none()) =>
                 {
                     self.eagerness |= NoChange;
                 },
 
                 ExprKind::Binary(_, lhs, rhs)
-                    if self.cx.typeck_results().expr_ty(lhs).is_primitive()
-                        && self.cx.typeck_results().expr_ty(rhs).is_primitive() => {},
+                    if self.ecx.typeck.expr_ty(lhs).is_primitive() && self.ecx.typeck.expr_ty(rhs).is_primitive() => {},
 
                 // Can't be moved into a closure
                 ExprKind::Break(..)
@@ -322,7 +313,7 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
     }
 
     let mut v = V {
-        cx,
+        ecx: ConstEvalCtxt::new(cx),
         eagerness: EagernessSuggestion::Eager,
     };
     v.visit_expr(e);
