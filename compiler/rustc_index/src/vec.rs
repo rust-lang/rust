@@ -52,7 +52,7 @@ impl<I: Idx, T: Clone> Clone for IndexVec<I, T> {
 }
 
 impl<I: Idx, T: PartialEq> PartialEq for IndexVec<I, T> {
-    fn eq(&self, other: &Self<>) -> bool{
+    fn eq(&self, other: &Self) -> bool {
         self.as_slice().eq(other.as_slice())
     }
 }
@@ -64,7 +64,6 @@ impl<I: Idx, T: Hash> Hash for IndexVec<I, T> {
         self.as_slice().hash(state);
     }
 }
-
 
 unsafe impl<I: Idx, #[may_dangle] T> Drop for IndexVec<I, T> {
     fn drop(&mut self) {
