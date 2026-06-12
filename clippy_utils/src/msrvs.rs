@@ -119,7 +119,7 @@ impl Msrv {
     /// nodes for that attribute, prefer to run this check after cheaper pattern matching operations
     pub fn current(self, cx: &LateContext<'_>) -> Option<RustcVersion> {
         if SEEN_MSRV_ATTR.load(Ordering::Relaxed) {
-            self.from_attrs(cx.tcx, cx.last_node_with_lint_attrs)
+            self.for_attrs(cx.tcx, cx.last_node_with_lint_attrs)
         } else {
             self.0
         }
@@ -131,13 +131,13 @@ impl Msrv {
     /// nodes for that attribute, prefer to run this check after cheaper pattern matching operations
     pub fn at(self, tcx: TyCtxt<'_>, node: HirId) -> Option<RustcVersion> {
         if SEEN_MSRV_ATTR.load(Ordering::Relaxed) {
-            self.from_attrs(tcx, node)
+            self.for_attrs(tcx, node)
         } else {
             self.0
         }
     }
 
-    fn from_attrs(self, tcx: TyCtxt<'_>, node: HirId) -> Option<RustcVersion> {
+    fn for_attrs(self, tcx: TyCtxt<'_>, node: HirId) -> Option<RustcVersion> {
         once(node)
             .chain(tcx.hir_parent_id_iter(node))
             .find_map(|id| parse_attrs(tcx.sess, tcx.hir_attrs(id)))

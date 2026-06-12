@@ -214,7 +214,7 @@ fn indirect_usage<'tcx>(
     }) = stmt.kind
     {
         let mut path_to_binding = None;
-        let _: Option<!> = for_each_expr(cx, init_expr, |e| {
+        let _: Option<!> = for_each_expr(cx.tcx, init_expr, |e| {
             if e.res_local_id() == Some(binding) {
                 path_to_binding = Some(e);
             }

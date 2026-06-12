@@ -604,7 +604,7 @@ fn is_any_expr_in_map_used<'tcx>(
     map: &'tcx Expr<'tcx>,
     expr: &'tcx Expr<'tcx>,
 ) -> bool {
-    for_each_expr(cx, map, |e| {
+    for_each_expr(cx.tcx, map, |e| {
         if spanless_eq.eq_expr(ctxt, e, expr) {
             return ControlFlow::Break(());
         }

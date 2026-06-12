@@ -32,7 +32,7 @@ pub(super) fn check<'tcx>(
 ) {
     if let [arg] = args {
         let inner_arg = peel_blocks(arg);
-        for_each_expr(cx, inner_arg, |ex| {
+        for_each_expr(cx.tcx, inner_arg, |ex| {
             // `or_fun_call` lint needs to take nested expr into account,
             // but `unwrap_or_default` lint doesn't, we don't want something like:
             // `opt.unwrap_or(Foo { inner: String::default(), other: 1 })` to get replaced by
@@ -72,7 +72,7 @@ pub(super) fn check<'tcx>(
     // `map_or` takes two arguments
     if let [arg, lambda] = args {
         let inner_arg = peel_blocks(arg);
-        for_each_expr(cx, inner_arg, |ex| {
+        for_each_expr(cx.tcx, inner_arg, |ex| {
             let is_top_most_expr = ex.hir_id == inner_arg.hir_id;
             match ex.kind {
                 hir::ExprKind::Call(fun, fun_args) => {

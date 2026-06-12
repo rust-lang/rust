@@ -206,7 +206,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
             // We retrieve all the closures declared in the function because they will not be found
             // by `euv::Delegate`.
             let mut closures: FxIndexSet<LocalDefId> = FxIndexSet::default();
-            for_each_expr(cx, body, |expr| {
+            for_each_expr(cx.tcx, body, |expr| {
                 if let ExprKind::Closure(closure) = expr.kind {
                     closures.insert(closure.def_id);
                 }

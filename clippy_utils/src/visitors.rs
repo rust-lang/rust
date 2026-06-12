@@ -145,7 +145,7 @@ pub fn for_each_expr_without_closures<'tcx, B, C: Continue>(
 /// Calls the given function once for each expression contained. This will enter bodies, but not
 /// nested items.
 pub fn for_each_expr<'tcx, B, C: Continue>(
-    cx: &LateContext<'tcx>,
+    tcx: TyCtxt<'tcx>,
     node: impl Visitable<'tcx>,
     f: impl FnMut(&'tcx Expr<'tcx>) -> ControlFlow<B, C>,
 ) -> Option<B> {
@@ -188,7 +188,7 @@ pub fn for_each_expr<'tcx, B, C: Continue>(
             ControlFlow::Continue(())
         }
     }
-    let mut v = V { tcx: cx.tcx, f };
+    let mut v = V { tcx, f };
     node.visit(&mut v).break_value()
 }
 
@@ -299,7 +299,7 @@ where
 
 /// Checks if the given resolved path is used in the given body.
 pub fn is_res_used(cx: &LateContext<'_>, res: Res, body: BodyId) -> bool {
-    for_each_expr(cx, cx.tcx.hir_body(body).value, |e| {
+    for_each_expr(cx.tcx, cx.tcx.hir_body(body).value, |e| {
         if let ExprKind::Path(p) = &e.kind
             && cx.qpath_res(p, e.hir_id) == res
         {
@@ -312,7 +312,7 @@ pub fn is_res_used(cx: &LateContext<'_>, res: Res, body: BodyId) -> bool {
 
 /// Checks if the given local is used.
 pub fn is_local_used<'tcx>(cx: &LateContext<'tcx>, visitable: impl Visitable<'tcx>, id: HirId) -> bool {
-    for_each_expr(cx, visitable, |e| {
+    for_each_expr(cx.tcx, visitable, |e| {
         if e.res_local_id() == Some(id) {
             ControlFlow::Break(())
         } else {
@@ -785,7 +785,7 @@ pub fn local_used_once<'tcx>(
 ) -> Option<&'tcx Expr<'tcx>> {
     let mut expr = None;
 
-    let cf = for_each_expr(cx, visitable, |e| {
+    let cf = for_each_expr(cx.tcx, visitable, |e| {
         if e.res_local_id() == Some(id) && expr.replace(e).is_some() {
             ControlFlow::Break(())
         } else {
