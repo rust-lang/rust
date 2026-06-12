@@ -375,7 +375,7 @@ pub(super) fn remove_dead_blocks(body: &mut Body<'_>) {
     let mut used_index = 0;
     let mut kept_unreachable = None;
     let mut deduplicated_unreachable = false;
-    basic_blocks.raw.retain(|bbdata| {
+    basic_blocks.mutate(|raw| raw.retain(|bbdata| {
         let orig_bb = BasicBlock::new(orig_index);
         if !reachable.contains(orig_bb) {
             orig_index += 1;
@@ -397,7 +397,7 @@ pub(super) fn remove_dead_blocks(body: &mut Body<'_>) {
         used_index += 1;
         orig_index += 1;
         true
-    });
+    }));
 
     // If we deduplicated unreachable blocks we erase their source_info as we
     // can no longer attribute their code to a particular location in the

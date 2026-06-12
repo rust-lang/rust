@@ -505,8 +505,8 @@ impl<'tcx> Body<'tcx> {
     }
 
     #[inline]
-    pub fn drain_vars_and_temps(&mut self) -> impl Iterator<Item = LocalDecl<'tcx>> {
-        self.local_decls.drain(self.arg_count + 1..)
+    pub fn drain_vars_and_temps_into(&mut self, target: &mut IndexVec<Local, LocalDecl<'tcx>>) {
+        self.local_decls.drain_into(self.arg_count + 1.., target)
     }
 
     /// Returns the source info associated with `location`.
