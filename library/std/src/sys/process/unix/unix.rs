@@ -291,7 +291,13 @@ impl Command {
         let longest_path_len = paths.split(|b| *b == b':').map(|path| path.len()).max();
 
         // Parsed path len from envp + file path len + 1 for separator byte + 1 for nul terminated byte
-        longest_path_len.unwrap_or(0) + self.get_program_cstr().count_bytes() + 2
+        if let Some(longest_path_len) = longest_path_len {
+            return longest_path_len + self.get_program_cstr().count_bytes() + 2;
+        }
+
+        // Empty paths do not need a separator byte, so this pre-allocates only for the file
+        // and nul byte
+        self.get_program_cstr().count_bytes() + 1
     }
 
     // And at this point we've reached a special time in the life of the
@@ -454,14 +460,18 @@ impl Command {
                 // Copy path to execute in the pre-allocated buffer accordingly
                 // Use the current path entry, plus a '/' if nonempty, plus the file to
                 // execute.
-                buf[0..path_len].write_copy_of_slice(path);
                 if path_len != 0 {
-                    buf[path_len].write(b'/');
-                    buf[path_len + 1..path_len + 1 + file_as_bytes.len()]
-                        .write_copy_of_slice(file_as_bytes);
+                    buf[0..path_len].write_copy_of_slice(path);
+                    if path[path_len - 1] != b'/' {
+                        buf[path_len].write(b'/');
+                        buf[path_len + 1..path_len + 1 + file_as_bytes.len()]
+                            .write_copy_of_slice(file_as_bytes);
+                    } else {
+                        buf[path_len..path_len + file_as_bytes.len()]
+                            .write_copy_of_slice(file_as_bytes);
+                    }
                 } else {
-                    buf[path_len..path_len + file_as_bytes.len()]
-                        .write_copy_of_slice(file_as_bytes);
+                    buf[0..file_as_bytes.len()].write_copy_of_slice(file_as_bytes);
                 }
 
                 // Try executing on path
@@ -479,6 +489,9 @@ impl Command {
                     | libc::ENOTDIR
                     | libc::ENODEV
                     | libc::ETIMEDOUT => {}
+                    // Any other error returned by execve should be returned. For example,
+                    // ENAMETOOLONG is an error that is returned due to security risks on
+                    // executing the wrong program through setting a very long path
                     _ => return Err(io::Error::from_raw_os_error(err)),
                 }
             }
