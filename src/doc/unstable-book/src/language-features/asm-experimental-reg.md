@@ -20,6 +20,7 @@ This tracks support for additional registers in architectures where inline assem
 | x86 | `xmm_reg` | `sse` | `i128` |
 | x86 | `ymm_reg` | `avx` | `i128` |
 | x86 | `zmm_reg` | `avx512f` | `i128` |
+| aarch64 | `vreg` | `neon` | `i128` |
 
 ## Register aliases
 

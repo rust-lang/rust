@@ -1,7 +1,9 @@
 //@ add-minicore
+//@ revisions: stable experimental_reg
 //@ compile-flags: --target aarch64-unknown-linux-gnu -C target-feature=+neon
 //@ needs-llvm-components: aarch64
 //@ ignore-backends: gcc
+#![cfg_attr(experimental_reg, feature(asm_experimental_reg))]
 #![crate_type = "lib"]
 #![feature(no_core)]
 #![no_core]
@@ -61,5 +63,12 @@ fn main() {
         asm!("", in("v0") foo, out("q0") bar);
         //~^ ERROR register `q0` conflicts with register `v0`
         asm!("", in("v0") foo, lateout("q0") bar);
+
+        // Passing u128/i128 is currently experimental.
+        let mut v = 0u128;
+        asm!("/* {:v} */", in(vreg) v); // requires asm_experimental_reg
+        //[stable]~^ ERROR type `u128` cannot be used with this register class in stable
+        asm!("/* {:v} */", out(vreg) v); // requires asm_experimental_reg
+        //[stable]~^ ERROR type `u128` cannot be used with this register class in stable
     }
 }
