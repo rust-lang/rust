@@ -600,7 +600,8 @@ fn evaluate_host_effect_from_selection_candidate<'tcx>(
                     match tcx.impl_trait_header(impl_.impl_def_id).constness {
                         rustc_hir::Constness::Const { always } => {
                             if always {
-                                todo!()
+                                // FIXME(comptime): just bailing for now to avoid an ICE in a test.
+                                return Err(EvaluationFailure::NoSolution);
                             }
                         }
                         rustc_hir::Constness::NotConst => {
