@@ -65,7 +65,15 @@ impl<I: Idx, T: Hash> Hash for IndexVec<I, T> {
     }
 }
 
+#[cfg(feature = "nightly")]
 unsafe impl<I: Idx, #[may_dangle] T> Drop for IndexVec<I, T> {
+    fn drop(&mut self) {
+        std::mem::take(self).into_vec();
+    }
+}
+
+#[cfg(not(feature = "nightly"))]
+impl<I: Idx, T> Drop for IndexVec<I, T> {
     fn drop(&mut self) {
         std::mem::take(self).into_vec();
     }
