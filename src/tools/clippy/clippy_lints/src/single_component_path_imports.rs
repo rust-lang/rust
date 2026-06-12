@@ -4,6 +4,7 @@ use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_ast::{Crate, Expr, ExprKind, Item, ItemKind, MacroDef, ModKind, Ty, TyKind, UseTreeKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::kw;
@@ -52,6 +53,7 @@ struct SingleUse {
     can_suggest: bool,
 }
 
+#[runtime_lint_pass]
 impl EarlyLintPass for SingleComponentPathImports {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &Crate) {
         if cx.sess().opts.edition < Edition::Edition2018 {

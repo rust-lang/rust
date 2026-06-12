@@ -8,6 +8,7 @@ use clippy_utils::{is_in_test, last_path_segment, local_is_initialized, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Instance, Mutability};
 use rustc_session::impl_lint_pass;
@@ -65,6 +66,7 @@ impl AssigningClones {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for AssigningClones {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if let ExprKind::Assign(lhs, rhs, _) = e.kind

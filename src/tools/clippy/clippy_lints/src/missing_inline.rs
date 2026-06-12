@@ -2,6 +2,7 @@ use clippy_utils::diagnostics::{span_lint, span_lint_hir};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, Attribute, find_attr};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::AssocContainer;
 use rustc_session::config::CrateType;
 use rustc_session::declare_lint_pass;
@@ -83,6 +84,7 @@ fn check_missing_inline_attrs(
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for MissingInline {
     fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx hir::Item<'_>) {
         if it.span.in_external_macro(cx.sess().source_map()) {

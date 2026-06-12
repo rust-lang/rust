@@ -9,6 +9,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, LangItem, Node};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::{Spanned, SyntaxContext};
@@ -218,6 +219,7 @@ declare_lint_pass!(StringLitAsBytes => [
 
 declare_lint_pass!(TrimSplitWhitespace => [TRIM_SPLIT_WHITESPACE]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for StringAdd {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         let ctxt = e.span.ctxt();
@@ -297,6 +299,7 @@ fn is_add(cx: &LateContext<'_>, ctxt: SyntaxContext, src: &Expr<'_>, target: &Ex
 // Max length a b"foo" string can take
 const MAX_LENGTH_BYTE_STRING_LIT: usize = 32;
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         use rustc_ast::LitKind;
@@ -410,6 +413,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for StrToString {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
         if expr.span.from_expansion() {
@@ -457,6 +461,7 @@ impl<'tcx> LateLintPass<'tcx> for StrToString {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for TrimSplitWhitespace {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
         let tyckres = cx.typeck_results();

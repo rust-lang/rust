@@ -9,6 +9,7 @@ use clippy_utils::{expr_or_init, fn_def_id, std_or_core, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 
@@ -122,6 +123,7 @@ fn check_repeat_fn(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: Msrv) {
     }
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for RepeatVecWithCapacity {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         check_vec_macro(cx, expr);

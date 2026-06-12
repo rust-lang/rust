@@ -3,6 +3,7 @@ use clippy_utils::return_ty;
 use clippy_utils::ty::contains_adt_constructor;
 use rustc_hir::{Impl, ImplItem, ImplItemKind, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -40,6 +41,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(SelfNamedConstructors => [SELF_NAMED_CONSTRUCTORS]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for SelfNamedConstructors {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx ImplItem<'_>) {
         match impl_item.kind {

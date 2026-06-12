@@ -16,6 +16,7 @@ use rustc_ast::{self as ast, visit};
 use rustc_hir as hir;
 use rustc_hir::intravisit;
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::{declare_lint_pass, impl_lint_pass};
 use rustc_span::Span;
@@ -490,6 +491,7 @@ impl_lint_pass!(Functions => [
     TOO_MANY_LINES,
 ]);
 
+#[runtime_lint_pass]
 impl EarlyLintPass for EarlyFunctions {
     fn check_fn(&mut self, cx: &EarlyContext<'_>, fn_kind: visit::FnKind<'_>, _: Span, _: ast::NodeId) {
         duplicate_underscore_argument::check(cx, fn_kind);
@@ -530,6 +532,7 @@ impl Functions {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for Functions {
     fn check_fn(
         &mut self,

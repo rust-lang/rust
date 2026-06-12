@@ -6,6 +6,7 @@ use rustc_hir::intravisit::FnKind;
 use rustc_hir::{self as hir, Body, ExprKind, FnDecl};
 use rustc_lexer::is_ident;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, Symbol, edition};
@@ -59,6 +60,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(RedundantTestPrefix => [REDUNDANT_TEST_PREFIX]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for RedundantTestPrefix {
     fn check_fn(
         &mut self,

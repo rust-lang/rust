@@ -3,6 +3,7 @@ use clippy_utils::leaks_droppable_temporary_with_limited_lifetime;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, ExprKind, HirId, MatchSource, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::edition::Edition::Edition2021;
 
@@ -67,6 +68,7 @@ impl UnnecessarySemicolon {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for UnnecessarySemicolon {
     fn check_block(&mut self, cx: &LateContext<'_>, block: &Block<'_>) {
         self.handle_block(cx, block, true);

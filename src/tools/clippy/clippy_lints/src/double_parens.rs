@@ -3,6 +3,7 @@ use clippy_utils::source::{HasSession, SpanRangeExt, snippet_with_applicability,
 use rustc_ast::ast::{Expr, ExprKind, MethodCall};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -40,6 +41,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(DoubleParens => [DOUBLE_PARENS]);
 
+#[runtime_lint_pass]
 impl EarlyLintPass for DoubleParens {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         match &expr.kind {

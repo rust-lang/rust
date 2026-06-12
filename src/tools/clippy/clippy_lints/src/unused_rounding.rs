@@ -4,6 +4,7 @@ use clippy_utils::sym;
 use rustc_ast::ast::{Expr, ExprKind, MethodCall};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::Symbol;
 
@@ -52,6 +53,7 @@ fn is_useless_rounding(cx: &EarlyContext<'_>, expr: &Expr) -> Option<(Symbol, St
     }
 }
 
+#[runtime_lint_pass]
 impl EarlyLintPass for UnusedRounding {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if let Some((method_name, float)) = is_useless_rounding(cx, expr) {

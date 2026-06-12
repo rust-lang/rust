@@ -4,7 +4,9 @@
 //! borrow checking, etc.). These lints have full type information available.
 
 use std::any::Any;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
+use std::iter;
+use std::rc::Rc;
 
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::par_join;
@@ -301,37 +303,68 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
     }
 }
 
-// Combines multiple lint passes into a single pass, at runtime. Each
-// `check_foo` method in `$methods` within this pass simply calls `check_foo`
-// once per `$pass`. Compare with `declare_combined_late_lint_pass`, which is
-// similar, but combines lint passes at compile time.
-struct RuntimeCombinedLateLintPass<'tcx> {
-    passes: Vec<LateLintPassObject<'tcx>>,
-}
-
-#[allow(rustc::lint_pass_impl_without_macro)]
-impl LintPass for RuntimeCombinedLateLintPass<'_> {
-    fn name(&self) -> &'static str {
-        panic!()
-    }
-    fn get_lints(&self) -> crate::LintVec {
-        panic!()
-    }
-}
-
-macro_rules! impl_late_lint_pass {
-    ([], [$($(#[$attr:meta])* fn $f:ident($($param:ident: $arg:ty),*);)*]) => {
-        impl<'tcx> LateLintPass<'tcx> for RuntimeCombinedLateLintPass<'tcx> {
-            $(fn $f(&mut self, context: &LateContext<'tcx>, $($param: $arg),*) {
-                for pass in self.passes.iter_mut() {
-                    pass.$f(context, $($param),*);
-                }
-            })*
+macro_rules! runtime_combined_late_lint_pass {
+    ([], [$(fn $check_foo:ident($($param:ident: $arg:ty),*);)*]) => (
+        // See the comment on `RuntimeCombinedEarlyLintPass`; this is very similar.
+        #[derive(Default)]
+        struct RuntimeCombinedLateLintPass<'tcx> {
+            $(
+                $check_foo: Vec<LateLintPassObject<'tcx>>,
+            )*
         }
-    };
+
+        #[allow(rustc::lint_pass_impl_without_macro)]
+        impl LintPass for RuntimeCombinedLateLintPass<'_> {
+            fn name(&self) -> &'static str {
+                panic!()
+            }
+            fn get_lints(&self) -> crate::LintVec {
+                panic!()
+            }
+        }
+
+        impl<'tcx> LateLintPass<'tcx> for RuntimeCombinedLateLintPass<'tcx> {
+            $(
+                fn $check_foo(&mut self, context: &LateContext<'tcx>, $($param: $arg),*) {
+                    for pass in self.$check_foo.iter_mut() {
+                        pass.borrow_mut().$check_foo(context, $($param),*);
+                    }
+                }
+            )*
+        }
+    )
 }
 
-crate::late_lint_methods!(impl_late_lint_pass, []);
+crate::late_lint_methods!(runtime_combined_late_lint_pass, []);
+
+fn combine<'tcx>(passes: Vec<LateLintPassObject<'tcx>>) -> RuntimeCombinedLateLintPass<'tcx> {
+    let mut combined = RuntimeCombinedLateLintPass::default();
+    for pass in passes {
+        let mut n = 0;
+        macro_rules! push_check_foo_if_needed {
+            ([], [$(fn $check_foo:ident($($param:ident: $arg:ty),*);)*]) => (
+                $(
+                    if pass.borrow().${concat($check_foo, _needed)}() {
+                        n += 1;
+                        combined.$check_foo.push(pass.clone());
+                    }
+                )*
+            )
+        }
+        crate::late_lint_methods!(push_check_foo_if_needed, []);
+
+        // If this fails, a lint is missing one or more `check_*_needed` methods that indicate
+        // the presence of non-empty `check_*` methods. The easiest way to add these is by adding
+        // a `#[runtime_lint_pass]` attribute to the `LateLintPass` impl.
+        assert!(
+            n > 0,
+            "runtime lint `{}` needs `#[runtime_lint_pass]` attribute added",
+            pass.borrow().name()
+        );
+    }
+
+    combined
+}
 
 pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -354,7 +387,8 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     // `RuntimeCombinedLateLintPass`.
     let store = unerased_lint_store(tcx.sess);
 
-    if store.late_module_passes.is_empty() {
+    let passes = &store.late_module_passes;
+    if passes.is_empty() {
         // If all builtin lints can be skipped, there is no point in running `late_lint_mod_inner`
         // at all. This happens often for dependencies built with `--cap-lints=allow`.
         let dont_need_to_run = tcx.lints_that_dont_need_to_run(());
@@ -366,16 +400,11 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
             late_lint_mod_inner(tcx, module_def_id, context, builtin_lints);
         }
     } else {
-        let builtin_lints = Box::new(builtin_lints) as Box<dyn LateLintPass<'tcx>>;
-        let passes = store
-            .late_module_passes
-            .iter()
-            .map(|mk_pass| (mk_pass)(tcx))
-            .chain(std::iter::once(builtin_lints))
-            .collect::<Vec<_>>();
-
-        let pass = RuntimeCombinedLateLintPass { passes };
-        late_lint_mod_inner(tcx, module_def_id, context, pass);
+        let builtin_lints: LateLintPassObject<'_> = Rc::new(RefCell::new(builtin_lints));
+        let passes =
+            iter::chain(passes.iter().map(|mk_pass| mk_pass(tcx)), iter::once(builtin_lints))
+                .collect();
+        late_lint_mod_inner(tcx, module_def_id, context, combine(passes));
     }
 }
 
@@ -426,15 +455,14 @@ fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
     let lints_that_dont_need_to_run = tcx.lints_that_dont_need_to_run(());
 
     passes.retain(|pass| {
-        let lints = pass.get_lints();
+        let lints = pass.borrow().get_lints();
         // Lintless passes are always in
         lints.is_empty() ||
             // If the pass doesn't have a single needed lint, omit it
             !lints.iter().all(|lint| lints_that_dont_need_to_run.contains(&LintId::of(lint)))
     });
 
-    let pass = RuntimeCombinedLateLintPass { passes };
-    let mut cx = LateContextAndPass { context, pass };
+    let mut cx = LateContextAndPass { context, pass: combine(passes) };
 
     // Visit the whole crate.
     cx.with_lint_attrs(hir::CRATE_HIR_ID, |cx| {

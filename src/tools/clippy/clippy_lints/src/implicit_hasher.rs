@@ -7,6 +7,7 @@ use rustc_hir::intravisit::{Visitor, VisitorExt, walk_body, walk_expr, walk_ty};
 use rustc_hir::{self as hir, AmbigArg, Body, Expr, ExprKind, GenericArg, Item, ItemKind, QPath, TyKind};
 use rustc_hir_analysis::lower_ty;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{Ty, TypeckResults};
 use rustc_session::declare_lint_pass;
@@ -57,6 +58,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ImplicitHasher => [IMPLICIT_HASHER]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
     #[expect(clippy::too_many_lines)]
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {

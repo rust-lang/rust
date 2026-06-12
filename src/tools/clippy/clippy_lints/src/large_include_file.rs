@@ -6,6 +6,7 @@ use clippy_utils::sym;
 use rustc_ast::{AttrArgs, AttrItemKind, AttrKind, Attribute, LitKind};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
@@ -52,6 +53,7 @@ impl LargeIncludeFile {
     }
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for LargeIncludeFile {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {
         if let ExprKind::Lit(lit) = &expr.kind
@@ -84,6 +86,7 @@ impl LateLintPass<'_> for LargeIncludeFile {
     }
 }
 
+#[runtime_lint_pass]
 impl EarlyLintPass for LargeIncludeFile {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &Attribute) {
         if !attr.span.from_expansion()

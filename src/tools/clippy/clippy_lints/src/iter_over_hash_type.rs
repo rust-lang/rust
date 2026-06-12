@@ -3,6 +3,7 @@ use clippy_utils::higher::ForLoop;
 use clippy_utils::res::MaybeDef;
 use clippy_utils::sym;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -37,6 +38,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(IterOverHashType => [ITER_OVER_HASH_TYPE]);
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for IterOverHashType {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ rustc_hir::Expr<'_>) {
         let hash_iter_tys = [

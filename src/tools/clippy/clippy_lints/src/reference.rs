@@ -5,6 +5,7 @@ use clippy_utils::ty::adjust_derefs_manually_drop;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, HirId, Node, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -38,6 +39,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(DerefAddrOf => [DEREF_ADDROF]);
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for DerefAddrOf {
     fn check_expr(&mut self, cx: &LateContext<'_>, e: &Expr<'_>) {
         if !e.span.from_expansion()

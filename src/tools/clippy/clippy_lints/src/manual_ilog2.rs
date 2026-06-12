@@ -8,6 +8,7 @@ use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
 
@@ -49,6 +50,7 @@ impl ManualIlog2 {
     }
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for ManualIlog2 {
     fn check_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         if expr.span.in_external_macro(cx.sess().source_map()) {

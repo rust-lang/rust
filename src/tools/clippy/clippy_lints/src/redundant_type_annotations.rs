@@ -4,6 +4,7 @@ use rustc_ast::LitKind;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::Ty;
 use rustc_session::declare_lint_pass;
 
@@ -130,6 +131,7 @@ fn extract_primty(ty_kind: &hir::TyKind<'_>) -> Option<hir::PrimTy> {
     }
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for RedundantTypeAnnotations {
     fn check_local<'tcx>(&mut self, cx: &LateContext<'tcx>, local: &'tcx rustc_hir::LetStmt<'tcx>) {
         if !is_lint_allowed(cx, REDUNDANT_TYPE_ANNOTATIONS, local.hir_id)

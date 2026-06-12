@@ -8,6 +8,7 @@ use rustc_hir::def::Res;
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{self as hir, Expr, ExprKind, HirId, LetStmt, PatKind, PathSegment, QPath, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -49,6 +50,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ReadZeroByteVec => [READ_ZERO_BYTE_VEC]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for ReadZeroByteVec {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &hir::Block<'tcx>) {
         for stmt in block.stmts {

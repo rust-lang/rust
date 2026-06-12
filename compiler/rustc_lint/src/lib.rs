@@ -23,6 +23,7 @@
 #![allow(internal_features)]
 #![feature(deref_patterns)]
 #![feature(iter_order_by)]
+#![feature(macro_metavar_expr_concat)]
 #![feature(rustc_attrs)]
 #![feature(titlecase)]
 #![feature(try_blocks)]
@@ -82,6 +83,9 @@ mod unqualified_local_imports;
 pub mod unused;
 mod utils;
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use async_closures::AsyncClosureUsage;
 use async_fn_in_trait::AsyncFnInTrait;
 use autorefs::*;
@@ -121,7 +125,6 @@ use rustc_hir::def_id::LocalModDefId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use shadowed_into_iter::ShadowedIntoIter;
-pub use shadowed_into_iter::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
 use static_mut_refs::*;
 use traits::*;
 use transmute::CheckTransmutes;
@@ -145,6 +148,7 @@ pub use passes::{EarlyLintPass, LateLintPass};
 pub use rustc_errors::BufferedEarlyLint;
 pub use rustc_session::lint::Level::{self, *};
 pub use rustc_session::lint::{FutureIncompatibleInfo, Lint, LintId, LintPass, LintVec};
+pub use shadowed_into_iter::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
 
 pub fn provide(providers: &mut Providers) {
     levels::provide(providers);
@@ -663,14 +667,14 @@ fn register_internals(store: &mut LintStore) {
     macro_rules! early {
         ($register:ident, $lint:ident) => {
             store.register_lints(&$lint::lint_vec());
-            store.$register(Box::new(|| Box::new($lint)));
+            store.$register(Box::new(|| Rc::new(RefCell::new($lint))));
         };
     }
 
     macro_rules! late {
         ($register:ident, $lint:ident) => {
             store.register_lints(&$lint::lint_vec());
-            store.$register(Box::new(|_| Box::new($lint)));
+            store.$register(Box::new(|_| Rc::new(RefCell::new($lint))));
         };
     }
 

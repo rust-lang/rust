@@ -4,6 +4,7 @@ use clippy_utils::ty::implements_trait;
 use clippy_utils::{higher, sym};
 use rustc_hir::{BorrowKind, Closure, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::Symbol;
 
@@ -52,6 +53,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(InfiniteIter => [INFINITE_ITER, MAYBE_INFINITE_ITER]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for InfiniteIter {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let (lint, msg) = match complete_infinite_iter(cx, expr) {

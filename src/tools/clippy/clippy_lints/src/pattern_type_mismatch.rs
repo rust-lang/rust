@@ -3,6 +3,7 @@ use rustc_hir::{
     Body, Expr, ExprKind, FnDecl, LetExpr, LocalSource, Mutability, Pat, PatKind, Stmt, StmtKind, intravisit,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
@@ -80,6 +81,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(PatternTypeMismatch => [PATTERN_TYPE_MISMATCH]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for PatternTypeMismatch {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if let StmtKind::Let(local) = stmt.kind {

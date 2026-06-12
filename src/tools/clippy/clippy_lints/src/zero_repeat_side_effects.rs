@@ -6,6 +6,7 @@ use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
 use rustc_hir::{ConstArgKind, Expr, ExprKind, LetStmt, LocalSource, Node};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::{IsSuggestable, Ty};
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
@@ -44,6 +45,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ZeroRepeatSideEffects => [ZERO_REPEAT_SIDE_EFFECTS]);
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for ZeroRepeatSideEffects {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if let Some(args) = VecArgs::hir(cx, expr)

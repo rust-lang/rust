@@ -5,6 +5,7 @@ use clippy_utils::source::snippet_opt;
 use rustc_hir::def_id::DefIdSet;
 use rustc_hir::{Impl, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -58,6 +59,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(MissingTraitMethods => [MISSING_TRAIT_METHODS]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for MissingTraitMethods {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         if !is_lint_allowed(cx, MISSING_TRAIT_METHODS, item.hir_id())

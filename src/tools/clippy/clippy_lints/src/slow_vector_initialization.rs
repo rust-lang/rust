@@ -7,6 +7,7 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::{Visitor, walk_block, walk_expr, walk_stmt};
 use rustc_hir::{BindingMode, Block, Expr, ExprKind, HirId, PatKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::SyntaxContext;
 
@@ -97,6 +98,7 @@ enum InitializationType<'tcx> {
     Resize(&'tcx Expr<'tcx>),
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for SlowVectorInit {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // Matches initialization on reassignments. For example: `vec = Vec::with_capacity(100)`

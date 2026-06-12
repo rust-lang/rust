@@ -6,6 +6,7 @@ use clippy_utils::ty::{AdtVariantInfo, approx_ty_size, is_copy};
 use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
@@ -72,6 +73,7 @@ impl LargeEnumVariant {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &Item<'tcx>) {
         if let ItemKind::Enum(ident, _, ref def) = item.kind

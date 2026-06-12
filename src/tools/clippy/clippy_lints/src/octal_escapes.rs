@@ -4,6 +4,7 @@ use rustc_ast::token::LitKind;
 use rustc_ast::{Expr, ExprKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::{BytePos, Pos, SpanData};
 
@@ -49,6 +50,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(OctalEscapes => [OCTAL_ESCAPES]);
 
+#[runtime_lint_pass]
 impl EarlyLintPass for OctalEscapes {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if let ExprKind::Lit(lit) = &expr.kind

@@ -7,6 +7,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Block, Body, HirId, Path, PathSegment, StabilityLevel, StableSince};
 use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::kw;
 use rustc_span::{Span, sym};
@@ -121,6 +122,7 @@ enum LintPoint {
     Conflict,
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for StdReexports {
     fn check_path(&mut self, cx: &LateContext<'tcx>, path: &Path<'tcx>, _: HirId) {
         if let Res::Def(def_kind, def_id) = path.res

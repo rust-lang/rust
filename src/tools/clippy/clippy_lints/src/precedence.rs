@@ -4,6 +4,7 @@ use rustc_ast::ast::BinOpKind::{Add, BitAnd, BitOr, BitXor, Div, Mul, Rem, Shl, 
 use rustc_ast::ast::{BinOpKind, Expr, ExprKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, Lint};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::Spanned;
 
@@ -46,6 +47,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(Precedence => [PRECEDENCE, PRECEDENCE_BITS]);
 
+#[runtime_lint_pass]
 impl EarlyLintPass for Precedence {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if expr.span.from_expansion() {

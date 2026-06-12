@@ -11,6 +11,7 @@ use rustc_hir::LangItem::{OptionSome, ResultOk};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, ExprKind, FnDecl, Impl, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
@@ -74,6 +75,7 @@ impl UnnecessaryWraps {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
     fn check_fn(
         &mut self,

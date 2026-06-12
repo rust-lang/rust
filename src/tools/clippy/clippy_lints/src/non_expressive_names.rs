@@ -5,6 +5,7 @@ use rustc_ast::ast::{
 };
 use rustc_ast::visit::{Visitor, walk_block, walk_expr, walk_pat};
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{Span, sym};
@@ -398,6 +399,7 @@ impl<'tcx> Visitor<'tcx> for SimilarNamesLocalVisitor<'_, 'tcx> {
     }
 }
 
+#[runtime_lint_pass]
 impl EarlyLintPass for NonExpressiveNames {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
         if item.span.in_external_macro(cx.sess().source_map()) {

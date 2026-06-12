@@ -3,6 +3,7 @@ use clippy_utils::res::MaybeDef;
 use clippy_utils::sym;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_session::declare_lint_pass;
@@ -141,6 +142,7 @@ fn report_volatile_safe<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, ty: Ty<
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for VolatileComposites {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         // Check our expr is calling a method with pattern matching

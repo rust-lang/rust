@@ -2,6 +2,7 @@ use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::implements_trait;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
 
@@ -42,6 +43,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(NoNegCompOpForPartialOrd => [NEG_CMP_OP_ON_PARTIAL_ORD]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for NoNegCompOpForPartialOrd {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Unary(UnOp::Not, inner) = expr.kind

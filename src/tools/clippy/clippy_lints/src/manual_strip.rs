@@ -13,6 +13,7 @@ use rustc_hir::def::Res;
 use rustc_hir::intravisit::{Visitor, walk_expr, walk_pat};
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext as _};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::{Spanned, Symbol, SyntaxContext};
@@ -67,6 +68,7 @@ enum StripKind {
     Suffix,
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for ManualStrip {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let Some(higher::If { cond, then, .. }) = higher::If::hir(expr)

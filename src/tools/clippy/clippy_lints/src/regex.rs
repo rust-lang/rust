@@ -10,6 +10,7 @@ use rustc_ast::ast::{LitKind, StrStyle};
 use rustc_hir::def_id::DefIdMap;
 use rustc_hir::{BorrowKind, Expr, ExprKind, OwnerId};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::{BytePos, Span};
 
@@ -121,6 +122,7 @@ pub struct Regex {
     loop_stack: Vec<(OwnerId, Span)>,
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for Regex {
     fn check_crate(&mut self, cx: &LateContext<'tcx>) {
         let mut resolve = |path: &PathLookup, kind: RegexKind| {

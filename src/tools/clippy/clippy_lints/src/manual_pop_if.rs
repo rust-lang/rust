@@ -9,6 +9,7 @@ use rustc_ast::LitKind;
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::{BlockCheckMode, Expr, ExprKind, LangItem, PatKind, StmtKind, UnsafeSource};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
 use rustc_span::{BytePos, Span, Symbol};
@@ -459,6 +460,7 @@ fn check_pop_unwrap<'tcx>(
     })
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for ManualPopIf {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let ExprKind::If(cond, then_block, None) = expr.kind else {

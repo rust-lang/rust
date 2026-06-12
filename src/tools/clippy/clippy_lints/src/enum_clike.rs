@@ -4,6 +4,7 @@ use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, IntTy, UintTy};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -32,6 +33,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(UnportableVariant => [ENUM_CLIKE_UNPORTABLE_VARIANT]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for UnportableVariant {
     #[expect(clippy::cast_possible_wrap)]
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {

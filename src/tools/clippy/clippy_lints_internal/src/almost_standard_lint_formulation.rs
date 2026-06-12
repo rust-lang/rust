@@ -44,6 +44,7 @@ impl AlmostStandardFormulation {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for AlmostStandardFormulation {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         let mut check_next = false;

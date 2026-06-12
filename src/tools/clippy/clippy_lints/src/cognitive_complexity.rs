@@ -8,6 +8,7 @@ use core::ops::ControlFlow;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Attribute, Body, Expr, ExprKind, FnDecl};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
@@ -134,6 +135,7 @@ impl CognitiveComplexity {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for CognitiveComplexity {
     fn check_fn(
         &mut self,

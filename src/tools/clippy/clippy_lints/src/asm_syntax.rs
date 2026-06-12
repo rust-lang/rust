@@ -4,6 +4,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_ast::ast::{Expr, ExprKind, InlineAsmOptions};
 use rustc_ast::{InlineAsm, Item, ItemKind};
 use rustc_lint::{EarlyContext, EarlyLintPass, Lint, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 use rustc_target::asm::InlineAsmArch;
@@ -125,6 +126,7 @@ declare_lint_pass!(InlineAsmX86AttSyntax => [INLINE_ASM_X86_ATT_SYNTAX]);
 
 declare_lint_pass!(InlineAsmX86IntelSyntax => [INLINE_ASM_X86_INTEL_SYNTAX]);
 
+#[runtime_lint_pass]
 impl EarlyLintPass for InlineAsmX86IntelSyntax {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if let ExprKind::InlineAsm(inline_asm) = &expr.kind {
@@ -139,6 +141,7 @@ impl EarlyLintPass for InlineAsmX86IntelSyntax {
     }
 }
 
+#[runtime_lint_pass]
 impl EarlyLintPass for InlineAsmX86AttSyntax {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if let ExprKind::InlineAsm(inline_asm) = &expr.kind {

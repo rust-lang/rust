@@ -7,6 +7,7 @@ use clippy_utils::{as_some_pattern, is_none_pattern, msrvs, peel_hir_expr_refs, 
 use rustc_errors::Applicability;
 use rustc_hir::{Arm, Expr, ExprKind, Pat, PatKind, QPath, is_range_literal};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, Symbol};
 
@@ -52,6 +53,7 @@ impl ManualOptionAsSlice {
     }
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for ManualOptionAsSlice {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         let span = expr.span;

@@ -2,6 +2,7 @@ use clippy_utils::diagnostics::span_lint;
 use clippy_utils::{paths, sym};
 use rustc_hir::{Impl, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -23,6 +24,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(SerdeApi => [SERDE_API_MISUSE]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for SerdeApi {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Impl(Impl {

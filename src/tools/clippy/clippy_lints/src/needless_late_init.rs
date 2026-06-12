@@ -9,6 +9,7 @@ use rustc_hir::{
     BindingMode, Block, Expr, ExprKind, HirId, LetStmt, LocalSource, MatchSource, Node, Pat, PatKind, Stmt, StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
@@ -347,6 +348,7 @@ fn check<'tcx>(
     Some(())
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for NeedlessLateInit {
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx LetStmt<'tcx>) {
         let mut parents = cx.tcx.hir_parent_iter(local.hir_id);

@@ -3,6 +3,7 @@ use clippy_utils::source::indent_of;
 use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind, find_attr};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -67,6 +68,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ExhaustiveItems => [EXHAUSTIVE_ENUMS, EXHAUSTIVE_STRUCTS]);
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for ExhaustiveItems {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         let (lint, msg, fields) = match item.kind {

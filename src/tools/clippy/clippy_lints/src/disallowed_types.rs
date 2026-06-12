@@ -7,6 +7,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefIdMap;
 use rustc_hir::{AmbigArg, Item, ItemKind, PolyTraitRef, PrimTy, Ty, TyKind, UseKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
@@ -106,6 +107,7 @@ pub fn def_kind_predicate(def_kind: DefKind) -> bool {
     )
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for DisallowedTypes {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         if let ItemKind::Use(path, UseKind::Single(_)) = &item.kind

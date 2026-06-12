@@ -6,6 +6,7 @@ use rustc_ast::Mutability;
 use rustc_errors::Applicability;
 use rustc_hir::{FnRetTy, ImplItemKind, ImplicitSelfKind, ItemKind, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::declare_lint_pass;
 
@@ -124,6 +125,7 @@ fn is_ty_exported(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
         .is_some_and(|did| cx.effective_visibilities.is_exported(did))
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for IterWithoutIntoIter {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &rustc_hir::Item<'_>) {
         if let ItemKind::Impl(imp) = item.kind

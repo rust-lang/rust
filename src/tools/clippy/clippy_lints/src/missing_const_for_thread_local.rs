@@ -8,6 +8,7 @@ use clippy_utils::{fn_has_unsatisfiable_preds, peel_blocks, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, intravisit};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
@@ -99,6 +100,7 @@ fn initializer_can_be_made_const(cx: &LateContext<'_>, defid: rustc_span::def_id
     false
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for MissingConstForThreadLocal {
     fn check_fn(
         &mut self,

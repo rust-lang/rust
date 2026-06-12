@@ -5,6 +5,7 @@ use clippy_utils::ty::is_uninit_value_valid_for_ty;
 use clippy_utils::{SpanlessEq, is_integer_literal, is_lint_allowed, peel_hir_expr_while, sym};
 use rustc_hir::{Block, Expr, ExprKind, HirId, PatKind, PathSegment, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::{Span, SyntaxContext};
@@ -62,6 +63,7 @@ declare_lint_pass!(UninitVec => [UNINIT_VEC]);
 
 // FIXME: update to a visitor-based implementation.
 // Threads: https://github.com/rust-lang/rust-clippy/pull/7682#discussion_r710998368
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for UninitVec {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'_>) {
         let ctxt = block.span.ctxt();

@@ -2,6 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::sym;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::declare_lint_pass;
 use rustc_span::Symbol;
@@ -110,6 +111,7 @@ fn get_pointee_ty_and_count_expr<'tcx>(
     None
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for SizeOfInElementCount {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         const HELP_MSG: &str = "use a count of elements instead of a count of bytes\

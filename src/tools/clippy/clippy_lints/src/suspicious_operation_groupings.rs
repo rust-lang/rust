@@ -6,6 +6,7 @@ use rustc_ast::ast::{BinOpKind, Expr, ExprKind, StmtKind};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, Spanned};
@@ -67,6 +68,7 @@ declare_lint_pass!(SuspiciousOperationGroupings => [
     SUSPICIOUS_OPERATION_GROUPINGS,
 ]);
 
+#[runtime_lint_pass]
 impl EarlyLintPass for SuspiciousOperationGroupings {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if expr.span.from_expansion() {

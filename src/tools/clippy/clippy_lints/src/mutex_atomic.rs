@@ -6,6 +6,7 @@ use clippy_utils::ty::ty_from_hir_ty;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::{self as hir, Expr, ExprKind, Item, ItemKind, LetStmt, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::{self, IntTy, Ty, UintTy};
 use rustc_session::declare_lint_pass;
@@ -95,6 +96,7 @@ declare_lint_pass!(Mutex => [MUTEX_ATOMIC, MUTEX_INTEGER]);
 
 // NOTE: we don't use `check_expr` because that would make us lint every _use_ of such mutexes, not
 // just their definitions
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for Mutex {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if !item.span.from_expansion()

@@ -19,6 +19,7 @@ use clippy_utils::msrvs::{self, Msrv, MsrvStack};
 use rustc_ast::{self as ast, AttrArgs, AttrItemKind, AttrKind, Attribute, MetaItemInner, MetaItemKind};
 use rustc_hir::{ImplItem, Item, ItemKind, TraitItem};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::sym;
 use utils::{is_lint_level, is_relevant_impl, is_relevant_item, is_relevant_trait};
@@ -509,6 +510,7 @@ impl Attributes {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for Attributes {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         let attrs = cx.tcx.hir_attrs(item.hir_id());
@@ -545,6 +547,7 @@ impl EarlyAttributes {
     }
 }
 
+#[runtime_lint_pass]
 impl EarlyLintPass for EarlyAttributes {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &Attribute) {
         deprecated_cfg_attr::check(cx, attr, &self.msrv);
@@ -567,6 +570,7 @@ impl PostExpansionEarlyAttributes {
     }
 }
 
+#[runtime_lint_pass]
 impl EarlyLintPass for PostExpansionEarlyAttributes {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &ast::Crate) {
         blanket_clippy_restriction_lints::check_command_line(cx);

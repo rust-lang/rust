@@ -5,6 +5,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{FnDecl, FnRetTy, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::Symbol;
 
@@ -104,6 +105,7 @@ impl UnnecessaryBoxReturns {
     }
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for UnnecessaryBoxReturns {
     fn check_trait_item(&mut self, cx: &LateContext<'_>, item: &TraitItem<'_>) {
         let TraitItemKind::Fn(signature, _) = &item.kind else {

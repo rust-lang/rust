@@ -13,6 +13,7 @@ use rustc_hir::hir_id::HirIdSet;
 use rustc_hir::intravisit::{Visitor, walk_body, walk_expr};
 use rustc_hir::{Block, Expr, ExprKind, HirId, Pat, Stmt, StmtKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::{DUMMY_SP, Span, SyntaxContext};
 use std::ops::ControlFlow;
@@ -62,6 +63,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(HashMapPass => [MAP_ENTRY]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for HashMapPass {
     #[expect(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {

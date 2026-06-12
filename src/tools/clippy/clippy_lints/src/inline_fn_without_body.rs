@@ -3,6 +3,7 @@ use clippy_utils::sugg::DiagExt;
 use rustc_errors::Applicability;
 use rustc_hir::{TraitFn, TraitItem, TraitItemKind, find_attr};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -28,6 +29,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(InlineFnWithoutBody => [INLINE_FN_WITHOUT_BODY]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for InlineFnWithoutBody {
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
         if let TraitItemKind::Fn(_, TraitFn::Required(_)) = item.kind

@@ -9,6 +9,7 @@ use rustc_ast::{AssocItemKind, AttrKind, AttrStyle, Attribute, Crate, Item, Item
 use rustc_errors::{Applicability, Diag, SuggestionStyle};
 use rustc_lexer::TokenKind;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::{BytePos, ExpnKind, Ident, InnerSpan, Span, SpanData, Symbol, kw, sym};
 
@@ -496,6 +497,7 @@ impl EmptyLineAfter {
     }
 }
 
+#[runtime_lint_pass]
 impl EarlyLintPass for EmptyLineAfter {
     fn check_crate(&mut self, _: &EarlyContext<'_>, krate: &Crate) {
         self.items.push(ItemInfo {

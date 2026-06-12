@@ -10,6 +10,7 @@ use rustc_hir::{
     Body, Expr, ExprKind, HirId, ImplItem, ImplItemImplKind, ImplItemKind, Node, PatKind, TraitItem, TraitItemKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::{self, ConstKind, GenericArgKind, GenericArgsRef};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
@@ -305,6 +306,7 @@ pub struct OnlyUsedInRecursion {
     params: Params,
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
     fn check_body(&mut self, cx: &LateContext<'tcx>, body: &Body<'tcx>) {
         if body.value.span.from_expansion() {

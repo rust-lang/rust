@@ -1,6 +1,7 @@
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Block, Body, FnDecl, Stmt};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
@@ -121,6 +122,7 @@ declare_lint_pass!(Return => [
     NEEDLESS_RETURN_WITH_QUESTION_MARK,
 ]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for Return {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         needless_return_with_question_mark::check_stmt(cx, stmt);

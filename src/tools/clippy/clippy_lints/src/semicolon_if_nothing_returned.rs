@@ -3,6 +3,7 @@ use clippy_utils::source::snippet_with_context;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::{ExpnKind, MacroKind, Span};
 
@@ -35,6 +36,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(SemicolonIfNothingReturned => [SEMICOLON_IF_NOTHING_RETURNED]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for SemicolonIfNothingReturned {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
         if !block.span.from_expansion()

@@ -4,6 +4,7 @@ use clippy_utils::source::snippet_with_context;
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::{Span, SyntaxContext, sym};
 
@@ -39,6 +40,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(SwapPtrToRef => [SWAP_PTR_TO_REF]);
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for SwapPtrToRef {
     fn check_expr(&mut self, cx: &LateContext<'_>, e: &Expr<'_>) {
         if let ExprKind::Call(fn_expr, [arg1, arg2]) = e.kind

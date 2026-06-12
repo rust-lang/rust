@@ -3,6 +3,7 @@ use clippy_utils::diagnostics::span_lint;
 use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use unicode_script::{Script, UnicodeScript};
 
@@ -64,6 +65,7 @@ impl DisallowedScriptIdents {
     }
 }
 
+#[runtime_lint_pass]
 impl EarlyLintPass for DisallowedScriptIdents {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &ast::Crate) {
         // Implementation is heavily inspired by the implementation of [`non_ascii_idents`] lint:

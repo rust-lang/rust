@@ -7,6 +7,7 @@ use rustc_hir::def::Res;
 use rustc_hir::def_id::DefIdMap;
 use rustc_hir::{Item, ItemKind, UseKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
 use rustc_span::Symbol;
@@ -69,6 +70,7 @@ impl ImportRename {
     }
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for ImportRename {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         if let ItemKind::Use(path, UseKind::Single(_)) = &item.kind {

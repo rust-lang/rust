@@ -9,6 +9,7 @@ use rustc_hir::{
     StructTailExpr,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::{self, FloatTy, IntTy, PolyFnSig, Ty};
 use rustc_session::declare_lint_pass;
 use std::iter;
@@ -50,6 +51,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(DefaultNumericFallback => [DEFAULT_NUMERIC_FALLBACK]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for DefaultNumericFallback {
     fn check_body(&mut self, cx: &LateContext<'tcx>, body: &Body<'tcx>) {
         // NOTE: this is different from `clippy_utils::is_inside_always_const_context`.

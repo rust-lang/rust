@@ -9,6 +9,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{Expr, ExprKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::declare_lint_pass;
 
@@ -47,6 +48,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(AssertionsOnResultStates => [ASSERTIONS_ON_RESULT_STATES]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for AssertionsOnResultStates {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if let Some(macro_call) = root_macro_call_first_node(cx, e)

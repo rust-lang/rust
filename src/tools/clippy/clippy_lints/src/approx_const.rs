@@ -4,6 +4,7 @@ use clippy_utils::msrvs::{self, Msrv};
 use rustc_ast::ast::{FloatTy, LitFloatType, LitKind};
 use rustc_hir::{HirId, Lit, RustcVersion};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, symbol};
 use std::f64::consts as f64;
@@ -74,6 +75,7 @@ impl ApproxConstant {
     }
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for ApproxConstant {
     fn check_lit(&mut self, cx: &LateContext<'_>, _hir_id: HirId, lit: Lit, _negated: bool) {
         match lit.node {

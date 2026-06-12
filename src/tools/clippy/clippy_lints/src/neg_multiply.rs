@@ -7,6 +7,7 @@ use rustc_ast::util::parser::ExprPrecedence;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -46,6 +47,7 @@ fn is_in_parens_with_postfix(cx: &LateContext<'_>, mul_expr: &Expr<'_>) -> bool 
     false
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for NegMultiply {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if let ExprKind::Binary(ref op, left, right) = e.kind

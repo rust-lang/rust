@@ -6,6 +6,7 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{BindingMode, Body, ByRef, FnDecl, Mutability, PatKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
@@ -49,6 +50,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ToplevelRefArg => [TOPLEVEL_REF_ARG]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for ToplevelRefArg {
     fn check_fn(
         &mut self,

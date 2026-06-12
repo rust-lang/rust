@@ -5,6 +5,7 @@ use rustc_ast::ast::{Expr, ExprKind};
 use rustc_ast::token::LitKind;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::{BytePos, Pos, Span};
 use std::iter::once;
@@ -70,6 +71,7 @@ impl RawStrings {
     }
 }
 
+#[runtime_lint_pass]
 impl EarlyLintPass for RawStrings {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if let ExprKind::FormatArgs(format_args) = &expr.kind

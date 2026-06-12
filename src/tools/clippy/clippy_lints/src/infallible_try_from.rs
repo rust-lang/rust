@@ -3,6 +3,7 @@ use clippy_utils::sym;
 use rustc_errors::MultiSpan;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::AssocTag;
 use rustc_session::declare_lint_pass;
 
@@ -43,6 +44,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(InfallibleTryFrom => [INFALLIBLE_TRY_FROM]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for InfallibleTryFrom {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         let ItemKind::Impl(imp) = item.kind else { return };

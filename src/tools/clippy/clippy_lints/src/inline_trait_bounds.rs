@@ -5,6 +5,7 @@ use rustc_ast::ast::{Fn, FnRetTy, GenericParam, GenericParamKind};
 use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
@@ -39,6 +40,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(InlineTraitBounds => [INLINE_TRAIT_BOUNDS]);
 
+#[runtime_lint_pass]
 impl EarlyLintPass for InlineTraitBounds {
     fn check_fn(&mut self, cx: &EarlyContext<'_>, kind: FnKind<'_>, _: Span, _: NodeId) {
         let FnKind::Fn(ctxt, _vis, f) = kind else {

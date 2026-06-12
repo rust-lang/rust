@@ -11,6 +11,7 @@ use rustc_ast::Mutability;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, HirId, LangItem};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind, OverloadedDeref};
 use rustc_session::impl_lint_pass;
@@ -62,6 +63,7 @@ impl<'a> ClonedRefToSliceRefs<'a> {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for ClonedRefToSliceRefs<'_> {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         if self.msrv.meets(cx, {

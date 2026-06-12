@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_hir;
 use rustc_hir::{Block, ItemKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -49,6 +50,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ItemsAfterStatements => [ITEMS_AFTER_STATEMENTS]);
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for ItemsAfterStatements {
     fn check_block(&mut self, cx: &LateContext<'_>, block: &Block<'_>) {
         if block.stmts.len() > 1 {

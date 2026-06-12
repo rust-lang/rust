@@ -10,6 +10,7 @@ use rustc_hir::{
     FnRetTy, HirId, Lit, PatExprKind, PatKind, QPath, StmtKind, StructTailExpr,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::{FloatTy, IntTy, UintTy};
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::{Ident, Symbol};
@@ -99,6 +100,7 @@ macro_rules! chain {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for Author {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         check_item(cx, item.hir_id());

@@ -5,6 +5,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::{PatExpr, PatExprKind, PatKind, RangeEnd};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::{DUMMY_SP, Span};
 
@@ -73,6 +74,7 @@ impl Num {
     }
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for ManualRangePatterns {
     fn check_pat(&mut self, cx: &LateContext<'_>, pat: &'_ rustc_hir::Pat<'_>) {
         // a pattern like 1 | 2 seems fine, lint if there are at least 3 alternatives

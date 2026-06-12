@@ -5,6 +5,7 @@ use clippy_utils::ty::implements_trait;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::Ty;
 use rustc_session::declare_lint_pass;
 
@@ -101,6 +102,7 @@ fn contains_type_mismatch(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
     result
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for PatternEquality {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if let ExprKind::Let(let_expr) = expr.kind

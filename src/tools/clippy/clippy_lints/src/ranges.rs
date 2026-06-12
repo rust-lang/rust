@@ -12,6 +12,7 @@ use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, HirId, LangItem, Node};
 use rustc_lint::{LateContext, LateLintPass, Lint};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::{self, ClauseKind, GenericArgKind, PredicatePolarity, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::{DesugaringKind, Span, Spanned, SyntaxContext};
@@ -186,6 +187,7 @@ impl Ranges {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for Ranges {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Binary(ref op, l, r) = expr.kind

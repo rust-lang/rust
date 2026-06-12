@@ -2,6 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_ast::ast::{Crate, Inline, Item, ItemKind, ModKind};
 use rustc_errors::MultiSpan;
 use rustc_lint::{EarlyContext, EarlyLintPass, Level, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::lint::UnstableLevelSpec;
 use rustc_session::impl_lint_pass;
 use rustc_span::{FileName, Span};
@@ -61,6 +62,7 @@ pub struct DuplicateMod {
     modules: BTreeMap<PathBuf, Modules>,
 }
 
+#[runtime_lint_pass]
 impl EarlyLintPass for DuplicateMod {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
         if let ItemKind::Mod(_, _, ModKind::Loaded(_, Inline::No { .. }, mod_spans)) = &item.kind

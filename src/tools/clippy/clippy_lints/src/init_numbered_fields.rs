@@ -4,6 +4,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, ExprKind, StructTailExpr};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::SyntaxContext;
 use std::borrow::Cow;
@@ -41,6 +42,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(NumberedFields => [INIT_NUMBERED_FIELDS]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for NumberedFields {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if let ExprKind::Struct(path, fields @ [field, ..], StructTailExpr::None) = e.kind

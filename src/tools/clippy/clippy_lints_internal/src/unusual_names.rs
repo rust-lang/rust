@@ -44,6 +44,7 @@ const USUAL_NAMES: [(&PathLookup, &str, &[Symbol]); 4] = [
     (&TY_CTXT, "rustc_middle::ty::TyCtxt", &[sym::tcx]),
 ];
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for UnusualNames {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if let StmtKind::Let(let_stmt) = stmt.kind

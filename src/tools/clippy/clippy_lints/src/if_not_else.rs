@@ -5,6 +5,7 @@ use clippy_utils::source::{HasSession, indent_of, reindent_multiline, snippet_wi
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
@@ -48,6 +49,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(IfNotElse => [IF_NOT_ELSE]);
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for IfNotElse {
     fn check_expr(&mut self, cx: &LateContext<'_>, e: &Expr<'_>) {
         if let ExprKind::If(cond, cond_inner, Some(els)) = e.kind

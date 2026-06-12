@@ -7,6 +7,7 @@ use rustc_ast::util::parser::ExprPrecedence;
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, LangItem, Mutability};
 use rustc_lint::{LateContext, LateLintPass, Lint};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::adjustment::{Adjust, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{GenericArg, Ty, Unnormalized};
 use rustc_session::declare_lint_pass;
@@ -71,6 +72,7 @@ declare_lint_pass!(RedundantSlicing => [DEREF_BY_SLICING, REDUNDANT_SLICING]);
 static REDUNDANT_SLICING_LINT: (&Lint, &str) = (REDUNDANT_SLICING, "redundant slicing of the whole range");
 static DEREF_BY_SLICING_LINT: (&Lint, &str) = (DEREF_BY_SLICING, "slicing when dereferencing would work");
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if expr.span.from_expansion() {

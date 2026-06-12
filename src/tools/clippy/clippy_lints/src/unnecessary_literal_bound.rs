@@ -6,6 +6,7 @@ use rustc_hir::def::Res;
 use rustc_hir::intravisit::{FnKind, Visitor};
 use rustc_hir::{Body, Expr, ExprKind, FnDecl, FnRetTy, Lit, MutTy, Mutability, PrimTy, Ty, TyKind, intravisit};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
@@ -110,6 +111,7 @@ fn check_explicit_returns_static_str(expr: &Expr<'_>) -> bool {
     visitor.visit_expr(expr).is_continue()
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for UnnecessaryLiteralBound {
     fn check_fn(
         &mut self,

@@ -13,6 +13,7 @@ use rustc_hir::{
     ImplItemImplKind, ImplItemKind, Item, ItemKind, Node, Pat, PatExpr, PatExprKind, PatKind, Path, QPath, Ty, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::Ty as MiddleTy;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
@@ -85,6 +86,7 @@ enum StackItem {
 
 const SEGMENTS_MSG: &str = "segments should be composed of at least 1 element";
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for UseSelf {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &Item<'tcx>) {
         // We push the self types of items on a stack here. Only the top type on the stack is

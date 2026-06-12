@@ -6,6 +6,7 @@ use rustc_hir::def::Res;
 use rustc_hir::{BindingMode, ByRef, ExprKind, HirId, LetStmt, Node, Pat, PatKind, QPath};
 use rustc_hir_typeck::expr_use_visitor::PlaceBase;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::UpvarCapture;
 use rustc_session::declare_lint_pass;
 use rustc_span::DesugaringKind;
@@ -46,6 +47,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(RedundantLocals => [REDUNDANT_LOCALS]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for RedundantLocals {
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx LetStmt<'tcx>) {
         if !local.span.is_desugaring(DesugaringKind::Async)

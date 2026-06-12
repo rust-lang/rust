@@ -10,6 +10,7 @@ use rustc_hir::{
     TyKind,
 };
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::edition::Edition;
 use rustc_span::{BytePos, Pos as _, Span, sym};
@@ -41,6 +42,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(UnusedUnit => [UNUSED_UNIT]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for UnusedUnit {
     fn check_fn(
         &mut self,
@@ -117,6 +119,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedUnit {
     }
 }
 
+#[runtime_lint_pass]
 impl EarlyLintPass for UnusedUnit {
     /// Check for unit expressions in blocks. This is left in the early pass because some macros
     /// expand its inputs as-is, making it invisible to the late pass. See #4076.

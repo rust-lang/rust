@@ -8,6 +8,7 @@ use rustc_errors::Applicability;
 use rustc_hir::ExprKind::{Binary, Lit, MethodCall};
 use rustc_hir::{BinOpKind, Expr, LangItem};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty;
 use rustc_middle::ty::{Ty, UintTy};
 use rustc_session::declare_lint_pass;
@@ -76,6 +77,7 @@ fn needs_ref_to_cmp(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
         || ty.is_lang_item(cx, LangItem::String)
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for ManualIgnoreCaseCmp {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {
         // check if expression represents a comparison of two strings

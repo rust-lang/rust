@@ -4,6 +4,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Pat, PatKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -40,6 +41,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(UnneededStructPattern => [UNNEEDED_STRUCT_PATTERN]);
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for UnneededStructPattern {
     fn check_pat(&mut self, cx: &LateContext<'_>, pat: &Pat<'_>) {
         if !pat.span.from_expansion()

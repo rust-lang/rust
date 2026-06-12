@@ -2,6 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_ast::InlineAsmOptions;
 use rustc_hir::{Expr, ExprKind, InlineAsm, InlineAsmOperand};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
@@ -33,6 +34,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(PointersInNomemAsmBlock => [POINTERS_IN_NOMEM_ASM_BLOCK]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for PointersInNomemAsmBlock {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         if let ExprKind::InlineAsm(asm) = &expr.kind {

@@ -12,6 +12,7 @@ use rustc_hir::{
     VariantData,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::AssocKind;
 use rustc_session::impl_lint_pass;
 use rustc_span::Ident;
@@ -262,6 +263,7 @@ impl ArbitrarySourceItemOrdering {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         if cx

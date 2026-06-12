@@ -9,6 +9,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{self as hir, HirId};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::{GenericArgKind, Ty, Unnormalized};
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::Ident;
@@ -63,6 +64,7 @@ pub struct SignificantDropTightening<'tcx> {
     type_cache: FxHashMap<Ty<'tcx>, bool>,
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for SignificantDropTightening<'tcx> {
     fn check_fn(
         &mut self,

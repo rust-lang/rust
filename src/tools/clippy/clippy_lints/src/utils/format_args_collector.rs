@@ -5,6 +5,7 @@ use rustc_ast::{Crate, Expr, ExprKind, FormatArgs};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, hygiene};
 use std::iter::once;
@@ -27,6 +28,7 @@ impl FormatArgsCollector {
 
 impl_lint_pass!(FormatArgsCollector => []);
 
+#[runtime_lint_pass]
 impl EarlyLintPass for FormatArgsCollector {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if let ExprKind::FormatArgs(args) = &expr.kind {

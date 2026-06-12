@@ -39,6 +39,7 @@ extern crate rustc_index;
 extern crate rustc_infer;
 extern crate rustc_lexer;
 extern crate rustc_lint;
+extern crate rustc_macros;
 extern crate rustc_middle;
 extern crate rustc_parse_format;
 extern crate rustc_resolve;
@@ -411,6 +412,8 @@ use clippy_config::{Conf, get_configuration_metadata, sanitize_explanation};
 use clippy_utils::macros::FormatArgsStorage;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_lint::{EarlyLintPassFactory, LateLintPassFactory, Lint};
+use std::rc::Rc;
+use std::cell::RefCell;
 use utils::attr_collector::{AttrCollector, AttrStorage};
 
 pub fn explain(name: &str) -> i32 {
@@ -451,14 +454,14 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     // Due to the architecture of the compiler, currently `cfg_attr` attributes on crate
     // level (i.e `#![cfg_attr(...)]`) will still be expanded even when using a pre-expansion pass.
     store.register_pre_expansion_pass(
-        Box::new(move || Box::new(attrs::EarlyAttributes::new(conf)))
+        Box::new(move || Rc::new(RefCell::new(attrs::EarlyAttributes::new(conf))))
     );
 
     let format_args_storage = FormatArgsStorage::default();
     let attr_storage = AttrStorage::default();
 
-    macro_rules! b { ($e:expr) => { Box::new(|| Box::new($e)) } }
-    macro_rules! bm { ($e:expr) => { Box::new(move || Box::new($e)) } }
+    macro_rules! b { ($e:expr) => { Box::new(|| Rc::new(RefCell::new($e))) } }
+    macro_rules! bm { ($e:expr) => { Box::new(move || Rc::new(RefCell::new($e))) } }
 
     let early_lints: [EarlyLintPassFactory; _] = [
         {
@@ -523,9 +526,9 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     ];
     store.early_passes.extend(early_lints);
 
-    macro_rules! b { ($e:expr) => { Box::new(|_| Box::new($e)) } }
-    macro_rules! bm { ($e:expr) => { Box::new(move |_| Box::new($e)) } }
-    macro_rules! bmt { ($e:expr) => { Box::new(move |tcx| Box::new($e(tcx))) } }
+    macro_rules! b { ($e:expr) => { Box::new(|_| Rc::new(RefCell::new($e))) } }
+    macro_rules! bm { ($e:expr) => { Box::new(move |_| Rc::new(RefCell::new($e))) } }
+    macro_rules! bmt { ($e:expr) => { Box::new(move |tcx| Rc::new(RefCell::new($e(tcx)))) } }
 
     #[expect(clippy::type_complexity)]
     let late_lints: [LateLintPassFactory; _] = [

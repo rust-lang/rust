@@ -2,6 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::{has_repr_attr, is_in_test};
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 
@@ -36,6 +37,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(TrailingEmptyArray => [TRAILING_EMPTY_ARRAY]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for TrailingEmptyArray {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         if is_struct_with_trailing_zero_sized_array(cx, item)

@@ -12,6 +12,7 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
 use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, RustcVersion, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, Symbol, SyntaxContext};
@@ -96,6 +97,7 @@ impl NonminimalBool {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for NonminimalBool {
     fn check_fn(
         &mut self,

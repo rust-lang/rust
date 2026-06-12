@@ -2,6 +2,7 @@ use clippy_utils::{get_builtin_attr, sym};
 use hir::TraitItem;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_lint_pass!(
@@ -22,6 +23,7 @@ declare_lint_pass!(
     DumpHir => []
 );
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for DumpHir {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         if has_attr(cx, item.hir_id()) {

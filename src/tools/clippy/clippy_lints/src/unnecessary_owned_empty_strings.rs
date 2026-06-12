@@ -5,6 +5,7 @@ use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, LangItem, Mutability};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 
@@ -35,6 +36,7 @@ declare_lint_pass!(UnnecessaryOwnedEmptyStrings => [
     UNNECESSARY_OWNED_EMPTY_STRINGS,
 ]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for UnnecessaryOwnedEmptyStrings {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner_expr) = expr.kind

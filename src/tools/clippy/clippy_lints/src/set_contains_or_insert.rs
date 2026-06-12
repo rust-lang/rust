@@ -6,6 +6,7 @@ use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{SpanlessEq, higher, peel_hir_expr_while, sym};
 use rustc_hir::{Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, SyntaxContext};
@@ -50,6 +51,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(SetContainsOrInsert => [SET_CONTAINS_OR_INSERT]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for SetContainsOrInsert {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if !expr.span.from_expansion()

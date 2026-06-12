@@ -9,6 +9,7 @@ use rustc_hir::{
     ItemKind, PredicateOrigin, Ty, WherePredicate, WherePredicateKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::hir::nested_filter;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
@@ -255,6 +256,7 @@ fn is_empty_body(cx: &LateContext<'_>, body: BodyId) -> bool {
     matches!(cx.tcx.hir_body(body).value.kind, ExprKind::Block(b, _) if b.stmts.is_empty() && b.expr.is_none())
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for ExtraUnusedTypeParameters {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         if let ItemKind::Fn {

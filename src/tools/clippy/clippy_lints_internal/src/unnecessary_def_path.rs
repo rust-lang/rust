@@ -37,6 +37,7 @@ declare_tool_lint! {
 
 declare_lint_pass!(UnnecessaryDefPath => [UNNECESSARY_DEF_PATH]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for UnnecessaryDefPath {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Call(ctor, [_, path]) = expr.kind

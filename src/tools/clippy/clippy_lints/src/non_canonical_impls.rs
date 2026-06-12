@@ -7,6 +7,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Block, Body, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, LangItem, Stmt, StmtKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::{TyCtxt, TypeckResults};
 use rustc_session::impl_lint_pass;
 use rustc_span::sym;
@@ -146,6 +147,7 @@ enum Trait {
     PartialOrd,
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for NonCanonicalImpls {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         if let ItemKind::Impl(impl_) = item.kind

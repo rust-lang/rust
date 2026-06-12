@@ -5,6 +5,7 @@ use clippy_utils::source::{SpanRangeExt, walk_span_to_context};
 use rustc_errors::Applicability;
 use rustc_hir::{ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -36,6 +37,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(NeedlessIfs => [NEEDLESS_IFS]);
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for NeedlessIfs {
     fn check_stmt<'tcx>(&mut self, cx: &LateContext<'tcx>, stmt: &Stmt<'tcx>) {
         if let StmtKind::Expr(expr) = stmt.kind

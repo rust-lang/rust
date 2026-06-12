@@ -13,6 +13,7 @@ use rustc_hir::attrs::InlineAttr;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{BindingMode, Body, FnDecl, Impl, ItemKind, MutTy, Mutability, Node, PatKind, find_attr};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::adjustment::{Adjust, PointerCoercion};
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, BoundVarIndexKind, RegionKind, TyCtxt};
@@ -243,6 +244,7 @@ impl PassByRefOrValue {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
         if item.span.from_expansion() {

@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint;
 use rustc_hir::{Expr, ExprKind, StructTailExpr};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 
@@ -49,6 +50,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(NeedlessUpdate => [NEEDLESS_UPDATE]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for NeedlessUpdate {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Struct(_, fields, StructTailExpr::Base(base)) = expr.kind {

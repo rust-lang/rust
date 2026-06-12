@@ -5,6 +5,7 @@ use clippy_utils::{as_some_pattern, higher, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -43,6 +44,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(MatchResultOk => [MATCH_RESULT_OK]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for MatchResultOk {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let (let_pat, let_expr, ifwhile) =

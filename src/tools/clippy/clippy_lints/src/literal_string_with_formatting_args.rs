@@ -2,6 +2,7 @@ use rustc_ast::{LitKind, StrStyle};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lexer::is_ident;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_parse_format::{ParseMode, Parser, Piece};
 use rustc_session::declare_lint_pass;
 use rustc_span::{BytePos, Span};
@@ -81,6 +82,7 @@ fn emit_lint(cx: &LateContext<'_>, expr: &Expr<'_>, spans: &[(Span, Option<Strin
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for LiteralStringWithFormattingArg {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         if expr.span.from_expansion() || expr.span.is_dummy() {

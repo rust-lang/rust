@@ -5,6 +5,7 @@ use clippy_utils::{is_in_const_context, is_integer_literal, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem, PrimTy, QPath, TyKind, def};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::Ty;
 use rustc_session::declare_lint_pass;
 
@@ -42,6 +43,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(FromStrRadix10 => [FROM_STR_RADIX_10]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for FromStrRadix10 {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, exp: &Expr<'tcx>) {
         if let ExprKind::Call(maybe_path, [src, radix]) = &exp.kind

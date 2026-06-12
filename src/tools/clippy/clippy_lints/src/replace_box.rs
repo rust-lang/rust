@@ -9,6 +9,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Body, BodyId, Expr, ExprKind, HirId, LangItem, QPath};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::hir::place::ProjectionKind;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty;
@@ -69,6 +70,7 @@ impl ReplaceBox {
     }
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for ReplaceBox {
     fn check_body_post(&mut self, _: &LateContext<'_>, body: &Body<'_>) {
         if self.loaded_bodies.first().is_some_and(|&x| x == body.id()) {

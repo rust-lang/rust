@@ -7,6 +7,7 @@ use rustc_hir as hir;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{Attribute, HirIdSet};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::AssocKind;
 use rustc_session::impl_lint_pass;
 use rustc_span::sym;
@@ -57,6 +58,7 @@ pub struct NewWithoutDefault {
     impling_types: Option<HirIdSet>,
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
     #[expect(clippy::too_many_lines)]
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {

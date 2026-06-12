@@ -8,6 +8,7 @@ use clippy_utils::{is_inside_always_const_context, msrvs};
 use rustc_ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::sym;
 
@@ -43,6 +44,7 @@ impl AssertionsOnConstants {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for AssertionsOnConstants {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if let Some(macro_call) = root_macro_call_first_node(cx, e)

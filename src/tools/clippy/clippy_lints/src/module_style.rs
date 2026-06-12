@@ -3,6 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use rustc_ast::ast::{self, Inline, ItemKind, ModKind};
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{FileName, Ident, SourceFile, Span, SyntaxContext, sym};
@@ -131,6 +132,7 @@ impl ModStyle {
     }
 }
 
+#[runtime_lint_pass]
 impl EarlyLintPass for ModStyle {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &ast::Crate) {
         self.working_dir = cx.sess().source_map().working_dir().local_path().map(Path::to_path_buf);

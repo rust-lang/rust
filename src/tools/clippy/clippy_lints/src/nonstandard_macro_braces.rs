@@ -7,6 +7,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -56,6 +57,7 @@ impl MacroBraces {
     }
 }
 
+#[runtime_lint_pass]
 impl EarlyLintPass for MacroBraces {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
         if let Some(MacroInfo {
