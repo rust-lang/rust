@@ -205,8 +205,8 @@ fn check_collect_into_intoiterator<'tcx>(
                 .param_env(id)
                 .caller_bounds()
                 .into_iter()
-                .filter_map(|p| {
-                    if let ClauseKind::Trait(t) = p.kind().skip_binder()
+                .filter_map(|c| {
+                    if let ClauseKind::Trait(t) = c.kind().skip_binder()
                         && cx.tcx.is_diagnostic_item(sym::IntoIterator, t.trait_ref.def_id)
                     {
                         Some(t.self_ty())

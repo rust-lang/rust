@@ -130,10 +130,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) {
-        self.prove_predicate(
-            ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::Trait(
-                ty::TraitPredicate { trait_ref, polarity: ty::PredicatePolarity::Positive },
-            ))),
+        self.prove_clause(
+            ty::ClauseKind::Trait(ty::TraitPredicate {
+                trait_ref,
+                polarity: ty::PredicatePolarity::Positive,
+            }),
             locations,
             category,
         );
@@ -151,31 +152,32 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         for (predicate, span) in instantiated_predicates {
             debug!(?span, ?predicate);
             let category = ConstraintCategory::Predicate(span);
-            let predicate = self.normalize_with_category(predicate, locations, category);
-            self.prove_predicate(predicate, locations, category);
+            let clause = self.normalize_with_category(predicate, locations, category);
+            self.prove_clause(clause, locations, category);
         }
     }
 
-    pub(super) fn prove_predicates(
+    pub(super) fn prove_clauses(
         &mut self,
-        predicates: impl IntoIterator<Item: Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>> + std::fmt::Debug>,
+        clauses: impl IntoIterator<Item: Upcast<TyCtxt<'tcx>, ty::Clause<'tcx>> + std::fmt::Debug>,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) {
-        for predicate in predicates {
-            self.prove_predicate(predicate, locations, category);
+        for clause in clauses {
+            self.prove_clause(clause, locations, category);
         }
     }
 
     #[instrument(skip(self), level = "debug")]
-    pub(super) fn prove_predicate(
+    pub(super) fn prove_clause(
         &mut self,
-        predicate: impl Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>> + std::fmt::Debug,
+        clause: impl Upcast<TyCtxt<'tcx>, ty::Clause<'tcx>> + std::fmt::Debug,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) {
         let param_env = self.infcx.param_env;
-        let predicate = predicate.upcast(self.tcx());
+        // Upcast to a `Clause`, then to a `Predicate`.
+        let predicate = clause.upcast(self.tcx()).upcast(self.tcx());
         let _: Result<_, ErrorGuaranteed> = self.fully_perform_op(
             locations,
             category,

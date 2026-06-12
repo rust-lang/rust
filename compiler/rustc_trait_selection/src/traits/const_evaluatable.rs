@@ -202,8 +202,8 @@ fn satisfied_from_param_env<'tcx>(
 
     let mut single_match: Option<Result<ty::Const<'tcx>, ()>> = None;
 
-    for pred in param_env.caller_bounds() {
-        match pred.kind().skip_binder() {
+    for clause in param_env.caller_bounds() {
+        match clause.kind().skip_binder() {
             ty::ClauseKind::ConstEvaluatable(ce) => {
                 let b_ct = tcx.expand_abstract_consts(ce);
                 let mut v = Visitor { ct, infcx, param_env, single_match };

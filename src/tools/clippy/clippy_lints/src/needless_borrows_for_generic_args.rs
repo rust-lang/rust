@@ -185,11 +185,11 @@ fn needless_borrow_count<'tcx>(
         .instantiate_identity()
         .skip_norm_wip()
         .skip_binder();
-    let predicates = cx.tcx.param_env(fn_id).caller_bounds();
-    let projection_predicates = predicates
+    let clauses = cx.tcx.param_env(fn_id).caller_bounds();
+    let projection_predicates = clauses
         .iter()
-        .filter_map(|predicate| {
-            if let ClauseKind::Projection(projection_predicate) = predicate.kind().skip_binder() {
+        .filter_map(|clause| {
+            if let ClauseKind::Projection(projection_predicate) = clause.kind().skip_binder() {
                 Some(projection_predicate)
             } else {
                 None
@@ -200,10 +200,10 @@ fn needless_borrow_count<'tcx>(
     let mut trait_with_ref_mut_self_method = false;
 
     // If no traits were found, or only the `Destruct`, `Sized`, or `Any` traits were found, return.
-    if predicates
+    if clauses
         .iter()
-        .filter_map(|predicate| {
-            if let ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder()
+        .filter_map(|clause| {
+            if let ClauseKind::Trait(trait_predicate) = clause.kind().skip_binder()
                 && trait_predicate.trait_ref.self_ty() == param_ty.to_ty(cx.tcx)
             {
                 Some(trait_predicate.trait_ref.def_id)
@@ -272,8 +272,8 @@ fn needless_borrow_count<'tcx>(
             return false;
         }
 
-        predicates.iter().all(|predicate| {
-            if let ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder()
+        clauses.iter().all(|clause| {
+            if let ClauseKind::Trait(trait_predicate) = clause.kind().skip_binder()
                 && cx
                     .tcx
                     .is_diagnostic_item(sym::IntoIterator, trait_predicate.trait_ref.def_id)
@@ -285,10 +285,10 @@ fn needless_borrow_count<'tcx>(
                 return false;
             }
 
-            let predicate = EarlyBinder::bind(predicate)
+            let clause = EarlyBinder::bind(clause)
                 .instantiate(cx.tcx, &args_with_referent_ty[..])
                 .skip_norm_wip();
-            let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
+            let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, clause);
             let infcx = cx.tcx.infer_ctxt().build(cx.typing_mode());
             infcx.predicate_must_hold_modulo_regions(&obligation)
         })

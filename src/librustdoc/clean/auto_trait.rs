@@ -170,20 +170,19 @@ fn clean_param_env<'tcx>(
         .collect();
 
     // FIXME(#111101): Incorporate the explicit predicates of the item here...
-    let item_predicates: FxIndexSet<_> =
-        tcx.param_env(item_def_id).caller_bounds().iter().collect();
+    let item_clauses: FxIndexSet<_> = tcx.param_env(item_def_id).caller_bounds().iter().collect();
     let where_predicates = param_env
         .caller_bounds()
         .iter()
         // FIXME: ...which hopefully allows us to simplify this:
-        .filter(|pred| {
-            !item_predicates.contains(pred)
-                || pred
+        .filter(|clause| {
+            !item_clauses.contains(clause)
+                || clause
                     .as_trait_clause()
-                    .is_some_and(|pred| tcx.lang_items().sized_trait() == Some(pred.def_id()))
+                    .is_some_and(|clause| tcx.lang_items().sized_trait() == Some(clause.def_id()))
         })
-        .map(|pred| {
-            fold_regions(tcx, pred, |r, _| match r.kind() {
+        .map(|clause| {
+            fold_regions(tcx, clause, |r, _| match r.kind() {
                 // FIXME: Don't `unwrap_or`, I think we should panic if we encounter an infer var that
                 // we can't map to a concrete region. However, `AutoTraitFinder` *does* leak those kinds
                 // of `ReVar`s for some reason at the time of writing. See `rustdoc-ui/` tests.
@@ -197,7 +196,7 @@ fn clean_param_env<'tcx>(
                 }
             })
         })
-        .flat_map(|pred| clean_predicate(pred, cx))
+        .flat_map(|clause| clean_predicate(clause, cx))
         .chain(clean_region_outlives_constraints(&region_data, generics))
         .collect();
 
