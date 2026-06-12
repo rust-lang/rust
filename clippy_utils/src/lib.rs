@@ -76,7 +76,7 @@ use core::mem;
 use core::ops::ControlFlow;
 use std::collections::hash_map::Entry;
 use std::iter::{once, repeat_n, zip};
-use std::sync::{Mutex, MutexGuard, OnceLock};
+use std::sync::{Mutex, OnceLock};
 
 use itertools::Itertools;
 use rustc_abi::Integer;
@@ -2387,14 +2387,13 @@ pub fn is_hir_ty_cfg_dependant(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
 
 static TEST_ITEM_NAMES_CACHE: OnceLock<Mutex<FxHashMap<LocalModDefId, Vec<Symbol>>>> = OnceLock::new();
 
-/// Apply `f()` to the set of test item names.
+/// Returns the names of the test items in the given module.
 /// The names are sorted using the default `Symbol` ordering.
-fn with_test_item_names(tcx: TyCtxt<'_>, module: LocalModDefId, f: impl FnOnce(&[Symbol]) -> bool) -> bool {
+fn test_item_names(tcx: TyCtxt<'_>, module: LocalModDefId) -> Vec<Symbol> {
     let cache = TEST_ITEM_NAMES_CACHE.get_or_init(|| Mutex::new(FxHashMap::default()));
-    let mut map: MutexGuard<'_, FxHashMap<LocalModDefId, Vec<Symbol>>> = cache.lock().unwrap();
-    let value = map.entry(module);
-    match value {
-        Entry::Occupied(entry) => f(entry.get()),
+    let mut map = cache.lock().unwrap();
+    match map.entry(module) {
+        Entry::Occupied(entry) => entry.get().clone(),
         Entry::Vacant(entry) => {
             let mut names = Vec::new();
             for id in tcx.hir_module_free_items(module) {
@@ -2410,7 +2409,7 @@ fn with_test_item_names(tcx: TyCtxt<'_>, module: LocalModDefId, f: impl FnOnce(&
                 }
             }
             names.sort_unstable();
-            f(entry.insert(names))
+            entry.insert(names).clone()
         },
     }
 }
@@ -2419,23 +2418,25 @@ fn with_test_item_names(tcx: TyCtxt<'_>, module: LocalModDefId, f: impl FnOnce(&
 ///
 /// Note: Add `//@compile-flags: --test` to UI tests with a `#[test]` function
 pub fn is_in_test_function(tcx: TyCtxt<'_>, id: HirId) -> bool {
-    with_test_item_names(tcx, tcx.parent_module(id), |names| {
-        let node = tcx.hir_node(id);
-        once((id, node))
-            .chain(tcx.hir_parent_iter(id))
-            // Since you can nest functions we need to collect all until we leave
-            // function scope
-            .any(|(_id, node)| {
-                if let Node::Item(item) = node
-                    && let ItemKind::Fn { ident, .. } = item.kind
-                {
-                    // Note that we have sorted the item names in the visitor,
-                    // so the binary_search gets the same as `contains`, but faster.
-                    return names.binary_search(&ident.name).is_ok();
-                }
-                false
-            })
-    })
+    let names = test_item_names(tcx, tcx.parent_module(id));
+    // Without `--test` there are no test items, so the parent walk can never match.
+    if names.is_empty() {
+        return false;
+    }
+    once((id, tcx.hir_node(id)))
+        .chain(tcx.hir_parent_iter(id))
+        // Since you can nest functions we need to collect all until we leave
+        // function scope
+        .any(|(_id, node)| {
+            if let Node::Item(item) = node
+                && let ItemKind::Fn { ident, .. } = item.kind
+            {
+                // Note that we have sorted the item names in the visitor,
+                // so the binary_search gets the same as `contains`, but faster.
+                return names.binary_search(&ident.name).is_ok();
+            }
+            false
+        })
 }
 
 /// Checks if `fn_def_id` has a `#[test]` attribute applied
@@ -2449,9 +2450,9 @@ pub fn is_test_function(tcx: TyCtxt<'_>, fn_def_id: LocalDefId) -> bool {
     if let Node::Item(item) = tcx.hir_node(id)
         && let ItemKind::Fn { ident, .. } = item.kind
     {
-        with_test_item_names(tcx, tcx.parent_module(id), |names| {
-            names.binary_search(&ident.name).is_ok()
-        })
+        test_item_names(tcx, tcx.parent_module(id))
+            .binary_search(&ident.name)
+            .is_ok()
     } else {
         false
     }
