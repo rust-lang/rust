@@ -3,6 +3,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{HirId, Impl, ItemKind, Node, Path, QPath, TraitRef, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::{AssocItem, AssocKind};
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
@@ -46,6 +47,7 @@ struct ExistingName {
     trait_methods: BTreeMap<Symbol, Vec<Span>>,
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
     fn check_crate_post(&mut self, cx: &LateContext<'tcx>) {
         let mut map = FxHashMap::<Res, ExistingName>::default();

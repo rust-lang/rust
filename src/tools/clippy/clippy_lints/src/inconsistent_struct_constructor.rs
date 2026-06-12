@@ -6,6 +6,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
@@ -80,6 +81,7 @@ impl InconsistentStructConstructor {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for InconsistentStructConstructor {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         let ExprKind::Struct(_, fields, _) = expr.kind else {

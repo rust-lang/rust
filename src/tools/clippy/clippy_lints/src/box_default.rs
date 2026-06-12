@@ -8,6 +8,7 @@ use rustc_hir::def::Res;
 use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_ty};
 use rustc_hir::{AmbigArg, Block, Expr, ExprKind, HirId, LangItem, LetStmt, Node, QPath, Ty, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
@@ -35,6 +36,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(BoxDefault => [BOX_DEFAULT]);
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for BoxDefault {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         // If the expression is a call (`Box::new(...)`)

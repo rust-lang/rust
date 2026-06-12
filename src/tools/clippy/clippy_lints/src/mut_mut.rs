@@ -6,6 +6,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, AmbigArg, BorrowKind, Expr, ExprKind, HirId, Mutability, TyKind, intravisit};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
 
@@ -47,6 +48,7 @@ pub(crate) struct MutMut {
     seen_tys: FxHashSet<HirId>,
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for MutMut {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx hir::Block<'_>) {
         intravisit::walk_block(&mut MutVisitor { cx }, block);

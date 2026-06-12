@@ -97,6 +97,7 @@ impl Symbols {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for Symbols {
     fn check_crate(&mut self, cx: &LateContext<'_>) {
         let modules = [

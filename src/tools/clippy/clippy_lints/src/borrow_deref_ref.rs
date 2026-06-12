@@ -9,6 +9,7 @@ use clippy_utils::{
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Node, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
@@ -50,6 +51,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(BorrowDerefRef => [BORROW_DEREF_REF]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for BorrowDerefRef {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) {
         if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, addrof_target) = e.kind

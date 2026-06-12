@@ -5,6 +5,7 @@ use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::res::{MaybeDef, MaybeResPath};
 use rustc_hir::{FieldDef, Item, ItemKind, LangItem};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
@@ -55,6 +56,7 @@ impl PubUnderscoreFields {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for PubUnderscoreFields {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         // This lint only pertains to structs.

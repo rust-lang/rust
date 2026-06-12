@@ -74,6 +74,7 @@ declare_tool_lint! {
 
 declare_lint_pass!(CollapsibleCalls => [COLLAPSIBLE_SPAN_LINT_CALLS]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for CollapsibleCalls {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if is_lint_allowed(cx, COLLAPSIBLE_SPAN_LINT_CALLS, expr.hir_id) {

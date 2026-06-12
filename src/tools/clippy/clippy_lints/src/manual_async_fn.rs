@@ -7,6 +7,7 @@ use rustc_hir::{
     FnRetTy, GenericBound, Node, OpaqueTy, TraitRef, Ty, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
@@ -38,6 +39,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ManualAsyncFn => [MANUAL_ASYNC_FN]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
     fn check_fn(
         &mut self,

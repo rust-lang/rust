@@ -7,6 +7,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::{Closure, ClosureKind, CoroutineKind, Expr, ExprKind, LetStmt, LocalSource, Node, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, SyntaxContext};
 
@@ -53,6 +54,7 @@ impl DbgMacro {
     }
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for DbgMacro {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         let cur_syntax_ctxt = expr.span.ctxt();

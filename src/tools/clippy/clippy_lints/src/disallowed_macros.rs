@@ -11,6 +11,7 @@ use rustc_hir::{
     TraitItem, Ty,
 };
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
 use rustc_span::{ExpnId, MacroKind, Span};
@@ -127,6 +128,7 @@ impl DisallowedMacros {
     }
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for DisallowedMacros {
     fn check_crate(&mut self, cx: &LateContext<'_>) {
         // once we check a crate in the late pass we can emit the early pass lints

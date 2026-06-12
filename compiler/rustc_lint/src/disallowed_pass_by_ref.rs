@@ -1,5 +1,6 @@
 use rustc_hir::def::Res;
 use rustc_hir::{self as hir, AmbigArg, GenericArg, PathSegment, QPath, TyKind, find_attr};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -19,6 +20,7 @@ declare_tool_lint! {
 
 declare_lint_pass!(DisallowedPassByRef => [DISALLOWED_PASS_BY_REF]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for DisallowedPassByRef {
     fn check_ty(&mut self, cx: &LateContext<'_>, ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
         match &ty.kind {

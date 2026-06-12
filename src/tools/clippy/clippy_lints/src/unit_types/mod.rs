@@ -6,6 +6,7 @@ mod utils;
 use clippy_utils::macros::FormatArgsStorage;
 use rustc_hir::{Expr, LetStmt};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
@@ -109,6 +110,7 @@ impl UnitTypes {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for UnitTypes {
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx LetStmt<'tcx>) {
         let_unit_value::check(cx, &self.format_args, local);

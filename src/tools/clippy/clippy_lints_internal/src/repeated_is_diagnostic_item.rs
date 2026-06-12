@@ -120,6 +120,7 @@ declare_lint_pass!(RepeatedIsDiagnosticItem => [REPEATED_IS_DIAGNOSTIC_ITEM]);
 
 const NOTE: &str = "each call performs the same compiler query -- it's faster to query once, and reuse the results";
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for RepeatedIsDiagnosticItem {
     #[expect(clippy::too_many_lines)]
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'_>) {

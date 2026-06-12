@@ -6,6 +6,7 @@ use hir::def::Res;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
@@ -58,6 +59,7 @@ fn is_alias(ty: hir::Ty<'_>) -> bool {
     }
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for DefaultConstructedUnitStructs {
     fn check_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
         if let ExprKind::Call(fn_expr, &[]) = expr.kind

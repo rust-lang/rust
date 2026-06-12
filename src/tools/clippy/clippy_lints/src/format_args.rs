@@ -24,6 +24,7 @@ use rustc_errors::Applicability;
 use rustc_errors::SuggestionStyle::{CompletelyHidden, ShowCode};
 use rustc_hir::{Expr, ExprKind, LangItem, RustcVersion, find_attr};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
 use rustc_middle::ty::{self, GenericArg, List, TraitRef, Ty, TyCtxt, Unnormalized, Upcast};
 use rustc_session::impl_lint_pass;
@@ -336,6 +337,7 @@ impl<'tcx> FormatArgs<'tcx> {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for FormatArgs<'tcx> {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if let Some(macro_call) = root_macro_call_first_node(cx, expr)

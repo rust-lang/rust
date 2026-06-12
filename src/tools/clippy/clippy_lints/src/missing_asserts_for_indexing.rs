@@ -14,6 +14,7 @@ use rustc_data_structures::unhash::UnindexMap;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::{Block, Body, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::{Span, Spanned, Symbol, sym};
 
@@ -435,6 +436,7 @@ fn report_indexes(cx: &LateContext<'_>, map: UnindexMap<u64, Vec<IndexEntry<'_>>
     }
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for MissingAssertsForIndexing {
     fn check_body(&mut self, cx: &LateContext<'_>, body: &Body<'_>) {
         let mut map = UnindexMap::default();

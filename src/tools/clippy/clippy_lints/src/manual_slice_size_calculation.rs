@@ -7,6 +7,7 @@ use clippy_utils::{expr_or_init, is_in_const_context, std_or_core, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
 
@@ -51,6 +52,7 @@ impl ManualSliceSizeCalculation {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for ManualSliceSizeCalculation {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if let ExprKind::Binary(ref op, left, right) = expr.kind

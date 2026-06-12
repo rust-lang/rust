@@ -22,6 +22,7 @@ use rustc_hir::{
     PatKind, PathSegment, QPath, Stmt, StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
@@ -627,6 +628,7 @@ fn is_inferred_ret_closure(expr: &Expr<'_>) -> bool {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for QuestionMark {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if !is_lint_allowed(cx, QUESTION_MARK_USED, stmt.hir_id) || !self.msrv.meets(cx, msrvs::QUESTION_MARK_OPERATOR)

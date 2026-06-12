@@ -4,6 +4,7 @@ use clippy_utils::source::SpanRangeExt;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 
@@ -153,6 +154,7 @@ impl SemicolonBlock {
     }
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for SemicolonBlock {
     fn check_stmt(&mut self, cx: &LateContext<'_>, stmt: &Stmt<'_>) {
         match stmt.kind {

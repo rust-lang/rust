@@ -5,6 +5,7 @@ use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::{Span, Spanned};
 
@@ -35,6 +36,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(BoolComparison => [BOOL_COMPARISON]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for BoolComparison {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if e.span.from_expansion() {

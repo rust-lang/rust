@@ -5,6 +5,7 @@ use clippy_utils::ty::is_c_void;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 
@@ -38,6 +39,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(FromRawWithVoidPtr => [FROM_RAW_WITH_VOID_PTR]);
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for FromRawWithVoidPtr {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if let ExprKind::Call(box_from_raw, [arg]) = expr.kind

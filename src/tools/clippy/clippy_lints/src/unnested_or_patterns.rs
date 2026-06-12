@@ -12,6 +12,7 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::DUMMY_SP;
 // import needed to shadow `PatKind::Box` glob-imported above
@@ -62,6 +63,7 @@ impl UnnestedOrPatterns {
     }
 }
 
+#[runtime_lint_pass]
 impl EarlyLintPass for UnnestedOrPatterns {
     fn check_arm(&mut self, cx: &EarlyContext<'_>, a: &ast::Arm) {
         if self.msrv.meets(msrvs::OR_PATTERNS) {

@@ -22,6 +22,7 @@ use clippy_utils::sugg::Sugg;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::sym;
@@ -522,6 +523,7 @@ impl Transmute {
         }
     }
 }
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for Transmute {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if let ExprKind::Call(path_expr, [arg]) = e.kind

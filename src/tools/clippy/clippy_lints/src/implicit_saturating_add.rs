@@ -7,6 +7,7 @@ use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
 use rustc_hir::{AssignOpKind, BinOpKind, Block, Expr, ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::{IntTy, Ty, UintTy};
 use rustc_session::declare_lint_pass;
 
@@ -39,6 +40,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ImplicitSaturatingAdd => [IMPLICIT_SATURATING_ADD]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingAdd {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if let ExprKind::If(cond, then, None) = expr.kind

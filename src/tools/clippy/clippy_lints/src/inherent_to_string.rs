@@ -5,6 +5,7 @@ use clippy_utils::{return_ty, trait_ref_of_method};
 use rustc_abi::ExternAbi;
 use rustc_hir::{GenericParamKind, ImplItem, ImplItemKind, LangItem};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
 
@@ -93,6 +94,7 @@ declare_lint_pass!(InherentToString => [
     INHERENT_TO_STRING_SHADOW_DISPLAY,
 ]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for InherentToString {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx ImplItem<'_>) {
         // Check if item is a method called `to_string` and has a parameter 'self'

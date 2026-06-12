@@ -6,6 +6,7 @@ use clippy_utils::{last_path_segment, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::{Span, Symbol};
@@ -48,6 +49,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(RcCloneInVecInit => [RC_CLONE_IN_VEC_INIT]);
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for RcCloneInVecInit {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         let Some(macro_call) = root_macro_call_first_node(cx, expr) else {

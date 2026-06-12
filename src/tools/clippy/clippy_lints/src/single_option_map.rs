@@ -6,6 +6,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, ExprKind, FnDecl, FnRetTy};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::{Span, sym};
 
@@ -38,6 +39,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(SingleOptionMap => [SINGLE_OPTION_MAP]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for SingleOptionMap {
     fn check_fn(
         &mut self,

@@ -2,6 +2,7 @@ use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -28,6 +29,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ZeroDiv => [ZERO_DIVIDED_BY_ZERO]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for ZeroDiv {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // check for instances of 0.0/0.0

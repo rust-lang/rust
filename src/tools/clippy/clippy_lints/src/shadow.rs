@@ -12,6 +12,7 @@ use rustc_hir::{
     Block, Body, BodyOwnerKind, Expr, ExprKind, HirId, LetExpr, LocalSource, Node, Pat, PatKind, QPath, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, Symbol};
 
@@ -113,6 +114,7 @@ pub(crate) struct Shadow {
     bindings: Vec<(FxHashMap<Symbol, Vec<ItemLocalId>>, LocalDefId)>,
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for Shadow {
     fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>) {
         let PatKind::Binding(_, id, ident, _) = pat.kind else {

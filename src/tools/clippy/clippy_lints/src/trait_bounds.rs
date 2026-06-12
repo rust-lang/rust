@@ -14,6 +14,7 @@ use rustc_hir::{
     PredicateOrigin, QPath, TraitBoundModifiers, TraitItem, TraitRef, Ty, TyKind, WherePredicateKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, SyntaxContext};
 
@@ -105,6 +106,7 @@ impl TraitBounds {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for TraitBounds {
     fn check_generics(&mut self, cx: &LateContext<'tcx>, generics: &'tcx Generics<'_>) {
         self.check_type_repetition(cx, generics);

@@ -1,5 +1,6 @@
 use rustc_hir::{BinOpKind, Body, Expr, ExprKind, ImplItemKind, ItemKind, Node, TraitFn, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 mod cmp_null;
@@ -137,6 +138,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(Ptr => [CMP_NULL, MUT_FROM_REF, PTR_ARG, PTR_EQ]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for Ptr {
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
         if let TraitItemKind::Fn(sig, trait_method) = &item.kind {

@@ -4,6 +4,7 @@ use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::sym;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::SyntaxContext;
 use std::cmp::Ordering::{Equal, Greater, Less};
@@ -35,6 +36,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(MinMaxPass => [MIN_MAX]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for MinMaxPass {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let Some((outer_max, outer_c, oe)) = min_max(cx, expr)

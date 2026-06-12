@@ -17,6 +17,7 @@ use rustc_hir::{
     Arm, BindingMode, Expr, ExprKind, HirId, MatchSource, Mutability, Node, Pat, PatKind, Path, QPath, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::hir::nested_filter;
 use rustc_session::declare_lint_pass;
 use rustc_span::SyntaxContext;
@@ -390,6 +391,7 @@ fn is_none_or_err_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for OptionIfLetElse {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         // Don't lint macros and constants

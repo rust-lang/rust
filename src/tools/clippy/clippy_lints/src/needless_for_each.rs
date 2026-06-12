@@ -3,6 +3,7 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{Block, BlockCheckMode, Closure, Expr, ExprKind, Stmt, StmtKind, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
@@ -54,6 +55,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(NeedlessForEach => [NEEDLESS_FOR_EACH]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for NeedlessForEach {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if let StmtKind::Expr(expr) | StmtKind::Semi(expr) = stmt.kind {

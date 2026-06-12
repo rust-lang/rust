@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint;
 use rustc_ast::ast::{Expr, ExprKind, Stmt, StmtKind};
 use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -51,6 +52,7 @@ fn strip_paren_blocks(expr: &Expr) -> &Expr {
     }
 }
 
+#[runtime_lint_pass]
 impl EarlyLintPass for MultiAssignments {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if let ExprKind::Assign(target, source, _) = &expr.kind {

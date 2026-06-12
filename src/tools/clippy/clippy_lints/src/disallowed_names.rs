@@ -4,6 +4,7 @@ use clippy_utils::{is_from_proc_macro, is_in_test};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::{Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::Symbol;
 
@@ -40,6 +41,7 @@ impl DisallowedNames {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for DisallowedNames {
     fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>) {
         if let PatKind::Binding(.., ident, _) = pat.kind

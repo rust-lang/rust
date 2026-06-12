@@ -7,6 +7,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, ExprKind, Mutability, QPath};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
 
@@ -45,6 +46,7 @@ impl ManualMainSeparatorStr {
     }
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for ManualMainSeparatorStr {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         let (target, _) = peel_hir_expr_refs(expr);

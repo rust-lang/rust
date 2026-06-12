@@ -4,6 +4,7 @@ use clippy_utils::{peel_hir_expr_refs, peel_ref_operators, sugg};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, LangItem};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
 
@@ -40,6 +41,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(PartialeqToNone => [PARTIALEQ_TO_NONE]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for PartialeqToNone {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         // Skip expanded code, as we have no control over it anyway...

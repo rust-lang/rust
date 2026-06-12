@@ -1,5 +1,6 @@
 use rustc_ast::token::LitKind;
 use rustc_ast::{Expr, ExprKind, MethodCall, UnOp};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::{declare_lint, declare_lint_pass};
 
 use crate::lints::{
@@ -35,6 +36,7 @@ declare_lint! {
 
 declare_lint_pass!(Precedence => [AMBIGUOUS_NEGATIVE_LITERALS]);
 
+#[runtime_lint_pass]
 impl EarlyLintPass for Precedence {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         let ExprKind::Unary(UnOp::Neg, operand) = &expr.kind else {

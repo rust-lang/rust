@@ -6,6 +6,7 @@ use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{
     self, AliasTy, Binder, ClauseKind, PredicateKind, Ty, TyCtxt, TypeVisitable, TypeVisitableExt, TypeVisitor,
@@ -62,6 +63,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(FutureNotSend => [FUTURE_NOT_SEND]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
     fn check_fn(
         &mut self,

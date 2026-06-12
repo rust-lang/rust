@@ -7,6 +7,7 @@ use clippy_utils::source::snippet;
 use clippy_utils::{is_from_proc_macro, sym};
 use rustc_hir::{Expr, ExprKind, Item, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_session::impl_lint_pass;
@@ -63,6 +64,7 @@ impl LargeStackArrays {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for LargeStackArrays {
     fn check_item(&mut self, _: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         if matches!(item.kind, ItemKind::Static(..) | ItemKind::Const(..)) {

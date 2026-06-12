@@ -4,6 +4,7 @@ use clippy_utils::macros::{FormatArgsStorage, root_macro_call_first_node};
 use clippy_utils::{is_in_test, sym};
 use rustc_hir::{Expr, Impl, Item, ItemKind, OwnerId};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 
 mod empty_string;
@@ -268,6 +269,7 @@ impl Write {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for Write {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         // Only check for `impl Debug`s if we're not already in one

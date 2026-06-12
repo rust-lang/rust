@@ -12,6 +12,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{self as hir, Block, BlockCheckMode, FnSig, Impl, ItemKind, Node, UnsafeSource};
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::{BytePos, Pos, RelativeBytePos, Span, SyntaxContext};
 
@@ -112,6 +113,7 @@ impl UndocumentedUnsafeBlocks {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
         if block.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)

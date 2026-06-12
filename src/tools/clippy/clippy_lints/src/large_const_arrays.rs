@@ -3,6 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty;
 use rustc_middle::ty::Unnormalized;
 use rustc_middle::ty::layout::LayoutOf;
@@ -47,6 +48,7 @@ impl LargeConstArrays {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for LargeConstArrays {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Const(ident, generics, _, _) = &item.kind

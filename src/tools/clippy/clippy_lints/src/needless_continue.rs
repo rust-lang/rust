@@ -5,6 +5,7 @@ use rustc_ast::Label;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, HirId, LoopSource, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::{ExpnKind, Span};
 
@@ -130,6 +131,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(NeedlessContinue => [NEEDLESS_CONTINUE]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for NeedlessContinue {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         // We cannot use `from_expansion` because for loops, while loops and while let loops are desugared

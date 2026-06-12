@@ -18,6 +18,7 @@ use rustc_hir::{
     TraitItem, TraitItemKind, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
@@ -410,6 +411,7 @@ pub struct Types {
     avoid_breaking_exported_api: bool,
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for Types {
     fn check_fn(
         &mut self,

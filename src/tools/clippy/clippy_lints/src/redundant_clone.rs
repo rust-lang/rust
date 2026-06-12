@@ -8,6 +8,7 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl, LangItem, def_id};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::declare_lint_pass;
@@ -62,6 +63,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(RedundantClone => [REDUNDANT_CLONE]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for RedundantClone {
     #[expect(clippy::too_many_lines)]
     fn check_fn(

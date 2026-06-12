@@ -7,6 +7,7 @@ use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, ExprKind, HirId, find_attr};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::{self, GenericArgsRef, PredicatePolarity};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -35,6 +36,7 @@ declare_tool_lint! {
 
 declare_lint_pass!(DefaultHashTypes => [DEFAULT_HASH_TYPES]);
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for DefaultHashTypes {
     fn check_path(&mut self, cx: &LateContext<'_>, path: &hir::Path<'_>, hir_id: HirId) {
         let Res::Def(rustc_hir::def::DefKind::Struct, def_id) = path.res else { return };
@@ -84,6 +86,7 @@ declare_tool_lint! {
 
 declare_lint_pass!(QueryStability => [POTENTIAL_QUERY_INSTABILITY, UNTRACKED_QUERY_INFORMATION]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for QueryStability {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if let Some((callee_def_id, span, generic_args, _recv, _args)) =
@@ -204,6 +207,7 @@ declare_lint_pass!(TyTyKind => [
     USAGE_OF_QUALIFIED_TY,
 ]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for TyTyKind {
     fn check_path(
         &mut self,
@@ -371,6 +375,7 @@ declare_tool_lint! {
 
 declare_lint_pass!(TypeIr => [DIRECT_USE_OF_RUSTC_TYPE_IR, NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT, USAGE_OF_TYPE_IR_INHERENT, USAGE_OF_TYPE_IR_TRAITS]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for TypeIr {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
         let res_def_id = match expr.kind {
@@ -466,6 +471,7 @@ declare_tool_lint! {
 
 declare_lint_pass!(LintPassImpl => [LINT_PASS_IMPL_WITHOUT_MACRO]);
 
+#[runtime_lint_pass]
 impl EarlyLintPass for LintPassImpl {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
         if let ast::ItemKind::Impl(ast::Impl { of_trait: Some(of_trait), .. }) = &item.kind
@@ -499,6 +505,7 @@ declare_tool_lint! {
 
 declare_lint_pass!(BadOptAccess => [BAD_OPT_ACCESS]);
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for BadOptAccess {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
         let hir::ExprKind::Field(base, target) = expr.kind else { return };
@@ -532,6 +539,7 @@ declare_tool_lint! {
 
 declare_lint_pass!(SpanUseEqCtxt => [SPAN_USE_EQ_CTXT]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for SpanUseEqCtxt {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr<'_>) {
         if let hir::ExprKind::Binary(
@@ -570,6 +578,7 @@ declare_tool_lint! {
 
 declare_lint_pass!(SymbolInternStringLiteral => [SYMBOL_INTERN_STRING_LITERAL]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for SymbolInternStringLiteral {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'tcx>) {
         if let hir::ExprKind::Call(path, [arg]) = expr.kind
@@ -600,6 +609,7 @@ declare_tool_lint! {
 
 declare_lint_pass!(ImplicitSysrootCrateImport => [IMPLICIT_SYSROOT_CRATE_IMPORT]);
 
+#[runtime_lint_pass]
 impl EarlyLintPass for ImplicitSysrootCrateImport {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
         fn is_whitelisted(crate_name: &str) -> bool {
@@ -633,6 +643,7 @@ declare_tool_lint! {
 }
 declare_lint_pass!(BadUseOfFindAttr => [BAD_USE_OF_FIND_ATTR]);
 
+#[runtime_lint_pass]
 impl EarlyLintPass for BadUseOfFindAttr {
     fn check_arm(&mut self, cx: &EarlyContext<'_>, arm: &rustc_ast::Arm) {
         fn path_contains_attribute_kind(cx: &EarlyContext<'_>, path: &Path) {
@@ -762,6 +773,7 @@ fn pat_is_not_exhaustive_heuristic(pat: &hir::Pat<'_>) -> Option<(Span, &'static
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for RustcMustMatchExhaustively {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr<'_>) {
         match expr.kind {

@@ -6,6 +6,7 @@ use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, HirId};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 use unicode_normalization::UnicodeNormalization;
@@ -78,6 +79,7 @@ declare_lint_pass!(Unicode => [
     UNICODE_NOT_NFC,
 ]);
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for Unicode {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {
         if let ExprKind::Lit(lit) = expr.kind

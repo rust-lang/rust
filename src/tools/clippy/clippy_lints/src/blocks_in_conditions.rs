@@ -4,6 +4,7 @@ use clippy_utils::{contains_return, higher, is_from_proc_macro};
 use rustc_errors::Applicability;
 use rustc_hir::{BlockCheckMode, Expr, ExprKind, MatchSource};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -51,6 +52,7 @@ declare_lint_pass!(BlocksInConditions => [BLOCKS_IN_CONDITIONS]);
 
 const BRACED_EXPR_MESSAGE: &str = "omit braces around single expression condition";
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for BlocksInConditions {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if expr.span.in_external_macro(cx.sess().source_map()) {

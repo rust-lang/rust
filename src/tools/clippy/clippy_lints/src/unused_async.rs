@@ -10,6 +10,7 @@ use rustc_hir::{
     ImplItem, ImplItemKind, IsAsync, Node, TraitItem, YieldSource,
 };
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::hir::nested_filter;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
@@ -154,6 +155,7 @@ impl<'tcx> Visitor<'tcx> for AsyncFnVisitor<'_, 'tcx> {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
     fn check_fn(
         &mut self,

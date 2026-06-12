@@ -9,6 +9,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{Visitor, walk_block, walk_expr};
 use rustc_hir::{Expr, ExprKind, HirId, LetStmt, Node, PatKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::hir::nested_filter;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
@@ -57,6 +58,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ZombieProcesses => [ZOMBIE_PROCESSES]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for ZombieProcesses {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if let ExprKind::Call(..) | ExprKind::MethodCall(..) = expr.kind

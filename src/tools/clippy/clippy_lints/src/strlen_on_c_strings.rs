@@ -8,6 +8,7 @@ use clippy_utils::{match_libc_symbol, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Block, BlockCheckMode, Expr, ExprKind, LangItem, Node, UnsafeSource};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
@@ -49,6 +50,7 @@ impl StrlenOnCStrings {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for StrlenOnCStrings {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if !expr.span.from_expansion()

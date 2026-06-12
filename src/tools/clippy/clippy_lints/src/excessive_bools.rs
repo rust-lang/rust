@@ -5,6 +5,7 @@ use rustc_abi::ExternAbi;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl, Item, ItemKind, TraitFn, TraitItem, TraitItemKind, Ty};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
@@ -128,6 +129,7 @@ fn check_fn_decl(cx: &LateContext<'_>, decl: &FnDecl<'_>, sp: Span, max: u64) {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for ExcessiveBools {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         if let ItemKind::Struct(_, _, variant_data) = &item.kind

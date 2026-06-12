@@ -2,6 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::span_is_local;
 use rustc_hir::{Expr, ExprKind, MatchSource};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -31,6 +32,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(QuestionMarkUsed => [QUESTION_MARK_USED]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for QuestionMarkUsed {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Match(_, _, MatchSource::TryDesugar(_)) = expr.kind {

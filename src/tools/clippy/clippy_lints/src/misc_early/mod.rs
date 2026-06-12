@@ -11,6 +11,7 @@ use clippy_utils::source::snippet_opt;
 use rustc_ast::ast::{Expr, ExprKind, Generics, LitFloatType, LitIntType, LitKind, Pat};
 use rustc_ast::token;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
@@ -314,6 +315,7 @@ declare_lint_pass!(MiscEarlyLints => [
     ZERO_PREFIXED_LITERAL,
 ]);
 
+#[runtime_lint_pass]
 impl EarlyLintPass for MiscEarlyLints {
     fn check_generics(&mut self, cx: &EarlyContext<'_>, generics: &Generics) {
         for param in &generics.params {

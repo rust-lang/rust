@@ -6,6 +6,7 @@ use clippy_utils::sugg;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 
@@ -68,6 +69,7 @@ fn parse_shift<'tcx>(expr: &'tcx Expr<'tcx>) -> Option<(ShiftDirection, &'tcx Ex
     None
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for ManualRotate {
     fn check_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         if let ExprKind::Binary(op, l, r) = expr.kind

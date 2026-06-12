@@ -5,6 +5,7 @@ use rustc_errors::Applicability;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{Attribute, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::{BytePos, Pos};
 
@@ -37,6 +38,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(NoMangleWithRustAbi => [NO_MANGLE_WITH_RUST_ABI]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for NoMangleWithRustAbi {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         if let ItemKind::Fn { ident, sig: fn_sig, .. } = &item.kind

@@ -4,6 +4,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Block, Body, Expr, ExprKind, LangItem, MatchSource};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -44,6 +45,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(NeedlessQuestionMark => [NEEDLESS_QUESTION_MARK]);
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for NeedlessQuestionMark {
     /*
      * The question mark operator is compatible with both Result<T, E> and Option<T>,

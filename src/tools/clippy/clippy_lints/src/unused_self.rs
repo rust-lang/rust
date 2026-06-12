@@ -4,6 +4,7 @@ use clippy_utils::usage::is_todo_unimplemented_stub;
 use clippy_utils::visitors::is_local_used;
 use rustc_hir::{Impl, ImplItem, ImplItemKind, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
@@ -50,6 +51,7 @@ impl UnusedSelf {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for UnusedSelf {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &ImplItem<'_>) {
         if impl_item.span.from_expansion() {

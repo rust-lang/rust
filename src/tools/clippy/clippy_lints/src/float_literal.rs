@@ -5,6 +5,7 @@ use rustc_ast::ast::{LitFloatType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::{self, FloatTy};
 use rustc_session::impl_lint_pass;
 use std::fmt;
@@ -75,6 +76,7 @@ impl FloatLiteral {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if let hir::ExprKind::Lit(lit) = expr.kind

@@ -6,6 +6,7 @@ use clippy_utils::sym;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::mir::CoroutineLayout;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
@@ -196,6 +197,7 @@ impl AwaitHolding {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for AwaitHolding {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
         if let hir::ExprKind::Closure(hir::Closure {

@@ -14,6 +14,7 @@ use rustc_hir::intravisit::{FnKind, Visitor, walk_expr, walk_fn};
 use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, HirId, Node, UnOp};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, Place, PlaceWithHirId};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::hir::place::ProjectionKind;
 use rustc_middle::mir::FakeReadCause;
@@ -523,6 +524,7 @@ impl<'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'_, 'tcx> {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for Unwrap {
     fn check_fn(
         &mut self,

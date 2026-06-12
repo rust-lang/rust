@@ -5,6 +5,7 @@ use rustc_ast::util::parser::AssocOp;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -155,6 +156,7 @@ impl IntPlusOne {
     }
 }
 
+#[runtime_lint_pass]
 impl EarlyLintPass for IntPlusOne {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if let ExprKind::Binary(binop, lhs, rhs) = &expr.kind

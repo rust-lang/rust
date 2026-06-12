@@ -4,6 +4,7 @@ use rustc_hir::{
     Body, BodyOwnerKind, Expr, ExprKind, FnSig, ImplItem, ImplItemKind, Item, ItemKind, OwnerId, PathSegment, QPath,
 };
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::Ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::{Ident, Span, Symbol};
@@ -98,6 +99,7 @@ impl UnwrapInResult {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for UnwrapInResult {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx ImplItem<'_>) {
         if let ImplItemKind::Fn(sig, _) = &impl_item.kind {

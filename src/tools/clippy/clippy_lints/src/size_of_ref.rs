@@ -4,6 +4,7 @@ use clippy_utils::sym;
 use clippy_utils::ty::peel_and_count_ty_refs;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -55,6 +56,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(SizeOfRef => [SIZE_OF_REF]);
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for SizeOfRef {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {
         if let ExprKind::Call(path, [arg]) = expr.kind

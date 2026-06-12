@@ -6,6 +6,7 @@ use core::ops::ControlFlow;
 use rustc_errors::Diag;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::SyntaxContext;
 use rustc_span::edition::Edition::Edition2024;
@@ -50,6 +51,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(IfLetMutex => [IF_LET_MUTEX]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for IfLetMutex {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if cx.tcx.sess.edition() >= Edition2024 {

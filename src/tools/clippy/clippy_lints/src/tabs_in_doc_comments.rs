@@ -2,6 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::{BytePos, Span};
 
@@ -85,6 +86,7 @@ impl TabsInDocComments {
     }
 }
 
+#[runtime_lint_pass]
 impl EarlyLintPass for TabsInDocComments {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attribute: &ast::Attribute) {
         Self::warn_if_tabs_in_doc(cx, attribute);

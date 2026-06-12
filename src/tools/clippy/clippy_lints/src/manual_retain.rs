@@ -9,6 +9,7 @@ use rustc_hir as hir;
 use rustc_hir::ExprKind::Assign;
 use rustc_hir::def_id::DefId;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::symbol::Symbol;
@@ -56,6 +57,7 @@ impl ManualRetain {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for ManualRetain {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if let Assign(left_expr, collect_expr, _) = &expr.kind

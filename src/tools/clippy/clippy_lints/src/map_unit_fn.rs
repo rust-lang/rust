@@ -5,6 +5,7 @@ use clippy_utils::{iter_input_pats, method_chain_args};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::declare_lint_pass;
 use rustc_span::{Span, sym};
@@ -261,6 +262,7 @@ fn lint_map_unit_fn(
     }
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for MapUnit {
     fn check_stmt(&mut self, cx: &LateContext<'_>, stmt: &hir::Stmt<'_>) {
         if let hir::StmtKind::Semi(expr) = stmt.kind

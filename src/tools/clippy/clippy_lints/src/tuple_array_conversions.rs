@@ -8,6 +8,7 @@ use itertools::Itertools;
 use rustc_ast::LitKind;
 use rustc_hir::{Expr, ExprKind, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
 use std::iter::once;
@@ -52,6 +53,7 @@ impl TupleArrayConversions {
     }
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for TupleArrayConversions {
     fn check_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if expr.span.in_external_macro(cx.sess().source_map()) || !self.msrv.meets(cx, msrvs::TUPLE_ARRAY_CONVERSIONS) {

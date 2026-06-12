@@ -2,6 +2,7 @@ use rustc_ast::visit::FnKind;
 use rustc_ast::{Fn, NodeId, WherePredicateKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
@@ -37,6 +38,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(MultipleBoundLocations => [MULTIPLE_BOUND_LOCATIONS]);
 
+#[runtime_lint_pass]
 impl EarlyLintPass for MultipleBoundLocations {
     fn check_fn(&mut self, cx: &EarlyContext<'_>, kind: FnKind<'_>, _: Span, _: NodeId) {
         if let FnKind::Fn(_, _, Fn { generics, .. }) = kind

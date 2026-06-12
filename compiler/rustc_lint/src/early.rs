@@ -4,6 +4,10 @@
 //! resolution, just before AST lowering. These lints are for purely
 //! syntactical lints.
 
+use std::cell::RefCell;
+use std::iter;
+use std::rc::Rc;
+
 use rustc_ast::visit::{self as ast_visit, Visitor, walk_list};
 use rustc_ast::{self as ast, AttrVec, HasAttrs};
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -195,9 +199,9 @@ impl<'ast, 'ecx, T: EarlyLintPass> ast_visit::Visitor<'ast> for EarlyContextAndP
     }
 
     fn visit_where_predicate(&mut self, p: &'ast ast::WherePredicate) {
-        lint_callback!(self, enter_where_predicate, p);
+        lint_callback!(self, check_where_predicate, p);
         ast_visit::walk_where_predicate(self, p);
-        lint_callback!(self, exit_where_predicate, p);
+        lint_callback!(self, check_where_predicate_post, p);
     }
 
     fn visit_poly_trait_ref(&mut self, t: &'ast ast::PolyTraitRef) {
@@ -242,37 +246,52 @@ impl<'ast, 'ecx, T: EarlyLintPass> ast_visit::Visitor<'ast> for EarlyContextAndP
     }
 }
 
-// Combines multiple lint passes into a single pass, at runtime. Each
-// `check_foo` method in `$methods` within this pass simply calls `check_foo`
-// once per `$pass`. Compare with `declare_combined_early_lint_pass`, which is
-// similar, but combines lint passes at compile time.
-struct RuntimeCombinedEarlyLintPass<'a> {
-    passes: &'a mut [EarlyLintPassObject],
-}
+macro_rules! runtime_combined_early_lint_pass {
+    ([], [$(fn $check_foo:ident($($param:ident: $arg:ty),*);)*]) => (
+        // Combines multiple lint passes into a single pass, at runtime. Compare with
+        // `declare_combined_early_lint_pass`, which is similar, but combines lint passes at
+        // compile time.
+        //
+        // The obvious way to combine lint passes at runtime is for each `check_foo` method within
+        // this pass to simply call `check_foo` once per pass. However, most passes only implement
+        // small number of `check_*` methods (often just one) and this obvious approach results
+        // in many (dynamically dispatched) calls to empty `check_*` methods, which is slow.
+        //
+        // Instead, for each `check_foo` method we construct a vector containing references only to
+        // the passes that implement `check_foo`. Thus, when we iterate over and call each method
+        // in this vector, none of them are empty methods. Note that a pass that implements
+        // multiple `check_*` methods will end up in multiple vectors, which is why
+        // `EarlyLintPassObject` must be shareable.
+        #[derive(Default)]
+        struct RuntimeCombinedEarlyLintPass {
+            $(
+                $check_foo: Vec<EarlyLintPassObject>,
+            )*
+        }
 
-#[allow(rustc::lint_pass_impl_without_macro)]
-impl LintPass for RuntimeCombinedEarlyLintPass<'_> {
-    fn name(&self) -> &'static str {
-        panic!()
-    }
-    fn get_lints(&self) -> crate::LintVec {
-        panic!()
-    }
-}
+        #[allow(rustc::lint_pass_impl_without_macro)]
+        impl LintPass for RuntimeCombinedEarlyLintPass {
+            fn name(&self) -> &'static str {
+                panic!()
+            }
+            fn get_lints(&self) -> crate::LintVec {
+                panic!()
+            }
+        }
 
-macro_rules! impl_early_lint_pass {
-    ([], [$($(#[$attr:meta])* fn $f:ident($($param:ident: $arg:ty),*);)*]) => (
-        impl EarlyLintPass for RuntimeCombinedEarlyLintPass<'_> {
-            $(fn $f(&mut self, context: &EarlyContext<'_>, $($param: $arg),*) {
-                for pass in self.passes.iter_mut() {
-                    pass.$f(context, $($param),*);
+        impl EarlyLintPass for RuntimeCombinedEarlyLintPass {
+            $(
+                fn $check_foo(&mut self, context: &EarlyContext<'_>, $($param: $arg),*) {
+                    for pass in self.$check_foo.iter_mut() {
+                        pass.borrow_mut().$check_foo(context, $($param),*);
+                    }
                 }
-            })*
+            )*
         }
     )
 }
 
-crate::early_lint_methods!(impl_early_lint_pass, []);
+crate::early_lint_methods!(runtime_combined_early_lint_pass, []);
 
 /// Early lints work on different nodes - either on the crate root, or on freshly loaded modules.
 /// This trait generalizes over those nodes.
@@ -336,10 +355,35 @@ pub fn check_ast_node<'a>(
     if passes.is_empty() {
         check_ast_node_inner(sess, check_node, context, builtin_lints);
     } else {
-        let mut passes: Vec<_> = passes.iter().map(|mk_pass| (mk_pass)()).collect();
-        passes.push(Box::new(builtin_lints));
-        let pass = RuntimeCombinedEarlyLintPass { passes: &mut passes[..] };
-        check_ast_node_inner(sess, check_node, context, pass);
+        let builtin_lints: EarlyLintPassObject = Rc::new(RefCell::new(builtin_lints));
+        let mut combined = RuntimeCombinedEarlyLintPass::default();
+        let passes = iter::chain(passes.iter().map(|mk_pass| mk_pass()), iter::once(builtin_lints));
+
+        for pass in passes {
+            let mut n = 0;
+            macro_rules! push_check_foo_if_needed {
+                ([], [$(fn $check_foo:ident($($param:ident: $arg:ty),*);)*]) => (
+                    $(
+                        if pass.borrow().${concat($check_foo, _needed)}() {
+                            n += 1;
+                            combined.$check_foo.push(pass.clone());
+                        }
+                    )*
+                )
+            }
+            crate::early_lint_methods!(push_check_foo_if_needed, []);
+
+            // If this fails, a lint is missing one or more `check_*_needed` methods that indicate
+            // the presence of non-empty `check_*` methods. The easiest way to add these is by
+            // adding a `#[runtime_lint_pass]` attribute to the `EarlyLintPass` impl.
+            assert!(
+                n > 0,
+                "runtime lint `{}` needs `#[runtime_lint_pass]` attribute added",
+                pass.borrow().name()
+            );
+        }
+
+        check_ast_node_inner(sess, check_node, context, combined);
     }
 }
 

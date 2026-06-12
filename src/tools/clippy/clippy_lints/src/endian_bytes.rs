@@ -3,6 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::{is_lint_allowed, sym};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::Ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::Symbol;
@@ -110,6 +111,7 @@ impl LintKind {
     }
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for EndianBytes {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         let (prefix, name, ty_expr) = match expr.kind {

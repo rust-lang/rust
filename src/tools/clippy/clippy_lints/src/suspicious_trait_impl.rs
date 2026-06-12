@@ -4,6 +4,7 @@ use clippy_utils::{BINOP_TRAITS, OP_ASSIGN_TRAITS, binop_traits, trait_ref_of_me
 use core::ops::ControlFlow;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
@@ -58,6 +59,7 @@ declare_lint_pass!(SuspiciousImpl => [
     SUSPICIOUS_OP_ASSIGN_IMPL,
 ]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for SuspiciousImpl {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         match expr.kind {

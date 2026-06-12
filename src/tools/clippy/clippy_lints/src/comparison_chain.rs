@@ -5,6 +5,7 @@ use clippy_utils::{SpanlessEq, if_sequence, is_else_clause, is_in_const_context}
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::{SyntaxContext, sym};
 
@@ -55,6 +56,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ComparisonChain => [COMPARISON_CHAIN]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for ComparisonChain {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if expr.span.from_expansion() {

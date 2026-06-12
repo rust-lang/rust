@@ -7,6 +7,7 @@ use rustc_hir as hir;
 use rustc_hir::intravisit::{Visitor as HirVisitor, Visitor};
 use rustc_hir::{ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, ExprKind, intravisit as hir_visit};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
@@ -133,6 +134,7 @@ fn get_parent_call_exprs<'tcx>(
     (expr, depth)
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
         if expr.span.in_external_macro(cx.sess().source_map()) {

@@ -10,6 +10,7 @@ use rustc_hir::def::{CtorOf, DefKind};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{Expr, ExprKind, Item, ItemKind, Node, Pat, PatKind, Path, QPath, Variant, VariantData};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::impl_lint_pass;
 use rustc_span::{BytePos, Span};
@@ -95,6 +96,7 @@ pub struct EmptyWithBrackets {
     empty_tuple_enum_variants: FxIndexMap<LocalDefId, Usage>,
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for EmptyWithBrackets {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         // FIXME: handle `struct $name {}`

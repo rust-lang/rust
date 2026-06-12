@@ -2,6 +2,7 @@ use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::{is_in_const_context, is_no_std_crate, sym};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 mod custom_abs;
@@ -105,6 +106,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(FloatingPointArithmetic => [IMPRECISE_FLOPS, SUBOPTIMAL_FLOPS]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // All of these operations are currently not const and are in std.

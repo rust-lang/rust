@@ -3,6 +3,7 @@ use clippy_utils::ty::InteriorMut;
 use clippy_utils::{if_sequence, is_else_clause, is_lint_allowed};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
 
@@ -166,6 +167,7 @@ impl<'tcx> CopyAndPaste<'tcx> {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for CopyAndPaste<'tcx> {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if !expr.span.from_expansion() && matches!(expr.kind, ExprKind::If(..)) && !is_else_clause(cx.tcx, expr) {

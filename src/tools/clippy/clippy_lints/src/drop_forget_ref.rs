@@ -4,6 +4,7 @@ use clippy_utils::res::MaybeDef;
 use clippy_utils::ty::{is_copy, is_must_use_ty};
 use rustc_hir::{Arm, Expr, ExprKind, LangItem, Node};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
 use std::borrow::Cow;
@@ -77,6 +78,7 @@ const DROP_NON_DROP_SUMMARY: &str = "call to `std::mem::drop` with a value that 
 const FORGET_NON_DROP_SUMMARY: &str = "call to `std::mem::forget` with a value that does not implement `Drop`. \
                                    Forgetting such a type is the same as dropping it";
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Call(path, [arg]) = expr.kind

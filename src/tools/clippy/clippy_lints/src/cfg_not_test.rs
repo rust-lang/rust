@@ -2,6 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_ast::attr::data_structures::CfgEntry;
 use rustc_ast::{AttrItemKind, EarlyParsedAttribute};
 use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
 
@@ -32,6 +33,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(CfgNotTest => [CFG_NOT_TEST]);
 
+#[runtime_lint_pass]
 impl EarlyLintPass for CfgNotTest {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &rustc_ast::Attribute) {
         if attr.has_name(sym::cfg_trace) {

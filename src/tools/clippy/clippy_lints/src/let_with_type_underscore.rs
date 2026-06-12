@@ -4,6 +4,7 @@ use clippy_utils::source::{IntoSpan, SpanRangeExt};
 use rustc_ast::{Local, TyKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -27,6 +28,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(UnderscoreTyped => [LET_WITH_TYPE_UNDERSCORE]);
 
+#[runtime_lint_pass]
 impl EarlyLintPass for UnderscoreTyped {
     fn check_local(&mut self, cx: &EarlyContext<'_>, local: &Local) {
         if let Some(ty) = &local.ty // Ensure that it has a type defined

@@ -5,6 +5,7 @@ use clippy_utils::ty::implements_trait;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::Visibility;
 use rustc_session::declare_lint_pass;
 
@@ -35,6 +36,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ErrorImplError => [ERROR_IMPL_ERROR]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for ErrorImplError {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         match item.kind {

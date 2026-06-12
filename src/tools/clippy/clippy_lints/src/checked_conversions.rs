@@ -6,6 +6,7 @@ use clippy_utils::{SpanlessEq, is_in_const_context, is_integer_literal, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::{Symbol, SyntaxContext};
 
@@ -46,6 +47,7 @@ impl CheckedConversions {
     }
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for CheckedConversions {
     fn check_expr(&mut self, cx: &LateContext<'_>, item: &Expr<'_>) {
         if let ExprKind::Binary(op, lhs, rhs) = item.kind

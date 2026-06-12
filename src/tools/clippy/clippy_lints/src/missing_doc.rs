@@ -7,6 +7,7 @@ use rustc_hir::{
     AttrArgs, Attribute, Body, BodyId, FieldDef, HirId, ImplItem, Item, ItemKind, Node, TraitItem, Variant,
 };
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::ty::Visibility;
 use rustc_session::impl_lint_pass;
@@ -101,6 +102,7 @@ impl MissingDoc {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     fn check_attributes(&mut self, _: &LateContext<'tcx>, attrs: &'tcx [Attribute]) {
         self.attr_depth += 1;

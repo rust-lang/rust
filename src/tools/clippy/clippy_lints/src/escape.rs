@@ -5,6 +5,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::{Body, FnDecl, HirId, HirIdSet, Node, Pat, PatKind, intravisit};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, TraitRef, Ty, TyCtxt};
@@ -63,6 +64,7 @@ struct EscapeDelegate<'a, 'tcx> {
     too_large_for_stack: u64,
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
     fn check_fn(
         &mut self,

@@ -7,6 +7,7 @@ use rustc_ast::ImplPolarity;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{FieldDef, Item, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::{self, GenericArgKind, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::sym;
@@ -68,6 +69,7 @@ impl NonSendFieldInSendTy {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         let ty_allowed_in_send = if self.enable_raw_pointer_heuristic {

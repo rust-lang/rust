@@ -9,6 +9,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{BindingMode, Block, Expr, ExprKind, HirId, LetStmt, Mutability, PatKind, QPath, Stmt, StmtKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, Symbol};
 
@@ -150,6 +151,7 @@ impl VecPushSearcher {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for VecInitThenPush {
     fn check_block(&mut self, _: &LateContext<'tcx>, _: &'tcx Block<'tcx>) {
         self.searcher = None;

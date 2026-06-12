@@ -5,6 +5,7 @@ use clippy_utils::source::snippet;
 use rustc_ast::ast::{ConstItem, Item, ItemKind, StaticItem, Ty, TyKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::kw;
 
@@ -90,6 +91,7 @@ impl RedundantStaticLifetimes {
     }
 }
 
+#[runtime_lint_pass]
 impl EarlyLintPass for RedundantStaticLifetimes {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
         if !self.msrv.meets(msrvs::STATIC_IN_CONST) {

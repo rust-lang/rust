@@ -7,6 +7,7 @@ use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
@@ -52,6 +53,7 @@ impl ManualTake {
     }
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for ManualTake {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if let ExprKind::If(cond, then, Some(otherwise)) = expr.kind

@@ -2,6 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::sym;
 use rustc_hir::{Impl, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -45,6 +46,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ToStringTraitImpl => [TO_STRING_TRAIT_IMPL]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for ToStringTraitImpl {
     fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx Item<'tcx>) {
         if let ItemKind::Impl(Impl {

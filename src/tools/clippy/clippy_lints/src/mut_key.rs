@@ -4,6 +4,7 @@ use clippy_utils::ty::InteriorMut;
 use clippy_utils::{sym, trait_ref_of_method};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::impl_lint_pass;
@@ -73,6 +74,7 @@ pub struct MutableKeyType<'tcx> {
     interior_mut: InteriorMut<'tcx>,
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for MutableKeyType<'tcx> {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         if let hir::ItemKind::Fn { ref sig, .. } = item.kind {

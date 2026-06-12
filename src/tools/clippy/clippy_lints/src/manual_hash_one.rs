@@ -8,6 +8,7 @@ use clippy_utils::visitors::{is_local_used, local_used_once};
 use rustc_errors::Applicability;
 use rustc_hir::{BindingMode, ExprKind, LetStmt, Node, PatKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
@@ -59,6 +60,7 @@ impl ManualHashOne {
     }
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for ManualHashOne {
     fn check_local(&mut self, cx: &LateContext<'_>, local: &LetStmt<'_>) {
         // `let mut hasher = seg.build_hasher();`

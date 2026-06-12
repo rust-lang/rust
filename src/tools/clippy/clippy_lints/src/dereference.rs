@@ -16,6 +16,7 @@ use rustc_hir::{
     Node, OwnerId, Pat, PatKind, Path, QPath, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypeckResults, Unnormalized};
 use rustc_session::impl_lint_pass;
@@ -236,6 +237,7 @@ struct RefPat {
     hir_id: HirId,
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
     #[expect(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {

@@ -14,6 +14,7 @@ use rustc_ast::{BinOpKind, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, PatExprKind, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, Symbol};
@@ -226,6 +227,7 @@ fn check_manual_pattern_char_comparison(cx: &LateContext<'_>, method_arg: &Expr<
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for StringPatterns {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if !expr.span.from_expansion()

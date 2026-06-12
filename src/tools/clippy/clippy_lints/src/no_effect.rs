@@ -11,6 +11,7 @@ use rustc_hir::{
 };
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -85,6 +86,7 @@ pub struct NoEffect {
     local_bindings: Vec<Vec<HirId>>,
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for NoEffect {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if self.check_no_effect(cx, stmt) {

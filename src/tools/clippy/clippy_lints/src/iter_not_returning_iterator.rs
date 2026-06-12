@@ -3,6 +3,7 @@ use clippy_utils::ty::implements_trait;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{FnSig, ImplItem, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::Unnormalized;
 use rustc_session::declare_lint_pass;
 use rustc_span::{Symbol, sym};
@@ -42,6 +43,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(IterNotReturningIterator => [ITER_NOT_RETURNING_ITERATOR]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for IterNotReturningIterator {
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
         if let TraitItemKind::Fn(fn_sig, _) = &item.kind

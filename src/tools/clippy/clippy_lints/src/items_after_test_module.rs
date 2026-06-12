@@ -4,6 +4,7 @@ use clippy_utils::{fulfill_or_allowed, is_cfg_test, is_from_proc_macro};
 use rustc_errors::{Applicability, SuggestionStyle};
 use rustc_hir::{HirId, Item, ItemKind, Mod};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::hygiene::AstPass;
 use rustc_span::{ExpnKind, sym};
@@ -56,6 +57,7 @@ fn cfg_test_module<'tcx>(cx: &LateContext<'tcx>, item: &Item<'tcx>) -> bool {
     }
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for ItemsAfterTestModule {
     fn check_mod(&mut self, cx: &LateContext<'_>, module: &Mod<'_>, _: HirId) {
         let mut items = module.item_ids.iter().map(|&id| cx.tcx.hir_item(id));

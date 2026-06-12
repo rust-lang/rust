@@ -5,6 +5,7 @@ use clippy_utils::{higher, is_else_clause, is_parent_stmt, peel_blocks_with_stmt
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -34,6 +35,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ManualAssert => [MANUAL_ASSERT]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for ManualAssert {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         if let Some(higher::If { cond, then, r#else: None }) = higher::If::hir(expr)

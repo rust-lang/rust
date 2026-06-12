@@ -3,6 +3,7 @@ use clippy_utils::source::snippet_with_applicability;
 use rustc_ast::ast::{BindingMode, ByRef, Lifetime, Param, PatKind, TyKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::kw;
 
@@ -64,6 +65,7 @@ enum Mode {
     Value,
 }
 
+#[runtime_lint_pass]
 impl EarlyLintPass for NeedlessArbitrarySelfType {
     fn check_param(&mut self, cx: &EarlyContext<'_>, p: &Param) {
         // Bail out if the parameter it's not a receiver or was not written by the user

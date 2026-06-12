@@ -9,6 +9,7 @@ use clippy_utils::{eq_expr_value, peel_blocks, span_contains_comment, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
 
@@ -53,6 +54,7 @@ impl ManualAbsDiff {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for ManualAbsDiff {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if !expr.span.from_expansion()

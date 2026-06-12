@@ -9,6 +9,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Block, Expr, ExprKind, Impl, Item, ItemKind, LangItem, Node, QPath, TyKind, VariantData};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::{Ty, TypeckResults};
 use rustc_session::declare_lint_pass;
 use rustc_span::{Span, Symbol};
@@ -200,6 +201,7 @@ fn check_struct<'tcx>(
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for MissingFieldsInDebug {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         // is this an `impl Debug for X` block?

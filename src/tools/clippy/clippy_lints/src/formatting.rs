@@ -3,6 +3,7 @@ use clippy_utils::is_span_if;
 use clippy_utils::source::snippet_opt;
 use rustc_ast::ast::{BinOpKind, Block, Expr, ExprKind, StmtKind};
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
@@ -145,6 +146,7 @@ declare_lint_pass!(Formatting => [
     SUSPICIOUS_UNARY_OP_FORMATTING,
 ]);
 
+#[runtime_lint_pass]
 impl EarlyLintPass for Formatting {
     fn check_block(&mut self, cx: &EarlyContext<'_>, block: &Block) {
         for w in block.stmts.windows(2) {

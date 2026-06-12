@@ -3,6 +3,7 @@ use clippy_utils::peel_blocks;
 use rustc_errors::Applicability;
 use rustc_hir::{Body, ExprKind, Impl, ImplItemKind, Item, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -34,6 +35,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(EmptyDrop => [EMPTY_DROP]);
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for EmptyDrop {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         if let ItemKind::Impl(Impl {

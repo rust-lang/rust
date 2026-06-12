@@ -4,6 +4,7 @@ use rustc_ast::LitKind;
 use rustc_errors::Applicability::MachineApplicable;
 use rustc_hir::{Expr, ExprKind, PathSegment, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
@@ -37,6 +38,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ManualStringNew => [MANUAL_STRING_NEW]);
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for ManualStringNew {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if expr.span.from_expansion() {

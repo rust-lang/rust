@@ -9,6 +9,7 @@ use clippy_utils::sym;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, QPath, RustcVersion};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::{self, TyCtxt, UintTy};
 use rustc_session::impl_lint_pass;
 use rustc_span::Symbol;
@@ -69,6 +70,7 @@ impl DurationSuboptimalUnits {
     }
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for DurationSuboptimalUnits {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {
         if !expr.span.in_external_macro(cx.sess().source_map())

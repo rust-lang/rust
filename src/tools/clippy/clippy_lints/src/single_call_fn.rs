@@ -6,6 +6,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{Expr, ExprKind, HirId, Node};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 
@@ -112,6 +113,7 @@ fn is_valid_item_kind(cx: &LateContext<'_>, def_id: LocalDefId) -> bool {
     )
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for SingleCallFn {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) {
         if let ExprKind::Path(qpath) = expr.kind

@@ -8,6 +8,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, StmtKind};
 use rustc_lexer::TokenKind;
 use rustc_lint::{LateContext, LateLintPass, Level};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::{BytePos, Span, Symbol};
 
@@ -260,6 +261,7 @@ impl CollapsibleIf {
     }
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for CollapsibleIf {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if let ExprKind::If(cond, then, else_) = &expr.kind

@@ -9,6 +9,7 @@ use rustc_hir::{
     PatKind, TraitItem, UsePath,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, Symbol};
@@ -71,6 +72,7 @@ impl MinIdentChars {
     }
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for MinIdentChars {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         if self.min_ident_chars_threshold == 0 {

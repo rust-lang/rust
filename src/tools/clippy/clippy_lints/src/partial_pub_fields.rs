@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_ast::ast::{Item, ItemKind};
 use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -40,6 +41,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(PartialPubFields => [PARTIAL_PUB_FIELDS]);
 
+#[runtime_lint_pass]
 impl EarlyLintPass for PartialPubFields {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
         let ItemKind::Struct(_, _, ref st) = item.kind else {

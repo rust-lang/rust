@@ -3,6 +3,7 @@ use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
 use clippy_utils::{SpanlessEq, is_integer_literal};
 use rustc_hir::{AssignOpKind, BinOpKind, Block, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::SyntaxContext;
@@ -45,6 +46,7 @@ enum NonZeroBranch {
     Else,
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for ManualCheckedOps {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if let ExprKind::If(cond, then, r#else) = expr.kind

@@ -3,6 +3,7 @@ use std::sync::{Arc, OnceLock};
 
 use rustc_ast::{Attribute, Crate};
 use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 
@@ -25,6 +26,7 @@ impl AttrCollector {
 
 impl_lint_pass!(AttrCollector => []);
 
+#[runtime_lint_pass]
 impl EarlyLintPass for AttrCollector {
     fn check_attribute(&mut self, _cx: &EarlyContext<'_>, attr: &Attribute) {
         self.attrs.push(attr.span);

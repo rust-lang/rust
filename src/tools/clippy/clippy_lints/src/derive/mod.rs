@@ -2,6 +2,7 @@ use clippy_utils::res::MaybeResPath;
 use rustc_hir::def::Res;
 use rustc_hir::{Impl, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 mod derive_ord_xor_partial_ord;
@@ -192,6 +193,7 @@ declare_lint_pass!(Derive => [
     UNSAFE_DERIVE_DESERIALIZE,
 ]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for Derive {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Impl(Impl {

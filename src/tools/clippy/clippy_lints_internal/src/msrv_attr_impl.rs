@@ -19,6 +19,7 @@ declare_tool_lint! {
 
 declare_lint_pass!(MsrvAttrImpl => [MISSING_MSRV_ATTR_IMPL]);
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for MsrvAttrImpl {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
         if let hir::ItemKind::Impl(hir::Impl {

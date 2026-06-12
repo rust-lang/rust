@@ -13,6 +13,7 @@ use rustc_hir::{
     PathSegment, Ty as HirTy, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
@@ -64,6 +65,7 @@ impl FromOverInto {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for FromOverInto {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Impl(Impl {

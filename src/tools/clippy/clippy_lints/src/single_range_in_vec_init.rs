@@ -8,6 +8,7 @@ use rustc_ast::{LitIntType, LitKind, UintTy};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, StructTailExpr};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::DesugaringKind;
 use std::fmt::{self, Display, Formatter};
@@ -69,6 +70,7 @@ impl Display for SuggestedType {
     }
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for SingleRangeInVecInit {
     fn check_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         // inner_expr: `vec![0..200]` or `[0..200]`

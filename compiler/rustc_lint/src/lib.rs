@@ -23,6 +23,7 @@
 #![allow(internal_features)]
 #![feature(deref_patterns)]
 #![feature(iter_order_by)]
+#![feature(macro_metavar_expr_concat)]
 #![feature(rustc_attrs)]
 #![feature(titlecase)]
 #![feature(try_blocks)]
@@ -82,6 +83,9 @@ mod unqualified_local_imports;
 pub mod unused;
 mod utils;
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use async_closures::AsyncClosureUsage;
 use async_fn_in_trait::AsyncFnInTrait;
 use autorefs::*;
@@ -121,7 +125,6 @@ use rustc_hir::def_id::LocalModDefId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use shadowed_into_iter::ShadowedIntoIter;
-pub use shadowed_into_iter::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
 use static_mut_refs::*;
 use traits::*;
 use transmute::CheckTransmutes;
@@ -133,7 +136,10 @@ use unused::*;
 
 #[rustfmt::skip]
 pub use builtin::{MissingDoc, SoftLints};
-pub use context::{CheckLintNameResult, EarlyContext, LateContext, LintContext, LintStore};
+pub use context::{
+    CheckLintNameResult, EarlyContext, EarlyLintPassFactory, LateContext, LateLintPassFactory,
+    LintContext, LintStore,
+};
 pub use early::diagnostics::DiagAndSess;
 pub use early::{EarlyCheckNode, check_ast_node};
 pub use late::{check_crate, late_lint_mod, unerased_lint_store};
@@ -142,6 +148,7 @@ pub use passes::{EarlyLintPass, LateLintPass};
 pub use rustc_errors::BufferedEarlyLint;
 pub use rustc_session::lint::Level::{self, *};
 pub use rustc_session::lint::{FutureIncompatibleInfo, Lint, LintId, LintPass, LintVec};
+pub use shadowed_into_iter::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
 
 pub fn provide(providers: &mut Providers) {
     levels::provide(providers);
@@ -663,30 +670,35 @@ fn register_builtins(store: &mut LintStore) {
 }
 
 fn register_internals(store: &mut LintStore) {
-    store.register_lints(&LintPassImpl::lint_vec());
-    store.register_early_pass(|| Box::new(LintPassImpl));
-    store.register_lints(&DefaultHashTypes::lint_vec());
-    store.register_late_mod_pass(|_| Box::new(DefaultHashTypes));
-    store.register_lints(&QueryStability::lint_vec());
-    store.register_late_mod_pass(|_| Box::new(QueryStability));
-    store.register_lints(&TyTyKind::lint_vec());
-    store.register_late_mod_pass(|_| Box::new(TyTyKind));
-    store.register_lints(&TypeIr::lint_vec());
-    store.register_late_mod_pass(|_| Box::new(TypeIr));
-    store.register_lints(&BadOptAccess::lint_vec());
-    store.register_late_mod_pass(|_| Box::new(BadOptAccess));
-    store.register_lints(&DisallowedPassByRef::lint_vec());
-    store.register_late_mod_pass(|_| Box::new(DisallowedPassByRef));
-    store.register_lints(&SpanUseEqCtxt::lint_vec());
-    store.register_late_mod_pass(|_| Box::new(SpanUseEqCtxt));
-    store.register_lints(&SymbolInternStringLiteral::lint_vec());
-    store.register_late_mod_pass(|_| Box::new(SymbolInternStringLiteral));
-    store.register_lints(&ImplicitSysrootCrateImport::lint_vec());
-    store.register_early_pass(|| Box::new(ImplicitSysrootCrateImport));
-    store.register_lints(&BadUseOfFindAttr::lint_vec());
-    store.register_early_pass(|| Box::new(BadUseOfFindAttr));
-    store.register_lints(&RustcMustMatchExhaustively::lint_vec());
-    store.register_late_pass(|_| Box::new(RustcMustMatchExhaustively));
+    macro_rules! early {
+        ($register:ident, $lint:ident) => {
+            store.register_lints(&$lint::lint_vec());
+            store.$register(Box::new(|| Rc::new(RefCell::new($lint))));
+        };
+    }
+
+    macro_rules! late {
+        ($register:ident, $lint:ident) => {
+            store.register_lints(&$lint::lint_vec());
+            store.$register(Box::new(|_| Rc::new(RefCell::new($lint))));
+        };
+    }
+
+    early!(register_early_pass, LintPassImpl);
+    early!(register_early_pass, ImplicitSysrootCrateImport);
+    early!(register_early_pass, BadUseOfFindAttr);
+
+    late!(register_late_mod_pass, DefaultHashTypes);
+    late!(register_late_mod_pass, QueryStability);
+    late!(register_late_mod_pass, TyTyKind);
+    late!(register_late_mod_pass, TypeIr);
+    late!(register_late_mod_pass, BadOptAccess);
+    late!(register_late_mod_pass, DisallowedPassByRef);
+    late!(register_late_mod_pass, SpanUseEqCtxt);
+    late!(register_late_mod_pass, SymbolInternStringLiteral);
+
+    late!(register_late_pass, RustcMustMatchExhaustively);
+
     store.register_group(
         false,
         "rustc::internal",

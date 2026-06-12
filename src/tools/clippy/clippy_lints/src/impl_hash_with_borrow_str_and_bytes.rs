@@ -3,6 +3,7 @@ use clippy_utils::ty::implements_trait;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::Ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::sym;
@@ -73,6 +74,7 @@ declare_lint_pass!(ImplHashWithBorrowStrBytes => [
     IMPL_HASH_BORROW_WITH_STR_AND_BYTES,
 ]);
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for ImplHashWithBorrowStrBytes {
     /// We are emitting this lint at the Hash impl of a type that implements all
     /// three of `Hash`, `Borrow<str>` and `Borrow<[u8]>`.

@@ -6,6 +6,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{LocalDefId, LocalModDefId};
 use rustc_hir::{Item, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::{FileName, Span};
 use std::collections::hash_map::Entry;
@@ -68,6 +69,7 @@ enum Criterion {
     Crate,
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for MultipleInherentImpl {
     fn check_crate_post(&mut self, cx: &LateContext<'tcx>) {
         // Map from a type to it's first impl block. Needed to distinguish generic arguments.

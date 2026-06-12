@@ -3,6 +3,7 @@ use clippy_utils::res::MaybeDef;
 use clippy_utils::{eq_expr_value, sym};
 use rustc_hir::{Expr, ExprKind, LangItem, QPath};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::sym as rustc_sym;
 
@@ -73,6 +74,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(SameLengthAndCapacity => [SAME_LENGTH_AND_CAPACITY]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for SameLengthAndCapacity {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Call(path_expr, args) = expr.kind

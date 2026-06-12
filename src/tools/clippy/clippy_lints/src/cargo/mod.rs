@@ -11,6 +11,7 @@ use clippy_utils::is_lint_allowed;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_lint::{LateContext, LateLintPass, Lint};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::DUMMY_SP;
 
@@ -236,6 +237,7 @@ impl Cargo {
     }
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for Cargo {
     fn check_crate(&mut self, cx: &LateContext<'_>) {
         static NO_DEPS_LINTS: &[&Lint] = &[

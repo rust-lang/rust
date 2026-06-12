@@ -8,6 +8,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{BindingMode, Expr, ExprKind, FnRetTy, GenericArgs, Param, PatKind, QPath, Safety, TyKind, find_attr};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind};
 use rustc_middle::ty::{
     self, Binder, ClosureKind, FnSig, GenericArg, GenericArgKind, List, Region, Ty, TypeVisitableExt, TypeckResults,
@@ -69,6 +70,7 @@ declare_lint_pass!(EtaReduction => [
     REDUNDANT_CLOSURE_FOR_METHOD_CALLS,
 ]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for EtaReduction {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         if let ExprKind::MethodCall(_method, receiver, args, _) = expr.kind {

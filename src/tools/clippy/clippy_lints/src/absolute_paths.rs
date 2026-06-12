@@ -6,6 +6,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc_hir::{HirId, ItemKind, Node, Path};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::Symbol;
 use rustc_span::symbol::kw;
@@ -73,6 +74,7 @@ impl AbsolutePaths {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for AbsolutePaths {
     // We should only lint `QPath::Resolved`s, but since `Path` is only used in `Resolved` and `UsePath`
     // we don't need to use a visitor or anything as we can just check if the `Node` for `hir_id` isn't

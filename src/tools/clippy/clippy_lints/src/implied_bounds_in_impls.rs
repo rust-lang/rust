@@ -8,6 +8,7 @@ use rustc_hir::{
 };
 use rustc_hir_analysis::lower_ty;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::{self, AssocItem, ClauseKind, Generics, Ty, TyCtxt};
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
@@ -324,6 +325,7 @@ fn check<'tcx>(cx: &LateContext<'tcx>, bounds: GenericBounds<'tcx>) {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for ImpliedBoundsInImpls {
     fn check_generics(&mut self, cx: &LateContext<'tcx>, generics: &rustc_hir::Generics<'tcx>) {
         for predicate in generics.predicates {

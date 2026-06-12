@@ -8,6 +8,7 @@ use clippy_utils::source::snippet_with_context;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, Node, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::SyntaxContext;
 
@@ -47,6 +48,7 @@ impl ManualRemEuclid {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for ManualRemEuclid {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // (x % c + c) % c

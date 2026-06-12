@@ -6,6 +6,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{Visitor, walk_block, walk_expr, walk_stmt};
 use rustc_hir::{BlockCheckMode, Expr, ExprKind, HirId, Stmt, UnsafeSource, find_attr};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, SyntaxContext};
 use std::collections::BTreeMap;
@@ -211,6 +212,7 @@ impl<'tcx> Visitor<'tcx> for BodyVisitor<'_, 'tcx> {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for ExprMetavarsInUnsafe {
     fn check_body(&mut self, cx: &LateContext<'tcx>, body: &rustc_hir::Body<'tcx>) {
         if is_lint_allowed(cx, MACRO_METAVARS_IN_UNSAFE, body.value.hir_id) {

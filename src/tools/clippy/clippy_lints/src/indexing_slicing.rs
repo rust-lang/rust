@@ -6,6 +6,7 @@ use clippy_utils::{higher, is_from_proc_macro, is_in_test, sym};
 use rustc_ast::ast::RangeLimits;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
 
@@ -108,6 +109,7 @@ impl IndexingSlicing {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Index(array, index, _) = &expr.kind

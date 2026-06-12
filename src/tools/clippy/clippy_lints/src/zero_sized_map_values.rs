@@ -3,6 +3,7 @@ use clippy_utils::res::MaybeDef;
 use clippy_utils::ty::ty_from_hir_ty;
 use rustc_hir::{self as hir, AmbigArg, HirId, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::{self, TypeVisitableExt};
 use rustc_session::declare_lint_pass;
@@ -43,6 +44,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ZeroSizedMapValues => [ZERO_SIZED_MAP_VALUES]);
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for ZeroSizedMapValues {
     fn check_ty<'tcx>(&mut self, cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx, AmbigArg>) {
         if !hir_ty.span.from_expansion()

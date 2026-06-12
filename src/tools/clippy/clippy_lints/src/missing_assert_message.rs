@@ -3,6 +3,7 @@ use clippy_utils::is_in_test;
 use clippy_utils::macros::{find_assert_args, find_assert_eq_args, root_macro_call_first_node};
 use rustc_hir::Expr;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
 
@@ -48,6 +49,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(MissingAssertMessage => [MISSING_ASSERT_MESSAGE]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for MissingAssertMessage {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let Some(macro_call) = root_macro_call_first_node(cx, expr) else {

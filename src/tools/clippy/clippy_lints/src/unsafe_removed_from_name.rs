@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint;
 use rustc_ast::ast::{Item, ItemKind, UseTree, UseTreeKind};
 use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 use rustc_span::symbol::Ident;
@@ -29,6 +30,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(UnsafeNameRemoval => [UNSAFE_REMOVED_FROM_NAME]);
 
+#[runtime_lint_pass]
 impl EarlyLintPass for UnsafeNameRemoval {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
         if let ItemKind::Use(ref use_tree) = item.kind {

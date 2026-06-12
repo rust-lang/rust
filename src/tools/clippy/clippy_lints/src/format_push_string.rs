@@ -6,6 +6,7 @@ use clippy_utils::{std_or_core, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{AssignOpKind, Expr, ExprKind, LangItem, MatchSource};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 
@@ -119,6 +120,7 @@ impl FormatPushString {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for FormatPushString {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let (recv, arg) = match expr.kind {

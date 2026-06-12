@@ -5,6 +5,7 @@ use rustc_ast::node_id::NodeSet;
 use rustc_ast::visit::{Visitor, walk_block, walk_item};
 use rustc_ast::{Block, Crate, Inline, Item, ItemKind, ModKind, NodeId};
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 
@@ -91,6 +92,7 @@ impl ExcessiveNesting {
     }
 }
 
+#[runtime_lint_pass]
 impl EarlyLintPass for ExcessiveNesting {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &Crate) {
         if self.excessive_nesting_threshold == 0 {

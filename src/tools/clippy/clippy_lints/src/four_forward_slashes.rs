@@ -4,6 +4,7 @@ use itertools::Itertools;
 use rustc_errors::Applicability;
 use rustc_hir::Item;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
@@ -38,6 +39,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(FourForwardSlashes => [FOUR_FORWARD_SLASHES]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for FourForwardSlashes {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         if item.span.from_expansion() {

@@ -6,6 +6,7 @@ use rustc_ast::{FormatArgsPiece, FormatTrait};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Impl, ImplItem, ImplItemKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::Symbol;
 use rustc_span::symbol::kw;
@@ -115,6 +116,7 @@ impl FormatImpl {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for FormatImpl {
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &ImplItem<'_>) {
         self.format_trait_impl = is_format_trait_impl(cx, impl_item);

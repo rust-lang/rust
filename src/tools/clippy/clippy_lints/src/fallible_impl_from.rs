@@ -4,6 +4,7 @@ use clippy_utils::method_chain_args;
 use clippy_utils::res::MaybeDef;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::{Span, sym};
@@ -49,6 +50,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(FallibleImplFrom => [FALLIBLE_IMPL_FROM]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for FallibleImplFrom {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         // check for `impl From<???> for ..`

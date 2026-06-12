@@ -3,6 +3,7 @@ use clippy_utils::source::{IntoSpan, SpanRangeExt};
 use rustc_ast::ast::{Expr, ExprKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -35,6 +36,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(NeedlessElse => [NEEDLESS_ELSE]);
 
+#[runtime_lint_pass]
 impl EarlyLintPass for NeedlessElse {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if let ExprKind::If(_, then_block, Some(else_clause)) = &expr.kind

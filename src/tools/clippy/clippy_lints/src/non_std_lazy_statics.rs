@@ -11,6 +11,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::{self as hir, BodyId, Expr, ExprKind, HirId, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 
@@ -89,6 +90,7 @@ fn can_use_lazy_cell(cx: &LateContext<'_>, msrv: Msrv) -> bool {
     msrv.meets(cx, msrvs::LAZY_CELL) && !is_no_std_crate(cx)
 }
 
+#[runtime_lint_pass]
 impl<'hir> LateLintPass<'hir> for NonStdLazyStatic {
     fn check_crate(&mut self, cx: &LateContext<'hir>) {
         // Add CrateNums for `once_cell` crate

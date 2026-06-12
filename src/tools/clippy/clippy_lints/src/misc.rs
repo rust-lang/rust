@@ -5,6 +5,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{BinOpKind, Expr, ExprKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -99,6 +100,7 @@ declare_lint_pass!(LintPass => [
     USED_UNDERSCORE_ITEMS,
 ]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for LintPass {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if let StmtKind::Semi(expr) = stmt.kind

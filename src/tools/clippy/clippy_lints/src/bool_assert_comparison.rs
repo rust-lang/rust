@@ -8,6 +8,7 @@ use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Lit};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::ty::{self, Ty, Unnormalized};
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::Ident;
@@ -72,6 +73,7 @@ fn is_impl_not_trait_with_bool_out<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -
         })
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for BoolAssertComparison {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let Some(macro_call) = root_macro_call_first_node(cx, expr) else {

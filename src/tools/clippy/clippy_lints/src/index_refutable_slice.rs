@@ -12,6 +12,7 @@ use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::hir::nested_filter;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
@@ -69,6 +70,7 @@ impl IndexRefutableSlice {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for IndexRefutableSlice {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if let Some(IfLet { let_pat, if_then, .. }) = IfLet::hir(cx, expr)

@@ -6,6 +6,7 @@ use rustc_abi::Size;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem, MatchSource};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
@@ -54,6 +55,7 @@ impl LargeFuture {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for LargeFuture {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if let ExprKind::Match(scrutinee, _, MatchSource::AwaitDesugar) = expr.kind

@@ -12,6 +12,7 @@ mod current_version;
 mod diagnostics;
 mod extension;
 mod lift;
+mod lints;
 mod print_attribute;
 mod query;
 mod serialize;
@@ -56,6 +57,38 @@ pub fn symbols(input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn extension(attr: TokenStream, input: TokenStream) -> TokenStream {
     extension::extension(attr, input)
+}
+
+/// This attribute must be used on runtime lints, i.e. that are used in
+/// `RuntimeCombined{Early,Late}LintPass`. This includes all clippy lints. It is not needed for
+/// builtin lints such as `WhileTrue`.
+///
+/// For each `check_foo` method defined in the `{Early,Late}LintPass` impl block, this proc macro
+/// adds a corresponding `check_foo_needed` method override that returns `true`, to indicate that
+/// the default empty `check_foo` has been overridden and must be called.
+///
+/// For example, this impl:
+/// ```ignore (incomplete)
+/// #[runtime_lint_pass]
+/// impl EarlyLintPass for MyLint {
+///     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) { ... }
+/// }
+/// ```
+/// expands to this:
+/// ```ignore (incomplete)
+/// impl EarlyLintPass for MyLint {
+///     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) { ... }
+///     fn check_expr_needed(&self) -> bool { true }
+/// }
+/// ```
+/// If you forget to add this attribute you will get a compile time panic telling you to add it.
+///
+/// If you use a macro to insert one or more `check_foo` methods in the `{Early,Late}LintPass` impl
+/// then you'll need to add the corresponding `check_foo_needed` methods that return true yourself,
+/// because this proc macro cannot see inside such macros.
+#[proc_macro_attribute]
+pub fn runtime_lint_pass(attr: TokenStream, input: TokenStream) -> TokenStream {
+    lints::runtime_lint_pass(attr, input)
 }
 
 decl_derive!(

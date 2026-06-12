@@ -102,6 +102,7 @@ impl_lint_pass!(LintWithoutLintPass => [
     MISSING_CLIPPY_VERSION_ATTRIBUTE,
 ]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let hir::ItemKind::Static(Mutability::Not, ident, ty, body_id) = item.kind {

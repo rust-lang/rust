@@ -5,6 +5,7 @@ use clippy_utils::{is_bool, is_from_proc_macro};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::{Body, EnumDef, FieldDef, Item, ItemKind, QPath, TyKind, UseKind, Variant, VariantData};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::Symbol;
 
@@ -468,6 +469,7 @@ fn check_enum_tuple_path_match(variant_name: &str, variant_data: VariantData<'_>
     }
 }
 
+#[runtime_lint_pass]
 impl LateLintPass<'_> for ItemNameRepetitions {
     fn check_item_post(&mut self, _: &LateContext<'_>, item: &Item<'_>) {
         if matches!(item.kind, ItemKind::Mod(..)) {

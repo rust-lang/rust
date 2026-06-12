@@ -8,6 +8,7 @@ use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_macros::runtime_lint_pass;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
@@ -36,6 +37,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ByteCharSlice => [BYTE_CHAR_SLICES]);
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for ByteCharSlice {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if !expr.span.from_expansion()

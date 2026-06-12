@@ -32,6 +32,7 @@ use rustc_hir::{
     TraitItem, TraitItemKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_macros::runtime_lint_pass;
 use rustc_middle::mir::{ConstValue, UnevaluatedConst};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
 use rustc_middle::ty::{
@@ -713,6 +714,7 @@ impl<'tcx> NonCopyConst<'tcx> {
     }
 }
 
+#[runtime_lint_pass]
 impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Const(ident, .., ct_rhs) = item.kind
