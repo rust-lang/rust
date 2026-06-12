@@ -364,17 +364,16 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mut scc_values =
             RegionValues::new(location_map, universal_regions.len(), placeholder_indices);
 
-        // Initializes the region variables for each universally
-        // quantified region (lifetime parameter). The first N variables
-        // always correspond to the regions appearing in the function
-        // signature (both named and anonymous) and in where-clauses.
+        // Initializes the region variables with their initial live points.
         for (region, definition) in definitions.iter_enumerated() {
             let scc = constraint_sccs.scc(region);
 
+            // For each universally quantified region (lifetime parameter). The
+            // first N variables always correspond to the regions appearing in the
+            // function signature (both named and anonymous) and in where-clauses.
             match definition.origin {
+                // For each free, universally quantified region X:
                 NllRegionVariableOrigin::FreeRegion => {
-                    // For each free, universally quantified region X:
-
                     // Add all nodes in the CFG to liveness constraints
                     liveness_constraints.add_all_points(region);
 
@@ -383,22 +382,23 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 }
 
                 NllRegionVariableOrigin::Placeholder(placeholder) => {
-                    scc_values.add_placeholder(scc, placeholder)
+                    scc_values.add_placeholder(scc, placeholder);
                 }
 
                 NllRegionVariableOrigin::Existential { .. } => {
                     // For existential, regions, nothing to do.
                 }
             }
-        }
 
-        for (region, liveness) in liveness_constraints.regions_and_liveness() {
             // Initially copy the liveness constraints of any region that
             // has them, setting `scc_values[scc(region)] |= liveness_constraints[region]`.
             //
-            // These values will later be propagated during [`Self::propagate_constraints()`]
-            scc_values.merge_liveness(constraint_sccs.scc(region), liveness);
-            // Note: this includes the liveness values we just initialised above!
+            // These values will later be propagated during [`Self::propagate_constraints()`].
+            // The values include any live-at-all-points constraints added above
+            // for free regions.
+            if let Some(liveness) = liveness_constraints.point_liveness(region) {
+                scc_values.merge_liveness(scc, liveness)
+            }
         }
 
         Self {
@@ -556,7 +556,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // To propagate constraints, we walk the DAG induced by the
         // SCC. For each SCC `A`, we visit its successors and compute
         // their values, then we union all those values to get our
-        // own.
+        // own. This one-shot approach works because iteration is in
+        // dependency order. I.e. a chain A: B: C will visit C, B, A.
         for scc_a in self.constraint_sccs.all_sccs() {
             // Walk each SCC `B` such that `A: B`...
             for &scc_b in self.constraint_sccs.successors(scc_a) {

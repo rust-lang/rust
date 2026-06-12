@@ -95,11 +95,10 @@ impl LivenessValues {
         }
     }
 
-    /// Iterate through each region that has a value in this set.
-    pub(crate) fn regions_and_liveness(
-        &self,
-    ) -> impl Iterator<Item = (RegionVid, &IntervalSet<PointIndex>)> {
-        self.points().iter_enumerated()
+    /// Get the liveness status of a region `r`, if any.
+    /// Panics if liveness data is not tracked for any region.
+    pub(crate) fn point_liveness(&self, region: RegionVid) -> Option<&IntervalSet<PointIndex>> {
+        self.points().row(region)
     }
 
     /// Iterate through each region that has a value in this set.
@@ -168,13 +167,12 @@ impl LivenessValues {
     /// [`point`][rustc_mir_dataflow::points::PointIndex].
     #[inline]
     pub(crate) fn is_live_at_point(&self, region: RegionVid, point: PointIndex) -> bool {
-        self.points().row(region).is_some_and(|r| r.contains(point))
+        self.point_liveness(region).is_some_and(|r| r.contains(point))
     }
 
     /// Returns an iterator of all the points where `region` is live.
     fn live_points(&self, region: RegionVid) -> impl Iterator<Item = PointIndex> {
-        self.points()
-            .row(region)
+        self.point_liveness(region)
             .into_iter()
             .flat_map(|set| set.iter())
             .take_while(|&p| self.location_map.point_in_range(p))
