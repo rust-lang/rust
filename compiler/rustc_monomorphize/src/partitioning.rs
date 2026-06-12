@@ -124,7 +124,7 @@ use rustc_target::spec::SymbolVisibility;
 use tracing::debug;
 
 use crate::collector::{self, MonoItemCollectionStrategy, UsageMap};
-use crate::errors::{CouldntDumpMonoStats, SymbolAlreadyDefined};
+use crate::diagnostics::{CouldntDumpMonoStats, SymbolAlreadyDefined};
 use crate::graph_checks::target_specific_checks;
 
 struct PartitioningCx<'a, 'tcx> {
