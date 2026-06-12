@@ -1,0 +1,24 @@
+ compiler error: compiler/rustc_mir_build/src/thir/cx/expr.rs:LL:CC: no splatted def for function or method callee
+  --> $DIR/splat-fn-ptr-tuple.rs:29:5
+   |
+LL |     fn_ptr(1, 2);
+   |     ^^^^^^^^^^^^
+
+
+
+Box<dyn Any>
+stack backtrace:
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: please make sure that you have updated to the latest nightly
+
+note: rustc {version} running on {platform}
+
+query stack during panic:
+#0 [thir_body] building THIR for `main`
+#1 [check_unsafety] unsafety-checking `main`
+#2 [analysis] running analysis passes on crate `splat_fn_ptr_tuple`
+end of query stack
+error: aborting due to 1 previous error
+
