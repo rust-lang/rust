@@ -103,7 +103,7 @@ use tracing::debug;
 
 use self::compare_impl_item::collect_return_position_impl_trait_in_trait_tys;
 use self::region::region_scope_tree;
-use crate::{check_c_variadic_abi, errors};
+use crate::{check_c_variadic_abi, diagnostics};
 
 /// Adds query implementations to the [Providers] vtable, see [`rustc_middle::query`]
 pub(super) fn provide(providers: &mut Providers) {
@@ -127,7 +127,7 @@ fn adt_destructor(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::Destructor>
         if let Some(async_dtor) = adt_async_destructor(tcx, def_id) {
             // When type has AsyncDrop impl, but doesn't have Drop impl, generate error
             let span = tcx.def_span(async_dtor.impl_did);
-            tcx.dcx().emit_err(errors::AsyncDropWithoutSyncDrop { span });
+            tcx.dcx().emit_err(diagnostics::AsyncDropWithoutSyncDrop { span });
         }
     }
     dtor
@@ -244,14 +244,14 @@ fn missing_items_err(
         let code = format!("{padding}{snippet}\n{padding}");
         if let Some(span) = tcx.hir_span_if_local(trait_item.def_id) {
             missing_trait_item_label
-                .push(errors::MissingTraitItemLabel { span, item: trait_item.name() });
-            missing_trait_item.push(errors::MissingTraitItemSuggestion {
+                .push(diagnostics::MissingTraitItemLabel { span, item: trait_item.name() });
+            missing_trait_item.push(diagnostics::MissingTraitItemSuggestion {
                 span: sugg_sp,
                 code,
                 snippet,
             });
         } else {
-            missing_trait_item_none.push(errors::MissingTraitItemSuggestionNone {
+            missing_trait_item_none.push(diagnostics::MissingTraitItemSuggestionNone {
                 span: sugg_sp,
                 code,
                 snippet,
@@ -259,7 +259,7 @@ fn missing_items_err(
         }
     }
 
-    tcx.dcx().emit_err(errors::MissingTraitItem {
+    tcx.dcx().emit_err(diagnostics::MissingTraitItem {
         span: tcx.span_of_impl(impl_def_id.to_def_id()).unwrap(),
         missing_items_msg,
         missing_trait_item_label,
@@ -277,7 +277,7 @@ fn missing_items_must_implement_one_of_err(
     let missing_items_msg =
         missing_items.iter().map(Ident::to_string).collect::<Vec<_>>().join("`, `");
 
-    tcx.dcx().emit_err(errors::MissingOneOfTraitItem {
+    tcx.dcx().emit_err(diagnostics::MissingOneOfTraitItem {
         span: impl_span,
         note: annotation_span,
         missing_items_msg,
@@ -302,7 +302,7 @@ fn default_body_is_unstable(
         None => none_note = true,
     };
 
-    let mut err = tcx.dcx().create_err(errors::MissingTraitItemUnstable {
+    let mut err = tcx.dcx().create_err(diagnostics::MissingTraitItemUnstable {
         span: impl_span,
         some_note,
         none_note,
@@ -582,7 +582,7 @@ fn bad_variant_count<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>, sp: Span, d
         spans = start.to_vec();
         many = Some(*end);
     }
-    tcx.dcx().emit_err(errors::TransparentEnumVariant {
+    tcx.dcx().emit_err(diagnostics::TransparentEnumVariant {
         span: sp,
         spans,
         many,

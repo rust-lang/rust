@@ -22,7 +22,7 @@ use tracing::debug;
 use super::FnCtxt;
 use super::method::MethodCallee;
 use crate::method::TreatNotYetDefinedOpaques;
-use crate::{Expectation, errors};
+use crate::{Expectation, diagnostics};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Checks a `a <op>= b`
@@ -347,7 +347,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // used instead of `==` in a let-chain
             Op::AssignOp(assign_op) => {
                 if let Err(e) =
-                    errors::maybe_emit_plus_equals_diagnostic(&self, assign_op, lhs_expr)
+                    diagnostics::maybe_emit_plus_equals_diagnostic(&self, assign_op, lhs_expr)
                 {
                     (e, None)
                 } else {
