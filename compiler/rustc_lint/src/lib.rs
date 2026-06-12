@@ -133,7 +133,10 @@ use unused::*;
 
 #[rustfmt::skip]
 pub use builtin::{MissingDoc, SoftLints};
-pub use context::{CheckLintNameResult, EarlyContext, LateContext, LintContext, LintStore};
+pub use context::{
+    CheckLintNameResult, EarlyContext, EarlyLintPassFactory, LateContext, LateLintPassFactory,
+    LintContext, LintStore,
+};
 pub use early::diagnostics::DiagAndSess;
 pub use early::{EarlyCheckNode, check_ast_node};
 pub use late::{check_crate, late_lint_mod, unerased_lint_store};
@@ -660,14 +663,14 @@ fn register_internals(store: &mut LintStore) {
     macro_rules! early {
         ($register:ident, $lint:ident) => {
             store.register_lints(&$lint::lint_vec());
-            store.$register(|| Box::new($lint));
+            store.$register(Box::new(|| Box::new($lint)));
         };
     }
 
     macro_rules! late {
         ($register:ident, $lint:ident) => {
             store.register_lints(&$lint::lint_vec());
-            store.$register(|_| Box::new($lint));
+            store.$register(Box::new(|_| Box::new($lint)));
         };
     }
 
