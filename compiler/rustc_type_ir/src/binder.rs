@@ -371,7 +371,8 @@ generate!(
 
 impl<I: Interner, T: TypeFoldable<I>> EarlyBinder<I, T> {
     pub fn bind(cx: I, value: T) -> EarlyBinder<I, T> {
-        let value = ty::set_aliases_to_non_rigid(cx, value);
+        // Instantiation will require normalization.
+        let value = ty::set_aliases_to_non_rigid(cx, value).skip_normalization();
         EarlyBinder { value, _tcx: PhantomData }
     }
 }

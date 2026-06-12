@@ -239,7 +239,7 @@ fn maybe_drop_guard<'tcx>(
         // the typing mode is set to `PostAnalysis`.
         // But modifying local decls in MIR body is inconvenient. And we can't fold
         // `PlaceRef` in `checked_places`.
-        let ty = ty::set_aliases_to_non_rigid(tcx, ty);
+        let ty = ty::set_aliases_to_non_rigid(tcx, ty).skip_norm_wip();
         matches!(
             ty.kind(),
             ty::Closure(..)
