@@ -671,6 +671,7 @@ impl<'db> ExprCollector<'db> {
                     }
 
                     pl.params()
+                        .filter(|it| it.dotdotdot_token().is_none())
                         .map(|it| {
                             let type_ref = self.lower_type_ref_opt(it.ty(), impl_trait_lower_fn);
                             let name = match it.pat() {
