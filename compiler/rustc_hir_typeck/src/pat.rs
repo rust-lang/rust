@@ -544,21 +544,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             {
                 debug!("scrutinee ty {expected:?} is a pinned reference, inserting pin deref");
 
-                // if the inner_ty is an ADT, make sure that it can be structurally pinned
-                // (i.e., it is `#[pin_v2]`).
-                if let Some(adt) = inner_ty.ty_adt_def()
-                    && !adt.is_pin_project()
-                    && !adt.is_pin()
-                {
-                    let def_span: Option<Span> = self.tcx.hir_span_if_local(adt.did());
-                    let sugg_span = def_span.map(|span| span.shrink_to_lo());
-                    self.dcx().emit_err(crate::errors::ProjectOnNonPinProjectType {
-                        span: pat.span,
-                        def_span,
-                        sugg_span,
-                    });
-                }
-
                 // Use the old pat info to keep `current_depth` to its old value.
                 let new_pat_info =
                     self.adjust_pat_info(Pinnedness::Pinned, inner_mutability, old_pat_info);
@@ -1523,6 +1508,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         Ok(ResolvedPat { ty: pat_ty, kind: ResolvedPatKind::Struct { variant } })
     }
 
+    /// Reject pin-projection through a type that isn't structurally pinnable.
+    ///
+    /// Destructuring an ADT underneath a `&pin` reference projects its fields as pinned references.
+    /// This is only sound if the type opted into structural pinning with `#[pin_v2]`; otherwise it
+    /// would let safe code form a `Pin<&mut Field>` for a type that should never be pinned, breaking
+    /// the `Pin` guarantee (see #157634).
+    ///
+    /// This covers both explicit (`&pin mut`/`&pin const`) and implicit (match-ergonomics)
+    /// projection. `max_pinnedness` is only set for `&pin mut`, so the implicit shared (`&pin
+    /// const`) case is instead recognized through its pinned binding mode, hence both are checked.
+    fn check_pin_projection(
+        &self,
+        pat: &'tcx Pat<'tcx>,
+        pat_ty: Ty<'tcx>,
+        pat_info: PatInfo<'tcx>,
+    ) {
+        let through_pin = pat_info.max_pinnedness == PinnednessCap::Pinned
+            || matches!(pat_info.binding_mode, ByRef::Yes(Pinnedness::Pinned, _));
+        if through_pin
+            && let Some(adt) = pat_ty.ty_adt_def()
+            && !adt.is_pin_project()
+            && !adt.is_pin()
+        {
+            let def_span: Option<Span> = self.tcx.hir_span_if_local(adt.did());
+            let sugg_span = def_span.map(|span| span.shrink_to_lo());
+            self.dcx().emit_err(crate::errors::ProjectOnNonPinProjectType {
+                span: pat.span,
+                def_span,
+                sugg_span,
+            });
+        }
+    }
+
     fn check_pat_struct(
         &self,
         pat: &'tcx Pat<'tcx>,
@@ -1533,6 +1551,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         pat_info: PatInfo<'tcx>,
     ) -> Ty<'tcx> {
+        self.check_pin_projection(pat, pat_ty, pat_info);
+
         // Type-check the path.
         let had_err = self.demand_eqtype_pat(pat.span, expected, pat_ty, &pat_info.top_info);
 
@@ -1791,6 +1811,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         pat_info: PatInfo<'tcx>,
     ) -> Ty<'tcx> {
+        self.check_pin_projection(pat, pat_ty, pat_info);
+
         let tcx = self.tcx;
         let on_error = |e| {
             for pat in subpats {
