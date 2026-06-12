@@ -27,7 +27,7 @@ use smallvec::SmallVec;
 use tracing::debug;
 
 use super::InherentAssocCandidate;
-use crate::errors::{
+use crate::diagnostics::{
     self, AssocItemConstraintsNotAllowedHere, ManualImplementation, ParenthesizedFnTraitExpansion,
     TraitObjectDeclaredWithNoTraits,
 };
@@ -45,7 +45,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             return;
         }
 
-        self.dcx().emit_err(errors::MissingGenericParams {
+        self.dcx().emit_err(diagnostics::MissingGenericParams {
             span,
             def_span: self.tcx().def_span(def_id),
             span_snippet: self.tcx().sess.source_map().span_to_snippet(span).ok(),
@@ -148,7 +148,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // valid span, so we point at the whole path segment instead.
         let is_dummy = assoc_ident.span == DUMMY_SP;
 
-        let mut err = errors::AssocItemNotFound {
+        let mut err = diagnostics::AssocItemNotFound {
             span: if is_dummy { span } else { assoc_ident.span },
             assoc_ident,
             assoc_kind,
@@ -161,8 +161,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         };
 
         if is_dummy {
-            err.label =
-                Some(errors::AssocItemNotFoundLabel::NotFound { span, assoc_ident, assoc_kind });
+            err.label = Some(diagnostics::AssocItemNotFoundLabel::NotFound {
+                span,
+                assoc_ident,
+                assoc_kind,
+            });
             return self.dcx().emit_err(err);
         }
 
@@ -180,7 +183,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         if let Some(suggested_name) =
             find_best_match_for_name(&all_candidate_names, assoc_ident.name, None)
         {
-            err.sugg = Some(errors::AssocItemNotFoundSugg::Similar {
+            err.sugg = Some(diagnostics::AssocItemNotFoundSugg::Similar {
                 span: assoc_ident.span,
                 assoc_kind,
                 suggested_name,
@@ -223,7 +226,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .collect::<Vec<_>>()[..]
             {
                 let trait_name = tcx.def_path_str(best_trait);
-                err.label = Some(errors::AssocItemNotFoundLabel::FoundInOtherTrait {
+                err.label = Some(diagnostics::AssocItemNotFoundLabel::FoundInOtherTrait {
                     span: assoc_ident.span,
                     assoc_kind,
                     trait_name: &trait_name,
@@ -254,7 +257,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     {
                         // The type param already has a bound for `trait_name`, we just need to
                         // change the associated item.
-                        err.sugg = Some(errors::AssocItemNotFoundSugg::SimilarInOtherTrait {
+                        err.sugg = Some(diagnostics::AssocItemNotFoundSugg::SimilarInOtherTrait {
                             span: assoc_ident.span,
                             trait_name: &trait_name,
                             assoc_kind,
@@ -280,16 +283,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     if let DefKind::TyAlias = tcx.def_kind(item_def_id)
                         && !tcx.type_alias_is_lazy(item_def_id)
                     {
-                        err.sugg = Some(errors::AssocItemNotFoundSugg::SimilarInOtherTraitQPath {
-                            lo: ty_param_span.shrink_to_lo(),
-                            mi: ty_param_span.shrink_to_hi(),
-                            hi: (!identically_named).then_some(assoc_ident.span),
-                            trait_ref,
-                            identically_named,
-                            suggested_name,
-                            assoc_kind,
-                            applicability,
-                        });
+                        err.sugg =
+                            Some(diagnostics::AssocItemNotFoundSugg::SimilarInOtherTraitQPath {
+                                lo: ty_param_span.shrink_to_lo(),
+                                mi: ty_param_span.shrink_to_hi(),
+                                hi: (!identically_named).then_some(assoc_ident.span),
+                                trait_ref,
+                                identically_named,
+                                suggested_name,
+                                assoc_kind,
+                                applicability,
+                            });
                     } else {
                         let mut err = self.dcx().create_err(err);
                         if suggest_constraining_type_param(
@@ -321,14 +325,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // If we still couldn't find any associated item, and only one associated item exists,
         // suggest using it.
         if let [candidate_name] = all_candidate_names.as_slice() {
-            err.sugg = Some(errors::AssocItemNotFoundSugg::Other {
+            err.sugg = Some(diagnostics::AssocItemNotFoundSugg::Other {
                 span: assoc_ident.span,
                 qself: &qself_str,
                 assoc_kind,
                 suggested_name: *candidate_name,
             });
         } else {
-            err.label = Some(errors::AssocItemNotFoundLabel::NotFound {
+            err.label = Some(diagnostics::AssocItemNotFoundLabel::NotFound {
                 span: assoc_ident.span,
                 assoc_ident,
                 assoc_kind,
@@ -369,7 +373,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             && (ty.is_enum() || ty.references_error())
             && tcx.features().min_generic_const_args()
         {
-            Some(errors::AssocKindMismatchWrapInBracesSugg {
+            Some(diagnostics::AssocKindMismatchWrapInBracesSugg {
                 lo: hir_ty.span.shrink_to_lo(),
                 hi: hir_ty.span.shrink_to_hi(),
             })
@@ -391,7 +395,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             (ident.span, None, assoc_tag, assoc_item.tag())
         };
 
-        self.dcx().emit_err(errors::AssocKindMismatch {
+        self.dcx().emit_err(diagnostics::AssocKindMismatch {
             span,
             expected: assoc_tag_str(expected),
             got: assoc_tag_str(got),
@@ -418,7 +422,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let assoc_kind_str = assoc_tag_str(assoc_tag);
         let qself_str = qself.to_string(tcx);
-        let mut err = self.dcx().create_err(crate::errors::AmbiguousAssocItem {
+        let mut err = self.dcx().create_err(crate::diagnostics::AmbiguousAssocItem {
             span,
             assoc_kind: assoc_kind_str,
             assoc_ident,
@@ -606,7 +610,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             let msg = format!("expected {kind_str}, found variant `{ident}`");
             self.dcx().span_err(span, msg)
         } else if self_ty.is_enum() {
-            let mut err = self.dcx().create_err(errors::NoVariantNamed {
+            let mut err = self.dcx().create_err(diagnostics::NoVariantNamed {
                 span: ident.span,
                 ident,
                 ty: self_ty,

@@ -13,7 +13,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::{BytePos, Span};
 
-use crate::errors::{
+use crate::diagnostics::{
     BreakInsideClosure, BreakInsideCoroutine, BreakNonLoop, ConstContinueBadLabel,
     ContinueLabeledBlock, OutsideLoop, OutsideLoopSuggestion, UnlabeledCfInWhileCondition,
     UnlabeledInLabeledBlock,
