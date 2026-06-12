@@ -132,7 +132,7 @@ fn main() -> () {
         _19 = &(*_20);
         StorageLive(_21);
         _21 = Option::<Arguments<'_>>::None;
-        _15 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _16, move _17, move _19, move _21) -> bb23;
+        _15 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _16, move _17, move _19, move _21) -> [return: bb7, unwind: bb23];
     }
 
     bb7: {
@@ -236,7 +236,7 @@ fn main() -> () {
         _39 = &(*_40);
         StorageLive(_41);
         _41 = Option::<Arguments<'_>>::None;
-        _35 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _36, move _37, move _39, move _41) -> bb23;
+        _35 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _36, move _37, move _39, move _41) -> [return: bb18, unwind: bb23];
     }
 
     bb18: {

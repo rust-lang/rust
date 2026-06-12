@@ -28,7 +28,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId, ItemLocalId, Node, find_attr};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
@@ -39,12 +39,10 @@ use rustc_middle::mir::*;
 use rustc_middle::thir::{self, ExprId, LocalVarId, Param, ParamId, PatKind, Thir};
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_middle::{bug, span_bug};
-use rustc_session::lint;
 use rustc_span::{Span, Symbol};
 
 use crate::builder::expr::as_place::PlaceBuilder;
 use crate::builder::scope::{DropKind, LintLevel};
-use crate::diagnostics;
 
 pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -172,7 +170,6 @@ struct Builder<'a, 'tcx> {
 
     def_id: LocalDefId,
     hir_id: HirId,
-    parent_module: DefId,
     check_overflow: bool,
     fn_span: Span,
     arg_count: usize,
@@ -546,7 +543,6 @@ fn construct_fn<'tcx>(
         return_block.unit()
     });
 
-    builder.lint_and_remove_uninhabited();
     let mut body = builder.finish();
 
     body.spread_arg = if abi == ExternAbi::RustCall {
@@ -603,8 +599,6 @@ fn construct_const<'a, 'tcx>(
     builder.cfg.terminate(block, source_info, TerminatorKind::Return);
 
     builder.build_drop_trees();
-
-    builder.lint_and_remove_uninhabited();
     builder.finish()
 }
 
@@ -774,7 +768,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             param_env,
             def_id: def,
             hir_id,
-            parent_module: tcx.parent_module(hir_id).to_def_id(),
             check_overflow,
             cfg: CFG { basic_blocks: IndexVec::new() },
             fn_span: span,
@@ -822,123 +815,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let writer = pretty::MirWriter::new(self.tcx);
         writer.write_mir_fn(&body, &mut std::io::stdout()).unwrap();
-    }
-
-    fn lint_and_remove_uninhabited(&mut self) {
-        let mut lints = vec![];
-
-        for bbdata in self.cfg.basic_blocks.iter_mut() {
-            let term = bbdata.terminator_mut();
-            let TerminatorKind::Call { ref mut target, destination, .. } = term.kind else {
-                continue;
-            };
-            let Some(target_bb) = *target else { continue };
-
-            let ty = destination.ty(&self.local_decls, self.tcx).ty;
-            let ty_is_inhabited = ty.is_inhabited_from(
-                self.tcx,
-                self.parent_module,
-                self.infcx.typing_env(self.param_env),
-            );
-            if !ty_is_inhabited {
-                // Unreachable code warnings are already emitted during type checking.
-                // However, during type checking, full type information is being
-                // calculated but not yet available, so the check for diverging
-                // expressions due to uninhabited result types is pretty crude and
-                // only checks whether ty.is_never(). Here, we have full type
-                // information available and can issue warnings for less obviously
-                // uninhabited types (e.g. empty enums). The check above is used so
-                // that we do not emit the same warning twice if the uninhabited type
-                // is indeed `!`.
-                if !ty.is_never()
-                    && matches!(self.tcx.def_kind(self.def_id), DefKind::Fn | DefKind::AssocFn)
-                // check if the function's return type is inhabited
-                // this was added here because of this regression
-                // https://github.com/rust-lang/rust/issues/149571
-                    && self
-                        .tcx
-                        .fn_sig(self.def_id).instantiate_identity().skip_binder()
-                        .output()
-                        .is_inhabited_from(
-                            self.tcx,
-                            self.parent_module,
-                            self.infcx.typing_env(self.param_env),
-                        )
-                {
-                    lints.push((target_bb, ty, term.source_info.span));
-                }
-
-                // The presence or absence of a return edge affects control-flow sensitive
-                // MIR checks and ultimately whether code is accepted or not. We can only
-                // omit the return edge if a return type is visibly uninhabited to a module
-                // that makes the call.
-                *target = None;
-            }
-        }
-
-        /// Starting at a target unreachable block, find some user code to lint as unreachable
-        fn find_unreachable_code_from(
-            bb: BasicBlock,
-            bbs: &IndexVec<BasicBlock, BasicBlockData<'_>>,
-        ) -> Option<(SourceInfo, &'static str)> {
-            let bb = &bbs[bb];
-            for stmt in &bb.statements {
-                match &stmt.kind {
-                    // Ignore the implicit `()` return place assignment for unit functions/blocks
-                    StatementKind::Assign((_, Rvalue::Use(Operand::Constant(const_), _)))
-                        if const_.ty().is_unit() =>
-                    {
-                        continue;
-                    }
-                    // Ignore return value plumbing. After a call returning a non-`!`
-                    // uninhabited type, a tail expression can be unreachable while
-                    // still being needed to satisfy the surrounding return type.
-                    StatementKind::Assign((place, _)) if place.as_local() == Some(RETURN_PLACE) => {
-                        continue;
-                    }
-                    StatementKind::StorageLive(_) | StatementKind::StorageDead(_) => {
-                        continue;
-                    }
-                    StatementKind::FakeRead(..) => return Some((stmt.source_info, "definition")),
-                    _ => return Some((stmt.source_info, "expression")),
-                }
-            }
-
-            let term = bb.terminator();
-            match term.kind {
-                // No user code in this bb, and our goto target may be reachable via other paths
-                TerminatorKind::Goto { .. } | TerminatorKind::Return => None,
-                _ => Some((term.source_info, "expression")),
-            }
-        }
-
-        for (target_bb, orig_ty, orig_span) in lints {
-            if orig_span.in_external_macro(self.tcx.sess.source_map()) {
-                continue;
-            }
-
-            let Some((target_loc, descr)) =
-                find_unreachable_code_from(target_bb, &self.cfg.basic_blocks)
-            else {
-                continue;
-            };
-            let lint_root = self.source_scopes[target_loc.scope]
-                .local_data
-                .as_ref()
-                .unwrap_crate_local()
-                .lint_root;
-            self.tcx.emit_node_span_lint(
-                lint::builtin::UNREACHABLE_CODE,
-                lint_root,
-                target_loc.span,
-                diagnostics::UnreachableDueToUninhabited {
-                    expr: target_loc.span,
-                    orig: orig_span,
-                    descr,
-                    ty: orig_ty,
-                },
-            );
-        }
     }
 
     fn finish(self) -> Body<'tcx> {
