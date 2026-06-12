@@ -685,37 +685,61 @@ impl_lint_pass!(MissingDebugImplementations => [MISSING_DEBUG_IMPLEMENTATIONS]);
 
 impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        if !cx.effective_visibilities.is_reachable(item.owner_id.def_id) {
+        let def_id = item.owner_id.def_id;
+        if !cx.effective_visibilities.is_reachable(def_id) {
             return;
         }
 
-        match item.kind {
-            hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) | hir::ItemKind::Enum(..) => {}
+        let is_generic = match item.kind {
+            hir::ItemKind::Struct(_, generics, _)
+            | hir::ItemKind::Union(_, generics, _)
+            | hir::ItemKind::Enum(_, generics, _) => !generics.params.is_empty(),
             _ => return,
-        }
+        };
+
+        let tcx = cx.tcx;
 
         // Avoid listing trait impls if the trait is allowed.
-        if cx.tcx.lint_level_spec_at_node(MISSING_DEBUG_IMPLEMENTATIONS, item.hir_id()).is_allow() {
+        if tcx.lint_level_spec_at_node(MISSING_DEBUG_IMPLEMENTATIONS, item.hir_id()).is_allow() {
             return;
         }
 
-        let Some(debug) = cx.tcx.get_diagnostic_item(sym::Debug) else { return };
+        let Some(debug) = tcx.get_diagnostic_item(sym::Debug) else { return };
 
-        let has_impl = cx
-            .tcx
-            .non_blanket_impls_for_ty(
-                debug,
-                cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip(),
-            )
+        let ty = tcx.type_of(item.owner_id);
+        if tcx
+            .non_blanket_impls_for_ty(debug, ty.instantiate_identity().skip_norm_wip())
             .next()
-            .is_some();
-        if !has_impl {
-            cx.emit_span_lint(
-                MISSING_DEBUG_IMPLEMENTATIONS,
-                item.span,
-                BuiltinMissingDebugImpl { tcx: cx.tcx, def_id: debug },
-            );
+            .is_some()
+        {
+            return;
         }
+
+        let infcx = tcx.infer_ctxt().build(cx.typing_mode());
+        if is_generic {
+            let args = infcx.fresh_args_for_item(item.span, def_id.to_def_id());
+            if infcx
+                .type_implements_trait_shallow(
+                    debug,
+                    ty.instantiate(tcx, args).skip_norm_wip(),
+                    cx.param_env,
+                )
+                .is_some()
+            {
+                return;
+            }
+        } else if infcx
+            .type_implements_trait(debug, [ty.instantiate_identity().skip_norm_wip()], cx.param_env)
+            .must_apply_modulo_regions()
+        {
+            return;
+        }
+
+        cx.emit_span_lint(
+            MISSING_DEBUG_IMPLEMENTATIONS,
+            item.span,
+            BuiltinMissingDebugImpl { tcx: cx.tcx, def_id: debug },
+        );
     }
 }
 
