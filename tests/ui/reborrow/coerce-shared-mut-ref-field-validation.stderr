@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `&'a mut u32: CoerceShared<&'a u32>` is not satisfied
-  --> $DIR/coerce-shared-mut-ref-field-validation.rs:29:1
+  --> $DIR/coerce-shared-mut-ref-field-validation.rs:27:1
    |
 LL | impl<'a> CoerceShared<AliasRef<'a>> for AliasMut<'a> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the nightly-only, unstable trait `CoerceShared<&'a u32>` is not implemented for `&'a mut u32`
