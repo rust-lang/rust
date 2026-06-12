@@ -52,7 +52,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
 
-use crate::errors;
+use crate::diagnostics;
 
 #[allow(missing_docs)]
 pub(crate) fn assert_dep_graph(tcx: TyCtxt<'_>) {
@@ -128,7 +128,7 @@ impl<'tcx> IfThisChanged<'tcx> {
                             Err(()) => self
                                 .tcx
                                 .dcx()
-                                .emit_fatal(errors::UnrecognizedDepNode { span, name: n }),
+                                .emit_fatal(diagnostics::UnrecognizedDepNode { span, name: n }),
                         }
                     }
                 };
@@ -139,9 +139,10 @@ impl<'tcx> IfThisChanged<'tcx> {
                     let Ok(dep_node) =
                         DepNode::from_label_string(self.tcx, n.as_str(), def_path_hash)
                     else {
-                        self.tcx
-                            .dcx()
-                            .emit_fatal(errors::UnrecognizedDepNode { span: n.span, name: n.name });
+                        self.tcx.dcx().emit_fatal(diagnostics::UnrecognizedDepNode {
+                            span: n.span,
+                            name: n.name,
+                        });
                     };
                     self.then_this_would_need.push((n.span, n.name, hir_id, dep_node));
                 }
@@ -186,7 +187,7 @@ fn check_paths<'tcx>(
 ) {
     if if_this_changed.is_empty() {
         for &(target_span, _, _, _) in then_this_would_need {
-            tcx.dcx().emit_err(errors::MissingIfThisChanged { span: target_span });
+            tcx.dcx().emit_err(diagnostics::MissingIfThisChanged { span: target_span });
         }
         return;
     }
@@ -195,13 +196,13 @@ fn check_paths<'tcx>(
         let dependents = query.transitive_predecessors(source_dep_node);
         for &(target_span, ref target_pass, _, ref target_dep_node) in then_this_would_need {
             if !dependents.contains(&target_dep_node) {
-                tcx.dcx().emit_err(errors::NoPath {
+                tcx.dcx().emit_err(diagnostics::NoPath {
                     span: target_span,
                     source: tcx.def_path_str(source_def_id),
                     target: *target_pass,
                 });
             } else {
-                tcx.dcx().emit_err(errors::Ok { span: target_span });
+                tcx.dcx().emit_err(diagnostics::Ok { span: target_span });
             }
         }
     }
