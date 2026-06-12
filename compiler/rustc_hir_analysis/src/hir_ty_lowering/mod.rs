@@ -1357,9 +1357,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             LowerTypeRelativePathMode::Type(permit_variants),
         )? {
             TypeRelativePath::AssocItem(alias_term) => {
-                let ty = alias_term.expect_ty().to_ty(tcx);
+                let alias_ty = alias_term.expect_ty();
+                let def_id = alias_ty.kind.def_id();
+                let ty = alias_ty.to_ty(tcx);
                 let ty = self.check_param_uses_if_mcg(ty, span, false);
-                Ok((ty, tcx.def_kind(alias_term.def_id()), alias_term.def_id()))
+                Ok((ty, tcx.def_kind(def_id), def_id))
             }
             TypeRelativePath::Variant { adt, variant_did } => {
                 let adt = self.check_param_uses_if_mcg(adt, span, false);
@@ -1392,8 +1394,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             LowerTypeRelativePathMode::Const,
         )? {
             TypeRelativePath::AssocItem(alias_term) => {
-                self.require_type_const_attribute(alias_term.def_id(), span)?;
-                let ct = Const::new_unevaluated(tcx, alias_term.expect_ct());
+                let alias_ct = alias_term.expect_ct();
+                if let Some(def_id) = alias_ct.kind.opt_def_id() {
+                    self.require_type_const_attribute(def_id, span)?;
+                }
+                let ct = Const::new_unevaluated(tcx, alias_ct);
                 let ct = self.check_param_uses_if_mcg(ct, span, false);
                 Ok(ct)
             }
