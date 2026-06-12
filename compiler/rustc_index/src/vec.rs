@@ -387,8 +387,12 @@ impl<D: Decoder, I: Idx, T: Decodable<D>> Decodable<D> for IndexVec<I, T> {
 // not the phantom data.
 unsafe impl<I: Idx, T> Send for IndexVec<I, T> where T: Send {}
 
-static_assert_size!(IndexVec<u32, u8>, 16);
-static_assert_size!(IndexVec<usize, u8>, 24);
+#[cfg(target_pointer_width = "64")]
+mod size_asserts {
+    use super::*;
+    static_assert_size!(IndexVec<u32, u8>, 16);
+    static_assert_size!(IndexVec<usize, u8>, 24);
+}
 
 #[cfg(test)]
 mod tests;
