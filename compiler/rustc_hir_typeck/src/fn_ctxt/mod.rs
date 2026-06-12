@@ -8,6 +8,7 @@ mod suggestions;
 use std::cell::{Cell, RefCell};
 use std::ops::Deref;
 
+pub(crate) use inspect_obligations::UseSubtyping;
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::attrs::{DivergingBlockBehavior, DivergingFallbackBehavior};
 use rustc_hir::def_id::{DefId, LocalDefId};

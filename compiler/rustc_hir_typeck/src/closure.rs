@@ -23,6 +23,7 @@ use rustc_trait_selection::traits;
 use tracing::{debug, instrument, trace};
 
 use super::{CoroutineTypes, Expectation, FnCtxt, check_fn};
+use crate::fn_ctxt::UseSubtyping;
 
 /// What signature do we *expect* the closure to have from context?
 #[derive(Debug, Clone, TypeFoldable, TypeVisitable)]
@@ -317,7 +318,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Infer(ty::TyVar(vid)) => self.deduce_closure_signature_from_predicates(
                 Ty::new_var(self.tcx, self.root_var(vid)),
                 closure_kind,
-                self.obligations_for_self_ty(vid)
+                self.obligations_for_self_ty(vid, UseSubtyping::No)
                     .into_iter()
                     .map(|obl| (obl.predicate, obl.cause.span)),
             ),
@@ -587,7 +588,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // FIXME: We may want to elaborate here, though I assume this will be exceedingly rare.
         let mut return_ty = None;
-        for bound in self.obligations_for_self_ty(return_vid) {
+        for bound in self.obligations_for_self_ty(return_vid, UseSubtyping::No) {
             if let Some(ret_projection) = bound.predicate.as_projection_clause()
                 && let Some(ret_projection) = ret_projection.no_bound_vars()
                 && self.tcx.is_lang_item(ret_projection.def_id(), LangItem::FutureOutput)
@@ -986,9 +987,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let output_ty = match *ret_ty.kind() {
             ty::Infer(ty::TyVar(ret_vid)) => {
-                self.obligations_for_self_ty(ret_vid).into_iter().find_map(|obligation| {
-                    get_future_output(obligation.predicate, obligation.cause.span)
-                })?
+                self.obligations_for_self_ty(ret_vid, UseSubtyping::No).into_iter().find_map(
+                    |obligation| get_future_output(obligation.predicate, obligation.cause.span),
+                )?
             }
             ty::Alias(ty::AliasTy { kind: ty::Projection { .. }, .. }) => {
                 return Some(Ty::new_error_with_message(
