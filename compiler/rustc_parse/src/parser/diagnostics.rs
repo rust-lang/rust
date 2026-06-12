@@ -752,16 +752,19 @@ impl<'a> Parser<'a> {
         Err(err)
     }
 
+    pub(super) fn is_expected_raw_ref_mut(&self) -> bool {
+        self.prev_token.is_keyword(kw::Raw)
+            && self.expected_token_types.contains(TokenType::KwMut)
+            && self.expected_token_types.contains(TokenType::KwConst)
+            && self.token.can_begin_expr()
+    }
+
     /// Adds a label when `&raw EXPR` was written instead of `&raw const EXPR`/`&raw mut EXPR`.
     ///
     /// Given that not all parser diagnostics flow through `expected_one_of_not_found`, this
     /// label may need added to other diagnostics emission paths as needed.
     pub(super) fn label_expected_raw_ref(&mut self, err: &mut Diag<'_>) {
-        if self.prev_token.is_keyword(kw::Raw)
-            && self.expected_token_types.contains(TokenType::KwMut)
-            && self.expected_token_types.contains(TokenType::KwConst)
-            && self.token.can_begin_expr()
-        {
+        if self.is_expected_raw_ref_mut() {
             err.span_suggestions(
                 self.prev_token.span.shrink_to_hi(),
                 "`&raw` must be followed by `const` or `mut` to be a raw reference expression",
