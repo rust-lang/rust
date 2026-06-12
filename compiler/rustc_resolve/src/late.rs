@@ -724,7 +724,7 @@ pub(crate) struct DiagMetadata<'ast> {
     current_trait_assoc_items: Option<&'ast [Box<AssocItem>]>,
 
     /// The current self type if inside an impl (used for better errors).
-    pub(crate) current_self_type: Option<Ty>,
+    pub(crate) current_self_type: Option<&'ast Ty>,
 
     /// The current self item if inside an ADT (used for better errors).
     current_self_item: Option<NodeId>,
@@ -2671,7 +2671,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         let impl_self = self
             .diag_metadata
             .current_self_type
-            .as_ref()
             .and_then(|ty| {
                 if let TyKind::Path(None, _) = ty.kind {
                     self.r.partial_res_map.get(&ty.id)
@@ -3296,10 +3295,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         }
     }
 
-    fn with_current_self_type<T>(&mut self, self_type: &Ty, f: impl FnOnce(&mut Self) -> T) -> T {
+    fn with_current_self_type<T>(
+        &mut self,
+        self_type: &'ast Ty,
+        f: impl FnOnce(&mut Self) -> T,
+    ) -> T {
         // Handle nested impls (inside fn bodies)
-        let previous_value =
-            replace(&mut self.diag_metadata.current_self_type, Some(self_type.clone()));
+        let previous_value = replace(&mut self.diag_metadata.current_self_type, Some(self_type));
         let result = f(self);
         self.diag_metadata.current_self_type = previous_value;
         result

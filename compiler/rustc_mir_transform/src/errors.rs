@@ -5,7 +5,7 @@ use rustc_errors::{
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::mir::AssertKind;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_session::lint::{self, Lint};
 use rustc_span::def_id::DefId;
 use rustc_span::{Ident, Span, Symbol};
@@ -161,6 +161,18 @@ pub(crate) struct FnItemRef {
     pub span: Span,
     pub sugg: String,
     pub ident: Ident,
+}
+
+#[derive(Diagnostic)]
+#[diag("unreachable {$descr}")]
+pub(crate) struct UnreachableDueToUninhabited<'desc, 'tcx> {
+    pub descr: &'desc str,
+    #[label("unreachable {$descr}")]
+    pub expr: Span,
+    #[label("any code following this expression is unreachable")]
+    #[note("this expression has type `{$ty}`, which is uninhabited")]
+    pub orig: Span,
+    pub ty: Ty<'tcx>,
 }
 
 #[derive(Diagnostic)]

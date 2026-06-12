@@ -991,9 +991,9 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                             // get a result which isn't correct for all monomorphizations.
                             match selcx.typing_mode() {
                                 TypingMode::Coherence
-                                | TypingMode::Analysis { .. }
-                                | TypingMode::Borrowck { .. }
-                                | TypingMode::PostBorrowckAnalysis { .. } => {
+                                | TypingMode::Typeck { .. }
+                                | TypingMode::PostTypeckUntilBorrowck { .. }
+                                | TypingMode::PostBorrowck { .. } => {
                                     debug!(
                                         assoc_ty = ?selcx.tcx().def_path_str(node_item.item.def_id),
                                         ?obligation.predicate,

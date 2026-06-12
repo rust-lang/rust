@@ -450,7 +450,7 @@ fn fn_sig_suggestion<'tcx>(
         .iter()
         .enumerate()
         .map(|(i, ty)| {
-            Some(match ty.kind() {
+            let arg_ty = match ty.kind() {
                 ty::Param(_) if assoc.is_method() && i == 0 => "self".to_string(),
                 ty::Ref(reg, ref_ty, mutability) if i == 0 => {
                     let reg = format!("{reg} ");
@@ -477,7 +477,8 @@ fn fn_sig_suggestion<'tcx>(
                         format!("_: {ty}")
                     }
                 }
-            })
+            };
+            Some(format!("{arg_ty}"))
         })
         .chain(std::iter::once(if sig.c_variadic() { Some("...".to_string()) } else { None }))
         .flatten()
@@ -588,32 +589,6 @@ fn bad_variant_count<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>, sp: Span, d
         number: adt.variants().len(),
         path: tcx.def_path_str(did),
     });
-}
-
-/// Emit an error when encountering two or more non-zero-sized fields in a transparent
-/// enum.
-fn bad_non_zero_sized_fields<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    adt: ty::AdtDef<'tcx>,
-    field_count: usize,
-    field_spans: impl Iterator<Item = Span>,
-    sp: Span,
-) {
-    if adt.is_enum() {
-        tcx.dcx().emit_err(errors::TransparentNonZeroSizedEnum {
-            span: sp,
-            spans: field_spans.collect(),
-            field_count,
-            desc: adt.descr(),
-        });
-    } else {
-        tcx.dcx().emit_err(errors::TransparentNonZeroSized {
-            span: sp,
-            spans: field_spans.collect(),
-            field_count,
-            desc: adt.descr(),
-        });
-    }
 }
 
 // FIXME: Consider moving this method to a more fitting place.
