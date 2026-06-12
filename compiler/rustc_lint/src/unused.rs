@@ -968,7 +968,7 @@ impl EarlyLintPass for UnusedParens {
         self.in_no_bounds_pos.clear();
     }
 
-    fn enter_where_predicate(&mut self, _: &EarlyContext<'_>, pred: &ast::WherePredicate) {
+    fn check_where_predicate(&mut self, _: &EarlyContext<'_>, pred: &ast::WherePredicate) {
         use rustc_ast::{WhereBoundPredicate, WherePredicateKind};
         if let WherePredicateKind::BoundPredicate(WhereBoundPredicate {
             bounded_ty,
@@ -982,7 +982,7 @@ impl EarlyLintPass for UnusedParens {
         }
     }
 
-    fn exit_where_predicate(&mut self, _: &EarlyContext<'_>, _: &ast::WherePredicate) {
+    fn check_where_predicate_post(&mut self, _: &EarlyContext<'_>, _: &ast::WherePredicate) {
         assert!(!self.with_self_ty_parens);
     }
 }

@@ -195,9 +195,9 @@ impl<'ast, 'ecx, T: EarlyLintPass> ast_visit::Visitor<'ast> for EarlyContextAndP
     }
 
     fn visit_where_predicate(&mut self, p: &'ast ast::WherePredicate) {
-        lint_callback!(self, enter_where_predicate, p);
+        lint_callback!(self, check_where_predicate, p);
         ast_visit::walk_where_predicate(self, p);
-        lint_callback!(self, exit_where_predicate, p);
+        lint_callback!(self, check_where_predicate_post, p);
     }
 
     fn visit_poly_trait_ref(&mut self, t: &'ast ast::PolyTraitRef) {
