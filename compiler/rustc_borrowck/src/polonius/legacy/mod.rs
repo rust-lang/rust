@@ -12,8 +12,7 @@ use rustc_mir_dataflow::move_paths::{InitKind, InitLocation, MoveData};
 use tracing::debug;
 
 use crate::borrow_set::BorrowSet;
-use crate::constraints::OutlivesConstraint;
-use crate::handle_placeholders::LoweredConstraints;
+use crate::constraints::{OutlivesConstraint, OutlivesConstraintSet};
 use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::universal_regions::UniversalRegions;
 
@@ -43,7 +42,7 @@ pub(crate) fn emit_facts<'tcx>(
     borrow_set: &BorrowSet<'tcx>,
     move_data: &MoveData<'tcx>,
     universal_region_relations: &UniversalRegionRelations<'tcx>,
-    constraints: &LoweredConstraints<'tcx>,
+    constraints: &OutlivesConstraintSet<'tcx>,
 ) {
     let Some(facts) = facts else {
         // We don't do anything if there are no facts to fill.
@@ -203,9 +202,9 @@ pub(crate) fn emit_drop_facts<'tcx>(
 fn emit_outlives_facts<'tcx>(
     facts: &mut PoloniusFacts,
     location_table: &PoloniusLocationTable,
-    constraints: &LoweredConstraints<'tcx>,
+    constraints: &OutlivesConstraintSet<'tcx>,
 ) {
-    facts.subset_base.extend(constraints.outlives_constraints.outlives().iter().flat_map(
+    facts.subset_base.extend(constraints.outlives().iter().flat_map(
         |constraint: &OutlivesConstraint<'_>| {
             if let Some(from_location) = constraint.locations.from_location() {
                 Either::Left(iter::once((

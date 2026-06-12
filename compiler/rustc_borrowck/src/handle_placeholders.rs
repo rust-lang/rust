@@ -2,7 +2,6 @@
 //! (with placeholders and universes) and turn them into regular
 //! outlives constraints.
 use rustc_data_structures::frozen::Frozen;
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::graph::scc;
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_index::IndexVec;
@@ -11,14 +10,14 @@ use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::{RegionVid, UniverseIndex};
 use tracing::{debug, trace};
 
+use crate::constraints::graph::NormalConstraintGraph;
 use crate::constraints::{ConstraintSccIndex, OutlivesConstraintSet};
 use crate::consumers::OutlivesConstraint;
-use crate::diagnostics::UniverseInfo;
-use crate::region_infer::values::{LivenessValues, PlaceholderIndices};
-use crate::region_infer::{ConstraintSccs, RegionDefinition, Representative, TypeTest};
+use crate::region_infer::values::LivenessValues;
+use crate::region_infer::{ConstraintSccs, RegionDefinition, Representative};
 use crate::ty::VarianceDiagInfo;
+use crate::type_check::Locations;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
-use crate::type_check::{Locations, MirTypeckRegionConstraints};
 use crate::universal_regions::UniversalRegions;
 use crate::{BorrowckInferCtxt, NllRegionVariableOrigin};
 
@@ -28,12 +27,10 @@ pub(crate) struct LoweredConstraints<'tcx> {
     pub(crate) constraint_sccs: Sccs<RegionVid, ConstraintSccIndex>,
     pub(crate) definitions: Frozen<IndexVec<RegionVid, RegionDefinition<'tcx>>>,
     pub(crate) scc_annotations: IndexVec<ConstraintSccIndex, RegionTracker>,
-    pub(crate) outlives_constraints: Frozen<OutlivesConstraintSet<'tcx>>,
-    pub(crate) type_tests: Vec<TypeTest<'tcx>>,
-    pub(crate) liveness_constraints: LivenessValues,
-    pub(crate) universe_causes: FxIndexMap<UniverseIndex, UniverseInfo<'tcx>>,
-    pub(crate) placeholder_indices: PlaceholderIndices<'tcx>,
+    pub(crate) constraint_graph: NormalConstraintGraph,
 }
+
+pub(crate) type RegionDefinitions<'tcx> = IndexVec<RegionVid, RegionDefinition<'tcx>>;
 
 /// A Visitor for SCC annotation construction.
 pub(crate) struct SccAnnotations<'d, 'tcx, A: scc::Annotation> {
@@ -170,11 +167,11 @@ impl scc::Annotation for RegionTracker {
 
 /// Determines if the region variable definitions contain
 /// placeholders, and compute them for later use.
-// FIXME: This is also used by opaque type handling. Move it to a separate file.
-pub(super) fn region_definitions<'tcx>(
+fn region_definitions<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     universal_regions: &UniversalRegions<'tcx>,
-) -> (Frozen<IndexVec<RegionVid, RegionDefinition<'tcx>>>, bool) {
+    liveness_constraints: &mut LivenessValues,
+) -> (Frozen<RegionDefinitions<'tcx>>, bool) {
     let var_infos = infcx.get_region_var_infos();
     // Create a RegionDefinition for each inference variable. This happens here because
     // it allows us to sneak in a cheap check for placeholders. Otherwise, its proper home
@@ -182,18 +179,22 @@ pub(super) fn region_definitions<'tcx>(
     let mut definitions = IndexVec::with_capacity(var_infos.len());
     let mut has_placeholders = false;
 
-    for info in var_infos.iter() {
+    for (rvid, info) in var_infos.iter_enumerated() {
         let origin = match info.origin {
             RegionVariableOrigin::Nll(origin) => origin,
             _ => NllRegionVariableOrigin::Existential { name: None },
         };
+
+        if let NllRegionVariableOrigin::FreeRegion = origin {
+            // Add all nodes in the CFG to liveness constraints for free regions
+            liveness_constraints.add_all_points(rvid);
+        }
 
         let definition = RegionDefinition { origin, universe: info.universe, external_name: None };
 
         has_placeholders |= matches!(origin, NllRegionVariableOrigin::Placeholder(_));
         definitions.push(definition);
     }
-
     // Add external names from universal regions in fun function definitions.
     // FIXME: this two-step method is annoying, but I don't know how to avoid it.
     for (external_name, variable) in universal_regions.named_universal_regions_iter() {
@@ -232,34 +233,30 @@ pub(super) fn region_definitions<'tcx>(
 ///
 /// Every constraint added by this method is an internal `IllegalUniverse` constraint.
 pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
-    constraints: MirTypeckRegionConstraints<'tcx>,
+    liveness_constraints: &mut LivenessValues,
+    outlives_constraints: &mut OutlivesConstraintSet<'tcx>,
     universal_region_relations: &Frozen<UniversalRegionRelations<'tcx>>,
     infcx: &BorrowckInferCtxt<'tcx>,
 ) -> LoweredConstraints<'tcx> {
     let universal_regions = &universal_region_relations.universal_regions;
-    let (definitions, has_placeholders) = region_definitions(infcx, universal_regions);
 
-    let MirTypeckRegionConstraints {
-        placeholder_indices,
-        placeholder_index_to_region: _,
-        liveness_constraints,
-        mut outlives_constraints,
-        universe_causes,
-        type_tests,
-    } = constraints;
+    let (definitions, has_placeholders) =
+        region_definitions(infcx, universal_regions, liveness_constraints);
 
     let fr_static = universal_regions.fr_static;
-    let compute_sccs =
-        |constraints: &OutlivesConstraintSet<'tcx>,
-         annotations: &mut SccAnnotations<'_, 'tcx, RegionTracker>| {
-            ConstraintSccs::new_with_annotation(
-                &constraints.graph(definitions.len()).region_graph(constraints, fr_static),
-                annotations,
-            )
-        };
+    let constraint_graph = outlives_constraints.graph(definitions.len());
+    let compute_sccs = |constraints: &OutlivesConstraintSet<'tcx>,
+                        annotations: &mut SccAnnotations<'_, 'tcx, RegionTracker>,
+                        constraint_graph: &NormalConstraintGraph| {
+        ConstraintSccs::new_with_annotation(
+            &constraint_graph.region_graph(constraints, fr_static),
+            annotations,
+        )
+    };
 
     let mut scc_annotations = SccAnnotations::init(&definitions);
-    let constraint_sccs = compute_sccs(&outlives_constraints, &mut scc_annotations);
+    let constraint_sccs =
+        compute_sccs(&outlives_constraints, &mut scc_annotations, &constraint_graph);
 
     // This code structure is a bit convoluted because it allows for a planned
     // future change where the early return here has a different type of annotation
@@ -268,14 +265,10 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
         debug!("No placeholder regions found; skipping rewriting logic!");
 
         return LoweredConstraints {
-            type_tests,
             constraint_sccs,
             scc_annotations: scc_annotations.scc_to_annotation,
             definitions,
-            outlives_constraints: Frozen::freeze(outlives_constraints),
-            liveness_constraints,
-            universe_causes,
-            placeholder_indices,
+            constraint_graph,
         };
     }
     debug!("Placeholders present; activating placeholder handling logic!");
@@ -284,33 +277,29 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
         &constraint_sccs,
         &scc_annotations,
         fr_static,
-        &mut outlives_constraints,
+        outlives_constraints,
     );
 
-    let (constraint_sccs, scc_annotations) = if added_constraints {
+    let (constraint_sccs, scc_annotations, constraint_graph) = if added_constraints {
         let mut annotations = SccAnnotations::init(&definitions);
+        let constraint_graph = outlives_constraints.graph(definitions.len());
 
         // We changed the constraint set and so must recompute SCCs.
         // Optimisation opportunity: if we can add them incrementally (and that's
         // possible because edges to 'static always only merge SCCs into 'static),
         // we would potentially save a lot of work here.
-        (compute_sccs(&outlives_constraints, &mut annotations), annotations.scc_to_annotation)
+        (
+            compute_sccs(&outlives_constraints, &mut annotations, &constraint_graph),
+            annotations.scc_to_annotation,
+            constraint_graph,
+        )
     } else {
         // If we didn't add any back-edges; no more work needs doing
         debug!("No constraints rewritten!");
-        (constraint_sccs, scc_annotations.scc_to_annotation)
+        (constraint_sccs, scc_annotations.scc_to_annotation, constraint_graph)
     };
 
-    LoweredConstraints {
-        constraint_sccs,
-        definitions,
-        scc_annotations,
-        outlives_constraints: Frozen::freeze(outlives_constraints),
-        type_tests,
-        liveness_constraints,
-        universe_causes,
-        placeholder_indices,
-    }
+    LoweredConstraints { constraint_sccs, definitions, scc_annotations, constraint_graph }
 }
 
 pub(crate) fn rewrite_placeholder_outlives<'tcx>(
