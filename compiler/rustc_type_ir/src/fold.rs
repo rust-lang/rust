@@ -555,16 +555,16 @@ where
     }
 }
 
-pub fn set_aliases_to_non_rigid<I: Interner, T>(cx: I, value: T) -> T
+pub fn set_aliases_to_non_rigid<I: Interner, T>(cx: I, value: T) -> ty::Unnormalized<I, T>
 where
     T: TypeFoldable<I>,
 {
     if !value.has_rigid_aliases() {
-        return value;
+        return ty::Unnormalized::new(value);
     }
 
     let mut folder = RigidnessFolder { cx };
-    value.fold_with(&mut folder)
+    ty::Unnormalized::new(value.fold_with(&mut folder))
 }
 
 struct RigidnessFolder<I: Interner> {

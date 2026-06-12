@@ -55,15 +55,14 @@ fn layout_of<'tcx>(
     // One that can be called after typecheck has completed and can use
     // `normalize_erasing_regions` here and another one that can be called
     // before typecheck has completed and uses `try_normalize_erasing_regions`.
-    let normalized_ty =
-        match tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(non_rigid_ty)) {
-            Ok(t) => t,
-            Err(normalization_error) => {
-                return Err(tcx
-                    .arena
-                    .alloc(LayoutError::NormalizationFailure(ty, normalization_error)));
-            }
-        };
+    let normalized_ty = match tcx.try_normalize_erasing_regions(typing_env, non_rigid_ty) {
+        Ok(t) => t,
+        Err(normalization_error) => {
+            return Err(tcx
+                .arena
+                .alloc(LayoutError::NormalizationFailure(ty, normalization_error)));
+        }
+    };
 
     if normalized_ty != unnormalized_ty {
         // FIXME: our rigidness folding is redundant in this case.
