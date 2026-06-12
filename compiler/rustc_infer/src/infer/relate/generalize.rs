@@ -636,12 +636,15 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                 }
             }
 
-            ty::Alias(data) => match self.structurally_relate_aliases {
-                StructurallyRelateAliases::No => {
-                    self.generalize_alias_term(data.into()).map(|v| v.expect_type())
+            // We shouldn't perform lazy norm for rigid aliases.
+            ty::Alias(data) if data.is_rigid == ty::IsRigid::No => {
+                match self.structurally_relate_aliases {
+                    StructurallyRelateAliases::No => {
+                        self.generalize_alias_term(data.into()).map(|v| v.expect_type())
+                    }
+                    StructurallyRelateAliases::Yes => relate::structurally_relate_tys(self, t, t),
                 }
-                StructurallyRelateAliases::Yes => relate::structurally_relate_tys(self, t, t),
-            },
+            }
 
             _ => relate::structurally_relate_tys(self, t, t),
         }?;
@@ -752,24 +755,31 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
             //
             // FIXME: replace the StructurallyRelateAliases::Yes branch with
             // `structurally_relate_consts` once it is fully structural.
-            ty::ConstKind::Unevaluated(uv) => match self.structurally_relate_aliases {
-                // Hack: Fall back to old behavior if GCE is enabled (it used to just be the Yes
-                // path), as doing this new No path breaks some GCE things. I expect GCE to be
-                // ripped out soon so this shouldn't matter soon.
-                StructurallyRelateAliases::No if !tcx.features().generic_const_exprs() => {
-                    self.generalize_alias_term(uv.into()).map(|v| v.expect_const())
+            //
+            // We shouldn't perform lazy norm for rigid aliases.
+            ty::ConstKind::Unevaluated(uv) if uv.is_rigid == ty::IsRigid::No => {
+                match self.structurally_relate_aliases {
+                    // Hack: Fall back to old behavior if GCE is enabled (it used to just be the Yes
+                    // path), as doing this new No path breaks some GCE things. I expect GCE to be
+                    // ripped out soon so this shouldn't matter soon.
+                    StructurallyRelateAliases::No if !tcx.features().generic_const_exprs() => {
+                        self.generalize_alias_term(uv.into()).map(|v| v.expect_const())
+                    }
+                    _ => {
+                        let ty::UnevaluatedConst { kind, args, is_rigid, .. } = uv;
+                        let args = self.relate_with_variance(
+                            ty::Invariant,
+                            ty::VarianceDiagInfo::default(),
+                            args,
+                            args,
+                        )?;
+                        Ok(ty::Const::new_unevaluated(
+                            tcx,
+                            ty::UnevaluatedConst::with_rigidness(tcx, kind, args, is_rigid),
+                        ))
+                    }
                 }
-                _ => {
-                    let ty::UnevaluatedConst { kind, args, .. } = uv;
-                    let args = self.relate_with_variance(
-                        ty::Invariant,
-                        ty::VarianceDiagInfo::default(),
-                        args,
-                        args,
-                    )?;
-                    Ok(ty::Const::new_unevaluated(tcx, ty::UnevaluatedConst::new(tcx, kind, args)))
-                }
-            },
+            }
             ty::ConstKind::Placeholder(placeholder) => {
                 if self.for_universe.can_name(placeholder.universe) {
                     Ok(c)

@@ -29,6 +29,5 @@ fn main() {
     //~^ ERROR: overflow evaluating the requirement `<() as Foo>::Item == String` [E0275]
     //~| ERROR: overflow evaluating the requirement `<() as Foo>::Item == _` [E0275]
     //~| ERROR: overflow evaluating the requirement `<() as Foo>::Item == _` [E0275]
-    //~| ERROR: overflow evaluating the requirement `<() as Foo>::Item == _` [E0275]
     println!("{x}");
 }

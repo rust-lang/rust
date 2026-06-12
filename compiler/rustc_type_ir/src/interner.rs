@@ -292,6 +292,8 @@ pub trait Interner:
 
     fn assumptions_on_binders(self) -> bool;
 
+    fn renormalize_rigid_aliases(self) -> bool;
+
     fn coroutine_hidden_types(
         self,
         def_id: Self::CoroutineId,

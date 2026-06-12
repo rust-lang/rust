@@ -11,9 +11,9 @@ use crate::delegate::SolverDelegate;
 // EAGER RESOLUTION
 
 /// Resolves ty, region, and const vars to their inferred values or their root vars.
-struct EagerResolver<'a, D, I = <D as SolverDelegate>::Interner>
+struct EagerResolver<'a, D, I = <D as InferCtxtLike>::Interner>
 where
-    D: SolverDelegate<Interner = I>,
+    D: InferCtxtLike<Interner = I>,
     I: Interner,
 {
     delegate: &'a D,
@@ -26,6 +26,13 @@ pub fn eager_resolve_vars<D: SolverDelegate, T: TypeFoldable<D::Interner>>(
     delegate: &D,
     value: T,
 ) -> T {
+    eager_resolve_vars_with_infcx(&**delegate, value)
+}
+
+pub fn eager_resolve_vars_with_infcx<Infcx: InferCtxtLike, T: TypeFoldable<Infcx::Interner>>(
+    delegate: &Infcx,
+    value: T,
+) -> T {
     if value.has_infer() {
         let mut folder = EagerResolver::new(delegate);
         value.fold_with(&mut folder)
@@ -34,13 +41,13 @@ pub fn eager_resolve_vars<D: SolverDelegate, T: TypeFoldable<D::Interner>>(
     }
 }
 
-impl<'a, D: SolverDelegate> EagerResolver<'a, D> {
-    fn new(delegate: &'a D) -> Self {
+impl<'a, Infcx: InferCtxtLike> EagerResolver<'a, Infcx> {
+    fn new(delegate: &'a Infcx) -> Self {
         EagerResolver { delegate, cache: Default::default() }
     }
 }
 
-impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for EagerResolver<'_, D> {
+impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I> for EagerResolver<'_, Infcx> {
     fn cx(&self) -> I {
         self.delegate.cx()
     }

@@ -76,7 +76,7 @@ fn process<'tcx>(
         let Ok(args) = caller.try_instantiate_mir_and_normalize_erasing_regions(
             tcx,
             typing_env,
-            ty::EarlyBinder::bind(args),
+            ty::EarlyBinder::bind(tcx, args),
         ) else {
             trace!(?caller, ?typing_env, ?args, "cannot normalize, skipping");
             continue;

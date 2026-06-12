@@ -761,7 +761,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                     Ok(ty) => ty,
                     Err(guar) => Ty::new_error(tcx, guar),
                 };
-                remapped_types.insert(def_id, ty::EarlyBinder::bind(ty));
+                remapped_types.insert(def_id, ty::EarlyBinder::bind(tcx, ty));
             }
             Err(err) => {
                 // This code path is not reached in any tests, but may be
@@ -783,11 +783,14 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         if !remapped_types.contains_key(assoc_item) {
             remapped_types.insert(
                 *assoc_item,
-                ty::EarlyBinder::bind(Ty::new_error_with_message(
+                ty::EarlyBinder::bind(
                     tcx,
-                    return_span,
-                    "missing synthetic item for RPITIT",
-                )),
+                    Ty::new_error_with_message(
+                        tcx,
+                        return_span,
+                        "missing synthetic item for RPITIT",
+                    ),
+                ),
             );
         }
     }

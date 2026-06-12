@@ -1,8 +1,8 @@
-error[E0284]: type annotations needed: cannot satisfy `for<'a> <_ as Trait<'a>>::Assoc normalizes-to <T as Trait<'_>>::Assoc`
-  --> $DIR/rigid-equate-projections-in-higher-ranked-fn-signature.rs:27:50
+error[E0284]: type annotations needed: cannot normalize `<_ as Trait<'a>>::Assoc`
+  --> $DIR/rigid-equate-projections-in-higher-ranked-fn-signature.rs:27:12
    |
 LL |     let _: for<'a> fn(<_ as Trait<'a>>::Assoc) = foo::<T>();
-   |                                                  ^^^^^^^^^^ cannot satisfy `for<'a> <_ as Trait<'a>>::Assoc normalizes-to <T as Trait<'_>>::Assoc`
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot normalize `<_ as Trait<'a>>::Assoc`
 
 error: aborting due to 1 previous error
 

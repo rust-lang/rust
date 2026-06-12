@@ -285,7 +285,7 @@ fn needless_borrow_count<'tcx>(
                 return false;
             }
 
-            let predicate = EarlyBinder::bind(predicate)
+            let predicate = EarlyBinder::bind(cx.tcx, predicate)
                 .instantiate(cx.tcx, &args_with_referent_ty[..])
                 .skip_norm_wip();
             let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);

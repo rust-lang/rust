@@ -144,7 +144,7 @@ fn adt_sizedness_constraint<'tcx>(
         return None;
     }
 
-    Some(ty::EarlyBinder::bind(constraint_ty))
+    Some(ty::EarlyBinder::bind(tcx, constraint_ty))
 }
 
 /// See `ParamEnv` struct definition for details.

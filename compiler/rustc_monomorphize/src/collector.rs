@@ -633,7 +633,7 @@ fn check_normalization_error<'tcx>(
             match self.instance.try_instantiate_mir_and_normalize_erasing_regions(
                 self.tcx,
                 ty::TypingEnv::fully_monomorphized(),
-                ty::EarlyBinder::bind(t),
+                ty::EarlyBinder::bind(self.tcx, t),
             ) {
                 Ok(_) => ControlFlow::Continue(()),
                 Err(_) => ControlFlow::Break(()),
@@ -697,7 +697,7 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
         self.instance.instantiate_mir_and_normalize_erasing_regions(
             self.tcx,
             ty::TypingEnv::fully_monomorphized(),
-            ty::EarlyBinder::bind(value),
+            ty::EarlyBinder::bind(self.tcx, value),
         )
     }
 

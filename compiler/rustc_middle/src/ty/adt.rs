@@ -292,7 +292,7 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = Ty<'tcx>>> {
-        ty::EarlyBinder::bind(
+        ty::EarlyBinder::bind_iter(
             self.all_fields().map(move |field| tcx.type_of(field.did).skip_binder()),
         )
     }

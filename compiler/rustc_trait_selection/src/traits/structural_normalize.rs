@@ -41,7 +41,14 @@ impl<'tcx> At<'_, 'tcx> {
 
         if self.infcx.next_trait_solver() {
             let term = term.skip_normalization();
-            if let None = term.to_alias_term() {
+
+            let Some(alias_term) = term.to_alias_term() else {
+                return Ok(term);
+            };
+
+            if !self.infcx.tcx.renormalize_rigid_aliases()
+                && alias_term.is_rigid == ty::IsRigid::Yes
+            {
                 return Ok(term);
             }
 

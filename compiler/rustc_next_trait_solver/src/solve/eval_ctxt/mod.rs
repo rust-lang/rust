@@ -15,9 +15,10 @@ use rustc_type_ir::solve::{
     RerunNonErased, RerunReason, RerunResultExt, SmallCopyList,
 };
 use rustc_type_ir::{
-    self as ty, CanonicalVarValues, ClauseKind, InferCtxtLike, Interner, MayBeErased,
-    OpaqueTypeKey, PredicateKind, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
+    self as ty, AliasRelationDirection, AliasTermKind, CanonicalVarValues, ClauseKind,
+    InferCtxtLike, Interner, MayBeErased, OpaqueTypeKey, PredicateKind, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    TypingMode,
 };
 use tracing::{Level, debug, instrument, trace, warn};
 
@@ -28,6 +29,7 @@ use crate::canonical::{
 };
 use crate::coherence;
 use crate::delegate::SolverDelegate;
+use crate::normalize::{NormalizationFolder, NormalizationWasAmbiguous};
 use crate::placeholder::BoundVarReplacer;
 use crate::resolve::eager_resolve_vars;
 use crate::solve::search_graph::SearchGraph;
@@ -1078,6 +1080,19 @@ where
         }
     }
 
+    pub(super) fn next_infer_for_alias(&mut self, alias: ty::AliasTerm<I>) -> I::Term {
+        match alias.kind {
+            AliasTermKind::ProjectionTy { .. }
+            | AliasTermKind::InherentTy { .. }
+            | AliasTermKind::OpaqueTy { .. }
+            | AliasTermKind::FreeTy { .. } => self.next_ty_infer().into(),
+            AliasTermKind::AnonConst { .. }
+            | AliasTermKind::ProjectionConst { .. }
+            | AliasTermKind::FreeConst { .. }
+            | AliasTermKind::InherentConst { .. } => self.next_const_infer().into(),
+        }
+    }
+
     /// Is the projection predicate is of the form `exists<T> <Ty as Trait>::Assoc = T`.
     ///
     /// This is the case if the `term` does not occur in any other part of the predicate
@@ -1735,6 +1750,44 @@ where
 
         ExternalConstraintsData { region_constraints, opaque_types, normalization_nested_goals }
     }
+
+    pub(super) fn normalize<T: TypeFoldable<I>>(
+        &mut self,
+        source: GoalSource,
+        param_env: I::ParamEnv,
+        value: T,
+    ) -> Result<T, NoSolutionOrRerunNonErased> {
+        let value = self.delegate.resolve_vars_if_possible(value);
+
+        if !self.cx().renormalize_rigid_aliases() && !value.has_non_rigid_aliases() {
+            return Ok(value);
+        }
+
+        // To drop the mutable borrow of self early.
+        let infcx = self.delegate.deref();
+        let mut folder = NormalizationFolder::new(infcx, vec![], |alias_term| {
+            let infer_term = self.next_infer_for_alias(alias_term);
+            let pred = ty::PredicateKind::AliasRelate(
+                alias_term.to_term(infcx.cx()),
+                infer_term.into(),
+                AliasRelationDirection::Equate,
+            );
+            let goal = Goal::new(self.cx(), param_env, pred);
+            self.inspect.add_goal(self.delegate, self.max_input_universe, source, goal);
+            let GoalEvaluation { goal, certainty, has_changed: _, stalled_on } =
+                self.evaluate_goal(source, goal, None)?;
+            let normalization_was_ambiguous = match certainty {
+                Certainty::Yes => NormalizationWasAmbiguous::No,
+                Certainty::Maybe(_) => {
+                    self.nested_goals.push((source, goal, stalled_on));
+                    NormalizationWasAmbiguous::Yes
+                }
+            };
+
+            Ok((self.resolve_vars_if_possible(infer_term), normalization_was_ambiguous))
+        });
+        value.try_fold_with(&mut folder)
+    }
 }
 
 /// Eagerly replace aliases with inference variables, emitting `AliasRelate`
@@ -1792,6 +1845,10 @@ where
     }
 
     fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
+        if !self.cx().renormalize_rigid_aliases() && !ty.has_non_rigid_aliases() {
+            return ty;
+        }
+
         match ty.kind() {
             ty::Alias(..) if !ty.has_escaping_bound_vars() => {
                 let infer_ty = self.ecx.next_ty_infer();
@@ -1821,6 +1878,10 @@ where
     }
 
     fn fold_const(&mut self, ct: I::Const) -> I::Const {
+        if !self.cx().renormalize_rigid_aliases() && !ct.has_non_rigid_aliases() {
+            return ct;
+        }
+
         match ct.kind() {
             ty::ConstKind::Unevaluated(..) if !ct.has_escaping_bound_vars() => {
                 let infer_ct = self.ecx.next_const_infer();
@@ -1840,6 +1901,10 @@ where
     }
 
     fn fold_predicate(&mut self, predicate: I::Predicate) -> I::Predicate {
+        if !self.cx().renormalize_rigid_aliases() && !predicate.has_non_rigid_aliases() {
+            return predicate;
+        }
+
         if predicate.allow_normalization() { predicate.super_fold_with(self) } else { predicate }
     }
 }

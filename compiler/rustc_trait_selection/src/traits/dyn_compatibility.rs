@@ -604,7 +604,7 @@ fn receiver_for_self_ty<'tcx>(
         if param.index == 0 { self_ty.into() } else { tcx.mk_param_from_def(param) }
     });
 
-    let result = EarlyBinder::bind(receiver_ty).instantiate(tcx, args).skip_norm_wip();
+    let result = EarlyBinder::bind(tcx, receiver_ty).instantiate(tcx, args).skip_norm_wip();
     debug!(
         "receiver_for_self_ty({:?}, {:?}, {:?}) = {:?}",
         receiver_ty, self_ty, method_def_id, result

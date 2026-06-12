@@ -43,9 +43,10 @@ pub(crate) fn fn_sig<'tcx>(
         unreachable!()
     };
 
-    ty::EarlyBinder::bind(ty::Binder::dummy(
-        tcx.mk_fn_sig_safe_rust_abi(std::iter::repeat_n(err, arity), err),
-    ))
+    ty::EarlyBinder::bind(
+        tcx,
+        ty::Binder::dummy(tcx.mk_fn_sig_safe_rust_abi(std::iter::repeat_n(err, arity), err)),
+    )
 }
 
 pub(crate) fn check_representability<'tcx>(
