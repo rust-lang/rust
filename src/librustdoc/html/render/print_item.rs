@@ -131,13 +131,10 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
                 // This won't be stable between releases though.
                 let mut h = DefaultHasher::new();
                 info.full_path.hash(&mut h);
-                let v = h.finish();
-                let style_attr = format!(
-                    "style=\"background: rgb({}, {}, {})\"",
-                    v as u8,
-                    (v >> 8) as u8,
-                    (v >> 16) as u8,
-                );
+                // Evenly-spaced OKLCH hues at fixed light/chroma.
+                const BADGE_HUES: u64 = 8;
+                let hue = (h.finish() % BADGE_HUES) * 360 / BADGE_HUES;
+                let style_attr = format!("style=\"background: oklch(0.55 0.21 {hue})\"");
                 NotableTraitBadgeVars {
                     name: info.name,
                     full_path: info.full_path,
