@@ -712,13 +712,11 @@ impl VariantData {
         check_assist(
             replace_if_let_with_match,
             r#"
-#![feature(if_let_guard)]
 fn main() {
     if $0let true = true && let Some(1) = None {} else { other() }
 }
 "#,
             r#"
-#![feature(if_let_guard)]
 fn main() {
     match true {
         true if let Some(1) = None => {}
@@ -731,7 +729,6 @@ fn main() {
         check_assist(
             replace_if_let_with_match,
             r#"
-#![feature(if_let_guard)]
 fn main() {
     if true {
         $0if let ParenExpr(expr) = cond
@@ -758,7 +755,6 @@ fn main() {
 }
 "#,
             r#"
-#![feature(if_let_guard)]
 fn main() {
     if true {
         match cond {
@@ -816,13 +812,11 @@ fn main() {
         check_assist(
             replace_if_let_with_match,
             r#"
-#![feature(if_let_guard)]
 fn main() {
     if $0let true = true && let Some(1) = None {}
 }
 "#,
             r#"
-#![feature(if_let_guard)]
 fn main() {
     match true {
         true if let Some(1) = None => {}

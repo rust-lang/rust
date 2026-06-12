@@ -1025,7 +1025,6 @@ fn _slice(bar: &[i32]) -> bool {
         check_diagnostics(
             r#"
 //- minicore: coerce_unsized, dispatch_from_dyn
-#![feature(trait_upcasting)]
 trait Foo {}
 trait Bar: Foo {}
 
