@@ -8,7 +8,7 @@ use std::{fmt, slice, vec};
 #[cfg(feature = "nightly")]
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
-use crate::{Idx, IndexSlice, static_assert_size};
+use crate::{Idx, IndexSlice};
 
 /// An owned contiguous collection of `T`s, indexed by `I` rather than by `usize`.
 ///
@@ -389,7 +389,8 @@ unsafe impl<I: Idx, T> Send for IndexVec<I, T> where T: Send {}
 
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use super::*;
+    use super::IndexVec;
+    use crate::static_assert_size;
     static_assert_size!(IndexVec<u32, u8>, 16);
     static_assert_size!(IndexVec<usize, u8>, 24);
 }
