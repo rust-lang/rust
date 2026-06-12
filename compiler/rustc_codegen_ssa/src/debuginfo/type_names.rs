@@ -375,6 +375,7 @@ fn push_debuginfo_type_name<'tcx>(
                 output.push_str("fn(");
             }
 
+            // FIXME(splat): should debuginfo be de-tupled in the callee (and caller)?
             if !sig.inputs().is_empty() {
                 for &parameter_type in sig.inputs() {
                     push_debuginfo_type_name(tcx, parameter_type, true, output, visited);

@@ -27,8 +27,8 @@ use rustc_middle::ty::adjustment::{
 };
 use rustc_middle::ty::{
     self, AdtKind, CanonicalUserType, GenericArgsRef, GenericParamDefKind, IsIdentity,
-    SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypeVisitableExt, Unnormalized,
-    UserArgs, UserSelfTy,
+    SizedTraitKind, SplattedDef, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypeVisitableExt,
+    Unnormalized, UserArgs, UserSelfTy,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
@@ -239,10 +239,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn write_splatted_resolution(
         &self,
-        _hir_id: HirId,
-        _r: Result<() /* SplattedDef */, ErrorGuaranteed>,
+        hir_id: HirId,
+        r: Result<SplattedDef, ErrorGuaranteed>,
     ) {
-        // FIXME(splat): add side table and write to it here
+        self.typeck_results.borrow_mut().splatted_defs_mut().insert(hir_id, r);
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -272,8 +272,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.write_splatted_resolution(
             hir_id,
-            // FIXME(splat): add side table and write to it here
-            Ok(()),
+            Ok(SplattedDef {
+                def_id: callee_def_id,
+                arg_index: first_tupled_arg_index,
+                arg_count: tupled_args_count,
+            }),
         );
         if let Some(callee_generic_args) = callee_generic_args {
             self.write_args(hir_id, callee_generic_args);
