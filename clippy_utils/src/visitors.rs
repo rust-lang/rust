@@ -324,87 +324,67 @@ pub fn is_local_used<'tcx>(cx: &LateContext<'tcx>, visitable: impl Visitable<'tc
 
 /// Checks if the given expression can be evaluated as a constant at the specified node
 pub fn is_const_evaluatable<'tcx>(tcx: TyCtxt<'tcx>, typeck: &'tcx TypeckResults<'tcx>, e: &'tcx Expr<'_>) -> bool {
-    struct V<'tcx> {
-        tcx: TyCtxt<'tcx>,
-        typeck: &'tcx TypeckResults<'tcx>,
-    }
-
-    impl<'tcx> Visitor<'tcx> for V<'tcx> {
-        type Result = ControlFlow<()>;
-        type NestedFilter = intravisit::nested_filter::None;
-
-        fn visit_expr(&mut self, e: &'tcx Expr<'_>) -> Self::Result {
-            match e.kind {
-                ExprKind::ConstBlock(_) => return ControlFlow::Continue(()),
-                ExprKind::Call(
-                    &Expr {
-                        kind: ExprKind::Path(ref p),
-                        hir_id,
-                        ..
-                    },
-                    _,
-                ) if self
-                    .typeck
-                    .qpath_res(p, hir_id)
-                    .opt_def_id()
-                    .is_some_and(|id| is_stable_const_fn_at(self.tcx, CRATE_HIR_ID, id, Msrv::default())) => {},
-                ExprKind::MethodCall(..)
-                    if self
-                        .typeck
-                        .type_dependent_def_id(e.hir_id)
-                        .is_some_and(|id| is_stable_const_fn_at(self.tcx, CRATE_HIR_ID, id, Msrv::default())) => {},
-                ExprKind::Binary(_, lhs, rhs)
-                    if self.typeck.expr_ty(lhs).peel_refs().is_primitive_ty()
-                        && self.typeck.expr_ty(rhs).peel_refs().is_primitive_ty() => {},
-                ExprKind::Unary(UnOp::Deref, e) if self.typeck.expr_ty(e).is_raw_ptr() => (),
-                ExprKind::Unary(_, e) if self.typeck.expr_ty(e).peel_refs().is_primitive_ty() => (),
-                ExprKind::Index(base, _, _)
-                    if matches!(
-                        self.typeck.expr_ty(base).peel_refs().kind(),
-                        ty::Slice(_) | ty::Array(..)
-                    ) => {},
-                ExprKind::Path(ref p)
-                    if matches!(
-                        self.typeck.qpath_res(p, e.hir_id),
-                        Res::Def(
-                            DefKind::Const { .. }
-                                | DefKind::AssocConst { .. }
-                                | DefKind::AnonConst
-                                | DefKind::ConstParam
-                                | DefKind::Ctor(..)
-                                | DefKind::Fn
-                                | DefKind::AssocFn,
-                            _
-                        ) | Res::SelfCtor(_)
-                    ) => {},
-
-                ExprKind::AddrOf(..)
-                | ExprKind::Array(_)
-                | ExprKind::Block(..)
-                | ExprKind::Cast(..)
-                | ExprKind::DropTemps(_)
-                | ExprKind::Field(..)
-                | ExprKind::If(..)
-                | ExprKind::Let(..)
-                | ExprKind::Lit(_)
-                | ExprKind::Match(..)
-                | ExprKind::Repeat(..)
-                | ExprKind::Struct(..)
-                | ExprKind::Tup(_)
-                | ExprKind::Type(..)
-                | ExprKind::UnsafeBinderCast(..) => (),
-
-                _ => {
-                    return ControlFlow::Break(());
+    for_each_expr(tcx, e, move |e| {
+        match e.kind {
+            ExprKind::ConstBlock(_) => return ControlFlow::Continue(Descend::No),
+            ExprKind::Call(
+                &Expr {
+                    kind: ExprKind::Path(ref p),
+                    hir_id,
+                    ..
                 },
-            }
+                _,
+            ) if typeck
+                .qpath_res(p, hir_id)
+                .opt_def_id()
+                .is_some_and(|id| is_stable_const_fn_at(tcx, CRATE_HIR_ID, id, Msrv::default())) => {},
+            ExprKind::MethodCall(..)
+                if typeck
+                    .type_dependent_def_id(e.hir_id)
+                    .is_some_and(|id| is_stable_const_fn_at(tcx, CRATE_HIR_ID, id, Msrv::default())) => {},
+            ExprKind::Binary(_, lhs, rhs)
+                if typeck.expr_ty(lhs).peel_refs().is_primitive_ty()
+                    && typeck.expr_ty(rhs).peel_refs().is_primitive_ty() => {},
+            ExprKind::Unary(UnOp::Deref, e) if typeck.expr_ty(e).is_raw_ptr() => (),
+            ExprKind::Unary(_, e) if typeck.expr_ty(e).peel_refs().is_primitive_ty() => (),
+            ExprKind::Index(base, _, _)
+                if matches!(typeck.expr_ty(base).peel_refs().kind(), ty::Slice(_) | ty::Array(..)) => {},
+            ExprKind::Path(ref p)
+                if matches!(
+                    typeck.qpath_res(p, e.hir_id),
+                    Res::Def(
+                        DefKind::Const { .. }
+                            | DefKind::AssocConst { .. }
+                            | DefKind::AnonConst
+                            | DefKind::ConstParam
+                            | DefKind::Ctor(..)
+                            | DefKind::Fn
+                            | DefKind::AssocFn,
+                        _
+                    ) | Res::SelfCtor(_)
+                ) => {},
 
-            walk_expr(self, e)
+            ExprKind::AddrOf(..)
+            | ExprKind::Array(_)
+            | ExprKind::Block(..)
+            | ExprKind::Cast(..)
+            | ExprKind::DropTemps(_)
+            | ExprKind::Field(..)
+            | ExprKind::If(..)
+            | ExprKind::Let(..)
+            | ExprKind::Lit(_)
+            | ExprKind::Match(..)
+            | ExprKind::Repeat(..)
+            | ExprKind::Struct(..)
+            | ExprKind::Tup(_)
+            | ExprKind::Type(..)
+            | ExprKind::UnsafeBinderCast(..) => {},
+
+            _ => return ControlFlow::Break(()),
         }
-    }
-
-    let mut v = V { tcx, typeck };
-    v.visit_expr(e).is_continue()
+        ControlFlow::Continue(Descend::Yes)
+    })
+    .is_none()
 }
 
 /// Checks if the given expression performs an unsafe operation outside of an unsafe block.
