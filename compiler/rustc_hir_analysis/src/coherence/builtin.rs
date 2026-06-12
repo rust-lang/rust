@@ -672,6 +672,7 @@ pub(crate) fn coerce_shared_info<'tcx>(
 
             validate_coerce_shared_fields(
                 tcx,
+                &infcx,
                 impl_did,
                 param_env,
                 coerce_shared_trait,
@@ -822,6 +823,7 @@ fn validate_reborrow_field_access(
 
 fn validate_coerce_shared_fields<'tcx>(
     tcx: TyCtxt<'tcx>,
+    infcx: &InferCtxt<'tcx>,
     impl_did: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
     coerce_shared_trait: DefId,
@@ -852,11 +854,10 @@ fn validate_coerce_shared_fields<'tcx>(
         }
     };
 
-    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     for field_pair in field_pairs {
         validate_coerce_shared_field(
             tcx,
-            &infcx,
+            infcx,
             impl_did,
             param_env,
             coerce_shared_trait,
