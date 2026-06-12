@@ -2696,6 +2696,10 @@ impl<'tcx> TyCtxt<'tcx> {
         self.sess.opts.unstable_opts.disable_fast_paths
     }
 
+    pub fn renormalize_rigid_aliases(self) -> bool {
+        self.sess.opts.unstable_opts.renormalize_rigid_aliases
+    }
+
     #[allow(rustc::bad_opt_access)]
     pub fn use_typing_mode_post_typeck_until_borrowck(self) -> bool {
         self.next_trait_solver_globally()

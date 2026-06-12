@@ -41,9 +41,14 @@ impl<'tcx> At<'_, 'tcx> {
 
         if self.infcx.next_trait_solver() {
             let term = term.skip_normalization();
-            if let None = term.to_alias_term() {
+
+            if !self.infcx.tcx.renormalize_rigid_aliases() && !term.is_non_rigid_alias() {
                 return Ok(term);
             }
+
+            let Some(_) = term.to_alias_term() else {
+                return Ok(term);
+            };
 
             let new_infer = self.infcx.next_term_var_of_kind(term, self.cause.span);
 

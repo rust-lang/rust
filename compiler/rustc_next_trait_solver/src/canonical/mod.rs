@@ -333,7 +333,7 @@ where
 {
     let var_values = CanonicalVarValues { var_values: delegate.cx().mk_args(var_values) };
     let state = inspect::State { var_values, data };
-    let state = eager_resolve_vars(delegate, state);
+    let state = eager_resolve_vars(&**delegate, state);
     Canonicalizer::canonicalize_response(delegate, max_input_universe, state)
 }
 
