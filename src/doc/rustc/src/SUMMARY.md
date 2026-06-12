@@ -103,6 +103,7 @@
     - [mips\*-mti-none-elf](platform-support/mips-mti-none-elf.md)
     - [mipsisa\*r6\*-unknown-linux-gnu\*](platform-support/mips-release-6.md)
     - [nvptx64-nvidia-cuda](platform-support/nvptx64-nvidia-cuda.md)
+    - [\*-oe-linux-gnu](platform-support/oe-linux-gnu.md)
     - [powerpc-unknown-openbsd](platform-support/powerpc-unknown-openbsd.md)
     - [powerpc-unknown-linux-gnuspe](platform-support/powerpc-unknown-linux-gnuspe.md)
     - [powerpc-unknown-linux-muslspe](platform-support/powerpc-unknown-linux-muslspe.md)
