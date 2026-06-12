@@ -18,7 +18,7 @@ use tracing::{debug, warn};
 use super::data::*;
 use super::fs::*;
 use super::{file_format, work_product};
-use crate::errors;
+use crate::diagnostics;
 use crate::persist::file_format::{OpenFile, OpenFileError};
 
 #[derive(Debug)]
@@ -60,7 +60,7 @@ fn load_dep_graph(sess: &Session) -> LoadResult {
         {
             // Decode the list of work_products
             let Ok(mut work_product_decoder) = MemDecoder::new(&mmap[..], start_pos) else {
-                sess.dcx().emit_warn(errors::CorruptFile { path: &work_products_path });
+                sess.dcx().emit_warn(diagnostics::CorruptFile { path: &work_products_path });
                 return LoadResult::DataOutOfDate;
             };
             let work_products: Vec<SerializedWorkProduct> =
@@ -93,7 +93,7 @@ fn load_dep_graph(sess: &Session) -> LoadResult {
         Err(OpenFileError::IoError { err }) => LoadResult::IoError { path: path.to_owned(), err },
         Ok(OpenFile { mmap, start_pos }) => {
             let Ok(mut decoder) = MemDecoder::new(&mmap, start_pos) else {
-                sess.dcx().emit_warn(errors::CorruptFile { path: &path });
+                sess.dcx().emit_warn(diagnostics::CorruptFile { path: &path });
                 return LoadResult::DataOutOfDate;
             };
             let prev_commandline_args_hash = Hash64::decode(&mut decoder);
@@ -135,7 +135,7 @@ pub fn load_query_result_cache(sess: &Session) -> Option<OnDiskCache> {
     match file_format::open_incremental_file(sess, &path) {
         Ok(OpenFile { mmap, start_pos }) => {
             let cache = OnDiskCache::new(sess, mmap, start_pos).unwrap_or_else(|()| {
-                sess.dcx().emit_warn(errors::CorruptFile { path: &path });
+                sess.dcx().emit_warn(diagnostics::CorruptFile { path: &path });
                 OnDiskCache::new_empty()
             });
             Some(cache)
@@ -161,12 +161,12 @@ fn maybe_assert_incr_state(sess: &Session, load_result: &LoadResult) {
     match assertion {
         IncrementalStateAssertion::Loaded => {
             if !loaded {
-                sess.dcx().emit_fatal(errors::AssertLoaded);
+                sess.dcx().emit_fatal(diagnostics::AssertLoaded);
             }
         }
         IncrementalStateAssertion::NotLoaded => {
             if loaded {
-                sess.dcx().emit_fatal(errors::AssertNotLoaded)
+                sess.dcx().emit_fatal(diagnostics::AssertNotLoaded)
             }
         }
     }
@@ -205,12 +205,13 @@ pub fn setup_dep_graph(
 
     let (prev_graph, prev_work_products) = match load_result {
         LoadResult::IoError { path, err } => {
-            sess.dcx().emit_warn(errors::LoadDepGraph { path, err });
+            sess.dcx().emit_warn(diagnostics::LoadDepGraph { path, err });
             Default::default()
         }
         LoadResult::DataOutOfDate => {
             if let Err(err) = delete_all_session_dir_contents(sess) {
-                sess.dcx().emit_err(errors::DeleteIncompatible { path: dep_graph_path(sess), err });
+                sess.dcx()
+                    .emit_err(diagnostics::DeleteIncompatible { path: dep_graph_path(sess), err });
             }
             Default::default()
         }
@@ -223,7 +224,7 @@ pub fn setup_dep_graph(
     let mut encoder = FileEncoder::new(&path_buf).unwrap_or_else(|err| {
         // We're in incremental mode but couldn't set up streaming output of the dep graph.
         // Exit immediately instead of continuing in an inconsistent and untested state.
-        sess.dcx().emit_fatal(errors::CreateDepGraph { path: &path_buf, err })
+        sess.dcx().emit_fatal(diagnostics::CreateDepGraph { path: &path_buf, err })
     });
 
     file_format::write_file_header(&mut encoder, sess);
