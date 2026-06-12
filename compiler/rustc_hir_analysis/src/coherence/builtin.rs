@@ -506,6 +506,7 @@ pub(crate) fn reborrow_info<'tcx>(
     impl_did: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
     debug!("compute_reborrow_info(impl_did={:?})", impl_did);
+    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let span = tcx.def_span(impl_did);
     let trait_name = "Reborrow";
 
@@ -554,6 +555,7 @@ pub(crate) fn reborrow_info<'tcx>(
     for field in data_fields {
         if assert_field_type_is_reborrow(
             tcx,
+            &infcx,
             reborrow_trait,
             impl_did,
             param_env,
@@ -567,7 +569,7 @@ pub(crate) fn reborrow_info<'tcx>(
         }
 
         // Field does not implement Reborrow: it must be Copy.
-        assert_field_type_is_copy(tcx, impl_did, param_env, field.ty, field.span)?;
+        assert_field_type_is_copy(tcx, &infcx, impl_did, param_env, field.ty, field.span)?;
     }
 
     Ok(())
@@ -575,6 +577,7 @@ pub(crate) fn reborrow_info<'tcx>(
 
 fn assert_field_type_is_reborrow<'tcx>(
     tcx: TyCtxt<'tcx>,
+    infcx: &InferCtxt<'tcx>,
     reborrow_trait: DefId,
     impl_did: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
@@ -585,8 +588,7 @@ fn assert_field_type_is_reborrow<'tcx>(
         // Mutable references are Reborrow but not really.
         return Ok(());
     }
-    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
-    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
+    let ocx = ObligationCtxt::new_with_diagnostics(infcx);
     let cause = traits::ObligationCause::misc(span, impl_did);
     let obligation =
         Obligation::new(tcx, cause, param_env, ty::TraitRef::new(tcx, reborrow_trait, [ty]));
@@ -850,9 +852,11 @@ fn validate_coerce_shared_fields<'tcx>(
         }
     };
 
+    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     for field_pair in field_pairs {
         validate_coerce_shared_field(
             tcx,
+            &infcx,
             impl_did,
             param_env,
             coerce_shared_trait,
@@ -868,6 +872,7 @@ fn validate_coerce_shared_fields<'tcx>(
 
 fn validate_coerce_shared_field<'tcx>(
     tcx: TyCtxt<'tcx>,
+    infcx: &InferCtxt<'tcx>,
     impl_did: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
     coerce_shared_trait: DefId,
@@ -902,11 +907,10 @@ fn validate_coerce_shared_field<'tcx>(
         source.span,
         FieldRelation::Equal,
     ) {
-        return assert_field_type_is_copy(tcx, impl_did, param_env, source.ty, source.span);
+        return assert_field_type_is_copy(tcx, infcx, impl_did, param_env, source.ty, source.span);
     }
 
-    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
-    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
+    let ocx = ObligationCtxt::new_with_diagnostics(infcx);
     let cause = traits::ObligationCause::misc(span, impl_did);
     ocx.register_obligation(Obligation::new(
         tcx,
@@ -974,12 +978,9 @@ fn field_tys_satisfy_relation_after_normalization_and_resolution<'tcx>(
             else {
                 return false;
             };
-            infcx.sub_regions(
-                SubregionOrigin::RelateObjectBound(span),
-                target_region,
-                source_region,
-                ty::VisibleForLeakCheck::Yes,
-            );
+            if source_region != target_region {
+                return false;
+            }
             (source_referent_ty, target_referent_ty)
         }
     };
@@ -1001,14 +1002,14 @@ fn field_tys_satisfy_relation_after_normalization_and_resolution<'tcx>(
 
 fn assert_field_type_is_copy<'tcx>(
     tcx: TyCtxt<'tcx>,
+    infcx: &InferCtxt<'tcx>,
     impl_did: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
     ty: Ty<'tcx>,
     span: Span,
 ) -> Result<(), ErrorGuaranteed> {
-    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let copy_trait = tcx.require_lang_item(LangItem::Copy, span);
-    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
+    let ocx = ObligationCtxt::new_with_diagnostics(infcx);
     let cause = traits::ObligationCause::misc(span, impl_did);
     let obligation =
         Obligation::new(tcx, cause, param_env, ty::TraitRef::new(tcx, copy_trait, [ty]));
@@ -1018,7 +1019,7 @@ fn assert_field_type_is_copy<'tcx>(
     if !errors.is_empty() {
         Err(infcx.err_ctxt().report_fulfillment_errors(errors))
     } else {
-        ocx.resolve_regions_and_report_errors(impl_did, param_env, [])
+        Ok(())
     }
 }
 
