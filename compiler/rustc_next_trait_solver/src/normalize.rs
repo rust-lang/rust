@@ -172,71 +172,109 @@ where
     #[instrument(level = "trace", skip(self), ret)]
     fn try_fold_ty(&mut self, ty: I::Ty) -> Result<I::Ty, Self::Error> {
         let infcx = self.infcx;
-        if !ty.has_aliases() {
+        let original = ty;
+
+        if !self.cx().renormalize_rigid_aliases() && !ty.has_non_rigid_aliases() {
             return Ok(ty);
         }
 
         // With eager normalization, we should normalize the args of alias before
         // normalizing the alias itself.
         let ty = ty.try_super_fold_with(self)?;
-        let ty::Alias(..) = ty.kind() else { return Ok(ty) };
+        let ty::Alias(alias_ty) = ty.kind() else { return Ok(ty) };
+        // We support ambiguous aliases inside rigid alias. So we still recognize
+        // the rigidness of the outer alias.
+        if !self.cx().renormalize_rigid_aliases() && alias_ty.is_rigid == ty::IsRigid::Yes {
+            return Ok(ty);
+        }
 
-        if ty.has_escaping_bound_vars() {
+        let normalized = if ty.has_escaping_bound_vars() {
             let (ty, mapped_regions, mapped_types, mapped_consts) =
                 BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, ty);
-            let result = ensure_sufficient_stack(|| {
+            let ty = ensure_sufficient_stack(|| {
                 self.normalize_alias_term(ty.into(), HasEscapingBoundVars::Yes)
             })?
             .expect_ty();
-            Ok(PlaceholderReplacer::replace_placeholders(
+            PlaceholderReplacer::replace_placeholders(
                 infcx,
                 mapped_regions,
                 mapped_types,
                 mapped_consts,
                 &self.universes,
-                result,
-            ))
+                ty,
+            )
         } else {
-            Ok(ensure_sufficient_stack(|| {
+            ensure_sufficient_stack(|| {
                 self.normalize_alias_term(ty.into(), HasEscapingBoundVars::No)
             })?
-            .expect_ty())
+            .expect_ty()
+        };
+
+        if self.cx().renormalize_rigid_aliases()
+            && let ty::Alias(original_alias) = original.kind()
+            && original_alias.is_rigid == ty::IsRigid::Yes
+        {
+            // find out missing typing env change.
+            let original = crate::resolve::eager_resolve_vars(infcx, original);
+            let normalized = crate::resolve::eager_resolve_vars(infcx, normalized);
+            assert_eq!(original, normalized, "rigid alias is further normalized");
         }
+        Ok(normalized)
     }
 
     #[instrument(level = "trace", skip(self), ret)]
     fn try_fold_const(&mut self, ct: I::Const) -> Result<I::Const, Self::Error> {
         let infcx = self.infcx;
-        if !ct.has_aliases() {
+        let original = ct;
+
+        if !self.cx().renormalize_rigid_aliases() && !ct.has_non_rigid_aliases() {
             return Ok(ct);
         }
 
         // With eager normalization, we should normalize the args of alias before
         // normalizing the alias itself.
         let ct = ct.try_super_fold_with(self)?;
-        let ty::ConstKind::Unevaluated(..) = ct.kind() else { return Ok(ct) };
+        let ty::ConstKind::Unevaluated(uv) = ct.kind() else { return Ok(ct) };
+        // We support ambiguous aliases inside rigid alias. So we still recognize
+        // the rigidness of the outer alias.
+        if !self.cx().renormalize_rigid_aliases() && uv.is_rigid == ty::IsRigid::Yes {
+            return Ok(ct);
+        }
 
-        if ct.has_escaping_bound_vars() {
+        let normalized = if ct.has_escaping_bound_vars() {
             let (ct, mapped_regions, mapped_types, mapped_consts) =
                 BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, ct);
-            let result = ensure_sufficient_stack(|| {
+            let ct = ensure_sufficient_stack(|| {
                 self.normalize_alias_term(ct.into(), HasEscapingBoundVars::Yes)
             })?
             .expect_const();
-            Ok(PlaceholderReplacer::replace_placeholders(
+            PlaceholderReplacer::replace_placeholders(
                 infcx,
                 mapped_regions,
                 mapped_types,
                 mapped_consts,
                 &self.universes,
-                result,
-            ))
+                ct,
+            )
         } else {
-            Ok(ensure_sufficient_stack(|| {
+            ensure_sufficient_stack(|| {
                 self.normalize_alias_term(ct.into(), HasEscapingBoundVars::No)
             })?
-            .expect_const())
+            .expect_const()
+        };
+
+        if self.cx().renormalize_rigid_aliases()
+            && let ty::ConstKind::Unevaluated(original_alias) = original.kind()
+            && original_alias.is_rigid == ty::IsRigid::Yes
+        {
+            // find out missing typing env change.
+            let original = crate::resolve::eager_resolve_vars(infcx, original);
+            let normalized = crate::resolve::eager_resolve_vars(infcx, normalized);
+            assert_eq!(original, normalized, "rigid alias is further normalized");
         }
+
+        Ok(normalized)
+    }
 
     fn try_fold_predicate(&mut self, p: I::Predicate) -> Result<I::Predicate, Self::Error> {
         if p.allow_normalization() { p.try_super_fold_with(self) } else { Ok(p) }

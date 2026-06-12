@@ -42,6 +42,11 @@ where
     let infcx = at.infcx;
     let value = value.skip_normalization();
     let value = infcx.resolve_vars_if_possible(value);
+
+    if !infcx.tcx.renormalize_rigid_aliases() && !value.has_non_rigid_aliases() {
+        return Normalized { value, obligations: Default::default() };
+    }
+
     let original_value = value.clone();
     let mut stalled_goals = vec![];
     let mut folder = NormalizationFolder::new(infcx, universes.clone(), |alias_term| {

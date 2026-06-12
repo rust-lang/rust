@@ -366,6 +366,10 @@ where
         param_env: I::ParamEnv,
         term: I::Term,
     ) -> Result<I::Term, NoSolutionOrRerunNonErased> {
+        if !self.cx().renormalize_rigid_aliases() && !term.is_non_rigid_alias() {
+            return Ok(term);
+        }
+
         if let Some(_) = term.to_alias_term() {
             let normalized_term = self.next_term_infer_of_kind(term);
             let alias_relate_goal = Goal::new(

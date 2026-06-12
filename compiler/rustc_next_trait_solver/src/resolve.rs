@@ -5,15 +5,13 @@ use rustc_type_ir::{
     TypeVisitableExt,
 };
 
-use crate::delegate::SolverDelegate;
-
 ///////////////////////////////////////////////////////////////////////////
 // EAGER RESOLUTION
 
 /// Resolves ty, region, and const vars to their inferred values or their root vars.
-struct EagerResolver<'a, D, I = <D as SolverDelegate>::Interner>
+struct EagerResolver<'a, D, I = <D as InferCtxtLike>::Interner>
 where
-    D: SolverDelegate<Interner = I>,
+    D: InferCtxtLike<Interner = I>,
     I: Interner,
 {
     delegate: &'a D,
@@ -22,25 +20,25 @@ where
     cache: DelayedMap<I::Ty, I::Ty>,
 }
 
-pub fn eager_resolve_vars<D: SolverDelegate, T: TypeFoldable<D::Interner>>(
-    delegate: &D,
+pub fn eager_resolve_vars<Infcx: InferCtxtLike, T: TypeFoldable<Infcx::Interner>>(
+    infcx: &Infcx,
     value: T,
 ) -> T {
     if value.has_infer() {
-        let mut folder = EagerResolver::new(delegate);
+        let mut folder = EagerResolver::new(infcx);
         value.fold_with(&mut folder)
     } else {
         value
     }
 }
 
-impl<'a, D: SolverDelegate> EagerResolver<'a, D> {
-    fn new(delegate: &'a D) -> Self {
+impl<'a, Infcx: InferCtxtLike> EagerResolver<'a, Infcx> {
+    fn new(delegate: &'a Infcx) -> Self {
         EagerResolver { delegate, cache: Default::default() }
     }
 }
 
-impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for EagerResolver<'_, D> {
+impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I> for EagerResolver<'_, Infcx> {
     fn cx(&self) -> I {
         self.delegate.cx()
     }

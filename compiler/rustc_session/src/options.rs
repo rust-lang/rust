@@ -2612,6 +2612,8 @@ options! {
     remark_dir: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "directory into which to write optimization remarks (if not specified, they will be \
 written to standard error output)"),
+    renormalize_rigid_aliases: bool = (false, parse_bool, [TRACKED],
+        "do not skip rigid aliases in normalization for internal debugging"),
     retpoline: bool = (false, parse_bool, [TRACKED] { TARGET_MODIFIER: Retpoline },
         "enables retpoline-indirect-branches and retpoline-indirect-calls target features (default: no)"),
     retpoline_external_thunk: bool = (false, parse_bool, [TRACKED] { TARGET_MODIFIER: RetpolineExternalThunk },
