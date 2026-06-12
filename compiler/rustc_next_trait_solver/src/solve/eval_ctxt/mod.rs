@@ -1042,7 +1042,7 @@ where
         goal.predicate = self.normalize(
             GoalSource::NormalizeGoal(self.step_kind_for_source(source)),
             goal.param_env,
-            goal.predicate,
+            ty::Unnormalized::new_wip(goal.predicate),
         )?;
         self.inspect.add_goal(self.delegate, self.max_input_universe, source, goal);
         self.nested_goals.push((source, goal, None));
@@ -1761,9 +1761,9 @@ where
         &mut self,
         source: GoalSource,
         param_env: I::ParamEnv,
-        value: T,
+        value: ty::Unnormalized<I, T>,
     ) -> Result<T, NoSolutionOrRerunNonErased> {
-        let value = self.delegate.resolve_vars_if_possible(value);
+        let value = self.delegate.resolve_vars_if_possible(value.skip_normalization());
 
         if !self.cx().renormalize_rigid_aliases() && !value.has_non_rigid_aliases() {
             return Ok(value);

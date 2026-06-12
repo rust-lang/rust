@@ -55,14 +55,12 @@ where
 
         let normalized: I::Term = match inherent.kind {
             ty::AliasTermKind::InherentTy { def_id } => {
-                let inherent =
-                    cx.type_of(def_id.into()).instantiate(cx, inherent_args).skip_norm_wip();
+                let inherent = cx.type_of(def_id.into()).instantiate(cx, inherent_args);
                 let inherent = self.normalize(GoalSource::Misc, goal.param_env, inherent)?;
                 inherent.into()
             }
             ty::AliasTermKind::InherentConst { def_id } if cx.is_type_const(def_id.into()) => {
-                let inherent =
-                    cx.const_of_item(def_id.into()).instantiate(cx, inherent_args).skip_norm_wip();
+                let inherent = cx.const_of_item(def_id.into()).instantiate(cx, inherent_args);
                 let inherent = self.normalize(GoalSource::Misc, goal.param_env, inherent)?;
                 inherent.into()
             }

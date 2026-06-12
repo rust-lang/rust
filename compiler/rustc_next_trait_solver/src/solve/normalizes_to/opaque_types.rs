@@ -88,8 +88,7 @@ where
                         TypingMode::PostTypeckUntilBorrowck { .. } => {
                             let actual = cx
                                 .type_of_opaque_hir_typeck(def_id)
-                                .instantiate(cx, opaque_ty.args)
-                                .skip_norm_wip();
+                                .instantiate(cx, opaque_ty.args);
                             let actual =
                                 self.normalize(GoalSource::Misc, goal.param_env, actual)?;
                             let actual = fold_regions(cx, actual, |re, _dbi| match re.kind() {
@@ -125,8 +124,7 @@ where
                         .map_err(Into::into);
                 };
 
-                let actual =
-                    cx.type_of(def_id.into()).instantiate(cx, opaque_ty.args).skip_norm_wip();
+                let actual = cx.type_of(def_id.into()).instantiate(cx, opaque_ty.args);
                 let actual = self.normalize(GoalSource::Misc, goal.param_env, actual)?;
                 // FIXME: Actually use a proper binder here instead of relying on `ReErased`.
                 //
@@ -141,8 +139,7 @@ where
             }
             TypingMode::PostAnalysis | TypingMode::Codegen => {
                 // FIXME: Add an assertion that opaque type storage is empty.
-                let actual =
-                    cx.type_of(def_id.into()).instantiate(cx, opaque_ty.args).skip_norm_wip();
+                let actual = cx.type_of(def_id.into()).instantiate(cx, opaque_ty.args);
                 let actual = self.normalize(GoalSource::Misc, goal.param_env, actual)?;
                 self.eq(goal.param_env, expected, actual)?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)

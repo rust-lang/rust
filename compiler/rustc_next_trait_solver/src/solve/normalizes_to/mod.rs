@@ -444,20 +444,15 @@ where
             // Finally we construct the actual value of the associated type.
             let term = match goal.predicate.alias.kind {
                 ty::AliasTermKind::ProjectionTy { .. } => {
-                    let t = cx
-                        .type_of(target_item_def_id.into())
-                        .instantiate(cx, target_args)
-                        .skip_norm_wip();
+                    let t = cx.type_of(target_item_def_id.into()).instantiate(cx, target_args);
                     let t = ecx.normalize(GoalSource::Misc, goal.param_env, t)?;
                     t.into()
                 }
                 ty::AliasTermKind::ProjectionConst { .. }
                     if cx.is_type_const(target_item_def_id.into()) =>
                 {
-                    let c = cx
-                        .const_of_item(target_item_def_id.into())
-                        .instantiate(cx, target_args)
-                        .skip_norm_wip();
+                    let c =
+                        cx.const_of_item(target_item_def_id.into()).instantiate(cx, target_args);
                     let c = ecx.normalize(GoalSource::Misc, goal.param_env, c)?;
                     c.into()
                 }
