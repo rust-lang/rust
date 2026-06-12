@@ -153,6 +153,9 @@ impl CargoTargetSpec {
                     Some(CargoTargetSpec { target_kind: TargetKind::Test, .. }) => {
                         config.test_command
                     }
+                    Some(CargoTargetSpec { target_kind: TargetKind::Bench, .. }) => {
+                        config.bench_command
+                    }
                     _ => "run".to_owned(),
                 };
                 cargo_args.push(subcommand);
@@ -224,6 +227,9 @@ impl CargoTargetSpec {
             RunnableKind::Bin => match spec {
                 Some(CargoTargetSpec { target_kind: TargetKind::Test, .. }) => {
                     (config.test_override_command, None)
+                }
+                Some(CargoTargetSpec { target_kind: TargetKind::Bench, .. }) => {
+                    (config.bench_override_command, None)
                 }
                 _ => (None, None),
             },
