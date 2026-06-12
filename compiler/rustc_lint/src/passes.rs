@@ -168,9 +168,8 @@ macro_rules! early_lint_methods {
             fn check_attributes_post(a: &[rustc_ast::Attribute]);
             fn check_mac_def(a: &rustc_ast::MacroDef);
             fn check_mac(a: &rustc_ast::MacCall);
-
-            fn enter_where_predicate(a: &rustc_ast::WherePredicate);
-            fn exit_where_predicate(a: &rustc_ast::WherePredicate);
+            fn check_where_predicate(a: &rustc_ast::WherePredicate);
+            fn check_where_predicate_post(a: &rustc_ast::WherePredicate);
         ]);
     )
 }
