@@ -1,13 +1,14 @@
 use std::borrow::{Borrow, BorrowMut};
 use std::hash::Hash;
 use std::marker::PhantomData;
+use std::mem::ManuallyDrop;
 use std::ops::{Deref, DerefMut, RangeBounds};
 use std::{fmt, slice, vec};
-use std::mem::ManuallyDrop;
+
 #[cfg(feature = "nightly")]
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
-use crate::{static_assert_size, Idx, IndexSlice};
+use crate::{Idx, IndexSlice, static_assert_size};
 
 /// An owned contiguous collection of `T`s, indexed by `I` rather than by `usize`.
 ///
@@ -129,7 +130,9 @@ impl<I: Idx, T> IndexVec<I, T> {
 
     #[inline]
     pub fn as_mut_slice(&mut self) -> &mut IndexSlice<I, T> {
-        IndexSlice::from_raw_mut(unsafe { std::slice::from_raw_parts_mut(self.data, self.len.index()) })
+        IndexSlice::from_raw_mut(unsafe {
+            std::slice::from_raw_parts_mut(self.data, self.len.index())
+        })
     }
 
     /// Pushes an element to the array returning the index where it was pushed to.
@@ -213,11 +216,7 @@ impl<I: Idx, T> IndexVec<I, T> {
 
     #[inline]
     pub fn append(&mut self, other: &mut Self) {
-        self.mutate(|vec| {
-            other.mutate(|other| {
-                vec.append(other)
-            })
-        });
+        self.mutate(|vec| other.mutate(|other| vec.append(other)));
     }
 }
 
