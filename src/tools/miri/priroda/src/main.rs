@@ -71,7 +71,7 @@ impl rustc_driver::Callbacks for PrirodaCompilerCalls {
         let ecx = create_ecx(tcx);
 
         let mut session = PrirodaContext::new(ecx);
-        let cli = CLI {};
+        let cli = Cli {};
         let result = cli.run_cli_loop(&mut session);
 
         match result.report_err() {
@@ -320,7 +320,7 @@ impl<'tcx> PrirodaContext<'tcx> {
         let source_map = self.ecx.tcx.sess.source_map();
         let loc = source_map.lookup_char_pos(span.lo());
 
-        Some(SourceLocation { span: span, line: loc.line })
+        Some(SourceLocation { span, line: loc.line })
     }
 
     fn run_command(&mut self, command: DebuggerCommand) -> InterpResult<'tcx, CommandResult> {
@@ -358,9 +358,9 @@ enum CommandResult {
     TerminateSession,
 }
 
-struct CLI;
+struct Cli;
 
-impl CLI {
+impl Cli {
     pub fn run_cli_loop<'tcx>(&self, session: &mut PrirodaContext<'tcx>) -> InterpResult<'tcx> {
         loop {
             print!("(priroda) ");
@@ -380,7 +380,7 @@ impl CLI {
                         if matches!(result, StepResult::Breakpoint) {
                             println!("Hit breakpoint");
                         }
-                        self.print_location(&session);
+                        self.print_location(session);
                     }
                     CommandResult::BreakpointResult(res) =>
                         match res {
