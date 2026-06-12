@@ -316,7 +316,7 @@ pub macro Clone($item:item) {
 /// `String`, `Box<T>`, owned collections, and similar owned values are not
 /// `Share`, even though they implement [`Clone`], because cloning them creates
 /// independent owned storage or value ownership. Mutable references (`&mut T`)
-/// are not `Share`.
+/// are neither `Clone` nor `Share`, because you cannot have two active at once.
 ///
 /// Calling [`share`](Share::share) is equivalent to calling [`clone`](Clone::clone)
 /// for implementors, but communicates that the resulting value aliases the same
