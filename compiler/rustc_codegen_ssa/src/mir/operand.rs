@@ -8,7 +8,7 @@ use rustc_abi::{
 use rustc_hir::LangItem;
 use rustc_middle::mir::interpret::{Pointer, Scalar, alloc_range};
 use rustc_middle::mir::{self, ConstValue};
-use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{AnnotateMoves, DebugInfo, OptLevel};
@@ -360,7 +360,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
 
     pub(crate) fn extract_field<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         &self,
-        fx: &mut FunctionCx<'a, 'tcx, Bx>,
+        fx: &mut FunctionCx<'_, 'a, 'tcx, Bx>,
         bx: &mut Bx,
         i: usize,
     ) -> Self {
@@ -432,7 +432,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
     #[instrument(level = "trace", skip(fx, bx))]
     pub fn codegen_get_discr<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         self,
-        fx: &mut FunctionCx<'a, 'tcx, Bx>,
+        fx: &mut FunctionCx<'_, 'a, 'tcx, Bx>,
         bx: &mut Bx,
         cast_to: Ty<'tcx>,
     ) -> V {
@@ -978,7 +978,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
     }
 }
 
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'_, 'a, 'tcx, Bx> {
     fn maybe_codegen_consume_direct(
         &mut self,
         bx: &mut Bx,
@@ -1032,7 +1032,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> OperandRef<'tcx, Bx::Value> {
         debug!("codegen_consume(place_ref={:?})", place_ref);
 
-        let ty = self.monomorphized_place_ty(place_ref);
+        let ty = place_ref.ty(self.mir, self.cx.tcx()).ty;
         let layout = bx.cx().layout_of(ty);
 
         // ZSTs don't require any actual memory access.
@@ -1083,7 +1083,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::Operand::Constant(ref constant) => {
-                let constant_ty = self.monomorphize(constant.ty());
+                let constant_ty = constant.ty();
                 // Most SIMD vector constants should be passed as immediates.
                 // (In particular, some intrinsics really rely on this.)
                 if constant_ty.is_simd() {
@@ -1141,7 +1141,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             AnnotateMoves::Enabled(Some(limit)) => limit,
         };
 
-        let ty = self.monomorphized_place_ty(place);
+        let ty = place.ty(self.mir, self.cx.tcx()).ty;
         let layout = bx.cx().layout_of(ty);
         let ty_size = layout.size.bytes();
 

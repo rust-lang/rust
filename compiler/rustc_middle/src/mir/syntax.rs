@@ -92,6 +92,12 @@ pub enum MirPhase {
     ///
     /// The phases of this dialect are described in `RuntimePhase`.
     Runtime(RuntimePhase),
+
+    /// The "monomorphic MIR" dialect, used for CTFE, optimizations, and codegen.
+    ///
+    /// This MIR has the same semantics as runtime MIR, but it requires all types to be
+    /// monomorphic.
+    Monomorphic(MonomorphicPhase),
 }
 
 /// See [`MirPhase::Analysis`].
@@ -139,6 +145,16 @@ pub enum RuntimePhase {
     /// * [`ProjectionElem::Deref`] of `Box`
     PostCleanup = 1,
     Optimized = 2,
+}
+
+/// See [`MirPhase::Monomorphic`].
+#[derive(Copy, Clone, TyEncodable, TyDecodable, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(StableHash)]
+pub enum MonomorphicPhase {
+    /// This MIR has just been monomorphized from runtime MIR.
+    Initial = 0,
+    /// MIR is ready for codegen.
+    Codegen = 1,
 }
 
 ///////////////////////////////////////////////////////////////////////////

@@ -30,10 +30,6 @@ impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let preserve_ub_checks = find_attr!(tcx.hir_krate_attrs(), RustcPreserveUbChecks);
-        if !preserve_ub_checks {
-            SimplifyUbCheck { tcx }.visit_body(body);
-        }
         let mut ctx = InstSimplifyContext {
             tcx,
             typing_env: body.typing_env(tcx),
@@ -449,11 +445,45 @@ fn resolve_rust_intrinsic<'tcx>(
     Some((intrinsic.name, args))
 }
 
-struct SimplifyUbCheck<'tcx> {
+pub(super) enum SimplifyUbChecks {
+    AfterSimplifyCfg,
+    PostMono,
+}
+
+impl<'tcx> crate::MirPass<'tcx> for SimplifyUbChecks {
+    fn name(&self) -> &'static str {
+        match self {
+            SimplifyUbChecks::AfterSimplifyCfg => "SimplifyUbChecks-after-simplifycfg",
+            SimplifyUbChecks::PostMono => "SimplifyUbChecks-post-mono",
+        }
+    }
+
+    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
+        sess.mir_opt_level() > 0
+    }
+
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        let preserve_ub_checks = match self {
+            SimplifyUbChecks::PostMono => false,
+            SimplifyUbChecks::AfterSimplifyCfg => {
+                find_attr!(tcx.hir_krate_attrs(), RustcPreserveUbChecks)
+            }
+        };
+        if !preserve_ub_checks {
+            SimplifyUbCheckVisitor { tcx }.visit_body(body);
+        }
+    }
+
+    fn is_required(&self) -> bool {
+        false
+    }
+}
+
+struct SimplifyUbCheckVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl<'tcx> MutVisitor<'tcx> for SimplifyUbCheck<'tcx> {
+impl<'tcx> MutVisitor<'tcx> for SimplifyUbCheckVisitor<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }

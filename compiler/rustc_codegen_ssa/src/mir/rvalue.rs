@@ -14,7 +14,7 @@ use crate::common::{IntPredicate, TypeKind};
 use crate::traits::*;
 use crate::{MemFlags, base};
 
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'_, 'a, 'tcx, Bx> {
     #[instrument(level = "trace", skip(self, bx))]
     pub(crate) fn codegen_rvalue(
         &mut self,
@@ -166,8 +166,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     return;
                 }
 
-                let count = self
-                    .monomorphize(count)
+                let count = count
                     .try_to_target_usize(bx.tcx())
                     .expect("expected monomorphic const in codegen");
 
@@ -414,7 +413,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::Cast(ref kind, ref source, mir_cast_ty) => {
                 let operand = self.codegen_operand(bx, source);
                 debug!("cast operand is {:?}", operand);
-                let cast = bx.cx().layout_of(self.monomorphize(mir_cast_ty));
+                let cast = bx.cx().layout_of(mir_cast_ty);
 
                 let val = match *kind {
                     mir::CastKind::PointerExposeProvenance => {
@@ -649,7 +648,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             mir::Rvalue::Discriminant(ref place) => {
                 let discr_ty = rvalue.ty(self.mir, bx.tcx());
-                let discr_ty = self.monomorphize(discr_ty);
                 let operand = self.codegen_consume(bx, place.as_ref());
                 let discr = operand.codegen_get_discr(self, bx, discr_ty);
                 OperandRef {
@@ -699,7 +697,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // `Memory`, and thus ends up handled in `codegen_rvalue` instead.
                 let operand = self.codegen_operand(bx, elem);
                 let array_ty = Ty::new_array_with_const_len(bx.tcx(), operand.layout.ty, len_const);
-                let array_ty = self.monomorphize(array_ty);
                 let array_layout = bx.layout_of(array_ty);
                 assert!(array_layout.is_zst());
                 OperandRef {
@@ -718,7 +715,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 };
 
                 let ty = rvalue.ty(self.mir, self.cx.tcx());
-                let ty = self.monomorphize(ty);
                 let layout = self.cx.layout_of(ty);
 
                 let mut builder = OperandRefBuilder::new(layout);
@@ -749,7 +745,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             mir::Rvalue::WrapUnsafeBinder(ref operand, binder_ty) => {
                 let operand = self.codegen_operand(bx, operand);
-                let binder_ty = self.monomorphize(binder_ty);
                 let layout = bx.cx().layout_of(binder_ty);
                 OperandRef { val: operand.val, layout, move_annotation: None }
             }

@@ -303,6 +303,7 @@ pub enum MirDialect {
     Analysis,
     Built,
     Runtime,
+    Mono,
 }
 
 impl IntoDiagArg for MirDialect {
@@ -311,6 +312,7 @@ impl IntoDiagArg for MirDialect {
             MirDialect::Analysis => "analysis",
             MirDialect::Built => "built",
             MirDialect::Runtime => "runtime",
+            MirDialect::Mono => "mono",
         };
         DiagArgValue::Str(Cow::Borrowed(arg))
     }

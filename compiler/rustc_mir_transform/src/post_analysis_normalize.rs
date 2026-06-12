@@ -83,4 +83,16 @@ impl<'tcx> MutVisitor<'tcx> for PostAnalysisNormalizeVisitor<'tcx> {
             *ty = t;
         }
     }
+
+    #[inline]
+    fn visit_args(&mut self, args: &mut ty::GenericArgsRef<'tcx>, _: Location) {
+        // We have to use `try_normalize_erasing_regions` here, since it's
+        // possible that we visit impossible-to-satisfy where clauses here,
+        // see #91745
+        if let Ok(a) =
+            self.tcx.try_normalize_erasing_regions(self.typing_env, Unnormalized::new_wip(*args))
+        {
+            *args = a;
+        }
+    }
 }

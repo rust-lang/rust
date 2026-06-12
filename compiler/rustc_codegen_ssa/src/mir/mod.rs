@@ -3,9 +3,10 @@ use std::iter;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::mir::{Body, Local, UnwindTerminateReason, traversal};
-use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, TyAndLayout};
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
+use rustc_middle::mir::{Local, UnwindTerminateReason, traversal};
+use rustc_middle::mono::{InstantiationMode, MonoItem};
+use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, TyAndLayout};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::ErrorGuaranteed;
 use rustc_target::callconv::{FnAbi, PassMode};
@@ -49,10 +50,10 @@ type PerLocalVarDebugInfoIndexVec<'tcx, V> =
     IndexVec<mir::Local, Vec<PerLocalVarDebugInfo<'tcx, V>>>;
 
 /// Master context for codegenning from MIR.
-pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
+pub struct FunctionCx<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     instance: Instance<'tcx>,
 
-    mir: &'tcx mir::Body<'tcx>,
+    mir: &'mir mir::Body<'tcx>,
 
     debug_context: Option<FunctionDebugContext<'tcx, Bx::DIScope, Bx::DILocation>>,
 
@@ -127,20 +128,6 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     caller_location: Option<OperandRef<'tcx, Bx::Value>>,
 }
 
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
-    pub fn monomorphize<T>(&self, value: T) -> T
-    where
-        T: Copy + TypeFoldable<TyCtxt<'tcx>>,
-    {
-        debug!("monomorphize: self.instance={:?}", self.instance);
-        self.instance.instantiate_mir_and_normalize_erasing_regions(
-            self.cx.tcx(),
-            self.cx.typing_env(),
-            ty::EarlyBinder::bind(value),
-        )
-    }
-}
-
 enum LocalRef<'tcx, V> {
     Place(PlaceRef<'tcx, V>),
     /// `UnsizedPlace(p)`: `p` itself is a thin pointer (indirect place).
@@ -198,7 +185,7 @@ impl<'tcx, V: CodegenObject> LocalRef<'tcx, V> {
 ///////////////////////////////////////////////////////////////////////////
 
 #[instrument(level = "debug", skip(cx))]
-pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn lower_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
     instance: Instance<'tcx>,
 ) {
@@ -207,22 +194,19 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let tcx = cx.tcx();
     let llfn = cx.get_fn(instance);
 
-    let mut mir = tcx.instance_mir(instance.def);
+    tcx.ensure_done().check_mono_item(instance);
+    let mir = tcx.build_codegen_mir(instance);
+    let mir = match MonoItem::Fn(instance).instantiation_mode(tcx) {
+        InstantiationMode::LocalCopy => &*mir.borrow(),
+        InstantiationMode::GloballyShared { .. } => &*mir.steal(),
+    };
+
     // Note that the ABI logic has deduced facts about the functions' parameters based on the MIR we
     // got here (`deduce_param_attrs`). That means we can *not* apply arbitrary further MIR
     // transforms as that may invalidate those deduced facts!
 
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
     debug!("fn_abi: {:?}", fn_abi);
-
-    if tcx.features().ergonomic_clones() {
-        let monomorphized_mir = instance.instantiate_mir_and_normalize_erasing_regions(
-            tcx,
-            ty::TypingEnv::fully_monomorphized(),
-            ty::EarlyBinder::bind(mir.clone()),
-        );
-        mir = tcx.arena.alloc(optimize_use_clone::<Bx>(cx, monomorphized_mir));
-    }
 
     let debug_context = cx.create_function_debug_context(instance, fn_abi, llfn, &mir);
 
@@ -275,7 +259,8 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         fx.compute_per_local_var_debug_info(&mut start_bx).unzip();
     fx.per_local_var_debug_info = per_local_var_debug_info;
 
-    let traversal_order = traversal::mono_reachable_reverse_postorder(mir, tcx, instance);
+    let traversal_order: Vec<_> =
+        traversal::reverse_postorder(mir).map(|(block, _data)| block).collect();
     let memory_locals = analyze::non_ssa_locals(&fx, &traversal_order);
 
     // Allocate variable and temp allocas
@@ -284,7 +269,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
         let mut allocate_local = |local: Local| {
             let decl = &mir.local_decls[local];
-            let layout = start_bx.layout_of(fx.monomorphize(decl.ty));
+            let layout = start_bx.layout_of(decl.ty);
             assert!(!layout.ty.has_erasable_regions());
 
             if local == mir::RETURN_PLACE {
@@ -331,80 +316,10 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // So drop the builder of `start_llbb` to avoid having two at the same time.
     drop(start_bx);
 
-    let mut unreached_blocks = DenseBitSet::new_filled(mir.basic_blocks.len());
     // Codegen the body of each reachable block using our reverse postorder list.
     for bb in traversal_order {
         fx.codegen_block(bb);
-        unreached_blocks.remove(bb);
     }
-
-    // FIXME: These empty unreachable blocks are *mostly* a waste. They are occasionally
-    // targets for a SwitchInt terminator, but the reimplementation of the mono-reachable
-    // simplification in SwitchInt lowering sometimes misses cases that
-    // mono_reachable_reverse_postorder manages to figure out.
-    // The solution is to do something like post-mono GVN. But for now we have this hack.
-    for bb in unreached_blocks.iter() {
-        fx.codegen_block_as_unreachable(bb);
-    }
-}
-
-/// Replace `clone` calls that come from `use` statements with direct copies if possible.
-// FIXME: Move this function to mir::transform when post-mono MIR passes land.
-fn optimize_use_clone<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    cx: &'a Bx::CodegenCx,
-    mut mir: Body<'tcx>,
-) -> Body<'tcx> {
-    let tcx = cx.tcx();
-
-    if tcx.features().ergonomic_clones() {
-        for bb in mir.basic_blocks.as_mut() {
-            let mir::TerminatorKind::Call {
-                args,
-                destination,
-                target,
-                call_source: mir::CallSource::Use,
-                ..
-            } = &bb.terminator().kind
-            else {
-                continue;
-            };
-
-            // CallSource::Use calls always use 1 argument.
-            assert_eq!(args.len(), 1);
-            let arg = &args[0];
-
-            // These types are easily available from locals, so check that before
-            // doing DefId lookups to figure out what we're actually calling.
-            let arg_ty = arg.node.ty(&mir.local_decls, tcx);
-
-            let ty::Ref(_region, inner_ty, mir::Mutability::Not) = *arg_ty.kind() else { continue };
-
-            if !tcx.type_is_copy_modulo_regions(cx.typing_env(), inner_ty) {
-                continue;
-            }
-
-            let Some(arg_place) = arg.node.place() else { continue };
-
-            let destination_block = target.unwrap();
-
-            bb.statements.push(mir::Statement::new(
-                bb.terminator().source_info,
-                mir::StatementKind::Assign(Box::new((
-                    *destination,
-                    mir::Rvalue::Use(
-                        mir::Operand::Copy(
-                            arg_place.project_deeper(&[mir::ProjectionElem::Deref], tcx),
-                        ),
-                        mir::WithRetag::Yes,
-                    ),
-                ))),
-            ));
-
-            bb.terminator_mut().kind = mir::TerminatorKind::Goto { target: destination_block };
-        }
-    }
-
-    mir
 }
 
 /// Produces, for each argument, a `Value` pointing at the
@@ -412,7 +327,7 @@ fn optimize_use_clone<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 /// indirect.
 fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
-    fx: &mut FunctionCx<'a, 'tcx, Bx>,
+    fx: &mut FunctionCx<'_, 'a, 'tcx, Bx>,
     memory_locals: &DenseBitSet<mir::Local>,
 ) -> Vec<LocalRef<'tcx, Bx::Value>> {
     let mir = fx.mir;
@@ -431,7 +346,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         .enumerate()
         .map(|(arg_index, local)| {
             let arg_decl = &mir.local_decls[local];
-            let arg_ty = fx.monomorphize(arg_decl.ty);
+            let arg_ty = arg_decl.ty;
 
             if Some(local) == mir.spread_arg {
                 // This argument (e.g., the last argument in the "rust-call" ABI)

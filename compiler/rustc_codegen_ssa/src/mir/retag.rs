@@ -12,7 +12,7 @@ pub(crate) fn rvalue_needs_retag(rvalue: &Rvalue<'_>) -> bool {
     !matches!(rvalue, Rvalue::Ref(..)) && !matches!(rvalue, Rvalue::Use(.., WithRetag::No))
 }
 
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'_, 'a, 'tcx, Bx> {
     /// Retags the pointers within an [`OperandRef`].
     pub(crate) fn codegen_retag_operand(
         &mut self,

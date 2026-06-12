@@ -15,7 +15,7 @@ use super::FunctionCx;
 use crate::traits::*;
 
 pub(crate) fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    fx: &FunctionCx<'a, 'tcx, Bx>,
+    fx: &FunctionCx<'_, 'a, 'tcx, Bx>,
     traversal_order: &[mir::BasicBlock],
 ) -> DenseBitSet<mir::Local> {
     let mir = fx.mir;
@@ -24,8 +24,7 @@ pub(crate) fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         .local_decls
         .iter()
         .map(|decl| {
-            let ty = fx.monomorphize(decl.ty);
-            let layout = fx.cx.spanned_layout_of(ty, decl.source_info.span);
+            let layout = fx.cx.spanned_layout_of(decl.ty, decl.source_info.span);
             if layout.is_zst() { LocalKind::ZST } else { LocalKind::Unused }
         })
         .collect();
@@ -66,13 +65,13 @@ enum LocalKind {
     SSA(DefLocation),
 }
 
-struct LocalAnalyzer<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> {
-    fx: &'a FunctionCx<'b, 'tcx, Bx>,
+struct LocalAnalyzer<'a, 'mir, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> {
+    fx: &'a FunctionCx<'mir, 'b, 'tcx, Bx>,
     dominators: &'a Dominators<mir::BasicBlock>,
     locals: IndexVec<mir::Local, LocalKind>,
 }
 
-impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx> {
+impl<'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'_, '_, 'b, 'tcx, Bx> {
     fn define(&mut self, local: mir::Local, location: DefLocation) {
         let fx = self.fx;
         let kind = &mut self.locals[local];
@@ -81,8 +80,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx>
             LocalKind::ZST => {}
             LocalKind::Memory => {}
             LocalKind::Unused => {
-                let ty = fx.monomorphize(decl.ty);
-                let layout = fx.cx.spanned_layout_of(ty, decl.source_info.span);
+                let layout = fx.cx.spanned_layout_of(decl.ty, decl.source_info.span);
                 *kind =
                     if fx.cx.is_backend_immediate(layout) || fx.cx.is_backend_scalar_pair(layout) {
                         LocalKind::SSA(location)
@@ -138,7 +136,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx>
 
             // Scan through to ensure the only projections are those which
             // `FunctionCx::maybe_codegen_consume_direct` can handle.
-            let base_ty = self.fx.monomorphized_place_ty(mir::PlaceRef::from(place_ref.local));
+            let base_ty = self.fx.mir.local_decls[place_ref.local].ty;
             let mut layout = self.fx.cx.layout_of(base_ty);
             for elem in place_ref.projection {
                 layout = match *elem {
@@ -168,7 +166,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx>
     }
 }
 
-impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx> for LocalAnalyzer<'a, 'b, 'tcx, Bx> {
+impl<'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx> for LocalAnalyzer<'_, '_, 'b, 'tcx, Bx> {
     fn visit_assign(
         &mut self,
         place: &mir::Place<'tcx>,
@@ -256,7 +254,6 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx> for LocalAnalyzer
                 let kind = &mut self.locals[local];
                 if *kind != LocalKind::Memory {
                     let ty = self.fx.mir.local_decls[local].ty;
-                    let ty = self.fx.monomorphize(ty);
                     if self.fx.cx.type_needs_drop(ty) {
                         // Only need the place if we're actually dropping it.
                         *kind = LocalKind::Memory;

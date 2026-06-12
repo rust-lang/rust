@@ -78,7 +78,7 @@ pub(crate) fn eval_mir_constant<'tcx>(
     fx: &FunctionCx<'_, '_, 'tcx>,
     constant: &ConstOperand<'tcx>,
 ) -> (ConstValue, Ty<'tcx>) {
-    let cv = fx.monomorphize(constant.const_);
+    let cv = constant.const_;
     // This cannot fail because we checked all required_consts in advance.
     let val = cv
         .eval(fx.tcx, ty::TypingEnv::fully_monomorphized(), constant.span)

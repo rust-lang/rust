@@ -8,6 +8,9 @@
 #![feature(yeet_expr)]
 // tidy-alphabetical-end
 
+use std::borrow::Cow;
+use std::ops::ControlFlow;
+
 use hir::ConstContext;
 use required_consts::RequiredConstsVisitor;
 use rustc_const_eval::check_consts::{self, ConstCx};
@@ -18,12 +21,15 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::IndexVec;
+use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{
     AnalysisPhase, Body, CallSource, ClearCrossCrate, ConstOperand, ConstQualifs, LocalDecl,
-    MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, START_BLOCK,
-    SourceInfo, Statement, StatementKind, TerminatorKind, WithRetag,
+    Location, MirPhase, MonomorphicPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase,
+    Rvalue, START_BLOCK, SourceInfo, Statement, StatementKind, TerminatorKind, WithRetag,
 };
-use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{
+    self, GenericParamDefKind, Instance, Ty, TyCtxt, TypeVisitable, TypeVisitableExt, Unnormalized,
+};
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, query, span_bug};
 use rustc_span::{DUMMY_SP, Spanned, sym};
@@ -39,7 +45,6 @@ use pass_manager::{self as pm, Lint, MirLint, MirPass, WithMinOptLevel};
 mod check_pointers;
 mod cost_checker;
 mod cross_crate_inline;
-mod deduce_param_attrs;
 mod elaborate_drop;
 mod errors;
 mod ffi_unwind_calls;
@@ -142,6 +147,7 @@ declare_passes! {
         Initial,
         Final
     };
+    mod deduce_param_attrs : RecoverDeducedParamAttrs;
     mod deref_separator : Derefer;
     mod dest_prop : DestinationPropagation;
     mod early_otherwise_branch : EarlyOtherwiseBranch;
@@ -154,12 +160,15 @@ declare_passes! {
     // by custom rustc drivers, running all the steps by themselves. See #114628.
     pub mod inline : Inline, ForceInline;
     mod impossible_predicates : ImpossiblePredicates;
-    mod instsimplify : InstSimplify { BeforeInline, AfterSimplifyCfg };
+    mod instsimplify :
+        InstSimplify { BeforeInline, AfterSimplifyCfg },
+        SimplifyUbChecks { AfterSimplifyCfg, PostMono };
     mod jump_threading : JumpThreading;
     mod known_panics_lint : KnownPanicsLint;
     mod large_enums : EnumSizeOpt;
     mod lower_intrinsics : LowerIntrinsics;
     mod lower_slice_len : LowerSliceLenCalls;
+    mod optimize_use_clone : OptimizeUseClone;
     mod match_branches : MatchBranchSimplification;
     mod mentioned_items : MentionedItems;
     mod multiple_return_terminators : MultipleReturnTerminators;
@@ -186,7 +195,8 @@ declare_passes! {
             PreOptimizations,
             Final,
             MakeShim,
-            AfterUnreachableEnumBranching
+            AfterUnreachableEnumBranching,
+            PostMono
         },
         SimplifyLocals {
             BeforeConstProp,
@@ -196,7 +206,8 @@ declare_passes! {
     mod simplify_branches : SimplifyConstCondition {
         AfterInstSimplify,
         AfterConstProp,
-        Final
+        Final,
+        PostMono
     };
     mod simplify_comparison_integral : SimplifyComparisonIntegral;
     mod single_use_consts : SingleUseConsts;
@@ -230,6 +241,7 @@ pub fn provide(providers: &mut Providers) {
         deduced_param_attrs: deduce_param_attrs::deduced_param_attrs,
         coroutine_by_move_body_def_id: coroutine::coroutine_by_move_body_def_id,
         trivial_const: trivial_const::trivial_const_provider,
+        build_codegen_mir,
         ..providers.queries
     };
 }
@@ -693,11 +705,11 @@ fn run_runtime_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     }
 }
 
-pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    fn o1<T>(x: T) -> WithMinOptLevel<T> {
-        WithMinOptLevel(1, x)
-    }
+fn o1<T>(x: T) -> WithMinOptLevel<T> {
+    WithMinOptLevel(1, x)
+}
 
+pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let def_id = body.source.def_id();
     let optimizations = if tcx.def_kind(def_id).has_codegen_attrs()
         && tcx.codegen_fn_attrs(def_id).optimize.do_not_optimize()
@@ -746,6 +758,7 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             // optimizations. This invalidates CFG caches, so avoid putting between
             // `ReferencePropagation` and `GVN` which both use the dominator tree.
             &instsimplify::InstSimplify::AfterSimplifyCfg,
+            &instsimplify::SimplifyUbChecks::AfterSimplifyCfg,
             // After `InstSimplify-after-simplifycfg` with `-Zub_checks=false`, simplify
             // ```
             // _13 = const false;
@@ -782,8 +795,6 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             &simplify::SimplifyLocals::Final,
             &multiple_return_terminators::MultipleReturnTerminators,
             &large_enums::EnumSizeOpt { discrepancy: 128 },
-            // Some cleanup necessary at least for LLVM and potentially other codegen backends.
-            &add_call_guards::CriticalCallEdges,
             // Cleanup for human readability, off by default.
             &prettify::ReorderBasicBlocks,
             &prettify::ReorderLocals,
@@ -839,6 +850,129 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
 
     run_optimization_passes(tcx, &mut body);
 
+    // If the body is polymorphic, we're done. Otherwise, we're going to turn the body into codegen
+    // MIR ahead of time, as an optimization.
+    if tcx.generics_of(did).requires_monomorphization(tcx) {
+        return body;
+    }
+
+    // If the body has impossible predicates, the normalization we need to do to turn this into
+    // post-mono MIR will fail. So we detect that case and return just optimized MIR.
+    let args = ty::GenericArgs::for_item(tcx, did.into(), |param, _| match param.kind {
+        GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
+        GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
+            unreachable!(
+                "`requires_monomorphization` check means that we should have no type/const params"
+            )
+        }
+    });
+    if tcx.instantiate_and_check_impossible_predicates((did.to_def_id(), args)) {
+        return body;
+    }
+
+    // If the body contains the UB check intrinsic that is only to be monomorphized at codegen
+    // time, we cannot generate codegen MIR early. We want post-mono optimizations to optimize on
+    // whether UB checks are enabled or disabled at codegen time.
+    let mut vis = MonoCompatVisitor { contains_runtime_check: false };
+    vis.visit_body(&body);
+    if vis.contains_runtime_check {
+        return body;
+    }
+
+    if body.visit_with(&mut Normalizable { tcx }).is_break() {
+        return body;
+    }
+
+    // Monomorphizing this body won't reveal any new information that is useful for
+    // optimizations, so we just run passes that make the MIR ready for codegen backends.
+    pm::run_passes(
+        tcx,
+        &mut body,
+        &[&add_call_guards::CriticalCallEdges],
+        Some(MirPhase::Monomorphic(MonomorphicPhase::Codegen)),
+        pm::Optimizations::Allowed,
+    );
+    return body;
+
+    struct MonoCompatVisitor {
+        contains_runtime_check: bool,
+    }
+    impl<'tcx> Visitor<'tcx> for MonoCompatVisitor {
+        fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
+            if let Operand::RuntimeChecks(_) = operand {
+                self.contains_runtime_check = true;
+            }
+            self.super_operand(operand, location);
+        }
+    }
+
+    struct Normalizable<'tcx> {
+        tcx: TyCtxt<'tcx>,
+    }
+    impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for Normalizable<'tcx> {
+        type Result = ControlFlow<(), ()>;
+
+        fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<()> {
+            match self.tcx.try_normalize_erasing_regions(
+                ty::TypingEnv::fully_monomorphized(),
+                Unnormalized::new_wip(t),
+            ) {
+                Ok(_) => ControlFlow::Continue(()),
+                Err(_) => ControlFlow::Break(()),
+            }
+        }
+    }
+}
+
+pub fn build_codegen_mir<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+) -> Steal<Cow<'tcx, Body<'tcx>>> {
+    let body = tcx.instance_mir(instance.def);
+
+    // If we have generic params, assert that we didn't get codegen MIR out of instance_mir
+    if instance.args.non_erasable_generics().next().is_some() {
+        assert!(!matches!(body.phase, MirPhase::Monomorphic(MonomorphicPhase::Codegen)));
+    }
+
+    let body = if !matches!(body.phase, MirPhase::Monomorphic(MonomorphicPhase::Codegen)) {
+        let body = transform_to_codegen_mir(tcx, instance, body.clone());
+        Cow::Owned(body)
+    } else {
+        Cow::Borrowed(body)
+    };
+
+    Steal::new(body)
+}
+
+fn transform_to_codegen_mir<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+    body: Body<'tcx>,
+) -> Body<'tcx> {
+    let mut body = instance.instantiate_mir_and_normalize_erasing_regions(
+        tcx,
+        ty::TypingEnv::fully_monomorphized(),
+        ty::EarlyBinder::bind(body),
+    );
+    body.phase = MirPhase::Monomorphic(MonomorphicPhase::Initial);
+    body.pass_count = 0;
+    pm::dump_mir_for_phase_change(tcx, &body);
+
+    pm::run_passes(
+        tcx,
+        &mut body,
+        &[
+            &instsimplify::SimplifyUbChecks::PostMono,
+            &o1(simplify_branches::SimplifyConstCondition::PostMono),
+            &o1(simplify::SimplifyCfg::PostMono),
+            &optimize_use_clone::OptimizeUseClone,
+            &add_call_guards::CriticalCallEdges,
+            &deduce_param_attrs::RecoverDeducedParamAttrs,
+        ],
+        Some(MirPhase::Monomorphic(MonomorphicPhase::Codegen)),
+        pm::Optimizations::Allowed,
+    );
     body
 }
 
