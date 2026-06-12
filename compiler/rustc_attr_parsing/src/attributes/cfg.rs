@@ -103,8 +103,11 @@ pub fn parse_cfg_entry(
                 Some(sym::target) => parse_cfg_entry_target(cx, list, meta.span())?,
                 Some(sym::version) => parse_cfg_entry_version(cx, list, meta.span())?,
                 _ => {
-                    let possibilities = &[sym::any, sym::all, sym::not, sym::target, sym::version];
-                    return Err(cx.adcx().expected_specific_argument(meta.span(), possibilities));
+                    let mut possibilities = vec![sym::any, sym::all, sym::not, sym::target];
+                    if cx.features().cfg_version() {
+                        possibilities.push(sym::version);
+                    }
+                    return Err(cx.adcx().expected_specific_argument(meta.span(), &possibilities));
                 }
             },
             a @ (ArgParser::NoArgs | ArgParser::NameValue(_)) => {
