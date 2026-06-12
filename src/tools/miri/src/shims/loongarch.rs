@@ -1,4 +1,4 @@
-use rustc_abi::CanonAbi;
+use rustc_abi::{CanonAbi, Size};
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
@@ -55,10 +55,17 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // b/h/w variants and i64 for the d variant, per the LLVM intrinsic
                 // definitions.
                 // https://github.com/llvm/llvm-project/blob/main/llvm/include/llvm/IR/IntrinsicsLoongArch.td
-                // If the higher bits are non-zero, `compute_crc32` will panic. We should probably
-                // raise a proper error instead, but outside stdarch nobody can trigger this anyway.
+                // LoongArch CRC b/h/w instructions ignore any bits above `bit_size`.
+                // https://loongson.github.io/LoongArch-Documentation/LoongArch-Vol1-EN.html#crc-check-instructions
+                // Miri's `compute_crc32` requires all higher bits to be zero and may
+                // panic otherwise, so we explicitly mask them off here to reproduce the
+                // hardware behavior.
                 let crc = crc.to_u32()?;
-                let data = if bit_size == 64 { data.to_u64()? } else { u64::from(data.to_u32()?) };
+                let data = if bit_size == 64 {
+                    data.to_u64()?
+                } else {
+                    Size::from_bits(bit_size).truncate(data.to_u32()?.into()).try_into().unwrap()
+                };
 
                 let result = compute_crc32(crc, data, bit_size, polynomial);
                 this.write_scalar(Scalar::from_u32(result), dest)?;
