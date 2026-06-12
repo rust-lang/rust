@@ -39,6 +39,7 @@ macro_rules! impl_from {
         $(
         impl<'tcx> From<$ty> for UndoLog<'tcx> {
             fn from(x: $ty) -> Self {
+                #[cfg_attr(not(bootstrap), allow(self_type_conversion))]
                 UndoLog::$ctor(x.into())
             }
         }

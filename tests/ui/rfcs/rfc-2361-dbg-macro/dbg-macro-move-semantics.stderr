@@ -1,13 +1,21 @@
 error[E0382]: use of moved value: `a`
-  --> $DIR/dbg-macro-move-semantics.rs:9:13
+  --> $DIR/dbg-macro-move-semantics.rs:9:18
    |
 LL |     let a = NoCopy(0);
    |         - move occurs because `a` has type `NoCopy`, which does not implement the `Copy` trait
 LL |     let _ = dbg!(a);
-   |             ------- value moved here
+   |                  - value moved here
 LL |     let _ = dbg!(a);
-   |             ^^^^^^^ value used here after move
+   |                  ^ value used here after move
    |
+note: if `NoCopy` implemented `Clone`, you could clone the value
+  --> $DIR/dbg-macro-move-semantics.rs:4:1
+   |
+LL | struct NoCopy(usize);
+   | ^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let _ = dbg!(a);
+   |                  - you could clone this value
 help: consider borrowing instead of transferring ownership
    |
 LL |     let _ = dbg!(&a);

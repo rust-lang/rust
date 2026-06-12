@@ -1478,7 +1478,9 @@ impl<'a> State<'a> {
         }
         match polarity {
             ast::BoundPolarity::Positive => {}
-            ast::BoundPolarity::Negative(_) | ast::BoundPolarity::Maybe(_) => {
+            ast::BoundPolarity::Negative(_)
+            | ast::BoundPolarity::Maybe(_)
+            | ast::BoundPolarity::Only(_) => {
                 self.word(polarity.as_str());
             }
         }
@@ -1983,10 +1985,6 @@ impl<'a> State<'a> {
                     self.word(",");
                 }
                 self.pclose();
-            }
-            PatKind::Box(inner) => {
-                self.word("box ");
-                self.print_pat_paren_if_or(inner);
             }
             PatKind::Deref(inner) => {
                 self.word("deref!");

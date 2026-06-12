@@ -3,9 +3,9 @@ error[E0507]: cannot move out of `hellothere.x` as enum variant `Bar` which is b
    |
 LL |             match hellothere.x {
    |                   ^^^^^^^^^^^^
-LL |                 box E::Foo(_) => {}
-LL |                 box E::Bar(x) => println!("{}", x.to_string()),
-   |                            - data moved here because `x` has type `Box<isize>`, which does not implement the `Copy` trait
+LL |                 E::Foo(_) => {}
+LL |                 E::Bar(x) => println!("{}", x.to_string()),
+   |                        - data moved here because `x` has type `Box<isize>`, which does not implement the `Copy` trait
    |
 help: consider borrowing the pattern binding
    |

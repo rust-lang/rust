@@ -451,6 +451,7 @@ pub const trait AsMut<T: PointeeSized>: PointeeSized {
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 pub const trait Into<T>: Sized {
     /// Converts this type into the (usually inferred) input type.
+    #[rustc_diagnostic_item = "into_fn"]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn into(self) -> T;

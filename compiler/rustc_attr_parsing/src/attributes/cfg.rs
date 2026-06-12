@@ -7,6 +7,7 @@ use rustc_errors::{Applicability, Diagnostic, PResult, msg};
 use rustc_feature::{Features, GatedCfg, find_gated_cfg};
 use rustc_hir::attrs::CfgEntry;
 use rustc_hir::{AttrPath, RustcVersion, Target};
+use rustc_lint_defs::builtin::MISLEADING_CFG_IN_BUILD_SCRIPT;
 use rustc_parse::parser::{ForceCollect, Parser, Recovery};
 use rustc_parse::{exp, parse_in};
 use rustc_session::Session;
@@ -79,7 +80,149 @@ pub fn parse_cfg(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<Cfg
     parse_cfg_entry(cx, single).ok()
 }
 
+fn generate_cfg_replacement(entry: &CfgEntry) -> String {
+    generate_cfg_replacement_inner(entry, true, false)
+}
+
+fn generate_cfg_replacement_inner(
+    entry: &CfgEntry,
+    is_top_level: bool,
+    parent_is_not: bool,
+) -> String {
+    match entry {
+        CfgEntry::NameValue { name, value, .. } => {
+            let name = name.as_str();
+            match value {
+                Some(value) => format!(
+                    "{}std::env::var(\"CARGO_CFG_{}\").unwrap_or_default() == \"{value}\"",
+                    if parent_is_not { "!" } else { "" },
+                    name.to_uppercase(),
+                ),
+                None => format!(
+                    "std::env::var(\"CARGO_CFG_{}\"){}",
+                    name.to_uppercase(),
+                    if parent_is_not { ".is_err()" } else { ".is_ok()" },
+                ),
+            }
+        }
+        CfgEntry::Any(entries, _) => match entries.as_slice() {
+            [] => if parent_is_not { "true" } else { "false" }.to_string(),
+            [entry] => generate_cfg_replacement_inner(&entry, is_top_level, parent_is_not),
+            _ => format!(
+                "{not}{open_paren}{cond}{closing_paren}",
+                not = if parent_is_not { "!" } else { "" },
+                open_paren = if !parent_is_not && is_top_level { "" } else { "(" },
+                cond = entries
+                    .iter()
+                    .map(|cfg| generate_cfg_replacement_inner(cfg, false, false))
+                    .collect::<Vec<_>>()
+                    .join(" || "),
+                closing_paren = if !parent_is_not && is_top_level { "" } else { ")" },
+            ),
+        },
+        CfgEntry::All(entries, _) => match entries.as_slice() {
+            [] => if parent_is_not { "false" } else { "true" }.to_string(),
+            [entry] => generate_cfg_replacement_inner(&entry, is_top_level, parent_is_not),
+            _ => format!(
+                "{not}{open_paren}{cond}{closing_paren}",
+                not = if parent_is_not { "!" } else { "" },
+                open_paren = if !parent_is_not && is_top_level { "" } else { "(" },
+                cond = entries
+                    .iter()
+                    .map(|cfg| generate_cfg_replacement_inner(cfg, false, false))
+                    .collect::<Vec<_>>()
+                    .join(" && "),
+                closing_paren = if !parent_is_not && is_top_level { "" } else { ")" },
+            ),
+        },
+        CfgEntry::Not(cfg, _) => generate_cfg_replacement_inner(cfg, is_top_level, true),
+        _ => String::new(),
+    }
+}
+
+fn misleading_cfgs(entry: &CfgEntry, spans: &mut Vec<Span>, has_ok_cfgs: &mut bool) {
+    match entry {
+        CfgEntry::All(entries, _) | CfgEntry::Any(entries, _) => {
+            for entry in entries {
+                misleading_cfgs(entry, spans, has_ok_cfgs);
+            }
+        }
+        CfgEntry::Not(entry, _) => misleading_cfgs(entry, spans, has_ok_cfgs),
+        CfgEntry::Bool(..) | CfgEntry::Version(..) => {
+            *has_ok_cfgs = true;
+        }
+        CfgEntry::NameValue { name, value, span } => match value {
+            Some(_) => {
+                let name = name.as_str();
+                if name.starts_with("target_") {
+                    spans.push(*span);
+                } else {
+                    *has_ok_cfgs = true;
+                }
+            }
+            None => {
+                if [sym::windows, sym::unix].contains(&name) {
+                    spans.push(*span);
+                } else {
+                    *has_ok_cfgs = true;
+                }
+            }
+        },
+    }
+}
+
+fn check_unexpected_cfgs(
+    cx: &mut AcceptContext<'_, '_>,
+    entry: &CfgEntry,
+    _span: Span,
+    is_cfg_macro: bool,
+) {
+    if !std::env::var("CARGO_CRATE_NAME").is_ok_and(|val| val == "build_script_build") {
+        return;
+    }
+    let mut spans = Vec::new();
+    let mut has_ok_cfgs = false;
+    misleading_cfgs(entry, &mut spans, &mut has_ok_cfgs);
+    if spans.is_empty() {
+        return;
+    }
+    if !is_cfg_macro || has_ok_cfgs {
+        cx.emit_lint(
+            MISLEADING_CFG_IN_BUILD_SCRIPT,
+            crate::diagnostics::UnexpectedCfg { span: None, suggestion_message: String::new() },
+            spans,
+        );
+        return;
+    }
+    let replacement = generate_cfg_replacement(entry);
+    // The span including the `cfg!()` macro.
+    let span = cx.attr_span.source_callsite();
+    cx.emit_lint(
+        MISLEADING_CFG_IN_BUILD_SCRIPT,
+        crate::diagnostics::UnexpectedCfg { span: Some(span), suggestion_message: replacement },
+        span,
+    );
+}
+
+pub fn parse_cfg_entry_macro(
+    cx: &mut AcceptContext<'_, '_>,
+    item: &MetaItemOrLitParser,
+) -> Result<CfgEntry, ErrorGuaranteed> {
+    let entry = parse_cfg_entry_inner(cx, item)?;
+    check_unexpected_cfgs(cx, &entry, item.span(), true);
+    Ok(entry)
+}
+
 pub fn parse_cfg_entry(
+    cx: &mut AcceptContext<'_, '_>,
+    item: &MetaItemOrLitParser,
+) -> Result<CfgEntry, ErrorGuaranteed> {
+    let entry = parse_cfg_entry_inner(cx, item)?;
+    check_unexpected_cfgs(cx, &entry, item.span(), false);
+    Ok(entry)
+}
+
+fn parse_cfg_entry_inner(
     cx: &mut AcceptContext<'_, '_>,
     item: &MetaItemOrLitParser,
 ) -> Result<CfgEntry, ErrorGuaranteed> {
@@ -90,14 +233,14 @@ pub fn parse_cfg_entry(
                     let Some(single) = list.as_single() else {
                         return Err(cx.adcx().expected_single_argument(list.span, list.len()));
                     };
-                    CfgEntry::Not(Box::new(parse_cfg_entry(cx, single)?), list.span)
+                    CfgEntry::Not(Box::new(parse_cfg_entry_inner(cx, single)?), list.span)
                 }
                 Some(sym::any) => CfgEntry::Any(
-                    list.mixed().flat_map(|sub_item| parse_cfg_entry(cx, sub_item)).collect(),
+                    list.mixed().flat_map(|sub_item| parse_cfg_entry_inner(cx, sub_item)).collect(),
                     list.span,
                 ),
                 Some(sym::all) => CfgEntry::All(
-                    list.mixed().flat_map(|sub_item| parse_cfg_entry(cx, sub_item)).collect(),
+                    list.mixed().flat_map(|sub_item| parse_cfg_entry_inner(cx, sub_item)).collect(),
                     list.span,
                 ),
                 Some(sym::target) => parse_cfg_entry_target(cx, list, meta.span())?,

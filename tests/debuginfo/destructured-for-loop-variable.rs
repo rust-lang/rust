@@ -142,7 +142,7 @@
 //@ lldb-command:continue
 
 #![allow(unused_variables)]
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 
 struct Struct {
     x: i16,
@@ -186,7 +186,7 @@ fn main() {
     for &(v1,
           &Struct { x: x1, y: ref y1, z: z1 },
           Struct { x: ref x2, y: y2, z: ref z2 },
-          box v2) in [more_complex].iter() {
+          deref!(v2)) in [more_complex].iter() {
         zzz(); // #break
     }
 

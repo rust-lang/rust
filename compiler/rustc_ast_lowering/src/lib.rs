@@ -2238,6 +2238,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         if let ast::BoundPolarity::Maybe(_) = modifiers.polarity {
             self.validate_relaxed_bound(trait_ref, *span, rbp);
+        } else if let ast::BoundPolarity::Only(_) = modifiers.polarity {
+            self.validate_only_bound(trait_ref, *span);
         }
 
         hir::PolyTraitRef {
@@ -2245,6 +2247,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
             modifiers,
             trait_ref,
             span: self.lower_span(*span),
+        }
+    }
+
+    fn validate_only_bound(&self, trait_ref: hir::TraitRef<'_>, span: Span) {
+        if let Res::Def(DefKind::Trait, def_id) = trait_ref.path.res
+            && !(self.tcx.is_lang_item(def_id, hir::LangItem::MetaSized)
+                || self.tcx.is_lang_item(def_id, hir::LangItem::Sized)
+                || self.tcx.is_lang_item(def_id, hir::LangItem::PointeeSized))
+        {
+            self.dcx()
+                .struct_span_err(span, "`only` may only be applied to sizedness traits")
+                .emit();
         }
     }
 
@@ -2813,6 +2827,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             BoundPolarity::Positive => BoundPolarity::Positive,
             BoundPolarity::Negative(span) => BoundPolarity::Negative(self.lower_span(span)),
             BoundPolarity::Maybe(span) => BoundPolarity::Maybe(self.lower_span(span)),
+            BoundPolarity::Only(span) => BoundPolarity::Only(self.lower_span(span)),
         };
         hir::TraitBoundModifiers { constness, polarity }
     }

@@ -973,7 +973,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // we still need to perform several validation steps (see below). Instead, simply "pour" all
         // resulting bounds "down the drain", i.e., into a new `Vec` that just gets dropped at the end.
         let transient = match polarity {
-            hir::BoundPolarity::Positive => {
+            hir::BoundPolarity::Positive | hir::BoundPolarity::Only(_) => {
                 // To elaborate on the comment directly above, regarding `PointeeSized` specifically,
                 // we don't "reify" such bounds to avoid trait system limitations -- namely,
                 // non-global where-clauses being preferred over item bounds (where `PointeeSized`
@@ -990,9 +990,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let bounds = if transient { &mut Vec::new() } else { bounds };
 
         let polarity = match polarity {
-            hir::BoundPolarity::Positive | hir::BoundPolarity::Maybe(_) => {
-                ty::PredicatePolarity::Positive
-            }
+            hir::BoundPolarity::Positive
+            | hir::BoundPolarity::Maybe(_)
+            | hir::BoundPolarity::Only(_) => ty::PredicatePolarity::Positive,
             hir::BoundPolarity::Negative(_) => ty::PredicatePolarity::Negative,
         };
 

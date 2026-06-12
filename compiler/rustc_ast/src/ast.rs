@@ -687,8 +687,7 @@ impl Pat {
             | PatKind::Or(s) => s.iter().for_each(|p| p.walk(it)),
 
             // Trivial wrappers over inner patterns.
-            PatKind::Box(s)
-            | PatKind::Deref(s)
+            PatKind::Deref(s)
             | PatKind::Ref(s, _, _)
             | PatKind::Paren(s)
             | PatKind::Guard(s, _) => s.walk(it),
@@ -900,9 +899,6 @@ pub enum PatKind {
 
     /// A tuple pattern (`(a, b)`).
     Tuple(ThinVec<Pat>),
-
-    /// A `box` pattern.
-    Box(Box<Pat>),
 
     /// A `deref` pattern (currently `deref!()` macro-based syntax).
     Deref(Box<Pat>),
@@ -3201,6 +3197,8 @@ pub enum BoundPolarity {
     Negative(Span),
     /// `Type: ?Trait`
     Maybe(Span),
+    /// `Type: only Trait`,
+    Only(Span),
 }
 
 impl BoundPolarity {
@@ -3209,6 +3207,7 @@ impl BoundPolarity {
             Self::Positive => "",
             Self::Negative(_) => "!",
             Self::Maybe(_) => "?",
+            Self::Only(_) => "only",
         }
     }
 }

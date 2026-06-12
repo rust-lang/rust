@@ -1,4 +1,4 @@
-//@ build-pass (FIXME(62277): could be check-pass?)
+// TODO: What to do with this test?
 
 // FIXME(eddyb) shorten the name so windows doesn't choke on it.
 #![crate_name = "trait_test"]
@@ -47,5 +47,7 @@ fn main() {
     // Make sure this works both with and without the associated type
     // being specified.
     let _x: Box<dyn NormalizingHelper<Target=i32>> = Box::new(2u32);
+    //~^ ERROR conflicting associated type bindings for `Output`
     let _y: Box<dyn NormalizingHelper<Target=i32, Output=i32>> = Box::new(2u32);
+    //~^ ERROR conflicting associated type bindings for `Output`
 }

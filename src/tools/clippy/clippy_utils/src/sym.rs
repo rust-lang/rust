@@ -202,7 +202,6 @@ generate! {
     cx,
     cycle,
     cyclomatic_complexity,
-    dbg_macro,
     de,
     debug_struct,
     deprecated_in_future,
