@@ -33,7 +33,7 @@ pub(crate) fn target() -> Target {
             max_atomic_width: Some(64),
 
             // Unwinding on CUDA is neither feasible nor useful.
-            panic_strategy: PanicStrategy::Abort,
+            panic_strategy: PanicStrategy::ImmediateAbort,
 
             // Needed to use `dylib` and `bin` crate types and the linker.
             dynamic_linking: true,
