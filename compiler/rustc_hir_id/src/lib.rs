@@ -9,7 +9,6 @@ use std::fmt::{self, Debug};
 use rustc_data_structures::stable_hash::{
     StableHash, StableHashCtxt, StableHasher, StableOrd, ToStableHashKey,
 };
-use rustc_index::static_assert_size;
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::def_id::{CRATE_DEF_ID, DefId, DefIndex, DefPathHash, LocalDefId};
 
@@ -158,8 +157,6 @@ rustc_index::newtype_index! {
     #[orderable]
     pub struct ItemLocalId {}
 }
-
-static_assert_size!(rustc_index::IndexVec<ItemLocalId, u8>, 16);
 
 impl ItemLocalId {
     /// Signal local id which should never be used.
