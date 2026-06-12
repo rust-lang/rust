@@ -418,27 +418,20 @@ unsafe impl Sync for Waker {}
 impl Waker {
     /// Wakes up the task associated with this `Waker`.
     ///
-    /// As long as the executor keeps running and the task is not finished, it is
-    /// guaranteed that each invocation of [`wake()`](Self::wake) (or
+    /// As long as the executor keeps running and the task is not finished,
+    /// it is guaranteed that each invocation of [`wake()`](Self::wake) (or
     /// [`wake_by_ref()`](Self::wake_by_ref)) will be followed by at least one
-    /// [`poll()`] of the task to which this `Waker` belongs. This makes
-    /// it possible to temporarily yield to other tasks while running potentially
-    /// unbounded processing loops.
+    /// [`poll()`] of the task to which this `Waker` belongs, and the call to
+    /// [`wake()`](Self::wake) (or [`wake_by_ref()`](Self::wake_by_ref)) _happens-before_
+    /// the beginning of the invocation of [`poll()`]. This makes it possible to temporarily
+    /// yield to other tasks while running potentially unbounded processing loops.
     ///
     /// Note that the above implies that multiple wake-ups may be coalesced into a
-    /// single [`poll()`] invocation by the runtime.
+    /// single [`poll()`] invocation by the executor.
     ///
     /// Also note that yielding to competing tasks is not guaranteed: it is the
     /// executor’s choice which task to run and the executor may choose to run the
     /// current task again.
-    ///
-    /// To avoid missed wakeups, executors must ensure that for any call to
-    /// `wake`, there is a subsequent call to `poll` such that the call to
-    /// `wake()` _happens-before_ the beginning of the invocation of `poll`. In
-    /// particular, this means that if a task self-wakes (invokes `wake` on
-    /// itself during `poll`), then the `poll` must be invoked again because the
-    /// call to `wake` _happens-after_ the beginning of the current invocation
-    /// of `poll`.
     ///
     /// [`poll()`]: crate::future::Future::poll
     #[inline]
