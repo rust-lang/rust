@@ -20,8 +20,8 @@ use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_span::{ErrorGuaranteed, kw};
 
 use crate::constrained_generic_params as cgp;
-use crate::errors::UnconstrainedGenericParameter;
-use crate::errors::remove_or_use_generic::suggest_to_remove_or_use_generic;
+use crate::diagnostics::UnconstrainedGenericParameter;
+use crate::diagnostics::remove_or_use_generic::suggest_to_remove_or_use_generic;
 
 mod min_specialization;
 
