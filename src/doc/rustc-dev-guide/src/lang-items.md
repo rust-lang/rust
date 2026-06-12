@@ -11,15 +11,15 @@ achieve some specific goals; for example, you can control your binary's entrypoi
 
 Features provided by lang items include:
 
-- overloadable operators via traits: the traits corresponding to the
+- Overloadable operators via traits: the traits corresponding to the
   `==`, `<`, dereference (`*`), `+`, etc. operators are all
   marked with lang items; those specific four are `eq`, `ord`,
   `deref`, and `add` respectively.
-- panicking and stack unwinding; the `eh_personality`, `panic` and
+- Panicking and stack unwinding; the `eh_personality`, `panic`, and
   `panic_bounds_checks` lang items.
-- the traits in `std::marker` used to indicate properties of types used by the compiler;
+- The traits in `std::marker` used to indicate properties of types used by the compiler;
   lang items `send`, `sync` and `copy`.
-- the special marker types used for variance indicators found in
+- The special marker types used for variance indicators found in
   `core::marker`; lang item `phantom_data`.
 
 Lang items are loaded lazily by the compiler; e.g. if one never uses `Box`
