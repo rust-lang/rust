@@ -663,7 +663,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             self.typeck_results.type_dependent_defs_mut().insert(hir_id, def);
         }
 
-        // FIXME(splat): add side table and write to it here
+        // Export splatted function call resolutions.
+        if let Some(def) = self.fcx.typeck_results.borrow_mut().splatted_defs_mut().remove(hir_id) {
+            self.typeck_results.splatted_defs_mut().insert(hir_id, def);
+        }
 
         // Resolve any borrowings for the node with id `node_id`
         self.visit_adjustments(span, hir_id);
