@@ -46,7 +46,7 @@ pub trait ResultsVisitor<'tcx, A>
 where
     A: Analysis<'tcx>,
 {
-    fn visit_block_start(&mut self, _state: &A::Domain) {}
+    fn visit_block_start(&mut self, _state: &A::Domain, _block: BasicBlock) {}
 
     /// Called after the "early" effect of the given statement is applied to `state`.
     fn visit_after_early_statement_effect(
@@ -90,5 +90,5 @@ where
     ) {
     }
 
-    fn visit_block_end(&mut self, _state: &A::Domain) {}
+    fn visit_block_end(&mut self, _state: &A::Domain, _block: BasicBlock) {}
 }

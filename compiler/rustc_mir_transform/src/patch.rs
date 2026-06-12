@@ -210,6 +210,21 @@ impl<'tcx> MirPatch<'tcx> {
         self.term_patch_map.insert(block, new);
     }
 
+    /// Modifies the terminator of a block, reading the existing patch if one exists or
+    /// cloning from the body otherwise.
+    pub(crate) fn mutate_terminator(
+        &mut self,
+        body: &Body<'tcx>,
+        bb: BasicBlock,
+        f: impl FnOnce(&mut TerminatorKind<'tcx>),
+    ) {
+        let kind = self
+            .term_patch_map
+            .entry(bb)
+            .or_insert_with(|| body.basic_blocks[bb].terminator().kind.clone());
+        f(kind);
+    }
+
     /// Mark given statement to be replaced by a `Nop`.
     ///
     /// This method only works on statements from the initial body, and cannot be used to remove

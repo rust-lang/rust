@@ -9,17 +9,13 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{PlaceContext, VisitPlacesWith, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
-use rustc_mir_dataflow::impls::{MaybeStorageDead, MaybeStorageLive, always_storage_live_locals};
+use rustc_mir_dataflow::impls::{MaybeStorageLive, always_storage_live_locals};
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
 
 pub(super) fn lint_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, when: String) {
     let always_live_locals = &always_storage_live_locals(body);
 
     let maybe_storage_live = MaybeStorageLive::new(Cow::Borrowed(always_live_locals))
-        .iterate_to_fixpoint(tcx, body, None)
-        .into_results_cursor(body);
-
-    let maybe_storage_dead = MaybeStorageDead::new(Cow::Borrowed(always_live_locals))
         .iterate_to_fixpoint(tcx, body, None)
         .into_results_cursor(body);
 
@@ -30,7 +26,6 @@ pub(super) fn lint_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, when: String
         is_fn_like: tcx.def_kind(body.source.def_id()).is_fn_like(),
         always_live_locals,
         maybe_storage_live,
-        maybe_storage_dead,
         places: Default::default(),
     };
     for (bb, data) in traversal::reachable(body) {
@@ -45,7 +40,6 @@ struct Lint<'a, 'tcx> {
     is_fn_like: bool,
     always_live_locals: &'a DenseBitSet<Local>,
     maybe_storage_live: ResultsCursor<'a, 'tcx, MaybeStorageLive<'a>>,
-    maybe_storage_dead: ResultsCursor<'a, 'tcx, MaybeStorageDead<'a>>,
     places: FxHashSet<PlaceRef<'tcx>>,
 }
 
@@ -75,8 +69,8 @@ fn places_conflict_for_assignment<'tcx>(dest: Place<'tcx>, src: Place<'tcx>) -> 
 impl<'a, 'tcx> Visitor<'tcx> for Lint<'a, 'tcx> {
     fn visit_local(&mut self, local: Local, context: PlaceContext, location: Location) {
         if context.is_use() {
-            self.maybe_storage_dead.seek_after_primary_effect(location);
-            if self.maybe_storage_dead.get().contains(local) {
+            self.maybe_storage_live.seek_after_primary_effect(location);
+            if !self.maybe_storage_live.get().contains(local) {
                 self.fail(location, format!("use of local {local:?}, which has no storage here"));
             }
         }
