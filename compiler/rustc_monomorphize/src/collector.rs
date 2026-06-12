@@ -235,7 +235,7 @@ use rustc_session::config::{DebugInfo, EntryFnType};
 use rustc_span::{DUMMY_SP, Span, Spanned, dummy_spanned, respan};
 use tracing::{debug, instrument, trace};
 
-use crate::errors::{
+use crate::diagnostics::{
     self, EncounteredErrorWhileInstantiating, EncounteredErrorWhileInstantiatingGlobalAsm,
     NoOptimizedMir, RecursionLimit,
 };
@@ -1702,7 +1702,7 @@ impl<'v> RootCollector<'_, 'v> {
         }
 
         let Some(start_def_id) = self.tcx.lang_items().start_fn() else {
-            self.tcx.dcx().emit_fatal(errors::StartNotFound);
+            self.tcx.dcx().emit_fatal(diagnostics::StartNotFound);
         };
         let main_ret_ty = self.tcx.fn_sig(main_def_id).no_bound_vars().unwrap().output();
 
