@@ -66,51 +66,67 @@ mod prim_bool {}
 /// The `!` type, also called "never".
 ///
 /// `!` represents the type of computations which never resolve to any value at all. For example,
-/// the [`exit`] function `fn exit(code: i32) -> !` exits the process without ever returning, and
-/// so returns `!`.
+/// the [`panic!`] macro exits the process without ever returning, and so returns `!`.
 ///
-/// `break`, `continue` and `return` expressions also have type `!`. For example we are allowed to
+/// [`break`], [`continue`] and [`return`] expressions also have type `!`. For example, we are allowed to
 /// write:
 ///
 /// ```
 /// #![feature(never_type)]
-/// # fn foo() -> u32 {
-/// let x: ! = {
-///     return 123
-/// };
-/// # }
+/// fn foo() -> u32 {
+///     let x: ! = {
+///         return 123
+///     };
+/// }
 /// ```
 ///
-/// Although the `let` is pointless here, it illustrates the meaning of `!`. Since `x` is never
-/// assigned a value (because `return` returns from the entire function), `x` can be given type
-/// `!`. We could also replace `return 123` with a `panic!` or a never-ending `loop` and this code
-/// would still be valid.
+/// Although the `let` is pointless here, it illustrates the meaning of the never type. Because the
+/// `return` expression returns from the entire function, `x` is never assigned a value and can
+/// therefore be given type `!`. We could replace `return 123` with a `panic!` or an infinite `loop`
+/// and the code would still be valid.
 ///
 /// A more realistic usage of `!` is in this code:
 ///
 /// ```
 /// # fn get_a_number() -> Option<u32> { None }
-/// # loop {
-/// let num: u32 = match get_a_number() {
-///     Some(num) => num,
-///     None => break,
-/// };
-/// # }
+/// loop {
+///     let num: u32 = match get_a_number() {
+///         Some(num) => num,
+///         None => break,
+///     };
+/// }
 /// ```
 ///
-/// Both match arms must produce values of type [`u32`], but since `break` never produces a value
-/// at all we know it can never produce a value which isn't a [`u32`]. This illustrates another
-/// behavior of the `!` type - expressions with type `!` will coerce into any other type.
+/// Both match arms must produce a [`u32`], but since `break` has type `!`, we know it never
+/// produces a value. In particular, it can never produce a value which _isn't_ of type [`u32`],
+/// thus allowing the match to typecheck. This illustrates another behavior of the `!` type -
+/// expressions of type `!` can coerce into any other type.
 ///
 /// [`u32`]: prim@u32
-/// [`exit`]: ../std/process/fn.exit.html
+/// [`panic!`]: macro.panic.html
+/// [`break`]: ../std/keyword.break.html
+/// [`continue`]: ../std/keyword.continue.html
+/// [`return`]: ../std/keyword.return.html
 ///
 /// # `!` and generics
 ///
+/// ## Pattern matching
+///
+/// The main place you'll see `!` used explicitly is in generic code. Consider the generic type
+/// [`Result<T, !>`]. Since the [`Err`] variant contains a `!`, it can never occur. This means we
+/// can exhaustively match on the result by just matching the [`Ok`] variant:
+///
+/// ```
+/// # fn get_a_result() -> Result<u32, !> { Ok(8) }
+/// let r: Result<u32, !> = get_a_result();
+/// match r {
+///     Ok(num) => println!("{num}"),
+/// }
+/// ```
+///
 /// ## Infallible errors
 ///
-/// The main place you'll see `!` used explicitly is in generic code. Consider the [`FromStr`]
-/// trait:
+/// Consider the [`FromStr`] trait:
 ///
 /// ```
 /// trait FromStr: Sized {
@@ -119,30 +135,23 @@ mod prim_bool {}
 /// }
 /// ```
 ///
-/// When implementing this trait for [`String`] we need to pick a type for [`Err`]. And since
-/// converting a string into a string will never result in an error, the appropriate type is `!`.
-/// (Currently the type actually used is an enum with no variants, though this is only because `!`
-/// was added to Rust at a later date and it may change in the future.) With an [`Err`] type of
-/// `!`, if we have to call [`String::from_str`] for some reason the result will be a
-/// [`Result<String, !>`] which we can unpack like this:
+/// When implementing this trait for a type which can be infallibly converted from a string, the
+/// appropriate type to pick for [`Err`] is `!`. For example, a [`String`] can always be created
+/// from another string without erroring. Therefore, if we call [`String::from_str`], the result
+/// will be a [`Result<String, !>`], which we can unpack like this:
 ///
 /// ```
 /// use std::str::FromStr;
 /// let Ok(s) = String::from_str("hello");
 /// ```
 ///
-/// Since the [`Err`] variant contains a `!`, it can never occur. This means we can exhaustively
-/// match on [`Result<T, !>`] by just taking the [`Ok`] variant. This illustrates another behavior
-/// of `!` - it can be used to "delete" certain enum variants from generic types like `Result`.
-///
 /// ## Infinite loops
 ///
-/// While [`Result<T, !>`] is very useful for removing errors, `!` can also be used to remove
-/// successes as well. If we think of [`Result<T, !>`] as "if this function returns, it has not
-/// errored," we get a very intuitive idea of [`Result<!, E>`] as well: if the function returns, it
-/// *has* errored.
+/// If we think of a function returning [`Result<T, !>`] as one which cannot return an error, we can
+/// then think of a function returning [`Result<!, E>`] as one which _must_ return an error.
 ///
-/// For example, consider the case of a simple web server, which can be simplified to:
+/// For example, consider the case of a simple web server which accepts requests, processes them,
+/// and sends a response, all in a loop:
 ///
 /// ```ignore (hypothetical-example)
 /// loop {
@@ -152,24 +161,25 @@ mod prim_bool {}
 /// }
 /// ```
 ///
-/// Currently, this isn't ideal, because we simply panic whenever we fail to get a new connection.
-/// Instead, we'd like to keep track of this error, like this:
+/// If we fail to establish a new connection and receive a request, we simply panic, which is not
+/// ideal. Instead, we'd like to keep track of any errors, like this:
 ///
 /// ```ignore (hypothetical-example)
-/// loop {
-///     match get_request() {
-///         Err(err) => break err,
-///         Ok((client, request)) => {
-///             let response = request.process();
-///             response.send(client);
-///         },
+/// fn server_loop() -> ConnectionError {
+///     loop {
+///         match get_request() {
+///             Err(err) => return err, // Handle any errors outside of the server loop
+///             Ok((client, request)) => {
+///                 let response = request.process();
+///                 response.send(client);
+///             },
+///         }
 ///     }
 /// }
 /// ```
 ///
 /// Now, when the server disconnects, we exit the loop with an error instead of panicking. While it
-/// might be intuitive to simply return the error, we might want to wrap it in a [`Result<!, E>`]
-/// instead:
+/// might be intuitive to simply return the error, we can wrap it in a [`Result<!, E>`] instead:
 ///
 /// ```ignore (hypothetical-example)
 /// fn server_loop() -> Result<!, ConnectionError> {
@@ -181,9 +191,9 @@ mod prim_bool {}
 /// }
 /// ```
 ///
-/// Now, we can use `?` instead of `match`, and the return type makes a lot more sense: if the loop
-/// ever stops, it means that an error occurred. We don't even have to wrap the loop in an `Ok`
-/// because `!` coerces to `Result<!, ConnectionError>` automatically.
+/// Now, we can use `?` instead of `match`, and the return type makes more sense: if the loop ever
+/// stops, it must be that an error occurred. We don't even have to wrap the loop in an [`Ok`] because
+/// `!` coerces to `Result<!, ConnectionError>` automatically.
 ///
 /// [`String::from_str`]: str::FromStr::from_str
 /// [`String`]: ../std/string/struct.String.html
@@ -191,10 +201,10 @@ mod prim_bool {}
 ///
 /// # `!` and traits
 ///
-/// When writing your own traits, `!` should have an `impl` whenever there is an obvious `impl`
-/// which doesn't `panic!`. The reason is that functions returning an `impl Trait` where `!`
-/// does not have an `impl` of `Trait` cannot diverge as their only possible code path. In other
-/// words, they can't return `!` from every code path. As an example, this code doesn't compile:
+/// When writing your own traits, you should implement them for `!` whenever there is an obvious
+/// `impl` which does not panic. The reason for this is that functions returning an `impl Trait`,
+/// where `!` does not implement `Trait`, cannot diverge on all possible code paths. As an example,
+/// this code does not compile:
 ///
 /// ```compile_fail
 /// use std::ops::Add;
@@ -218,16 +228,18 @@ mod prim_bool {}
 /// }
 /// ```
 ///
-/// The reason is that, in the first example, there are many possible types that `!` could coerce
-/// to, because many types implement `Add<u32>`. However, in the second example,
-/// the `else` branch returns a `0`, which the compiler infers from the return type to be of type
-/// `u32`. Since `u32` is a concrete type, `!` can and will be coerced to it. See issue [#36375]
-/// for more information on this quirk of `!`.
+/// This is because `!` does not implement `Add<u32>`, but is able to coerce into any type which
+/// does. In the first example, there are many possible types which implement `Add<u32>` that `!`
+/// could coerce into and the compiler cannot choose just one. However, in the second example, the
+/// `else` branch returns `0`, which is inferred to be of type [`u32`]. Therefore, the `if` branch
+/// will coerce its return type from `!` to `u32`. See issue [#36375] for more information on this
+/// quirk of `!`.
 ///
 /// [#36375]: https://github.com/rust-lang/rust/issues/36375
 ///
-/// As it turns out, though, most traits can have an `impl` for `!`. Take [`Debug`]
-/// for example:
+/// It is therefore recommended to implement a trait for `!` when it makes sense to do so in order
+/// to alleviate potential coercion issues when returning `impl Trait` from a function. Most traits
+/// can be implemented for `!`. For example, take [`Debug`]:
 ///
 /// ```
 /// #![feature(never_type)]
@@ -242,15 +254,13 @@ mod prim_bool {}
 /// }
 /// ```
 ///
-/// Once again we're using `!`'s ability to coerce into any other type, in this case
-/// [`fmt::Result`]. Since this method takes a `&!` as an argument we know that it can never be
-/// called (because there is no value of type `!` for it to be called with). Writing `*self`
-/// essentially tells the compiler "We know that this code can never be run, so just treat the
-/// entire function body as having type [`fmt::Result`]". This pattern can be used a lot when
-/// implementing traits for `!`. Generally, any trait which only has methods which take a `self`
-/// parameter should have such an impl.
+/// Once again, the ability of `!` to coerce into any type (in particular, [`fmt::Result`]) allows
+/// us to write a valid implementation. We also know that the `fmt` method can never be called,
+/// since it takes `&self` as an argument. This argument is of type `&!`, and just like `!` itself,
+/// a reference to `!` can never occur. Generally, any trait which only has methods taking a `self`
+/// parameter should be implemented for `!`.
 ///
-/// On the other hand, one trait which would not be appropriate to implement is [`Default`]:
+/// On the other hand, a trait which would not be appropriate to implement for `!` is [`Default`]:
 ///
 /// ```
 /// trait Default {
@@ -258,9 +268,9 @@ mod prim_bool {}
 /// }
 /// ```
 ///
-/// Since `!` has no values, it has no default value either. It's true that we could write an
-/// `impl` for this which simply panics, but the same is true for any type (we could `impl
-/// Default` for (eg.) [`File`] by just making [`default()`] panic.)
+/// Since `!` has no values, it has no default value either. While we could write an implementation
+/// which simply panics, this is also the case for any other type which might want to implement
+/// `Default` (such as [`File`]). As such, it doesn't make sense to add such an implementation.
 ///
 /// [`File`]: ../std/fs/struct.File.html
 /// [`Debug`]: fmt::Debug
