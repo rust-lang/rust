@@ -385,6 +385,7 @@ target | std | host | notes
 [`powerpc-wrs-vxworks-spe`](platform-support/vxworks.md) | ✓ |  |
 [`powerpc64-ibm-aix`](platform-support/aix.md) | ? |  | 64-bit AIX (7.2 and newer)
 [`powerpc64-unknown-freebsd`](platform-support/freebsd.md) | ✓ | ✓ | PPC64 FreeBSD (ELFv2)
+[`powerpc64-unknown-linux-gnuelfv2`](platform-support/powerpc64-unknown-linux-gnuelfv2.md) | ✓ | ✓ | PPC64 Linux (ELFv2 ABI, kernel 3.2, glibc 2.17)
 [`powerpc64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/powerpc64
 [`powerpc64-wrs-vxworks`](platform-support/vxworks.md) | ✓ |  |
 [`powerpc64le-unknown-freebsd`](platform-support/freebsd.md) | ✓ | ✓ | PPC64LE FreeBSD
