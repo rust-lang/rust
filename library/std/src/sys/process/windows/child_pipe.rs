@@ -259,7 +259,7 @@ impl ChildPipe {
         }
     }
 
-    pub fn read_buf(&self, mut buf: BorrowedCursor<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, mut buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         let result = unsafe {
             let len = crate::cmp::min(buf.capacity(), u32::MAX as usize) as u32;
             let ptr = buf.as_mut().as_mut_ptr().cast::<u8>();
