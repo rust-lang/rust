@@ -9,9 +9,8 @@
 #![deny(unsafe_code)]
 
 use std::hash::Hash;
+use std::marker;
 use std::ops::{Bound, Range};
-use std::sync::Once;
-use std::{fmt, marker, mem, panic, thread};
 
 use crate::{Delimiter, Level};
 
