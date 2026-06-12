@@ -9,7 +9,6 @@ const trait Foo {
 struct Bar;
 
 #[rustc_comptime]
-//~^ ERROR: cannot be used on inherent impl
 impl Bar {
     fn boo(&self) {}
 }
@@ -19,7 +18,6 @@ impl Bar {
 impl Foo for Bar {
     fn foo(&self) {
         comptime_fn();
-        //~^ ERROR: comptime fns can only be called at compile time
     }
 }
 
