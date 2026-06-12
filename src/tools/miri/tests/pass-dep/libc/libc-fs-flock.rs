@@ -1,6 +1,7 @@
 //@ignore-target: windows # no libc
 //@ignore-target: solaris # Does not have flock
 //@compile-flags: -Zmiri-disable-isolation
+//@run-native
 
 //@revisions: windows_host unix_host
 //@[unix_host] ignore-host: windows
