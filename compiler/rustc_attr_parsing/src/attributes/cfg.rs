@@ -189,7 +189,7 @@ fn check_unexpected_cfgs(
     if !is_cfg_macro || has_ok_cfgs {
         cx.emit_lint(
             MISLEADING_CFG_IN_BUILD_SCRIPT,
-            crate::errors::UnexpectedCfg { span: None, suggestion_message: String::new() },
+            crate::diagnostics::UnexpectedCfg { span: None, suggestion_message: String::new() },
             spans,
         );
         return;
@@ -199,7 +199,7 @@ fn check_unexpected_cfgs(
     let span = cx.attr_span.source_callsite();
     cx.emit_lint(
         MISLEADING_CFG_IN_BUILD_SCRIPT,
-        crate::errors::UnexpectedCfg { span: Some(span), suggestion_message: replacement },
+        crate::diagnostics::UnexpectedCfg { span: Some(span), suggestion_message: replacement },
         span,
     );
 }
