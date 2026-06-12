@@ -41,7 +41,7 @@ error[E0539]: malformed `cfg_select` macro input
   --> $DIR/cfg_select.rs:190:5
    |
 LL |     a() => {}
-   |     ^^^ valid arguments are `any`, `all`, `not`, `target` or `version`
+   |     ^^^ valid arguments are `any`, `all`, `not` or `target`
 
 error: expected one of `(`, `::`, `=>`, or `=`, found `+`
   --> $DIR/cfg_select.rs:195:7

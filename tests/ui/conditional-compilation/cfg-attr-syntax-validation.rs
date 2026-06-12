@@ -35,7 +35,7 @@ struct S5;
 struct S6;
 
 #[cfg(a())] //~ ERROR malformed `cfg` attribute input
-//~| NOTE valid arguments are `any`, `all`, `not`, `target` or `version`
+//~| NOTE valid arguments are `any`, `all`, `not` or `target`
 //~| NOTE for more information, visit
 struct S7;
 

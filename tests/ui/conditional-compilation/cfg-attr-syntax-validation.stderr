@@ -95,7 +95,7 @@ error[E0539]: malformed `cfg` attribute input
 LL | #[cfg(a())]
    | ^^^^^^---^^
    |       |
-   |       valid arguments are `any`, `all`, `not`, `target` or `version`
+   |       valid arguments are `any`, `all`, `not` or `target`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 help: must be of the form
