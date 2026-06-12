@@ -1,6 +1,6 @@
 use crate::get_enclosing_block;
 use crate::msrvs::Msrv;
-use crate::qualify_min_const_fn::is_stable_const_fn;
+use crate::qualify_min_const_fn::is_stable_const_fn_at;
 use crate::res::MaybeResPath;
 use crate::ty::needs_ordered_drop;
 use core::ops::ControlFlow;
@@ -8,8 +8,8 @@ use rustc_ast::visit::{VisitorResult, try_visit};
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::intravisit::{self, Visitor, walk_block, walk_expr};
 use rustc_hir::{
-    self as hir, AmbigArg, AnonConst, Arm, Block, BlockCheckMode, Body, BodyId, Expr, ExprKind, HirId, ItemId,
-    ItemKind, LetExpr, Pat, QPath, Stmt, StructTailExpr, UnOp, UnsafeSource,
+    self as hir, AmbigArg, AnonConst, Arm, Block, BlockCheckMode, Body, BodyId, CRATE_HIR_ID, Expr, ExprKind, HirId,
+    ItemId, ItemKind, LetExpr, Pat, QPath, Stmt, StructTailExpr, UnOp, UnsafeSource,
 };
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
@@ -322,13 +322,14 @@ pub fn is_local_used<'tcx>(cx: &LateContext<'tcx>, visitable: impl Visitable<'tc
     .is_some()
 }
 
-/// Checks if the given expression is a constant.
-pub fn is_const_evaluatable<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
-    struct V<'a, 'tcx> {
-        cx: &'a LateContext<'tcx>,
+/// Checks if the given expression can be evaluated as a constant at the specified node
+pub fn is_const_evaluatable<'tcx>(tcx: TyCtxt<'tcx>, typeck: &'tcx TypeckResults<'tcx>, e: &'tcx Expr<'_>) -> bool {
+    struct V<'tcx> {
+        tcx: TyCtxt<'tcx>,
+        typeck: &'tcx TypeckResults<'tcx>,
     }
 
-    impl<'tcx> Visitor<'tcx> for V<'_, 'tcx> {
+    impl<'tcx> Visitor<'tcx> for V<'tcx> {
         type Result = ControlFlow<()>;
         type NestedFilter = intravisit::nested_filter::None;
 
@@ -343,29 +344,28 @@ pub fn is_const_evaluatable<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> 
                     },
                     _,
                 ) if self
-                    .cx
+                    .typeck
                     .qpath_res(p, hir_id)
                     .opt_def_id()
-                    .is_some_and(|id| is_stable_const_fn(self.cx, id, Msrv::default())) => {},
+                    .is_some_and(|id| is_stable_const_fn_at(self.tcx, CRATE_HIR_ID, id, Msrv::default())) => {},
                 ExprKind::MethodCall(..)
                     if self
-                        .cx
-                        .typeck_results()
+                        .typeck
                         .type_dependent_def_id(e.hir_id)
-                        .is_some_and(|id| is_stable_const_fn(self.cx, id, Msrv::default())) => {},
+                        .is_some_and(|id| is_stable_const_fn_at(self.tcx, CRATE_HIR_ID, id, Msrv::default())) => {},
                 ExprKind::Binary(_, lhs, rhs)
-                    if self.cx.typeck_results().expr_ty(lhs).peel_refs().is_primitive_ty()
-                        && self.cx.typeck_results().expr_ty(rhs).peel_refs().is_primitive_ty() => {},
-                ExprKind::Unary(UnOp::Deref, e) if self.cx.typeck_results().expr_ty(e).is_raw_ptr() => (),
-                ExprKind::Unary(_, e) if self.cx.typeck_results().expr_ty(e).peel_refs().is_primitive_ty() => (),
+                    if self.typeck.expr_ty(lhs).peel_refs().is_primitive_ty()
+                        && self.typeck.expr_ty(rhs).peel_refs().is_primitive_ty() => {},
+                ExprKind::Unary(UnOp::Deref, e) if self.typeck.expr_ty(e).is_raw_ptr() => (),
+                ExprKind::Unary(_, e) if self.typeck.expr_ty(e).peel_refs().is_primitive_ty() => (),
                 ExprKind::Index(base, _, _)
                     if matches!(
-                        self.cx.typeck_results().expr_ty(base).peel_refs().kind(),
+                        self.typeck.expr_ty(base).peel_refs().kind(),
                         ty::Slice(_) | ty::Array(..)
                     ) => {},
                 ExprKind::Path(ref p)
                     if matches!(
-                        self.cx.qpath_res(p, e.hir_id),
+                        self.typeck.qpath_res(p, e.hir_id),
                         Res::Def(
                             DefKind::Const { .. }
                                 | DefKind::AssocConst { .. }
@@ -403,7 +403,7 @@ pub fn is_const_evaluatable<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> 
         }
     }
 
-    let mut v = V { cx };
+    let mut v = V { tcx, typeck };
     v.visit_expr(e).is_continue()
 }
 

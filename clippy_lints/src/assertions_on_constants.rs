@@ -52,7 +52,9 @@ impl<'tcx> LateLintPass<'tcx> for AssertionsOnConstants {
                 _ => return,
             }
             && let Some((condition, _)) = find_assert_args(cx, e, macro_call.expn)
-            && is_const_evaluatable(cx, condition)
+            // Check if the whole expression can be moved into a const context.
+            // Note that const eval can evaluate things which cannot be moved (e.g. `false && x`).
+            && is_const_evaluatable(cx.tcx, cx.typeck_results(), condition)
             && let Some((Constant::Bool(assert_val), const_src)) =
                 ConstEvalCtxt::new(cx).eval_with_source(condition, macro_call.span.ctxt())
             && let in_const_context = is_inside_always_const_context(cx.tcx, e.hir_id)

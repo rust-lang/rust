@@ -3,8 +3,9 @@ use rustc_ast::Attribute;
 use rustc_ast::attr::AttributeExt;
 use rustc_attr_parsing::parse_version;
 use rustc_data_structures::smallvec::SmallVec;
-use rustc_hir::RustcVersion;
+use rustc_hir::{HirId, RustcVersion};
 use rustc_lint::LateContext;
+use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::Symbol;
 use serde::Deserialize;
@@ -118,16 +119,29 @@ impl Msrv {
     /// nodes for that attribute, prefer to run this check after cheaper pattern matching operations
     pub fn current(self, cx: &LateContext<'_>) -> Option<RustcVersion> {
         if SEEN_MSRV_ATTR.load(Ordering::Relaxed) {
-            let start = cx.last_node_with_lint_attrs;
-            if let Some(msrv_attr) = once(start)
-                .chain(cx.tcx.hir_parent_id_iter(start))
-                .find_map(|id| parse_attrs(cx.tcx.sess, cx.tcx.hir_attrs(id)))
-            {
-                return Some(msrv_attr);
-            }
+            self.from_attrs(cx.tcx, cx.last_node_with_lint_attrs)
+        } else {
+            self.0
         }
+    }
 
-        self.0
+    /// Returns the MSRV at the specified node
+    ///
+    /// If the crate being linted uses an `#[clippy::msrv]` attribute this will search the parent
+    /// nodes for that attribute, prefer to run this check after cheaper pattern matching operations
+    pub fn at(self, tcx: TyCtxt<'_>, node: HirId) -> Option<RustcVersion> {
+        if SEEN_MSRV_ATTR.load(Ordering::Relaxed) {
+            self.from_attrs(tcx, node)
+        } else {
+            self.0
+        }
+    }
+
+    fn from_attrs(self, tcx: TyCtxt<'_>, node: HirId) -> Option<RustcVersion> {
+        once(node)
+            .chain(tcx.hir_parent_id_iter(node))
+            .find_map(|id| parse_attrs(tcx.sess, tcx.hir_attrs(id)))
+            .or(self.0)
     }
 
     /// Checks if a required version from [this module](self) is met at the current node
@@ -136,6 +150,14 @@ impl Msrv {
     /// nodes for that attribute, prefer to run this check after cheaper pattern matching operations
     pub fn meets(self, cx: &LateContext<'_>, required: RustcVersion) -> bool {
         self.current(cx).is_none_or(|msrv| msrv >= required)
+    }
+
+    /// Checks if a required version from [this module](self) is met at the specified node
+    ///
+    /// If the crate being linted uses an `#[clippy::msrv]` attribute this will search the parent
+    /// nodes for that attribute, prefer to run this check after cheaper pattern matching operations
+    pub fn meets_at(self, tcx: TyCtxt<'_>, node: HirId, required: RustcVersion) -> bool {
+        self.at(tcx, node).is_none_or(|msrv| msrv >= required)
     }
 
     pub fn read_cargo(&mut self, sess: &Session) {

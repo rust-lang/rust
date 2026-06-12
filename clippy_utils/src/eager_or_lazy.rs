@@ -161,7 +161,7 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                     },
                     Res::Def(_, id) if self.cx.tcx.is_promotable_const_fn(id) => (),
                     // No need to walk the arguments here, `is_const_evaluatable` already did
-                    Res::Def(..) if is_const_evaluatable(self.cx, e) => {
+                    Res::Def(..) if is_const_evaluatable(self.cx.tcx, self.cx.typeck_results(), e) => {
                         self.eagerness |= NoChange;
                         return;
                     },
@@ -177,7 +177,7 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                     _ => self.eagerness = Lazy,
                 },
                 // No need to walk the arguments here, `is_const_evaluatable` already did
-                ExprKind::MethodCall(..) if is_const_evaluatable(self.cx, e) => {
+                ExprKind::MethodCall(..) if is_const_evaluatable(self.cx.tcx, self.cx.typeck_results(), e) => {
                     self.eagerness |= NoChange;
                     return;
                 },

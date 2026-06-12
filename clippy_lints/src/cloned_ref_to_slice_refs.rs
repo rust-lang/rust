@@ -85,7 +85,7 @@ impl<'tcx> LateLintPass<'tcx> for ClonedRefToSliceRefs<'_> {
             && let Some(adjustment) = is_needless_clone_or_equivalent(cx, recv, path.ident.name, item.hir_id)
 
             // check for immutability or purity
-            && (!is_mutable(cx, recv) || is_const_evaluatable(cx, recv))
+            && (!is_mutable(cx, recv) || is_const_evaluatable(cx.tcx, cx.typeck_results(), recv))
 
             // get appropriate crate for `slice::from_ref`
             && let Some(builtin_crate) = clippy_utils::std_or_core(cx)
