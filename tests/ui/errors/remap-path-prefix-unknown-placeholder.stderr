@@ -1,0 +1,2 @@
+error: unknown placeholder `{foo}` in `--remap-path-prefix`
+

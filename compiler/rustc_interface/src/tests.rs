@@ -25,7 +25,7 @@ use rustc_session::utils::{CanonicalizedPath, NativeLib};
 use rustc_session::{CompilerIO, EarlyDiagCtxt, Session, build_session, getopts};
 use rustc_span::edition::{DEFAULT_EDITION, Edition};
 use rustc_span::source_map::{RealFileLoader, SourceMapInputs};
-use rustc_span::{FileName, SourceFileHashAlgorithm, sym};
+use rustc_span::{FileName, RealFileName, RemapPathScopeComponents, SourceFileHashAlgorithm, sym};
 use rustc_target::spec::{
     CodeModel, FramePointer, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy,
     RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TlsModel,
@@ -172,6 +172,59 @@ fn test_can_print_warnings() {
 
     sess_and_cfg(&["-Adead_code"], |sess, _cfg| {
         assert!(sess.dcx().can_emit_warnings());
+    });
+}
+
+// `--remap-path-prefix={cwd}=...` stores the `{cwd}` placeholder verbatim (so the absolute cwd
+// never enters the tracked option and the incremental cache survives across build directories,
+// see #132132) and expands it only when the mapping is applied.
+#[test]
+fn test_remap_path_prefix_cwd_placeholder() {
+    sess_and_cfg(&["--remap-path-prefix={cwd}/sub=mapped"], |sess, _cfg| {
+        // Stored verbatim as the placeholder text, not the resolved cwd.
+        assert_eq!(
+            sess.opts.remap_path_prefix,
+            vec![(PathBuf::from("{cwd}/sub"), PathBuf::from("mapped"))],
+        );
+        // ... but expanded + applied to real paths under the cwd.
+        let cwd = std::env::current_dir().unwrap();
+        let remapped = sess
+            .opts
+            .file_path_mapping()
+            .to_real_filename(&RealFileName::empty(), cwd.join("sub").join("foo.rs"))
+            .path(RemapPathScopeComponents::DEBUGINFO)
+            .to_path_buf();
+        assert_eq!(remapped, PathBuf::from("mapped/foo.rs"));
+    });
+}
+
+// `{{cwd}}` is an escaped literal `{cwd}` directory, NOT the placeholder, and is not expanded.
+#[test]
+fn test_remap_path_prefix_escaped_braces_are_literal() {
+    sess_and_cfg(&["--remap-path-prefix={{cwd}}/x=mapped"], |sess, _cfg| {
+        assert_eq!(
+            sess.opts.remap_path_prefix,
+            vec![(PathBuf::from("{{cwd}}/x"), PathBuf::from("mapped"))],
+        );
+        // Maps the literal prefix `{cwd}/x`, and does not touch the real cwd.
+        let remapped = sess
+            .opts
+            .file_path_mapping()
+            .to_real_filename(&RealFileName::empty(), PathBuf::from("{cwd}/x/foo.rs"))
+            .path(RemapPathScopeComponents::DEBUGINFO)
+            .to_path_buf();
+        assert_eq!(remapped, PathBuf::from("mapped/foo.rs"));
+    });
+}
+
+// `-Zremap-cwd-prefix` is sugar for `--remap-path-prefix={cwd}=VALUE`: same stored placeholder.
+#[test]
+fn test_remap_cwd_prefix_stores_placeholder() {
+    sess_and_cfg(&["-Zremap-cwd-prefix=mapped"], |sess, _cfg| {
+        assert_eq!(
+            sess.opts.remap_path_prefix,
+            vec![(PathBuf::from("{cwd}"), PathBuf::from("mapped"))],
+        );
     });
 }
 

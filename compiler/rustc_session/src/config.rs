@@ -7,7 +7,7 @@ use std::collections::btree_map::{
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsStr;
 use std::hash::Hash;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::str::{self, FromStr};
 use std::sync::LazyLock;
 use std::{cmp, fs, iter};
@@ -1382,11 +1382,43 @@ pub fn host_tuple() -> &'static str {
     (option_env!("CFG_COMPILER_HOST_TRIPLE")).expect("CFG_COMPILER_HOST_TRIPLE")
 }
 
+/// If `component` is a whole `{name}` placeholder, returns `Some(name)`. `{{`/`}}`-escaped
+/// components (e.g. `{{cwd}}`) are not placeholders and return `None`.
+fn remap_placeholder_name(component: &OsStr) -> Option<&str> {
+    let inner = component.to_str()?.strip_prefix('{')?.strip_suffix('}')?;
+    (!inner.is_empty() && !inner.contains(['{', '}'])).then_some(inner)
+}
+
+/// Expands a `--remap-path-prefix` FROM path: a `{cwd}` component becomes the working
+/// directory, and `{{`/`}}` are unescaped to `{`/`}`. Expansion happens here, at apply time;
+/// the FROM is stored with the placeholder intact, so the tracked option is stable across
+/// build directories and the incremental cache survives. See #132132.
+fn expand_remap_path_prefix(from: &Path) -> Option<PathBuf> {
+    let mut out = PathBuf::new();
+    for comp in from.components() {
+        match comp {
+            Component::Normal(seg) if remap_placeholder_name(seg) == Some("cwd") => {
+                out.push(std::env::current_dir().ok()?)
+            }
+            Component::Normal(seg) => match seg.to_str() {
+                Some(s) => out.push(s.replace("{{", "{").replace("}}", "}")),
+                None => out.push(seg),
+            },
+            other => out.push(other),
+        }
+    }
+    Some(out)
+}
+
 fn file_path_mapping(
     remap_path_prefix: Vec<(PathBuf, PathBuf)>,
     remap_path_scope: RemapPathScopeComponents,
 ) -> FilePathMapping {
-    FilePathMapping::new(remap_path_prefix.clone(), remap_path_scope)
+    let mapping = remap_path_prefix
+        .into_iter()
+        .filter_map(|(from, to)| Some((expand_remap_path_prefix(&from)?, to)))
+        .collect();
+    FilePathMapping::new(mapping, remap_path_scope)
 }
 
 impl Default for Options {
@@ -2405,13 +2437,23 @@ fn parse_remap_path_prefix(
             Some((from, to)) => (PathBuf::from(from), PathBuf::from(to)),
         })
         .collect();
-    match &unstable_opts.remap_cwd_prefix {
-        Some(to) => match std::env::current_dir() {
-            Ok(cwd) => mapping.push((cwd, to.clone())),
-            Err(_) => (),
-        },
-        None => (),
-    };
+    // `-Zremap-cwd-prefix=VALUE` is sugar for `--remap-path-prefix={cwd}=VALUE`. See #132132.
+    if let Some(to) = &unstable_opts.remap_cwd_prefix {
+        mapping.push((PathBuf::from("{cwd}"), to.clone()));
+    }
+    // Only `{cwd}` is a recognised placeholder; reject typos like `{cdw}`.
+    for (from, _) in &mapping {
+        for comp in from.components() {
+            if let Component::Normal(seg) = comp
+                && let Some(name) = remap_placeholder_name(seg)
+                && name != "cwd"
+            {
+                early_dcx.early_fatal(format!(
+                    "unknown placeholder `{{{name}}}` in `--remap-path-prefix`"
+                ));
+            }
+        }
+    }
     mapping
 }
 
