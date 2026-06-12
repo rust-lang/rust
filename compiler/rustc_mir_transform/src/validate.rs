@@ -14,8 +14,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, CoroutineArgsExt, InstanceKind, ScalarInt, Ty, TyCtxt, TypeVisitableExt, Unnormalized,
-    Upcast, Variance,
+    self, InstanceKind, ScalarInt, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast, Variance,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::debuginfo::debuginfo_locals;
@@ -40,7 +39,10 @@ impl<'tcx> crate::MirPass<'tcx> for Validator {
         // terribly important that they pass the validator. However, I think other passes might
         // still see them, in which case they might be surprised. It would probably be better if we
         // didn't put this through the MIR pipeline at all.
-        if matches!(body.source.instance, InstanceKind::Intrinsic(..) | InstanceKind::Virtual(..)) {
+        if matches!(
+            body.source.instance,
+            InstanceKind::Intrinsic(..) | InstanceKind::Virtual(..)
+        ) {
             return;
         }
         let def_id = body.source.def_id();
@@ -162,7 +164,10 @@ impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
                 ),
             }
         } else {
-            self.fail(location, format!("encountered jump to invalid basic block {bb:?}"))
+            self.fail(
+                location,
+                format!("encountered jump to invalid basic block {bb:?}"),
+            )
         }
     }
 
@@ -277,8 +282,10 @@ impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
 
     fn is_critical_call_edge(&self, target: Option<BasicBlock>, unwind: UnwindAction) -> bool {
         let Some(target) = target else { return false };
-        matches!(unwind, UnwindAction::Cleanup(_) | UnwindAction::Terminate(_))
-            && self.body.basic_blocks.predecessors()[target].len() > 1
+        matches!(
+            unwind,
+            UnwindAction::Cleanup(_) | UnwindAction::Terminate(_)
+        ) && self.body.basic_blocks.predecessors()[target].len() > 1
     }
 }
 
@@ -312,7 +319,10 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
             }
             StatementKind::SetDiscriminant { .. } => {
                 if self.body.phase < MirPhase::Runtime(RuntimePhase::Initial) {
-                    self.fail(location, "`SetDiscriminant`is not allowed until deaggregation");
+                    self.fail(
+                        location,
+                        "`SetDiscriminant`is not allowed until deaggregation",
+                    );
                 }
             }
             StatementKind::Coverage(kind) => {
@@ -350,7 +360,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 self.check_edge(location, targets.otherwise(), EdgeKind::Normal);
 
                 self.value_cache.clear();
-                self.value_cache.extend(targets.iter().map(|(value, _)| value));
+                self.value_cache
+                    .extend(targets.iter().map(|(value, _)| value));
                 let has_duplicates = targets.iter().len() != self.value_cache.len();
                 if has_duplicates {
                     self.fail(
@@ -362,7 +373,12 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     );
                 }
             }
-            TerminatorKind::Drop { target, unwind, drop, .. } => {
+            TerminatorKind::Drop {
+                target,
+                unwind,
+                drop,
+                ..
+            } => {
                 self.check_edge(location, *target, EdgeKind::Normal);
                 self.check_unwind_edge(location, *unwind);
                 if let Some(drop) = drop {
@@ -378,7 +394,13 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
             TerminatorKind::Call { func, args, .. }
             | TerminatorKind::TailCall { func, args, .. } => {
                 // FIXME(explicit_tail_calls): refactor this & add tail-call specific checks
-                if let TerminatorKind::Call { target, unwind, destination, .. } = terminator.kind {
+                if let TerminatorKind::Call {
+                    target,
+                    unwind,
+                    destination,
+                    ..
+                } = terminator.kind
+                {
                     if let Some(target) = target {
                         self.check_edge(location, target, EdgeKind::Normal);
                     }
@@ -436,9 +458,15 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
 
                 if let ty::FnDef(did, ..) = *func.ty(&self.body.local_decls, self.tcx).kind()
                     && self.body.phase >= MirPhase::Runtime(RuntimePhase::Optimized)
-                    && matches!(self.tcx.codegen_fn_attrs(did).inline, InlineAttr::Force { .. })
+                    && matches!(
+                        self.tcx.codegen_fn_attrs(did).inline,
+                        InlineAttr::Force { .. }
+                    )
                 {
-                    self.fail(location, "`#[rustc_force_inline]`-annotated function not inlined");
+                    self.fail(
+                        location,
+                        "`#[rustc_force_inline]`-annotated function not inlined",
+                    );
                 }
             }
             TerminatorKind::Assert { target, unwind, .. } => {
@@ -450,14 +478,20 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     self.fail(location, "`Yield` cannot appear outside coroutine bodies");
                 }
                 if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
-                    self.fail(location, "`Yield` should have been replaced by coroutine lowering");
+                    self.fail(
+                        location,
+                        "`Yield` should have been replaced by coroutine lowering",
+                    );
                 }
                 self.check_edge(location, *resume, EdgeKind::Normal);
                 if let Some(drop) = drop {
                     self.check_edge(location, *drop, EdgeKind::Normal);
                 }
             }
-            TerminatorKind::FalseEdge { real_target, imaginary_target } => {
+            TerminatorKind::FalseEdge {
+                real_target,
+                imaginary_target,
+            } => {
                 if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(
                         location,
@@ -467,7 +501,10 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 self.check_edge(location, *real_target, EdgeKind::Normal);
                 self.check_edge(location, *imaginary_target, EdgeKind::Normal);
             }
-            TerminatorKind::FalseUnwind { real_target, unwind } => {
+            TerminatorKind::FalseUnwind {
+                real_target,
+                unwind,
+            } => {
                 if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(
                         location,
@@ -477,7 +514,9 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 self.check_edge(location, *real_target, EdgeKind::Normal);
                 self.check_unwind_edge(location, *unwind);
             }
-            TerminatorKind::InlineAsm { targets, unwind, .. } => {
+            TerminatorKind::InlineAsm {
+                targets, unwind, ..
+            } => {
                 for &target in targets {
                     self.check_edge(location, target, EdgeKind::Normal);
                 }
@@ -485,7 +524,10 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
             }
             TerminatorKind::CoroutineDrop => {
                 if self.body.coroutine.is_none() {
-                    self.fail(location, "`CoroutineDrop` cannot appear outside coroutine bodies");
+                    self.fail(
+                        location,
+                        "`CoroutineDrop` cannot appear outside coroutine bodies",
+                    );
                 }
                 if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(
@@ -497,16 +539,25 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
             TerminatorKind::UnwindResume => {
                 let bb = location.block;
                 if !self.body.basic_blocks[bb].is_cleanup {
-                    self.fail(location, "Cannot `UnwindResume` from non-cleanup basic block")
+                    self.fail(
+                        location,
+                        "Cannot `UnwindResume` from non-cleanup basic block",
+                    )
                 }
                 if !self.can_unwind {
-                    self.fail(location, "Cannot `UnwindResume` in a function that cannot unwind")
+                    self.fail(
+                        location,
+                        "Cannot `UnwindResume` in a function that cannot unwind",
+                    )
                 }
             }
             TerminatorKind::UnwindTerminate(_) => {
                 let bb = location.block;
                 if !self.body.basic_blocks[bb].is_cleanup {
-                    self.fail(location, "Cannot `UnwindTerminate` from non-cleanup basic block")
+                    self.fail(
+                        location,
+                        "Cannot `UnwindTerminate` from non-cleanup basic block",
+                    )
                 }
             }
             TerminatorKind::Return => {
@@ -545,7 +596,13 @@ pub(super) fn validate_types<'tcx>(
     body: &Body<'tcx>,
     caller_body: &Body<'tcx>,
 ) -> Vec<(Location, String)> {
-    let mut type_checker = TypeChecker { body, caller_body, tcx, typing_env, failures: Vec::new() };
+    let mut type_checker = TypeChecker {
+        body,
+        caller_body,
+        tcx,
+        typing_env,
+        failures: Vec::new(),
+    };
     // The type checker formats a bunch of strings with type names in it, but these strings
     // are not always going to be encountered on the error path since the inliner also uses
     // the validator, and there are certain kinds of inlining (even for valid code) that
@@ -637,7 +694,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 let ty = place.ty(&self.body.local_decls, self.tcx).ty;
 
                 if !self.tcx.type_is_copy_modulo_regions(self.typing_env, ty) {
-                    self.fail(location, format!("`Operand::Copy` with non-`Copy` type {ty}"));
+                    self.fail(
+                        location,
+                        format!("`Operand::Copy` with non-`Copy` type {ty}"),
+                    );
                 }
             }
         }
@@ -659,13 +719,19 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 let base_ty = place_ref.ty(&self.body.local_decls, self.tcx).ty;
 
                 if base_ty.is_box() {
-                    self.fail(location, format!("{base_ty} dereferenced after ElaborateBoxDerefs"))
+                    self.fail(
+                        location,
+                        format!("{base_ty} dereferenced after ElaborateBoxDerefs"),
+                    )
                 }
             }
             ProjectionElem::Field(f, ty) => {
                 let parent_ty = place_ref.ty(&self.body.local_decls, self.tcx);
                 let fail_out_of_bounds = |this: &mut Self, location| {
-                    this.fail(location, format!("Out of bounds field {f:?} for {parent_ty:?}"));
+                    this.fail(
+                        location,
+                        format!("Out of bounds field {f:?} for {parent_ty:?}"),
+                    );
                 };
                 let check_equal = |this: &mut Self, location, f_ty| {
                     if !this.mir_assign_valid_types(ty, f_ty) {
@@ -679,9 +745,16 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 };
 
                 let kind = match parent_ty.ty.kind() {
-                    &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
-                        self.tcx.type_of(def_id).instantiate(self.tcx, args).skip_norm_wip().kind()
-                    }
+                    &ty::Alias(ty::AliasTy {
+                        kind: ty::Opaque { def_id },
+                        args,
+                        ..
+                    }) => self
+                        .tcx
+                        .type_of(def_id)
+                        .instantiate(self.tcx, args)
+                        .skip_norm_wip()
+                        .kind(),
                     kind => kind,
                 };
 
@@ -786,14 +859,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             ty::EarlyBinder::bind(f_ty.ty)
                                 .instantiate(self.tcx, args)
                                 .skip_norm_wip()
-                        } else {
-                            let Some(&f_ty) = args.as_coroutine().prefix_tys().get(f.index())
-                            else {
-                                fail_out_of_bounds(self, location);
-                                return;
-                            };
-
+                        } else if let Some(&f_ty) = args.as_coroutine().upvar_tys().get(f.index()) {
                             f_ty
+                        } else {
+                            fail_out_of_bounds(self, location);
+                            return;
                         };
 
                         check_equal(self, location, f_ty);
@@ -815,7 +885,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.fail(location, format!("bad index ({index_ty} != usize)"))
                 }
             }
-            ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
+            ProjectionElem::ConstantIndex {
+                offset,
+                min_length,
+                from_end,
+            } => {
                 let indexed_ty = place_ref.ty(&self.body.local_decls, self.tcx).ty;
                 match indexed_ty.kind() {
                     ty::Array(_, _) => {
@@ -910,10 +984,16 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             if projection.is_empty() {
                 self.fail(
                     START_BLOCK.start_location(),
-                    format!("invalid empty projection in debuginfo for {:?}", debuginfo.name),
+                    format!(
+                        "invalid empty projection in debuginfo for {:?}",
+                        debuginfo.name
+                    ),
                 );
             }
-            if projection.iter().any(|p| !matches!(p, PlaceElem::Field(..))) {
+            if projection
+                .iter()
+                .any(|p| !matches!(p, PlaceElem::Field(..)))
+            {
                 self.fail(
                     START_BLOCK.start_location(),
                     format!(
@@ -929,7 +1009,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 if place.projection.iter().any(|p| !p.can_use_in_debuginfo()) {
                     self.fail(
                         START_BLOCK.start_location(),
-                        format!("illegal place {:?} in debuginfo for {:?}", place, debuginfo.name),
+                        format!(
+                            "illegal place {:?} in debuginfo for {:?}",
+                            place, debuginfo.name
+                        ),
                     );
                 }
             }
@@ -1015,7 +1098,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             Rvalue::Use(_, _) => {}
             Rvalue::CopyForDeref(_) => {
                 if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
-                    self.fail(location, "`CopyForDeref` should have been removed in runtime MIR");
+                    self.fail(
+                        location,
+                        "`CopyForDeref` should have been removed in runtime MIR",
+                    );
                 }
             }
             Rvalue::Aggregate(kind, fields) => match **kind {
@@ -1067,7 +1153,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 AggregateKind::Closure(_, args) => {
                     let upvars = args.as_closure().upvar_tys();
                     if upvars.len() != fields.len() {
-                        self.fail(location, "closure has the wrong number of initialized fields");
+                        self.fail(
+                            location,
+                            "closure has the wrong number of initialized fields",
+                        );
                     }
                     for (src, dest) in std::iter::zip(fields, upvars) {
                         if !self.mir_assign_valid_types(src.ty(self.body, self.tcx), dest) {
@@ -1078,7 +1167,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 AggregateKind::Coroutine(_, args) => {
                     let upvars = args.as_coroutine().upvar_tys();
                     if upvars.len() != fields.len() {
-                        self.fail(location, "coroutine has the wrong number of initialized fields");
+                        self.fail(
+                            location,
+                            "coroutine has the wrong number of initialized fields",
+                        );
                     }
                     for (src, dest) in std::iter::zip(fields, upvars) {
                         if !self.mir_assign_valid_types(src.ty(self.body, self.tcx), dest) {
@@ -1480,7 +1572,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         self.body.local_decls[local].local_info
                     && !matches!(rvalue, Rvalue::CopyForDeref(_))
                 {
-                    self.fail(location, "assignment to a `DerefTemp` must use `CopyForDeref`")
+                    self.fail(
+                        location,
+                        "assignment to a `DerefTemp` must use `CopyForDeref`",
+                    )
                 }
             }
             StatementKind::AscribeUserType(..) => {
@@ -1544,14 +1639,20 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
             StatementKind::SetDiscriminant { place, .. } => {
                 if self.body.phase < MirPhase::Runtime(RuntimePhase::Initial) {
-                    self.fail(location, "`SetDiscriminant`is not allowed until deaggregation");
+                    self.fail(
+                        location,
+                        "`SetDiscriminant`is not allowed until deaggregation",
+                    );
                 }
                 let pty = place.ty(&self.body.local_decls, self.tcx).ty;
                 if !matches!(
                     pty.kind(),
                     ty::Adt(..)
                         | ty::Coroutine(..)
-                        | ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. })
+                        | ty::Alias(ty::AliasTy {
+                            kind: ty::Opaque { .. },
+                            ..
+                        })
                 ) {
                     self.fail(
                         location,
@@ -1662,8 +1763,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 }
 
 pub(super) fn validate_debuginfos<'tcx>(body: &Body<'tcx>) -> Vec<(Location, String)> {
-    let mut debuginfo_checker =
-        DebuginfoChecker { debuginfo_locals: debuginfo_locals(body), failures: Vec::new() };
+    let mut debuginfo_checker = DebuginfoChecker {
+        debuginfo_locals: debuginfo_locals(body),
+        failures: Vec::new(),
+    };
     debuginfo_checker.visit_body(body);
     debuginfo_checker.failures
 }
@@ -1683,7 +1786,8 @@ impl<'tcx> Visitor<'tcx> for DebuginfoChecker {
             StmtDebugInfo::AssignRef(local, _) | StmtDebugInfo::InvalidAssign(local) => *local,
         };
         if !self.debuginfo_locals.contains(local) {
-            self.failures.push((location, format!("{local:?} is not in debuginfo")));
+            self.failures
+                .push((location, format!("{local:?} is not in debuginfo")));
         }
     }
 }
