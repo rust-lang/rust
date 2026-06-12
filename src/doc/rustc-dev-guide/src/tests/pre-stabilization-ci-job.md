@@ -29,6 +29,16 @@ For more context, see:
 >
 > Initially, we may test only up to `--stage=1`, but the plan is to expand up to
 > stage 2.
+>
+> To reproduce failures locally:
+>
+> ```console
+> $ RUSTFLAGS_NOT_BOOTSTRAP="-Znext-solver=globally" ../x build library --stage 1
+> ```
+>
+> ```console
+> $ RUSTFLAGS_NOT_BOOTSTRAP="-Znext-solver=globally" ../x test tests/ui --compare-mode polonius --stage 1
+> ```
 
 ## What failures and remedies might be specific to this combination?
 
