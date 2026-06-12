@@ -238,7 +238,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 // our trait.
                 goals.push(Goal::new(tcx, param_env, ty::PredicateKind::Ambiguous));
             }
-            ty::TypingMode::Analysis { .. } => {
+            ty::TypingMode::Typeck { .. } => {
                 let prev = self
                     .inner
                     .borrow_mut()
@@ -254,7 +254,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     );
                 }
             }
-            ty::TypingMode::Borrowck { .. } => {
+            ty::TypingMode::PostTypeckUntilBorrowck { .. } => {
                 let prev = self
                     .inner
                     .borrow_mut()
@@ -283,7 +283,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         .map(|obligation| obligation.as_goal()),
                 );
             }
-            mode @ (ty::TypingMode::PostBorrowckAnalysis { .. }
+            mode @ (ty::TypingMode::PostBorrowck { .. }
             | ty::TypingMode::PostAnalysis
             | ty::TypingMode::Codegen) => {
                 bug!("insert hidden type in {mode:?}")
