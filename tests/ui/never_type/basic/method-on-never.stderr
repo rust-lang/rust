@@ -1,0 +1,47 @@
+warning: trait method call on a coerced never type
+  --> $DIR/method-on-never.rs:17:7
+   |
+LL |     x.method();
+   |       ^^^^^^
+   |
+   = help: consider providing a type annotation
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #156047 <https://github.com/rust-lang/rust/issues/156047>
+   = note: `#[warn(trait_method_on_coerced_never_type)]` (part of `#[warn(future_incompatible)]`) on by default
+
+warning: trait method call on a coerced never type
+  --> $DIR/method-on-never.rs:21:17
+   |
+LL |     { loop {} }.method();
+   |                 ^^^^^^
+   |
+   = help: consider providing a type annotation
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #156047 <https://github.com/rust-lang/rust/issues/156047>
+
+warning: 2 warnings emitted
+
+Future incompatibility report: Future breakage diagnostic:
+warning: trait method call on a coerced never type
+  --> $DIR/method-on-never.rs:17:7
+   |
+LL |     x.method();
+   |       ^^^^^^
+   |
+   = help: consider providing a type annotation
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #156047 <https://github.com/rust-lang/rust/issues/156047>
+   = note: `#[warn(trait_method_on_coerced_never_type)]` (part of `#[warn(future_incompatible)]`) on by default
+
+Future breakage diagnostic:
+warning: trait method call on a coerced never type
+  --> $DIR/method-on-never.rs:21:17
+   |
+LL |     { loop {} }.method();
+   |                 ^^^^^^
+   |
+   = help: consider providing a type annotation
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #156047 <https://github.com/rust-lang/rust/issues/156047>
+   = note: `#[warn(trait_method_on_coerced_never_type)]` (part of `#[warn(future_incompatible)]`) on by default
+

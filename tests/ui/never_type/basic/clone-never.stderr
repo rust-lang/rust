@@ -1,16 +1,25 @@
-error[E0282]: type annotations needed
-  --> $DIR/clone-never.rs:4:9
+warning: trait method call on a coerced never type
+  --> $DIR/clone-never.rs:6:7
    |
-LL |     let x = panic!();
-   |         ^
 LL |     x.clone();
-   |     - type must be known at this point
+   |       ^^^^^
    |
-help: consider giving `x` an explicit type
+   = help: consider providing a type annotation
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #156047 <https://github.com/rust-lang/rust/issues/156047>
+   = note: `#[warn(trait_method_on_coerced_never_type)]` (part of `#[warn(future_incompatible)]`) on by default
+
+warning: 1 warning emitted
+
+Future incompatibility report: Future breakage diagnostic:
+warning: trait method call on a coerced never type
+  --> $DIR/clone-never.rs:6:7
    |
-LL |     let x: /* Type */ = panic!();
-   |          ++++++++++++
+LL |     x.clone();
+   |       ^^^^^
+   |
+   = help: consider providing a type annotation
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #156047 <https://github.com/rust-lang/rust/issues/156047>
+   = note: `#[warn(trait_method_on_coerced_never_type)]` (part of `#[warn(future_incompatible)]`) on by default
 
-error: aborting due to 1 previous error
-
-For more information about this error, try `rustc --explain E0282`.

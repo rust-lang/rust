@@ -12,6 +12,7 @@ use rustc_hir_analysis::autoderef::{self, Autoderef};
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TyCtxtInferExt};
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligation, query};
+use rustc_lint::builtin::TRAIT_METHOD_ON_COERCED_NEVER_TYPE;
 use rustc_macros::Diagnostic;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::elaborate::supertrait_def_ids;
@@ -394,6 +395,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         #[diag("type annotations needed")]
         struct MissingTypeAnnot;
 
+        #[derive(Diagnostic)]
+        #[diag("trait method call on a coerced never type")]
+        #[help("consider providing a type annotation")]
+        struct TraitMethodOnCoercedNeverType;
+
         let mut orig_values = OriginalQueryValues::default();
         let predefined_opaques_in_body = if self.next_trait_solver() {
             self.tcx.mk_predefined_opaques_in_body_from_iter(
@@ -459,6 +465,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // If we encountered an `_` type or an error type during autoderef, this is
         // ambiguous.
         if let Some(bad_ty) = &steps.opt_bad_ty {
+            // Ended up encountering a type variable when doing autoderef,
+            // but it may not be a type variable after processing obligations
+            // in our local `FnCtxt`, so don't call `structurally_resolve_type`.
+            let ty = &bad_ty.ty;
+            let ty = self
+                .probe_instantiate_query_response(span, &orig_values, ty)
+                .unwrap_or_else(|_| span_bug!(span, "instantiating {:?} failed?", ty));
+            let ty = self.resolve_vars_if_possible(ty.value);
+
             if is_suggestion.0 {
                 // Ambiguity was encountered during a suggestion. There's really
                 // not much use in suggesting methods in this case.
@@ -482,15 +497,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     span,
                     MissingTypeAnnot,
                 );
+            // If `ty` is an inference variable that was created by being adjusted from the never type,
+            // We demand the type to be equal to the never type, so we can probe the never type for methods
+            // (see https://github.com/rust-lang/rust/issues/143349)
+            } else if let ty::Infer(ty::TyVar(ty_id)) = *ty.kind()
+                && let ty_id = self.root_var(ty_id)
+                && let root_ty = Ty::new_var(self.tcx, ty_id)
+                && self
+                    .diverging_type_vars
+                    .borrow()
+                    .iter()
+                    .any(|&candidate_id| self.root_var(candidate_id) == ty_id)
+            {
+                self.tcx.emit_node_span_lint(
+                    TRAIT_METHOD_ON_COERCED_NEVER_TYPE,
+                    scope_expr_id,
+                    span,
+                    TraitMethodOnCoercedNeverType,
+                );
+                self.demand_eqtype(span, root_ty, self.tcx.types.never);
             } else {
-                // Ended up encountering a type variable when doing autoderef,
-                // but it may not be a type variable after processing obligations
-                // in our local `FnCtxt`, so don't call `structurally_resolve_type`.
-                let ty = &bad_ty.ty;
-                let ty = self
-                    .probe_instantiate_query_response(span, &orig_values, ty)
-                    .unwrap_or_else(|_| span_bug!(span, "instantiating {:?} failed?", ty));
-                let ty = self.resolve_vars_if_possible(ty.value);
                 let guar = match *ty.kind() {
                     _ if let Some(guar) = self.tainted_by_errors() => guar,
                     ty::Infer(ty::TyVar(_)) => {
