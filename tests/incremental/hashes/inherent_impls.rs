@@ -645,9 +645,9 @@ impl Foo {
 // Add #[no_mangle] to Method --------------------------------------------------
 #[cfg(any(bpass1,bpass4))]
 impl Foo {
+    //-------------------------------------------------------------------------------------------
     //--------------------------
-    //--------------------------
-    //--------------------------
+    //-------------------------------------------------------------------------------------------
     //--------------------------
     //------------------
     pub fn add_no_mangle_to_method(&self) { }
@@ -659,9 +659,9 @@ impl Foo {
 #[rustc_clean(cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl Foo {
-    #[rustc_clean(cfg="bpass2")]
+    #[rustc_clean(cfg="bpass2", except="hir_owner")] // dirty because of stashed UNSAFE_CODE lint
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5")]
+    #[rustc_clean(cfg="bpass5", except="hir_owner")] // dirty because of stashed UNSAFE_CODE lint
     #[rustc_clean(cfg="bpass6")]
     #[unsafe(no_mangle)]
     pub fn add_no_mangle_to_method(&self) { }

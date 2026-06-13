@@ -565,11 +565,11 @@ trait AddNoMangleToMethod {
 
 #[cfg(any(bpass1,bpass4))]
 impl AddNoMangleToMethod for Foo {
-    // -------------------------
-    // -------------------------
-    // -------------------------
-    // -------------------------
-    // -----------------
+    //-------------------------------------------------------------------------------------------
+    //--------------------------
+    //-------------------------------------------------------------------------------------------
+    //--------------------------
+    //------------------
     fn add_no_mangle_to_method(&self) { }
 }
 
@@ -579,9 +579,9 @@ impl AddNoMangleToMethod for Foo {
 #[rustc_clean(cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl AddNoMangleToMethod for Foo {
-    #[rustc_clean(cfg="bpass2")]
+    #[rustc_clean(cfg="bpass2", except="hir_owner")] // dirty because of stashed UNSAFE_CODE lint
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5")]
+    #[rustc_clean(cfg="bpass5", except="hir_owner")] // dirty because of stashed UNSAFE_CODE lint
     #[rustc_clean(cfg="bpass6")]
     #[unsafe(no_mangle)]
     fn add_no_mangle_to_method(&self) { }
