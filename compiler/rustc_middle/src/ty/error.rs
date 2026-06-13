@@ -96,6 +96,20 @@ impl<'tcx> TypeError<'tcx> {
                 if values.found { "variadic" } else { "non-variadic" }
             )
             .into(),
+            TypeError::SplatMismatch(ref values) => format!(
+                "expected fn with {}, found fn with {}",
+                if let Some(index) = values.expected {
+                    format!("arg {index} splatted")
+                } else {
+                    "no splatted arg".to_string()
+                },
+                if let Some(index) = values.found {
+                    format!("arg {index} splatted")
+                } else {
+                    "no splatted arg".to_string()
+                }
+            )
+            .into(),
             TypeError::ProjectionMismatched(ref values) => format!(
                 "expected `{}`, found `{}`",
                 tcx.def_path_str(values.expected),
