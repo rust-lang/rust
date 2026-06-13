@@ -1,5 +1,5 @@
 error: methods called `new` usually return `Self`
-  --> tests/ui/methods.rs:84:5
+  --> tests/ui/methods.rs:76:5
    |
 LL | /     fn new() -> i32 {
 LL | |
@@ -10,30 +10,5 @@ LL | |     }
    = note: `-D clippy::new-ret-no-self` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::new_ret_no_self)]`
 
-error: called `filter(..).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(..)` instead
-  --> tests/ui/methods.rs:106:13
-   |
-LL |       let _ = v.iter().filter(|&x| {
-   |  _____________^
-LL | |
-LL | |                                 *x < 0
-LL | |                             }
-LL | |                    ).next();
-   | |___________________________^
-   |
-   = note: `-D clippy::filter-next` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::filter_next)]`
-
-error: called `filter(..).next_back()` on an `DoubleEndedIterator`. This is more succinctly expressed by calling `.rfind(..)` instead
-  --> tests/ui/methods.rs:125:13
-   |
-LL |       let _ = v.iter().filter(|&x| {
-   |  _____________^
-LL | |
-LL | |                                 *x < 0
-LL | |                             }
-LL | |                    ).next_back();
-   | |________________________________^
-
-error: aborting due to 3 previous errors
+error: aborting due to 1 previous error
 

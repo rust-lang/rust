@@ -1,0 +1,50 @@
+//@aux-build:option_helpers.rs
+#![warn(clippy::filter_next)]
+#![expect(clippy::disallowed_names)]
+#![allow(clippy::useless_vec)]
+
+extern crate option_helpers;
+
+use option_helpers::{IteratorFalsePositives, IteratorMethodFalsePositives};
+
+fn main() {}
+
+fn filter_next() {
+    let v = [3, 2, 1, 0, -1, -2, -3];
+
+    // Single-line case.
+    let _ = v.iter().find(|&x| *x < 0);
+    //~^ filter_next
+
+    let _ = v.iter().rfind(|&x| *x < 0);
+    //~^ filter_next
+
+    // Check that we don't lint if the caller is not an `Iterator`.
+    let foo = IteratorFalsePositives { foo: 0 };
+    let _ = foo.filter().next();
+
+    let foo = IteratorMethodFalsePositives {};
+    let _ = foo.filter(42).next();
+}
+
+fn filter_next_back() {
+    let v = [3, 2, 1, 0, -1, -2, -3];
+
+    // Check that we don't lint if the caller is not an `Iterator`.
+    let foo = IteratorFalsePositives { foo: 0 };
+    let _ = foo.filter().next_back();
+
+    let foo = IteratorMethodFalsePositives {};
+    let _ = foo.filter(42).next_back();
+}
+
+#[clippy::msrv = "1.27"]
+fn msrv_1_27() {
+    let _ = vec![1].into_iter().rfind(|&x| x < 0);
+    //~^ filter_next
+}
+
+#[clippy::msrv = "1.26"]
+fn msrv_1_26() {
+    let _ = vec![1].into_iter().filter(|&x| x < 0).next_back();
+}

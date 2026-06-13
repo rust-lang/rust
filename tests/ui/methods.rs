@@ -1,17 +1,9 @@
-//@aux-build:option_helpers.rs
-
 #![warn(clippy::filter_next, clippy::new_ret_no_self)]
-#![expect(clippy::disallowed_names, clippy::useless_vec)]
-
-#[macro_use]
-extern crate option_helpers;
 
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::ops::Mul;
 use std::rc::{self, Rc};
 use std::sync::{self, Arc};
-
-use option_helpers::{IteratorFalsePositives, IteratorMethodFalsePositives};
 
 struct Lt<'a> {
     foo: &'a u32,
@@ -95,45 +87,6 @@ impl Mul<T> for T {
     fn mul(self, other: T) -> T {
         self
     }
-}
-
-/// Checks implementation of `FILTER_NEXT` lint.
-#[rustfmt::skip]
-fn filter_next() {
-    let v = vec![3, 2, 1, 0, -1, -2, -3];
-
-    // Multi-line case.
-    let _ = v.iter().filter(|&x| {
-    //~^ filter_next
-                                *x < 0
-                            }
-                   ).next();
-
-    // Check that we don't lint if the caller is not an `Iterator`.
-    let foo = IteratorFalsePositives { foo: 0 };
-    let _ = foo.filter().next();
-
-    let foo = IteratorMethodFalsePositives {};
-    let _ = foo.filter(42).next();
-}
-
-#[rustfmt::skip]
-fn filter_next_back() {
-    let v = vec![3, 2, 1, 0, -1, -2, -3];
-
-    // Multi-line case.
-    let _ = v.iter().filter(|&x| {
-    //~^ filter_next
-                                *x < 0
-                            }
-                   ).next_back();
-
-    // Check that we don't lint if the caller is not an `Iterator`.
-    let foo = IteratorFalsePositives { foo: 0 };
-    let _ = foo.filter().next_back();
-
-    let foo = IteratorMethodFalsePositives {};
-    let _ = foo.filter(42).next_back();
 }
 
 fn main() {}

@@ -1,0 +1,51 @@
+error: called `filter(..).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(..)` instead
+  --> tests/ui/filter_next_unfixable.rs:9:13
+   |
+LL |       let _ = v.iter().filter(|&x| {
+   |  _____________^
+LL | |
+LL | |                                 *x < 0
+LL | |                             }
+LL | |                    ).next();
+   | |___________________________^
+   |
+   = note: `-D clippy::filter-next` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::filter_next)]`
+
+error: called `filter(..).next_back()` on an `DoubleEndedIterator`. This is more succinctly expressed by calling `.rfind(..)` instead
+  --> tests/ui/filter_next_unfixable.rs:15:13
+   |
+LL |       let _ = v.iter().filter(|&x| {
+   |  _____________^
+LL | |
+LL | |                                 *x < 0
+LL | |                             }
+LL | |                    ).next_back();
+   | |________________________________^
+
+error: called `filter(..).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(..)` instead
+  --> tests/ui/filter_next_unfixable.rs:27:17
+   |
+LL |         let _ = iter.filter(|_| true).next();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `iter.find(|_| true)`
+   |
+help: you will also need to make `iter` mutable, because `find` takes `&mut self`
+  --> tests/ui/filter_next_unfixable.rs:26:13
+   |
+LL |         let iter = (0..10);
+   |             ^^^^
+
+error: called `filter(..).next_back()` on an `DoubleEndedIterator`. This is more succinctly expressed by calling `.rfind(..)` instead
+  --> tests/ui/filter_next_unfixable.rs:32:17
+   |
+LL |         let _ = iter.filter(|_| true).next_back();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `iter.rfind(|_| true)`
+   |
+help: you will also need to make `iter` mutable, because `rfind` takes `&mut self`
+  --> tests/ui/filter_next_unfixable.rs:31:13
+   |
+LL |         let iter = (0..10);
+   |             ^^^^
+
+error: aborting due to 4 previous errors
+
