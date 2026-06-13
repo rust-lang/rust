@@ -13,5 +13,5 @@
 // Shouldn't lint
 #[doc(auto_cfg(hide(windows)))]
 #[doc(auto_cfg(hide(feature = "windows")))]
-//~^ ERROR `#![doc(auto_cfg(hide(...)))]` only accepts identifiers or `values()`
+//~^ ERROR `#![doc(auto_cfg(hide(...)))]` only accepts identifiers or `values(...)`
 pub fn foo() {}

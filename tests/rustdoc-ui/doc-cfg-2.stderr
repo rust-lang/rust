@@ -30,19 +30,19 @@ note: the lint level is defined here
 LL | #![deny(invalid_doc_attributes)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
 
-error: `#![doc(auto_cfg(hide(...)))]` only accepts identifiers or `values()`
+error: `#![doc(auto_cfg(hide(...)))]` only accepts identifiers or `values(...)`
   --> $DIR/doc-cfg-2.rs:8:21
    |
 LL | #[doc(auto_cfg(hide(true)))]
    |                     ^^^^
 
-error: `#![doc(auto_cfg(hide(...)))]` only accepts identifiers or `values()`
+error: `#![doc(auto_cfg(hide(...)))]` only accepts identifiers or `values(...)`
   --> $DIR/doc-cfg-2.rs:9:21
    |
 LL | #[doc(auto_cfg(hide(42)))]
    |                     ^^
 
-error: `#![doc(auto_cfg(hide(...)))]` only accepts identifiers or `values()`
+error: `#![doc(auto_cfg(hide(...)))]` only accepts identifiers or `values(...)`
   --> $DIR/doc-cfg-2.rs:10:21
    |
 LL | #[doc(auto_cfg(hide("a")))]
@@ -60,7 +60,7 @@ error: expected boolean for `#[doc(auto_cfg = ...)]`
 LL | #[doc(auto_cfg = "a")]
    |                  ^^^
 
-error: `#![doc(auto_cfg(hide(...)))]` only accepts identifiers or `values()`
+error: `#![doc(auto_cfg(hide(...)))]` only accepts identifiers or `values(...)`
   --> $DIR/doc-cfg-2.rs:15:21
    |
 LL | #[doc(auto_cfg(hide(feature = "windows")))]
