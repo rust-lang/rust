@@ -24,5 +24,7 @@ fn main() {
 
     let ptr = unsafe { buf.as_mut() }.as_mut_ptr();
     let _ = buf.capacity();
-    unsafe { ptr.write(42); }
+    unsafe {
+        ptr.write(42);
+    }
 }
