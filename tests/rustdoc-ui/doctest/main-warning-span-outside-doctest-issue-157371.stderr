@@ -1,8 +1,8 @@
 warning: the `main` function of this doctest won't be run as it contains expressions at the top level, meaning that the whole doctest code will be wrapped in a function
-  --> $DIR/failed-doctest-extra-semicolon-on-item.rs:15:16
+  --> $DIR/main-warning-span-outside-doctest-issue-157371.rs:17:6
    |
-LL | /// struct S {};
-   |                ^
+LL | /// };  // <- Stray `;`.
+   |      ^
 
 warning: 1 warning emitted
 
