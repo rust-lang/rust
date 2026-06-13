@@ -3036,7 +3036,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
         ty: Ty<'db>,
         locals: &Locals<'a>,
         addr: Address,
-        _metadata: &[u8],
+        metadata: &[u8],
         span: MirSpan,
     ) -> Result<'db, ()> {
         let Some(drop_fn) = self.lang_items().Drop_drop else {
@@ -3046,13 +3046,23 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
         };
 
         let generic_args = GenericArgs::new_from_slice(&[ty.into()]);
-        if let Ok(MirOrDynIndex::Mir(body)) =
-            self.get_mir_or_dyn_index(drop_fn, generic_args, locals, span)
+        let (drop_impl, drop_args) = self.db.lookup_impl_method(
+            ParamEnvAndCrate { param_env: self.param_env.param_env, krate: self.crate_id },
+            drop_fn,
+            generic_args,
+        );
+        if let Either::Left(drop_impl) = drop_impl
+            && matches!(drop_impl.lookup(self.db).container, ItemContainerId::ImplId(_))
+            && let Ok(body) = self.db.monomorphized_mir_body(
+                drop_impl.into(),
+                drop_args.store(),
+                self.param_env.store(),
+            )
         {
             self.exec_looked_up_function(
                 body,
                 locals,
-                drop_fn,
+                drop_impl,
                 iter::once(IntervalOrOwned::Owned(addr.to_bytes().to_vec())),
                 span,
                 Interval { addr: Address::Invalid(0), size: 0 },
@@ -3093,6 +3103,12 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                     AdtId::EnumId(_) => (),
                 }
             }
+            TyKind::Dynamic(..) => {
+                if !metadata.is_empty() {
+                    let concrete_ty = self.vtable_map.ty_of_bytes(metadata)?;
+                    self.run_drop_glue_deep(concrete_ty, locals, addr, &[], span)?;
+                }
+            }
             TyKind::Bool
             | TyKind::Char
             | TyKind::Int(_)
@@ -3115,7 +3131,6 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
             | TyKind::Error(_)
             | TyKind::Param(_)
             | TyKind::Placeholder(_)
-            | TyKind::Dynamic(..)
             | TyKind::FnPtr(..)
             | TyKind::Bound(..)
             | TyKind::Infer(..)

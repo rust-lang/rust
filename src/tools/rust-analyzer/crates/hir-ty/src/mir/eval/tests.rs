@@ -230,6 +230,28 @@ fn main() {
 }
 
 #[test]
+fn drop_glue_for_type_without_drop_impl_does_not_recurse() {
+    check_pass(
+        r#"
+//- minicore: drop, pin
+
+struct HasDrop;
+impl Drop for HasDrop {
+    fn drop(&mut self) {}
+}
+
+struct WithDropGlue {
+    field: HasDrop,
+}
+
+fn main() {
+    let _c = WithDropGlue { field: HasDrop };
+}
+    "#,
+    );
+}
+
+#[test]
 fn drop_if_let() {
     check_pass(
         r#"
@@ -355,6 +377,35 @@ fn main() {
     drop_in_place(p);
 }
     "#,
+    );
+}
+
+#[test]
+fn drop_glue_for_trait_object() {
+    check_panic(
+        r#"
+//- minicore: manually_drop, coerce_unsized, fmt, panic, drop, pin
+use core::mem::ManuallyDrop;
+use core::ptr::drop_in_place;
+
+struct X;
+impl Drop for X {
+    fn drop(&mut self) {
+        panic!("concrete drop ran");
+    }
+}
+
+trait T {}
+impl T for X {}
+
+fn main() {
+    let mut x = ManuallyDrop::new(X);
+    let p = &mut x as *mut ManuallyDrop<X> as *mut X;
+    let obj: &mut dyn T = unsafe { &mut *p };
+    drop_in_place(obj);
+}
+    "#,
+        "concrete drop ran",
     );
 }
 
