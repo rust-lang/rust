@@ -1,4 +1,4 @@
-// Checks that you cannot have any item inside `any()` and 
+// Checks that you cannot have any item inside `any()` and `none()`.
 
 #![deny(invalid_doc_attributes)]
 #![feature(doc_cfg)]
