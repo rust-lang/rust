@@ -2284,23 +2284,45 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// If a `struct` contains a reference, such as `&'a T`, the compiler
-    /// requires that `T` outlives the lifetime `'a`. This historically
-    /// required writing an explicit lifetime bound to indicate this
-    /// requirement. However, this can be overly explicit, causing clutter and
-    /// unnecessary complexity. The language was changed to automatically
-    /// infer the bound if it is not specified. Specifically, if the struct
-    /// contains a reference, directly or indirectly, to `T` with lifetime
-    /// `'x`, then it will infer that `T: 'x` is a requirement.
-    ///
-    /// This lint is "allow" by default because it can be noisy for existing
-    /// code that already had these requirements. This is a stylistic choice,
-    /// as it is still valid to explicitly state the bound. It also has some
-    /// false positives that can cause confusion.
+    /// If a struct, enum or union contains a reference, such as `&'a T`,
+    /// the compiler requires that `T` outlives the lifetime `'a`.
+    /// This historically required writing an explicit lifetime bound to indicate this requirement.
+    /// However, this can be overly explicit, causing clutter and unnecessary complexity.
+    /// The language was changed to automatically infer some classes of lifetime bounds
+    /// if they are not specified.
+    /// Specifically, if a struct, enum or union contains a reference, directly or indirectly,
+    /// to `T` with lifetime `'x` and `'x` refers to a lifetime parameter,
+    /// then it will infer that `T: 'x` is a requirement.
     ///
     /// See [RFC 2093] for more details.
     ///
+    /// > [!WARNING]
+    /// > Implicit lifetime bounds are not semantically equivalent to explicit ones since the latter
+    /// > may affect the implicit lifetime bound of trait object types that are passed as arguments
+    /// > to the overarching struct, enum or union.
+    /// > Rephrased, they participate in [trait object lifetime defaulting][TOLD].
+    /// >
+    /// > Consider the following piece of code where removing bound `T: 'a` would lead to a lifetime
+    /// > error in function `scope`:
+    /// >
+    /// > ```rust,no_run
+    /// > struct Ref<'a, T: ?Sized + 'a>(&'a T);
+    /// >
+    /// > fn scope() {
+    /// >     let buf = String::new();
+    /// >     let str = buf.as_str();
+    /// >     render(Ref(&str));
+    /// > }
+    /// >
+    /// > fn render(_: Ref<dyn std::fmt::Display>) {}
+    /// > ```
+    /// >
+    /// > Consequently, removing explicit outlives-bounds on type parameters of publicly reachable types
+    /// > constitutes a **breaking change** if the lifetime refers to a lifetime parameter and
+    /// > the type parameter is not bounded by `Sized` (thereby admitting trait object types).
+    ///
     /// [RFC 2093]: https://github.com/rust-lang/rfcs/blob/master/text/2093-infer-outlives.md
+    /// [TOLD]: https://doc.rust-lang.org/reference/lifetime-elision.html#default-trait-object-lifetimes
     pub EXPLICIT_OUTLIVES_REQUIREMENTS,
     Allow,
     "outlives requirements can be inferred"
