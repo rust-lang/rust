@@ -2996,20 +2996,19 @@ impl Display for char {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PointeeSized> Pointer for *const T {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        // Since the formatting will be identical for all pointer types, erase the pointee type and
+        // metadata type to reduce the amount of codegen work needed for each distinct type.
+        let ptr: *const T = *self;
+        let ptr_addr = ptr.expose_provenance();
         if <<T as core::ptr::Pointee>::Metadata as core::unit::IsUnit>::is_unit() {
-            pointer_fmt_inner(self.expose_provenance(), f)
+            pointer_fmt_inner(ptr_addr, f)
         } else {
-            f.debug_struct("Pointer")
-                .field_with("addr", |f| pointer_fmt_inner(self.expose_provenance(), f))
-                .field("metadata", &core::ptr::metadata(*self))
-                .finish()
+            wide_pointer_fmt_inner(ptr_addr, &core::ptr::metadata(ptr), f)
         }
     }
 }
 
-/// Since the formatting will be identical for all pointer types, uses a
-/// non-monomorphized implementation for the actual formatting to reduce the
-/// amount of codegen work needed.
+/// Formats an address in `fmt::Pointer` style.
 ///
 /// This uses `ptr_addr: usize` and not `ptr: *const ()` to be able to use this for
 /// `fn(...) -> ...` without using [problematic] "Oxford Casts".
@@ -3036,6 +3035,14 @@ pub(crate) fn pointer_fmt_inner(ptr_addr: usize, f: &mut Formatter<'_>) -> Resul
     f.options = old_options;
 
     ret
+}
+
+/// Formats a wide pointer (address and type-erased metadata) in `fmt::Pointer` style.
+fn wide_pointer_fmt_inner(ptr_addr: usize, metadata: &dyn Debug, f: &mut Formatter<'_>) -> Result {
+    f.debug_struct("Pointer")
+        .field_with("addr", move |f| pointer_fmt_inner(ptr_addr, f))
+        .field("metadata", metadata)
+        .finish()
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
