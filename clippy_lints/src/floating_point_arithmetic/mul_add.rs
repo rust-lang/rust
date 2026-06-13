@@ -91,7 +91,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
         cx,
         SUBOPTIMAL_FLOPS,
         expr.span,
-        "multiply and add expressions can be calculated more efficiently and accurately",
+        "multiply and add expressions may be calculated more efficiently and accurately",
         |diag| {
             let maybe_neg_sugg = |expr, app: &mut _| {
                 let sugg = Sugg::hir_with_applicability(cx, expr, "_", app);
@@ -120,6 +120,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 },
                 app,
             );
+            diag.note_once("the performance gain from `mul_add` may vary depending on the target architecture");
         },
     );
 }
