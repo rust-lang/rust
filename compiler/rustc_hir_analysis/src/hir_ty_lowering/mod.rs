@@ -409,7 +409,7 @@ impl<'tcx> ForbidParamUsesFolder<'tcx> {
             }
             ForbidParamContext::ConstArgument => {
                 if self.tcx.features().generic_const_args() {
-                    "generic parameters in const blocks are only allowed as the direct value of a `type const`"
+                    "generic parameters in const blocks are not allowed; use a named `const` item instead"
                 } else {
                     "generic parameters may not be used in const operations"
                 }
@@ -535,9 +535,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     None
                 }
             }
-            ty::AnonConstKind::GCE
-            | ty::AnonConstKind::GCA
-            | ty::AnonConstKind::RepeatExprCount => None,
+            ty::AnonConstKind::GCE | ty::AnonConstKind::RepeatExprCount => None,
         }
     }
 

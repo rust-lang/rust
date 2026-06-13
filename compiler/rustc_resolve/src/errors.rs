@@ -389,7 +389,7 @@ pub(crate) struct SelfInConstGenericTy {
 #[derive(Diagnostic)]
 #[diag(
     "{$is_gca ->
-    [true] generic parameters in const blocks are only allowed as the direct value of a `type const`
+    [true] generic parameters in const blocks are not allowed; use a named `const` item instead
     *[false] generic parameters may not be used in const operations
 }"
 )]
