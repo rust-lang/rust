@@ -447,7 +447,7 @@ macro_rules! void_2024 {
 }
 
 "#,
-        expect_file![format!("./test_data/highlight_keywords_macros.html")],
+        expect_file!["./test_data/highlight_keywords_macros.html"],
         false,
     );
 }
