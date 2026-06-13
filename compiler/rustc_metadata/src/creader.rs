@@ -1,10 +1,9 @@
 //! Validates all used crates and extern libraries and loads their metadata
 
 use std::collections::BTreeMap;
-use std::error::Error;
 use std::path::Path;
 use std::str::FromStr;
-use std::time::Duration;
+use std::sync::Arc;
 use std::{cmp, env, iter};
 
 use rustc_ast::expand::allocator::{ALLOC_ERROR_HANDLER, AllocatorKind, global_fn_name};
@@ -12,10 +11,9 @@ use rustc_ast::{self as ast, *};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::owned_slice::OwnedSlice;
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{self, FreezeReadGuard, FreezeWriteGuard};
+use rustc_data_structures::sync::{self, FreezeReadGuard, FreezeWriteGuard, IntoDynSyncSend};
 use rustc_data_structures::unord::UnordMap;
 use rustc_expand::base::SyntaxExtension;
-use rustc_fs_util::try_canonicalize;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE, LocalDefId, StableCrateId};
 use rustc_hir::definitions::Definitions;
@@ -23,20 +21,21 @@ use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::ty::data_structures::IndexSet;
 use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
-use rustc_proc_macro::bridge::client::Client as ProcMacroClient;
+use rustc_proc_macro::bridge::server::DynClient;
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigationLevel;
 use rustc_session::config::{
     CrateType, ExtendedTargetModifierInfo, ExternLocation, Externs, OptionsTargetModifiers,
     TargetModifier,
 };
 use rustc_session::cstore::{CrateDepKind, CrateSource, ExternCrate, ExternCrateSource};
+use rustc_session::filesearch::FileSearch;
 use rustc_session::output::validate_crate_name;
-use rustc_session::search_paths::PathKind;
+use rustc_session::search_paths::{PathKind, SearchPath};
 use rustc_session::{Session, lint};
 use rustc_span::def_id::DefId;
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
-use rustc_target::spec::{PanicStrategy, Target};
+use rustc_target::spec::{PanicStrategy, Target, TargetTuple};
 use tracing::{debug, info, trace};
 
 use crate::diagnostics;
@@ -653,7 +652,7 @@ impl CStore {
                 None => (&source, &crate_root),
             };
             let dlsym_dylib = dlsym_source.dylib.as_ref().expect("no dylib for a proc-macro crate");
-            Some(self.dlsym_proc_macros(tcx.sess, dlsym_dylib, dlsym_root.stable_crate_id())?)
+            Some(self.dlsym_proc_macros(dlsym_dylib, dlsym_root.stable_crate_id())?)
         } else {
             None
         };
@@ -736,7 +735,35 @@ impl CStore {
             let Some(host_result) =
                 self.load(&mut proc_macro_locator, &mut CrateRejections::default())?
             else {
-                return Ok(None);
+                let wasm_tuple = "wasm32-wasip1";
+                let wasm_tlib_path = Arc::new(SearchPath::from_sysroot_and_triple(
+                    sess.opts.sysroot.path(),
+                    wasm_tuple,
+                ));
+                let wasm_tuple = TargetTuple::from_tuple(wasm_tuple);
+                let (wasm_target, _target_warnings) =
+                    Target::search(&wasm_tuple, sess.opts.sysroot.path(), sess.unstable_options())
+                        .unwrap_or_else(|e| {
+                            sess.dcx()
+                                .handle()
+                                .fatal(format!("Error loading host specification: {e}"))
+                        });
+                let wasm_filesearch =
+                    FileSearch::new(&sess.opts.search_paths, &wasm_tlib_path, &wasm_target);
+
+                proc_macro_locator.for_wasm_proc_macro(
+                    path_kind,
+                    wasm_tuple,
+                    &wasm_target,
+                    &wasm_filesearch,
+                );
+
+                match self.load(&mut proc_macro_locator, &mut CrateRejections::default())? {
+                    Some(host_result) => return Ok(Some((host_result, None))),
+                    None => {
+                        return Ok(None);
+                    }
+                }
             };
 
             Ok(Some((host_result, None)))
@@ -948,31 +975,10 @@ impl CStore {
 
     fn dlsym_proc_macros(
         &self,
-        sess: &Session,
         path: &Path,
         stable_crate_id: StableCrateId,
-    ) -> Result<&'static [ProcMacroClient], CrateError> {
-        let sym_name = sess.generate_proc_macro_decls_symbol(stable_crate_id);
-        debug!("trying to dlsym proc_macros {} for symbol `{}`", path.display(), sym_name);
-
-        unsafe {
-            // FIXME(bjorn3) this depends on the unstable slice memory layout
-            let result = load_symbol_from_dylib::<*const &[ProcMacroClient]>(path, &sym_name);
-            match result {
-                Ok(result) => {
-                    debug!("loaded dlsym proc_macros {} for symbol `{}`", path.display(), sym_name);
-                    Ok(*result)
-                }
-                Err(err) => {
-                    debug!(
-                        "failed to dlsym proc_macros {} for symbol `{}`",
-                        path.display(),
-                        sym_name
-                    );
-                    Err(err.into())
-                }
-            }
-        }
+    ) -> Result<Vec<IntoDynSyncSend<DynClient>>, CrateError> {
+        Ok(crate::host_dylib::dlsym_proc_macros(path, stable_crate_id)?)
     }
 
     fn inject_panic_runtime(&mut self, tcx: TyCtxt<'_>, krate: &ast::Crate) {
@@ -1414,118 +1420,4 @@ fn fn_spans(krate: &ast::Crate, name: Symbol) -> Vec<Span> {
     let mut f = Finder { name, spans: Vec::new() };
     visit::walk_crate(&mut f, krate);
     f.spans
-}
-
-fn format_dlopen_err(e: &(dyn std::error::Error + 'static)) -> String {
-    e.sources().map(|e| format!(": {e}")).collect()
-}
-
-fn attempt_load_dylib(path: &Path) -> Result<libloading::Library, libloading::Error> {
-    #[cfg(target_os = "aix")]
-    if let Some(ext) = path.extension()
-        && ext.eq("a")
-    {
-        // On AIX, we ship all libraries as .a big_af archive
-        // the expected format is lib<name>.a(libname.so) for the actual
-        // dynamic library
-        let library_name = path.file_stem().expect("expect a library name");
-        let mut archive_member = std::ffi::OsString::from("a(");
-        archive_member.push(library_name);
-        archive_member.push(".so)");
-        let new_path = path.with_extension(archive_member);
-
-        // On AIX, we need RTLD_MEMBER to dlopen an archived shared
-        let flags = libc::RTLD_LAZY | libc::RTLD_LOCAL | libc::RTLD_MEMBER;
-        return unsafe { libloading::os::unix::Library::open(Some(&new_path), flags) }
-            .map(|lib| lib.into());
-    }
-
-    unsafe { libloading::Library::new(&path) }
-}
-
-// On Windows the compiler would sometimes intermittently fail to open the
-// proc-macro DLL with `Error::LoadLibraryExW`. It is suspected that something in the
-// system still holds a lock on the file, so we retry a few times before calling it
-// an error.
-fn load_dylib(path: &Path, max_attempts: usize) -> Result<libloading::Library, String> {
-    assert!(max_attempts > 0);
-
-    let mut last_error = None;
-
-    for attempt in 0..max_attempts {
-        debug!("Attempt to load proc-macro `{}`.", path.display());
-        match attempt_load_dylib(path) {
-            Ok(lib) => {
-                if attempt > 0 {
-                    debug!(
-                        "Loaded proc-macro `{}` after {} attempts.",
-                        path.display(),
-                        attempt + 1
-                    );
-                }
-                return Ok(lib);
-            }
-            Err(err) => {
-                // Only try to recover from this specific error.
-                if !matches!(err, libloading::Error::LoadLibraryExW { .. }) {
-                    debug!("Failed to load proc-macro `{}`. Not retrying", path.display());
-                    let err = format_dlopen_err(&err);
-                    // We include the path of the dylib in the error ourselves, so
-                    // if it's in the error, we strip it.
-                    if let Some(err) = err.strip_prefix(&format!(": {}", path.display())) {
-                        return Err(err.to_string());
-                    }
-                    return Err(err);
-                }
-
-                last_error = Some(err);
-                std::thread::sleep(Duration::from_millis(100));
-                debug!("Failed to load proc-macro `{}`. Retrying.", path.display());
-            }
-        }
-    }
-
-    debug!("Failed to load proc-macro `{}` even after {} attempts.", path.display(), max_attempts);
-
-    let last_error = last_error.unwrap();
-    let message = if let Some(src) = last_error.source() {
-        format!("{} ({src}) (retried {max_attempts} times)", format_dlopen_err(&last_error))
-    } else {
-        format!("{} (retried {max_attempts} times)", format_dlopen_err(&last_error))
-    };
-    Err(message)
-}
-
-pub enum DylibError {
-    DlOpen(String, String),
-    DlSym(String, String),
-}
-
-impl From<DylibError> for CrateError {
-    fn from(err: DylibError) -> CrateError {
-        match err {
-            DylibError::DlOpen(path, err) => CrateError::DlOpen(path, err),
-            DylibError::DlSym(path, err) => CrateError::DlSym(path, err),
-        }
-    }
-}
-
-pub unsafe fn load_symbol_from_dylib<T: Copy>(
-    path: &Path,
-    sym_name: &str,
-) -> Result<T, DylibError> {
-    // Make sure the path contains a / or the linker will search for it.
-    let path = try_canonicalize(path).unwrap();
-    let lib =
-        load_dylib(&path, 5).map_err(|err| DylibError::DlOpen(path.display().to_string(), err))?;
-
-    let sym = unsafe { lib.get::<T>(sym_name.as_bytes()) }
-        .map_err(|err| DylibError::DlSym(path.display().to_string(), format_dlopen_err(&err)))?;
-
-    // Intentionally leak the dynamic library. We can't ever unload it
-    // since the library can make things that will live arbitrarily long.
-    let sym = unsafe { sym.into_raw() };
-    std::mem::forget(lib);
-
-    Ok(*sym)
 }

@@ -165,7 +165,7 @@ fn compute_symbol_name<'tcx>(
     if let Some(def_id) = def_id.as_local() {
         if tcx.proc_macro_decls_static(()) == Some(def_id) {
             let stable_crate_id = tcx.stable_crate_id(LOCAL_CRATE);
-            return tcx.sess.generate_proc_macro_decls_symbol(stable_crate_id);
+            return rustc_session::generate_proc_macro_decls_symbol(stable_crate_id);
         }
     }
 

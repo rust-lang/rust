@@ -10,11 +10,13 @@
 
 #![cfg(feature = "in-rust-tree")]
 #![feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span, rustc_private)]
-#![expect(unreachable_pub, internal_features, clippy::disallowed_types, clippy::print_stderr)]
+#![expect(internal_features, clippy::disallowed_types, clippy::print_stderr)]
 #![allow(unused_features, unused_crate_dependencies)]
 #![deny(deprecated_safe, clippy::undocumented_unsafe_blocks)]
+#![cfg_attr(test, expect(unreachable_pub))]
 
 extern crate rustc_codegen_ssa;
+extern crate rustc_data_structures;
 extern crate rustc_driver as _;
 extern crate rustc_interface;
 extern crate rustc_lexer;
