@@ -1032,6 +1032,39 @@ pub fn all_rust_features() -> impl Iterator<Item = (&'static str, Stability)> {
         .map(|(f, s, _)| (f, s))
 }
 
+/// Find which target architectures a feature belongs to.
+/// Returns arch display names for all targets where this feature name appears.
+/// Returns empty vec if feature unknown on any target.
+pub fn feature_to_arch_names(feature: &str) -> Vec<&'static str> {
+    let mut arches = Vec::new();
+    macro_rules! check_arch_feats {
+        ($arch_name:expr, $feats:expr) => {
+            if $feats.iter().any(|(f, _, _)| *f == feature) {
+                arches.push($arch_name);
+            }
+        };
+    }
+    check_arch_feats!("arm", ARM_FEATURES);
+    check_arch_feats!("aarch64", AARCH64_FEATURES);
+    check_arch_feats!("x86", X86_FEATURES);
+    check_arch_feats!("hexagon", HEXAGON_FEATURES);
+    check_arch_feats!("mips", MIPS_FEATURES);
+    check_arch_feats!("nvptx64", NVPTX_FEATURES);
+    check_arch_feats!("powerpc", POWERPC_FEATURES);
+    check_arch_feats!("riscv", RISCV_FEATURES);
+    check_arch_feats!("wasm", WASM_FEATURES);
+    check_arch_feats!("bpf", BPF_FEATURES);
+    check_arch_feats!("csky", CSKY_FEATURES);
+    check_arch_feats!("loongarch", LOONGARCH_FEATURES);
+    check_arch_feats!("s390x", IBMZ_FEATURES);
+    check_arch_feats!("sparc", SPARC_FEATURES);
+    check_arch_feats!("m68k", M68K_FEATURES);
+    check_arch_feats!("avr", AVR_FEATURES);
+    arches.sort();
+    arches.dedup();
+    arches
+}
+
 // These arrays represent the least-constraining feature that is required for vector types up to a
 // certain size to have their "proper" ABI on each architecture.
 // Note that they must be kept sorted by vector size.
