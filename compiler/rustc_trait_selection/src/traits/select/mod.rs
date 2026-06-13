@@ -1118,12 +1118,26 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             self.insert_evaluation_cache(param_env, fresh_trait_pred, dep_node, result);
             stack.cache().on_completion(stack.dfn);
         } else if let Some(_guar) = self.infcx.tainted_by_errors() {
-            // When an error has occurred, we allow global caching of results even if they
+            // When an error has occurred, we allow caching of results even if they
             // appear stack-dependent. This prevents exponential re-evaluation of cycles
             // in the presence of errors, avoiding compiler hangs like #150907.
             // This is safe because compilation will fail anyway.
-            debug!("CACHE MISS (tainted by errors)");
-            self.insert_evaluation_cache(param_env, fresh_trait_pred, dep_node, result);
+            //
+            // However, we must only insert into the *local* evaluation cache
+            // (per-InferCtxt), not the global cache (per-TyCtxt). The global cache
+            // is persisted across incremental compilation sessions, and storing
+            // stack-dependent results there can cause unstable fingerprints (ICH
+            // verification failures), since the same query may produce a different
+            // result in a subsequent session without the same evaluation stack
+            // context. See #157854.
+            debug!("CACHE MISS (tainted by errors, local only)");
+            if !result.is_stack_dependent() {
+                self.infcx.evaluation_cache.insert(
+                    (param_env, fresh_trait_pred),
+                    dep_node,
+                    result,
+                );
+            }
             stack.cache().on_completion(stack.dfn);
         } else {
             debug!("PROVISIONAL");
