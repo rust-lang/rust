@@ -333,11 +333,15 @@ impl EarlyLintPass for MiscEarlyLints {
     }
 
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        if expr.span.in_external_macro(cx.sess().source_map()) {
-            return;
-        }
-
-        if let ExprKind::Lit(lit) = expr.kind {
+        // `check_lit` only lints integer literals and suffixed float literals.
+        if let ExprKind::Lit(lit) = expr.kind
+            && match lit.kind {
+                token::LitKind::Integer => true,
+                token::LitKind::Float => lit.suffix.is_some(),
+                _ => false,
+            }
+            && !expr.span.in_external_macro(cx.sess().source_map())
+        {
             MiscEarlyLints::check_lit(cx, lit, expr.span);
         }
     }
