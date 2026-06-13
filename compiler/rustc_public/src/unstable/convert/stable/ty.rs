@@ -483,8 +483,8 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
             ty::Tuple(fields) => TyKind::RigidTy(RigidTy::Tuple(
                 fields.iter().map(|ty| ty.stable(tables, cx)).collect(),
             )),
-            ty::Alias(_alias_ty) => {
-                todo!()
+            ty::Alias(alias_ty) => {
+                TyKind::Alias(alias_ty.kind.stable(tables, cx), alias_ty.stable(tables, cx))
             }
             ty::Param(param_ty) => TyKind::Param(param_ty.stable(tables, cx)),
             ty::Bound(ty::BoundVarIndexKind::Canonical, _) => {
