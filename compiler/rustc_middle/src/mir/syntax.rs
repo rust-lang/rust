@@ -173,6 +173,23 @@ pub enum BorrowKind {
 
     /// Data is mutable and not aliasable.
     Mut { kind: MutBorrowKind },
+
+    /// Data is pinned.
+    Pinned(Mutability, PinBorrowKind),
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, TyEncodable, TyDecodable)]
+#[derive(Hash, StableHash)]
+pub enum PinBorrowKind {
+    /// A user-written `&pin` borrow.
+    ///
+    /// The borrowed place stays pinned after this borrow ends, until reassignment.
+    Persistent,
+    /// A compiler-generated pinned borrow used for adjustments or coercions.
+    ///
+    /// This remains a normal borrow while live, but does not create a persistent
+    /// pin fact after it ends.
+    Transient,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, TyEncodable, TyDecodable)]

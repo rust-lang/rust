@@ -860,6 +860,7 @@ impl BorrowKind {
         match *self {
             BorrowKind::Shared | BorrowKind::Fake(_) => Mutability::Not,
             BorrowKind::Mut { .. } => Mutability::Mut,
+            BorrowKind::Pinned(mutability, _) => mutability,
         }
     }
 
@@ -869,9 +870,8 @@ impl BorrowKind {
         match *self {
             BorrowKind::Shared
             | BorrowKind::Fake(_)
-            | BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::ClosureCapture } => {
-                false
-            }
+            | BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::ClosureCapture }
+            | BorrowKind::Pinned(..) => false,
             BorrowKind::Mut { kind: MutBorrowKind::TwoPhaseBorrow } => true,
         }
     }
@@ -884,6 +884,7 @@ impl BorrowKind {
             // We have no type corresponding to a shallow borrow, so use
             // `&` as an approximation.
             BorrowKind::Fake(_) => hir::Mutability::Not,
+            BorrowKind::Pinned(mutability, _) => mutability,
         }
     }
 }

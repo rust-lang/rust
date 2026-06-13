@@ -480,6 +480,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ty::new_ptr(self.tcx, ty, mutbl)
             }
             hir::BorrowKind::Ref | hir::BorrowKind::Pin => {
+                if kind == hir::BorrowKind::Pin {
+                    self.check_pin_borrow_of_adt_requires_pin_v2(ty, expr.span);
+                }
+
                 // Note: at this point, we cannot say what the best lifetime
                 // is to use for resulting pointer. We want to use the
                 // shortest lifetime possible so as to avoid spurious borrowck
@@ -502,6 +506,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         }
+    }
+
+    fn check_pin_borrow_of_adt_requires_pin_v2(&self, ty: Ty<'tcx>, span: Span) {
+        let ty = self.structurally_resolve_type(span, ty);
+        if self.direct_pin_borrow_requires_pin_v2(ty, span) {
+            let def_span = ty.ty_adt_def().and_then(|adt| self.tcx.hir_span_if_local(adt.did()));
+            let sugg_span = def_span.map(|span| span.shrink_to_lo());
+            self.dcx().emit_err(crate::errors::DirectPinBorrowOfNonPinProjectType {
+                span,
+                def_span,
+                sugg_span,
+            });
+        }
+    }
+
+    fn direct_pin_borrow_requires_pin_v2(&self, ty: Ty<'tcx>, span: Span) -> bool {
+        if ty.references_error() {
+            return false;
+        }
+
+        // Manual `Unpin` impls do not prove that pinned projections through a generic ADT
+        // are safe, so keep those cases aligned with pinned-pattern projection checks.
+        match ty.kind() {
+            ty::Adt(adt, args) if adt.is_pin_project() || adt.is_pin() => false,
+            ty::Adt(_, args) if args.types().next().is_some() => true,
+            ty::Adt(..) => !self.type_known_to_be_unpin(ty, span),
+            ty::Param(..) => !self.type_known_to_be_unpin(ty, span),
+            _ => ty.has_param() || ty.has_infer() || ty.has_aliases() || ty.has_placeholders(),
+        }
+    }
+
+    fn type_known_to_be_unpin(&self, ty: Ty<'tcx>, span: Span) -> bool {
+        let unpin_def_id = self.tcx.require_lang_item(LangItem::Unpin, span);
+        self.type_implements_trait(unpin_def_id, [ty], self.param_env).must_apply_modulo_regions()
     }
 
     /// Does this expression refer to a place that either:

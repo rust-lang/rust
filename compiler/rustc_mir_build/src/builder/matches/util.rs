@@ -1,6 +1,6 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_middle::mir::*;
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 use tracing::debug;
 
@@ -228,9 +228,15 @@ impl<'a, 'b, 'tcx> FakeBorrowCollector<'a, 'b, 'tcx> {
 }
 
 #[must_use]
-pub(crate) fn ref_pat_borrow_kind(ref_mutability: Mutability) -> BorrowKind {
-    match ref_mutability {
-        Mutability::Mut => BorrowKind::Mut { kind: MutBorrowKind::Default },
-        Mutability::Not => BorrowKind::Shared,
+pub(crate) fn ref_pat_borrow_kind(
+    pinnedness: ty::Pinnedness,
+    ref_mutability: Mutability,
+) -> BorrowKind {
+    match pinnedness {
+        ty::Pinnedness::Pinned => BorrowKind::Pinned(ref_mutability, PinBorrowKind::Persistent),
+        ty::Pinnedness::Not => match ref_mutability {
+            Mutability::Mut => BorrowKind::Mut { kind: MutBorrowKind::Default },
+            Mutability::Not => BorrowKind::Shared,
+        },
     }
 }
