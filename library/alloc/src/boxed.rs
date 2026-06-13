@@ -1753,7 +1753,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     ///
     /// This method guarantees that for the purpose of the aliasing model, this method
     /// does not materialize a reference to the underlying memory, and thus the returned pointer
-    /// will remain valid when mixed with other calls to [`as_ptr`] and [`as_mut_ptr`].
+    /// will remain valid when mixed with other calls to [`as_ptr`], [`as_mut_ptr`], and [`as_non_null`].
     /// Note that calling other methods that materialize references to the memory
     /// may still invalidate this pointer.
     /// See the example below for how this guarantee can be used.
@@ -1778,6 +1778,8 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     ///
     /// [`as_mut_ptr`]: Self::as_mut_ptr
     /// [`as_ptr`]: Self::as_ptr
+    /// [`as_non_null`]: Self::as_non_null
+    #[must_use]
     #[unstable(feature = "box_as_ptr", issue = "129090")]
     #[rustc_never_returns_null_ptr]
     #[rustc_as_ptr]
@@ -1799,7 +1801,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     ///
     /// This method guarantees that for the purpose of the aliasing model, this method
     /// does not materialize a reference to the underlying memory, and thus the returned pointer
-    /// will remain valid when mixed with other calls to [`as_ptr`] and [`as_mut_ptr`].
+    /// will remain valid when mixed with other calls to [`as_ptr`], [`as_mut_ptr`], and [`as_non_null`].
     /// Note that calling other methods that materialize mutable references to the memory,
     /// as well as writing to this memory, may still invalidate this pointer.
     /// See the example below for how this guarantee can be used.
@@ -1827,6 +1829,8 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     ///
     /// [`as_mut_ptr`]: Self::as_mut_ptr
     /// [`as_ptr`]: Self::as_ptr
+    /// [`as_non_null`]: Self::as_non_null
+    #[must_use]
     #[unstable(feature = "box_as_ptr", issue = "129090")]
     #[rustc_never_returns_null_ptr]
     #[rustc_as_ptr]
@@ -1835,6 +1839,48 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
         // This is a primitive deref, not going through `DerefMut`, and therefore not materializing
         // any references.
         &raw const **b
+    }
+
+    /// Returns a `NonNull` pointer to the `Box`'s contents.
+    ///
+    /// The caller must ensure that the `Box` outlives the pointer this
+    /// function returns, or else it will end up dangling.
+    ///
+    /// This method guarantees that for the purpose of the aliasing model, this method
+    /// does not materialize a reference to the underlying memory, and thus the returned pointer
+    /// will remain valid when mixed with other calls to [`as_ptr`], [`as_mut_ptr`], and [`as_non_null`].
+    /// Note that calling other methods that materialize references to the memory
+    /// may still invalidate this pointer.
+    /// See the example below for how this guarantee can be used.
+    ///
+    /// # Examples
+    ///
+    /// Due to the aliasing guarantee, the following code is legal:
+    ///
+    /// ```rust
+    /// #![feature(box_as_non_null)]
+    ///
+    /// unsafe {
+    ///     let mut b = Box::new(0);
+    ///     let ptr1 = Box::as_non_null(&mut b);
+    ///     ptr1.write(1);
+    ///     let ptr2 = Box::as_non_null(&mut b);
+    ///     ptr2.write(2);
+    ///     // Notably, the write to `ptr2` did *not* invalidate `ptr1`:
+    ///     ptr1.write(3);
+    /// }
+    /// ```
+    ///
+    /// [`as_mut_ptr`]: Self::as_mut_ptr
+    /// [`as_ptr`]: Self::as_ptr
+    /// [`as_non_null`]: Self::as_non_null
+    #[must_use]
+    #[unstable(feature = "box_as_non_null", issue = "157345")]
+    #[rustc_as_ptr]
+    #[inline]
+    pub fn as_non_null(b: &mut Self) -> NonNull<T> {
+        // SAFETY: `Box` is guaranteed to be non-null.
+        unsafe { NonNull::new_unchecked(Self::as_mut_ptr(b)) }
     }
 
     /// Returns a reference to the underlying allocator.
