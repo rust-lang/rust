@@ -3,7 +3,9 @@
 
 //! Regression test for https://github.com/rust-lang/rust/issues/139029
 //!
-//! pclmulqdq intrinsics should inline across target_feature
+//! The pclmulqdq intrinsics should inline into functions with the required target features.
+
+*[View changes since the review](https://triagebot.infra.rust-lang.org/gh-changes-since/rust-lang/rust/157791/d2f24127d97d8c795d1cf5fbf6037f9885f34d39..e497947ec34512d57dd5fb3a0e24871c7c97337e)*
 
 #![crate_type = "lib"]
 
