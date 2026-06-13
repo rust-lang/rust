@@ -100,6 +100,7 @@ generate! {
     Path,
     PathBuf,
     PathLookup,
+    PhantomPinned,
     RangeBounds,
     RefCellRef,
     RefCellRefMut,
