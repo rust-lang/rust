@@ -42,7 +42,7 @@ use rustc_span::def_id::DefId;
 use tracing::{debug, instrument};
 
 pub use self::coherence::{
-    InCrate, IsFirstInputType, OrphanCheckErr, OrphanCheckMode, OverlapResult, UncoveredTyParams,
+    InCrate, InSelfTy, OrphanCheckErr, OrphanCheckMode, OverlapResult, UncoveredTy,
     add_placeholder_note, orphan_check_trait_ref, overlapping_inherent_impls,
     overlapping_trait_impls,
 };
