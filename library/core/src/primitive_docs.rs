@@ -66,9 +66,9 @@ mod prim_bool {}
 /// The `!` type, also called "never".
 ///
 /// `!` represents the type of computations which never resolve to any value at all. For example,
-/// the [`panic!`] macro exits the process without ever returning, and so returns `!`.
+/// the [`exit`] function exits the process without ever returning, and so returns `!`.
 ///
-/// [`break`], [`continue`] and [`return`] expressions also have type `!`. For example, we are allowed to
+/// `break`, `continue` and `return` expressions also have type `!`. For example, we are allowed to
 /// write:
 ///
 /// ```
@@ -103,30 +103,14 @@ mod prim_bool {}
 /// expressions of type `!` can coerce into any other type.
 ///
 /// [`u32`]: prim@u32
-/// [`panic!`]: macro.panic.html
-/// [`break`]: ../std/keyword.break.html
-/// [`continue`]: ../std/keyword.continue.html
-/// [`return`]: ../std/keyword.return.html
+/// [`exit`]: ../std/process/fn.exit.html
 ///
 /// # `!` and generics
 ///
-/// ## Pattern matching
-///
-/// The main place you'll see `!` used explicitly is in generic code. Consider the generic type
-/// [`Result<T, !>`]. Since the [`Err`] variant contains a `!`, it can never occur. This means we
-/// can exhaustively match on the result by just matching the [`Ok`] variant:
-///
-/// ```
-/// # fn get_a_result() -> Result<u32, !> { Ok(8) }
-/// let r: Result<u32, !> = get_a_result();
-/// match r {
-///     Ok(num) => println!("{num}"),
-/// }
-/// ```
-///
 /// ## Infallible errors
 ///
-/// Consider the [`FromStr`] trait:
+/// The main place you'll see `!` used explicitly is in generic code. Consider the [`FromStr`]
+/// trait:
 ///
 /// ```
 /// trait FromStr: Sized {
@@ -135,9 +119,9 @@ mod prim_bool {}
 /// }
 /// ```
 ///
-/// When implementing this trait for a type which can be infallibly converted from a string, the
-/// appropriate type to pick for [`Err`] is `!`. For example, a [`String`] can always be created
-/// from another string without erroring. Therefore, if we call [`String::from_str`], the result
+/// Let's say we want to implement this trait for [`String`]. It is always possible to convert a
+/// string into a string without erroring, yet we still need to choose a type for [`Err`]. In this
+/// case, the appropriate type to pick is `!`. Then, if we call [`String::from_str`], the result
 /// will be a [`Result<String, !>`], which we can unpack like this:
 ///
 /// ```
@@ -145,13 +129,16 @@ mod prim_bool {}
 /// let Ok(s) = String::from_str("hello");
 /// ```
 ///
+/// Since the [`Err`] variant contains a `!`, it can never occur. This means we can exhaustively
+/// match on the result by just matching the [`Ok`] variant. In some sense, we have "deleted" the
+/// [`Err`] variant.
+///
 /// ## Infinite loops
 ///
 /// If we think of a function returning [`Result<T, !>`] as one which cannot return an error, we can
 /// then think of a function returning [`Result<!, E>`] as one which _must_ return an error.
 ///
-/// For example, consider the case of a simple web server which accepts requests, processes them,
-/// and sends a response, all in a loop:
+/// For example, consider the case of a simple web server:
 ///
 /// ```ignore (hypothetical-example)
 /// loop {
@@ -192,8 +179,8 @@ mod prim_bool {}
 /// ```
 ///
 /// Now, we can use `?` instead of `match`, and the return type makes more sense: if the loop ever
-/// stops, it must be that an error occurred. We don't even have to wrap the loop in an [`Ok`] because
-/// `!` coerces to `Result<!, ConnectionError>` automatically.
+/// stops, it means an error occurred. Note that we don't have to wrap the loop in an [`Ok`],
+/// because `!` coerces to `Result<!, ConnectionError>` automatically.
 ///
 /// [`String::from_str`]: str::FromStr::from_str
 /// [`String`]: ../std/string/struct.String.html
@@ -202,44 +189,10 @@ mod prim_bool {}
 /// # `!` and traits
 ///
 /// When writing your own traits, you should implement them for `!` whenever there is an obvious
-/// `impl` which does not panic. The reason for this is that functions returning an `impl Trait`,
-/// where `!` does not implement `Trait`, cannot diverge on all possible code paths. As an example,
-/// this code does not compile:
+/// `impl` which does not panic, in order to allow `!` to be used in generic parameters bounded by
+/// those traits (i.e. `T: Trait`).
 ///
-/// ```compile_fail
-/// use std::ops::Add;
-///
-/// fn foo() -> impl Add<u32> {
-///     unimplemented!()
-/// }
-/// ```
-///
-/// But this code does:
-///
-/// ```
-/// use std::ops::Add;
-///
-/// fn foo() -> impl Add<u32> {
-///     if true {
-///         unimplemented!()
-///     } else {
-///         0
-///     }
-/// }
-/// ```
-///
-/// This is because `!` does not implement `Add<u32>`, but is able to coerce into any type which
-/// does. In the first example, there are many possible types which implement `Add<u32>` that `!`
-/// could coerce into and the compiler cannot choose just one. However, in the second example, the
-/// `else` branch returns `0`, which is inferred to be of type [`u32`]. Therefore, the `if` branch
-/// will coerce its return type from `!` to `u32`. See issue [#36375] for more information on this
-/// quirk of `!`.
-///
-/// [#36375]: https://github.com/rust-lang/rust/issues/36375
-///
-/// It is therefore recommended to implement a trait for `!` when it makes sense to do so in order
-/// to alleviate potential coercion issues when returning `impl Trait` from a function. Most traits
-/// can be implemented for `!`. For example, take [`Debug`]:
+/// Most traits can be implemented for `!`. For example, take [`Debug`]:
 ///
 /// ```
 /// #![feature(never_type)]
@@ -257,10 +210,11 @@ mod prim_bool {}
 /// Once again, the ability of `!` to coerce into any type (in particular, [`fmt::Result`]) allows
 /// us to write a valid implementation. We also know that the `fmt` method can never be called,
 /// since it takes `&self` as an argument. This argument is of type `&!`, and just like `!` itself,
-/// a reference to `!` can never occur. Generally, any trait which only has methods taking a `self`
-/// parameter should be implemented for `!`.
+/// a reference to `!` can never occur.
 ///
-/// On the other hand, a trait which would not be appropriate to implement for `!` is [`Default`]:
+/// Generally, any trait which only has methods taking a `self` parameter should be implemented for
+/// `!`. On the other hand, a trait which would not be appropriate to implement for `!` is
+/// [`Default`]:
 ///
 /// ```
 /// trait Default {
@@ -270,13 +224,36 @@ mod prim_bool {}
 ///
 /// Since `!` has no values, it has no default value either. While we could write an implementation
 /// which simply panics, this is also the case for any other type which might want to implement
-/// `Default` (such as [`File`]). As such, it doesn't make sense to add such an implementation.
+/// `Default` (such as [`File`]). Therefore, it doesn't make sense to add such an implementation.
+///
+/// # Coercion quirks
+///
+/// ## `impl Trait` coercion
+///
+/// Currently, `!` is unable to coerce directly into a value of type `impl Trait` if the trait is
+/// not implemented for `!`. To illustrate, note that the following code fails to compile:
+///
+/// ```compile_fail
+/// use std::ops::Add;
+///
+/// fn foo() -> impl Add<u32> {
+///     unimplemented!()
+/// }
+/// ```
+///
+/// This is because `!` does not implement `Add<u32>` itself, but is able to coerce into any type
+/// which does. In this case, the compiler is unable to choose a concrete type that `!` could coerce
+/// into. The solution is to provide the compiler with such a concrete type and either cast to it
+/// (e.g. `unimplemented!() as u32`), or otherwise allow the compiler to automatically coerce from
+/// `!`. See issue [#36375] for more information.
+///
+/// [#36375]: https://github.com/rust-lang/rust/issues/36375
 ///
 /// [`File`]: ../std/fs/struct.File.html
 /// [`Debug`]: fmt::Debug
 /// [`default()`]: Default::default
 ///
-/// # Never type fallback
+/// ## Never type fallback
 ///
 /// When the compiler sees a value of type `!` in a [coercion site], it implicitly inserts a
 /// coercion to allow the type checker to infer any type:
