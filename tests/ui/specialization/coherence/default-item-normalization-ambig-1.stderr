@@ -1,10 +1,10 @@
-error[E0119]: conflicting implementations of trait `Y`
+error[E0119]: conflicting implementations of trait `Y` for type `<() as X>::U`
   --> $DIR/default-item-normalization-ambig-1.rs:20:1
    |
 LL | impl Y for <() as X>::U {}
    | ----------------------- first implementation here
 LL | impl Y for <i32 as X>::U {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `<() as X>::U`
 
 error: aborting due to 1 previous error
 

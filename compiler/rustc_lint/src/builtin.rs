@@ -47,7 +47,7 @@ use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::misc::type_allowed_to_implement_copy;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 
-use crate::errors::BuiltinEllipsisInclusiveRangePatterns;
+use crate::diagnostics::BuiltinEllipsisInclusiveRangePatterns;
 use crate::lints::{
     BuiltinAnonymousParams, BuiltinConstNoMangle, BuiltinDerefNullptr, BuiltinDoubleNegations,
     BuiltinDoubleNegationsAddParens, BuiltinEllipsisInclusiveRangePatternsLint,

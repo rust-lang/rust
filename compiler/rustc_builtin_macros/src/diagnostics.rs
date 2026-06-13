@@ -1135,8 +1135,9 @@ pub(crate) struct EiiStaticMultipleImplementations {
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[{$name}]` cannot be used on statics with a value")]
-pub(crate) struct EiiStaticDefault {
+#[diag("`#[{$name}]` cannot be used on statics with a value on Apple targets")]
+#[note("see issue #157649 <https://github.com/rust-lang/rust/issues/157649> for more information")]
+pub(crate) struct EiiStaticDefaultApple {
     #[primary_span]
     pub span: Span,
     pub name: String,

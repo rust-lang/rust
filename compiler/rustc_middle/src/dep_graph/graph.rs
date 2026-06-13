@@ -135,7 +135,7 @@ impl DepGraph {
         session: &Session,
         prev_graph: Arc<SerializedDepGraph>,
         prev_work_products: WorkProductMap,
-        encoder: FileEncoder,
+        encoder: FileEncoder<'static>,
     ) -> DepGraph {
         let prev_graph_node_count = prev_graph.node_count();
 
@@ -195,10 +195,12 @@ impl DepGraph {
         self.data.is_some()
     }
 
-    pub fn with_retained_dep_graph(&self, f: impl Fn(&RetainedDepGraph)) {
-        if let Some(data) = &self.data {
-            data.current.encoder.with_retained_dep_graph(f)
-        }
+    /// Returns a clone of the in-memory retained dep graph, if it is being built
+    /// (i.e. `-Zquery-dep-graph` is set). Cloning rather than exposing the lock keeps
+    /// callers from holding it while forcing queries, which would deadlock against a
+    /// reentrant `record` under the parallel frontend.
+    pub fn retained_dep_graph(&self) -> Option<RetainedDepGraph> {
+        self.data.as_ref().and_then(|data| data.current.encoder.retained_dep_graph())
     }
 
     pub fn assert_ignored(&self) {
@@ -1135,7 +1137,7 @@ impl CurrentDepGraph {
     fn new(
         session: &Session,
         prev_graph_node_count: usize,
-        encoder: FileEncoder,
+        encoder: FileEncoder<'static>,
         previous: Arc<SerializedDepGraph>,
     ) -> Self {
         let mut stable_hasher = StableHasher::new();

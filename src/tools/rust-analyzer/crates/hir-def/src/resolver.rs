@@ -195,7 +195,8 @@ impl<'db> Resolver<'db> {
                     LangItemTarget::FunctionId(_)
                     | LangItemTarget::ImplId(_)
                     | LangItemTarget::StaticId(_)
-                    | LangItemTarget::ConstId(_) => return None,
+                    | LangItemTarget::ConstId(_)
+                    | LangItemTarget::MacroId(_) => return None,
                 };
                 return Some((
                     type_ns,
@@ -343,7 +344,8 @@ impl<'db> Resolver<'db> {
                         | LangItemTarget::ImplId(_)
                         | LangItemTarget::TypeAliasId(_)
                         | LangItemTarget::TraitId(_)
-                        | LangItemTarget::EnumId(_) => return None,
+                        | LangItemTarget::EnumId(_)
+                        | LangItemTarget::MacroId(_) => return None,
                     }),
                     ResolvePathResultPrefixInfo::default(),
                 ));
@@ -359,7 +361,8 @@ impl<'db> Resolver<'db> {
                     LangItemTarget::FunctionId(_)
                     | LangItemTarget::ImplId(_)
                     | LangItemTarget::StaticId(_)
-                    | LangItemTarget::ConstId(_) => return None,
+                    | LangItemTarget::ConstId(_)
+                    | LangItemTarget::MacroId(_) => return None,
                 };
                 // Remaining segments start from 0 because lang paths have no segments other than the remaining.
                 return Some((

@@ -40,9 +40,10 @@ impl<'a, W: ?Sized + Write> LineWriterShim<'a, W> {
         self.buffer.buffer()
     }
 
-    /// Flushes the buffer iff the last byte is a newline (indicating that an
-    /// earlier write only succeeded partially, and we want to retry flushing
-    /// the buffered line before continuing with a subsequent write).
+    /// Flushes the buffer if and only if the last byte is a newline
+    /// (indicating that an earlier write only succeeded partially, and we
+    /// want to retry flushing the buffered line before continuing with a
+    /// subsequent write).
     fn flush_if_completed_line(&mut self) -> io::Result<()> {
         match self.buffered().last().copied() {
             Some(b'\n') => self.buffer.flush_buf(),

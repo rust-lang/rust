@@ -6,7 +6,101 @@ document.
 
 ## Unreleased / Beta / In Rust Nightly
 
-[df995e...master](https://github.com/rust-lang/rust-clippy/compare/df995e...master)
+[88f787...master](https://github.com/rust-lang/rust-clippy/compare/88f787...master)
+
+## Rust 1.96
+
+Current stable, released 2026-05-28
+
+[View all 48 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2026-02-24T12%3A30%3A17Z..2026-04-03T17%3A32%3A48Z+base%3Amaster)
+
+### New Lints
+
+* Added [`manual_noop_waker`] to `complexity`
+  [#16687](https://github.com/rust-lang/rust-clippy/pull/16687)
+* Added [`manual_option_zip`] to `complexity`
+  [#16600](https://github.com/rust-lang/rust-clippy/pull/16600)
+* Added [`manual_pop_if`] to `complexity`
+  [#16582](https://github.com/rust-lang/rust-clippy/pull/16582)
+
+### Enhancements
+
+* [`explicit_counter_loop`] suggest `(init..).take(n)` when loop variable is unused and range is
+  `0..n`
+  [#16658](https://github.com/rust-lang/rust-clippy/pull/16658)
+* [`iter_kv_map`] handle identity map for `map` and `flat_map`
+  [#16743](https://github.com/rust-lang/rust-clippy/pull/16743)
+* [`manual_noop_waker`] add an MSRV check
+  [#16850](https://github.com/rust-lang/rust-clippy/pull/16850)
+* [`manual_pop_if`] in case the popped value is used, just emit the lint with no suggestion
+  [#16683](https://github.com/rust-lang/rust-clippy/pull/16683)
+* [`manual_pop_if`] also cover `.pop().unwrap_unchecked()`
+  [#16683](https://github.com/rust-lang/rust-clippy/pull/16683)
+* [`manual_pop_if`] detect manual implementations of `BinaryHeap::pop_if()`
+  [#16734](https://github.com/rust-lang/rust-clippy/pull/16734)
+* [`unnecessary_option_map_or_else`] function definitions are no longer traversed when checking if
+  an expression is the identity
+  [#15889](https://github.com/rust-lang/rust-clippy/pull/15889)
+* [`unnecessary_result_map_or_else`] function definitions are no longer traversed when checking if
+  an expression is the identity
+  [#15889](https://github.com/rust-lang/rust-clippy/pull/15889)
+* [`question_mark`] fix suggestion-caused error caused by semicolon inference relying only on
+  parent-node shape
+  [#16656](https://github.com/rust-lang/rust-clippy/pull/16656)
+* Format-related lints now handle `core::panic!`
+  [#16597](https://github.com/rust-lang/rust-clippy/pull/16597)
+* [`explicit_counter_loop`] fix FN when the initializer is not integral
+  [#16647](https://github.com/rust-lang/rust-clippy/pull/16647)
+* [`suboptimal_flops`] fix FN on add and sub assign
+  [#16625](https://github.com/rust-lang/rust-clippy/pull/16625)
+* [`infinite_loop`] fix wrong suggestion to add `-> !` when the loop is inside a conditional branch
+  [#16619](https://github.com/rust-lang/rust-clippy/pull/16619)
+* [`unnecessary_cast`] preserve parentheses in presence of cascaded casts
+  [#16483](https://github.com/rust-lang/rust-clippy/pull/16483)
+* [`cmp_owned`] fix wrong suggestions on `PathBuf`
+  [#16628](https://github.com/rust-lang/rust-clippy/pull/16628)
+* [`redundant_closure`] fix wrong suggestions when local is dereferenced to callable
+  [#16648](https://github.com/rust-lang/rust-clippy/pull/16648)
+
+### False Positive Fixes
+
+* [`collapsible_if`] fix FP when the inner if contains cfg
+  [#16757](https://github.com/rust-lang/rust-clippy/pull/16757)
+* [`collapsible_match`] fix FP when the pat binding is moved or mutated
+  [#16708](https://github.com/rust-lang/rust-clippy/pull/16708)
+* [`collapsible_match`] fix a case where a suggested transformation changes runtime behavior
+  [#16878](https://github.com/rust-lang/rust-clippy/pull/16878)
+* [`match_same_arms`] fix FP with associated consts
+  [#16701](https://github.com/rust-lang/rust-clippy/pull/16701)
+* [`semicolon_inside_block`] fix FP in `try` blocks where moving `;` changes the block's return
+  type and causes type errors
+  [#16697](https://github.com/rust-lang/rust-clippy/pull/16697)
+* [`unnecessary_safety_comment`] fix FP on code blocks inside inner docs
+  [#16559](https://github.com/rust-lang/rust-clippy/pull/16559)
+* [`doc_paragraphs_missing_punctuation`] no longer lints punctuated paragraphs with a trailing
+  emoji
+  [#16514](https://github.com/rust-lang/rust-clippy/pull/16514)
+
+### ICE Fixes
+
+* [`match_same_arms`] fix ICE in `match_same_arms`
+  [#16685](https://github.com/rust-lang/rust-clippy/pull/16685)
+* [`nonminimal_bool`] fix ICE in `swap_binop()` by using the proper `TypeckResults`
+  [#16659](https://github.com/rust-lang/rust-clippy/pull/16659)
+* Fix ICE when using the `min_generic_const_args` incomplete feature
+  [#16692](https://github.com/rust-lang/rust-clippy/pull/16692)
+
+### Documentation Improvements
+
+* [`similar_names`] changed the lint docs to reflect its actual behavior
+  [#16300](https://github.com/rust-lang/rust-clippy/pull/16300)
+
+### Performance Improvements
+
+* [`repeat_vec_with_capacity`] optimized by 96.876% (784M -> 24M instructions)
+  [#16756](https://github.com/rust-lang/rust-clippy/pull/16756)
+* [`manual_is_ascii_check`] optimized by 97.125% (822M -> 23M instructions)
+  [#16755](https://github.com/rust-lang/rust-clippy/pull/16755)
 
 ## Rust 1.95
 
@@ -6746,6 +6840,7 @@ Released 2018-09-13
 [`for_loop_over_option`]: https://rust-lang.github.io/rust-clippy/master/index.html#for_loop_over_option
 [`for_loop_over_result`]: https://rust-lang.github.io/rust-clippy/master/index.html#for_loop_over_result
 [`for_loops_over_fallibles`]: https://rust-lang.github.io/rust-clippy/master/index.html#for_loops_over_fallibles
+[`for_unbounded_range`]: https://rust-lang.github.io/rust-clippy/master/index.html#for_unbounded_range
 [`forget_copy`]: https://rust-lang.github.io/rust-clippy/master/index.html#forget_copy
 [`forget_non_drop`]: https://rust-lang.github.io/rust-clippy/master/index.html#forget_non_drop
 [`forget_ref`]: https://rust-lang.github.io/rust-clippy/master/index.html#forget_ref
@@ -6906,6 +7001,7 @@ Released 2018-09-13
 [`manual_is_multiple_of`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_multiple_of
 [`manual_is_power_of_two`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_power_of_two
 [`manual_is_variant_and`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_variant_and
+[`manual_isolate_lowest_one`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_isolate_lowest_one
 [`manual_let_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else
 [`manual_main_separator_str`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_main_separator_str
 [`manual_map`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_map
@@ -7424,6 +7520,7 @@ Released 2018-09-13
 [`wildcard_enum_match_arm`]: https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_enum_match_arm
 [`wildcard_imports`]: https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports
 [`wildcard_in_or_patterns`]: https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_in_or_patterns
+[`with_capacity_zero`]: https://rust-lang.github.io/rust-clippy/master/index.html#with_capacity_zero
 [`write_literal`]: https://rust-lang.github.io/rust-clippy/master/index.html#write_literal
 [`write_with_newline`]: https://rust-lang.github.io/rust-clippy/master/index.html#write_with_newline
 [`writeln_empty_string`]: https://rust-lang.github.io/rust-clippy/master/index.html#writeln_empty_string
@@ -7511,6 +7608,7 @@ Released 2018-09-13
 [`module-items-ordered-within-groupings`]: https://doc.rust-lang.org/clippy/lint_configuration.html#module-items-ordered-within-groupings
 [`msrv`]: https://doc.rust-lang.org/clippy/lint_configuration.html#msrv
 [`pass-by-value-size-limit`]: https://doc.rust-lang.org/clippy/lint_configuration.html#pass-by-value-size-limit
+[`profiles`]: https://doc.rust-lang.org/clippy/lint_configuration.html#profiles
 [`pub-underscore-fields-behavior`]: https://doc.rust-lang.org/clippy/lint_configuration.html#pub-underscore-fields-behavior
 [`recursive-self-in-type-definitions`]: https://doc.rust-lang.org/clippy/lint_configuration.html#recursive-self-in-type-definitions
 [`semicolon-inside-block-ignore-singleline`]: https://doc.rust-lang.org/clippy/lint_configuration.html#semicolon-inside-block-ignore-singleline

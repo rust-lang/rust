@@ -2955,7 +2955,7 @@ fn render_call_locations<W: fmt::Write>(
 fn render_attributes_in_code(
     w: &mut impl fmt::Write,
     item: &clean::Item,
-    prefix: &str,
+    prefix: impl fmt::Display,
     cx: &Context<'_>,
 ) -> fmt::Result {
     render_attributes_in_code_with_options(w, item, prefix, cx, true, "")
@@ -2964,14 +2964,14 @@ fn render_attributes_in_code(
 pub(super) fn render_attributes_in_code_with_options(
     w: &mut impl fmt::Write,
     item: &clean::Item,
-    prefix: &str,
+    prefix: impl fmt::Display,
     cx: &Context<'_>,
     render_doc_hidden: bool,
     open_tag: &str,
 ) -> fmt::Result {
     w.write_str(open_tag)?;
     if render_doc_hidden && item.is_doc_hidden() {
-        render_code_attribute(prefix, "#[doc(hidden)]", w)?;
+        render_code_attribute(&prefix, "#[doc(hidden)]", w)?;
     }
     for attr in &item.attrs.other_attrs {
         let hir::Attribute::Parsed(kind) = attr else { continue };
@@ -2986,7 +2986,7 @@ pub(super) fn render_attributes_in_code_with_options(
             AttributeKind::NonExhaustive(..) => Cow::Borrowed("#[non_exhaustive]"),
             _ => continue,
         };
-        render_code_attribute(prefix, attr.as_ref(), w)?;
+        render_code_attribute(&prefix, attr.as_ref(), w)?;
     }
 
     if let Some(def_id) = item.def_id()
@@ -3008,7 +3008,11 @@ fn render_repr_attribute_in_code(
     Ok(())
 }
 
-fn render_code_attribute(prefix: &str, attr: &str, w: &mut impl fmt::Write) -> fmt::Result {
+fn render_code_attribute(
+    prefix: impl fmt::Display,
+    attr: impl fmt::Display,
+    w: &mut impl fmt::Write,
+) -> fmt::Result {
     write!(w, "<div class=\"code-attribute\">{prefix}{attr}</div>")
 }
 
@@ -3059,18 +3063,6 @@ fn repr_attribute<'tcx>(
         // Since the transparent repr can't have any other reprs or
         // repr modifiers beside it, we can safely return early here.
         return is_public.then(|| "#[repr(transparent)]".into());
-    }
-
-    // Fast path which avoids looking through the variants and fields in
-    // the common case of no `#[repr]` or in the case of `#[repr(Rust)]`.
-    // FIXME: This check is not very robust / forward compatible!
-    if !repr.c()
-        && !repr.simd()
-        && repr.int.is_none()
-        && repr.pack.is_none()
-        && repr.align.is_none()
-    {
-        return None;
     }
 
     // The repr is public iff all components are public and visible.

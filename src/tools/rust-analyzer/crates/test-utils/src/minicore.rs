@@ -655,6 +655,10 @@ pub mod ops {
     #[lang = "drop"]
     pub trait Drop {
         fn drop(&mut self);
+
+        // region:pin
+        fn pin_drop(self: crate::pin::Pin<&mut Self>) {}
+        // endregion:pin
     }
     // endregion:drop
 
@@ -2340,6 +2344,18 @@ pub mod pat {
     impl const RangePattern for u8 {
         const MIN: u8 = 0;
         const MAX: u8 = 0xFF;
+        fn sub_one(self) -> Self {
+            if self == Self::MIN {
+                panic!("exclusive range end at minimum value of type")
+            } else {
+                self - 1
+            }
+        }
+    }
+
+    impl const RangePattern for i32 {
+        const MIN: i32 = 0x80_00_00_00;
+        const MAX: i32 = 0x7F_FF_FF_FF;
         fn sub_one(self) -> Self {
             if self == Self::MIN {
                 panic!("exclusive range end at minimum value of type")

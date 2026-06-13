@@ -395,7 +395,7 @@ def arc_synthetic(valobj: lldb.SBValue, _dict: LLDBOpaque) -> object:
 def is_udt(type: lldb.SBType, _dict: LLDBOpaque) -> bool:
     return (
         type.GetBasicType() == lldb.eBasicTypeInvalid
-        and not type.IsScopedEnumerationType()
+        and not type.GetEnumerationIntegerType().IsValid()
         and not type.IsPointerType()
         and not type.IsArrayType()
     )

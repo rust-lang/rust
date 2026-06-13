@@ -1260,3 +1260,10 @@ pub(crate) struct UnknownFormatParameterForOnUnimplementedAttr {
 pub(crate) struct OnMoveMalformedFormatLiterals {
     pub name: Symbol,
 }
+
+#[derive(Diagnostic)]
+#[diag("unused target expression is specified for glob or list delegation")]
+pub(crate) struct GlobOrListDelegationUnusedTargetExpr {
+    #[primary_span]
+    pub span: Span,
+}

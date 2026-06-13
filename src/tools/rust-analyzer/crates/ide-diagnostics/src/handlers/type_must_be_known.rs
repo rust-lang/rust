@@ -159,4 +159,17 @@ fn bar() {
         "#,
         );
     }
+
+    #[test]
+    fn include_bytes() {
+        check_diagnostics(
+            r#"
+//- minicore: include_bytes
+
+fn foo() {
+    include_bytes!("./foo.txt");
+}
+        "#,
+        );
+    }
 }

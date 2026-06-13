@@ -14,10 +14,9 @@ use rustc_middle::ty::{
 };
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw};
 use rustc_trait_selection::traits;
-use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
-use crate::errors;
+use crate::diagnostics;
 use crate::hir_ty_lowering::{
     AssocItemQSelf, GenericsArgsErrExtend, HirTyLowerer, ImpliedBoundsContext,
     OverlappingAsssocItemConstraints, PredicateFilter, RegionInferReason,
@@ -83,19 +82,6 @@ fn search_bounds_for<'tcx>(
             }
         }
     }
-}
-
-fn collect_relaxed_bounds<'tcx>(
-    hir_bounds: &'tcx [hir::GenericBound<'tcx>],
-    context: ImpliedBoundsContext<'tcx>,
-) -> SmallVec<[&'tcx PolyTraitRef<'tcx>; 1]> {
-    let mut relaxed_bounds: SmallVec<[_; 1]> = SmallVec::new();
-    search_bounds_for(hir_bounds, context, |ptr| {
-        if matches!(ptr.modifiers.polarity, hir::BoundPolarity::Maybe(_)) {
-            relaxed_bounds.push(ptr);
-        }
-    });
-    relaxed_bounds
 }
 
 fn collect_bounds<'a, 'tcx>(
@@ -192,18 +178,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
             }
             ImpliedBoundsContext::TyParam(..) | ImpliedBoundsContext::AssociatedTypeOrImplTrait => {
-                // Report invalid relaxed bounds.
-                // FIXME: Since we only call this validation function here in this function, we only
-                //        fully validate relaxed bounds in contexts where we perform
-                //        "sized elaboration". In most cases that doesn't matter because we *usually*
-                //        reject such relaxed bounds outright during AST lowering.
-                //        However, this can easily get out of sync! Ideally, we would perform this step
-                //        where we are guaranteed to catch *all* bounds like in
-                //        `Self::lower_poly_trait_ref`. List of concrete issues:
-                //        FIXME(more_maybe_bounds): We don't call this for trait object tys, supertrait
-                //                                  bounds, trait alias bounds, assoc type bounds (ATB)!
-                let bounds = collect_relaxed_bounds(hir_bounds, context);
-                self.reject_duplicate_relaxed_bounds(bounds);
             }
         }
 
@@ -285,28 +259,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> bool {
         let collected = collect_bounds(hir_bounds, context, trait_def_id);
         !find_attr!(self.tcx(), crate, RustcNoImplicitBounds) && !collected.any()
-    }
-
-    fn reject_duplicate_relaxed_bounds(&self, relaxed_bounds: SmallVec<[&PolyTraitRef<'_>; 1]>) {
-        let tcx = self.tcx();
-
-        let mut grouped_bounds = FxIndexMap::<_, Vec<_>>::default();
-
-        for bound in &relaxed_bounds {
-            if let Res::Def(DefKind::Trait, trait_def_id) = bound.trait_ref.path.res {
-                grouped_bounds.entry(trait_def_id).or_default().push(bound.span);
-            }
-        }
-
-        for (trait_def_id, spans) in grouped_bounds {
-            if spans.len() > 1 {
-                let name = tcx.item_name(trait_def_id);
-                self.dcx()
-                    .struct_span_err(spans, format!("duplicate relaxed `{name}` bounds"))
-                    .with_code(E0203)
-                    .emit();
-            }
-        }
     }
 
     pub(crate) fn require_bound_to_relax_default_trait(
@@ -489,7 +441,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             duplicates
                 .entry(assoc_item.def_id)
                 .and_modify(|prev_span| {
-                    self.dcx().emit_err(errors::ValueOfAssociatedStructAlreadySpecified {
+                    self.dcx().emit_err(diagnostics::ValueOfAssociatedStructAlreadySpecified {
                         span: constraint.span,
                         prev_span: *prev_span,
                         item_name: constraint.ident,
@@ -532,9 +484,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         match constraint.kind {
             hir::AssocItemConstraintKind::Equality { .. } if let ty::AssocTag::Fn = assoc_tag => {
-                return Err(self.dcx().emit_err(crate::errors::ReturnTypeNotationEqualityBound {
-                    span: constraint.span,
-                }));
+                return Err(self.dcx().emit_err(
+                    crate::diagnostics::ReturnTypeNotationEqualityBound { span: constraint.span },
+                ));
             }
             // Lower an equality constraint like `Item = u32` as found in HIR bound `T: Iterator<Item = u32>`
             // to a projection predicate: `<T as Iterator>::Item = u32`.
@@ -542,9 +494,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let term = match term {
                     hir::Term::Ty(ty) => self.lower_ty(ty).into(),
                     hir::Term::Const(ct) => {
-                        let ty = projection_term.map_bound(|alias| {
-                            tcx.type_of(alias.def_id()).instantiate(tcx, alias.args).skip_norm_wip()
-                        });
+                        let ty = projection_term
+                            .map_bound(|alias| alias.expect_ct().type_of(tcx).skip_norm_wip());
                         let ty = check_assoc_const_binding_type(
                             self,
                             constraint.ident,
@@ -761,13 +712,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 if bound.has_bound_vars() {
                     return Ty::new_error(
                         tcx,
-                        self.dcx().emit_err(errors::AssociatedItemTraitUninferredGenericParams {
-                            span: hir_ty.span,
-                            inferred_sugg: Some(hir_ty.span.with_hi(segment.ident.span.lo())),
-                            bound: format!("{}::", tcx.anonymize_bound_vars(bound).skip_binder()),
-                            mpart_sugg: None,
-                            what: tcx.def_descr(item_def_id),
-                        }),
+                        self.dcx().emit_err(
+                            diagnostics::AssociatedItemTraitUninferredGenericParams {
+                                span: hir_ty.span,
+                                inferred_sugg: Some(hir_ty.span.with_hi(segment.ident.span.lo())),
+                                bound: format!(
+                                    "{}::",
+                                    tcx.anonymize_bound_vars(bound).skip_binder()
+                                ),
+                                mpart_sugg: None,
+                                what: tcx.def_descr(item_def_id),
+                            },
+                        ),
                     );
                 }
 
@@ -808,19 +764,23 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .into(),
                 ty::GenericParamDefKind::Type { .. } => {
                     let guar = *emitted_bad_param_err.get_or_insert_with(|| {
-                        self.dcx().emit_err(crate::errors::ReturnTypeNotationIllegalParam::Type {
-                            span: path_span,
-                            param_span: tcx.def_span(param.def_id),
-                        })
+                        self.dcx().emit_err(
+                            crate::diagnostics::ReturnTypeNotationIllegalParam::Type {
+                                span: path_span,
+                                param_span: tcx.def_span(param.def_id),
+                            },
+                        )
                     });
                     Ty::new_error(tcx, guar).into()
                 }
                 ty::GenericParamDefKind::Const { .. } => {
                     let guar = *emitted_bad_param_err.get_or_insert_with(|| {
-                        self.dcx().emit_err(crate::errors::ReturnTypeNotationIllegalParam::Const {
-                            span: path_span,
-                            param_span: tcx.def_span(param.def_id),
-                        })
+                        self.dcx().emit_err(
+                            crate::diagnostics::ReturnTypeNotationIllegalParam::Const {
+                                span: path_span,
+                                param_span: tcx.def_span(param.def_id),
+                            },
+                        )
                     });
                     ty::Const::new_error(tcx, guar).into()
                 }
@@ -838,7 +798,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         {
             alias_ty
         } else {
-            return Err(self.dcx().emit_err(crate::errors::ReturnTypeNotationOnNonRpitit {
+            return Err(self.dcx().emit_err(crate::diagnostics::ReturnTypeNotationOnNonRpitit {
                 span: path_span,
                 ty: tcx.liberate_late_bound_regions(item_def_id, output),
                 fn_span: tcx.hir_span_if_local(item_def_id),
@@ -894,7 +854,7 @@ pub(crate) fn check_assoc_const_binding_type<'tcx>(
     let tcx = cx.tcx();
     let ty_note = ty
         .make_suggestable(tcx, false, None)
-        .map(|ty| crate::errors::TyOfAssocConstBindingNote { assoc_const, ty });
+        .map(|ty| crate::diagnostics::TyOfAssocConstBindingNote { assoc_const, ty });
 
     let enclosing_item_owner_id = tcx
         .hir_parent_owner_iter(hir_id)
@@ -904,7 +864,7 @@ pub(crate) fn check_assoc_const_binding_type<'tcx>(
     for index in collector.params {
         let param = generics.param_at(index as _, tcx);
         let is_self_param = param.name == kw::SelfUpper;
-        guar.get_or_insert(cx.dcx().emit_err(crate::errors::ParamInTyOfAssocConstBinding {
+        guar.get_or_insert(cx.dcx().emit_err(crate::diagnostics::ParamInTyOfAssocConstBinding {
             span: assoc_const.span,
             assoc_const,
             param_name: param.name,
@@ -923,7 +883,7 @@ pub(crate) fn check_assoc_const_binding_type<'tcx>(
     }
     for var_def_id in collector.vars {
         guar.get_or_insert(cx.dcx().emit_err(
-            crate::errors::EscapingBoundVarInTyOfAssocConstBinding {
+            crate::diagnostics::EscapingBoundVarInTyOfAssocConstBinding {
                 span: assoc_const.span,
                 assoc_const,
                 var_name: cx.tcx().item_name(var_def_id),

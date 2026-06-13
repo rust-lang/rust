@@ -51,7 +51,7 @@ use span::Edition;
 use stdx::never;
 
 use crate::{
-    CallableDefId, ImplTraitId, MemoryMap, ParamEnvAndCrate, consteval,
+    CallableDefId, FieldType, ImplTraitId, MemoryMap, ParamEnvAndCrate, consteval,
     db::{GeneralConstId, HirDatabase},
     generics::{ProvenanceSplit, generics},
     layout::Layout,
@@ -60,8 +60,8 @@ use crate::{
     next_solver::{
         AliasTy, Allocation, Clause, ClauseKind, Const, ConstKind, DbInterner,
         ExistentialPredicate, FnSig, GenericArg, GenericArgKind, GenericArgs, ParamEnv, PolyFnSig,
-        Region, StoredEarlyBinder, StoredTy, Term, TermId, TermKind, TraitPredicate, TraitRef, Ty,
-        TyKind, TypingMode, Unnormalized, ValTree,
+        Region, Term, TermId, TermKind, TraitPredicate, TraitRef, Ty, TyKind, TypingMode,
+        Unnormalized, ValTree,
         abi::Safety,
         infer::{DbInternerInferExt, traits::ObligationCause},
     },
@@ -1198,7 +1198,7 @@ fn render_const_scalar_from_valtree_inner<'db>(
 fn render_variant_after_name<'db>(
     data: &VariantFields,
     f: &mut HirFormatter<'_, 'db>,
-    field_types: &'db ArenaMap<LocalFieldId, StoredEarlyBinder<StoredTy>>,
+    field_types: &'db ArenaMap<LocalFieldId, FieldType>,
     param_env: ParamEnv<'db>,
     layout: &Layout,
     args: GenericArgs<'db>,
@@ -1210,7 +1210,7 @@ fn render_variant_after_name<'db>(
         FieldsShape::Record | FieldsShape::Tuple => {
             let render_field = |f: &mut HirFormatter<'_, 'db>, id: LocalFieldId| {
                 let offset = layout.fields.offset(u32::from(id.into_raw()) as usize).bytes_usize();
-                let ty = field_types[id].get().instantiate(f.interner, args).skip_norm_wip();
+                let ty = field_types[id].ty().instantiate(f.interner, args).skip_norm_wip();
                 let Ok(layout) = f.db.layout_of_ty(ty.store(), param_env.store()) else {
                     return f.write_str("<layout-error>");
                 };

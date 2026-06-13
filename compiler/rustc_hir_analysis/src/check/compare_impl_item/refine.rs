@@ -367,7 +367,7 @@ fn report_mismatched_rpitit_signature<'tcx>(
         if is_internal { REFINING_IMPL_TRAIT_INTERNAL } else { REFINING_IMPL_TRAIT_REACHABLE },
         tcx.local_def_id_to_hir_id(impl_m_def_id.expect_local()),
         span,
-        crate::errors::ReturnPositionImplTraitInTraitRefined {
+        crate::diagnostics::ReturnPositionImplTraitInTraitRefined {
             impl_return_span,
             trait_return_span,
             pre,
@@ -464,7 +464,7 @@ fn report_mismatched_rpitit_captures<'tcx>(
         if is_internal { REFINING_IMPL_TRAIT_INTERNAL } else { REFINING_IMPL_TRAIT_REACHABLE },
         tcx.local_def_id_to_hir_id(impl_opaque_def_id),
         use_bound_span,
-        crate::errors::ReturnPositionImplTraitInTraitRefinedLifetimes {
+        crate::diagnostics::ReturnPositionImplTraitInTraitRefinedLifetimes {
             suggestion_span: use_bound_span,
             suggestion,
         },

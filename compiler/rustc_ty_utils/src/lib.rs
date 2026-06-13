@@ -17,7 +17,7 @@ mod abi;
 mod assoc;
 mod common_traits;
 mod consts;
-mod errors;
+mod diagnostics;
 mod implied_bounds;
 mod instance;
 mod layout;

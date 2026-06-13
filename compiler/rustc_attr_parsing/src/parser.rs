@@ -30,8 +30,8 @@ use thin_vec::ThinVec;
 
 use crate::ShouldEmit;
 use crate::session_diagnostics::{
-    ExpectedComma, InvalidMetaItem, InvalidMetaItemQuoteIdentSugg, InvalidMetaItemRemoveNegSugg,
-    MetaBadDelim, MetaBadDelimSugg, SuffixedLiteralInAttribute,
+    AdditionalCommaSuggestion, ExpectedComma, InvalidMetaItem, InvalidMetaItemQuoteIdentSugg,
+    InvalidMetaItemRemoveNegSugg, MetaBadDelim, MetaBadDelimSugg, SuffixedLiteralInAttribute,
 };
 
 #[derive(Clone, Debug)]
@@ -713,15 +713,30 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
 
         let mut snapshot = self.parser.create_snapshot_for_diagnostic();
         if matches!(self.should_emit, ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed }) {
-            let span = self.parser.prev_token.span.shrink_to_hi();
-            self.should_emit = ShouldEmit::Nothing;
-            match self.parse_meta_item_inner() {
-                Ok(_) => {
-                    return Err(self.parser.dcx().create_err(ExpectedComma { span }));
+            let mut missing_commas = ThinVec::new();
+            let mut found_comma = false;
+            while self.parser.token != token::Eof {
+                let span = self.parser.prev_token.span.shrink_to_hi();
+                self.should_emit = ShouldEmit::Nothing;
+                match self.parse_meta_item_inner() {
+                    Ok(_) => {
+                        if !found_comma {
+                            missing_commas.push(span);
+                        }
+                    }
+                    Err(e) => {
+                        e.cancel();
+                        break;
+                    }
                 }
-                Err(e) => {
-                    e.cancel();
-                }
+                found_comma = self.parser.eat(exp!(Comma));
+            }
+
+            let mut missing_commas = missing_commas.into_iter();
+            if let Some(span) = missing_commas.next() {
+                let additional =
+                    missing_commas.map(|span| AdditionalCommaSuggestion { span }).collect();
+                return Err(self.parser.dcx().create_err(ExpectedComma { span, additional }));
             }
         }
         snapshot.unexpected_any()

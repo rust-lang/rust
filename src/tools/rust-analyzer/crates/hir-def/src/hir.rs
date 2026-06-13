@@ -323,6 +323,7 @@ pub enum Expr {
     Underscore,
     OffsetOf(OffsetOf),
     InlineAsm(InlineAsm),
+    IncludeBytes,
 }
 
 impl Expr {
@@ -344,7 +345,8 @@ impl Expr {
             | Expr::RecordLit { .. }
             | Expr::Tuple { .. }
             | Expr::OffsetOf(_)
-            | Expr::Underscore => ExprPrecedence::Unambiguous,
+            | Expr::Underscore
+            | Expr::IncludeBytes => ExprPrecedence::Unambiguous,
 
             Expr::Await { .. }
             | Expr::Call { .. }

@@ -462,6 +462,12 @@ pub enum FullInt {
     U(u128),
 }
 
+impl FullInt {
+    pub fn is_zero(self) -> bool {
+        matches!(self, Self::S(0) | Self::U(0))
+    }
+}
+
 impl PartialEq for FullInt {
     fn eq(&self, other: &Self) -> bool {
         self.cmp(other) == Ordering::Equal
@@ -488,6 +494,25 @@ impl Ord for FullInt {
             (S(s), U(o)) => cmp_s_u(s, o),
             (U(s), S(o)) => cmp_s_u(o, s).reverse(),
         }
+    }
+}
+
+/// Evaluates an expression if it's a builtin integer type.
+pub fn eval_int(cx: &LateContext<'_>, e: &Expr<'_>) -> Option<FullInt> {
+    match e.kind {
+        ExprKind::Lit(lit) if let LitKind::Int(val, _) = lit.node => Some(FullInt::U(val.0)),
+        ExprKind::Unary(UnOp::Neg, e)
+            if let ExprKind::Lit(lit) = e.kind
+                && let LitKind::Int(val, _) = lit.node =>
+        {
+            Some(FullInt::S(val.0.cast_signed().wrapping_neg()))
+        },
+        _ if let ty = cx.typeck_results().expr_ty(e)
+            && let ty::Int(_) | ty::Uint(_) = *ty.kind() =>
+        {
+            ConstEvalCtxt::new(cx).eval(e).and_then(|x| x.int_value(cx.tcx, ty))
+        },
+        _ => None,
     }
 }
 

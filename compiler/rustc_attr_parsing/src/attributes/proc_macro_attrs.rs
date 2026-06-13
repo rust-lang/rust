@@ -121,7 +121,7 @@ fn parse_derive_like(
             if rustc_feature::is_builtin_attr_name(ident.name) {
                 cx.emit_lint(
                     AMBIGUOUS_DERIVE_HELPERS,
-                    crate::errors::AmbiguousDeriveHelpers,
+                    crate::diagnostics::AmbiguousDeriveHelpers,
                     ident.span,
                 );
             }

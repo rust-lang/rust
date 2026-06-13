@@ -296,6 +296,10 @@ Tests for compile flags.
 
 Meta test suite of the test harness `compiletest` itself.
 
+## `tests/ui/comptime`: compile-time only functions and intrinsics
+
+Test the `#[rustc_comptime]` attribute and intrinsics that inherently can only run at compile-time.
+
 ## `tests/ui/conditional-compilation/`: Conditional Compilation
 
 Tests for `#[cfg]` attribute or `--cfg` flags, used to compile certain files or code blocks only if certain conditions are met (such as developing on a specific architecture).
@@ -1286,6 +1290,12 @@ An assorted collection of tests that involves specific diagnostic spans.
 ## `tests/ui/specialization`
 
 See [Tracking issue for specialization (RFC 1210) #31844](https://github.com/rust-lang/rust/issues/31844).
+
+## `tests/ui/splat`
+
+Tests for the `#![feature(splat)]` attribute.
+
+See [Tracking Issue for argument splatting #153629](https://github.com/rust-lang/rust/issues/153629).
 
 ## `tests/ui/stability-attribute/`
 

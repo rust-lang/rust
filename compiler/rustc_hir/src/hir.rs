@@ -25,7 +25,8 @@ use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{
-    BytePos, DUMMY_SP, DesugaringKind, ErrorGuaranteed, Ident, Span, Spanned, Symbol, kw, sym,
+    BytePos, DUMMY_SP, DesugaringKind, ErrorGuaranteed, Ident, LocalExpnId, Span, Spanned, Symbol,
+    kw, sym,
 };
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use smallvec::SmallVec;
@@ -700,12 +701,12 @@ impl<'hir> GenericArgs<'hir> {
     }
 
     #[inline]
-    pub fn num_lifetime_params(&self) -> usize {
+    pub fn num_lifetime_args(&self) -> usize {
         self.args.iter().filter(|arg| matches!(arg, GenericArg::Lifetime(_))).count()
     }
 
     #[inline]
-    pub fn has_lifetime_params(&self) -> bool {
+    pub fn has_lifetime_args(&self) -> bool {
         self.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)))
     }
 
@@ -2467,10 +2468,12 @@ pub enum ConstContext {
     /// - Array length expressions
     /// - Enum discriminants
     /// - Const generics
-    ///
-    /// For the most part, other contexts are treated just like a regular `const`, so they are
-    /// lumped into the same category.
-    Const { inline: bool },
+    Const {
+        /// For backwards compatibility `const` items allow
+        /// calls to `const fn` to get promoted.
+        /// We forbid that in comptime fns and inline consts.
+        allow_const_fn_promotion: bool,
+    },
 }
 
 impl ConstContext {
@@ -3317,7 +3320,7 @@ impl<'hir> TraitItem<'hir> {
 
     expect_methods_self_kind! {
         expect_const, (&'hir Ty<'hir>, Option<ConstItemRhs<'hir>>),
-            TraitItemKind::Const(ty, rhs, _), (ty, *rhs);
+            TraitItemKind::Const(ty, rhs), (ty, *rhs);
 
         expect_fn, (&FnSig<'hir>, &TraitFn<'hir>),
             TraitItemKind::Fn(ty, trfn), (ty, trfn);
@@ -3337,32 +3340,11 @@ pub enum TraitFn<'hir> {
     Provided(BodyId),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, StableHash)]
-pub enum IsTypeConst {
-    No,
-    Yes,
-}
-
-impl From<bool> for IsTypeConst {
-    fn from(value: bool) -> Self {
-        if value { Self::Yes } else { Self::No }
-    }
-}
-
-impl From<IsTypeConst> for bool {
-    fn from(value: IsTypeConst) -> Self {
-        matches!(value, IsTypeConst::Yes)
-    }
-}
-
 /// Represents a trait method or associated constant or type
 #[derive(Debug, Clone, Copy, StableHash)]
 pub enum TraitItemKind<'hir> {
-    // FIXME(mgca) eventually want to move the option that is around `ConstItemRhs<'hir>`
-    // into `ConstItemRhs`, much like `ast::ConstItemRhsKind`, but for now mark whether
-    // this node is a TypeConst with a flag.
     /// An associated constant with an optional value (otherwise `impl`s must contain a value).
-    Const(&'hir Ty<'hir>, Option<ConstItemRhs<'hir>>, IsTypeConst),
+    Const(&'hir Ty<'hir>, Option<ConstItemRhs<'hir>>),
     /// An associated function with an optional body.
     Fn(FnSig<'hir>, TraitFn<'hir>),
     /// An associated type with (possibly empty) bounds and optional concrete
@@ -3875,6 +3857,7 @@ pub struct DelegationInfo {
     pub child_args_segment_id: Option<HirId>,
     pub self_ty_id: Option<HirId>,
     pub propagate_self_ty: bool,
+    pub group_id: Option<(LocalExpnId, bool /* unused_target_expr */)>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, StableHash)]
@@ -4035,13 +4018,29 @@ pub struct Param<'hir> {
     pub span: Span,
 }
 
+/// Error type for splatted argument index errors.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SplattedArgIndexError {
+    /// The splatted argument index is invalid.
+    /// Currently the only unsupported index is `u16::MAX`, which is used to indicate that no argument
+    /// is splatted.
+    InvalidIndex { splatted_arg_index: u16 },
+
+    /// The splatted argument index is outside the bounds of the function arguments.
+    OutOfBounds { splatted_arg_index: u16, args_len: u16 },
+}
+
 /// Contains the packed non-type fields of a function declaration.
-// FIXME(splat): add the splatted argument index as a u16
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(Encodable, Decodable, StableHash)]
 pub struct FnDeclFlags {
     /// Holds the c_variadic and lifetime_elision_allowed bitflags, and 3 bits for the `ImplicitSelfKind`.
     flags: u8,
+
+    /// Which function argument is splatted into multiple arguments in callers, if any?
+    /// Splatting functions with `u16::MAX` arguments is not supported, see `FnSigKind` for
+    /// details.
+    splatted: u16,
 }
 
 impl fmt::Debug for FnDeclFlags {
@@ -4053,11 +4052,15 @@ impl fmt::Debug for FnDeclFlags {
             f.field(&"LifetimeElisionAllowed");
         } else {
             f.field(&"NoLifetimeElision");
-        };
+        }
 
         if self.c_variadic() {
             f.field(&"CVariadic");
-        };
+        }
+
+        if let Some(index) = self.splatted() {
+            f.field(&format!("Splatted({})", index));
+        }
 
         f.finish()
     }
@@ -4073,14 +4076,20 @@ impl FnDeclFlags {
     /// Bitflag for lifetime elision.
     const LIFETIME_ELISION_ALLOWED_FLAG: u8 = 1 << 4;
 
-    /// Create a new FnDeclKind with no implicit self, no lifetime elision, and no C-style variadic argument.
+    /// Marker index for "no splatted argument".
+    /// Must have the same value as `FnSigKind::NO_SPLATTED_ARG_INDEX` and `rustc_ast::FnDecl::NO_SPLATTED_ARG_INDEX`.
+    const NO_SPLATTED_ARG_INDEX: u16 = u16::MAX;
+
+    /// Create a new FnDeclKind with no implicit self, no lifetime elision, no C-style variadic
+    /// argument, and no splatting.
     /// To modify these flags, use the `set_*` methods, for readability.
     // FIXME: use Default instead when that trait is const stable.
     pub const fn default() -> Self {
-        Self { flags: 0 }
+        Self { flags: 0, splatted: 0 }
             .set_implicit_self(ImplicitSelfKind::None)
             .set_lifetime_elision_allowed(false)
             .set_c_variadic(false)
+            .set_no_splatted_args()
     }
 
     /// Set the implicit self kind.
@@ -4123,6 +4132,41 @@ impl FnDeclFlags {
         self
     }
 
+    /// Set the splatted argument index.
+    /// The number of function arguments is used for error checking.
+    #[must_use = "this method does not modify the receiver"]
+    pub const fn set_splatted(
+        mut self,
+        splatted: Option<u16>,
+        args_len: usize,
+    ) -> Result<Self, SplattedArgIndexError> {
+        if let Some(splatted_arg_index) = splatted {
+            if splatted_arg_index == Self::NO_SPLATTED_ARG_INDEX {
+                // This index value is used as a marker for "no splatting", so it is unsupported.
+                return Err(SplattedArgIndexError::InvalidIndex { splatted_arg_index });
+            } else if splatted_arg_index as usize >= args_len {
+                return Err(SplattedArgIndexError::OutOfBounds {
+                    splatted_arg_index,
+                    args_len: args_len as u16,
+                });
+            }
+
+            self.splatted = splatted_arg_index;
+        } else {
+            self.splatted = Self::NO_SPLATTED_ARG_INDEX;
+        }
+
+        Ok(self)
+    }
+
+    /// Set "no splatted arguments" for the function declaration.
+    #[must_use = "this method does not modify the receiver"]
+    pub const fn set_no_splatted_args(mut self) -> Self {
+        self.splatted = Self::NO_SPLATTED_ARG_INDEX;
+
+        self
+    }
+
     /// Get the implicit self kind.
     pub const fn implicit_self(self) -> ImplicitSelfKind {
         match self.flags & Self::IMPLICIT_SELF_MASK {
@@ -4143,6 +4187,11 @@ impl FnDeclFlags {
     /// Is lifetime elision allowed?
     pub const fn lifetime_elision_allowed(self) -> bool {
         self.flags & Self::LIFETIME_ELISION_ALLOWED_FLAG != 0
+    }
+
+    /// Get the splatted argument index, if any.
+    pub const fn splatted(self) -> Option<u16> {
+        if self.splatted == Self::NO_SPLATTED_ARG_INDEX { None } else { Some(self.splatted) }
     }
 }
 
@@ -4189,6 +4238,10 @@ impl<'hir> FnDecl<'hir> {
 
     pub fn lifetime_elision_allowed(&self) -> bool {
         self.fn_decl_kind.lifetime_elision_allowed()
+    }
+
+    pub fn splatted(&self) -> Option<u16> {
+        self.fn_decl_kind.splatted()
     }
 
     pub fn dummy(span: Span) -> Self {
@@ -4632,17 +4685,24 @@ impl fmt::Display for Safety {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encodable, Decodable, StableHash)]
-#[derive(Default)]
 pub enum Constness {
-    #[default]
-    Const,
+    Const { always: bool },
     NotConst,
+}
+
+/// This impl exists as an optimization so that metadata deserialization can
+/// store the value directly and not have to encode it wrapped in another `Option`.
+impl Default for Constness {
+    fn default() -> Self {
+        Self::Const { always: false }
+    }
 }
 
 impl fmt::Display for Constness {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match *self {
-            Self::Const => "const",
+            Self::Const { always: true } => "comptime",
+            Self::Const { always: false } => "const",
             Self::NotConst => "non-const",
         })
     }
@@ -4694,10 +4754,6 @@ pub struct FnHeader {
 impl FnHeader {
     pub fn is_async(&self) -> bool {
         matches!(self.asyncness, IsAsync::Async(_))
-    }
-
-    pub fn is_const(&self) -> bool {
-        matches!(self.constness, Constness::Const)
     }
 
     pub fn is_unsafe(&self) -> bool {
@@ -5004,7 +5060,7 @@ impl<'hir> OwnerNode<'hir> {
             | OwnerNode::TraitItem(TraitItem {
                 kind:
                     TraitItemKind::Fn(_, TraitFn::Provided(body))
-                    | TraitItemKind::Const(_, Some(ConstItemRhs::Body(body)), _),
+                    | TraitItemKind::Const(_, Some(ConstItemRhs::Body(body))),
                 ..
             })
             | OwnerNode::ImplItem(ImplItem {
@@ -5231,7 +5287,7 @@ impl<'hir> Node<'hir> {
                 _ => None,
             },
             Node::TraitItem(it) => match it.kind {
-                TraitItemKind::Const(ty, _, _) => Some(ty),
+                TraitItemKind::Const(ty, _) => Some(ty),
                 TraitItemKind::Type(_, ty) => ty,
                 _ => None,
             },
@@ -5275,7 +5331,7 @@ impl<'hir> Node<'hir> {
             | Node::TraitItem(TraitItem {
                 owner_id,
                 kind:
-                    TraitItemKind::Const(_, Some(ConstItemRhs::Body(body)), _)
+                    TraitItemKind::Const(_, Some(ConstItemRhs::Body(body)))
                     | TraitItemKind::Fn(_, TraitFn::Provided(body)),
                 ..
             })

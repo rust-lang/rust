@@ -733,7 +733,7 @@ impl str {
     /// assert_eq!(decomp.to_casefold_unnormalized(), "a\u{030A}");
     /// ```
     ///
-    /// [normalization]: https://www.unicode.org/faq/normalization
+    /// [normalization]: https://www.unicode.org/faq/normalization.html
     #[cfg(not(no_global_oom_handling))]
     #[rustc_allow_incoherent_impl]
     #[must_use = "this returns the case-folded string as a new String, \

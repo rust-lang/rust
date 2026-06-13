@@ -1,11 +1,5 @@
 #![warn(clippy::invalid_upcast_comparisons)]
-#![allow(
-    unused,
-    clippy::eq_op,
-    clippy::no_effect,
-    clippy::unnecessary_operation,
-    clippy::cast_lossless
-)]
+#![expect(clippy::no_effect)]
 
 fn mk_value<T>() -> T {
     unimplemented!()

@@ -1,11 +1,11 @@
-error[E0119]: conflicting implementations of trait `Trait` for type `(u32, i32)`
+error[E0119]: conflicting implementations of trait `Trait` for type `(TAIT, TAIT)`
   --> $DIR/coherence_different_hidden_ty.rs:20:1
    |
 LL | impl Trait for (TAIT, TAIT) {}
    | --------------------------- first implementation here
 LL |
 LL | impl Trait for (u32, i32) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(u32, i32)`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(TAIT, TAIT)`
 
 error: aborting due to 1 previous error
 

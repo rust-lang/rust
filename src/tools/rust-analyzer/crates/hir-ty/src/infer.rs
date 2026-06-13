@@ -91,7 +91,8 @@ use crate::{
         unify::resolve_completely::WriteBackCtxt,
     },
     lower::{
-        ImplTraitIdx, ImplTraitLoweringMode, LifetimeElisionKind, diagnostics::TyLoweringDiagnostic,
+        ImplTraitIdx, ImplTraitLoweringMode, LifetimeElisionKind, LoweringMode,
+        diagnostics::TyLoweringDiagnostic,
     },
     method_resolution::CandidateId,
     next_solver::{
@@ -116,13 +117,14 @@ use cast::{CastCheck, CastError};
 
 /// The entry point of type inference.
 fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> InferenceResult {
-    infer_query_with_inspect(db, def, None)
+    infer_query_with_inspect(db, def, None, LoweringMode::Analysis)
 }
 
 pub fn infer_query_with_inspect<'db>(
     db: &'db dyn HirDatabase,
     def: DefWithBodyId,
     inspect: Option<ObligationInspector<'db>>,
+    lowering_mode: LoweringMode,
 ) -> InferenceResult {
     let _p = tracing::info_span!("infer_query").entered();
     let resolver = def.resolver(db);
@@ -135,6 +137,7 @@ pub fn infer_query_with_inspect<'db>(
         &body.store,
         resolver,
         true,
+        lowering_mode,
     );
 
     if let Some(inspect) = inspect {
@@ -202,6 +205,7 @@ fn infer_anon_const_query(db: &dyn HirDatabase, def: AnonConstId) -> InferenceRe
         store,
         resolver,
         loc.allow_using_generic_params,
+        LoweringMode::Analysis,
     );
 
     ctx.infer_expr(
@@ -1236,6 +1240,7 @@ pub(crate) struct InferenceContext<'body, 'db> {
     pub(crate) store_owner: ExpressionStoreOwnerId,
     pub(crate) generic_def: GenericDefId,
     pub(crate) store: &'body ExpressionStore,
+    pub(crate) lowering_mode: LoweringMode,
     /// Generally you should not resolve things via this resolver. Instead create a TyLoweringContext
     /// and resolve the path via its methods. This will ensure proper error reporting.
     pub(crate) resolver: Resolver<'db>,
@@ -1335,6 +1340,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         store: &'body ExpressionStore,
         resolver: Resolver<'db>,
         allow_using_generic_params: bool,
+        lowering_mode: LoweringMode,
     ) -> Self {
         let trait_env = db.trait_environment(generic_def);
         let table = unify::InferenceTable::new(db, trait_env, resolver.krate(), store_owner);
@@ -1369,6 +1375,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             vars_emitted_type_must_be_known_for: FxHashSet::default(),
             deferred_call_resolutions: FxHashMap::default(),
             defined_anon_consts: RefCell::new(ThinVec::new()),
+            lowering_mode,
         }
     }
 
@@ -1969,6 +1976,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             expected_ty,
             &|| self.generics(),
             Some(&mut |span| self.table.next_const_var(span)),
+            self.lowering_mode,
             (!(allow_using_generic_params && self.allow_using_generic_params)).then_some(0),
         );
 
@@ -2046,7 +2054,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
                             .field_types(struct_id.into())
                             .values()
                             .next_back()
-                            .map(|it| it.get())
+                            .map(|it| it.ty())
                         {
                             Some(field) => {
                                 ty = field.instantiate(self.interner(), substs).skip_norm_wip();

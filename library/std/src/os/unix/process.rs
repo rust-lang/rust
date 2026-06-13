@@ -30,9 +30,6 @@ cfg_select! {
 }
 
 /// Unix-specific extensions to the [`process::Command`] builder.
-///
-/// This trait is sealed: it cannot be implemented outside the standard library.
-/// This is so that future additional methods are not breaking changes.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub impl(self) trait CommandExt {
     /// Sets the child process's user ID. This translates to a
@@ -286,9 +283,6 @@ impl CommandExt for process::Command {
 ///
 /// A Unix wait status (a Rust `ExitStatus`) can represent a Unix exit status, but can also
 /// represent other kinds of process event.
-///
-/// This trait is sealed: it cannot be implemented outside the standard library.
-/// This is so that future additional methods are not breaking changes.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub impl(self) trait ExitStatusExt {
     /// Creates a new `ExitStatus` or `ExitStatusError` from the raw underlying integer status

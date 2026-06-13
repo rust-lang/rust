@@ -326,6 +326,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcClean(..) => (),
             AttributeKind::RustcCoherenceIsCore => (),
             AttributeKind::RustcCoinductive => (),
+            AttributeKind::RustcComptime(_) => (),
             AttributeKind::RustcConfusables { .. } => (),
             AttributeKind::RustcConstStability { .. } => (),
             AttributeKind::RustcConstStableIndirect => (),
@@ -401,6 +402,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcUnsafeSpecializationMarker => (),
             AttributeKind::Sanitize { .. } => {}
             AttributeKind::ShouldPanic { .. } => (),
+            AttributeKind::Splat(..) => (),
             AttributeKind::Stability { .. } => (),
             AttributeKind::TestRunner(..) => (),
             AttributeKind::ThreadLocal => (),
@@ -544,7 +546,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if target == (Target::Impl { of_trait: true }) {
             match item.unwrap() {
                 ItemLike::Item(it) => match it.expect_impl().constness {
-                    Constness::Const => {
+                    Constness::Const { .. } => {
                         let item_span = self.tcx.hir_span(hir_id);
                         self.tcx.emit_node_span_lint(
                             MISPLACED_DIAGNOSTIC_ATTRIBUTES,
@@ -653,20 +655,17 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     /// Debugging aid for the `object_lifetime_default` query.
     fn check_dump_object_lifetime_defaults(&self, hir_id: HirId) {
         let tcx = self.tcx;
-        if let Some(owner_id) = hir_id.as_owner()
-            && let Some(generics) = tcx.hir_get_generics(owner_id.def_id)
-        {
-            for p in generics.params {
-                let hir::GenericParamKind::Type { .. } = p.kind else { continue };
-                let default = tcx.object_lifetime_default(p.def_id);
-                let repr = match default {
-                    ObjectLifetimeDefault::Empty => "BaseDefault".to_owned(),
-                    ObjectLifetimeDefault::Static => "'static".to_owned(),
-                    ObjectLifetimeDefault::Param(def_id) => tcx.item_name(def_id).to_string(),
-                    ObjectLifetimeDefault::Ambiguous => "Ambiguous".to_owned(),
-                };
-                tcx.dcx().span_err(p.span, repr);
-            }
+        let Some(owner_id) = hir_id.as_owner() else { return };
+        for param in &tcx.generics_of(owner_id.def_id).own_params {
+            let ty::GenericParamDefKind::Type { .. } = param.kind else { continue };
+            let default = tcx.object_lifetime_default(param.def_id);
+            let repr = match default {
+                ObjectLifetimeDefault::Empty => "Empty".to_owned(),
+                ObjectLifetimeDefault::Static => "'static".to_owned(),
+                ObjectLifetimeDefault::Param(def_id) => tcx.item_name(def_id).to_string(),
+                ObjectLifetimeDefault::Ambiguous => "Ambiguous".to_owned(),
+            };
+            tcx.dcx().span_err(tcx.def_span(param.def_id), repr);
         }
     }
 

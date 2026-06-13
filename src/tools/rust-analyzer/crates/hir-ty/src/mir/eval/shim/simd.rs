@@ -20,7 +20,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                                 not_supported!("simd type with no field");
                             };
                             let field_ty = self.db.field_types(id.into())[first_field]
-                                .get()
+                                .ty()
                                 .instantiate(self.interner(), subst)
                                 .skip_norm_wip();
                             return Ok((fields.len(), field_ty));

@@ -9,6 +9,7 @@
 // Historically, this could occur when the code handling those projections did not know
 // about `&pin` patterns, and incorrectly treated them as plain `&`/`&mut` patterns instead.
 
+#[pin_v2]
 struct Data {
     x: u32
 }

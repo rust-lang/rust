@@ -4,13 +4,13 @@ use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level,
 };
-use rustc_feature::AttributeTemplate;
 use rustc_hir::AttrPath;
 use rustc_hir::attrs::{MirDialect, MirPhase};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::TargetTuple;
 
+use crate::AttributeTemplate;
 use crate::context::Suggestion;
 
 #[derive(Diagnostic)]
@@ -1043,5 +1043,14 @@ pub(crate) struct ExpectedComma {
         applicability = "maybe-incorrect",
         style = "short"
     )]
+    pub span: Span,
+    #[subdiagnostic]
+    pub additional: Vec<AdditionalCommaSuggestion>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion("try adding `,` here", code = ",", applicability = "maybe-incorrect", style = "short")]
+pub(crate) struct AdditionalCommaSuggestion {
+    #[primary_span]
     pub span: Span,
 }

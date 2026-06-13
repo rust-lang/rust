@@ -30,14 +30,14 @@ use rustc_span::hygiene::Transparency;
 use rustc_span::{Ident, Span, Symbol, kw, sym};
 use tracing::{debug, instrument, trace, trace_span};
 
+use super::SequenceRepetition;
 use super::diagnostics::{FailedMacro, failed_to_match_macro};
 use super::macro_parser::{NamedMatches, NamedParseResult};
-use super::{SequenceRepetition, diagnostics};
 use crate::base::{
     AttrProcMacro, BangProcMacro, DummyResult, ExpandResult, ExtCtxt, MacResult,
     MacroExpanderResult, SyntaxExtension, SyntaxExtensionKind, TTMacroExpander,
 };
-use crate::errors;
+use crate::diagnostics;
 use crate::expand::{AstFragment, AstFragmentKind, ensure_complete_parse, parse_ast_fragment};
 use crate::mbe::macro_check::check_meta_variables;
 use crate::mbe::macro_parser::{Error, ErrorReported, Failure, MatcherLoc, Success, TtParser};
@@ -81,7 +81,7 @@ impl<'a, 'b> ParserAnyMacro<'a, 'b> {
         let fragment = match parse_ast_fragment(parser, kind) {
             Ok(f) => f,
             Err(err) => {
-                let guar = diagnostics::emit_frag_parse_err(
+                let guar = super::diagnostics::emit_frag_parse_err(
                     err,
                     parser,
                     snapshot,
@@ -104,7 +104,7 @@ impl<'a, 'b> ParserAnyMacro<'a, 'b> {
                     SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
                     parser.token.span,
                     lint_node_id,
-                    errors::TrailingMacro { is_trailing: is_trailing_mac, name: macro_ident },
+                    diagnostics::TrailingMacro { is_trailing: is_trailing_mac, name: macro_ident },
                 );
             }
             parser.bump();
@@ -903,9 +903,9 @@ fn check_args_parens(sess: &Session, rule_kw: Symbol, args: &tokenstream::TokenT
     if let tokenstream::TokenTree::Delimited(dspan, _, delim, _) = args
         && *delim != Delimiter::Parenthesis
     {
-        sess.dcx().emit_err(errors::MacroArgsBadDelim {
+        sess.dcx().emit_err(diagnostics::MacroArgsBadDelim {
             span: dspan.entire(),
-            sugg: errors::MacroArgsBadDelimSugg { open: dspan.open, close: dspan.close },
+            sugg: diagnostics::MacroArgsBadDelimSugg { open: dspan.open, close: dspan.close },
             rule_kw,
         });
     }
@@ -1539,7 +1539,7 @@ fn check_matcher_core<'tt>(
                             RUST_2021_INCOMPATIBLE_OR_PATTERNS,
                             span,
                             ast::CRATE_NODE_ID,
-                            errors::OrPatternsBackCompat { span, suggestion },
+                            diagnostics::OrPatternsBackCompat { span, suggestion },
                         );
                     }
                     match is_in_follow(next_token, kind) {

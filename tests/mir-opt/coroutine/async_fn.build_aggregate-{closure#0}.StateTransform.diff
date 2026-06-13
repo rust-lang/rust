@@ -4,6 +4,12 @@
 - fn build_aggregate::{closure#0}(_1: {async fn body of build_aggregate()}, _2: std::future::ResumeTy) -> u32
 - yields ()
 -  {
+-     debug _task_context => _2;
+-     debug a => (_1.0: u32);
+-     debug b => (_1.1: u32);
+-     debug c => (_1.2: u32);
+-     debug d => (_1.3: u32);
+-     let mut _0: u32;
 + fn build_aggregate::{closure#0}(_1: Pin<&mut {async fn body of build_aggregate()}>, _2: &mut Context<'_>) -> Poll<u32> {
 +     coroutine layout {
 +         field _s0: u32;
@@ -20,12 +26,7 @@
 +         }
 +         storage_conflicts = BitMatrix(5x5) {(_s0, _s0), (_s0, _s1), (_s0, _s2), (_s0, _s3), (_s0, _s4), (_s1, _s0), (_s1, _s1), (_s1, _s2), (_s1, _s3), (_s1, _s4), (_s2, _s0), (_s2, _s1), (_s2, _s2), (_s2, _s3), (_s2, _s4), (_s3, _s0), (_s3, _s1), (_s3, _s2), (_s3, _s3), (_s4, _s0), (_s4, _s1), (_s4, _s2), (_s4, _s4)}
 +     }
-      debug _task_context => _2;
--     debug a => (_1.0: u32);
--     debug b => (_1.1: u32);
--     debug c => (_1.2: u32);
--     debug d => (_1.3: u32);
--     let mut _0: u32;
++     debug _task_context => _52;
 +     debug a => ((*_51).0: u32);
 +     debug b => ((*_51).1: u32);
 +     debug c => ((*_51).2: u32);
@@ -45,12 +46,10 @@
       let mut _19: &mut {async fn body of add()};
       let mut _20: &mut std::task::Context<'_>;
       let mut _21: &mut std::task::Context<'_>;
--     let mut _22: std::future::ResumeTy;
-+     let mut _22: &mut std::task::Context<'_>;
+      let mut _22: std::future::ResumeTy;
       let mut _23: isize;
       let mut _25: !;
--     let mut _26: std::future::ResumeTy;
-+     let mut _26: &mut std::task::Context<'_>;
+      let mut _26: std::future::ResumeTy;
       let mut _27: ();
       let mut _28: u32;
       let mut _29: {async fn body of add()};
@@ -64,18 +63,18 @@
       let mut _38: &mut {async fn body of add()};
       let mut _39: &mut std::task::Context<'_>;
       let mut _40: &mut std::task::Context<'_>;
--     let mut _41: std::future::ResumeTy;
-+     let mut _41: &mut std::task::Context<'_>;
+      let mut _41: std::future::ResumeTy;
       let mut _42: isize;
       let mut _44: !;
--     let mut _45: std::future::ResumeTy;
-+     let mut _45: &mut std::task::Context<'_>;
+      let mut _45: std::future::ResumeTy;
       let mut _46: ();
       let mut _47: u32;
       let mut _48: u32;
 +     let mut _49: u32;
 +     let mut _50: u32;
 +     let mut _51: &mut {async fn body of build_aggregate()};
++     let mut _52: std::future::ResumeTy;
++     let mut _53: std::ptr::NonNull<std::task::Context<'_>>;
       scope 1 {
           debug a => _3;
           let _4: u32;
@@ -138,6 +137,8 @@
 -         StorageLive(_12);
 -         _12 = copy _4;
 -         _10 = add(move _11, move _12) -> [return: bb1, unwind: bb49];
++         _53 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
++         _52 = std::future::ResumeTy(move _53);
 +         _51 = copy (_1.0: &mut {async fn body of build_aggregate()});
 +         _50 = discriminant((*_51));
 +         switchInt(move _50) -> [0: bb49, 1: bb48, 2: bb47, 3: bb45, 4: bb46, otherwise: bb7];
@@ -178,9 +179,10 @@
           StorageLive(_20);
           StorageLive(_21);
           StorageLive(_22);
-          _22 = copy _2;
+-         _22 = copy _2;
 -         _21 = std::future::get_context::<'_, '_>(move _22) -> [return: bb5, unwind: bb42];
-+         _21 = move _22;
++         _22 = copy _52;
++         _21 = copy (_22.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb5;
       }
   
@@ -238,7 +240,8 @@
   
       bb10: {
           StorageDead(_27);
-          _2 = move _26;
+-         _2 = move _26;
++         _52 = move _26;
           StorageDead(_26);
           _14 = const ();
           goto -> bb3;
@@ -295,9 +298,10 @@
           StorageLive(_39);
           StorageLive(_40);
           StorageLive(_41);
-          _41 = copy _2;
+-         _41 = copy _2;
 -         _40 = std::future::get_context::<'_, '_>(move _41) -> [return: bb16, unwind: bb33];
-+         _40 = move _41;
++         _41 = copy _52;
++         _40 = copy (_41.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb16;
       }
   
@@ -352,7 +356,8 @@
   
       bb20: {
           StorageDead(_46);
-          _2 = move _45;
+-         _2 = move _45;
++         _52 = move _45;
           StorageDead(_45);
           _14 = const ();
           goto -> bb14;
@@ -630,7 +635,7 @@
 +         StorageLive(_9);
 +         StorageLive(_26);
 +         StorageLive(_27);
-+         _26 = move _2;
++         _26 = move _52;
 +         goto -> bb10;
       }
   
@@ -646,7 +651,7 @@
 +         StorageLive(_29);
 +         StorageLive(_45);
 +         StorageLive(_46);
-+         _45 = move _2;
++         _45 = move _52;
 +         goto -> bb20;
       }
   

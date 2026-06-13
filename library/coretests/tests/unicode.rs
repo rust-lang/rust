@@ -1,3 +1,4 @@
+use core::iter::Step;
 use core::unicode::unicode_data;
 use std::ops::RangeInclusive;
 
@@ -19,7 +20,7 @@ fn test_boolean_property(ranges: &[RangeInclusive<char>], lookup: fn(char) -> bo
         for c in range.clone() {
             assert!(lookup(c), "{c:?}");
         }
-        start = char::from_u32(*range.end() as u32 + 1).unwrap();
+        start = Step::forward(*range.end(), 1);
     }
     for c in start..=char::MAX {
         assert!(!lookup(c), "{c:?}");
@@ -60,9 +61,23 @@ fn case_ignorable() {
 
 #[test]
 #[cfg_attr(miri, ignore)] // Miri is too slow
-fn lt() {
-    test_boolean_property(test_data::LT, unicode_data::lt::lookup);
-    test_boolean_property(test_data::LT, char::is_titlecase);
+fn cf() {
+    test_boolean_property(test_data::CF, unicode_data::cf::lookup);
+}
+
+#[test]
+#[cfg_attr(miri, ignore)] // Miri is too slow
+fn cn_planes_0_3() {
+    test_boolean_property(test_data::CN_PLANES_0_3, unicode_data::cn_planes_0_3::lookup);
+}
+
+#[test]
+#[cfg_attr(miri, ignore)] // Miri is too slow
+fn default_ignorable_code_point() {
+    test_boolean_property(
+        test_data::DEFAULT_IGNORABLE_CODE_POINT,
+        unicode_data::default_ignorable_code_point::lookup,
+    );
 }
 
 #[test]
@@ -76,6 +91,13 @@ fn grapheme_extend() {
 fn lowercase() {
     test_boolean_property(test_data::LOWERCASE, unicode_data::lowercase::lookup);
     test_boolean_property(test_data::LOWERCASE, char::is_lowercase);
+}
+
+#[test]
+#[cfg_attr(miri, ignore)] // Miri is too slow
+fn lt() {
+    test_boolean_property(test_data::LT, unicode_data::lt::lookup);
+    test_boolean_property(test_data::LT, char::is_titlecase);
 }
 
 #[test]

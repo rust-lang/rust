@@ -89,6 +89,7 @@ so Rustup may install the documentation for a similar tier 1 target instead.
 target | notes
 -------|-------
 [`aarch64-pc-windows-gnullvm`](platform-support/windows-gnullvm.md) | ARM64 MinGW (Windows 10+), LLVM ABI
+[`aarch64-unknown-freebsd`](platform-support/freebsd.md) | ARM64 FreeBSD
 [`aarch64-unknown-linux-musl`](platform-support/aarch64-unknown-linux-musl.md) | ARM64 Linux with musl 1.2.5
 [`aarch64-unknown-linux-ohos`](platform-support/openharmony.md) | ARM64 OpenHarmony
 `arm-unknown-linux-gnueabi` | Armv6 Linux (kernel 3.2+, glibc 2.17)
@@ -266,7 +267,6 @@ target | std | host | notes
 -------|:---:|:----:|-------
 [`aarch64-kmc-solid_asp3`](platform-support/kmc-solid.md) | ✓ |  | ARM64 SOLID with TOPPERS/ASP3
 [`aarch64-nintendo-switch-freestanding`](platform-support/aarch64-nintendo-switch-freestanding.md) | * |  | ARM64 Nintendo Switch, Horizon
-[`aarch64-unknown-freebsd`](platform-support/freebsd.md) | ✓ | ✓ | ARM64 FreeBSD
 [`aarch64-unknown-helenos`](platform-support/helenos.md) | ✓ |  | ARM64 HelenOS
 [`aarch64-unknown-hermit`](platform-support/hermit.md) | ✓ |  | ARM64 Hermit
 [`aarch64-unknown-illumos`](platform-support/illumos.md) | ✓ | ✓ | ARM64 illumos
@@ -352,23 +352,23 @@ target | std | host | notes
 [`loongarch32-unknown-none-softfloat`](platform-support/loongarch-none.md) | * |  | LoongArch32 Bare-metal (ILP32S ABI)
 [`m68k-unknown-linux-gnu`](platform-support/m68k-unknown-linux-gnu.md) | ? |  | Motorola 680x0 Linux
 [`m68k-unknown-none-elf`](platform-support/m68k-unknown-none-elf.md) |  |  | Motorola 680x0
-`mips-unknown-linux-gnu` | ✓ | ✓ | MIPS Linux (kernel 4.4, glibc 2.23)
-`mips-unknown-linux-musl` | ✓ |  | MIPS Linux with musl 1.2.5
-`mips-unknown-linux-uclibc` | ✓ |  | MIPS Linux with uClibc
-[`mips64-openwrt-linux-musl`](platform-support/mips64-openwrt-linux-musl.md) | ? |  | MIPS64 for OpenWrt Linux musl 1.2.5
-`mips64-unknown-linux-gnuabi64` | ✓ | ✓ | MIPS64 Linux, N64 ABI (kernel 4.4, glibc 2.23)
-[`mips64-unknown-linux-muslabi64`](platform-support/mips64-unknown-linux-muslabi64.md) | ✓ | ✓ | MIPS64 Linux, N64 ABI, musl 1.2.5
-`mips64el-unknown-linux-gnuabi64` | ✓ | ✓ | MIPS64 (little endian) Linux, N64 ABI (kernel 4.4, glibc 2.23)
-`mips64el-unknown-linux-muslabi64` | ✓ |  | MIPS64 (little endian) Linux, N64 ABI, musl 1.2.5
-`mipsel-sony-psp` | * |  | MIPS (LE) Sony PlayStation Portable (PSP)
-[`mipsel-sony-psx`](platform-support/mipsel-sony-psx.md) | * |  | MIPS (LE) Sony PlayStation 1 (PSX)
-[`mipsel-unknown-linux-gnu`](platform-support/mipsel-unknown-linux-gnu.md) | ✓ | ✓ | MIPS (little endian) Linux (kernel 4.4, glibc 2.23)
-`mipsel-unknown-linux-musl` | ✓ |  | MIPS (little endian) Linux with musl 1.2.5
-`mipsel-unknown-linux-uclibc` | ✓ |  | MIPS (LE) Linux with uClibc
-[`mipsel-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | 32-bit MIPS (LE), requires mips32 cpu support
-`mipsel-unknown-none` | * |  | Bare MIPS (LE) softfloat
-[`mips-mti-none-elf`](platform-support/mips-mti-none-elf.md) | * |  | Bare MIPS32r2 (BE) softfloat
-[`mipsel-mti-none-elf`](platform-support/mips-mti-none-elf.md) | * |  | Bare MIPS32r2 (LE) softfloat
+`mips-unknown-linux-gnu` | ✓ | ✓ | MIPS Linux (kernel 4.4, glibc 2.23) [^snan-inverted]
+`mips-unknown-linux-musl` | ✓ |  | MIPS Linux with musl 1.2.5 [^snan-inverted]
+`mips-unknown-linux-uclibc` | ✓ |  | MIPS Linux with uClibc [^snan-inverted]
+[`mips64-openwrt-linux-musl`](platform-support/mips64-openwrt-linux-musl.md) | ? |  | MIPS64 for OpenWrt Linux musl 1.2.5 [^snan-inverted]
+`mips64-unknown-linux-gnuabi64` | ✓ | ✓ | MIPS64 Linux, N64 ABI (kernel 4.4, glibc 2.23) [^snan-inverted]
+[`mips64-unknown-linux-muslabi64`](platform-support/mips64-unknown-linux-muslabi64.md) | ✓ | ✓ | MIPS64 Linux, N64 ABI, musl 1.2.5 [^snan-inverted]
+`mips64el-unknown-linux-gnuabi64` | ✓ | ✓ | MIPS64 (little endian) Linux, N64 ABI (kernel 4.4, glibc 2.23) [^snan-inverted]
+`mips64el-unknown-linux-muslabi64` | ✓ |  | MIPS64 (little endian) Linux, N64 ABI, musl 1.2.5 [^snan-inverted]
+`mipsel-sony-psp` | * |  | MIPS (LE) Sony PlayStation Portable (PSP) [^snan-inverted]
+[`mipsel-sony-psx`](platform-support/mipsel-sony-psx.md) | * |  | MIPS (LE) Sony PlayStation 1 (PSX) [^snan-inverted]
+[`mipsel-unknown-linux-gnu`](platform-support/mipsel-unknown-linux-gnu.md) | ✓ | ✓ | MIPS (little endian) Linux (kernel 4.4, glibc 2.23) [^snan-inverted]
+`mipsel-unknown-linux-musl` | ✓ |  | MIPS (little endian) Linux with musl 1.2.5 [^snan-inverted]
+`mipsel-unknown-linux-uclibc` | ✓ |  | MIPS (LE) Linux with uClibc [^snan-inverted]
+[`mipsel-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | 32-bit MIPS (LE), requires mips32 cpu support [^snan-inverted]
+`mipsel-unknown-none` | * |  | Bare MIPS (LE) softfloat [^snan-inverted]
+[`mips-mti-none-elf`](platform-support/mips-mti-none-elf.md) | * |  | Bare MIPS32r2 (BE) softfloat [^snan-inverted]
+[`mipsel-mti-none-elf`](platform-support/mips-mti-none-elf.md) | * |  | Bare MIPS32r2 (LE) softfloat [^snan-inverted]
 [`mipsisa32r6-unknown-linux-gnu`](platform-support/mips-release-6.md) | ? |  | 32-bit MIPS Release 6 Big Endian
 [`mipsisa32r6el-unknown-linux-gnu`](platform-support/mips-release-6.md) | ? |  | 32-bit MIPS Release 6 Little Endian
 [`mipsisa64r6-unknown-linux-gnuabi64`](platform-support/mips-release-6.md) | ? |  | 64-bit MIPS Release 6 Big Endian
@@ -385,6 +385,7 @@ target | std | host | notes
 [`powerpc-wrs-vxworks-spe`](platform-support/vxworks.md) | ✓ |  |
 [`powerpc64-ibm-aix`](platform-support/aix.md) | ? |  | 64-bit AIX (7.2 and newer)
 [`powerpc64-unknown-freebsd`](platform-support/freebsd.md) | ✓ | ✓ | PPC64 FreeBSD (ELFv2)
+[`powerpc64-unknown-linux-gnuelfv2`](platform-support/powerpc64-unknown-linux-gnuelfv2.md) | ✓ | ✓ | PPC64 Linux (ELFv2 ABI, kernel 3.2, glibc 2.17)
 [`powerpc64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/powerpc64
 [`powerpc64-wrs-vxworks`](platform-support/vxworks.md) | ✓ |  |
 [`powerpc64le-unknown-freebsd`](platform-support/freebsd.md) | ✓ | ✓ | PPC64LE FreeBSD
@@ -472,3 +473,7 @@ target | std | host | notes
 
 [runs on NVIDIA GPUs]: https://github.com/japaric-archived/nvptx#targets
 [the AMD GPU]: https://llvm.org/docs/AMDGPUUsage.html#processors
+
+[^snan-inverted]: On these targets, the treatment of floating-point NaN values is non-compliant. The bit representation for signaling NaNs is inverted compared to [what Rust expects](../std/primitive.f32.html). This means that operations that are expected to return a quiet NaN may return a signaling NaN. See [issue #68925][snan-issue].
+
+[snan-issue]: https://github.com/rust-lang/rust/issues/68925

@@ -50,6 +50,7 @@ mod handlers {
     pub(crate) mod incorrect_case;
     pub(crate) mod incorrect_generics_len;
     pub(crate) mod incorrect_generics_order;
+    pub(crate) mod infer_vars_not_allowed;
     pub(crate) mod invalid_cast;
     pub(crate) mod invalid_derive_target;
     pub(crate) mod invalid_lhs_of_assignment;
@@ -440,6 +441,7 @@ pub fn semantic_diagnostics(
             AnyDiagnostic::CannotImplicitlyDerefTraitObject(d) => handlers::cannot_implicitly_deref_trait_object::cannot_implicitly_deref_trait_object(&ctx, &d),
             AnyDiagnostic::CannotIndexInto(d) => handlers::cannot_index_into::cannot_index_into(&ctx, &d),
             AnyDiagnostic::CastToUnsized(d) => handlers::invalid_cast::cast_to_unsized(&ctx, &d),
+            AnyDiagnostic::InferVarsNotAllowed(d) => handlers::infer_vars_not_allowed::infer_vars_not_allowed(&ctx, &d),
             AnyDiagnostic::ArrayPatternWithoutFixedLength(d) => {
                 handlers::array_pattern_without_fixed_length::array_pattern_without_fixed_length(
                     &ctx, &d,

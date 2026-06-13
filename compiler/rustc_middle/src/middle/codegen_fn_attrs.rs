@@ -53,6 +53,14 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         }
 
+        // Ensure closure shims have the optimization properties of their closure applied to them.
+        if let InstanceKind::ClosureOnceShim { call_once: _, closure, track_caller: _ } =
+            instance_kind
+        {
+            let closure_attrs = self.codegen_fn_attrs(closure);
+            attrs.to_mut().optimize = closure_attrs.optimize;
+        }
+
         attrs
     }
 }

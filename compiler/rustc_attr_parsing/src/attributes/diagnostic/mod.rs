@@ -1,12 +1,9 @@
 use std::ops::Range;
 
-use rustc_errors::E0232;
-use rustc_hir::AttrPath;
 use rustc_hir::attrs::diagnostic::{
     Directive, Filter, FilterFormatString, Flag, FormatArg, FormatString, LitOrArg, Name,
     NameValue, Piece, Predicate,
 };
-use rustc_macros::Diagnostic;
 use rustc_parse_format::{
     Argument, FormatSpec, ParseError, ParseMode, Parser, Piece as RpfPiece, Position,
 };
@@ -17,9 +14,10 @@ use rustc_span::{Ident, InnerSpan, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::context::AcceptContext;
-use crate::errors::{
-    FormatWarning, IgnoredDiagnosticOption, MalFormedDiagnosticAttributeLint,
-    MissingOptionsForDiagnosticAttribute, NonMetaItemDiagnosticAttribute, WrappedParserError,
+use crate::diagnostics::{
+    DupesNotAllowed, FormatWarning, IgnoredDiagnosticOption, InvalidOnClause,
+    MalFormedDiagnosticAttributeLint, MissingOptionsForDiagnosticAttribute,
+    NonMetaItemDiagnosticAttribute, WrappedParserError,
 };
 use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser};
 
@@ -611,54 +609,3 @@ fn parse_filter_format(input: Symbol) -> FilterFormatString {
         .collect();
     FilterFormatString { pieces }
 }
-
-#[derive(Diagnostic)]
-pub(crate) enum InvalidOnClause {
-    #[diag("empty `on`-clause in `#[rustc_on_unimplemented]`", code = E0232)]
-    Empty {
-        #[primary_span]
-        #[label("empty `on`-clause here")]
-        span: Span,
-    },
-    #[diag("expected a single predicate in `not(..)`", code = E0232)]
-    ExpectedOnePredInNot {
-        #[primary_span]
-        #[label("unexpected quantity of predicates here")]
-        span: Span,
-    },
-    #[diag("literals inside `on`-clauses are not supported", code = E0232)]
-    UnsupportedLiteral {
-        #[primary_span]
-        #[label("unexpected literal here")]
-        span: Span,
-    },
-    #[diag("expected an identifier inside this `on`-clause", code = E0232)]
-    ExpectedIdentifier {
-        #[primary_span]
-        #[label("expected an identifier here, not `{$path}`")]
-        span: Span,
-        path: AttrPath,
-    },
-    #[diag("this predicate is invalid", code = E0232)]
-    InvalidPredicate {
-        #[primary_span]
-        #[label("expected one of `any`, `all` or `not` here, not `{$invalid_pred}`")]
-        span: Span,
-        invalid_pred: Symbol,
-    },
-    #[diag("invalid flag in `on`-clause", code = E0232)]
-    InvalidFlag {
-        #[primary_span]
-        #[label(
-            "expected one of the `crate_local`, `direct` or `from_desugaring` flags, not `{$invalid_flag}`"
-        )]
-        span: Span,
-        invalid_flag: Symbol,
-    },
-}
-
-#[derive(Diagnostic)]
-#[diag(
-    "using multiple `rustc_on_unimplemented` (or mixing it with `diagnostic::on_unimplemented`) is not supported"
-)]
-pub(crate) struct DupesNotAllowed;

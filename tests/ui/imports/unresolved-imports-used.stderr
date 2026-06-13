@@ -2,13 +2,17 @@ error[E0432]: unresolved import `qux::bar`
   --> $DIR/unresolved-imports-used.rs:11:5
    |
 LL | use qux::bar;
-   |     ^^^^^^^^ no `bar` in `qux`
+   |     ^^^^^---
+   |          |
+   |          no `bar` in `qux`
 
 error[E0432]: unresolved import `qux::bar2`
   --> $DIR/unresolved-imports-used.rs:14:5
    |
 LL | use qux::bar2;
-   |     ^^^^^^^^^ no `bar2` in `qux`
+   |     ^^^^^----
+   |          |
+   |          no `bar2` in `qux`
 
 error[E0432]: unresolved import `foo`
   --> $DIR/unresolved-imports-used.rs:12:5

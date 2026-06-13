@@ -14,7 +14,6 @@ where
     pub(super) fn normalize_anon_const(
         &mut self,
         goal: Goal<I, ty::NormalizesTo<I>>,
-        def_id: I::UnevaluatedConstId,
     ) -> QueryResultOrRerunNonErased<I> {
         let uv = goal.predicate.alias.expect_ct();
         self.evaluate_const_and_instantiate_normalizes_to_term(goal, uv)

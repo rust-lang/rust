@@ -1493,7 +1493,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             if let ty::ClauseKind::Projection(proj) = pred.kind().skip_binder()
                             && self
                                 .tcx
-                                .is_lang_item(proj.projection_term.def_id(), LangItem::FnOnceOutput)
+                                .is_lang_item(proj.def_id(), LangItem::FnOnceOutput)
                             // args tuple will always be args[1]
                             && let ty::Tuple(args) = proj.projection_term.args.type_at(1).kind()
                             {
@@ -1537,7 +1537,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         if let ty::ClauseKind::Projection(proj) = pred.kind().skip_binder()
                             && self
                                 .tcx
-                                .is_lang_item(proj.projection_term.def_id(), LangItem::FnOnceOutput)
+                                .is_lang_item(proj.def_id(), LangItem::FnOnceOutput)
                             && proj.projection_term.self_ty() == found
                             // args tuple will always be args[1]
                             && let ty::Tuple(args) = proj.projection_term.args.type_at(1).kind()
@@ -6425,12 +6425,12 @@ fn point_at_assoc_type_restriction<G: EmissionGuarantee>(
         return;
     };
     let Some(name) = tcx
-        .opt_rpitit_info(proj.projection_term.def_id())
+        .opt_rpitit_info(proj.def_id())
         .and_then(|data| match data {
             ty::ImplTraitInTraitData::Trait { fn_def_id, .. } => Some(tcx.item_name(fn_def_id)),
             ty::ImplTraitInTraitData::Impl { .. } => None,
         })
-        .or_else(|| tcx.opt_item_name(proj.projection_term.def_id()))
+        .or_else(|| tcx.opt_item_name(proj.def_id()))
     else {
         return;
     };

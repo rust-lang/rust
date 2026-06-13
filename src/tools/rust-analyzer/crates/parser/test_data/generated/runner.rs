@@ -362,6 +362,8 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/impl_type_params.rs");
     }
     #[test]
+    fn include_bytes() { run_and_expect_no_errors("test_data/parser/inline/ok/include_bytes.rs"); }
+    #[test]
     fn index_expr() { run_and_expect_no_errors("test_data/parser/inline/ok/index_expr.rs"); }
     #[test]
     fn label() { run_and_expect_no_errors("test_data/parser/inline/ok/label.rs"); }

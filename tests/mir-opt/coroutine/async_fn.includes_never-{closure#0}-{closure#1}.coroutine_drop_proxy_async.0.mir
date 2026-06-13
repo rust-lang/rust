@@ -2,8 +2,12 @@
 
 fn includes_never::{closure#0}::{closure#1}(_1: {async block@$DIR/async_fn.rs:67:15: 67:20}, _2: &mut Context<'_>) -> Poll<()> {
     let mut _0: std::task::Poll<()>;
+    let mut _3: std::future::ResumeTy;
+    let mut _4: std::ptr::NonNull<std::task::Context<'_>>;
 
     bb0: {
+        _4 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
+        _3 = std::future::ResumeTy(move _4);
         drop(_1) -> [return: bb1, unwind continue];
     }
 

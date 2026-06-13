@@ -246,9 +246,7 @@ where
                     .evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                     .map_err(Into::into);
             }
-            ty::ConstKind::Unevaluated(uv) => {
-                self.cx().type_of(uv.kind.def_id()).instantiate(self.cx(), uv.args).skip_norm_wip()
-            }
+            ty::ConstKind::Unevaluated(uv) => uv.type_of(self.cx()).skip_norm_wip(),
             ty::ConstKind::Expr(_) => unimplemented!(
                 "`feature(generic_const_exprs)` is not supported in the new trait solver"
             ),
@@ -399,9 +397,9 @@ where
             TypingMode::Coherence | TypingMode::PostAnalysis | TypingMode::Codegen => false,
             // During analysis, opaques are rigid unless they may be defined by
             // the current body.
-            TypingMode::Analysis { defining_opaque_types_and_generators: non_rigid_opaques }
-            | TypingMode::Borrowck { defining_opaque_types: non_rigid_opaques }
-            | TypingMode::PostBorrowckAnalysis { defined_opaque_types: non_rigid_opaques } => {
+            TypingMode::Typeck { defining_opaque_types_and_generators: non_rigid_opaques }
+            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: non_rigid_opaques }
+            | TypingMode::PostBorrowck { defined_opaque_types: non_rigid_opaques } => {
                 !def_id.as_local().is_some_and(|def_id| non_rigid_opaques.contains(&def_id.into()))
             }
         }

@@ -5,7 +5,7 @@ use rustc_session::lint::builtin::MISPLACED_DIAGNOSTIC_ATTRIBUTES;
 use crate::ShouldEmit;
 use crate::attributes::diagnostic::*;
 use crate::attributes::prelude::*;
-use crate::errors::DiagnosticOnUnknownOnlyForImports;
+use crate::diagnostics::DiagnosticOnUnknownOnlyForImports;
 
 #[derive(Default)]
 pub(crate) struct OnUnknownParser {

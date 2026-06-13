@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fmt;
 
 use rustc_abi::Size;
@@ -177,6 +178,7 @@ macro_rules! types {
 }
 
 mod aarch64;
+mod amdgpu;
 mod arm;
 mod avr;
 mod bpf;
@@ -194,8 +196,10 @@ mod sparc;
 mod spirv;
 mod wasm;
 mod x86;
+mod xtensa;
 
 pub use aarch64::{AArch64InlineAsmReg, AArch64InlineAsmRegClass};
+pub use amdgpu::{AmdgpuInlineAsmReg, AmdgpuInlineAsmRegClass};
 pub use arm::{ArmInlineAsmReg, ArmInlineAsmRegClass};
 pub use avr::{AvrInlineAsmReg, AvrInlineAsmRegClass};
 pub use bpf::{BpfInlineAsmReg, BpfInlineAsmRegClass};
@@ -213,6 +217,7 @@ pub use sparc::{SparcInlineAsmReg, SparcInlineAsmRegClass};
 pub use spirv::{SpirVInlineAsmReg, SpirVInlineAsmRegClass};
 pub use wasm::{WasmInlineAsmReg, WasmInlineAsmRegClass};
 pub use x86::{X86InlineAsmReg, X86InlineAsmRegClass};
+pub use xtensa::{XtensaInlineAsmReg, XtensaInlineAsmRegClass};
 
 #[derive(Copy, Clone, Encodable, Decodable, Debug, Eq, PartialEq, Hash)]
 pub enum InlineAsmArch {
@@ -224,6 +229,7 @@ pub enum InlineAsmArch {
     RiscV32,
     RiscV64,
     Nvptx64,
+    Amdgpu,
     Hexagon,
     LoongArch32,
     LoongArch64,
@@ -237,6 +243,7 @@ pub enum InlineAsmArch {
     SpirV,
     Wasm32,
     Wasm64,
+    Xtensa,
     Bpf,
     Avr,
     Msp430,
@@ -252,6 +259,7 @@ impl InlineAsmArch {
             Arch::Arm => Some(Self::Arm),
             Arch::Arm64EC => Some(Self::Arm64EC),
             Arch::AArch64 => Some(Self::AArch64),
+            Arch::AmdGpu => Some(Self::Amdgpu),
             Arch::RiscV32 => Some(Self::RiscV32),
             Arch::RiscV64 => Some(Self::RiscV64),
             Arch::Nvptx64 => Some(Self::Nvptx64),
@@ -273,7 +281,8 @@ impl InlineAsmArch {
             Arch::Msp430 => Some(Self::Msp430),
             Arch::M68k => Some(Self::M68k),
             Arch::CSky => Some(Self::CSKY),
-            Arch::AmdGpu | Arch::Xtensa | Arch::Other(_) => None,
+            Arch::Xtensa => Some(Self::Xtensa),
+            Arch::Other(_) => None,
         }
     }
 }
@@ -283,6 +292,7 @@ impl InlineAsmArch {
 pub enum InlineAsmReg {
     X86(X86InlineAsmReg),
     Arm(ArmInlineAsmReg),
+    Amdgpu(AmdgpuInlineAsmReg),
     AArch64(AArch64InlineAsmReg),
     RiscV(RiscVInlineAsmReg),
     Nvptx(NvptxInlineAsmReg),
@@ -294,6 +304,7 @@ pub enum InlineAsmReg {
     Sparc(SparcInlineAsmReg),
     SpirV(SpirVInlineAsmReg),
     Wasm(WasmInlineAsmReg),
+    Xtensa(XtensaInlineAsmReg),
     Bpf(BpfInlineAsmReg),
     Avr(AvrInlineAsmReg),
     Msp430(Msp430InlineAsmReg),
@@ -304,24 +315,26 @@ pub enum InlineAsmReg {
 }
 
 impl InlineAsmReg {
-    pub fn name(self) -> &'static str {
+    pub fn name(self) -> Cow<'static, str> {
         match self {
-            Self::X86(r) => r.name(),
-            Self::Arm(r) => r.name(),
-            Self::AArch64(r) => r.name(),
-            Self::RiscV(r) => r.name(),
-            Self::PowerPC(r) => r.name(),
-            Self::Hexagon(r) => r.name(),
-            Self::LoongArch(r) => r.name(),
-            Self::Mips(r) => r.name(),
-            Self::S390x(r) => r.name(),
-            Self::Sparc(r) => r.name(),
-            Self::Bpf(r) => r.name(),
-            Self::Avr(r) => r.name(),
-            Self::Msp430(r) => r.name(),
-            Self::M68k(r) => r.name(),
-            Self::CSKY(r) => r.name(),
-            Self::Err => "<reg>",
+            Self::X86(r) => r.name().into(),
+            Self::Arm(r) => r.name().into(),
+            Self::AArch64(r) => r.name().into(),
+            Self::Amdgpu(r) => r.name().into(),
+            Self::RiscV(r) => r.name().into(),
+            Self::PowerPC(r) => r.name().into(),
+            Self::Hexagon(r) => r.name().into(),
+            Self::LoongArch(r) => r.name().into(),
+            Self::Mips(r) => r.name().into(),
+            Self::S390x(r) => r.name().into(),
+            Self::Sparc(r) => r.name().into(),
+            Self::Xtensa(r) => r.name().into(),
+            Self::Bpf(r) => r.name().into(),
+            Self::Avr(r) => r.name().into(),
+            Self::Msp430(r) => r.name().into(),
+            Self::M68k(r) => r.name().into(),
+            Self::CSKY(r) => r.name().into(),
+            Self::Err => "<reg>".into(),
         }
     }
 
@@ -330,6 +343,7 @@ impl InlineAsmReg {
             Self::X86(r) => InlineAsmRegClass::X86(r.reg_class()),
             Self::Arm(r) => InlineAsmRegClass::Arm(r.reg_class()),
             Self::AArch64(r) => InlineAsmRegClass::AArch64(r.reg_class()),
+            Self::Amdgpu(r) => InlineAsmRegClass::Amdgpu(r.reg_class()),
             Self::RiscV(r) => InlineAsmRegClass::RiscV(r.reg_class()),
             Self::PowerPC(r) => InlineAsmRegClass::PowerPC(r.reg_class()),
             Self::Hexagon(r) => InlineAsmRegClass::Hexagon(r.reg_class()),
@@ -337,6 +351,7 @@ impl InlineAsmReg {
             Self::Mips(r) => InlineAsmRegClass::Mips(r.reg_class()),
             Self::S390x(r) => InlineAsmRegClass::S390x(r.reg_class()),
             Self::Sparc(r) => InlineAsmRegClass::Sparc(r.reg_class()),
+            Self::Xtensa(r) => InlineAsmRegClass::Xtensa(r.reg_class()),
             Self::Bpf(r) => InlineAsmRegClass::Bpf(r.reg_class()),
             Self::Avr(r) => InlineAsmRegClass::Avr(r.reg_class()),
             Self::Msp430(r) => InlineAsmRegClass::Msp430(r.reg_class()),
@@ -356,6 +371,7 @@ impl InlineAsmReg {
             InlineAsmArch::AArch64 | InlineAsmArch::Arm64EC => {
                 Self::AArch64(AArch64InlineAsmReg::parse(name)?)
             }
+            InlineAsmArch::Amdgpu => Self::Amdgpu(AmdgpuInlineAsmReg::parse(name)?),
             InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => {
                 Self::RiscV(RiscVInlineAsmReg::parse(name)?)
             }
@@ -370,6 +386,7 @@ impl InlineAsmReg {
             InlineAsmArch::Mips | InlineAsmArch::Mips64 => {
                 Self::Mips(MipsInlineAsmReg::parse(name)?)
             }
+            InlineAsmArch::Xtensa => Self::Xtensa(XtensaInlineAsmReg::parse(name)?),
             InlineAsmArch::S390x => Self::S390x(S390xInlineAsmReg::parse(name)?),
             InlineAsmArch::Sparc | InlineAsmArch::Sparc64 => {
                 Self::Sparc(SparcInlineAsmReg::parse(name)?)
@@ -398,6 +415,7 @@ impl InlineAsmReg {
             Self::X86(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
             Self::Arm(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
             Self::AArch64(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
+            Self::Amdgpu(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
             Self::RiscV(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
             Self::PowerPC(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
             Self::Hexagon(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
@@ -409,6 +427,7 @@ impl InlineAsmReg {
             Self::Sparc(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
             Self::Bpf(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
             Self::Avr(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
+            Self::Xtensa(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
             Self::Msp430(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
             Self::M68k(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
             Self::CSKY(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
@@ -428,6 +447,7 @@ impl InlineAsmReg {
             Self::X86(r) => r.emit(out, arch, modifier),
             Self::Arm(r) => r.emit(out, arch, modifier),
             Self::AArch64(r) => r.emit(out, arch, modifier),
+            Self::Amdgpu(r) => r.emit(out, arch, modifier),
             Self::RiscV(r) => r.emit(out, arch, modifier),
             Self::PowerPC(r) => r.emit(out, arch, modifier),
             Self::Hexagon(r) => r.emit(out, arch, modifier),
@@ -435,6 +455,7 @@ impl InlineAsmReg {
             Self::Mips(r) => r.emit(out, arch, modifier),
             Self::S390x(r) => r.emit(out, arch, modifier),
             Self::Sparc(r) => r.emit(out, arch, modifier),
+            Self::Xtensa(r) => r.emit(out, arch, modifier),
             Self::Bpf(r) => r.emit(out, arch, modifier),
             Self::Avr(r) => r.emit(out, arch, modifier),
             Self::Msp430(r) => r.emit(out, arch, modifier),
@@ -449,6 +470,7 @@ impl InlineAsmReg {
             Self::X86(r) => r.overlapping_regs(|r| cb(Self::X86(r))),
             Self::Arm(r) => r.overlapping_regs(|r| cb(Self::Arm(r))),
             Self::AArch64(_) => cb(self),
+            Self::Amdgpu(r) => r.overlapping_regs(|r| cb(Self::Amdgpu(r))),
             Self::RiscV(_) => cb(self),
             Self::PowerPC(r) => r.overlapping_regs(|r| cb(Self::PowerPC(r))),
             Self::Hexagon(r) => r.overlapping_regs(|r| cb(Self::Hexagon(r))),
@@ -456,6 +478,7 @@ impl InlineAsmReg {
             Self::Mips(_) => cb(self),
             Self::S390x(r) => r.overlapping_regs(|r| cb(Self::S390x(r))),
             Self::Sparc(_) => cb(self),
+            Self::Xtensa(_) => cb(self),
             Self::Bpf(r) => r.overlapping_regs(|r| cb(Self::Bpf(r))),
             Self::Avr(r) => r.overlapping_regs(|r| cb(Self::Avr(r))),
             Self::Msp430(_) => cb(self),
@@ -472,6 +495,7 @@ pub enum InlineAsmRegClass {
     X86(X86InlineAsmRegClass),
     Arm(ArmInlineAsmRegClass),
     AArch64(AArch64InlineAsmRegClass),
+    Amdgpu(AmdgpuInlineAsmRegClass),
     RiscV(RiscVInlineAsmRegClass),
     Nvptx(NvptxInlineAsmRegClass),
     PowerPC(PowerPCInlineAsmRegClass),
@@ -482,6 +506,7 @@ pub enum InlineAsmRegClass {
     Sparc(SparcInlineAsmRegClass),
     SpirV(SpirVInlineAsmRegClass),
     Wasm(WasmInlineAsmRegClass),
+    Xtensa(XtensaInlineAsmRegClass),
     Bpf(BpfInlineAsmRegClass),
     Avr(AvrInlineAsmRegClass),
     Msp430(Msp430InlineAsmRegClass),
@@ -497,6 +522,7 @@ impl InlineAsmRegClass {
             Self::X86(r) => r.name(),
             Self::Arm(r) => r.name(),
             Self::AArch64(r) => r.name(),
+            Self::Amdgpu(r) => r.name(),
             Self::RiscV(r) => r.name(),
             Self::Nvptx(r) => r.name(),
             Self::PowerPC(r) => r.name(),
@@ -507,6 +533,7 @@ impl InlineAsmRegClass {
             Self::Sparc(r) => r.name(),
             Self::SpirV(r) => r.name(),
             Self::Wasm(r) => r.name(),
+            Self::Xtensa(r) => r.name(),
             Self::Bpf(r) => r.name(),
             Self::Avr(r) => r.name(),
             Self::Msp430(r) => r.name(),
@@ -524,6 +551,7 @@ impl InlineAsmRegClass {
             Self::X86(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::X86),
             Self::Arm(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Arm),
             Self::AArch64(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::AArch64),
+            Self::Amdgpu(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Amdgpu),
             Self::RiscV(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::RiscV),
             Self::Nvptx(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Nvptx),
             Self::PowerPC(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::PowerPC),
@@ -534,6 +562,7 @@ impl InlineAsmRegClass {
             Self::Sparc(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Sparc),
             Self::SpirV(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::SpirV),
             Self::Wasm(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Wasm),
+            Self::Xtensa(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Xtensa),
             Self::Bpf(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Bpf),
             Self::Avr(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Avr),
             Self::Msp430(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Msp430),
@@ -554,6 +583,7 @@ impl InlineAsmRegClass {
             Self::X86(r) => r.suggest_modifier(arch, ty),
             Self::Arm(r) => r.suggest_modifier(arch, ty),
             Self::AArch64(r) => r.suggest_modifier(arch, ty),
+            Self::Amdgpu(r) => r.suggest_modifier(arch, ty),
             Self::RiscV(r) => r.suggest_modifier(arch, ty),
             Self::Nvptx(r) => r.suggest_modifier(arch, ty),
             Self::PowerPC(r) => r.suggest_modifier(arch, ty),
@@ -564,6 +594,7 @@ impl InlineAsmRegClass {
             Self::Sparc(r) => r.suggest_modifier(arch, ty),
             Self::SpirV(r) => r.suggest_modifier(arch, ty),
             Self::Wasm(r) => r.suggest_modifier(arch, ty),
+            Self::Xtensa(r) => r.suggest_modifier(arch, ty),
             Self::Bpf(r) => r.suggest_modifier(arch, ty),
             Self::Avr(r) => r.suggest_modifier(arch, ty),
             Self::Msp430(r) => r.suggest_modifier(arch, ty),
@@ -584,6 +615,7 @@ impl InlineAsmRegClass {
             Self::X86(r) => r.default_modifier(arch),
             Self::Arm(r) => r.default_modifier(arch),
             Self::AArch64(r) => r.default_modifier(arch),
+            Self::Amdgpu(r) => r.default_modifier(arch),
             Self::RiscV(r) => r.default_modifier(arch),
             Self::Nvptx(r) => r.default_modifier(arch),
             Self::PowerPC(r) => r.default_modifier(arch),
@@ -594,6 +626,7 @@ impl InlineAsmRegClass {
             Self::Sparc(r) => r.default_modifier(arch),
             Self::SpirV(r) => r.default_modifier(arch),
             Self::Wasm(r) => r.default_modifier(arch),
+            Self::Xtensa(r) => r.default_modifier(arch),
             Self::Bpf(r) => r.default_modifier(arch),
             Self::Avr(r) => r.default_modifier(arch),
             Self::Msp430(r) => r.default_modifier(arch),
@@ -612,26 +645,28 @@ impl InlineAsmRegClass {
         self,
         arch: InlineAsmArch,
         allow_experimental_reg: bool,
-    ) -> &'static [(InlineAsmType, Option<Symbol>)] {
+    ) -> Cow<'static, [(InlineAsmType, Option<Symbol>)]> {
         match self {
-            Self::X86(r) => r.supported_types(arch, allow_experimental_reg),
-            Self::Arm(r) => r.supported_types(arch),
-            Self::AArch64(r) => r.supported_types(arch),
-            Self::RiscV(r) => r.supported_types(arch),
-            Self::Nvptx(r) => r.supported_types(arch),
-            Self::PowerPC(r) => r.supported_types(arch),
-            Self::Hexagon(r) => r.supported_types(arch),
-            Self::LoongArch(r) => r.supported_types(arch),
-            Self::Mips(r) => r.supported_types(arch),
-            Self::S390x(r) => r.supported_types(arch),
-            Self::Sparc(r) => r.supported_types(arch),
-            Self::SpirV(r) => r.supported_types(arch),
-            Self::Wasm(r) => r.supported_types(arch),
-            Self::Bpf(r) => r.supported_types(arch),
-            Self::Avr(r) => r.supported_types(arch),
-            Self::Msp430(r) => r.supported_types(arch),
-            Self::M68k(r) => r.supported_types(arch),
-            Self::CSKY(r) => r.supported_types(arch),
+            Self::X86(r) => r.supported_types(arch, allow_experimental_reg).into(),
+            Self::Arm(r) => r.supported_types(arch).into(),
+            Self::AArch64(r) => r.supported_types(arch).into(),
+            Self::Amdgpu(r) => r.supported_types(arch).into(),
+            Self::RiscV(r) => r.supported_types(arch).into(),
+            Self::Nvptx(r) => r.supported_types(arch).into(),
+            Self::PowerPC(r) => r.supported_types(arch).into(),
+            Self::Hexagon(r) => r.supported_types(arch).into(),
+            Self::LoongArch(r) => r.supported_types(arch).into(),
+            Self::Mips(r) => r.supported_types(arch).into(),
+            Self::S390x(r) => r.supported_types(arch).into(),
+            Self::Sparc(r) => r.supported_types(arch).into(),
+            Self::SpirV(r) => r.supported_types(arch).into(),
+            Self::Wasm(r) => r.supported_types(arch).into(),
+            Self::Xtensa(r) => r.supported_types(arch).into(),
+            Self::Bpf(r) => r.supported_types(arch).into(),
+            Self::Avr(r) => r.supported_types(arch).into(),
+            Self::Msp430(r) => r.supported_types(arch).into(),
+            Self::M68k(r) => r.supported_types(arch).into(),
+            Self::CSKY(r) => r.supported_types(arch).into(),
             Self::Err => unreachable!("Use of InlineAsmRegClass::Err"),
         }
     }
@@ -645,6 +680,7 @@ impl InlineAsmRegClass {
             InlineAsmArch::AArch64 | InlineAsmArch::Arm64EC => {
                 Self::AArch64(AArch64InlineAsmRegClass::parse(name)?)
             }
+            InlineAsmArch::Amdgpu => Self::Amdgpu(AmdgpuInlineAsmRegClass::parse(name)?),
             InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => {
                 Self::RiscV(RiscVInlineAsmRegClass::parse(name)?)
             }
@@ -669,6 +705,7 @@ impl InlineAsmRegClass {
             }
             InlineAsmArch::Bpf => Self::Bpf(BpfInlineAsmRegClass::parse(name)?),
             InlineAsmArch::Avr => Self::Avr(AvrInlineAsmRegClass::parse(name)?),
+            InlineAsmArch::Xtensa => Self::Xtensa(XtensaInlineAsmRegClass::parse(name)?),
             InlineAsmArch::Msp430 => Self::Msp430(Msp430InlineAsmRegClass::parse(name)?),
             InlineAsmArch::M68k => Self::M68k(M68kInlineAsmRegClass::parse(name)?),
             InlineAsmArch::CSKY => Self::CSKY(CSKYInlineAsmRegClass::parse(name)?),
@@ -682,6 +719,7 @@ impl InlineAsmRegClass {
             Self::X86(r) => r.valid_modifiers(arch),
             Self::Arm(r) => r.valid_modifiers(arch),
             Self::AArch64(r) => r.valid_modifiers(arch),
+            Self::Amdgpu(r) => r.valid_modifiers(arch),
             Self::RiscV(r) => r.valid_modifiers(arch),
             Self::Nvptx(r) => r.valid_modifiers(arch),
             Self::PowerPC(r) => r.valid_modifiers(arch),
@@ -692,6 +730,7 @@ impl InlineAsmRegClass {
             Self::Sparc(r) => r.valid_modifiers(arch),
             Self::SpirV(r) => r.valid_modifiers(arch),
             Self::Wasm(r) => r.valid_modifiers(arch),
+            Self::Xtensa(r) => r.valid_modifiers(arch),
             Self::Bpf(r) => r.valid_modifiers(arch),
             Self::Avr(r) => r.valid_modifiers(arch),
             Self::Msp430(r) => r.valid_modifiers(arch),
@@ -843,6 +882,11 @@ pub fn allocatable_registers(
             aarch64::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
             map
         }
+        InlineAsmArch::Amdgpu => {
+            let mut map = amdgpu::regclass_map();
+            amdgpu::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
+            map
+        }
         InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => {
             let mut map = riscv::regclass_map();
             riscv::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
@@ -893,6 +937,11 @@ pub fn allocatable_registers(
             wasm::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
             map
         }
+        InlineAsmArch::Xtensa => {
+            let mut map = xtensa::regclass_map();
+            xtensa::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
+            map
+        }
         InlineAsmArch::Bpf => {
             let mut map = bpf::regclass_map();
             bpf::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
@@ -940,6 +989,7 @@ pub enum InlineAsmClobberAbi {
     S390x,
     Bpf,
     Msp430,
+    Xtensa,
 }
 
 impl InlineAsmClobberAbi {
@@ -1018,6 +1068,10 @@ impl InlineAsmClobberAbi {
             },
             InlineAsmArch::Msp430 => match name {
                 "C" | "system" => Ok(InlineAsmClobberAbi::Msp430),
+                _ => Err(&["C", "system"]),
+            },
+            InlineAsmArch::Xtensa => match name {
+                "C" | "system" => Ok(InlineAsmClobberAbi::Xtensa),
                 _ => Err(&["C", "system"]),
             },
             _ => Err(&[]),
@@ -1327,6 +1381,42 @@ impl InlineAsmClobberAbi {
             InlineAsmClobberAbi::Msp430 => clobbered_regs! {
                 Msp430 Msp430InlineAsmReg {
                     r11, r12, r13, r14, r15,
+                }
+            },
+            InlineAsmClobberAbi::Xtensa => clobbered_regs! {
+                Xtensa XtensaInlineAsmReg {
+                    // Refs:
+                    // - Xtensa ISA Reference Manual, Section 8.1.4 & 8.1.6
+                    // - "Except for LITBASE, all non-privileged special registers are
+                    //   caller-saved."
+
+                    // Caller-saved general-purpose registers (a2-a11).
+                    // a0 is the return address (reserved by LLVM).
+                    // a1/sp is the stack pointer (reserved by LLVM).
+                    // a12-a15 are callee-saved.
+                    a2, a3, a4, a5, a6, a7,
+                    a8, a9, a10, a11,
+
+                    // All floating-point registers are caller-saved.
+                    f0, f1, f2, f3, f4, f5, f6, f7,
+                    f8, f9, f10, f11, f12, f13, f14, f15,
+
+                    // SAR (Shift Amount Register) - caller-saved, always present.
+                    sar,
+
+                    // SCOMPARE1 - caller-saved (s32c1i option).
+                    scompare1,
+
+                    // Loop registers - caller-saved (loop option).
+                    lbeg, lend, lcount,
+
+                    // MAC16 registers - caller-saved (mac16 option).
+                    acclo, acchi,
+                    m0, m1, m2, m3,
+
+                    // Boolean registers - caller-saved (boolean option).
+                    b0, b1, b2, b3, b4, b5, b6, b7,
+                    b8, b9, b10, b11, b12, b13, b14, b15,
                 }
             },
         }

@@ -1,5 +1,5 @@
-#![warn(clippy::suboptimal_flops, clippy::imprecise_flops)]
-#![allow(clippy::unnecessary_cast)]
+#![warn(clippy::imprecise_flops, clippy::suboptimal_flops)]
+#![expect(clippy::unnecessary_cast)]
 
 // FIXME(f16_f128): add tests for these types when `powf` is available
 

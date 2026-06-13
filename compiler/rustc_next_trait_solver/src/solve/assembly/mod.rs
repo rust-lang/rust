@@ -481,9 +481,9 @@ where
                 // See trait-system-refactor-initiative#226 for some ideas here.
                 let assemble_impls = match self.typing_mode() {
                     TypingMode::Coherence => true,
-                    TypingMode::Analysis { .. }
-                    | TypingMode::Borrowck { .. }
-                    | TypingMode::PostBorrowckAnalysis { .. }
+                    TypingMode::Typeck { .. }
+                    | TypingMode::PostTypeckUntilBorrowck { .. }
+                    | TypingMode::PostBorrowck { .. }
                     | TypingMode::PostAnalysis
                     | TypingMode::Codegen
                     | TypingMode::ErasedNotCoherence(MayBeErased) => !candidates.iter().any(|c| {
@@ -1054,10 +1054,10 @@ where
         let self_ty = goal.predicate.self_ty();
         // We only use this hack during HIR typeck.
         let opaque_types = match self.typing_mode() {
-            TypingMode::Analysis { .. } => self.opaques_with_sub_unified_hidden_type(self_ty),
+            TypingMode::Typeck { .. } => self.opaques_with_sub_unified_hidden_type(self_ty),
             TypingMode::Coherence
-            | TypingMode::Borrowck { .. }
-            | TypingMode::PostBorrowckAnalysis { .. }
+            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis
             | TypingMode::Codegen => vec![],
             TypingMode::ErasedNotCoherence(MayBeErased) => {

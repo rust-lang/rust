@@ -632,11 +632,11 @@ impl File {
         self.handle.read_at(buf, offset)
     }
 
-    pub fn read_buf(&self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.handle.read_buf(cursor)
     }
 
-    pub fn read_buf_at(&self, cursor: BorrowedCursor<'_>, offset: u64) -> io::Result<()> {
+    pub fn read_buf_at(&self, cursor: BorrowedCursor<'_, u8>, offset: u64) -> io::Result<()> {
         self.handle.read_buf_at(cursor, offset)
     }
 

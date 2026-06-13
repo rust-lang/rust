@@ -39,19 +39,14 @@ where
             ty::AliasTermKind::ProjectionTy { .. } | ty::AliasTermKind::ProjectionConst { .. } => {
                 self.normalize_associated_term(goal)
             }
-            ty::AliasTermKind::InherentTy { def_id } => {
-                self.normalize_inherent_associated_term(goal, def_id.into())
+            ty::AliasTermKind::InherentTy { .. } | ty::AliasTermKind::InherentConst { .. } => {
+                self.normalize_inherent_associated_term(goal)
             }
-            ty::AliasTermKind::InherentConst { def_id } => {
-                self.normalize_inherent_associated_term(goal, def_id.into())
-            }
-            ty::AliasTermKind::OpaqueTy { def_id } => self.normalize_opaque_type(goal, def_id),
+            ty::AliasTermKind::OpaqueTy { .. } => self.normalize_opaque_type(goal),
             ty::AliasTermKind::FreeTy { .. } | ty::AliasTermKind::FreeConst { .. } => {
-                self.normalize_free_alias(goal).map_err(Into::into)
+                self.normalize_free_alias(goal)
             }
-            ty::AliasTermKind::AnonConst { def_id } => {
-                self.normalize_anon_const(goal, def_id).map_err(Into::into)
-            }
+            ty::AliasTermKind::AnonConst { .. } => self.normalize_anon_const(goal),
         }
     }
 
@@ -121,11 +116,41 @@ where
     /// We know `term` to always be a fully unconstrained inference variable, so
     /// `eq` should never fail here. However, in case `term` contains aliases, we
     /// emit nested `AliasRelate` goals to structurally normalize the alias.
+    ///
+    /// Additionally, when `term` is a const, this registers a `ConstArgHasType`
+    /// goal to ensure that the const value's type matches the declared type of
+    /// the alias it was normalized from.
+    ///
+    /// You may reasonably wonder: shouldn't `wfcheck::check_type_const` already
+    /// catch any such type mismatch at the definition site, so that the
+    /// definition is tainted and we never even attempt to normalize a reference
+    /// to it? In principle that's exactly what should happen. However, we cannot
+    /// simply force the defining item's wfcheck to run before all uses are
+    /// normalized: wfcheck itself may depend on typeck, trait solving, and
+    /// normalization, so enforcing such a strict ordering would easily create
+    /// query cycles.
+    ///
+    /// However, when CTFE runs on a MIR body, normalizing a type const within
+    /// that body can change the type of the resulting value, causing the MIR
+    /// to become ill-formed. If `check_type_const` for that alias has not yet
+    /// reported its error, no prior error has been recorded and MIR validation
+    /// fires a `span_bug!`. Registering the obligation here ensures the type
+    /// mismatch is reported during normalization itself, tainting the MIR
+    /// before validation runs.
     pub fn instantiate_normalizes_to_term(
         &mut self,
         goal: Goal<I, NormalizesTo<I>>,
         term: I::Term,
     ) {
+        if let Some(ct) = term.as_const() {
+            let cx = self.cx();
+            let alias = goal.predicate.alias;
+            let expected_ty = alias.expect_ct().type_of(cx).skip_norm_wip();
+            self.add_goal(
+                GoalSource::Misc,
+                goal.with(cx, ty::ClauseKind::ConstArgHasType(ct, expected_ty)),
+            );
+        }
         self.eq(goal.param_env, goal.predicate.term, term)
             .expect("expected goal term to be fully unconstrained");
     }
@@ -168,8 +193,13 @@ where
         goal: Goal<I, Self>,
         assumption: I::Clause,
     ) -> Result<(), NoSolution> {
+        let alias_def_id = match goal.predicate.alias.kind {
+            ty::AliasTermKind::ProjectionTy { def_id } => def_id.into(),
+            ty::AliasTermKind::ProjectionConst { def_id } => def_id.into(),
+            _ => return Err(NoSolution),
+        };
         if let Some(projection_pred) = assumption.as_projection_clause()
-            && projection_pred.item_def_id() == goal.predicate.def_id()
+            && projection_pred.item_def_id() == alias_def_id
             && DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
                 goal.predicate.alias.args,
                 projection_pred.skip_binder().projection_term.args,
@@ -198,7 +228,7 @@ where
         // FIXME: We don't need these, since these are the type's own WF obligations.
         ecx.add_goals(
             GoalSource::AliasWellFormed,
-            cx.own_predicates_of(goal.predicate.def_id())
+            cx.own_predicates_of(goal.predicate.alias.expect_projection_def_id().into())
                 .iter_instantiated(cx, goal.predicate.alias.args)
                 .map(Unnormalized::skip_norm_wip)
                 .map(|pred| goal.with(cx, pred)),
@@ -237,6 +267,7 @@ where
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         let cx = ecx.cx();
 
+        let alias_def_id = goal.predicate.alias.expect_projection_def_id();
         let goal_trait_ref = goal.predicate.alias.trait_ref(cx);
         let impl_trait_ref = cx.impl_trait_ref(impl_def_id);
         if !DeepRejectCtxt::relate_rigid_infer(ecx.cx()).args_may_unify(
@@ -280,7 +311,7 @@ where
             // see tests/ui/generic-associated-types/must-prove-where-clauses-on-norm.rs.
             ecx.add_goals(
                 GoalSource::AliasWellFormed,
-                cx.own_predicates_of(goal.predicate.def_id())
+                cx.own_predicates_of(alias_def_id.into())
                     .iter_instantiated(cx, goal.predicate.alias.args)
                     .map(Unnormalized::skip_norm_wip)
                     .map(|pred| goal.with(cx, pred)),
@@ -296,53 +327,57 @@ where
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             };
 
-            let target_item_def_id = match ecx.fetch_eligible_assoc_item(
-                goal_trait_ref,
-                goal.predicate.def_id().try_into().unwrap(),
-                impl_def_id,
-            ) {
-                FetchEligibleAssocItemResponse::Found(target_item_def_id) => target_item_def_id,
-                FetchEligibleAssocItemResponse::NotFound(tm) => {
-                    match tm {
-                        // In case the associated item is hidden due to specialization,
-                        // normalizing this associated item is always ambiguous. Treating
-                        // the associated item as rigid would be incomplete and allow for
-                        // overlapping impls, see #105782.
-                        //
-                        // As this ambiguity is unavoidable we emit a nested ambiguous
-                        // goal instead of using `Certainty::AMBIGUOUS`. This allows us to
-                        // return the nested goals to the parent `AliasRelate` goal. This
-                        // would be relevant if any of the nested goals refer to the `term`.
-                        // This is not the case here and we only prefer adding an ambiguous
-                        // nested goal for consistency.
-                        ty::TypingMode::Coherence => {
-                            ecx.add_goal(GoalSource::Misc, goal.with(cx, PredicateKind::Ambiguous));
-                            return ecx
-                                .evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                                .map_err(Into::into);
-                        }
-                        // Outside of coherence, we treat the associated item as rigid instead.
-                        ty::TypingMode::Analysis { .. }
-                        | ty::TypingMode::Borrowck { .. }
-                        | ty::TypingMode::PostBorrowckAnalysis { .. }
-                        | ty::TypingMode::PostAnalysis
-                        | ty::TypingMode::Codegen => {
-                            ecx.structurally_instantiate_normalizes_to_term(
-                                goal,
-                                goal.predicate.alias,
-                            );
-                            return ecx
-                                .evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                                .map_err(Into::into);
-                        }
-                    };
-                }
-                FetchEligibleAssocItemResponse::Err(guar) => return error_response(ecx, guar),
-                FetchEligibleAssocItemResponse::NotFoundBecauseErased => {
-                    ecx.opaque_accesses.rerun_always(RerunReason::FetchEligibleAssocItem)?;
-                    return Err(NoSolution.into());
-                }
-            };
+            let target_item_def_id =
+                match ecx.fetch_eligible_assoc_item(goal_trait_ref, alias_def_id, impl_def_id) {
+                    FetchEligibleAssocItemResponse::Found(target_item_def_id) => target_item_def_id,
+                    FetchEligibleAssocItemResponse::NotFound(tm) => {
+                        match tm {
+                            // In case the associated item is hidden due to specialization,
+                            // normalizing this associated item is always ambiguous. Treating
+                            // the associated item as rigid would be incomplete and allow for
+                            // overlapping impls, see #105782.
+                            //
+                            // As this ambiguity is unavoidable we emit a nested ambiguous
+                            // goal instead of using `Certainty::AMBIGUOUS`. This allows us to
+                            // return the nested goals to the parent `AliasRelate` goal. This
+                            // would be relevant if any of the nested goals refer to the `term`.
+                            // This is not the case here and we only prefer adding an ambiguous
+                            // nested goal for consistency.
+                            ty::TypingMode::Coherence => {
+                                ecx.add_goal(
+                                    GoalSource::Misc,
+                                    goal.with(cx, PredicateKind::Ambiguous),
+                                );
+                                return ecx
+                                    .evaluate_added_goals_and_make_canonical_response(
+                                        Certainty::Yes,
+                                    )
+                                    .map_err(Into::into);
+                            }
+                            // Outside of coherence, we treat the associated item as rigid instead.
+                            ty::TypingMode::Typeck { .. }
+                            | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+                            | ty::TypingMode::PostBorrowck { .. }
+                            | ty::TypingMode::PostAnalysis
+                            | ty::TypingMode::Codegen => {
+                                ecx.structurally_instantiate_normalizes_to_term(
+                                    goal,
+                                    goal.predicate.alias,
+                                );
+                                return ecx
+                                    .evaluate_added_goals_and_make_canonical_response(
+                                        Certainty::Yes,
+                                    )
+                                    .map_err(Into::into);
+                            }
+                        };
+                    }
+                    FetchEligibleAssocItemResponse::Err(guar) => return error_response(ecx, guar),
+                    FetchEligibleAssocItemResponse::NotFoundBecauseErased => {
+                        ecx.opaque_accesses.rerun_always(RerunReason::FetchEligibleAssocItem)?;
+                        return Err(NoSolution.into());
+                    }
+                };
 
             if !cx.has_item_definition(target_item_def_id) {
                 // If the impl is missing an item, it's either because the user forgot to
@@ -538,7 +573,7 @@ where
         goal_kind: ty::ClosureKind,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         let cx = ecx.cx();
-        let def_id = goal.predicate.def_id().try_into().unwrap();
+        let def_id = goal.predicate.alias.expect_projection_ty_def_id();
 
         let env_region = match goal_kind {
             ty::ClosureKind::Fn | ty::ClosureKind::FnMut => goal.predicate.alias.args.region_at(2),
@@ -600,7 +635,7 @@ where
                 coroutine_return_ty.into(),
             )
         } else {
-            panic!("no such associated type in `AsyncFn*`: {:?}", goal.predicate.def_id())
+            panic!("no such associated type in `AsyncFn*`: {:?}", def_id)
         };
         let pred = ty::ProjectionPredicate { projection_term, term }.upcast(cx);
 
@@ -676,7 +711,10 @@ where
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         let cx = ecx.cx();
         let metadata_def_id = cx.require_projection_lang_item(SolverProjectionLangItem::Metadata);
-        assert_eq!(Into::<I::DefId>::into(metadata_def_id), goal.predicate.def_id());
+        assert_eq!(
+            ty::AliasTermKind::ProjectionTy { def_id: metadata_def_id },
+            goal.predicate.alias.kind
+        );
         let metadata_ty = match goal.predicate.self_ty().kind() {
             ty::Bool
             | ty::Char
@@ -900,7 +938,7 @@ where
         }
 
         let coroutine = args.as_coroutine();
-        let def_id = goal.predicate.def_id().try_into().unwrap();
+        let def_id = goal.predicate.alias.expect_projection_ty_def_id();
 
         let term = if cx.is_projection_lang_item(def_id, SolverProjectionLangItem::CoroutineReturn)
         {
@@ -908,7 +946,7 @@ where
         } else if cx.is_projection_lang_item(def_id, SolverProjectionLangItem::CoroutineYield) {
             coroutine.yield_ty().into()
         } else {
-            panic!("unexpected associated item `{:?}` for `{self_ty:?}`", goal.predicate.def_id())
+            panic!("unexpected associated item `{:?}` for `{self_ty:?}`", def_id)
         };
 
         Self::probe_and_consider_implied_clause(
@@ -1029,8 +1067,8 @@ where
         else {
             return Err(NoSolution.into());
         };
-        let ty = match ecx.cx().as_projection_lang_item(goal.predicate.def_id().try_into().unwrap())
-        {
+        let def_id = goal.predicate.alias.expect_projection_ty_def_id();
+        let ty = match ecx.cx().as_projection_lang_item(def_id) {
             Some(SolverProjectionLangItem::FieldBase) => base,
             Some(SolverProjectionLangItem::FieldType) => ty,
             _ => panic!("unexpected associated type {:?} in `Field`", goal.predicate),

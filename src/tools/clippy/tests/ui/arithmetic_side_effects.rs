@@ -2,15 +2,13 @@
 
 #![feature(f128)]
 #![feature(f16)]
-#![allow(
+#![expect(
     clippy::assign_op_pattern,
     clippy::erasing_op,
     clippy::identity_op,
     clippy::no_effect,
     clippy::op_ref,
-    clippy::unnecessary_owned_empty_strings,
-    arithmetic_overflow,
-    unconditional_panic
+    clippy::unnecessary_owned_empty_strings
 )]
 #![warn(clippy::arithmetic_side_effects)]
 

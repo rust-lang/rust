@@ -239,10 +239,10 @@ pub trait Interner:
     fn const_of_item(self, def_id: Self::DefId) -> ty::EarlyBinder<Self, Self::Const>;
     fn anon_const_kind(self, def_id: Self::DefId) -> ty::AnonConstKind;
 
+    fn def_span(self, def_id: Self::DefId) -> Self::Span;
+
     type AdtDef: AdtDef<Self>;
     fn adt_def(self, adt_def_id: Self::AdtId) -> Self::AdtDef;
-
-    fn alias_ty_kind_from_def_id(self, def_id: Self::DefId) -> ty::AliasTyKind<Self>;
 
     fn unevaluated_const_kind_from_def_id(
         self,

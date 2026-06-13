@@ -34,11 +34,7 @@ pub(super) fn fulfillment_error_for_no_solution<'tcx>(
         }
         ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, expected_ty)) => {
             let ct_ty = match ct.kind() {
-                ty::ConstKind::Unevaluated(uv) => infcx
-                    .tcx
-                    .type_of(uv.kind.def_id())
-                    .instantiate(infcx.tcx, uv.args)
-                    .skip_norm_wip(),
+                ty::ConstKind::Unevaluated(uv) => uv.type_of(infcx.tcx).skip_norm_wip(),
                 ty::ConstKind::Param(param_ct) => {
                     param_ct.find_const_ty_from_env(obligation.param_env)
                 }

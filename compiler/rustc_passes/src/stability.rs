@@ -12,9 +12,9 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, Visitor, VisitorExt};
 use rustc_hir::{
-    self as hir, AmbigArg, ConstStability, DefaultBodyStability, FieldDef, HirId, Item, ItemKind,
-    Path, Stability, StabilityLevel, StableSince, TraitRef, Ty, TyKind, UnstableReason, UsePath,
-    VERSION_PLACEHOLDER, Variant, find_attr,
+    self as hir, AmbigArg, ConstStability, Constness, DefaultBodyStability, FieldDef, HirId, Item,
+    ItemKind, Path, Stability, StabilityLevel, StableSince, TraitRef, Ty, TyKind, UnstableReason,
+    UsePath, VERSION_PLACEHOLDER, Variant, find_attr,
 };
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::lib_features::{FeatureStability, LibFeatures};
@@ -207,7 +207,7 @@ fn lookup_const_stability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ConstSt
             let parent_stab = tcx.lookup_stability(parent)?;
             if parent_stab.is_unstable()
                 && let Some(fn_sig) = tcx.hir_node_by_def_id(def_id).fn_sig()
-                && fn_sig.header.is_const()
+                && matches!(fn_sig.header.constness, Constness::Const { .. })
             {
                 let const_stable_indirect = find_attr!(tcx, def_id, RustcConstStableIndirect);
                 return Some(ConstStability::unmarked(const_stable_indirect, parent_stab));
@@ -229,7 +229,7 @@ fn lookup_const_stability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ConstSt
     // If this is a const fn but not annotated with stability markers, see if we can inherit
     // regular stability.
     if let Some(fn_sig) = tcx.hir_node_by_def_id(def_id).fn_sig()
-        && fn_sig.header.is_const()
+        && matches!(fn_sig.header.constness, Constness::Const { .. })
         && const_stab.is_none()
         // We only ever inherit unstable features.
         && let Some(inherit_regular_stab) = tcx.lookup_stability(def_id)
@@ -385,7 +385,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
         // implied), check if the function/method is const or the parent impl block is const.
         let fn_sig = self.tcx.hir_node_by_def_id(def_id).fn_sig();
         if let Some(fn_sig) = fn_sig
-            && !fn_sig.header.is_const()
+            && !matches!(fn_sig.header.constness, Constness::Const { .. })
             && const_stab.is_some()
             && find_attr_span!(RustcConstStability).is_some()
         {
@@ -652,7 +652,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     }
 
                     if features.const_trait_impl()
-                        && let hir::Constness::Const = constness
+                        && let hir::Constness::Const { .. } = constness
                     {
                         let stable_or_implied_stable = match const_stab {
                             None => true,
@@ -696,7 +696,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     }
                 }
 
-                if let hir::Constness::Const = constness
+                if let hir::Constness::Const { .. } = constness
                     && let Some(def_id) = of_trait.trait_ref.trait_def_id()
                 {
                     // FIXME(const_trait_impl): Improve the span here.

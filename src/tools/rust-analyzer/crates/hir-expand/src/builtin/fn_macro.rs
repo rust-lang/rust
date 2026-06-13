@@ -852,17 +852,9 @@ fn include_bytes_expand(
     span: Span,
 ) -> ExpandResult<tt::TopSubtree> {
     // FIXME: actually read the file here if the user asked for macro expansion
-    let underscore = sym::underscore;
-    let zero = tt::Literal {
-        text_and_suffix: sym::_0_u8,
-        span,
-        kind: tt::LitKind::Integer,
-        suffix_len: 3,
-    };
-    // We don't use a real length since we can't know the file length, so we use an underscore
-    // to infer it.
+    let pound = mk_pound(span);
     let res = quote! {span =>
-        &[#zero; #underscore]
+        builtin #pound include_bytes
     };
     ExpandResult::ok(res)
 }

@@ -399,6 +399,7 @@ impl MiniCore {
     ///
     /// This is probably over-engineered to support flags dependencies.
     pub fn source_code(mut self, raw_source: &str) -> String {
+        let raw_source = raw_source.replace("\r\n", "\n").replace('\r', "\n");
         let mut buf = String::new();
         let mut lines = raw_source.split_inclusive('\n');
 
@@ -579,4 +580,13 @@ mod m;
     );
     assert_eq!("/lib.rs", meta.path);
     assert_eq!(2, meta.env.len());
+}
+
+#[test]
+fn minicore_source_code_normalizes_line_endings() {
+    let source = MiniCore::RAW_SOURCE.replace("\r\n", "\n").replace('\r', "\n");
+    let source = source.replace('\n', "\r\n");
+    let source = MiniCore::from_flags(["option"]).source_code(&source);
+
+    assert!(!source.contains('\r'));
 }

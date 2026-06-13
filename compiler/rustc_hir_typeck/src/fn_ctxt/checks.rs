@@ -13,7 +13,6 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{Expr, ExprKind, FnRetTy, HirId, LangItem, Node, QPath, is_range_literal};
 use rustc_hir_analysis::check::potentially_plural_count;
-use rustc_hir_analysis::delegation::opt_get_delegation_info;
 use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, ResolvedStructPath};
 use rustc_index::IndexVec;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TypeTrace};
@@ -33,7 +32,7 @@ use tracing::debug;
 use crate::Expectation::*;
 use crate::TupleArgumentsFlag::*;
 use crate::coercion::CoerceMany;
-use crate::errors::SuggestPtrNullMut;
+use crate::diagnostics::SuggestPtrNullMut;
 use crate::fn_ctxt::arg_matrix::{ArgMatrix, Compatibility, Error, ExpectedIdx, ProvidedIdx};
 use crate::gather_locals::Declaration;
 use crate::inline_asm::InlineAsmCtxt;
@@ -42,7 +41,7 @@ use crate::method::probe::Mode::MethodCall;
 use crate::method::probe::ProbeScope::TraitsInScope;
 use crate::{
     BreakableCtxt, Diverges, Expectation, FnCtxt, GatherLocalsVisitor, LoweredTy, Needs,
-    TupleArgumentsFlag, errors, struct_span_code_err,
+    TupleArgumentsFlag, diagnostics, struct_span_code_err,
 };
 
 rustc_index::newtype_index! {
@@ -341,7 +340,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // If we are processing first arg of delegation then we could have adjusted it
             // in `execute_delegation_aware_arguments_check`.
-            let checked_ty = opt_get_delegation_info(self.tcx, self.body_id)
+            let checked_ty = self
+                .tcx
+                .hir_opt_delegation_info(self.body_id)
                 .and_then(|_| self.typeck_results.borrow().node_type_opt(provided_arg.hir_id))
                 .unwrap_or_else(|| self.check_expr_with_expectation(provided_arg, expectation));
 
@@ -469,7 +470,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty: Ty<'tcx>,
                     cast_ty: &str,
                 ) {
-                    sess.dcx().emit_err(errors::PassToVariadicFunction {
+                    sess.dcx().emit_err(diagnostics::PassToVariadicFunction {
                         span,
                         ty,
                         cast_ty,
@@ -510,7 +511,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let fn_ptr = self.resolve_vars_if_possible(fn_ptr).to_string();
 
                         let fn_item_spa = arg.span;
-                        tcx.sess.dcx().emit_err(errors::PassFnItemToVariadicFunction {
+                        tcx.sess.dcx().emit_err(diagnostics::PassFnItemToVariadicFunction {
                             span: fn_item_spa,
                             sugg_span: fn_item_spa.shrink_to_hi(),
                             replace: fn_ptr,
@@ -2052,7 +2053,7 @@ impl<'a, 'tcx> FnCallDiagCtxt<'a, 'tcx> {
             if cfg!(debug_assertions) {
                 span_bug!(self.call_metadata.error_span, "expected errors from argument matrix");
             } else {
-                let mut err = self.dcx().create_err(errors::ArgMismatchIndeterminate {
+                let mut err = self.dcx().create_err(diagnostics::ArgMismatchIndeterminate {
                     span: self.call_metadata.error_span,
                 });
                 self.arg_matching_ctxt.suggest_confusable(&mut err);
