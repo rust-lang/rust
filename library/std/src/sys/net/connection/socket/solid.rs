@@ -142,8 +142,13 @@ impl Socket {
             return Err(io::Error::ZERO_TIMEOUT);
         }
 
-        let mut timeout =
-            netc::timeval { tv_sec: timeout.as_secs() as _, tv_usec: timeout.subsec_micros() as _ };
+        let secs = if timeout.as_secs() > netc::c_long::MAX as u64 {
+            netc::c_long::MAX
+        } else {
+            timeout.as_secs() as netc::c_long
+        };
+
+        let mut timeout = netc::timeval { tv_sec: secs, tv_usec: timeout.subsec_micros() as _ };
         if timeout.tv_sec == 0 && timeout.tv_usec == 0 {
             timeout.tv_usec = 1;
         }
