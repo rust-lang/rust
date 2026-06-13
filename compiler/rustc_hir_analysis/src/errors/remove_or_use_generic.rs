@@ -77,8 +77,8 @@ pub(crate) fn suggest_to_remove_or_use_generic(
         return;
     };
 
-    // Get the Struct/ADT definition ID from the self type
-    let struct_def_id = if let TyKind::Path(QPath::Resolved(_, path)) = hir_impl.self_ty.kind
+    // Get the ADT definition ID from the self type.
+    let adt_def_id = if let TyKind::Path(QPath::Resolved(_, path)) = hir_impl.self_ty.kind
         && let Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Union, def_id) = path.res
     {
         def_id
@@ -86,8 +86,8 @@ pub(crate) fn suggest_to_remove_or_use_generic(
         return;
     };
 
-    // Count how many generic parameters are defined in the struct definition
-    let generics = tcx.generics_of(struct_def_id);
+    // Count how many generic parameters are defined in the ADT definition.
+    let generics = tcx.generics_of(adt_def_id);
     let total_params = generics
         .own_params
         .iter()
@@ -136,32 +136,30 @@ pub(crate) fn suggest_to_remove_or_use_generic(
         suggestions.push((hir_impl.generics.span_for_param_removal(index), String::new()));
     }
 
-    // Option B: Suggest adding only if there's an available parameter in the struct definition
-    // or the parameter is already used somewhere, then we suggest adding to the impl struct and the struct definition
+    // Option B: Suggest adding only if there's an available parameter in the ADT definition
+    // or the parameter is already used somewhere, then we suggest adding to the impl self type
+    // and the ADT definition.
     if provided_params < total_params || is_param_used {
         if let Some(args) = last_segment_args {
-            // Struct already has <...>, append to it
+            // Self type already has <...>, append to it.
             suggestions.push((args.span().unwrap().shrink_to_hi(), format!(", {}", param.name)));
         } else if let TyKind::Path(QPath::Resolved(_, path)) = hir_impl.self_ty.kind {
-            // Struct has no <...> yet, add it
+            // Self type has no <...> yet, add it.
             let seg = path.segments.last().unwrap();
             suggestions.push((seg.ident.span.shrink_to_hi(), format!("<{}>", param.name)));
         }
         if is_param_used {
-            // If the parameter is used in the body, we also want to suggest adding it to the struct definition if it's not already there
-            let struct_span = tcx.def_span(struct_def_id);
-            let last_param_span = if let Some(local_def_id) = struct_def_id.as_local() {
-                let hir_struct = tcx.hir_node_by_def_id(local_def_id).expect_item().expect_struct();
-                hir_struct.1.params.last().map(|param| param.span)
-            } else {
-                let generics = tcx.generics_of(struct_def_id);
-                generics.own_params.last().map(|param| tcx.def_span(param.def_id))
-            };
+            // If the parameter is used in the body, also suggest adding it to the ADT
+            // definition if it's not already there.
+            let adt_span = tcx.def_span(adt_def_id);
+            let generics = tcx.generics_of(adt_def_id);
+            let last_param_span =
+                generics.own_params.last().map(|param| tcx.def_span(param.def_id));
 
             if let Some(last_param_span) = last_param_span {
                 suggestions.push((last_param_span.shrink_to_hi(), format!(", {}", param.name)));
             } else {
-                suggestions.push((struct_span.shrink_to_hi(), format!("<{}>", param.name)));
+                suggestions.push((adt_span.shrink_to_hi(), format!("<{}>", param.name)));
             }
         }
     }
@@ -176,7 +174,7 @@ pub(crate) fn suggest_to_remove_or_use_generic(
             "use the {} parameter `{}` in the `{}` type and use it in the type definition",
             parameter_type,
             param.name,
-            tcx.def_path_str(struct_def_id)
+            tcx.def_path_str(adt_def_id)
         );
         diag.multipart_suggestion(
             msg,
