@@ -1,4 +1,4 @@
-error: called `filter(..).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(..)` instead
+error: called `filter(..).next()` on an `Iterator`
   --> tests/ui/filter_next_unfixable.rs:9:13
    |
 LL |       let _ = v.iter().filter(|&x| {
@@ -9,10 +9,11 @@ LL | |                             }
 LL | |                    ).next();
    | |___________________________^
    |
+   = help: use `.find(..)` instead
    = note: `-D clippy::filter-next` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::filter_next)]`
 
-error: called `filter(..).next_back()` on an `DoubleEndedIterator`. This is more succinctly expressed by calling `.rfind(..)` instead
+error: called `filter(..).next_back()` on an `DoubleEndedIterator`
   --> tests/ui/filter_next_unfixable.rs:15:13
    |
 LL |       let _ = v.iter().filter(|&x| {
@@ -22,30 +23,42 @@ LL | |                                 *x < 0
 LL | |                             }
 LL | |                    ).next_back();
    | |________________________________^
+   |
+   = help: use `.rfind(..)` instead
 
-error: called `filter(..).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(..)` instead
+error: called `filter(..).next()` on an `Iterator`
   --> tests/ui/filter_next_unfixable.rs:27:17
    |
 LL |         let _ = iter.filter(|_| true).next();
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `iter.find(|_| true)`
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: you will also need to make `iter` mutable, because `find` takes `&mut self`
   --> tests/ui/filter_next_unfixable.rs:26:13
    |
 LL |         let iter = (0..10);
    |             ^^^^
+help: use `.find(..)` instead
+   |
+LL -         let _ = iter.filter(|_| true).next();
+LL +         let _ = iter.find(|_| true);
+   |
 
-error: called `filter(..).next_back()` on an `DoubleEndedIterator`. This is more succinctly expressed by calling `.rfind(..)` instead
+error: called `filter(..).next_back()` on an `DoubleEndedIterator`
   --> tests/ui/filter_next_unfixable.rs:32:17
    |
 LL |         let _ = iter.filter(|_| true).next_back();
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `iter.rfind(|_| true)`
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: you will also need to make `iter` mutable, because `rfind` takes `&mut self`
   --> tests/ui/filter_next_unfixable.rs:31:13
    |
 LL |         let iter = (0..10);
    |             ^^^^
+help: use `.rfind(..)` instead
+   |
+LL -         let _ = iter.filter(|_| true).next_back();
+LL +         let _ = iter.rfind(|_| true);
+   |
 
 error: aborting due to 4 previous errors
 

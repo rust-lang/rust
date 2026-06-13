@@ -39,11 +39,10 @@ pub(super) fn check(
         cx,
         FILTER_NEXT,
         expr.span,
-        format!(
-            "called `filter(..).{next_method}()` on an `{required_trait}`. \
-            This is more succinctly expressed by calling `.{find_method}(..)` instead",
-        ),
+        format!("called `filter(..).{next_method}()` on an `{required_trait}`"),
         |diag| {
+            let sugg_msg = format!("use `.{find_method}(..)` instead");
+
             // add note if not multi-line
             let filter_snippet = snippet(cx, filter_arg.span, "..");
             if filter_snippet.lines().count() <= 1 {
@@ -57,9 +56,9 @@ pub(super) fn check(
                     (Applicability::MachineApplicable, None)
                 };
 
-                diag.span_suggestion(
+                diag.span_suggestion_verbose(
                     expr.span,
-                    "try",
+                    sugg_msg,
                     format!("{iter_snippet}.{find_method}({filter_snippet})"),
                     applicability,
                 );
@@ -72,6 +71,8 @@ pub(super) fn check(
                         ),
                     );
                 }
+            } else {
+                diag.help(sugg_msg);
             }
         },
     );
