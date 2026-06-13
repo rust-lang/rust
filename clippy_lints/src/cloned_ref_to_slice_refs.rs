@@ -64,15 +64,8 @@ impl<'a> ClonedRefToSliceRefs<'a> {
 
 impl<'tcx> LateLintPass<'tcx> for ClonedRefToSliceRefs<'_> {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
-        if self.msrv.meets(cx, {
-            if is_in_const_context(cx) {
-                msrvs::CONST_SLICE_FROM_REF
-            } else {
-                msrvs::SLICE_FROM_REF
-            }
-        })
-            // `&[foo.clone()]` expressions
-            && let ExprKind::AddrOf(_, mutability, arr) = &expr.kind
+        // `&[foo.clone()]` expressions
+        if let ExprKind::AddrOf(_, mutability, arr) = &expr.kind
             // mutable references would have a different meaning
             && mutability.is_not()
 
@@ -81,6 +74,14 @@ impl<'tcx> LateLintPass<'tcx> for ClonedRefToSliceRefs<'_> {
 
             // check for clones
             && let ExprKind::MethodCall(path, recv, _, _) = item.kind
+
+            && self.msrv.meets(cx, {
+                if is_in_const_context(cx) {
+                    msrvs::CONST_SLICE_FROM_REF
+                } else {
+                    msrvs::SLICE_FROM_REF
+                }
+            })
             && let Some(adjustment) = is_needless_clone_or_equivalent(cx, recv, path.ident.name, item.hir_id)
 
             // check for immutability or purity
