@@ -145,6 +145,8 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
                 },
             );
         } else {
+            // Report the method call's return type before adjustments required by its parent.
+            let unadjusted_expr_ty = cx.typeck_results().expr_ty(expr);
             match name {
                 // If `type_of(x) == T` and `x.borrow()` is used to get `&T`,
                 // then that should be allowed
@@ -152,12 +154,12 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
                 sym::noop_method_clone => cx.emit_span_lint(
                     SUSPICIOUS_DOUBLE_REF_OP,
                     span,
-                    SuspiciousDoubleRefCloneDiag { ty: expr_ty },
+                    SuspiciousDoubleRefCloneDiag { ty: unadjusted_expr_ty },
                 ),
                 sym::noop_method_deref => cx.emit_span_lint(
                     SUSPICIOUS_DOUBLE_REF_OP,
                     span,
-                    SuspiciousDoubleRefDerefDiag { ty: expr_ty },
+                    SuspiciousDoubleRefDerefDiag { ty: unadjusted_expr_ty },
                 ),
                 _ => return,
             }

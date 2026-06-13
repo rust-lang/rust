@@ -10,13 +10,13 @@ note: the lint level is defined here
 LL | #![deny(suspicious_double_ref_op, noop_method_call)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: using `.clone()` on a double reference, which returns `&mut &File` instead of cloning the inner type
+error: using `.clone()` on a double reference, which returns `&File` instead of cloning the inner type
   --> $DIR/suspicious-double-ref-op.rs:33:17
    |
 LL |     let _ = file.clone().write(&[]);
    |                 ^^^^^^^^
 
-error: using `.deref()` on a double reference, which returns `&mut &File` instead of dereferencing the inner type
+error: using `.deref()` on a double reference, which returns `&File` instead of dereferencing the inner type
   --> $DIR/suspicious-double-ref-op.rs:36:23
    |
 LL |     let _ = double_ref.deref().write(&[]);
