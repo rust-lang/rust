@@ -12,6 +12,10 @@ fn main() -> () {
         _1 = foo as for<'a> fn(&'a (), &'a ()) (PointerCoercion(ReifyFnPointer(Safe), AsCast));
         FakeRead(ForLet(None), _1);
         _0 = const ();
+        goto -> bb1;
+    }
+
+    bb1: {
         StorageDead(_1);
         return;
     }

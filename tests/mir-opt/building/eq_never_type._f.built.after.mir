@@ -21,6 +21,10 @@ fn _f(_1: !, _2: !) -> () {
     }
 
     bb1: {
+        goto -> bb2;
+    }
+
+    bb2: {
         StorageDead(_6);
         StorageLive(_7);
         StorageLive(_8);
@@ -29,25 +33,37 @@ fn _f(_1: !, _2: !) -> () {
         unreachable;
     }
 
-    bb2: {
+    bb3: {
         _7 = &_8;
-        StorageDead(_9);
-        _4 = <() as PartialEq>::eq(move _5, move _7) -> [return: bb3, unwind: bb5];
+        goto -> bb4;
     }
 
-    bb3: {
+    bb4: {
+        StorageDead(_9);
+        _4 = <() as PartialEq>::eq(move _5, move _7) -> [return: bb5, unwind: bb9];
+    }
+
+    bb5: {
+        goto -> bb6;
+    }
+
+    bb6: {
         StorageDead(_7);
         StorageDead(_5);
+        goto -> bb7;
+    }
+
+    bb7: {
         StorageDead(_8);
         StorageDead(_4);
         unreachable;
     }
 
-    bb4: {
+    bb8: {
         return;
     }
 
-    bb5 (cleanup): {
+    bb9 (cleanup): {
         resume;
     }
 }

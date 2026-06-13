@@ -12,13 +12,13 @@
       }
   
       bb1: {
--         falseUnwind -> [real: bb2, unwind: bb11];
+-         falseUnwind -> [real: bb2, unwind: bb12];
 +         falseUnwind -> [real: bb2, unwind: bb6];
       }
   
       bb2: {
           StorageLive(_2);
--         _2 = bar() -> [return: bb3, unwind: bb11];
+-         _2 = bar() -> [return: bb3, unwind: bb12];
 +         _2 = bar() -> [return: bb3, unwind: bb6];
       }
   
@@ -28,7 +28,7 @@
   
       bb4: {
           _0 = const ();
--         goto -> bb10;
+-         goto -> bb11;
 +         StorageDead(_2);
 +         return;
       }
@@ -51,16 +51,20 @@
 -     }
 - 
 -     bb9: {
+-         goto -> bb10;
+-     }
+- 
+-     bb10: {
           StorageDead(_2);
           goto -> bb1;
       }
   
--     bb10: {
+-     bb11: {
 -         StorageDead(_2);
 -         return;
 -     }
 - 
--     bb11 (cleanup): {
+-     bb12 (cleanup): {
 +     bb6 (cleanup): {
           resume;
       }

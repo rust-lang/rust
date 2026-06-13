@@ -532,22 +532,21 @@ fn construct_fn<'tcx>(
         region::Scope { local_id: body.id().hir_id.local_id, data: region::ScopeData::Arguments };
     let source_info = builder.source_info(span);
     let call_site_s = (call_site_scope, source_info);
-    let _: BlockAnd<()> = builder.in_scope(call_site_s, LintLevel::Inherited, |builder| {
-        let arg_scope_s = (arg_scope, source_info);
-        // Attribute epilogue to function's closing brace
-        let fn_end = span_with_body.shrink_to_hi();
-        let return_block = builder
-            .in_breakable_scope(None, Place::return_place(), fn_end, |builder| {
+    // Attribute epilogue to function's closing brace
+    let fn_end = span_with_body.shrink_to_hi();
+    let return_block = builder
+        .in_scope(call_site_s, LintLevel::Inherited, |builder| {
+            let arg_scope_s = (arg_scope, source_info);
+            builder.in_breakable_scope(None, Place::return_place(), fn_end, |builder| {
                 Some(builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
                     builder.args_and_body(START_BLOCK, arguments, arg_scope, expr)
                 }))
             })
-            .into_block();
-        let source_info = builder.source_info(fn_end);
-        builder.cfg.terminate(return_block, source_info, TerminatorKind::Return);
-        builder.build_drop_trees();
-        return_block.unit()
-    });
+        })
+        .into_block();
+    let source_info = builder.source_info(fn_end);
+    builder.cfg.terminate(return_block, source_info, TerminatorKind::Return);
+    builder.build_drop_trees();
 
     let mut body = builder.finish();
 

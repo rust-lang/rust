@@ -41,6 +41,10 @@
 - 
 -     bb5: {
           _0 = const ();
+-         goto -> bb6;
+-     }
+- 
+-     bb6: {
           StorageDead(_2);
           StorageDead(_1);
           return;

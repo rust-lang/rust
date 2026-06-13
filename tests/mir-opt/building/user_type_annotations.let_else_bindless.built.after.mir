@@ -23,13 +23,11 @@ fn let_else_bindless() -> () {
         _4 = &_5;
         _3 = &(*_4);
         _2 = (const 7_u32, const 12_u64, move _3);
-        StorageDead(_3);
-        PlaceMention(_2);
-        falseEdge -> [real: bb4, imaginary: bb3];
+        goto -> bb3;
     }
 
     bb1: {
-        _1 = core::panicking::panic(const "internal error: entered unreachable code") -> [return: bb2, unwind: bb6];
+        _1 = core::panicking::panic(const "internal error: entered unreachable code") -> [return: bb2, unwind: bb9];
     }
 
     bb2: {
@@ -37,26 +35,40 @@ fn let_else_bindless() -> () {
     }
 
     bb3: {
-        goto -> bb5;
+        StorageDead(_3);
+        PlaceMention(_2);
+        falseEdge -> [real: bb5, imaginary: bb4];
     }
 
     bb4: {
-        AscribeUserType(_2, +, UserTypeProjection { base: UserType(1), projs: [] });
-        StorageDead(_4);
-        StorageDead(_2);
-        _0 = const ();
-        StorageDead(_5);
-        return;
+        goto -> bb6;
     }
 
     bb5: {
+        AscribeUserType(_2, +, UserTypeProjection { base: UserType(1), projs: [] });
+        goto -> bb7;
+    }
+
+    bb6: {
         StorageDead(_4);
         StorageDead(_2);
         StorageDead(_5);
         goto -> bb1;
     }
 
-    bb6 (cleanup): {
+    bb7: {
+        StorageDead(_4);
+        StorageDead(_2);
+        _0 = const ();
+        goto -> bb8;
+    }
+
+    bb8: {
+        StorageDead(_5);
+        return;
+    }
+
+    bb9 (cleanup): {
         resume;
     }
 }

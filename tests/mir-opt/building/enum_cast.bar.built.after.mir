@@ -11,6 +11,10 @@ fn bar(_1: Bar) -> usize {
         _2 = move _1;
         _3 = discriminant(_2);
         _0 = move _3 as usize (IntToInt);
+        goto -> bb1;
+    }
+
+    bb1: {
         StorageDead(_2);
         return;
     }

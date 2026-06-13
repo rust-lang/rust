@@ -8,6 +8,10 @@ const <impl at $DIR/issue_110508.rs:10:1: 10:9>::BAR: Foo = {
         StorageLive(_1);
         _1 = ();
         _0 = Foo::Bar(move _1);
+        goto -> bb1;
+    }
+
+    bb1: {
         StorageDead(_1);
         return;
     }

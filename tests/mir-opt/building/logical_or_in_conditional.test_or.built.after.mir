@@ -20,24 +20,28 @@ fn test_or() -> () {
     }
 
     bb1: {
-        drop(_3) -> [return: bb3, unwind: bb13];
+        goto -> bb3;
     }
 
     bb2: {
-        goto -> bb4;
+        goto -> bb5;
     }
 
     bb3: {
-        StorageDead(_3);
-        StorageDead(_2);
-        goto -> bb9;
+        drop(_3) -> [return: bb4, unwind: bb16];
     }
 
     bb4: {
-        drop(_3) -> [return: bb5, unwind: bb13];
+        StorageDead(_3);
+        StorageDead(_2);
+        goto -> bb11;
     }
 
     bb5: {
+        drop(_3) -> [return: bb6, unwind: bb16];
+    }
+
+    bb6: {
         StorageDead(_3);
         StorageDead(_2);
         StorageLive(_4);
@@ -46,46 +50,54 @@ fn test_or() -> () {
         _6 = Droppy(const 1_u8);
         _5 = copy (_6.0: u8);
         _4 = Gt(move _5, const 1_u8);
-        switchInt(move _4) -> [0: bb7, otherwise: bb6];
-    }
-
-    bb6: {
-        drop(_6) -> [return: bb8, unwind: bb13];
+        switchInt(move _4) -> [0: bb8, otherwise: bb7];
     }
 
     bb7: {
-        goto -> bb10;
-    }
-
-    bb8: {
-        StorageDead(_6);
-        StorageDead(_5);
         goto -> bb9;
     }
 
-    bb9: {
-        _0 = const ();
+    bb8: {
         goto -> bb12;
+    }
+
+    bb9: {
+        drop(_6) -> [return: bb10, unwind: bb16];
     }
 
     bb10: {
-        drop(_6) -> [return: bb11, unwind: bb13];
+        StorageDead(_6);
+        StorageDead(_5);
+        goto -> bb11;
     }
 
     bb11: {
-        StorageDead(_6);
-        StorageDead(_5);
         _0 = const ();
-        goto -> bb12;
+        goto -> bb14;
     }
 
     bb12: {
+        drop(_6) -> [return: bb13, unwind: bb16];
+    }
+
+    bb13: {
+        StorageDead(_6);
+        StorageDead(_5);
+        _0 = const ();
+        goto -> bb14;
+    }
+
+    bb14: {
+        goto -> bb15;
+    }
+
+    bb15: {
         StorageDead(_4);
         StorageDead(_1);
         return;
     }
 
-    bb13 (cleanup): {
+    bb16 (cleanup): {
         resume;
     }
 }

@@ -19,6 +19,10 @@ fn let_uninit() -> () {
         StorageLive(_2);
         StorageLive(_3);
         _0 = const ();
+        goto -> bb1;
+    }
+
+    bb1: {
         StorageDead(_3);
         StorageDead(_2);
         StorageDead(_1);

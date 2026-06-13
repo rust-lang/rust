@@ -12,31 +12,43 @@ fn bar(_1: Box<[T]>) -> () {
         StorageLive(_2);
         StorageLive(_3);
         _3 = &(*_1);
-        _2 = <[T] as Index<usize>>::index(move _3, const 0_usize) -> [return: bb1, unwind: bb4];
+        _2 = <[T] as Index<usize>>::index(move _3, const 0_usize) -> [return: bb1, unwind: bb7];
     }
 
     bb1: {
-        StorageDead(_3);
-        PlaceMention((*_2));
-        StorageDead(_2);
-        _0 = const ();
-        drop(_1) -> [return: bb3, unwind: bb5];
+        goto -> bb2;
     }
 
     bb2: {
+        StorageDead(_3);
+        PlaceMention((*_2));
+        goto -> bb4;
+    }
+
+    bb3: {
         FakeRead(ForMatchedPlace(None), (*_2));
         unreachable;
     }
 
-    bb3: {
+    bb4: {
+        StorageDead(_2);
+        _0 = const ();
+        goto -> bb5;
+    }
+
+    bb5: {
+        drop(_1) -> [return: bb6, unwind: bb8];
+    }
+
+    bb6: {
         return;
     }
 
-    bb4 (cleanup): {
-        drop(_1) -> [return: bb5, unwind terminate(cleanup)];
+    bb7 (cleanup): {
+        drop(_1) -> [return: bb8, unwind terminate(cleanup)];
     }
 
-    bb5 (cleanup): {
+    bb8 (cleanup): {
         resume;
     }
 }

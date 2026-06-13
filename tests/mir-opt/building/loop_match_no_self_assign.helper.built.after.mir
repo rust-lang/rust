@@ -19,7 +19,7 @@ fn helper() -> u8 {
     }
 
     bb1: {
-        falseUnwind -> [real: bb2, unwind: bb11];
+        falseUnwind -> [real: bb2, unwind: bb13];
     }
 
     bb2: {
@@ -59,12 +59,20 @@ fn helper() -> u8 {
     }
 
     bb10: {
+        goto -> bb11;
+    }
+
+    bb11: {
         StorageDead(_2);
+        goto -> bb12;
+    }
+
+    bb12: {
         StorageDead(_1);
         return;
     }
 
-    bb11 (cleanup): {
+    bb13 (cleanup): {
         resume;
     }
 }

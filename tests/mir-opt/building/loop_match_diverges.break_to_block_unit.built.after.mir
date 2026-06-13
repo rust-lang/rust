@@ -18,7 +18,7 @@ fn break_to_block_unit() -> u8 {
     }
 
     bb1: {
-        falseUnwind -> [real: bb2, unwind: bb10];
+        falseUnwind -> [real: bb2, unwind: bb12];
     }
 
     bb2: {
@@ -54,12 +54,20 @@ fn break_to_block_unit() -> u8 {
     }
 
     bb9: {
+        goto -> bb10;
+    }
+
+    bb10: {
         StorageDead(_2);
+        goto -> bb11;
+    }
+
+    bb11: {
         StorageDead(_1);
         return;
     }
 
-    bb10 (cleanup): {
+    bb12 (cleanup): {
         resume;
     }
 }

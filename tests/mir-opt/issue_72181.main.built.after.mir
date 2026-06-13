@@ -19,27 +19,12 @@ fn main() -> () {
 
     bb0: {
         StorageLive(_1);
-        _1 = std::mem::size_of::<Foo>() -> [return: bb1, unwind: bb5];
+        _1 = std::mem::size_of::<Foo>() -> [return: bb1, unwind: bb9];
     }
 
     bb1: {
         PlaceMention(_1);
-        StorageDead(_1);
-        StorageLive(_2);
-        StorageLive(_3);
-        _3 = Foo { a: const 42_u64 };
-        StorageLive(_4);
-        _4 = Foo { a: const 10_u64 };
-        _2 = [move _3, move _4];
-        StorageDead(_4);
-        StorageDead(_3);
-        FakeRead(ForLet(None), _2);
-        StorageLive(_5);
-        StorageLive(_6);
-        _6 = const 0_usize;
-        FakeRead(ForIndex, _2);
-        _7 = Lt(copy _6, const 2_usize);
-        assert(move _7, "index out of bounds: the length is {} but the index is {}", const 2_usize, copy _6) -> [success: bb3, unwind: bb5];
+        goto -> bb3;
     }
 
     bb2: {
@@ -48,21 +33,52 @@ fn main() -> () {
     }
 
     bb3: {
-        _5 = copy (_2[_6].0: u64);
-        PlaceMention(_5);
-        StorageDead(_6);
-        StorageDead(_5);
-        _0 = const ();
-        StorageDead(_2);
-        return;
+        StorageDead(_1);
+        StorageLive(_2);
+        StorageLive(_3);
+        _3 = Foo { a: const 42_u64 };
+        StorageLive(_4);
+        _4 = Foo { a: const 10_u64 };
+        _2 = [move _3, move _4];
+        goto -> bb4;
     }
 
     bb4: {
+        StorageDead(_4);
+        StorageDead(_3);
+        FakeRead(ForLet(None), _2);
+        StorageLive(_5);
+        StorageLive(_6);
+        _6 = const 0_usize;
+        FakeRead(ForIndex, _2);
+        _7 = Lt(copy _6, const 2_usize);
+        assert(move _7, "index out of bounds: the length is {} but the index is {}", const 2_usize, copy _6) -> [success: bb5, unwind: bb9];
+    }
+
+    bb5: {
+        _5 = copy (_2[_6].0: u64);
+        PlaceMention(_5);
+        goto -> bb7;
+    }
+
+    bb6: {
         FakeRead(ForMatchedPlace(None), _5);
         unreachable;
     }
 
-    bb5 (cleanup): {
+    bb7: {
+        StorageDead(_6);
+        StorageDead(_5);
+        _0 = const ();
+        goto -> bb8;
+    }
+
+    bb8: {
+        StorageDead(_2);
+        return;
+    }
+
+    bb9 (cleanup): {
         resume;
     }
 }

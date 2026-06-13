@@ -67,7 +67,7 @@ fn main() -> () {
         StorageLive(_2);
         StorageLive(_3);
         StorageLive(_4);
-        _4 = function_with_bytes::<&*b"AAAA">() -> [return: bb1, unwind: bb23];
+        _4 = function_with_bytes::<&*b"AAAA">() -> [return: bb1, unwind: bb41];
     }
 
     bb1: {
@@ -79,6 +79,10 @@ fn main() -> () {
         _6 = &_7;
         _5 = &_6;
         _2 = (move _3, move _5);
+        goto -> bb2;
+    }
+
+    bb2: {
         StorageDead(_5);
         StorageDead(_3);
         PlaceMention(_2);
@@ -91,29 +95,33 @@ fn main() -> () {
         _11 = &(*_8);
         StorageLive(_12);
         _12 = &(*_9);
-        _10 = <&[u8] as PartialEq<&[u8; 4]>>::eq(move _11, move _12) -> [return: bb3, unwind: bb23];
+        _10 = <&[u8] as PartialEq<&[u8; 4]>>::eq(move _11, move _12) -> [return: bb4, unwind: bb41];
     }
 
-    bb2: {
+    bb3: {
         FakeRead(ForMatchedPlace(None), _2);
         unreachable;
     }
 
-    bb3: {
-        switchInt(move _10) -> [0: bb5, otherwise: bb4];
-    }
-
     bb4: {
-        StorageDead(_12);
-        StorageDead(_11);
-        goto -> bb9;
+        switchInt(move _10) -> [0: bb6, otherwise: bb5];
     }
 
     bb5: {
-        goto -> bb6;
+        goto -> bb7;
     }
 
     bb6: {
+        goto -> bb8;
+    }
+
+    bb7: {
+        StorageDead(_12);
+        StorageDead(_11);
+        goto -> bb14;
+    }
+
+    bb8: {
         StorageDead(_12);
         StorageDead(_11);
         StorageLive(_14);
@@ -132,57 +140,89 @@ fn main() -> () {
         _19 = &(*_20);
         StorageLive(_21);
         _21 = Option::<Arguments<'_>>::None;
-        _15 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _16, move _17, move _19, move _21) -> [return: bb7, unwind: bb23];
-    }
-
-    bb7: {
-        StorageDead(_21);
-        StorageDead(_19);
-        StorageDead(_17);
-        StorageDead(_16);
-        StorageDead(_20);
-        StorageDead(_18);
-        StorageDead(_15);
-        StorageDead(_14);
-        unreachable;
-    }
-
-    bb8: {
-        goto -> bb10;
+        _15 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _16, move _17, move _19, move _21) -> [return: bb9, unwind: bb41];
     }
 
     bb9: {
-        _1 = const ();
         goto -> bb10;
     }
 
     bb10: {
-        StorageDead(_10);
-        StorageDead(_9);
-        StorageDead(_8);
+        StorageDead(_21);
+        StorageDead(_19);
+        StorageDead(_17);
+        StorageDead(_16);
         goto -> bb11;
     }
 
     bb11: {
+        StorageDead(_20);
+        StorageDead(_18);
+        StorageDead(_15);
+        goto -> bb12;
+    }
+
+    bb12: {
+        StorageDead(_14);
+        unreachable;
+    }
+
+    bb13: {
+        goto -> bb15;
+    }
+
+    bb14: {
+        _1 = const ();
+        goto -> bb15;
+    }
+
+    bb15: {
+        goto -> bb16;
+    }
+
+    bb16: {
+        StorageDead(_10);
+        goto -> bb17;
+    }
+
+    bb17: {
+        StorageDead(_9);
+        StorageDead(_8);
+        goto -> bb18;
+    }
+
+    bb18: {
+        goto -> bb19;
+    }
+
+    bb19: {
         StorageDead(_7);
         StorageDead(_6);
         StorageDead(_4);
         StorageDead(_2);
+        goto -> bb20;
+    }
+
+    bb20: {
         StorageDead(_1);
         StorageLive(_22);
         StorageLive(_23);
         StorageLive(_24);
         StorageLive(_25);
-        _25 = function_with_bytes::<&*b"AAAA">() -> [return: bb12, unwind: bb23];
+        _25 = function_with_bytes::<&*b"AAAA">() -> [return: bb21, unwind: bb41];
     }
 
-    bb12: {
+    bb21: {
         _24 = &_25;
         StorageLive(_26);
         StorageLive(_27);
         _27 = const b"AAAA";
         _26 = &_27;
         _23 = (move _24, move _26);
+        goto -> bb22;
+    }
+
+    bb22: {
         StorageDead(_26);
         StorageDead(_24);
         PlaceMention(_23);
@@ -195,29 +235,33 @@ fn main() -> () {
         _31 = &(*_28);
         StorageLive(_32);
         _32 = &(*_29);
-        _30 = <&[u8] as PartialEq<&[u8; 4]>>::eq(move _31, move _32) -> [return: bb14, unwind: bb23];
+        _30 = <&[u8] as PartialEq<&[u8; 4]>>::eq(move _31, move _32) -> [return: bb24, unwind: bb41];
     }
 
-    bb13: {
+    bb23: {
         FakeRead(ForMatchedPlace(None), _23);
         unreachable;
     }
 
-    bb14: {
-        switchInt(move _30) -> [0: bb16, otherwise: bb15];
+    bb24: {
+        switchInt(move _30) -> [0: bb26, otherwise: bb25];
     }
 
-    bb15: {
+    bb25: {
+        goto -> bb27;
+    }
+
+    bb26: {
+        goto -> bb28;
+    }
+
+    bb27: {
         StorageDead(_32);
         StorageDead(_31);
-        goto -> bb20;
+        goto -> bb34;
     }
 
-    bb16: {
-        goto -> bb17;
-    }
-
-    bb17: {
+    bb28: {
         StorageDead(_32);
         StorageDead(_31);
         StorageLive(_34);
@@ -236,47 +280,75 @@ fn main() -> () {
         _39 = &(*_40);
         StorageLive(_41);
         _41 = Option::<Arguments<'_>>::None;
-        _35 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _36, move _37, move _39, move _41) -> [return: bb18, unwind: bb23];
+        _35 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _36, move _37, move _39, move _41) -> [return: bb29, unwind: bb41];
     }
 
-    bb18: {
+    bb29: {
+        goto -> bb30;
+    }
+
+    bb30: {
         StorageDead(_41);
         StorageDead(_39);
         StorageDead(_37);
         StorageDead(_36);
+        goto -> bb31;
+    }
+
+    bb31: {
         StorageDead(_40);
         StorageDead(_38);
         StorageDead(_35);
+        goto -> bb32;
+    }
+
+    bb32: {
         StorageDead(_34);
         unreachable;
     }
 
-    bb19: {
-        goto -> bb21;
+    bb33: {
+        goto -> bb35;
     }
 
-    bb20: {
+    bb34: {
         _22 = const ();
-        goto -> bb21;
+        goto -> bb35;
     }
 
-    bb21: {
+    bb35: {
+        goto -> bb36;
+    }
+
+    bb36: {
         StorageDead(_30);
+        goto -> bb37;
+    }
+
+    bb37: {
         StorageDead(_29);
         StorageDead(_28);
-        goto -> bb22;
+        goto -> bb38;
     }
 
-    bb22: {
+    bb38: {
+        goto -> bb39;
+    }
+
+    bb39: {
         StorageDead(_27);
         StorageDead(_25);
         StorageDead(_23);
+        goto -> bb40;
+    }
+
+    bb40: {
         StorageDead(_22);
         _0 = const ();
         return;
     }
 
-    bb23 (cleanup): {
+    bb41 (cleanup): {
         resume;
     }
 }

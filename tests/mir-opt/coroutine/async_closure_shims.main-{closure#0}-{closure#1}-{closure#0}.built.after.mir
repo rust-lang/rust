@@ -31,21 +31,37 @@ yields ()
         _5 = &(*(_1.1: &i32));
         FakeRead(ForLet(None), _5);
         _0 = const ();
-        StorageDead(_5);
-        StorageDead(_4);
-        StorageDead(_3);
-        drop(_1) -> [return: bb1, unwind: bb3, drop: bb2];
+        goto -> bb1;
     }
 
     bb1: {
-        return;
+        StorageDead(_5);
+        goto -> bb2;
     }
 
     bb2: {
+        StorageDead(_4);
+        goto -> bb3;
+    }
+
+    bb3: {
+        StorageDead(_3);
+        goto -> bb4;
+    }
+
+    bb4: {
+        drop(_1) -> [return: bb5, unwind: bb7, drop: bb6];
+    }
+
+    bb5: {
+        return;
+    }
+
+    bb6: {
         coroutine_drop;
     }
 
-    bb3 (cleanup): {
+    bb7 (cleanup): {
         resume;
     }
 }

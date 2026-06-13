@@ -19,7 +19,7 @@ fn test_complex() -> () {
     bb0: {
         StorageLive(_1);
         StorageLive(_2);
-        _2 = E::f() -> [return: bb1, unwind: bb35];
+        _2 = E::f() -> [return: bb1, unwind: bb42];
     }
 
     bb1: {
@@ -29,7 +29,7 @@ fn test_complex() -> () {
     }
 
     bb2: {
-        goto -> bb21;
+        goto -> bb23;
     }
 
     bb3: {
@@ -42,7 +42,7 @@ fn test_complex() -> () {
 
     bb5: {
         StorageLive(_4);
-        _4 = always_true() -> [return: bb6, unwind: bb35];
+        _4 = always_true() -> [return: bb6, unwind: bb42];
     }
 
     bb6: {
@@ -60,94 +60,89 @@ fn test_complex() -> () {
     }
 
     bb8: {
-        goto -> bb14;
+        goto -> bb15;
     }
 
     bb9: {
-        drop(_7) -> [return: bb11, unwind: bb35];
+        goto -> bb11;
     }
 
     bb10: {
-        goto -> bb12;
+        goto -> bb13;
     }
 
     bb11: {
-        StorageDead(_7);
-        StorageDead(_6);
-        goto -> bb18;
+        drop(_7) -> [return: bb12, unwind: bb42];
     }
 
     bb12: {
-        drop(_7) -> [return: bb13, unwind: bb35];
+        StorageDead(_7);
+        StorageDead(_6);
+        goto -> bb20;
     }
 
     bb13: {
-        StorageDead(_7);
-        StorageDead(_6);
-        goto -> bb14;
+        drop(_7) -> [return: bb14, unwind: bb42];
     }
 
     bb14: {
+        StorageDead(_7);
+        StorageDead(_6);
+        goto -> bb15;
+    }
+
+    bb15: {
         StorageLive(_8);
         StorageLive(_9);
         StorageLive(_10);
         _10 = Droppy(const 1_u8);
         _9 = copy (_10.0: u8);
         _8 = Gt(move _9, const 1_u8);
-        switchInt(move _8) -> [0: bb16, otherwise: bb15];
-    }
-
-    bb15: {
-        drop(_10) -> [return: bb17, unwind: bb35];
+        switchInt(move _8) -> [0: bb17, otherwise: bb16];
     }
 
     bb16: {
-        goto -> bb19;
-    }
-
-    bb17: {
-        StorageDead(_10);
-        StorageDead(_9);
         goto -> bb18;
     }
 
-    bb18: {
-        _1 = const ();
-        StorageDead(_2);
-        goto -> bb22;
-    }
-
-    bb19: {
-        drop(_10) -> [return: bb20, unwind: bb35];
-    }
-
-    bb20: {
-        StorageDead(_10);
-        StorageDead(_9);
+    bb17: {
         goto -> bb21;
     }
 
-    bb21: {
-        StorageDead(_2);
+    bb18: {
+        drop(_10) -> [return: bb19, unwind: bb42];
+    }
+
+    bb19: {
+        StorageDead(_10);
+        StorageDead(_9);
+        goto -> bb20;
+    }
+
+    bb20: {
         _1 = const ();
-        goto -> bb22;
+        goto -> bb24;
+    }
+
+    bb21: {
+        drop(_10) -> [return: bb22, unwind: bb42];
     }
 
     bb22: {
-        StorageDead(_8);
-        StorageDead(_5);
-        StorageDead(_4);
-        StorageDead(_1);
-        StorageLive(_11);
-        _11 = always_true() -> [return: bb23, unwind: bb35];
+        StorageDead(_10);
+        StorageDead(_9);
+        goto -> bb23;
     }
 
     bb23: {
-        switchInt(move _11) -> [0: bb25, otherwise: bb24];
+        StorageDead(_2);
+        _1 = const ();
+        goto -> bb25;
     }
 
     bb24: {
-        goto -> bb33;
+        StorageDead(_2);
+        goto -> bb25;
     }
 
     bb25: {
@@ -155,50 +150,83 @@ fn test_complex() -> () {
     }
 
     bb26: {
-        StorageLive(_12);
-        _12 = E::f() -> [return: bb27, unwind: bb35];
+        StorageDead(_8);
+        StorageDead(_5);
+        StorageDead(_4);
+        goto -> bb27;
     }
 
     bb27: {
-        PlaceMention(_12);
-        _13 = discriminant(_12);
-        switchInt(move _13) -> [1: bb29, otherwise: bb28];
+        StorageDead(_1);
+        StorageLive(_11);
+        _11 = always_true() -> [return: bb28, unwind: bb42];
     }
 
     bb28: {
-        goto -> bb32;
+        switchInt(move _11) -> [0: bb30, otherwise: bb29];
     }
 
     bb29: {
-        falseEdge -> [real: bb31, imaginary: bb28];
+        goto -> bb38;
     }
 
     bb30: {
-        goto -> bb28;
+        goto -> bb31;
     }
 
     bb31: {
-        _0 = const ();
-        StorageDead(_12);
-        goto -> bb34;
+        StorageLive(_12);
+        _12 = E::f() -> [return: bb32, unwind: bb42];
     }
 
     bb32: {
-        StorageDead(_12);
-        goto -> bb33;
+        PlaceMention(_12);
+        _13 = discriminant(_12);
+        switchInt(move _13) -> [1: bb34, otherwise: bb33];
     }
 
     bb33: {
-        _0 = const ();
-        goto -> bb34;
+        goto -> bb37;
     }
 
     bb34: {
+        falseEdge -> [real: bb36, imaginary: bb33];
+    }
+
+    bb35: {
+        goto -> bb33;
+    }
+
+    bb36: {
+        _0 = const ();
+        goto -> bb39;
+    }
+
+    bb37: {
+        StorageDead(_12);
+        goto -> bb38;
+    }
+
+    bb38: {
+        _0 = const ();
+        goto -> bb40;
+    }
+
+    bb39: {
+        StorageDead(_12);
+        goto -> bb40;
+    }
+
+    bb40: {
+        goto -> bb41;
+    }
+
+    bb41: {
         StorageDead(_11);
         return;
     }
 
-    bb35 (cleanup): {
+    bb42 (cleanup): {
         resume;
     }
 }

@@ -26,47 +26,63 @@ fn main() -> () {
         AscribeUserType(_1, o, UserTypeProjection { base: UserType(1), projs: [] });
         PlaceMention(_1);
         _6 = discriminant(_1);
-        switchInt(move _6) -> [1: bb4, otherwise: bb3];
+        switchInt(move _6) -> [1: bb6, otherwise: bb5];
     }
 
     bb1: {
         StorageLive(_3);
         StorageLive(_4);
-        _4 = std::rt::begin_panic::<&str>(const "explicit panic") -> [return: bb2, unwind: bb8];
+        _4 = std::rt::begin_panic::<&str>(const "explicit panic") -> [return: bb2, unwind: bb12];
     }
 
     bb2: {
+        goto -> bb3;
+    }
+
+    bb3: {
         StorageDead(_4);
+        goto -> bb4;
+    }
+
+    bb4: {
         StorageDead(_3);
         unreachable;
     }
 
-    bb3: {
-        goto -> bb7;
-    }
-
-    bb4: {
-        falseEdge -> [real: bb6, imaginary: bb3];
-    }
-
     bb5: {
-        goto -> bb3;
+        goto -> bb9;
     }
 
     bb6: {
+        falseEdge -> [real: bb8, imaginary: bb5];
+    }
+
+    bb7: {
+        goto -> bb5;
+    }
+
+    bb8: {
         StorageLive(_5);
         _5 = copy ((_1 as Some).0: u8);
         _0 = const ();
+        goto -> bb10;
+    }
+
+    bb9: {
+        goto -> bb1;
+    }
+
+    bb10: {
         StorageDead(_5);
+        goto -> bb11;
+    }
+
+    bb11: {
         StorageDead(_1);
         return;
     }
 
-    bb7: {
-        goto -> bb1;
-    }
-
-    bb8 (cleanup): {
+    bb12 (cleanup): {
         resume;
     }
 }
