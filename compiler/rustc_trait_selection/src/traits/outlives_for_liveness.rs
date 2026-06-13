@@ -3,54 +3,39 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::bug;
 use rustc_middle::ty::{
-    self, Flags, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    self, Flags, ImplTraitInTraitData, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor,
 };
 
 use crate::infer::outlives::test_type_match;
 use crate::infer::region_constraints::VerifyIfEq;
 use crate::regions::{region_known_to_outlive, ty_known_to_outlive};
 
-/// For a given opaque type, this returns the set of (identity) generic args that are relevant
-/// for liveness, that can be inferred from outlives bounds on the opaque. Callers should
-/// instantiate the returned args with the concrete args of the alias.
+/// For a given alias type, this returns the set of (identity) generic args that
+/// are relevant for liveness, that can be inferred from outlives bounds on the
+/// alias itself, and the explicit and implicit outlives clauses of the alias.
+/// Callers should instantiate the returned args with the concrete args of the alias.
 ///
 /// There are three cases to consider:
 /// 1. If there are *no* outlives bounds, then we return None.
-/// 2. If there is a `'static` outlives bound, then we know that all args are irrelevant, so we return an empty list.
-/// 3. If there are *any* outlives bounds, then we find any args that are known to outlive those
-///    bounds -- those are the only args whose regions the underlying type could capture.
-///
-/// Note that the returned args can include *type* args: e.g. given a `T: 'a` bound in the
-/// defining scope, the underlying type of an opaque with an `'a` outlives bound can capture `T`,
-/// and so all the regions of the instantiated type arg must be considered live.
+/// 2. If there is a `'static` outlives bound, then we know that all args are
+///    irrelevant, so we return an empty list.
+/// 3. If there are *any* outlives bounds, then we find any args that are known
+///    to outlive those bounds, since those are the args whose regions the
+///    underlying type could capture.
 #[tracing::instrument(level = "debug", skip(tcx), ret)]
 pub(crate) fn live_args_for_alias_from_outlives_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
+    kind: ty::AliasTyKind<'tcx>,
 ) -> Option<ty::EarlyBinder<'tcx, Vec<ty::GenericArg<'tcx>>>> {
-    match tcx.def_kind(def_id) {
-        DefKind::AssocTy | DefKind::TyAlias => {
-            live_args_for_projection_from_outlives_bounds(tcx, def_id)
-        }
-        DefKind::OpaqueTy => live_args_for_opaque_from_outlives_bounds(tcx, def_id),
-        kind => {
-            bug!("improper def_kind {kind:?} passed to `live_args_for_alias_from_outlives_bounds`")
-        }
-    }
-}
-
-#[tracing::instrument(level = "debug", skip(tcx), ret)]
-pub(crate) fn live_args_for_opaque_from_outlives_bounds<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
-) -> Option<ty::EarlyBinder<'tcx, Vec<ty::GenericArg<'tcx>>>> {
+    let def_id = kind.def_id();
     let self_identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
 
-    // We first want to collect the outlives bounds of the opaque.
+    // We first want to collect the outlives bounds of the alias.
     let bounds = tcx.item_bounds(def_id).instantiate_identity().skip_norm_wip();
     tracing::debug!(?bounds);
-    let alias_ty = Ty::new_opaque(tcx, def_id.to_def_id(), self_identity_args);
-    let opaque_outlives_regions: Vec<_> = bounds
+    let alias_ty = Ty::new_alias(tcx, ty::AliasTy::new_from_args(tcx, kind, self_identity_args));
+    let outlives_regions: Vec<_> = bounds
         .iter()
         .filter_map(|clause| {
             let outlives = clause.as_type_outlives_clause()?;
@@ -68,66 +53,87 @@ pub(crate) fn live_args_for_opaque_from_outlives_bounds<'tcx>(
             }
         })
         .collect();
-    tracing::debug!(?opaque_outlives_regions);
+    tracing::debug!(?outlives_regions);
 
     // If there are no outlives bounds, then all (non-bivariant) args are potentially live.
-    if opaque_outlives_regions.is_empty() {
+    if outlives_regions.is_empty() {
         return None;
     }
 
-    // If any of the outlives bounds are `'static`, then we know the opaque doesn't capture
-    // *any* regions, so we can skip visiting any regions at all.
+    // If any of the outlives bounds are `'static`, then we know the alias
+    // doesn't capture *any* regions, so we can skip visiting any regions at all.
     //
-    // Thinking about it, I was originally a bit concerned about something like `'a: 'static`, and
-    // whether or not we need to mark `'a` as live. I don't think *today* we do, since I think regions
-    // that outlive `'static` are special enough, but I *could* imagine some world where we need to be
-    // more careful about this. Given I can't find a test that goes wrong, I'm going to leave in this
-    // optimization.
-    if opaque_outlives_regions.contains(&tcx.lifetimes.re_static) {
-        tracing::debug!("opaque has a 'static outlives bound, so skipping visiting any regions");
+    // I was originally a bit concerned about something like `'a: 'static`, and
+    // whether or not we need to mark `'a` as live. I don't think *today* we do,
+    // since I think regions that outlive `'static` are special enough, but I
+    // *could* imagine some world where we need to be more careful about this.
+    // Given I can't find a test that goes wrong, I'm going to leave in this optimization.
+    if outlives_regions.contains(&tcx.lifetimes.re_static) {
+        tracing::debug!("alias has a 'static outlives bound, so skipping visiting any regions");
         return Some(ty::EarlyBinder::bind(vec![]));
     }
 
     // Okay, so we know we have some outlives bounds, and that none of them are `'static`.
-    // Now, we need to find all other potentially-live regions,
-    // those that outlive an outlives-bound region and are captured.
-    // We will map both the opaque outlives regions and the set of captured regions
-    // back to the parent, and then use all bounds (explicit and implied) to
-    // find the set of captured regions that outlive the outlives bounds.
+    // Now, we need to find all other potentially-live args, those that outlive
+    // an outlives-bound region. `args_known_to_outlive_alias_params` does this
+    // for us, and in the case of opaques only includes *captured* regions, too.
 
-    let opaque_captured_lifetimes = tcx.opaque_captured_lifetimes(def_id);
-    tracing::debug!(?opaque_captured_lifetimes);
-
-    // Map the outlives regions to the parent regions
-    let generics = tcx.generics_of(def_id);
-    let parent_outlives_regions: Vec<_> = opaque_outlives_regions
-        .iter()
-        .map(|opaque_region| {
-            let region_def_id = match opaque_region.kind() {
-                ty::ReEarlyParam(ebr) => generics.param_at(ebr.index as usize, tcx).def_id,
-                _ => panic!("unexpected region `{opaque_region}` in opaque bounds"),
-            };
-            let region_param =
-                generics.own_params.iter().find(|param| param.def_id == region_def_id).unwrap();
-            let (_, opaque_region_def_id) = opaque_captured_lifetimes
-                .iter()
-                .find(|(_, opaque_r)| opaque_r.to_def_id() == region_def_id)
-                .unwrap();
-            let parent_region = tcx.map_opaque_lifetime_to_parent_lifetime(*opaque_region_def_id);
-            tracing::debug!(?region_def_id, ?region_param, ?parent_region);
-            parent_region
-        })
-        .collect();
-    tracing::debug!(?parent_outlives_regions);
-
-    // Map the captured regions to the parent regions
-    let mut parent_captured_regions: Vec<(ty::Region<'tcx>, LocalDefId)> =
-        Vec::with_capacity(opaque_captured_lifetimes.len());
-    for (_, opaque_lt) in opaque_captured_lifetimes.iter() {
-        let parent_region = tcx.map_opaque_lifetime_to_parent_lifetime(*opaque_lt);
-        parent_captured_regions.push((parent_region, *opaque_lt));
+    let args_known_to_outlive =
+        tcx.args_known_to_outlive_alias_params(def_id).as_ref().skip_binder();
+    tracing::debug!(?args_known_to_outlive);
+    let mut live_args: Option<FxIndexSet<ty::GenericArg<'tcx>>> = None;
+    for outlives_region in outlives_regions {
+        let Some(outlives_regions) =
+            args_known_to_outlive.iter().find(|(r, _)| *r == outlives_region)
+        else {
+            continue;
+        };
+        let new_live_args = outlives_regions.1.iter().copied().collect();
+        live_args = Some(match live_args.take() {
+            None => new_live_args,
+            Some(prev) => prev.intersection(&new_live_args).copied().collect(),
+        });
     }
-    tracing::debug!(?parent_captured_regions);
+    live_args.map(|c| ty::EarlyBinder::bind(c.into_iter().collect()))
+}
+
+/// For each region param of this alias compute the identity args that are known
+/// to outlive it, given only the alias's declared where-clauses.
+///
+/// Note: for opaques (including synthetic associated types from RPITITs),
+/// the outlives relationships are identified in the context of the *parent*,
+/// since bounds and well-formed types are not lowered.
+// FIXME: this likely should return a `BitSet` instead of a `Vec<Vec<>>`
+#[tracing::instrument(level = "debug", skip(tcx), ret)]
+pub(crate) fn args_known_to_outlive_alias_params<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> ty::EarlyBinder<'tcx, Vec<(ty::Region<'tcx>, Vec<ty::GenericArg<'tcx>>)>> {
+    match tcx.def_kind(def_id) {
+        DefKind::OpaqueTy => args_known_to_outlive_opaque_params(tcx, def_id),
+        DefKind::AssocTy
+            if let Some(ImplTraitInTraitData::Trait { fn_def_id: _, opaque_def_id }) =
+                tcx.opt_rpitit_info(def_id.to_def_id()) =>
+        {
+            args_known_to_outlive_opaque_params(tcx, opaque_def_id.expect_local())
+        }
+        DefKind::AssocTy | DefKind::TyAlias => {
+            args_known_to_outlive_associated_type_params(tcx, def_id)
+        }
+        kind => {
+            bug!("improper def_kind {kind:?} passed to `live_args_for_alias_from_outlives_bounds`")
+        }
+    }
+}
+
+#[tracing::instrument(level = "debug", skip(tcx), ret)]
+pub(crate) fn args_known_to_outlive_opaque_params<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> ty::EarlyBinder<'tcx, Vec<(ty::Region<'tcx>, Vec<ty::GenericArg<'tcx>>)>> {
+    let self_identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
+
+    let mut result = Vec::new();
 
     // For implied bounds, we need the set of WF types from the parents.
     //  - For functions, this is all the input and output types.
@@ -145,167 +151,93 @@ pub(crate) fn live_args_for_opaque_from_outlives_bounds<'tcx>(
         }
         rustc_hir::OpaqueTyOrigin::TyAlias { parent, .. } => (parent, FxIndexSet::default()),
     };
-
-    // It certainly would be nice to use `args_known_to_outlive_alias_params` here,
-    // but unfortunately we need to check the outlives relationships in the *parent*,
-    // not the opaque itself.
-
-    // Find all the opaque's captured regions that outlive the outlives bounds using the implied bounds
     let parent_param_env = tcx.param_env(parent_def_id);
     tracing::debug!(?parent_param_env);
-    let mut live_args: Vec<ty::GenericArg<'tcx>> =
-        Vec::with_capacity(parent_outlives_regions.len());
-    for (parent_captured_region, opaque_captured_def_id) in parent_captured_regions.iter() {
-        let mut all_outlives = true;
-        for parent_outlives_region in parent_outlives_regions.iter() {
-            let known_outlives = region_known_to_outlive(
-                tcx,
-                parent_def_id.expect_local(),
-                parent_param_env,
-                &wf_tys,
-                *parent_captured_region,
-                *parent_outlives_region,
-            );
-            tracing::debug!(?parent_captured_region, ?parent_outlives_region, ?known_outlives);
-            if !known_outlives {
-                all_outlives = false;
-                break;
+
+    // Map the outlives regions to the parent regions
+    let generics = tcx.generics_of(def_id);
+    let opaque_captured_lifetimes = tcx.opaque_captured_lifetimes(def_id);
+    let mut parent_outlives_regions = Vec::with_capacity(generics.own_params.len());
+    for opaque_arg in self_identity_args[generics.parent_count..].iter() {
+        let Some(opaque_region) = opaque_arg.as_region() else {
+            continue;
+        };
+        let region_def_id = match opaque_region.kind() {
+            ty::ReEarlyParam(ebr) => generics.param_at(ebr.index as usize, tcx).def_id,
+            _ => panic!("unexpected region `{opaque_region}` in opaque bounds"),
+        };
+        let region_param =
+            generics.own_params.iter().find(|param| param.def_id == region_def_id).unwrap();
+        let (_, opaque_region_def_id) = opaque_captured_lifetimes
+            .iter()
+            .find(|(_, opaque_r)| opaque_r.to_def_id() == region_def_id)
+            .unwrap();
+        let parent_region = tcx.map_opaque_lifetime_to_parent_lifetime(*opaque_region_def_id);
+        tracing::debug!(?region_def_id, ?region_param, ?parent_region);
+        parent_outlives_regions.push((parent_region, opaque_region));
+    }
+    tracing::debug!(?parent_outlives_regions);
+
+    for (parent_outlived_region, opaque_outlived_region) in parent_outlives_regions.iter() {
+        let mut opaque_outlives_args = Vec::with_capacity(self_identity_args.len());
+        for parent_outlives_arg in self_identity_args[..generics.parent_count].iter() {
+            let type_outlives = match parent_outlives_arg.kind() {
+                // Consts don't have any non-static regions
+                ty::GenericArgKind::Const(_) => continue,
+                // Lifetimes should be captured
+                ty::GenericArgKind::Lifetime(_) => continue,
+                ty::GenericArgKind::Type(t) => ty_known_to_outlive(
+                    tcx,
+                    def_id,
+                    parent_param_env,
+                    &wf_tys,
+                    t,
+                    *parent_outlived_region,
+                ),
+            };
+            if !type_outlives {
+                continue;
             }
+
+            // Types aren't captured, so don't need to map to the opaque
+            opaque_outlives_args.push(*parent_outlives_arg);
         }
 
-        if all_outlives {
+        for (_, opaque_lt) in opaque_captured_lifetimes.iter() {
+            let parent_outlives_region = tcx.map_opaque_lifetime_to_parent_lifetime(*opaque_lt);
+
+            let region_outlives = parent_outlives_region == *parent_outlived_region
+                || region_known_to_outlive(
+                    tcx,
+                    def_id,
+                    parent_param_env,
+                    &wf_tys,
+                    parent_outlives_region,
+                    *parent_outlived_region,
+                );
+            if !region_outlives {
+                continue;
+            }
+
             let param = generics
                 .own_params
                 .iter()
-                .find(|param| param.def_id == opaque_captured_def_id.to_def_id())
+                .find(|param| param.def_id == opaque_lt.to_def_id())
                 .unwrap();
             let opaque_region =
                 ty::Region::new_early_param(tcx, param.to_early_bound_region_data());
-            live_args.push(opaque_region.into());
+
+            opaque_outlives_args.push(opaque_region.into());
         }
+
+        result.push((*opaque_outlived_region, opaque_outlives_args));
     }
 
-    // The underlying type can also capture the opaque's *type* params (which are inherited from
-    // the parent), if they are known to outlive the outlives bounds (e.g. from a `T: 'a` bound
-    // in the parent's environment). In that case, all the regions of the instantiated type arg
-    // must be considered live. The parent's *region* params don't need to be considered here:
-    // the captured ones are duplicated as the opaque's own params (handled above), and the
-    // parent positions are bivariant.
-    for arg in self_identity_args.iter() {
-        let Some(param_ty) = arg.as_type() else {
-            continue;
-        };
-        let all_outlives = parent_outlives_regions.iter().all(|parent_outlives_region| {
-            let known_outlives = ty_known_to_outlive(
-                tcx,
-                parent_def_id.expect_local(),
-                parent_param_env,
-                &wf_tys,
-                param_ty,
-                *parent_outlives_region,
-            );
-            tracing::debug!(?param_ty, ?parent_outlives_region, ?known_outlives);
-            known_outlives
-        });
-        if all_outlives {
-            live_args.push(arg);
-        }
-    }
-    tracing::debug!(?live_args);
-
-    Some(ty::EarlyBinder::bind(live_args))
+    ty::EarlyBinder::bind(result)
 }
 
 #[tracing::instrument(level = "debug", skip(tcx), ret)]
-pub(crate) fn live_args_for_projection_from_outlives_bounds<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
-) -> Option<ty::EarlyBinder<'tcx, Vec<ty::GenericArg<'tcx>>>> {
-    let self_identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
-
-    // We first want to collect the outlives bounds of the opaque.
-    let bounds = tcx.item_bounds(def_id).instantiate_identity().skip_norm_wip();
-    tracing::debug!(?bounds);
-    let alias_ty = Ty::new_projection(tcx, def_id.to_def_id(), self_identity_args);
-    let alias_outlives_regions: Vec<_> = bounds
-        .iter()
-        .filter_map(|clause| {
-            let outlives = clause.as_type_outlives_clause()?;
-            if let Some(outlives) = outlives.no_bound_vars()
-                && outlives.0 == alias_ty
-            {
-                Some(outlives.1)
-            } else {
-                test_type_match::extract_verify_if_eq(
-                    tcx,
-                    &outlives
-                        .map_bound(|ty::OutlivesPredicate(ty, bound)| VerifyIfEq { ty, bound }),
-                    alias_ty,
-                )
-            }
-        })
-        .collect();
-    tracing::debug!(?alias_outlives_regions);
-
-    // If there are no outlives bounds, then all (non-bivariant) args are potentially live.
-    if alias_outlives_regions.is_empty() {
-        return None;
-    }
-
-    // If any of the outlives bounds are `'static`, then we know the opaque doesn't capture
-    // *any* regions, so we can skip visiting any regions at all.
-    //
-    // Thinking about it, I was originally a bit concerned about something like `'a: 'static`, and
-    // whether or not we need to mark `'a` as live. I don't think *today* we do, since I think regions
-    // that outlive `'static` are special enough, but I *could* imagine some world where we need to be
-    // more careful about this. Given I can't find a test that goes wrong, I'm going to leave in this
-    // optimization.
-    if alias_outlives_regions.contains(&tcx.lifetimes.re_static) {
-        tracing::debug!("opaque has a 'static outlives bound, so skipping visiting any regions");
-        return Some(ty::EarlyBinder::bind(vec![]));
-    }
-
-    tracing::debug!(?alias_outlives_regions);
-
-    // Find all the args that are known to outlive the outlives bounds given the assoc type's
-    // declared where-clauses -- those are the only args the underlying type could capture. Note
-    // that this includes *type* args (incl. `Self`): e.g. a declared `U: 'a` lets the underlying
-    // type capture `U`, so all the regions of the instantiated type arg must be considered live.
-    // Each bound restricts the set independently, so we take the intersection.
-    let args_known_to_outlive = tcx.args_known_to_outlive_alias_params(def_id.to_def_id());
-    tracing::debug!(?args_known_to_outlive);
-    let mut live_args: Option<FxIndexSet<ty::GenericArg<'tcx>>> = None;
-    for outlives_region in alias_outlives_regions {
-        let (_, outliving_args) = args_known_to_outlive
-            .as_ref()
-            .skip_binder()
-            .iter()
-            .find(|(region, _)| *region == outlives_region)
-            .unwrap();
-        let outliving_args: FxIndexSet<_> = outliving_args.iter().copied().collect();
-        live_args = Some(match live_args.take() {
-            None => outliving_args,
-            Some(prev) => prev.intersection(&outliving_args).copied().collect(),
-        });
-    }
-    let live_args: Vec<_> = live_args.unwrap().into_iter().collect();
-    tracing::debug!(?live_args);
-
-    Some(ty::EarlyBinder::bind(live_args))
-}
-
-/// For each region param of this alias (identified by its index into the alias's generics),
-/// compute the identity args that are known to outlive it, given only the alias's declared
-/// where-clauses. These are the only args whose regions the underlying type of the alias
-/// could capture while satisfying an outlives bound on that param.
-///
-/// Note that the outliving args can include *type* args (incl. `Self`): e.g. a declared
-/// `U: 'a` bound means `U` is known to outlive `'a`, so the underlying type can capture `U`.
-/// Const args are never included: const param types can't contain (non-`'static`) regions,
-/// so they're irrelevant for liveness.
-// FIXME: this likely should return a `BitSet` instead of a `Vec<Vec<>>`
-#[tracing::instrument(level = "debug", skip(tcx), ret)]
-pub(crate) fn args_known_to_outlive_alias_params<'tcx>(
+pub(crate) fn args_known_to_outlive_associated_type_params<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
 ) -> ty::EarlyBinder<'tcx, Vec<(ty::Region<'tcx>, Vec<ty::GenericArg<'tcx>>)>> {
@@ -335,13 +267,11 @@ pub(crate) fn args_known_to_outlive_alias_params<'tcx>(
     ty::EarlyBinder::bind(result)
 }
 
-// type Assoc<'a, 'b, 'c: 'a> = (&'a &'c (), &'b ());
-
 /// For a param-env clause `for<'v..> <T as Trait>::Assoc<..>: 'bound` that
 /// applies to `ty` (an alias with `alias_def_id`), returns the set of (identity) args
 /// that the underlying type could possibly capture, as restricted by this clause.
 ///
-/// As an example, let's imagine we had the following associated type defintion:
+/// As an example, let's imagine we had the following associated type definition:
 /// ```ignore (illustrative)
 /// type Assoc<'a, 'b, 'c: 'a> = (&'a &'c (), &'b ());
 /// ```
@@ -512,7 +442,6 @@ where
         match *ty.kind() {
             // We can prove that an alias is live two ways:
             // 1. All the components are live.
-            //
             // 2. There is a known outlives bound or where-clause, and that
             //    region is live.
             //
@@ -523,30 +452,6 @@ where
             ty::Alias(ty::AliasTy { kind, args, .. }) => {
                 let tcx = self.tcx;
                 let param_env = self.param_env;
-
-                // Opaques are special, because we need to map onto the opaque's parent.
-                if let ty::AliasTyKind::Opaque { def_id } = kind {
-                    match tcx.live_args_for_alias_from_outlives_bounds(def_id) {
-                        Some(live_args) => {
-                            for &arg in live_args.as_ref().skip_binder() {
-                                let arg = ty::EarlyBinder::bind(arg)
-                                    .instantiate(tcx, args)
-                                    .skip_norm_wip();
-                                arg.visit_with(self);
-                            }
-                        }
-                        None => {
-                            let variances = tcx.variances_of(def_id);
-                            for (idx, s) in args.iter().enumerate() {
-                                if variances[idx] != ty::Bivariant {
-                                    s.visit_with(self);
-                                }
-                            }
-                        }
-                    }
-
-                    return;
-                }
 
                 // For aliases other than opaques, we have to consider two
                 // sources of information to identity potentially-live args:
@@ -565,7 +470,7 @@ where
                     });
                 };
 
-                if let Some(live_args) = tcx.live_args_for_alias_from_outlives_bounds(def_id) {
+                if let Some(live_args) = tcx.live_args_for_alias_from_outlives_bounds(kind) {
                     restrict(live_args.as_ref().skip_binder().iter().copied().collect());
                 }
 

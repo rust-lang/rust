@@ -1623,13 +1623,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
                         <- tcx.explicit_implied_const_bounds(def_id).skip_binder());
                 }
-                record!(self.tables.live_args_for_alias_from_outlives_bounds[def_id] <- tcx.live_args_for_alias_from_outlives_bounds(def_id));
+                record!(self.tables.args_known_to_outlive_alias_params[def_id] <- tcx.args_known_to_outlive_alias_params(def_id));
             }
             if let DefKind::AssocTy = def_kind {
                 let assoc_item = tcx.associated_item(def_id);
                 match assoc_item.container {
                     ty::AssocContainer::Trait => {
-                        record!(self.tables.live_args_for_alias_from_outlives_bounds[def_id] <- tcx.live_args_for_alias_from_outlives_bounds(def_id));
                         record!(self.tables.args_known_to_outlive_alias_params[def_id] <- tcx.args_known_to_outlive_alias_params(def_id));
                     }
                     ty::AssocContainer::InherentImpl => {

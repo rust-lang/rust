@@ -1,5 +1,5 @@
 error[E0515]: cannot return value referencing local variable `x`
-  --> $DIR/rpitit-hide-lifetime-for-swap.rs:33:5
+  --> $DIR/rpitit-hide-lifetime-for-swap.rs:31:5
    |
 LL |     h.hide_ref(&mut res).swap(h.hide_ref(&mut &x));
    |                                               -- `x` is borrowed here

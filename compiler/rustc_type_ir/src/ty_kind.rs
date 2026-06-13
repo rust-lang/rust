@@ -23,7 +23,7 @@ use crate::{self as ty, BoundVarIndexKind, FloatTy, IntTy, Interner, UintTy};
 
 mod closure;
 
-#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
 #[derive(GenericTypeVisitable, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",

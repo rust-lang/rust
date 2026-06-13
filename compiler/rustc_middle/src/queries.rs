@@ -2133,10 +2133,9 @@ rustc_queries! {
     ///     (and so is `T`, since `T: 'static` implies `T: 'a`)
     ///   - `bar` outlives `'static`, so we know that no args are potentially live and we can return an empty set
     ///   - `baz` has no outlives bound, so return `None` and let the caller decide what to do
-    query live_args_for_alias_from_outlives_bounds(def_id: DefId) -> &'tcx Option<ty::EarlyBinder<'tcx, Vec<ty::GenericArg<'tcx>>>> {
+    query live_args_for_alias_from_outlives_bounds(kind: ty::AliasTyKind<'tcx>) -> &'tcx Option<ty::EarlyBinder<'tcx, Vec<ty::GenericArg<'tcx>>>> {
         arena_cache
-        desc { "identifying live args for alias `{}`", tcx.def_path_str(def_id) }
-        separate_provide_extern
+        desc { "identifying live args for alias `{}`", tcx.def_path_str(kind.def_id()) }
     }
 
     /// For each region param of an alias, the identity args that are known to
