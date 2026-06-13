@@ -370,10 +370,10 @@ fn bounds_from_generic_predicates<'tcx>(
                     let mut projections_str = vec![];
                     for projection in &projections {
                         let p = projection.skip_binder();
-                        if bound == tcx.parent(p.projection_term.def_id())
+                        if bound == p.projection_term.trait_def_id(tcx)
                             && p.projection_term.self_ty() == ty
                         {
-                            let name = tcx.item_name(p.projection_term.def_id());
+                            let name = tcx.item_name(p.projection_term.expect_projection_def_id());
                             projections_str.push(format!("{} = {}", name, p.term));
                         }
                     }

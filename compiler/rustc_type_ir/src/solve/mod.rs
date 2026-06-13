@@ -333,12 +333,12 @@ impl<I: Interner> AccessedOpaques<I> {
     pub fn rerun_if_opaque_in_opaque_type_storage(
         &mut self,
         reason: RerunReason,
-        defid: I::LocalDefId,
+        defid: I::LocalOpaqueTyId,
     ) -> Result<(), RerunNonErased> {
         debug!("set rerun if opaque type {defid:?} in storage");
         self.update(AccessedOpaques {
             reason: Some(reason),
-            rerun: RerunCondition::OpaqueInStorage(SmallCopyList::new(defid)),
+            rerun: RerunCondition::OpaqueInStorage(SmallCopyList::new(defid.into())),
         })
     }
 
