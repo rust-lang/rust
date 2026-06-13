@@ -418,15 +418,43 @@ pub fn target_spec_to_backend_features<'a>(
 ) {
     let mut rust_features = vec![];
 
-    // This check handles SM versions that defaults (by LLVM) to unsupported (by Rust) PTX ISA versions.
-    // sm_70, sm_72 and sm_75 defaults to PTX ISA versions with major version 6, while sm_80 default to 7.0
-    if sess.target.arch == Arch::Nvptx64
-        && matches!(
-            sess.opts.cg.target_cpu.as_deref(),
-            None | Some("sm_70") | Some("sm_72") | Some("sm_75")
-        )
-    {
-        rust_features.push((true, "ptx70"));
+    if sess.target.arch == Arch::Nvptx64 {
+        // Starting with LLVM 22, the NVPTX backend still infers the minimum
+        // required PTX version from the selected CPU when none is selected
+        // explicitly, but no longer reflects that in the enabled subtarget
+        // features. If a PTX version below the required minimum is selected
+        // explicitly, LLVM errors.
+        // To keep cfg evaluation consistent and avoid LLVM errors, always
+        // select an explicit PTX version: whichever is higher between
+        //  - Rust's minimum required PTX version, and
+        //  - the CPU's minimum required PTX version.
+        let min_ptx = match sess.opts.cg.target_cpu.as_deref() {
+            Some("sm_86") => "ptx71",
+            Some("sm_87") => "ptx74",
+            Some("sm_88") => "ptx90",
+            Some("sm_90") => "ptx78",
+            Some("sm_90a") => "ptx80",
+            Some("sm_100") => "ptx86",
+            Some("sm_100f") => "ptx88",
+            Some("sm_100a") => "ptx86",
+            Some("sm_101") => "ptx86",
+            Some("sm_101f") => "ptx88",
+            Some("sm_101a") => "ptx86",
+            Some("sm_103") => "ptx88",
+            Some("sm_103f") => "ptx88",
+            Some("sm_103a") => "ptx88",
+            Some("sm_110") => "ptx90",
+            Some("sm_110f") => "ptx90",
+            Some("sm_110a") => "ptx90",
+            Some("sm_120") => "ptx87",
+            Some("sm_120f") => "ptx88",
+            Some("sm_120a") => "ptx87",
+            Some("sm_121") => "ptx88",
+            Some("sm_121f") => "ptx88",
+            Some("sm_121a") => "ptx88",
+            _ => "ptx70",
+        };
+        rust_features.push((true, min_ptx));
     }
 
     // Compute implied features
