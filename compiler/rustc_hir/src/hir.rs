@@ -224,6 +224,7 @@ pub enum LifetimeKind {
     /// User-given names or fresh (synthetic) names.
     Param(LocalDefId),
 
+    // FIXME(fmease): Update docs.
     /// Implicit lifetime in a context like `dyn Foo`. This is
     /// distinguished from implicit lifetimes elsewhere because the
     /// lifetime that they default to must appear elsewhere within the

@@ -444,6 +444,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let region_bound = self.lower_trait_object_lifetime(lifetime, predicates, span);
 
+        eprintln!("::: Dyn|  lt={lifetime:?}  re={region_bound:?}");
+
         Ty::new_dynamic(tcx, predicates, region_bound)
     }
 
