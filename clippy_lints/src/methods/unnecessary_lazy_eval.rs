@@ -47,38 +47,43 @@ pub(super) fn check<'tcx>(
             } else {
                 "unnecessary closure used with `bool::then`"
             };
+
             let mut applicability = Applicability::MachineApplicable;
-            let (ascription, turbofish) = if body
+            if body
                 .params
                 .iter()
                 // bindings are checked to be unused above
-                .all(|param| matches!(param.pat.kind, hir::PatKind::Binding(..) | hir::PatKind::Wild))
+                .any(|param| !matches!(param.pat.kind, hir::PatKind::Binding(..) | hir::PatKind::Wild))
             {
-                match fn_decl.output {
-                    FnRetTy::DefaultReturn(_)
-                    | FnRetTy::Return(hir::Ty {
-                        kind: hir::TyKind::Infer(()),
-                        ..
-                    }) => {
-                        // type ascription is definitely not needed here
-                        (String::new(), String::new())
-                    },
-                    FnRetTy::Return(ty) => {
-                        // explicit type was given on the closure
-                        // try to use turbofish for this, since it's less dangerous,
-                        // but, failing that, use `as`
-                        let ty = snippet_with_applicability(cx, ty.span, "_", &mut applicability);
-                        if use_turbofish {
-                            (String::new(), format!("::<{ty}>"))
-                        } else {
-                            (format!(" as {ty}"), String::new())
-                        }
-                    },
-                }
-            } else {
-                // can't infer the actual type
+                // If the closure parameters have a pattern,
+                // it might be required for type inferrence.
                 applicability = Applicability::MaybeIncorrect;
-                (String::new(), String::new())
+            }
+            let (ascription, turbofish) = match fn_decl.output {
+                FnRetTy::DefaultReturn(_)
+                | FnRetTy::Return(hir::Ty {
+                    kind: hir::TyKind::Infer(()),
+                    ..
+                }) => {
+                    // if the closure has no explicit return type,
+                    // then there's nothing to preserve
+                    (String::new(), String::new())
+                },
+                FnRetTy::Return(ty) => {
+                    // explicit return type was given on the closure
+                    //
+                    // we can preserve this information using `as`, but `as` is
+                    // a somewhat dangerous feature, because it can be used to
+                    // truncate integers
+                    //
+                    // if possible, use turbofish to preserve the type information
+                    let ty = snippet_with_applicability(cx, ty.span, "_", &mut applicability);
+                    if use_turbofish {
+                        (String::new(), format!("::<{ty}>"))
+                    } else {
+                        (format!(" as {ty}"), String::new())
+                    }
+                },
             };
 
             // This is a duplicate of what's happening in clippy_lints::methods::method_call,

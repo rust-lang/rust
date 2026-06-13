@@ -12,6 +12,8 @@ fn main() {
     // fix will break type inference
     let _ = Ok(1).unwrap_or_else(|()| 2);
     //~^ unnecessary_lazy_evaluations
+    let _ = Ok(1).unwrap_or_else(|()| -> i32 { 2 });
+    //~^ unnecessary_lazy_evaluations
 
     mod e {
         pub struct E;
