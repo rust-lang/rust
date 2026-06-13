@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::snippet;
+use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{path_to_local_with_projections, sym};
 use rustc_ast::{BindingMode, Mutability};
@@ -43,24 +43,26 @@ pub(super) fn check(
         |diag| {
             let sugg_msg = format!("use `.{find_method}(..)` instead");
 
+            let mut app = Applicability::MachineApplicable;
             // add note if not multi-line
-            let filter_snippet = snippet(cx, filter_arg.span, "..");
+            let filter_snippet = snippet_with_applicability(cx, filter_arg.span, "..", &mut app);
             if filter_snippet.lines().count() <= 1 {
-                let iter_snippet = snippet(cx, recv.span, "..");
-                let (applicability, pat) = if let Some(id) = path_to_local_with_projections(recv)
+                let iter_snippet = snippet_with_applicability(cx, recv.span, "..", &mut app);
+                let pat = if let Some(id) = path_to_local_with_projections(recv)
                     && let Node::Pat(pat) = cx.tcx.hir_node(id)
                     && let PatKind::Binding(BindingMode(_, Mutability::Not), _, ident, _) = pat.kind
                 {
-                    (Applicability::Unspecified, Some((pat.span, ident)))
+                    app = Applicability::Unspecified;
+                    Some((pat.span, ident))
                 } else {
-                    (Applicability::MachineApplicable, None)
+                    None
                 };
 
                 diag.span_suggestion_verbose(
                     expr.span,
                     sugg_msg,
                     format!("{iter_snippet}.{find_method}({filter_snippet})"),
-                    applicability,
+                    app,
                 );
 
                 if let Some((pat_span, ident)) = pat {
