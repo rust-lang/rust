@@ -182,7 +182,7 @@ pub fn clause_obligations<'tcx>(
             wf.add_wf_preds_for_term(ty.into());
         }
         ty::ClauseKind::Projection(t) => {
-            wf.add_wf_preds_for_alias_term(t.projection_term);
+            wf.add_wf_preds_for_projection_term(t.projection_term);
             wf.add_wf_preds_for_term(t.term);
         }
         ty::ClauseKind::ConstArgHasType(ct, ty) => {
@@ -453,9 +453,8 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         }
     }
 
-    /// Pushes the obligations required for an alias (except inherent) to be WF
-    /// into `self.out`.
-    fn add_wf_preds_for_alias_term(&mut self, data: ty::AliasTerm<'tcx>) {
+    /// Pushes the obligations required for a projection to be WF into `self.out`.
+    fn add_wf_preds_for_projection_term(&mut self, data: ty::AliasTerm<'tcx>) {
         // A projection is well-formed if
         //
         // (a) its predicates hold (*)
@@ -477,7 +476,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         //     `i32: Clone`
         //     `i32: Copy`
         // ]
-        let obligations = self.nominal_obligations(data.def_id(), data.args);
+        let obligations = self.nominal_obligations(data.expect_projection_def_id(), data.args);
         self.out.extend(obligations);
 
         self.add_wf_preds_for_projection_args(data.args);
@@ -506,7 +505,8 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 self.recursion_depth,
                 &mut self.out,
             );
-            let obligations = self.nominal_obligations(data.def_id(), args);
+            let def_id = data.expect_inherent_def_id();
+            let obligations = self.nominal_obligations(def_id, args);
             self.out.extend(obligations);
         }
 
@@ -1005,7 +1005,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                             .map_bound(|p| {
                                 p.term.as_const().map(|ct| {
                                     let assoc_const_ty = tcx
-                                        .type_of(p.projection_term.def_id())
+                                        .type_of(p.def_id())
                                         .instantiate(tcx, p.projection_term.args)
                                         .skip_norm_wip();
                                     ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(

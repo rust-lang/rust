@@ -19,11 +19,10 @@ where
     pub(super) fn normalize_inherent_associated_term(
         &mut self,
         goal: Goal<I, ty::NormalizesTo<I>>,
-        def_id: I::InherentAssocTermId,
     ) -> QueryResultOrRerunNonErased<I> {
         let cx = self.cx();
         let inherent = goal.predicate.alias;
-
+        let def_id = inherent.expect_inherent_def_id();
         let impl_def_id = cx.inherent_alias_term_parent(def_id);
         let impl_args = self.fresh_args_for_item(impl_def_id.into());
 

@@ -304,6 +304,8 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
             );
         }
 
+        let def_id = free.expect_free_def_id();
+
         // We don't replace bound vars in the generic arguments of the free alias with
         // placeholders. This doesn't cause any issues as instantiating parameters with
         // bound variables is special-cased to rewrite the debruijn index to be higher
@@ -321,7 +323,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         self.obligations.extend(
             infcx
                 .tcx
-                .predicates_of(free.def_id())
+                .predicates_of(def_id)
                 .instantiate_own(infcx.tcx, free.args)
                 .map(|(pred, span)| (pred.skip_norm_wip(), span))
                 .map(|(mut predicate, span)| {
@@ -333,8 +335,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
                         );
                     }
                     let mut cause = self.cause.clone();
-                    cause
-                        .map_code(|code| ObligationCauseCode::TypeAlias(code, span, free.def_id()));
+                    cause.map_code(|code| ObligationCauseCode::TypeAlias(code, span, def_id));
                     Obligation::new(infcx.tcx, cause, self.param_env, predicate)
                 }),
         );
@@ -342,7 +343,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         let res: ty::Term<'tcx> = if free.kind.is_type() {
             infcx
                 .tcx
-                .type_of(free.def_id())
+                .type_of(def_id)
                 .instantiate(infcx.tcx, free.args)
                 .skip_norm_wip()
                 .fold_with(self)
@@ -350,7 +351,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         } else {
             infcx
                 .tcx
-                .const_of_item(free.def_id())
+                .const_of_item(def_id)
                 .instantiate(infcx.tcx, free.args)
                 .skip_norm_wip()
                 .fold_with(self)
@@ -360,7 +361,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         // obligation to ensure the const value's type matches the declared type.
         if let Some(ct) = res.as_const() {
             let expected_ty =
-                infcx.tcx.type_of(free.def_id()).instantiate(infcx.tcx, free.args).skip_norm_wip();
+                infcx.tcx.type_of(def_id).instantiate(infcx.tcx, free.args).skip_norm_wip();
             self.obligations.push(Obligation::with_depth(
                 infcx.tcx,
                 self.cause.clone(),
