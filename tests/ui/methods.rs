@@ -1,25 +1,7 @@
 //@aux-build:option_helpers.rs
 
-#![allow(
-    clippy::disallowed_names,
-    clippy::default_trait_access,
-    clippy::let_underscore_untyped,
-    clippy::missing_docs_in_private_items,
-    clippy::missing_safety_doc,
-    clippy::non_ascii_literal,
-    clippy::new_without_default,
-    clippy::needless_pass_by_value,
-    clippy::needless_lifetimes,
-    clippy::elidable_lifetime_names,
-    clippy::print_stdout,
-    clippy::must_use_candidate,
-    clippy::use_self,
-    clippy::useless_format,
-    clippy::wrong_self_convention,
-    clippy::unused_async,
-    clippy::unused_self,
-    clippy::useless_vec
-)]
+#![warn(clippy::filter_next, clippy::new_ret_no_self)]
+#![expect(clippy::disallowed_names, clippy::useless_vec)]
 
 #[macro_use]
 extern crate option_helpers;

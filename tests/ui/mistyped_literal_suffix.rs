@@ -1,10 +1,8 @@
 //@aux-build: proc_macros.rs
 
-#![allow(
-    dead_code,
-    unused_variables,
+#![warn(clippy::mistyped_literal_suffixes)]
+#![expect(
     overflowing_literals,
-    clippy::excessive_precision,
     clippy::inconsistent_digit_grouping,
     clippy::unusual_byte_groupings
 )]

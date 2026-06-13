@@ -1,5 +1,5 @@
 error: manual `Debug` impl does not include all fields
-  --> tests/ui/missing_fields_in_debug.rs:14:1
+  --> tests/ui/missing_fields_in_debug.rs:13:1
    |
 LL | / impl fmt::Debug for NamedStruct1Ignored {
 ...  |
@@ -7,7 +7,7 @@ LL | | }
    | |_^
    |
 note: this field is unused
-  --> tests/ui/missing_fields_in_debug.rs:11:5
+  --> tests/ui/missing_fields_in_debug.rs:10:5
    |
 LL |     hidden: u32,
    |     ^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     hidden: u32,
    = help: to override `-D warnings` add `#[allow(clippy::missing_fields_in_debug)]`
 
 error: manual `Debug` impl does not include all fields
-  --> tests/ui/missing_fields_in_debug.rs:34:1
+  --> tests/ui/missing_fields_in_debug.rs:33:1
    |
 LL | / impl fmt::Debug for NamedStructMultipleIgnored {
 ...  |
@@ -25,17 +25,17 @@ LL | | }
    | |_^
    |
 note: this field is unused
-  --> tests/ui/missing_fields_in_debug.rs:28:5
+  --> tests/ui/missing_fields_in_debug.rs:27:5
    |
 LL |     hidden: u32,
    |     ^^^^^^^^^^^
 note: this field is unused
-  --> tests/ui/missing_fields_in_debug.rs:29:5
+  --> tests/ui/missing_fields_in_debug.rs:28:5
    |
 LL |     hidden2: String,
    |     ^^^^^^^^^^^^^^^
 note: this field is unused
-  --> tests/ui/missing_fields_in_debug.rs:31:5
+  --> tests/ui/missing_fields_in_debug.rs:30:5
    |
 LL |     hidden4: ((((u8), u16), u32), u64),
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -43,7 +43,7 @@ LL |     hidden4: ((((u8), u16), u32), u64),
    = help: consider calling `.finish_non_exhaustive()` if you intend to ignore fields
 
 error: manual `Debug` impl does not include all fields
-  --> tests/ui/missing_fields_in_debug.rs:97:1
+  --> tests/ui/missing_fields_in_debug.rs:96:1
    |
 LL | / impl fmt::Debug for MultiExprDebugImpl {
 LL | |
@@ -54,7 +54,7 @@ LL | | }
    | |_^
    |
 note: this field is unused
-  --> tests/ui/missing_fields_in_debug.rs:93:5
+  --> tests/ui/missing_fields_in_debug.rs:92:5
    |
 LL |     b: String,
    |     ^^^^^^^^^

@@ -1,7 +1,7 @@
 //@aux-build:macro_rules.rs
 
 #![warn(clippy::missing_transmute_annotations)]
-#![allow(clippy::let_with_type_underscore)]
+#![expect(clippy::let_with_type_underscore)]
 
 #[macro_use]
 extern crate macro_rules;

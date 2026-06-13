@@ -1,5 +1,5 @@
 #![warn(clippy::filter_next)]
-#![allow(clippy::useless_vec)]
+#![expect(clippy::useless_vec)]
 
 /// Checks implementation of `FILTER_NEXT` lint.
 fn main() {

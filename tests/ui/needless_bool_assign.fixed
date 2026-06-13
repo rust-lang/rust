@@ -1,4 +1,3 @@
-#![allow(unused)]
 #![warn(clippy::needless_bool_assign)]
 
 fn random() -> bool {

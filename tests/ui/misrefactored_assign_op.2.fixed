@@ -1,5 +1,6 @@
+#![warn(clippy::misrefactored_assign_op)]
+#![deny(clippy::assign_op_pattern)]
 #![allow(clippy::eq_op)]
-#![warn(clippy::misrefactored_assign_op, clippy::assign_op_pattern)]
 
 fn main() {
     let mut a = 5;
