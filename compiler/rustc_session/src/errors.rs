@@ -692,3 +692,8 @@ pub(crate) struct ThinLtoNotSupportedByBackend;
 #[derive(Diagnostic)]
 #[diag("`-Zpacked-stack` is only supported on s390x")]
 pub(crate) struct UnsupportedPackedStack;
+
+#[derive(Diagnostic)]
+#[diag("on musl targets, the implicit default for `crt-static` is going to change")]
+#[help("explicitly pass `-C target-feature=+crt-static` or `-C target-feature=-crt-static`")]
+pub struct MuslMissingCrtStatic;
