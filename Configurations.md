@@ -1051,6 +1051,14 @@ Max width for code snippets included in doc comments. Only used if [`format_code
 - **Possible values**: any nonnegative integer that is less than or equal to the value specified for [`max_width`](#max_width)
 - **Stable**: No (tracking issue: [#5359](https://github.com/rust-lang/rustfmt/issues/5359))
 
+## `doc_comment_code_block_small_heuristics`
+
+Value for [`use_small_heuristics`](#use_small_heuristics) for use in code blocks in doc comments. Only used if [`format_code_in_doc_comments`](#format_code_in_doc_comments) is true.
+
+- **Default value**: `"Default"`
+- **Possible values**: `"Default"`, `"Off"`, `"Max"`
+- **Stable**: No (tracking issue: [#6942](https://github.com/rust-lang/rustfmt/issues/6942))
+
 ## `format_generated_files`
 
 Format generated files. A file is considered generated if any of the first several lines contain a `@generated` comment marker. The number of lines to check is configured by `generated_marker_line_search_limit`.

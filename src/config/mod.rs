@@ -65,6 +65,9 @@ create_config! {
         doc comments.";
     doc_comment_code_block_width: DocCommentCodeBlockWidth, false, "Maximum width for code \
         snippets in doc comments. No effect unless format_code_in_doc_comments = true";
+    doc_comment_code_block_small_heuristics: DocUseSmallHeuristics, false,
+        "Value for use_small_heuristics for code blocks in doc comments. \
+        No effect unless format_code_in_doc_comments = true";
     comment_width: CommentWidth, false,
         "Maximum length of comments. No effect unless wrap_comments = true";
     normalize_comments: NormalizeComments, false, "Convert /* */ comments to // comments where \
@@ -772,6 +775,7 @@ single_line_let_else_max_width = 50
 wrap_comments = false
 format_code_in_doc_comments = false
 doc_comment_code_block_width = 100
+doc_comment_code_block_small_heuristics = "Inherit"
 comment_width = 80
 normalize_comments = false
 normalize_doc_attributes = false
@@ -864,6 +868,7 @@ single_line_let_else_max_width = 50
 wrap_comments = false
 format_code_in_doc_comments = false
 doc_comment_code_block_width = 100
+doc_comment_code_block_small_heuristics = "Inherit"
 comment_width = 80
 normalize_comments = false
 normalize_doc_attributes = false
