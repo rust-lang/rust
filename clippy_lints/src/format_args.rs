@@ -10,7 +10,7 @@ use clippy_utils::macros::{
 };
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeDef;
-use clippy_utils::source::{SpanRangeExt, snippet, snippet_opt};
+use clippy_utils::source::{SpanExt, snippet, snippet_opt};
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{is_from_proc_macro, is_in_test, peel_hir_expr_while, sym, trait_ref_of_method};
 use itertools::Itertools;
@@ -380,7 +380,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
     /// Check if there is a comma after the last format macro arg.
     fn check_trailing_comma(&self) {
         let span = self.macro_call.span;
-        if let Some(src) = span.get_source_text(self.cx)
+        if let Some(src) = span.get_text(self.cx)
             && let Some(src) = src.strip_suffix([')', ']', '}'])
             && let src = src.trim_end_matches(|c: char| c.is_whitespace() && c != '\n')
             && let Some(src) = src.strip_suffix(',')
@@ -694,7 +694,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
                 count_needed_derefs(receiver_ty, cx.typeck_results().expr_adjustments(receiver).iter())
             && implements_trait(cx, target, display_trait_id, &[])
             && let Some(sized_trait_id) = cx.tcx.lang_items().sized_trait()
-            && let Some(receiver_snippet) = receiver.span.source_callsite().get_source_text(cx)
+            && let Some(receiver_snippet) = receiver.span.source_callsite().get_text(cx)
         {
             let needs_ref = !implements_trait(cx, receiver_ty, sized_trait_id, &[]);
             if n_needed_derefs == 0 && !needs_ref {

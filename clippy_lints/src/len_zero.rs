@@ -2,7 +2,7 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::Msrv;
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
-use clippy_utils::source::{SpanRangeExt, snippet_with_context};
+use clippy_utils::source::{SpanExt, snippet_with_context};
 use clippy_utils::sugg::{Sugg, has_enclosing_paren};
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{parent_item_name, peel_ref_operators, sym};
@@ -261,7 +261,7 @@ impl LenZero {
 }
 
 fn span_without_enclosing_paren(cx: &LateContext<'_>, span: Span) -> Span {
-    let Some(snippet) = span.get_source_text(cx) else {
+    let Some(snippet) = span.get_text(cx) else {
         return span;
     };
     if has_enclosing_paren(snippet) {

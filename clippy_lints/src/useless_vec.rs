@@ -7,7 +7,7 @@ use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::SpanExt;
 use clippy_utils::ty::is_copy;
 use clippy_utils::visitors::for_each_local_use_after_expr;
 use clippy_utils::{VEC_METHODS_SHADOWING_SLICE_METHODS, get_parent_expr, higher, is_in_test, span_contains_comment};
@@ -285,10 +285,10 @@ impl SuggestedType {
         assert!(args_span.is_none_or(|s| !s.from_expansion()));
         assert!(len_span.is_none_or(|s| !s.from_expansion()));
 
-        let maybe_args = args_span.map(|sp| sp.get_source_text(cx).expect("spans are always crate-local"));
+        let maybe_args = args_span.map(|sp| sp.get_text(cx).expect("spans are always crate-local"));
         let maybe_args = maybe_args.as_deref().unwrap_or_default();
         let maybe_len = len_span
-            .map(|sp| sp.get_source_text(cx).expect("spans are always crate-local"))
+            .map(|sp| sp.get_text(cx).expect("spans are always crate-local"))
             .map(|st| format!("; {st}"))
             .unwrap_or_default();
 

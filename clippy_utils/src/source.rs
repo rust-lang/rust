@@ -20,27 +20,38 @@ use std::borrow::Cow;
 use std::fmt;
 use std::ops::{Deref, Index, Range};
 
-pub trait HasSession {
-    fn sess(&self) -> &Session;
+pub trait HasSourceMap<'sm>: Copy {
+    #[must_use]
+    fn source_map(self) -> &'sm SourceMap;
 }
-impl HasSession for Session {
-    fn sess(&self) -> &Session {
+impl<'sm> HasSourceMap<'sm> for &'sm SourceMap {
+    #[inline]
+    fn source_map(self) -> &'sm SourceMap {
         self
     }
 }
-impl HasSession for TyCtxt<'_> {
-    fn sess(&self) -> &Session {
-        self.sess
+impl<'sm> HasSourceMap<'sm> for &'sm Session {
+    #[inline]
+    fn source_map(self) -> &'sm SourceMap {
+        self.source_map()
     }
 }
-impl HasSession for EarlyContext<'_> {
-    fn sess(&self) -> &Session {
-        ::rustc_lint::LintContext::sess(self)
+impl<'sm> HasSourceMap<'sm> for TyCtxt<'sm> {
+    #[inline]
+    fn source_map(self) -> &'sm SourceMap {
+        self.sess.source_map()
     }
 }
-impl HasSession for LateContext<'_> {
-    fn sess(&self) -> &Session {
-        self.tcx.sess()
+impl<'sm> HasSourceMap<'sm> for &'sm EarlyContext<'_> {
+    #[inline]
+    fn source_map(self) -> &'sm SourceMap {
+        ::rustc_lint::LintContext::sess(self).source_map()
+    }
+}
+impl<'sm> HasSourceMap<'sm> for &LateContext<'sm> {
+    #[inline]
+    fn source_map(self) -> &'sm SourceMap {
+        self.tcx.sess.source_map()
     }
 }
 
@@ -95,39 +106,39 @@ impl IntoSpan for Range<BytePos> {
     }
 }
 
-pub trait SpanRangeExt: SpanRange {
+pub trait SpanExt: SpanRange {
     /// Attempts to get a handle to the source text. Returns `None` if either the span is malformed,
     /// or the source text is not accessible.
-    fn get_source_text(self, cx: &impl HasSession) -> Option<SourceText> {
-        get_source_range(cx.sess().source_map(), self.into_range()).and_then(SourceText::new)
+    fn get_text<'sm>(self, sm: impl HasSourceMap<'sm>) -> Option<SourceText> {
+        get_source_range(sm.source_map(), self.into_range()).and_then(SourceText::new)
     }
 
     /// Gets the source file, and range in the file, of the given span. Returns `None` if the span
     /// extends through multiple files, or is malformed.
-    fn get_source_range(self, cx: &impl HasSession) -> Option<SourceFileRange> {
-        get_source_range(cx.sess().source_map(), self.into_range())
+    fn get_source_range<'sm>(self, sm: impl HasSourceMap<'sm>) -> Option<SourceFileRange> {
+        get_source_range(sm.source_map(), self.into_range())
     }
 
     /// Calls the given function with the source text referenced and returns the value. Returns
     /// `None` if the source text cannot be retrieved.
-    fn with_source_text<T>(self, cx: &impl HasSession, f: impl for<'a> FnOnce(&'a str) -> T) -> Option<T> {
-        with_source_text(cx.sess().source_map(), self.into_range(), f)
+    fn with_source_text<'sm, T>(self, sm: impl HasSourceMap<'sm>, f: impl for<'a> FnOnce(&'a str) -> T) -> Option<T> {
+        with_source_text(sm.source_map(), self.into_range(), f)
     }
 
     /// Checks if the referenced source text satisfies the given predicate. Returns `false` if the
     /// source text cannot be retrieved.
-    fn check_source_text(self, cx: &impl HasSession, pred: impl for<'a> FnOnce(&'a str) -> bool) -> bool {
-        self.with_source_text(cx, pred).unwrap_or(false)
+    fn check_text<'sm>(self, sm: impl HasSourceMap<'sm>, pred: impl for<'a> FnOnce(&'a str) -> bool) -> bool {
+        self.with_source_text(sm, pred).unwrap_or(false)
     }
 
     /// Calls the given function with the both the text of the source file and the referenced range,
     /// and returns the value. Returns `None` if the source text cannot be retrieved.
-    fn with_source_text_and_range<T>(
+    fn with_source_text_and_range<'sm, T>(
         self,
-        cx: &impl HasSession,
+        sm: impl HasSourceMap<'sm>,
         f: impl for<'a> FnOnce(&'a str, Range<usize>) -> T,
     ) -> Option<T> {
-        with_source_text_and_range(cx.sess().source_map(), self.into_range(), f)
+        with_source_text_and_range(sm.source_map(), self.into_range(), f)
     }
 
     /// Calls the given function with the both the text of the source file and the referenced range,
@@ -135,12 +146,12 @@ pub trait SpanRangeExt: SpanRange {
     /// retrieved, or no result is returned.
     ///
     /// The new range must reside within the same source file.
-    fn map_range(
+    fn map_range<'sm>(
         self,
-        cx: &impl HasSession,
+        sm: impl HasSourceMap<'sm>,
         f: impl for<'a> FnOnce(&'a SourceFile, &'a str, Range<usize>) -> Option<Range<usize>>,
     ) -> Option<Range<BytePos>> {
-        map_range(cx.sess().source_map(), self.into_range(), f)
+        map_range(sm.source_map(), self.into_range(), f)
     }
 
     /// Extends the range to include all preceding whitespace characters.
@@ -156,16 +167,16 @@ pub trait SpanRangeExt: SpanRange {
     ///
     /// When the range points to `foo`, suggesting to remove the range after it's been extended will
     /// cause the `)` to be placed inside the line comment as `( // Some comment)`.
-    fn with_leading_whitespace(self, cx: &impl HasSession) -> Range<BytePos> {
-        with_leading_whitespace(cx.sess().source_map(), self.into_range())
+    fn with_leading_whitespace<'sm>(self, sm: impl HasSourceMap<'sm>) -> Range<BytePos> {
+        with_leading_whitespace(sm.source_map(), self.into_range())
     }
 
     /// Trims the leading whitespace from the range.
-    fn trim_start(self, cx: &impl HasSession) -> Range<BytePos> {
-        trim_start(cx.sess().source_map(), self.into_range())
+    fn trim_start<'sm>(self, sm: impl HasSourceMap<'sm>) -> Range<BytePos> {
+        trim_start(sm.source_map(), self.into_range())
     }
 }
-impl<T: SpanRange> SpanRangeExt for T {}
+impl<T: SpanRange> SpanExt for T {}
 
 /// Handle to a range of text in a source file.
 pub struct SourceText(SourceFileRange);
@@ -353,15 +364,15 @@ impl SourceFileRange {
 }
 
 /// Like [`snippet_block`], but add braces if the expr is not an `ExprKind::Block` with no label.
-pub fn expr_block(
-    sess: &impl HasSession,
+pub fn expr_block<'sm>(
+    sm: impl HasSourceMap<'sm>,
     expr: &Expr<'_>,
     outer: SyntaxContext,
     default: &str,
     indent_relative_to: Option<Span>,
     app: &mut Applicability,
 ) -> String {
-    let (code, from_macro) = snippet_block_with_context(sess, expr.span, outer, default, indent_relative_to, app);
+    let (code, from_macro) = snippet_block_with_context(sm, expr.span, outer, default, indent_relative_to, app);
     if !from_macro
         && let ExprKind::Block(block, None) = expr.kind
         && block.rules != BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
@@ -386,13 +397,13 @@ pub fn expr_block(
 ///     let x = ();
 /// //  ^^^^^^^^^^
 /// ```
-pub fn first_line_of_span(sess: &impl HasSession, span: Span) -> Span {
-    first_char_in_first_line(sess, span).map_or(span, |first_char_pos| span.with_lo(first_char_pos))
+pub fn first_line_of_span<'sm>(sm: impl HasSourceMap<'sm>, span: Span) -> Span {
+    first_char_in_first_line(sm, span).map_or(span, |first_char_pos| span.with_lo(first_char_pos))
 }
 
-fn first_char_in_first_line(sess: &impl HasSession, span: Span) -> Option<BytePos> {
-    let line_span = line_span(sess, span);
-    snippet_opt(sess, line_span).and_then(|snip| {
+fn first_char_in_first_line<'sm>(sm: impl HasSourceMap<'sm>, span: Span) -> Option<BytePos> {
+    let line_span = line_span(sm, span);
+    snippet_opt(sm, line_span).and_then(|snip| {
         snip.find(|c: char| !c.is_whitespace())
             .map(|pos| line_span.lo() + BytePos::from_usize(pos))
     })
@@ -407,9 +418,9 @@ fn first_char_in_first_line(sess: &impl HasSession, span: Span) -> Option<BytePo
 ///        let x = ();
 /// // ^^^^^^^^^^^^^^
 /// ```
-fn line_span(sess: &impl HasSession, span: Span) -> Span {
+fn line_span<'sm>(sm: impl HasSourceMap<'sm>, span: Span) -> Span {
     let span = original_sp(span, DUMMY_SP);
-    let SourceFileAndLine { sf, line } = sess.sess().source_map().lookup_line(span.lo()).unwrap();
+    let SourceFileAndLine { sf, line } = sm.source_map().lookup_line(span.lo()).unwrap();
     let line_start = sf.lines()[line];
     let line_start = sf.absolute_position(line_start);
     span.with_lo(line_start)
@@ -423,13 +434,13 @@ fn line_span(sess: &impl HasSession, span: Span) -> Span {
 ///     let x = ();
 /// //          ^^ -- will return 4
 /// ```
-pub fn indent_of(sess: &impl HasSession, span: Span) -> Option<usize> {
-    snippet_opt(sess, line_span(sess, span)).and_then(|snip| snip.find(|c: char| !c.is_whitespace()))
+pub fn indent_of<'sm>(sm: impl HasSourceMap<'sm>, span: Span) -> Option<usize> {
+    snippet_opt(sm, line_span(sm, span)).and_then(|snip| snip.find(|c: char| !c.is_whitespace()))
 }
 
 /// Gets a snippet of the indentation of the line of a span
-pub fn snippet_indent(sess: &impl HasSession, span: Span) -> Option<String> {
-    snippet_opt(sess, line_span(sess, span)).map(|mut s| {
+pub fn snippet_indent<'sm>(sm: impl HasSourceMap<'sm>, span: Span) -> Option<String> {
+    snippet_opt(sm, line_span(sm, span)).map(|mut s| {
         let len = s.len() - s.trim_start().len();
         s.truncate(len);
         s
@@ -441,8 +452,8 @@ pub fn snippet_indent(sess: &impl HasSession, span: Span) -> Option<String> {
 // sources that the user has no control over.
 // For some reason these attributes don't have any expansion info on them, so
 // we have to check it this way until there is a better way.
-pub fn is_present_in_source(sess: &impl HasSession, span: Span) -> bool {
-    if let Some(snippet) = snippet_opt(sess, span)
+pub fn is_present_in_source<'sm>(sm: impl HasSourceMap<'sm>, span: Span) -> bool {
+    if let Some(snippet) = snippet_opt(sm, span)
         && snippet.is_empty()
     {
         return false;
@@ -534,8 +545,8 @@ fn reindent_multiline_inner(s: &str, ignore_first: bool, indent: Option<usize>, 
 /// snippet(cx, span1, "..") // -> "value"
 /// snippet(cx, span2, "..") // -> "Vec::new()"
 /// ```
-pub fn snippet<'a>(sess: &impl HasSession, span: Span, default: &'a str) -> Cow<'a, str> {
-    snippet_opt(sess, span).map_or_else(|| Cow::Borrowed(default), From::from)
+pub fn snippet<'a, 'sm>(sm: impl HasSourceMap<'sm>, span: Span, default: &'a str) -> Cow<'a, str> {
+    snippet_opt(sm, span).map_or_else(|| Cow::Borrowed(default), From::from)
 }
 
 /// Same as [`snippet`], but it adapts the applicability level by following rules:
@@ -547,17 +558,17 @@ pub fn snippet<'a>(sess: &impl HasSession, span: Span, default: &'a str) -> Cow<
 ///
 /// If the span might realistically contain a macro call (e.g. `vec![]`), consider using
 /// [`snippet_with_context`] instead.
-pub fn snippet_with_applicability<'a>(
-    sess: &impl HasSession,
+pub fn snippet_with_applicability<'a, 'sm>(
+    sm: impl HasSourceMap<'sm>,
     span: Span,
     default: &'a str,
     applicability: &mut Applicability,
 ) -> Cow<'a, str> {
-    snippet_with_applicability_sess(sess.sess(), span, default, applicability)
+    snippet_with_applicability_sm(sm.source_map(), span, default, applicability)
 }
 
-fn snippet_with_applicability_sess<'a>(
-    sess: &Session,
+fn snippet_with_applicability_sm<'a>(
+    sm: &SourceMap,
     span: Span,
     default: &'a str,
     applicability: &mut Applicability,
@@ -565,7 +576,7 @@ fn snippet_with_applicability_sess<'a>(
     if *applicability != Applicability::Unspecified && span.from_expansion() {
         *applicability = Applicability::MaybeIncorrect;
     }
-    if let Some(t) = snippet_opt(sess, span) {
+    if let Some(t) = snippet_opt(sm, span) {
         Cow::Owned(t)
     } else {
         if *applicability == Applicability::MachineApplicable {
@@ -576,8 +587,8 @@ fn snippet_with_applicability_sess<'a>(
 }
 
 /// Converts a span to a code snippet. Returns `None` if not available.
-pub fn snippet_opt(sess: &impl HasSession, span: Span) -> Option<String> {
-    sess.sess().source_map().span_to_snippet(span).ok()
+pub fn snippet_opt<'sm>(sm: impl HasSourceMap<'sm>, span: Span) -> Option<String> {
+    sm.source_map().span_to_snippet(span).ok()
 }
 
 /// Converts a span (from a block) to a code snippet if available, otherwise use default.
@@ -614,37 +625,42 @@ pub fn snippet_opt(sess: &impl HasSession, span: Span) -> Option<String> {
 ///     } // aligned with `if`
 /// ```
 /// Note that the first line of the snippet always has 0 indentation.
-pub fn snippet_block(sess: &impl HasSession, span: Span, default: &str, indent_relative_to: Option<Span>) -> String {
-    let snip = snippet(sess, span, default);
-    let indent = indent_relative_to.and_then(|s| indent_of(sess, s));
+pub fn snippet_block<'sm>(
+    sm: impl HasSourceMap<'sm>,
+    span: Span,
+    default: &str,
+    indent_relative_to: Option<Span>,
+) -> String {
+    let snip = snippet(sm, span, default);
+    let indent = indent_relative_to.and_then(|s| indent_of(sm, s));
     reindent_multiline(&snip, true, indent)
 }
 
 /// Same as [`snippet_block`], but adapts the applicability level by the rules of
 /// [`snippet_with_applicability`].
-pub fn snippet_block_with_applicability(
-    sess: &impl HasSession,
+pub fn snippet_block_with_applicability<'sm>(
+    sm: impl HasSourceMap<'sm>,
     span: Span,
     default: &str,
     indent_relative_to: Option<Span>,
     applicability: &mut Applicability,
 ) -> String {
-    let snip = snippet_with_applicability(sess, span, default, applicability);
-    let indent = indent_relative_to.and_then(|s| indent_of(sess, s));
+    let snip = snippet_with_applicability(sm, span, default, applicability);
+    let indent = indent_relative_to.and_then(|s| indent_of(sm, s));
     reindent_multiline(&snip, true, indent)
 }
 
 /// Combination of [`snippet_block`] and [`snippet_with_context`].
-pub fn snippet_block_with_context(
-    sess: &impl HasSession,
+pub fn snippet_block_with_context<'sm>(
+    sm: impl HasSourceMap<'sm>,
     span: Span,
     outer: SyntaxContext,
     default: &str,
     indent_relative_to: Option<Span>,
     app: &mut Applicability,
 ) -> (String, bool) {
-    let (snip, from_macro) = snippet_with_context(sess, span, outer, default, app);
-    let indent = indent_relative_to.and_then(|s| indent_of(sess, s));
+    let (snip, from_macro) = snippet_with_context(sm, span, outer, default, app);
+    let indent = indent_relative_to.and_then(|s| indent_of(sm, s));
     (reindent_multiline(&snip, true, indent), from_macro)
 }
 
@@ -658,18 +674,18 @@ pub fn snippet_block_with_context(
 /// correctly get a snippet of `vec![]`.
 ///
 /// This will also return whether or not the snippet is a macro call.
-pub fn snippet_with_context<'a>(
-    sess: &impl HasSession,
+pub fn snippet_with_context<'a, 'sm>(
+    sm: impl HasSourceMap<'sm>,
     span: Span,
     outer: SyntaxContext,
     default: &'a str,
     applicability: &mut Applicability,
 ) -> (Cow<'a, str>, bool) {
-    snippet_with_context_sess(sess.sess(), span, outer, default, applicability)
+    snippet_with_context_sm(sm.source_map(), span, outer, default, applicability)
 }
 
-fn snippet_with_context_sess<'a>(
-    sess: &Session,
+fn snippet_with_context_sm<'a>(
+    sm: &SourceMap,
     span: Span,
     outer: SyntaxContext,
     default: &'a str,
@@ -677,10 +693,7 @@ fn snippet_with_context_sess<'a>(
 ) -> (Cow<'a, str>, bool) {
     // If it is just range desugaring, use the desugaring span since it may include parenthesis.
     if span.desugaring_kind() == Some(DesugaringKind::RangeExpr) && span.parent_callsite().unwrap().ctxt() == outer {
-        return (
-            snippet_with_applicability_sess(sess, span, default, applicability),
-            false,
-        );
+        return (snippet_with_applicability_sm(sm, span, default, applicability), false);
     }
 
     let (span, is_macro_call) = walk_span_to_context(span, outer).map_or_else(
@@ -696,7 +709,7 @@ fn snippet_with_context_sess<'a>(
     );
 
     (
-        snippet_with_applicability_sess(sess, span, default, applicability),
+        snippet_with_applicability_sm(sm, span, default, applicability),
         is_macro_call,
     )
 }
@@ -759,15 +772,15 @@ pub fn trim_span(sm: &SourceMap, span: Span) -> Span {
 /// writeln!(o, "")   ->   writeln!(o, "")
 ///             ^^                   ^^^^
 /// ```
-pub fn expand_past_previous_comma(sess: &impl HasSession, span: Span) -> Span {
-    let extended = sess.sess().source_map().span_extend_to_prev_char(span, ',', true);
+pub fn expand_past_previous_comma<'sm>(sm: impl HasSourceMap<'sm>, span: Span) -> Span {
+    let extended = sm.source_map().span_extend_to_prev_char(span, ',', true);
     extended.with_lo(extended.lo() - BytePos(1))
 }
 
 /// Converts `expr` to a `char` literal if it's a `str` literal containing a single
 /// character (or a single byte with `ascii_only`)
-pub fn str_literal_to_char_literal(
-    sess: &impl HasSession,
+pub fn str_literal_to_char_literal<'sm>(
+    sm: impl HasSourceMap<'sm>,
     expr: &Expr<'_>,
     applicability: &mut Applicability,
     ascii_only: bool,
@@ -782,7 +795,7 @@ pub fn str_literal_to_char_literal(
         }
         && len == 1
     {
-        let snip = snippet_with_applicability(sess, expr.span, string, applicability);
+        let snip = snippet_with_applicability(sm, expr.span, string, applicability);
         let ch = if let StrStyle::Raw(nhash) = style {
             let nhash = nhash as usize;
             // for raw string: r##"a"##

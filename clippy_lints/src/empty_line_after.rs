@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::{SpanRangeExt, snippet_indent};
+use clippy_utils::source::{SpanExt, snippet_indent};
 use clippy_utils::tokenize_with_text;
 use itertools::Itertools;
 use rustc_ast::token::CommentKind;
@@ -288,7 +288,7 @@ impl<'a> Gap<'a> {
         let prev_stop = prev_chunk.last()?;
         let next_stop = next_chunk.first()?;
         let gap_span = prev_stop.span.between(next_stop.span);
-        let gap_snippet = gap_span.get_source_text(cx)?;
+        let gap_snippet = gap_span.get_text(cx)?;
 
         let mut has_comment = false;
         let mut empty_lines = Vec::new();

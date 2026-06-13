@@ -1,7 +1,7 @@
 use super::USELESS_ATTRIBUTE;
 use super::utils::{is_lint_level, is_word, namespace_and_lint};
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::{SpanRangeExt, first_line_of_span};
+use clippy_utils::source::{SpanExt, first_line_of_span};
 use clippy_utils::sym;
 use rustc_ast::{Attribute, Item, ItemKind};
 use rustc_errors::Applicability;
@@ -74,7 +74,7 @@ pub(super) fn check(cx: &EarlyContext<'_>, item: &Item, attrs: &[Attribute]) {
             }
             let line_span = first_line_of_span(cx, attr.span);
 
-            if let Some(src) = line_span.get_source_text(cx)
+            if let Some(src) = line_span.get_text(cx)
                 && src.contains("#[")
             {
                 #[expect(clippy::collapsible_span_lint_calls)]

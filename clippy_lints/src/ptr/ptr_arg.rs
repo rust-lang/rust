@@ -1,7 +1,7 @@
 use super::PTR_ARG;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::res::MaybeResPath;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::SpanExt;
 use clippy_utils::{VEC_METHODS_SHADOWING_SLICE_METHODS, get_expr_use_or_unification_node, is_lint_allowed, sym};
 use hir::LifetimeKind;
 use rustc_abi::ExternAbi;
@@ -55,7 +55,7 @@ pub(super) fn check_body<'tcx>(
                     .chain(result.replacements.iter().map(|r| {
                         (
                             r.expr_span,
-                            format!("{}{}", r.self_span.get_source_text(cx).unwrap(), r.replacement),
+                            format!("{}{}", r.self_span.get_text(cx).unwrap(), r.replacement),
                         )
                     }))
                     .collect(),
@@ -156,7 +156,7 @@ impl fmt::Display for DerefTyDisplay<'_, '_> {
             DerefTy::Path => f.write_str("Path"),
             DerefTy::Slice(hir_ty, ty) => {
                 f.write_char('[')?;
-                match hir_ty.and_then(|s| s.get_source_text(self.0)) {
+                match hir_ty.and_then(|s| s.get_text(self.0)) {
                     Some(s) => f.write_str(&s)?,
                     None => ty.fmt(f)?,
                 }
@@ -279,7 +279,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                                     diag.span_suggestion(
                                         hir_ty.span,
                                         "change this to",
-                                        match ty.span().get_source_text(cx) {
+                                        match ty.span().get_text(cx) {
                                             Some(s) => format!("&{}{s}", mutability.prefix_str()),
                                             None => format!("&{}{}", mutability.prefix_str(), args.type_at(1)),
                                         },

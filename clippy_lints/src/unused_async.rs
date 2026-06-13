@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::is_def_id_trait_method;
-use clippy_utils::source::{HasSession, snippet_with_applicability, walk_span_to_context};
+use clippy_utils::source::{snippet_with_applicability, walk_span_to_context};
 use clippy_utils::usage::is_todo_unimplemented_stub;
 use rustc_errors::Applicability;
 use rustc_hir::def::DefKind;
@@ -303,7 +303,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
                             // evaluate the expression, to immediately evaluate the expression.
                             let mut app = Applicability::MaybeIncorrect;
 
-                            let async_span = cx.sess().source_map().span_extend_while_whitespace(async_span);
+                            let async_span = cx.tcx.sess.source_map().span_extend_while_whitespace(async_span);
 
                             let signature_snippet = snippet_with_applicability(cx, signature_span, "_", &mut app);
                             let tail_snippet = snippet_with_applicability(cx, tail_span, "_", &mut app).to_string();

@@ -1,7 +1,7 @@
 use super::FILTER_MAP_BOOL_THEN;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
-use clippy_utils::source::{SpanRangeExt, snippet_with_context};
+use clippy_utils::source::{SpanExt, snippet_with_context};
 use clippy_utils::ty::is_copy;
 use clippy_utils::{CaptureKind, can_move_expr_to_closure, contains_return, is_from_proc_macro, peel_blocks, sym};
 use rustc_ast::Mutability;
@@ -43,7 +43,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, arg: &
             .iter()
             .filter(|adj| matches!(adj.kind, Adjust::Deref(_)))
             .count()
-        && let Some(param_snippet) = param.span.get_source_text(cx)
+        && let Some(param_snippet) = param.span.get_text(cx)
     {
         let mut applicability = Applicability::MachineApplicable;
         let (filter, _) = snippet_with_context(cx, recv.span, expr.span.ctxt(), "..", &mut applicability);

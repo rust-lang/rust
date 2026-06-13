@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::numeric_literal;
 use clippy_utils::numeric_literal::NumericLiteral;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::SpanExt;
 use rustc_ast::LitKind;
 use rustc_data_structures::packed::Pu128;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
@@ -40,7 +40,7 @@ fn check_expr(cx: &LateContext<'_>, expr: &Expr<'_>) {
             if let LitKind::Int(Pu128(val), _) = lit.node
                 && !is_single_digit(val)
                 && !is_power_of_twoish(val)
-                && let Some(src) = lit.span.get_source_text(cx)
+                && let Some(src) = lit.span.get_text(cx)
                 && let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit.node)
                 && num_lit.is_decimal()
             {

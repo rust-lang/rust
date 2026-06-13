@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::SpanExt;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::FnKind;
@@ -23,7 +23,7 @@ pub(super) fn check_fn(
     }
 
     let mut line_count: u64 = 0;
-    let too_many = body.value.span.check_source_text(cx, |src| {
+    let too_many = body.value.span.check_text(cx, |src| {
         let mut in_comment = false;
         let mut code_in_line;
 

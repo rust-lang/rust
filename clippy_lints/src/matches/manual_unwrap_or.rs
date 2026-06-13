@@ -1,6 +1,6 @@
 use clippy_utils::consts::ConstEvalCtxt;
 use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
-use clippy_utils::source::{SpanRangeExt as _, indent_of, reindent_multiline};
+use clippy_utils::source::{SpanExt as _, indent_of, reindent_multiline};
 use rustc_ast::{BindingMode, ByRef};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -160,7 +160,7 @@ fn handle(
             );
         } else if let Some(ty_name) = find_type_name(cx, cx.typeck_results().expr_ty(condition))
             && cx.typeck_results().expr_adjustments(body_some).is_empty()
-            && let Some(or_body_snippet) = peel_blocks(body_none).span.get_source_text(cx)
+            && let Some(or_body_snippet) = peel_blocks(body_none).span.get_text(cx)
             && let Some(indent) = indent_of(cx, expr.span)
             && ConstEvalCtxt::new(cx).eval_local(body_none, expr.span.ctxt()).is_some()
         {

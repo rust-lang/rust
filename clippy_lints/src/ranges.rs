@@ -3,7 +3,7 @@ use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeResPath;
-use clippy_utils::source::{SpanRangeExt, snippet, snippet_with_applicability};
+use clippy_utils::source::{SpanExt, snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{
@@ -300,7 +300,7 @@ fn check_possible_range_contains(
     if let ExprKind::Binary(ref lhs_op, _left, new_lhs) = left.kind
         && op == lhs_op.node
         && let new_span = Span::new(new_lhs.span.lo(), right.span.hi(), expr.span.ctxt(), expr.span.parent())
-        && new_span.check_source_text(cx, |src| {
+        && new_span.check_text(cx, |src| {
             // Do not continue if we have mismatched number of parens, otherwise the suggestion is wrong
             src.matches('(').count() == src.matches(')').count()
         })

@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::{MaybeDef, MaybeResPath};
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::SpanExt;
 use clippy_utils::{expr_or_init, std_or_core, sym};
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
@@ -25,7 +25,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, from: &Expr<'_>, to: 
 
             let sugg = if let TyKind::Infer(()) = ptr_ty.ty.kind {
                 format!("{std_or_core}::{sugg_fn}()")
-            } else if let Some(mut_ty_snip) = ptr_ty.ty.span.get_source_text(cx) {
+            } else if let Some(mut_ty_snip) = ptr_ty.ty.span.get_text(cx) {
                 format!("{std_or_core}::{sugg_fn}::<{mut_ty_snip}>()")
             } else {
                 return;

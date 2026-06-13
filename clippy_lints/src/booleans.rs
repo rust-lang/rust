@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::higher::has_let_expr;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeDef;
-use clippy_utils::source::{SpanRangeExt, snippet_with_context};
+use clippy_utils::source::{SpanExt, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{eq_expr_value, sym};
@@ -157,30 +157,30 @@ fn check_inverted_bool_in_condition(
 
     let suggestion = match (left.kind, right.kind) {
         (ExprKind::Unary(UnOp::Not, left_sub), ExprKind::Unary(UnOp::Not, right_sub)) => {
-            let Some(left) = left_sub.span.get_source_text(cx) else {
+            let Some(left) = left_sub.span.get_text(cx) else {
                 return;
             };
-            let Some(right) = right_sub.span.get_source_text(cx) else {
+            let Some(right) = right_sub.span.get_text(cx) else {
                 return;
             };
             let Some(op) = bin_op_eq_str(op) else { return };
             format!("{left} {op} {right}")
         },
         (ExprKind::Unary(UnOp::Not, left_sub), _) => {
-            let Some(left) = left_sub.span.get_source_text(cx) else {
+            let Some(left) = left_sub.span.get_text(cx) else {
                 return;
             };
-            let Some(right) = right.span.get_source_text(cx) else {
+            let Some(right) = right.span.get_text(cx) else {
                 return;
             };
             let Some(op) = inverted_bin_op_eq_str(op) else { return };
             format!("{left} {op} {right}")
         },
         (_, ExprKind::Unary(UnOp::Not, right_sub)) => {
-            let Some(left) = left.span.get_source_text(cx) else {
+            let Some(left) = left.span.get_text(cx) else {
                 return;
             };
-            let Some(right) = right_sub.span.get_source_text(cx) else {
+            let Some(right) = right_sub.span.get_text(cx) else {
                 return;
             };
             let Some(op) = inverted_bin_op_eq_str(op) else { return };
@@ -392,12 +392,8 @@ impl SuggestContext<'_, '_, '_> {
                 }
             },
             &Term(n) => {
-                self.output.push_str(
-                    &self.terminals[n as usize]
-                        .span
-                        .source_callsite()
-                        .get_source_text(self.cx)?,
-                );
+                self.output
+                    .push_str(&self.terminals[n as usize].span.source_callsite().get_text(self.cx)?);
             },
         }
         Some(())
@@ -452,10 +448,7 @@ fn simplify_not(cx: &LateContext<'_>, curr_msrv: Msrv, expr: &Expr<'_>) -> Optio
                         .map(|arg| simplify_not(cx, curr_msrv, arg))
                         .collect::<Option<Vec<_>>>()?
                         .join(", ");
-                    Some(format!(
-                        "{}.{neg_method}({negated_args})",
-                        receiver.span.get_source_text(cx)?
-                    ))
+                    Some(format!("{}.{neg_method}({negated_args})", receiver.span.get_text(cx)?))
                 })
         },
         ExprKind::Closure(closure) => {
@@ -463,13 +456,13 @@ fn simplify_not(cx: &LateContext<'_>, curr_msrv: Msrv, expr: &Expr<'_>) -> Optio
             let params = body
                 .params
                 .iter()
-                .map(|param| param.span.get_source_text(cx).map(|t| t.to_string()))
+                .map(|param| param.span.get_text(cx).map(|t| t.to_string()))
                 .collect::<Option<Vec<_>>>()?
                 .join(", ");
             let negated = simplify_not(cx, curr_msrv, body.value)?;
             Some(format!("|{params}| {negated}"))
         },
-        ExprKind::Unary(UnOp::Not, expr) => expr.span.get_source_text(cx).map(|t| t.to_string()),
+        ExprKind::Unary(UnOp::Not, expr) => expr.span.get_text(cx).map(|t| t.to_string()),
         _ => None,
     }
 }

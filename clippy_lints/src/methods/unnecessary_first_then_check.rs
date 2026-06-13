@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::SpanExt;
 
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
@@ -29,8 +29,8 @@ pub(super) fn check(
     };
 
     let both_calls_span = first_call_span.with_hi(call_span.hi());
-    if let Some(both_calls_snippet) = both_calls_span.get_source_text(cx)
-        && let Some(first_caller_snippet) = first_caller.span.get_source_text(cx)
+    if let Some(both_calls_snippet) = both_calls_span.get_text(cx)
+        && let Some(first_caller_snippet) = first_caller.span.get_text(cx)
     {
         let (sugg_span, suggestion) = if is_some {
             (

@@ -1,7 +1,6 @@
 use super::needless_pass_by_value::requires_exact_signature;
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::source::HasSession as _;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{inherits_cfg, is_from_proc_macro, is_self};
 use core::ops::ControlFlow;
@@ -269,7 +268,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
                 // If the argument is never used mutably, we emit the warning.
                 let sp = input.span;
                 if let rustc_hir::TyKind::Ref(_, inner_ty) = input.kind {
-                    let Some(after_mut_span) = cx.sess().source_map().span_extend_to_prev_str(
+                    let Some(after_mut_span) = cx.tcx.sess.source_map().span_extend_to_prev_str(
                         inner_ty.ty.span.shrink_to_lo(),
                         "mut",
                         true,

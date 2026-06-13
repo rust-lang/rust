@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::MaybeResPath;
-use clippy_utils::source::{SourceText, SpanRangeExt, snippet};
+use clippy_utils::source::{SourceText, SpanExt, snippet};
 use clippy_utils::ty::needs_ordered_drop;
 use clippy_utils::visitors::{for_each_expr, for_each_expr_without_closures, is_local_used};
 use core::ops::ControlFlow;
@@ -249,7 +249,7 @@ fn local_snippet_without_semicolon(cx: &LateContext<'_>, local: &LetStmt<'_>) ->
         None => local.pat.span.hi(),
     });
 
-    span.get_source_text(cx)
+    span.get_text(cx)
 }
 
 fn check<'tcx>(

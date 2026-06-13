@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_config::types::MacroMatcher;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::{SourceText, SpanRangeExt};
+use clippy_utils::source::{SourceText, SpanExt};
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
@@ -129,7 +129,7 @@ fn is_offending_macro(cx: &EarlyContext<'_>, span: Span, mac_braces: &MacroBrace
         if let ExpnKind::Macro(MacroKind::Bang, mac_name) = expn_data.kind
         && let name = mac_name.as_str()
         && let Some(&braces) = mac_braces.macro_braces.get(name)
-        && let Some(snip) = expn_data.call_site.get_source_text(cx)
+        && let Some(snip) = expn_data.call_site.get_text(cx)
         // we must check only invocation sites
         // https://github.com/rust-lang/rust-clippy/issues/7422
         && let Some(macro_args_str) = snip.strip_prefix(name).and_then(|snip| snip.strip_prefix('!'))
