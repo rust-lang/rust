@@ -1,5 +1,5 @@
 error[E0277]: expected a `FnOnce<&'a i32>` closure, found `()`
-  --> $DIR/issue-148630-unexpected-node-synthetic-2.rs:7:17
+  --> $DIR/unexpected-node-synthetic-issue-148630-2.rs:7:17
    |
 LL |     fn foo() -> impl Sized
    |                 ^^^^^^^^^^ expected an `FnOnce<&'a i32>` closure, found `()`
@@ -7,7 +7,7 @@ LL |     fn foo() -> impl Sized
    = help: the trait `for<'a> FnOnce<&'a i32>` is not implemented for `()`
 
 error[E0277]: expected a `FnOnce<&'a i32>` closure, found `()`
-  --> $DIR/issue-148630-unexpected-node-synthetic-2.rs:7:17
+  --> $DIR/unexpected-node-synthetic-issue-148630-2.rs:7:17
    |
 LL |     fn foo() -> impl Sized
    |                 ^^^^^^^^^^ expected an `FnOnce<&'a i32>` closure, found `()`
@@ -16,7 +16,7 @@ LL |     fn foo() -> impl Sized
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: expected a `FnOnce<&'a i32>` closure, found `()`
-  --> $DIR/issue-148630-unexpected-node-synthetic-2.rs:7:5
+  --> $DIR/unexpected-node-synthetic-issue-148630-2.rs:7:5
    |
 LL | /     fn foo() -> impl Sized
 ...  |
@@ -27,7 +27,7 @@ LL | |         for<'a> <() as FnOnce<&'a i32>>::Output: Tr,
    = help: the trait `for<'a> FnOnce<&'a i32>` is not implemented for `()`
 
 error[E0277]: expected a `FnOnce<&'a i32>` closure, found `()`
-  --> $DIR/issue-148630-unexpected-node-synthetic-2.rs:7:17
+  --> $DIR/unexpected-node-synthetic-issue-148630-2.rs:7:17
    |
 LL |     fn foo() -> impl Sized
    |                 ^^^^^^^^^^ expected an `FnOnce<&'a i32>` closure, found `()`
@@ -35,7 +35,7 @@ LL |     fn foo() -> impl Sized
    = help: the trait `for<'a> FnOnce<&'a i32>` is not implemented for `()`
 
 error[E0277]: expected a `FnOnce<&'a i32>` closure, found `()`
-  --> $DIR/issue-148630-unexpected-node-synthetic-2.rs:7:22
+  --> $DIR/unexpected-node-synthetic-issue-148630-2.rs:7:22
    |
 LL |     fn foo() -> impl Sized
    |                      ^^^^^ expected an `FnOnce<&'a i32>` closure, found `()`
@@ -43,7 +43,7 @@ LL |     fn foo() -> impl Sized
    = help: the trait `for<'a> FnOnce<&'a i32>` is not implemented for `()`
 
 error[E0277]: expected a `FnOnce<&'a i32>` closure, found `()`
-  --> $DIR/issue-148630-unexpected-node-synthetic-2.rs:7:17
+  --> $DIR/unexpected-node-synthetic-issue-148630-2.rs:7:17
    |
 LL |     fn foo() -> impl Sized
    |                 ^^^^^^^^^^ expected an `FnOnce<&'a i32>` closure, found `()`
@@ -52,7 +52,7 @@ LL |     fn foo() -> impl Sized
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: expected a `FnOnce<&'a i32>` closure, found `()`
-  --> $DIR/issue-148630-unexpected-node-synthetic-2.rs:7:17
+  --> $DIR/unexpected-node-synthetic-issue-148630-2.rs:7:17
    |
 LL |     fn foo() -> impl Sized
    |                 ^^^^^^^^^^ expected an `FnOnce<&'a i32>` closure, found `()`

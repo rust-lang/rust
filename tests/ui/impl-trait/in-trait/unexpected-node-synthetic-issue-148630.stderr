@@ -1,5 +1,5 @@
 error[E0277]: expected a `FnOnce(&'a mut i32)` closure, found `(dyn Foo + 'static)`
-  --> $DIR/issue-148630-unexpected-node-synthetic.rs:8:17
+  --> $DIR/unexpected-node-synthetic-issue-148630.rs:8:17
    |
 LL |     fn foo() -> impl Sized
    |                 ^^^^^^^^^^ expected an `FnOnce(&'a mut i32)` closure, found `(dyn Foo + 'static)`
@@ -7,7 +7,7 @@ LL |     fn foo() -> impl Sized
    = help: the trait `for<'a> FnOnce(&'a mut i32)` is not implemented for `(dyn Foo + 'static)`
 
 error[E0277]: expected a `FnOnce(&'a mut i32)` closure, found `(dyn Foo + 'static)`
-  --> $DIR/issue-148630-unexpected-node-synthetic.rs:8:17
+  --> $DIR/unexpected-node-synthetic-issue-148630.rs:8:17
    |
 LL |     fn foo() -> impl Sized
    |                 ^^^^^^^^^^ expected an `FnOnce(&'a mut i32)` closure, found `(dyn Foo + 'static)`
@@ -16,7 +16,7 @@ LL |     fn foo() -> impl Sized
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: expected a `FnOnce(&'a mut i32)` closure, found `(dyn Foo + 'static)`
-  --> $DIR/issue-148630-unexpected-node-synthetic.rs:8:5
+  --> $DIR/unexpected-node-synthetic-issue-148630.rs:8:5
    |
 LL | /     fn foo() -> impl Sized
 ...  |
@@ -27,7 +27,7 @@ LL | |         for<'a> <dyn Foo as FnOnce<(&'a mut i32,)>>::Output: Future<Outpu
    = help: the trait `for<'a> FnOnce(&'a mut i32)` is not implemented for `(dyn Foo + 'static)`
 
 error[E0277]: expected a `FnOnce(&'a mut i32)` closure, found `(dyn Foo + 'static)`
-  --> $DIR/issue-148630-unexpected-node-synthetic.rs:8:17
+  --> $DIR/unexpected-node-synthetic-issue-148630.rs:8:17
    |
 LL |     fn foo() -> impl Sized
    |                 ^^^^^^^^^^ expected an `FnOnce(&'a mut i32)` closure, found `(dyn Foo + 'static)`
@@ -35,14 +35,14 @@ LL |     fn foo() -> impl Sized
    = help: the trait `for<'a> FnOnce(&'a mut i32)` is not implemented for `(dyn Foo + 'static)`
 
 error[E0038]: the trait `Foo` is not dyn compatible
-  --> $DIR/issue-148630-unexpected-node-synthetic.rs:17:84
+  --> $DIR/unexpected-node-synthetic-issue-148630.rs:17:84
    |
 LL |         for<'a> <dyn Foo as FnOnce<(&'a mut i32,)>>::Output: Future<Output = ()> + 'a,
    |                                                                                    ^^ `Foo` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/issue-148630-unexpected-node-synthetic.rs:8:8
+  --> $DIR/unexpected-node-synthetic-issue-148630.rs:8:8
    |
 LL | trait Foo {
    |       --- this trait is not dyn compatible...
@@ -58,7 +58,7 @@ LL |         for<'a> <dyn Foo as FnOnce<(&'a mut i32,)>>::Output: Future<Output 
    |                                                                                        +++++++++++
 
 error[E0277]: expected a `FnOnce(&'a mut i32)` closure, found `(dyn Foo + 'static)`
-  --> $DIR/issue-148630-unexpected-node-synthetic.rs:8:22
+  --> $DIR/unexpected-node-synthetic-issue-148630.rs:8:22
    |
 LL |     fn foo() -> impl Sized
    |                      ^^^^^ expected an `FnOnce(&'a mut i32)` closure, found `(dyn Foo + 'static)`
@@ -66,7 +66,7 @@ LL |     fn foo() -> impl Sized
    = help: the trait `for<'a> FnOnce(&'a mut i32)` is not implemented for `(dyn Foo + 'static)`
 
 error[E0277]: expected a `FnOnce(&'a mut i32)` closure, found `(dyn Foo + 'static)`
-  --> $DIR/issue-148630-unexpected-node-synthetic.rs:8:17
+  --> $DIR/unexpected-node-synthetic-issue-148630.rs:8:17
    |
 LL |     fn foo() -> impl Sized
    |                 ^^^^^^^^^^ expected an `FnOnce(&'a mut i32)` closure, found `(dyn Foo + 'static)`
@@ -75,7 +75,7 @@ LL |     fn foo() -> impl Sized
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: expected a `FnOnce(&'a mut i32)` closure, found `(dyn Foo + 'static)`
-  --> $DIR/issue-148630-unexpected-node-synthetic.rs:8:17
+  --> $DIR/unexpected-node-synthetic-issue-148630.rs:8:17
    |
 LL |     fn foo() -> impl Sized
    |                 ^^^^^^^^^^ expected an `FnOnce(&'a mut i32)` closure, found `(dyn Foo + 'static)`
