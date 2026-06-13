@@ -2079,7 +2079,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(box_vec_non_null)]
+    /// #![feature(vec_as_non_null)]
     ///
     /// // Allocate vector big enough for 4 elements.
     /// let size = 4;
@@ -2099,7 +2099,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// Due to the aliasing guarantee, the following code is legal:
     ///
     /// ```rust
-    /// #![feature(box_vec_non_null)]
+    /// #![feature(vec_as_non_null)]
     ///
     /// unsafe {
     ///     let mut v = vec![0];
@@ -2115,8 +2115,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// [`as_mut_ptr`]: Vec::as_mut_ptr
     /// [`as_ptr`]: Vec::as_ptr
     /// [`as_non_null`]: Vec::as_non_null
-    #[unstable(feature = "box_vec_non_null", issue = "130364")]
-    #[rustc_const_unstable(feature = "box_vec_non_null", issue = "130364")]
+    #[unstable(feature = "vec_as_non_null", issue = "157843")]
+    #[rustc_const_unstable(feature = "vec_as_non_null", issue = "157843")]
     #[rustc_as_ptr]
     #[inline]
     pub const fn as_non_null(&mut self) -> NonNull<T> {
