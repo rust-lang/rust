@@ -214,10 +214,7 @@ impl<I: Interner> Relate<I> for ty::AliasTy<I> {
         b: ty::AliasTy<I>,
     ) -> RelateResult<I, ty::AliasTy<I>> {
         if a.kind.def_id() != b.kind.def_id() {
-            Err(TypeError::ProjectionMismatched(ExpectedFound::new(
-                a.kind.def_id(),
-                b.kind.def_id(),
-            )))
+            Err(TypeError::ProjectionMismatched(ExpectedFound::new(a.kind.into(), b.kind.into())))
         } else {
             let cx = relation.cx();
             let args = if let Some(variances) = cx.opt_alias_variances(a.kind) {
@@ -259,13 +256,13 @@ impl<I: Interner> Relate<I> for ty::AliasTerm<I> {
         a: ty::AliasTerm<I>,
         b: ty::AliasTerm<I>,
     ) -> RelateResult<I, ty::AliasTerm<I>> {
-        if a.def_id() != b.def_id() {
-            Err(TypeError::ProjectionMismatched(ExpectedFound::new(a.def_id(), b.def_id())))
+        if a.kind != b.kind {
+            Err(TypeError::ProjectionMismatched(ExpectedFound::new(a.kind, b.kind)))
         } else {
             let args = match a.kind {
-                ty::AliasTermKind::OpaqueTy { .. } => relate_args_with_variances(
+                ty::AliasTermKind::OpaqueTy { def_id } => relate_args_with_variances(
                     relation,
-                    relation.cx().variances_of(a.def_id()),
+                    relation.cx().variances_of(def_id.into()),
                     a.args,
                     b.args,
                 )?,
@@ -292,8 +289,8 @@ impl<I: Interner> Relate<I> for ty::ExistentialProjection<I> {
     ) -> RelateResult<I, ty::ExistentialProjection<I>> {
         if a.def_id != b.def_id {
             Err(TypeError::ProjectionMismatched(ExpectedFound::new(
-                a.def_id.into(),
-                b.def_id.into(),
+                relation.cx().alias_term_kind_from_def_id(a.def_id.into()),
+                relation.cx().alias_term_kind_from_def_id(b.def_id.into()),
             )))
         } else {
             let term = relation.relate_with_variance(

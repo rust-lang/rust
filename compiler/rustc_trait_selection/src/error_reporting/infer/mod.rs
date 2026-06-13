@@ -202,7 +202,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     .kind()
                     .map_bound(|kind| match kind {
                         ty::ClauseKind::Projection(projection_predicate)
-                            if projection_predicate.projection_term.def_id() == item_def_id =>
+                            if projection_predicate.def_id() == item_def_id =>
                         {
                             projection_predicate.term.as_type()
                         }
@@ -1473,7 +1473,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                     ValuePairs::TraitRefs(_) => (false, Mismatch::Fixed("trait")),
                     ValuePairs::Aliases(ExpectedFound { expected, .. }) => {
-                        (false, Mismatch::Fixed(self.tcx.def_descr(expected.def_id())))
+                        let def_id = match expected.kind {
+                            ty::AliasTermKind::ProjectionTy { def_id } => def_id.into(),
+                            ty::AliasTermKind::InherentTy { def_id } => def_id.into(),
+                            ty::AliasTermKind::OpaqueTy { def_id } => def_id.into(),
+                            ty::AliasTermKind::FreeTy { def_id } => def_id.into(),
+                            ty::AliasTermKind::AnonConst { def_id } => def_id.into(),
+                            ty::AliasTermKind::ProjectionConst { def_id } => def_id.into(),
+                            ty::AliasTermKind::FreeConst { def_id } => def_id.into(),
+                            ty::AliasTermKind::InherentConst { def_id } => def_id.into(),
+                        };
+                        (false, Mismatch::Fixed(self.tcx.def_descr(def_id)))
                     }
                     ValuePairs::Regions(_) => (false, Mismatch::Fixed("lifetime")),
                     ValuePairs::ExistentialTraitRef(_) => {
