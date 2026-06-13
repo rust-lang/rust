@@ -494,9 +494,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let term = match term {
                     hir::Term::Ty(ty) => self.lower_ty(ty).into(),
                     hir::Term::Const(ct) => {
-                        let ty = projection_term.map_bound(|alias| {
-                            tcx.type_of(alias.def_id()).instantiate(tcx, alias.args).skip_norm_wip()
-                        });
+                        let ty = projection_term
+                            .map_bound(|alias| alias.expect_ct().type_of(tcx).skip_norm_wip());
                         let ty = check_assoc_const_binding_type(
                             self,
                             constraint.ident,

@@ -351,7 +351,7 @@ macro_rules! make_mir_visitor {
                         | ty::InstanceKind::ReifyShim(_def_id, _)
                         | ty::InstanceKind::Virtual(_def_id, _)
                         | ty::InstanceKind::ThreadLocalShim(_def_id)
-                        | ty::InstanceKind::ClosureOnceShim { call_once: _def_id, track_caller: _ }
+                        | ty::InstanceKind::ClosureOnceShim { call_once: _def_id, closure: _, track_caller: _ }
                         | ty::InstanceKind::ConstructCoroutineInClosureShim {
                             coroutine_closure_def_id: _def_id,
                             receiver_by_ref: _,

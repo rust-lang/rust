@@ -47,7 +47,7 @@ pub enum TypeError<I: Interner> {
     /// type).
     CyclicTy(I::Ty),
     CyclicConst(I::Const),
-    ProjectionMismatched(ExpectedFound<I::DefId>),
+    ProjectionMismatched(ExpectedFound<ty::AliasTermKind<I>>),
     ExistentialMismatch(ExpectedFound<I::BoundExistentialPredicates>),
     ConstMismatch(ExpectedFound<I::Const>),
 

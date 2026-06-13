@@ -1278,6 +1278,20 @@ pub(crate) struct FeatureNotValid<'a> {
     pub span: Span,
     #[subdiagnostic]
     pub hint: FeatureNotValidHint<'a>,
+    #[subdiagnostic]
+    pub cross_arch: Option<CrossArchFeatureNote<'a>>,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum CrossArchFeatureNote<'a> {
+    #[note(
+        "`{$feature}` is present on the `{$arch}` target architecture. Did you mean to compile for that target, or use conditional compilation?"
+    )]
+    Single { feature: &'a str, arch: &'a str },
+    #[note(
+        "`{$feature}` is present on the {$arches} target architectures. Did you mean to compile for one of those targets, or use conditional compilation?"
+    )]
+    Multiple { feature: &'a str, arches: DiagSymbolList<&'a str> },
 }
 
 #[derive(Subdiagnostic)]
