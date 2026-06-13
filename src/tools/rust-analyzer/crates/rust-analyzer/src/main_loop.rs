@@ -387,6 +387,16 @@ impl GlobalState {
                             if cancelled {
                                 self.prime_caches_queue
                                     .request_op("restart after cancellation".to_owned(), ());
+                            } else if self.config.check_on_save(None)
+                                && self.config.flycheck_workspace(None)
+                                && !self.fetch_build_data_queue.op_requested()
+                            {
+                                // Priming finished; now run the deferred initial workspace flycheck
+                                // (kept off the critical path so `cargo check` doesn't contend with
+                                // cache priming for CPU).
+                                self.flycheck
+                                    .iter()
+                                    .for_each(|flycheck| flycheck.restart_workspace(None));
                             }
                             if let Some((message, fraction, title)) = last_report.take() {
                                 self.report_progress(
@@ -482,19 +492,25 @@ impl GlobalState {
         if self.is_quiescent() {
             let became_quiescent = !was_quiescent;
             if became_quiescent {
-                if self.config.check_on_save(None)
-                    && self.config.flycheck_workspace(None)
-                    && !self.fetch_build_data_queue.op_requested()
-                {
-                    // Project has loaded properly, kick off initial flycheck
-                    self.flycheck.iter().for_each(|flycheck| flycheck.restart_workspace(None));
-                }
                 // delay initial cache priming until proc macros are loaded, or we will load up a bunch of garbage into salsa
                 let proc_macros_loaded = self.config.prefill_caches()
                     && (!self.config.expand_proc_macros()
                         || self.fetch_proc_macros_queue.last_op_result().copied().unwrap_or(false));
                 if proc_macros_loaded {
                     self.prime_caches_queue.request_op("became quiescent".to_owned(), ());
+                }
+                if self.config.check_on_save(None)
+                    && self.config.flycheck_workspace(None)
+                    && !self.fetch_build_data_queue.op_requested()
+                {
+                    if !self.config.prefill_caches() {
+                        self.flycheck.iter().for_each(|flycheck| flycheck.restart_workspace(None));
+                    } else if proc_macros_loaded
+                        && !self.prime_caches_queue.op_in_progress()
+                        && !self.prime_caches_queue.op_requested()
+                    {
+                        self.flycheck.iter().for_each(|flycheck| flycheck.restart_workspace(None));
+                    }
                 }
             }
 
