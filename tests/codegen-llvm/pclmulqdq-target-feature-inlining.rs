@@ -10,8 +10,10 @@
 use std::arch::x86_64 as arch;
 
 // CHECK-LABEL: @reduce128_caller
-// CHECK: call <2 x i64> @llvm.x86.pclmulqdq
-// CHECK: call <2 x i64> @llvm.x86.pclmulqdq
+// CHECK-NEXT: start
+// CHECK-COUNT-3: load
+// CHECK-NEXT: call <2 x i64> @llvm.x86.pclmulqdq
+// CHECK-NEXT: call <2 x i64> @llvm.x86.pclmulqdq
 #[target_feature(enable = "pclmulqdq", enable = "sse2", enable = "sse4.1")]
 #[no_mangle]
 pub unsafe fn reduce128_caller(
