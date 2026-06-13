@@ -148,15 +148,12 @@ pub(crate) fn suggest_to_remove_or_use_generic(
             suggestions.push((seg.ident.span.shrink_to_hi(), format!("<{}>", param.name)));
         }
         if is_param_used {
-            // If the parameter is used in the body, we also want to suggest adding it to the struct definition if it's not already there
-            let struct_span = tcx.def_span(struct_def_id);
-            let last_param_span = if let Some(local_def_id) = struct_def_id.as_local() {
-                let hir_struct = tcx.hir_node_by_def_id(local_def_id).expect_item().expect_struct();
-                hir_struct.1.params.last().map(|param| param.span)
-            } else {
-                let generics = tcx.generics_of(struct_def_id);
-                generics.own_params.last().map(|param| tcx.def_span(param.def_id))
-            };
+            // If the parameter is used in the body, also suggest adding it to the ADT
+            // definition if it's not already there.
+            let adt_span = tcx.def_span(adt_def_id);
+            let generics = tcx.generics_of(adt_def_id);
+            let last_param_span =
+                generics.own_params.last().map(|param| tcx.def_span(param.def_id));
 
             if let Some(last_param_span) = last_param_span {
                 suggestions.push((last_param_span.shrink_to_hi(), format!(", {}", param.name)));
