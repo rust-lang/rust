@@ -57,7 +57,7 @@ LL |     vec.sort_by(|a, b| (b + 5).abs().cmp(&(a + 5).abs()));
 help: try
    |
 LL -     vec.sort_by(|a, b| (b + 5).abs().cmp(&(a + 5).abs()));
-LL +     vec.sort_by_key(|b| std::cmp::Reverse((b + 5).abs()));
+LL +     vec.sort_by_key(|a| std::cmp::Reverse((a + 5).abs()));
    |
 
 error: consider using `sort_unstable_by_key`
@@ -69,7 +69,7 @@ LL |     vec.sort_unstable_by(|a, b| id(-b).cmp(&id(-a)));
 help: try
    |
 LL -     vec.sort_unstable_by(|a, b| id(-b).cmp(&id(-a)));
-LL +     vec.sort_unstable_by_key(|b| std::cmp::Reverse(id(-b)));
+LL +     vec.sort_unstable_by_key(|a| std::cmp::Reverse(id(-a)));
    |
 
 error: consider using `sort_by_key`
@@ -129,7 +129,7 @@ LL |         args.sort_by(|a, b| b.name().cmp(&a.name()));
 help: try
    |
 LL -         args.sort_by(|a, b| b.name().cmp(&a.name()));
-LL +         args.sort_by_key(|b| std::cmp::Reverse(b.name()));
+LL +         args.sort_by_key(|a| std::cmp::Reverse(a.name()));
    |
 
 error: consider using `sort_unstable_by_key`
@@ -141,7 +141,7 @@ LL |         args.sort_unstable_by(|a, b| b.name().cmp(&a.name()));
 help: try
    |
 LL -         args.sort_unstable_by(|a, b| b.name().cmp(&a.name()));
-LL +         args.sort_unstable_by_key(|b| std::cmp::Reverse(b.name()));
+LL +         args.sort_unstable_by_key(|a| std::cmp::Reverse(a.name()));
    |
 
 error: consider using `sort_by_key`
