@@ -1613,6 +1613,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.tables
                     .type_alias_is_lazy
                     .set(def_id.index, self.tcx.type_alias_is_lazy(def_id));
+                if self.tcx.type_alias_is_lazy(def_id) {
+                    record!(self.tables.args_known_to_outlive_alias_params[def_id] <- tcx.args_known_to_outlive_alias_params(def_id));
+                }
             }
             if let DefKind::OpaqueTy = def_kind {
                 self.encode_explicit_item_bounds(def_id);
@@ -1622,6 +1625,19 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 if tcx.is_conditionally_const(def_id) {
                     record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
                         <- tcx.explicit_implied_const_bounds(def_id).skip_binder());
+                }
+                record!(self.tables.args_known_to_outlive_alias_params[def_id] <- tcx.args_known_to_outlive_alias_params(def_id));
+            }
+            if let DefKind::AssocTy = def_kind {
+                let assoc_item = tcx.associated_item(def_id);
+                match assoc_item.container {
+                    ty::AssocContainer::Trait => {
+                        record!(self.tables.args_known_to_outlive_alias_params[def_id] <- tcx.args_known_to_outlive_alias_params(def_id));
+                    }
+                    ty::AssocContainer::InherentImpl => {
+                        record!(self.tables.args_known_to_outlive_alias_params[def_id] <- tcx.args_known_to_outlive_alias_params(def_id));
+                    }
+                    ty::AssocContainer::TraitImpl(_) => {}
                 }
             }
             if let DefKind::AnonConst = def_kind {

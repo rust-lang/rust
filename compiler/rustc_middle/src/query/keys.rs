@@ -265,6 +265,12 @@ impl<'tcx> QueryKey for ty::Clauses<'tcx> {
     }
 }
 
+impl<'tcx> QueryKey for ty::AliasTyKind<'tcx> {
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        tcx.def_span(self.def_id())
+    }
+}
+
 impl<'tcx, T: QueryKey> QueryKey for ty::PseudoCanonicalInput<'tcx, T> {
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.value.default_span(tcx)
