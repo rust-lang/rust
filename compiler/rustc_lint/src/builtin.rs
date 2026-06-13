@@ -189,46 +189,6 @@ impl<'tcx> LateLintPass<'tcx> for NonShorthandFieldPatterns {
     }
 }
 
-declare_lint! {
-    /// The `unsafe_code` lint catches usage of `unsafe` code and other
-    /// potentially unsound constructs like `no_mangle`, `export_name`,
-    /// and `link_section`.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![deny(unsafe_code)]
-    /// fn main() {
-    ///     unsafe {
-    ///
-    ///     }
-    /// }
-    ///
-    /// #[no_mangle]
-    /// fn func_0() { }
-    ///
-    /// #[export_name = "exported_symbol_name"]
-    /// pub fn name_in_rust() { }
-    ///
-    /// #[no_mangle]
-    /// #[link_section = ".example_section"]
-    /// pub static VAR1: u32 = 1;
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// This lint is intended to restrict the usage of `unsafe` blocks and other
-    /// constructs (including, but not limited to `no_mangle`, `link_section`
-    /// and `export_name` attributes) wrong usage of which causes undefined
-    /// behavior.
-    UNSAFE_CODE,
-    Allow,
-    "usage of `unsafe` code and other potentially unsound constructs",
-    @eval_always = true
-}
-
 declare_lint_pass!(UnsafeCode => [UNSAFE_CODE]);
 
 impl UnsafeCode {
@@ -271,34 +231,6 @@ impl EarlyLintPass for UnsafeCode {
                 self.report_unsafe(cx, it.span, BuiltinUnsafe::UnsafeImpl);
             }
 
-            ast::ItemKind::Fn(..) => {
-                if let Some(attr) = attr::find_by_name(&it.attrs, sym::no_mangle) {
-                    self.report_unsafe(cx, attr.span, BuiltinUnsafe::NoMangleFn);
-                }
-
-                if let Some(attr) = attr::find_by_name(&it.attrs, sym::export_name) {
-                    self.report_unsafe(cx, attr.span, BuiltinUnsafe::ExportNameFn);
-                }
-
-                if let Some(attr) = attr::find_by_name(&it.attrs, sym::link_section) {
-                    self.report_unsafe(cx, attr.span, BuiltinUnsafe::LinkSectionFn);
-                }
-            }
-
-            ast::ItemKind::Static(..) => {
-                if let Some(attr) = attr::find_by_name(&it.attrs, sym::no_mangle) {
-                    self.report_unsafe(cx, attr.span, BuiltinUnsafe::NoMangleStatic);
-                }
-
-                if let Some(attr) = attr::find_by_name(&it.attrs, sym::export_name) {
-                    self.report_unsafe(cx, attr.span, BuiltinUnsafe::ExportNameStatic);
-                }
-
-                if let Some(attr) = attr::find_by_name(&it.attrs, sym::link_section) {
-                    self.report_unsafe(cx, attr.span, BuiltinUnsafe::LinkSectionStatic);
-                }
-            }
-
             ast::ItemKind::GlobalAsm(..) => {
                 self.report_unsafe(cx, it.span, BuiltinUnsafe::GlobalAsm);
             }
@@ -322,17 +254,6 @@ impl EarlyLintPass for UnsafeCode {
             }
 
             _ => {}
-        }
-    }
-
-    fn check_impl_item(&mut self, cx: &EarlyContext<'_>, it: &ast::AssocItem) {
-        if let ast::AssocItemKind::Fn(..) = it.kind {
-            if let Some(attr) = attr::find_by_name(&it.attrs, sym::no_mangle) {
-                self.report_unsafe(cx, attr.span, BuiltinUnsafe::NoMangleMethod);
-            }
-            if let Some(attr) = attr::find_by_name(&it.attrs, sym::export_name) {
-                self.report_unsafe(cx, attr.span, BuiltinUnsafe::ExportNameMethod);
-            }
         }
     }
 
