@@ -22,7 +22,7 @@ pub(crate) fn opaque_hidden_types(tcx: TyCtxt<'_>) {
 
         let ty = tcx.type_of(id).instantiate_identity().skip_norm_wip();
         let span = tcx.def_span(id);
-        tcx.dcx().emit_err(crate::errors::TypeOf { span, ty });
+        tcx.dcx().emit_err(crate::diagnostics::TypeOf { span, ty });
     }
 }
 

@@ -606,6 +606,7 @@ impl Error for JoinPathsError {
 /// For example, [XDG Base Directories] on Unix or the `LOCALAPPDATA` and `APPDATA` environment variables on Windows.
 ///
 /// [XDG Base Directories]: https://specifications.freedesktop.org/basedir-spec/latest/
+//  feature(xdg_basedir): This should link to std::os::unix::xdg once it's stabilized
 ///
 /// # Unix
 ///

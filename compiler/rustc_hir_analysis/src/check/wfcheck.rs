@@ -44,8 +44,8 @@ use tracing::{debug, instrument};
 use super::compare_eii::{compare_eii_function_types, compare_eii_statics};
 use crate::autoderef::Autoderef;
 use crate::constrained_generic_params::{Parameter, identify_constrained_generic_params};
-use crate::errors;
-use crate::errors::InvalidReceiverTyHint;
+use crate::diagnostics;
+use crate::diagnostics::InvalidReceiverTyHint;
 
 pub(super) struct WfCheckingCtxt<'a, 'tcx> {
     pub(super) ocx: ObligationCtxt<'a, 'tcx, FulfillmentError<'tcx>>,
@@ -815,7 +815,7 @@ fn lint_item_shadowing_supertrait_item<'tcx>(tcx: TyCtxt<'tcx>, trait_item_def_i
         .collect();
     if !shadowed.is_empty() {
         let shadowee = if let [shadowed] = shadowed[..] {
-            errors::SupertraitItemShadowee::Labeled {
+            diagnostics::SupertraitItemShadowee::Labeled {
                 span: tcx.def_span(shadowed.def_id),
                 supertrait: tcx.item_name(shadowed.trait_container(tcx).unwrap()),
             }
@@ -826,14 +826,17 @@ fn lint_item_shadowing_supertrait_item<'tcx>(tcx: TyCtxt<'tcx>, trait_item_def_i
                     (tcx.item_name(item.trait_container(tcx).unwrap()), tcx.def_span(item.def_id))
                 })
                 .unzip();
-            errors::SupertraitItemShadowee::Several { traits: traits.into(), spans: spans.into() }
+            diagnostics::SupertraitItemShadowee::Several {
+                traits: traits.into(),
+                spans: spans.into(),
+            }
         };
 
         tcx.emit_node_span_lint(
             SHADOWING_SUPERTRAIT_ITEMS,
             tcx.local_def_id_to_hir_id(trait_item_def_id),
             tcx.def_span(trait_item_def_id),
-            errors::SupertraitItemShadowing {
+            diagnostics::SupertraitItemShadowing {
                 item: item_name,
                 subtrait: tcx.item_name(trait_def_id.to_def_id()),
                 shadowee,
@@ -1874,17 +1877,21 @@ fn check_method_receiver<'tcx>(
                             _ => None,
                         };
 
-                        tcx.dcx().emit_err(errors::InvalidReceiverTy { span, receiver_ty, hint })
+                        tcx.dcx().emit_err(diagnostics::InvalidReceiverTy {
+                            span,
+                            receiver_ty,
+                            hint,
+                        })
                     }
                     ReceiverValidityError::DoesNotDeref => {
-                        tcx.dcx().emit_err(errors::InvalidReceiverTyNoArbitrarySelfTypes {
+                        tcx.dcx().emit_err(diagnostics::InvalidReceiverTyNoArbitrarySelfTypes {
                             span,
                             receiver_ty,
                         })
                     }
-                    ReceiverValidityError::MethodGenericParamUsed => {
-                        tcx.dcx().emit_err(errors::InvalidGenericReceiverTy { span, receiver_ty })
-                    }
+                    ReceiverValidityError::MethodGenericParamUsed => tcx
+                        .dcx()
+                        .emit_err(diagnostics::InvalidGenericReceiverTy { span, receiver_ty }),
                 }
             }
         });
@@ -2191,12 +2198,12 @@ fn report_bivariance<'tcx>(
     let help = match item.kind {
         ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) => {
             if let Some(def_id) = tcx.lang_items().phantom_data() {
-                errors::UnusedGenericParameterHelp::Adt {
+                diagnostics::UnusedGenericParameterHelp::Adt {
                     param_name,
                     phantom_data: tcx.def_path_str(def_id),
                 }
             } else {
-                errors::UnusedGenericParameterHelp::AdtNoPhantomData { param_name }
+                diagnostics::UnusedGenericParameterHelp::AdtNoPhantomData { param_name }
             }
         }
         item_kind => bug!("report_bivariance: unexpected item kind: {item_kind:?}"),
@@ -2226,7 +2233,7 @@ fn report_bivariance<'tcx>(
         // subset is very involved, and the fact we're mentioning recursion at all is
         // likely to guide the user in the right direction.
         if is_probably_cyclical {
-            return tcx.dcx().emit_err(errors::RecursiveGenericParameter {
+            return tcx.dcx().emit_err(diagnostics::RecursiveGenericParameter {
                 spans: usage_spans,
                 param_span: param.span,
                 param_name,
@@ -2240,7 +2247,7 @@ fn report_bivariance<'tcx>(
     let const_param_help =
         matches!(param.kind, hir::GenericParamKind::Type { .. } if !has_explicit_bounds);
 
-    let mut diag = tcx.dcx().create_err(errors::UnusedGenericParameter {
+    let mut diag = tcx.dcx().create_err(diagnostics::UnusedGenericParameter {
         span: param.span,
         param_name,
         param_def_kind: tcx.def_descr(param.def_id.to_def_id()),

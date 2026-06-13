@@ -7,7 +7,7 @@ use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::{debug, instrument};
 
-use crate::errors::AutoDerefReachedRecursionLimit;
+use crate::diagnostics::AutoDerefReachedRecursionLimit;
 use crate::traits;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 

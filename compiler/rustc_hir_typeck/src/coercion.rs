@@ -67,7 +67,7 @@ use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
 use crate::FnCtxt;
-use crate::errors::SuggestBoxingForReturnImplTrait;
+use crate::diagnostics::SuggestBoxingForReturnImplTrait;
 
 struct Coerce<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
