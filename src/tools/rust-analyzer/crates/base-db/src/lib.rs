@@ -170,14 +170,30 @@ impl Files {
         };
     }
 
-    pub fn file_source_root(&self, id: vfs::FileId) -> FileSourceRootInput {
+    pub fn file_source_root(
+        &self,
+        db: &dyn SourceDatabase,
+        id: vfs::FileId,
+    ) -> FileSourceRootInput {
         let file_source_root = match self.file_source_roots.get(&id) {
             Some(file_source_root) => file_source_root,
             None => panic!(
-                "Unable to get `FileSourceRootInput` with `vfs::FileId` ({id:?}); this is a bug",
+                "Unable to get `FileSourceRootInput` with `vfs::FileId` ({id:?}, path: {}); this is a bug",
+                self.path_for_file(db, id)
+                    .map_or_else(|| "<unknown>".to_owned(), |path| path.to_string()),
             ),
         };
         *file_source_root
+    }
+
+    fn path_for_file(&self, db: &dyn SourceDatabase, id: vfs::FileId) -> Option<vfs::VfsPath> {
+        for source_root in &*self.source_roots {
+            let source_root = *source_root.value();
+            if let Some(path) = source_root.source_root(db).path_for_file(&id) {
+                return Some(path.clone());
+            }
+        }
+        None
     }
 
     pub fn set_file_source_root_with_durability(

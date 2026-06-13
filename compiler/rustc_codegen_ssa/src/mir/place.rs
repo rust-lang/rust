@@ -111,7 +111,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         bx: &mut Bx,
         layout: TyAndLayout<'tcx>,
     ) -> Self {
-        if layout.deref().is_scalable_vector() {
+        if layout.peel_transparent_wrappers(bx).deref().is_scalable_vector() {
             Self::alloca_scalable(bx, layout)
         } else {
             Self::alloca_size(bx, layout.size, layout)
@@ -157,7 +157,11 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         bx: &mut Bx,
         layout: TyAndLayout<'tcx>,
     ) -> Self {
-        PlaceValue::new_sized(bx.alloca_with_ty(layout), layout.align.abi).with_type(layout)
+        PlaceValue::new_sized(
+            bx.alloca_with_ty(layout.peel_transparent_wrappers(bx)),
+            layout.align.abi,
+        )
+        .with_type(layout)
     }
 }
 

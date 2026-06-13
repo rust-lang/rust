@@ -1,6 +1,7 @@
 // Code that generates a test runner to run all the tests in a crate
 
 use std::mem;
+use std::sync::atomic::Ordering;
 
 use rustc_ast as ast;
 use rustc_ast::attr::contains_name;
@@ -202,7 +203,7 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
         // clash with the one we're going to add, but mark it as
         // #[allow(dead_code)] to avoid printing warnings.
         match entry_point_type(&item, self.depth == 0) {
-            EntryPointType::MainNamed | EntryPointType::RustcMainAttr => {
+            EntryPointType::RustcMainAttr => {
                 let allow_dead_code = attr::mk_attr_nested_word(
                     &self.sess.psess.attr_id_generator,
                     ast::AttrStyle::Outer,
@@ -213,8 +214,9 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
                 );
                 item.attrs.retain(|attr| !attr.has_name(sym::rustc_main));
                 item.attrs.push(allow_dead_code);
+                self.sess.removed_rustc_main_attr.store(true, Ordering::Relaxed);
             }
-            EntryPointType::None | EntryPointType::OtherMain => {}
+            EntryPointType::None | EntryPointType::MainNamed | EntryPointType::OtherMain => {}
         };
     }
 }

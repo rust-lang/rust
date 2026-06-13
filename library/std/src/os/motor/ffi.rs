@@ -5,9 +5,6 @@ use crate::ffi::{OsStr, OsString};
 use crate::sys::{AsInner, IntoInner};
 
 /// Motor OS–specific extensions to [`OsString`].
-///
-/// This trait is sealed: it cannot be implemented outside the standard library.
-/// This is so that future additional methods are not breaking changes.
 pub impl(self) trait OsStringExt {
     /// Yields the underlying UTF-8 string of this [`OsString`].
     ///
@@ -23,9 +20,6 @@ impl OsStringExt for OsString {
 }
 
 /// Motor OS–specific extensions to [`OsString`].
-///
-/// This trait is sealed: it cannot be implemented outside the standard library.
-/// This is so that future additional methods are not breaking changes.
 pub impl(self) trait OsStrExt {
     /// Gets the underlying UTF-8 string view of the [`OsStr`] slice.
     ///

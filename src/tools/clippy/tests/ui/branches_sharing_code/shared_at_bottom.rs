@@ -1,9 +1,8 @@
-#![deny(clippy::if_same_then_else, clippy::branches_sharing_code)]
-#![allow(
+#![deny(clippy::branches_sharing_code, clippy::if_same_then_else)]
+#![expect(
     clippy::equatable_if_let,
-    clippy::uninlined_format_args,
     clippy::redundant_pattern_matching,
-    dead_code
+    clippy::uninlined_format_args
 )]
 //@no-rustfix
 // This tests the branches_sharing_code lint at the end of blocks

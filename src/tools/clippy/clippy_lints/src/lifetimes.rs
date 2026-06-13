@@ -9,14 +9,14 @@ use rustc_errors::Applicability;
 use rustc_hir::FnRetTy::Return;
 use rustc_hir::intravisit::nested_filter::{self as hir_nested_filter, NestedFilter};
 use rustc_hir::intravisit::{
-    Visitor, VisitorExt, walk_fn_decl, walk_generic_args, walk_generics, walk_impl_item_ref, walk_param_bound,
-    walk_poly_trait_ref, walk_trait_ref, walk_ty, walk_unambig_ty, walk_where_predicate,
+    Visitor, VisitorExt, walk_fn_decl, walk_generic_args, walk_generic_param, walk_generics, walk_impl_item_ref,
+    walk_param_bound, walk_poly_trait_ref, walk_trait_ref, walk_ty, walk_unambig_ty, walk_where_predicate,
 };
 use rustc_hir::{
     AmbigArg, BodyId, FnDecl, FnPtrTy, FnSig, GenericArg, GenericArgs, GenericBound, GenericParam, GenericParamKind,
     Generics, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, Lifetime, LifetimeKind, LifetimeParamKind, Node,
-    PolyTraitRef, PredicateOrigin, TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WhereBoundPredicate, WherePredicate,
-    WherePredicateKind, lang_items,
+    PolyTraitRef, PredicateOrigin, TraitFn, TraitItem, TraitItemKind, TraitRef, Ty, TyKind, WhereBoundPredicate,
+    WherePredicate, WherePredicateKind, lang_items,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter as middle_nested_filter;
@@ -158,6 +158,10 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
         {
             report_extra_impl_lifetimes(cx, impl_);
         }
+    }
+
+    fn check_poly_trait_ref(&mut self, cx: &LateContext<'tcx>, poly_trait_ref: &'tcx PolyTraitRef<'tcx>) {
+        report_extra_trait_object_lifetimes(cx, poly_trait_ref.bound_generic_params, &poly_trait_ref.trait_ref);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
@@ -579,9 +583,8 @@ impl<'cx, 'tcx, F> LifetimeChecker<'cx, 'tcx, F>
 where
     F: NestedFilter<'tcx>,
 {
-    fn new(cx: &'cx LateContext<'tcx>, generics: &'tcx Generics<'_>) -> LifetimeChecker<'cx, 'tcx, F> {
-        let map = generics
-            .params
+    fn new(cx: &'cx LateContext<'tcx>, generic_params: &'tcx [GenericParam<'_>]) -> LifetimeChecker<'cx, 'tcx, F> {
+        let map = generic_params
             .iter()
             .filter_map(|par| match par.kind {
                 GenericParamKind::Lifetime {
@@ -590,6 +593,7 @@ where
                 _ => None,
             })
             .collect();
+
         Self {
             cx,
             map,
@@ -703,8 +707,36 @@ fn is_candidate_for_elision(fd: &FnDecl<'_>) -> bool {
     }
 }
 
+fn report_extra_trait_object_lifetimes<'tcx>(
+    cx: &LateContext<'tcx>,
+    generic_params: &'tcx [GenericParam<'_>],
+    trait_ref: &'tcx TraitRef<'tcx>,
+) {
+    let mut checker = LifetimeChecker::<hir_nested_filter::None>::new(cx, generic_params);
+
+    for param in generic_params {
+        walk_generic_param(&mut checker, param);
+    }
+
+    walk_trait_ref(&mut checker, trait_ref);
+
+    for (def_id, usages) in checker.map {
+        if usages
+            .iter()
+            .all(|usage| usage.in_where_predicate && !usage.in_bounded_ty && !usage.in_generics_arg)
+        {
+            span_lint(
+                cx,
+                EXTRA_UNUSED_LIFETIMES,
+                cx.tcx.def_span(def_id),
+                "this lifetime isn't used in the type",
+            );
+        }
+    }
+}
+
 fn report_extra_lifetimes<'tcx>(cx: &LateContext<'tcx>, func: &'tcx FnDecl<'_>, generics: &'tcx Generics<'_>) {
-    let mut checker = LifetimeChecker::<hir_nested_filter::None>::new(cx, generics);
+    let mut checker = LifetimeChecker::<hir_nested_filter::None>::new(cx, generics.params);
 
     walk_generics(&mut checker, generics);
     walk_fn_decl(&mut checker, func);
@@ -725,7 +757,7 @@ fn report_extra_lifetimes<'tcx>(cx: &LateContext<'tcx>, func: &'tcx FnDecl<'_>, 
 }
 
 fn report_extra_impl_lifetimes<'tcx>(cx: &LateContext<'tcx>, impl_: &'tcx Impl<'_>) {
-    let mut checker = LifetimeChecker::<middle_nested_filter::All>::new(cx, impl_.generics);
+    let mut checker = LifetimeChecker::<middle_nested_filter::All>::new(cx, impl_.generics.params);
 
     walk_generics(&mut checker, impl_.generics);
     if let Some(of_trait) = impl_.of_trait {

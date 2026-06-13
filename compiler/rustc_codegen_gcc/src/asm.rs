@@ -677,6 +677,8 @@ fn reg_class_to_gcc(reg_class: InlineAsmRegClass) -> &'static str {
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => {
             unreachable!("clobber-only")
         }
+        InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::Sgpr(_)) => "Sg",
+        InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::Vgpr(_)) => "v",
         InlineAsmRegClass::Arm(ArmInlineAsmRegClass::reg) => "r",
         InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg)
         | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::dreg_low16)
@@ -751,6 +753,11 @@ fn reg_class_to_gcc(reg_class: InlineAsmRegClass) -> &'static str {
             | X86InlineAsmRegClass::mmx_reg
             | X86InlineAsmRegClass::tmm_reg,
         ) => unreachable!("clobber-only"),
+        InlineAsmRegClass::Xtensa(XtensaInlineAsmRegClass::reg) => "r",
+        InlineAsmRegClass::Xtensa(XtensaInlineAsmRegClass::freg) => "f",
+        InlineAsmRegClass::Xtensa(
+            XtensaInlineAsmRegClass::sreg | XtensaInlineAsmRegClass::breg,
+        ) => unreachable!("clobber-only"),
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("GCC backend does not support SPIR-V")
         }
@@ -780,6 +787,7 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => {
             unreachable!("clobber-only")
         }
+        InlineAsmRegClass::Amdgpu(_) => cx.type_i32(),
         InlineAsmRegClass::Arm(ArmInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg)
         | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg_low16) => cx.type_f32(),
@@ -872,6 +880,11 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("GCC backend does not support SPIR-V")
         }
+        InlineAsmRegClass::Xtensa(XtensaInlineAsmRegClass::reg) => cx.type_i32(),
+        InlineAsmRegClass::Xtensa(XtensaInlineAsmRegClass::freg) => cx.type_f32(),
+        InlineAsmRegClass::Xtensa(
+            XtensaInlineAsmRegClass::sreg | XtensaInlineAsmRegClass::breg,
+        ) => unreachable!("clobber-only"),
         InlineAsmRegClass::Err => unreachable!(),
     }
 }
@@ -983,6 +996,7 @@ fn modifier_to_gcc(
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => {
             unreachable!("clobber-only")
         }
+        InlineAsmRegClass::Amdgpu(_) => None,
         InlineAsmRegClass::Arm(ArmInlineAsmRegClass::reg) => None,
         InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg)
         | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg_low16) => None,
@@ -1070,6 +1084,7 @@ fn modifier_to_gcc(
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("LLVM backend does not support SPIR-V")
         }
+        InlineAsmRegClass::Xtensa(_) => None,
         InlineAsmRegClass::Err => unreachable!(),
     }
 }

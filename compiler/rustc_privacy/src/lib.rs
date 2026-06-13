@@ -4,13 +4,13 @@
 #![feature(try_blocks)]
 // tidy-alphabetical-end
 
-mod errors;
+mod diagnostics;
 
 use std::marker::PhantomData;
 use std::ops::ControlFlow;
 use std::{debug_assert_matches, fmt};
 
-use errors::{
+use diagnostics::{
     FieldIsPrivate, FieldIsPrivateLabel, FromPrivateDependencyInPublicInterface, InPublicInterface,
     ItemIsPrivate, PrivateInterfacesOrBoundsLint, ReportEffectiveVisibility, UnnameableTypesLint,
     UnnamedItemIsPrivate,

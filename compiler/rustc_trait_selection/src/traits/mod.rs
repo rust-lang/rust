@@ -606,8 +606,12 @@ pub fn try_evaluate_const<'tcx>(
         | ty::ConstKind::Placeholder(_)
         | ty::ConstKind::Expr(_) => Err(EvaluateConstErr::HasGenericsOrInfers),
         ty::ConstKind::Unevaluated(uv) => {
-            let opt_anon_const_kind = matches!(uv.kind, ty::UnevaluatedConstKind::Anon { .. })
-                .then(|| tcx.anon_const_kind(uv.kind.def_id()));
+            let opt_anon_const_kind = match uv.kind {
+                ty::UnevaluatedConstKind::Anon { def_id } => {
+                    Some((def_id, tcx.anon_const_kind(def_id)))
+                }
+                _ => None,
+            };
 
             // Postpone evaluation of constants that depend on generic parameters or
             // inference variables.
@@ -624,12 +628,12 @@ pub fn try_evaluate_const<'tcx>(
                 // We handle `generic_const_exprs` separately as reasonable ways of handling constants in the type system
                 // completely fall apart under `generic_const_exprs` and makes this whole function Really hard to reason
                 // about if you have to consider gce whatsoever.
-                Some(ty::AnonConstKind::GCE) => {
+                Some((def_id, ty::AnonConstKind::GCE)) => {
                     if uv.has_non_region_infer() || uv.has_non_region_param() {
                         // `feature(generic_const_exprs)` causes anon consts to inherit all parent generics. This can cause
                         // inference variables and generic parameters to show up in `ty::Const` even though the anon const
                         // does not actually make use of them. We handle this case specially and attempt to evaluate anyway.
-                        match tcx.thir_abstract_const(uv.kind.def_id()) {
+                        match tcx.thir_abstract_const(def_id) {
                             Ok(Some(ct)) => {
                                 let ct = tcx.expand_abstract_consts(
                                     ct.instantiate(tcx, uv.args).skip_norm_wip(),
@@ -650,9 +654,8 @@ pub fn try_evaluate_const<'tcx>(
                                 }
                             }
                             Err(_) | Ok(None) => {
-                                let args = GenericArgs::identity_for_item(tcx, uv.kind.def_id());
-                                let typing_env =
-                                    ty::TypingEnv::post_analysis(tcx, uv.kind.def_id());
+                                let args = GenericArgs::identity_for_item(tcx, def_id);
+                                let typing_env = ty::TypingEnv::post_analysis(tcx, def_id);
                                 (args, typing_env)
                             }
                         }
@@ -663,7 +666,7 @@ pub fn try_evaluate_const<'tcx>(
                         (uv.args, typing_env)
                     }
                 }
-                Some(ty::AnonConstKind::RepeatExprCount) => {
+                Some((def_id, ty::AnonConstKind::RepeatExprCount)) => {
                     if uv.has_non_region_infer() {
                         // Diagnostics will sometimes replace the identity args of anon consts in
                         // array repeat expr counts with inference variables so we have to handle this
@@ -680,14 +683,13 @@ pub fn try_evaluate_const<'tcx>(
                     // affect evaluation of the constant as this would make it a "truly" generic const arg.
                     // To prevent this we discard all the generic arguments and evalaute with identity args
                     // and in its own environment instead of the current environment we are normalizing in.
-                    let args = GenericArgs::identity_for_item(tcx, uv.kind.def_id());
-                    let typing_env = ty::TypingEnv::post_analysis(tcx, uv.kind.def_id());
+                    let args = GenericArgs::identity_for_item(tcx, def_id);
+                    let typing_env = ty::TypingEnv::post_analysis(tcx, def_id);
 
                     (args, typing_env)
                 }
-                Some(ty::AnonConstKind::GCA)
-                | Some(ty::AnonConstKind::MCG)
-                | Some(ty::AnonConstKind::NonTypeSystem)
+                Some((_, ty::AnonConstKind::MCG))
+                | Some((_, ty::AnonConstKind::NonTypeSystem))
                 | None => {
                     // We are only dealing with "truly" generic/uninferred constants here:
                     // - GCEConsts have been handled separately
@@ -722,16 +724,9 @@ pub fn try_evaluate_const<'tcx>(
             use rustc_middle::mir::interpret::ErrorHandled;
             // FIXME: `def_span` will point at the definition of this const; ideally, we'd point at
             // where it gets used as a const generic.
-            match tcx.const_eval_resolve_for_typeck(
-                typing_env,
-                erased_uv,
-                tcx.def_span(uv.kind.def_id()),
-            ) {
-                Ok(Ok(val)) => Ok(ty::Const::new_value(
-                    tcx,
-                    val,
-                    tcx.type_of(uv.kind.def_id()).instantiate(tcx, uv.args).skip_norm_wip(),
-                )),
+            let span = uv.kind.def_span(tcx);
+            match tcx.const_eval_resolve_for_typeck(typing_env, erased_uv, span) {
+                Ok(Ok(val)) => Ok(ty::Const::new_value(tcx, val, uv.type_of(tcx).skip_norm_wip())),
                 Ok(Err(_)) => {
                     let e = tcx.dcx().delayed_bug(
                         "Type system constant with non valtree'able type evaluated but no error emitted",

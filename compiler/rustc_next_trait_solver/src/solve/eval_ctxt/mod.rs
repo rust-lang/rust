@@ -777,20 +777,20 @@ where
             ) => RerunDecision::Yes,
             (
                 RerunCondition::OpaqueInStorage(defids),
-                TypingMode::PostBorrowckAnalysis { defined_opaque_types: opaques }
-                | TypingMode::Analysis { defining_opaque_types_and_generators: opaques }
-                | TypingMode::Borrowck { defining_opaque_types: opaques },
+                TypingMode::PostBorrowck { defined_opaque_types: opaques }
+                | TypingMode::Typeck { defining_opaque_types_and_generators: opaques }
+                | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: opaques },
             ) => opaque_in_storage(opaques, defids),
             // =============================
-            (RerunCondition::AnyOpaqueHasInferAsHidden, TypingMode::Analysis { .. }) => {
+            (RerunCondition::AnyOpaqueHasInferAsHidden, TypingMode::Typeck { .. }) => {
                 any_opaque_has_infer_as_hidden()
             }
             (
                 RerunCondition::AnyOpaqueHasInferAsHidden,
-                TypingMode::PostBorrowckAnalysis { .. }
+                TypingMode::PostBorrowck { .. }
                 | TypingMode::PostAnalysis
                 | TypingMode::Codegen
-                | TypingMode::Borrowck { .. },
+                | TypingMode::PostTypeckUntilBorrowck { .. },
             ) => RerunDecision::No,
             // =============================
             (
@@ -799,7 +799,7 @@ where
             ) => RerunDecision::No,
             (
                 RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(defids),
-                TypingMode::Analysis { defining_opaque_types_and_generators: opaques },
+                TypingMode::Typeck { defining_opaque_types_and_generators: opaques },
             ) => {
                 if let RerunDecision::Yes = any_opaque_has_infer_as_hidden() {
                     RerunDecision::Yes
@@ -811,8 +811,8 @@ where
             }
             (
                 RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(defids),
-                TypingMode::PostBorrowckAnalysis { defined_opaque_types: opaques }
-                | TypingMode::Borrowck { defining_opaque_types: opaques },
+                TypingMode::PostBorrowck { defined_opaque_types: opaques }
+                | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: opaques },
             ) => opaque_in_storage(opaques, defids),
         };
 
@@ -1240,7 +1240,17 @@ where
             //
             // Alternatively we could modify `Equate` for this case by adding another
             // variant to `StructurallyRelateAliases`.
-            let identity_args = self.fresh_args_for_item(alias.def_id());
+            let def_id = match alias.kind {
+                ty::AliasTermKind::ProjectionTy { def_id } => def_id.into(),
+                ty::AliasTermKind::InherentTy { def_id } => def_id.into(),
+                ty::AliasTermKind::OpaqueTy { def_id } => def_id.into(),
+                ty::AliasTermKind::FreeTy { def_id } => def_id.into(),
+                ty::AliasTermKind::AnonConst { def_id } => def_id.into(),
+                ty::AliasTermKind::ProjectionConst { def_id } => def_id.into(),
+                ty::AliasTermKind::FreeConst { def_id } => def_id.into(),
+                ty::AliasTermKind::InherentConst { def_id } => def_id.into(),
+            };
+            let identity_args = self.fresh_args_for_item(def_id);
             let rigid_ctor = alias.with_args(cx, identity_args);
             let ctor_term = rigid_ctor.to_term(cx);
             let obligations = self.delegate.eq_structurally_relating_aliases(
@@ -1331,8 +1341,8 @@ where
         self.delegate.instantiate_binder_with_infer(value)
     }
 
-    /// `enter_forall`, but takes `&mut self` and passes it back through the
-    /// callback since it can't be aliased during the call.
+    /// `enter_forall_with_assumptions`, but takes `&mut self` and passes it back through
+    /// the callback since it can't be aliased during the call.
     ///
     /// The `param_env` is used to *compute* the assumptions of the binder, not *as* the
     /// assumptions associated with the binder.
@@ -1344,7 +1354,7 @@ where
         param_env: I::ParamEnv,
         f: impl FnOnce(&mut Self, T) -> U,
     ) -> U {
-        self.delegate.enter_forall(value, |value| {
+        self.delegate.enter_forall_without_assumptions(value, |value| {
             let u = self.delegate.universe();
             let assumptions = if self.cx().assumptions_on_binders() {
                 self.region_assumptions_for_placeholders_in_universe(value.clone(), u, param_env)

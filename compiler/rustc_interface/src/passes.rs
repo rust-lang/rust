@@ -49,7 +49,7 @@ use rustc_trait_selection::{solve, traits};
 use tracing::{info, instrument};
 
 use crate::interface::Compiler;
-use crate::{errors, limits, proc_macro_decls, util};
+use crate::{diagnostics, limits, proc_macro_decls, util};
 
 pub fn parse<'a>(sess: &'a Session) -> ast::Crate {
     let mut krate = sess
@@ -271,10 +271,10 @@ fn configure_and_expand(
 
     if crate_types.len() > 1 {
         if is_executable_crate {
-            sess.dcx().emit_err(errors::MixedBinCrate);
+            sess.dcx().emit_err(diagnostics::MixedBinCrate);
         }
         if is_proc_macro_crate {
-            sess.dcx().emit_err(errors::MixedProcMacroCrate);
+            sess.dcx().emit_err(diagnostics::MixedProcMacroCrate);
         }
     }
     if crate_types.contains(&CrateType::Sdylib) && !tcx.features().export_stable() {
@@ -282,7 +282,7 @@ fn configure_and_expand(
     }
 
     if is_proc_macro_crate && !sess.panic_strategy().unwinds() {
-        sess.dcx().emit_warn(errors::ProcMacroCratePanicAbort);
+        sess.dcx().emit_warn(diagnostics::ProcMacroCratePanicAbort);
     }
 
     sess.time("maybe_create_a_macro_crate", || {
@@ -458,9 +458,13 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
                     })
                     .as_str();
 
-                sess.dcx().emit_err(errors::FerrisIdentifier { spans, first_span, ferris_fix });
+                sess.dcx().emit_err(diagnostics::FerrisIdentifier {
+                    spans,
+                    first_span,
+                    ferris_fix,
+                });
             } else {
-                sess.dcx().emit_err(errors::EmojiIdentifier { spans, ident });
+                sess.dcx().emit_err(diagnostics::EmojiIdentifier { spans, ident });
             }
         }
     });
@@ -773,7 +777,8 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
             }
         }
         Err(error) => {
-            sess.dcx().emit_fatal(errors::ErrorWritingDependencies { path: deps_filename, error });
+            sess.dcx()
+                .emit_fatal(diagnostics::ErrorWritingDependencies { path: deps_filename, error });
         }
     }
 }
@@ -824,10 +829,11 @@ pub fn write_dep_info(tcx: TyCtxt<'_>) {
     if let Some(input_path) = sess.io.input.opt_path() {
         if sess.opts.will_create_output_file() {
             if output_contains_path(&output_paths, input_path) {
-                sess.dcx().emit_fatal(errors::InputFileWouldBeOverWritten { path: input_path });
+                sess.dcx()
+                    .emit_fatal(diagnostics::InputFileWouldBeOverWritten { path: input_path });
             }
             if let Some(dir_path) = output_conflicts_with_dir(&output_paths) {
-                sess.dcx().emit_fatal(errors::GeneratedFileConflictsWithDirectory {
+                sess.dcx().emit_fatal(diagnostics::GeneratedFileConflictsWithDirectory {
                     input_path,
                     dir_path,
                 });
@@ -837,7 +843,7 @@ pub fn write_dep_info(tcx: TyCtxt<'_>) {
 
     if let Some(ref dir) = sess.io.temps_dir {
         if fs::create_dir_all(dir).is_err() {
-            sess.dcx().emit_fatal(errors::TempsDirError);
+            sess.dcx().emit_fatal(diagnostics::TempsDirError);
         }
     }
 
@@ -849,7 +855,7 @@ pub fn write_dep_info(tcx: TyCtxt<'_>) {
     if !only_dep_info {
         if let Some(ref dir) = sess.io.output_dir {
             if fs::create_dir_all(dir).is_err() {
-                sess.dcx().emit_fatal(errors::OutDirError);
+                sess.dcx().emit_fatal(diagnostics::OutDirError);
             }
         }
     }
@@ -1082,6 +1088,8 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     // This is needed since the `hir_id_validator::check_crate` call above is not guaranteed
     // to use `hir_crate_items`.
     tcx.ensure_done().hir_crate_items(());
+
+    rustc_passes::delegation::check_glob_and_list_delegations_target_expr(tcx);
 
     let sess = tcx.sess;
     sess.time("misc_checking_1", || {
@@ -1351,7 +1359,7 @@ pub fn get_crate_name(sess: &Session, krate_attrs: &[ast::Attribute]) -> Symbol 
         if let Some((attr_crate_name, span)) = attr_crate_name
             && attr_crate_name != crate_name
         {
-            sess.dcx().emit_err(errors::CrateNameDoesNotMatch {
+            sess.dcx().emit_err(diagnostics::CrateNameDoesNotMatch {
                 span,
                 crate_name,
                 attr_crate_name,
@@ -1368,7 +1376,7 @@ pub fn get_crate_name(sess: &Session, krate_attrs: &[ast::Attribute]) -> Symbol 
         && let Some(file_stem) = path.file_stem().and_then(|s| s.to_str())
     {
         if file_stem.starts_with('-') {
-            sess.dcx().emit_err(errors::CrateNameInvalid { crate_name: file_stem });
+            sess.dcx().emit_err(diagnostics::CrateNameInvalid { crate_name: file_stem });
         } else {
             return validate(Symbol::intern(&file_stem.replace('-', "_")), None);
         }
@@ -1411,7 +1419,7 @@ pub fn collect_crate_types(
     // styles at all other locations
     if session.opts.test {
         if !session.target.executables {
-            session.dcx().emit_warn(errors::UnsupportedCrateTypeForTarget {
+            session.dcx().emit_warn(diagnostics::UnsupportedCrateTypeForTarget {
                 crate_type: CrateType::Executable,
                 target_triple: &session.opts.target_triple,
             });
@@ -1457,13 +1465,13 @@ pub fn collect_crate_types(
 
     base.retain(|crate_type| {
         if invalid_output_for_target(session, *crate_type) {
-            session.dcx().emit_warn(errors::UnsupportedCrateTypeForTarget {
+            session.dcx().emit_warn(diagnostics::UnsupportedCrateTypeForTarget {
                 crate_type: *crate_type,
                 target_triple: &session.opts.target_triple,
             });
             false
         } else if !backend_crate_types.contains(crate_type) {
-            session.dcx().emit_warn(errors::UnsupportedCrateTypeForCodegenBackend {
+            session.dcx().emit_warn(diagnostics::UnsupportedCrateTypeForCodegenBackend {
                 crate_type: *crate_type,
                 codegen_backend: codegen_backend_name,
             });

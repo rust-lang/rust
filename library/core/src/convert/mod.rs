@@ -43,6 +43,8 @@ mod num;
 
 #[unstable(feature = "convert_float_to_int", issue = "67057")]
 pub use num::FloatToInt;
+#[unstable(feature = "integer_casts", issue = "157388")]
+pub use num::{BoundedCastFromInt, CheckedCastFromInt};
 
 /// The identity function.
 ///

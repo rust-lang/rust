@@ -44,8 +44,8 @@ use tracing::{debug, instrument};
 use super::compare_eii::{compare_eii_function_types, compare_eii_statics};
 use crate::autoderef::Autoderef;
 use crate::constrained_generic_params::{Parameter, identify_constrained_generic_params};
-use crate::errors;
-use crate::errors::InvalidReceiverTyHint;
+use crate::diagnostics;
+use crate::diagnostics::InvalidReceiverTyHint;
 
 pub(super) struct WfCheckingCtxt<'a, 'tcx> {
     pub(super) ocx: ObligationCtxt<'a, 'tcx, FulfillmentError<'tcx>>,
@@ -815,7 +815,7 @@ fn lint_item_shadowing_supertrait_item<'tcx>(tcx: TyCtxt<'tcx>, trait_item_def_i
         .collect();
     if !shadowed.is_empty() {
         let shadowee = if let [shadowed] = shadowed[..] {
-            errors::SupertraitItemShadowee::Labeled {
+            diagnostics::SupertraitItemShadowee::Labeled {
                 span: tcx.def_span(shadowed.def_id),
                 supertrait: tcx.item_name(shadowed.trait_container(tcx).unwrap()),
             }
@@ -826,14 +826,17 @@ fn lint_item_shadowing_supertrait_item<'tcx>(tcx: TyCtxt<'tcx>, trait_item_def_i
                     (tcx.item_name(item.trait_container(tcx).unwrap()), tcx.def_span(item.def_id))
                 })
                 .unzip();
-            errors::SupertraitItemShadowee::Several { traits: traits.into(), spans: spans.into() }
+            diagnostics::SupertraitItemShadowee::Several {
+                traits: traits.into(),
+                spans: spans.into(),
+            }
         };
 
         tcx.emit_node_span_lint(
             SHADOWING_SUPERTRAIT_ITEMS,
             tcx.local_def_id_to_hir_id(trait_item_def_id),
             tcx.def_span(trait_item_def_id),
-            errors::SupertraitItemShadowing {
+            diagnostics::SupertraitItemShadowing {
                 item: item_name,
                 subtrait: tcx.item_name(trait_def_id.to_def_id()),
                 shadowee,
@@ -1506,11 +1509,7 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
                     | ty::ConstKind::Bound(_, _) => unreachable!(),
                     ty::ConstKind::Error(_) | ty::ConstKind::Expr(_) => continue,
                     ty::ConstKind::Value(cv) => cv.ty,
-                    ty::ConstKind::Unevaluated(uv) => infcx
-                        .tcx
-                        .type_of(uv.kind.def_id())
-                        .instantiate(infcx.tcx, uv.args)
-                        .skip_norm_wip(),
+                    ty::ConstKind::Unevaluated(uv) => uv.type_of(infcx.tcx).skip_norm_wip(),
                     ty::ConstKind::Param(param_ct) => {
                         param_ct.find_const_ty_from_env(wfcx.param_env)
                     }
@@ -1637,10 +1636,8 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
             let pred_binder = proj
                 .map_bound(|pred| {
                     pred.term.as_const().map(|ct| {
-                        let assoc_const_ty = tcx
-                            .type_of(pred.projection_term.def_id())
-                            .instantiate(tcx, pred.projection_term.args)
-                            .skip_norm_wip();
+                        let assoc_const_ty =
+                            pred.projection_term.expect_ct().type_of(tcx).skip_norm_wip();
                         ty::ClauseKind::ConstArgHasType(ct, assoc_const_ty)
                     })
                 })
@@ -1715,8 +1712,9 @@ fn check_fn_or_method<'tcx>(
 
     if sig.abi() == ExternAbi::RustCall {
         let span = tcx.def_span(def_id);
-        let has_implicit_self = hir_decl.implicit_self() != hir::ImplicitSelfKind::None;
+        let has_implicit_self = hir_decl.implicit_self().has_implicit_self();
         let mut inputs = sig.inputs().iter().skip(if has_implicit_self { 1 } else { 0 });
+        // FIXME(splat): use `sig.splatted()` once FnSig has it
         // Check that the argument is a tuple and is sized
         if let Some(ty) = inputs.next() {
             wfcx.register_bound(
@@ -1879,17 +1877,21 @@ fn check_method_receiver<'tcx>(
                             _ => None,
                         };
 
-                        tcx.dcx().emit_err(errors::InvalidReceiverTy { span, receiver_ty, hint })
+                        tcx.dcx().emit_err(diagnostics::InvalidReceiverTy {
+                            span,
+                            receiver_ty,
+                            hint,
+                        })
                     }
                     ReceiverValidityError::DoesNotDeref => {
-                        tcx.dcx().emit_err(errors::InvalidReceiverTyNoArbitrarySelfTypes {
+                        tcx.dcx().emit_err(diagnostics::InvalidReceiverTyNoArbitrarySelfTypes {
                             span,
                             receiver_ty,
                         })
                     }
-                    ReceiverValidityError::MethodGenericParamUsed => {
-                        tcx.dcx().emit_err(errors::InvalidGenericReceiverTy { span, receiver_ty })
-                    }
+                    ReceiverValidityError::MethodGenericParamUsed => tcx
+                        .dcx()
+                        .emit_err(diagnostics::InvalidGenericReceiverTy { span, receiver_ty }),
                 }
             }
         });
@@ -2053,12 +2055,6 @@ pub(super) fn check_variances_for_type_defn<'tcx>(tcx: TyCtxt<'tcx>, def_id: Loc
         DefKind::Enum | DefKind::Struct | DefKind::Union => {
             // Ok
         }
-        DefKind::TyAlias => {
-            assert!(
-                tcx.type_alias_is_lazy(def_id),
-                "should not be computing variance of non-free type alias"
-            );
-        }
         kind => span_bug!(tcx.def_span(def_id), "cannot compute the variances of {kind:?}"),
     }
 
@@ -2202,15 +2198,14 @@ fn report_bivariance<'tcx>(
     let help = match item.kind {
         ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) => {
             if let Some(def_id) = tcx.lang_items().phantom_data() {
-                errors::UnusedGenericParameterHelp::Adt {
+                diagnostics::UnusedGenericParameterHelp::Adt {
                     param_name,
                     phantom_data: tcx.def_path_str(def_id),
                 }
             } else {
-                errors::UnusedGenericParameterHelp::AdtNoPhantomData { param_name }
+                diagnostics::UnusedGenericParameterHelp::AdtNoPhantomData { param_name }
             }
         }
-        ItemKind::TyAlias(..) => errors::UnusedGenericParameterHelp::TyAlias { param_name },
         item_kind => bug!("report_bivariance: unexpected item kind: {item_kind:?}"),
     };
 
@@ -2238,7 +2233,7 @@ fn report_bivariance<'tcx>(
         // subset is very involved, and the fact we're mentioning recursion at all is
         // likely to guide the user in the right direction.
         if is_probably_cyclical {
-            return tcx.dcx().emit_err(errors::RecursiveGenericParameter {
+            return tcx.dcx().emit_err(diagnostics::RecursiveGenericParameter {
                 spans: usage_spans,
                 param_span: param.span,
                 param_name,
@@ -2252,7 +2247,7 @@ fn report_bivariance<'tcx>(
     let const_param_help =
         matches!(param.kind, hir::GenericParamKind::Type { .. } if !has_explicit_bounds);
 
-    let mut diag = tcx.dcx().create_err(errors::UnusedGenericParameter {
+    let mut diag = tcx.dcx().create_err(diagnostics::UnusedGenericParameter {
         span: param.span,
         param_name,
         param_def_kind: tcx.def_descr(param.def_id.to_def_id()),
@@ -2292,9 +2287,6 @@ impl<'tcx> IsProbablyCyclical<'tcx> {
                         .visit_with(self)
                 })
             }
-            DefKind::TyAlias if self.tcx.type_alias_is_lazy(def_id) => {
-                self.tcx.type_of(def_id).instantiate_identity().skip_norm_wip().visit_with(self)
-            }
             _ => ControlFlow::Continue(()),
         }
     }
@@ -2304,17 +2296,12 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsProbablyCyclical<'tcx> {
     type Result = ControlFlow<(), ()>;
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<(), ()> {
-        let def_id = match ty.kind() {
-            ty::Adt(adt_def, _) => Some(adt_def.did()),
-            &ty::Alias(ty::AliasTy { kind: ty::Free { def_id }, .. }) => Some(def_id),
-            _ => None,
-        };
-        if let Some(def_id) = def_id {
-            if def_id == self.item_def_id {
+        if let Some(adt_def) = ty.ty_adt_def() {
+            if adt_def.did() == self.item_def_id {
                 return ControlFlow::Break(());
             }
-            if self.seen.insert(def_id) {
-                self.visit_def(def_id)?;
+            if self.seen.insert(adt_def.did()) {
+                self.visit_def(adt_def.did())?;
             }
         }
         ty.super_visit_with(self)

@@ -2,7 +2,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::traits::PredicateObligations;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
+use rustc_middle::ty::{self, ParamEnvAnd, TyCtxt};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
 use rustc_trait_selection::traits::query::normalize::NormalizationResult;
@@ -17,6 +17,25 @@ pub(crate) fn provide(p: &mut Providers) {
         normalize_canonicalized_inherent_projection,
         ..*p
     };
+}
+
+/// If `normalized_term` is a const, returns a `ConstArgHasType` obligation
+/// to verify that the const value's type matches the alias's declared type.
+/// Returns `None` if the term is a type rather than a const.
+fn const_arg_has_type_obligation<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    normalized_term: ty::Term<'tcx>,
+    goal: ty::AliasTerm<'tcx>,
+) -> Option<traits::PredicateObligation<'tcx>> {
+    let ct = normalized_term.as_const()?;
+    let expected_ty = goal.expect_ct().type_of(tcx).skip_norm_wip();
+    Some(traits::Obligation::new(
+        tcx,
+        ObligationCause::dummy(),
+        param_env,
+        ty::ClauseKind::ConstArgHasType(ct, expected_ty),
+    ))
 }
 
 fn normalize_canonicalized_projection<'tcx>(
@@ -40,6 +59,12 @@ fn normalize_canonicalized_projection<'tcx>(
                 0,
                 &mut obligations,
             );
+            obligations.extend(const_arg_has_type_obligation(
+                tcx,
+                param_env,
+                normalized_term,
+                goal,
+            ));
             ocx.register_obligations(obligations);
             // #112047: With projections and opaques, we are able to create opaques that
             // are recursive (given some generic parameters of the opaque's type variables).
@@ -75,7 +100,8 @@ fn normalize_canonicalized_free_alias<'tcx>(
     tcx.infer_ctxt().enter_canonical_trait_query(
         &goal,
         |ocx, ParamEnvAnd { param_env, value: goal }| {
-            let obligations = tcx.predicates_of(goal.def_id()).instantiate_own(tcx, goal.args).map(
+            let def_id = goal.expect_free_def_id();
+            let obligations = tcx.predicates_of(def_id).instantiate_own(tcx, goal.args).map(
                 |(predicate, span)| {
                     traits::Obligation::new(
                         tcx,
@@ -86,11 +112,17 @@ fn normalize_canonicalized_free_alias<'tcx>(
                 },
             );
             ocx.register_obligations(obligations);
-            let normalized_term = if goal.kind.is_type() {
-                tcx.type_of(goal.def_id()).instantiate(tcx, goal.args).skip_norm_wip().into()
+            let normalized_term: ty::Term<'tcx> = if goal.kind.is_type() {
+                tcx.type_of(def_id).instantiate(tcx, goal.args).skip_norm_wip().into()
             } else {
-                tcx.const_of_item(goal.def_id()).instantiate(tcx, goal.args).skip_norm_wip().into()
+                tcx.const_of_item(def_id).instantiate(tcx, goal.args).skip_norm_wip().into()
             };
+            ocx.register_obligations(const_arg_has_type_obligation(
+                tcx,
+                param_env,
+                normalized_term,
+                goal,
+            ));
             Ok(NormalizationResult { normalized_term })
         },
     )
@@ -116,6 +148,12 @@ fn normalize_canonicalized_inherent_projection<'tcx>(
                 0,
                 &mut obligations,
             );
+            obligations.extend(const_arg_has_type_obligation(
+                tcx,
+                param_env,
+                normalized_term,
+                goal,
+            ));
             ocx.register_obligations(obligations);
 
             Ok(NormalizationResult { normalized_term })

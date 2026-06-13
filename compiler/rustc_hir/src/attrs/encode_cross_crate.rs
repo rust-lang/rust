@@ -112,6 +112,7 @@ impl AttributeKind {
             RustcClean { .. } => No,
             RustcCoherenceIsCore => No,
             RustcCoinductive => No,
+            RustcComptime(..) => No, // Encoded directly in signature
             RustcConfusables { .. } => Yes,
             RustcConstStability { .. } => Yes,
             RustcConstStableIndirect => No,
@@ -191,6 +192,7 @@ impl AttributeKind {
             RustcUnsafeSpecializationMarker => No,
             Sanitize { .. } => No,
             ShouldPanic { .. } => No,
+            Splat(..) => Yes,
             Stability { .. } => Yes,
             TargetFeature { .. } => No,
             TestRunner(..) => Yes,

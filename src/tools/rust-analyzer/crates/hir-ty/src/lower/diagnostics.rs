@@ -1,17 +1,13 @@
 //! This files contains the declaration of diagnostics kinds for ty and path lowering.
 
-use hir_def::type_ref::TypeRefId;
-use hir_def::{GenericDefId, GenericParamId};
+use hir_def::{GenericDefId, GenericParamId, type_ref::TypeRefId};
+
+use crate::Span;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct TyLoweringDiagnostic {
-    pub source: TypeRefId,
-    pub kind: TyLoweringDiagnosticKind,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum TyLoweringDiagnosticKind {
-    PathDiagnostic(PathLoweringDiagnostic),
+pub enum TyLoweringDiagnostic {
+    PathDiagnostic { source: TypeRefId, diag: PathLoweringDiagnostic },
+    InferVarsNotAllowed { source: Span },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

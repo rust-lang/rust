@@ -1,7 +1,7 @@
 //@ignore-bitwidth: 32
 
 #![warn(clippy::enum_clike_unportable_variant)]
-#![allow(unused, non_upper_case_globals)]
+#![expect(non_upper_case_globals)]
 
 #[repr(usize)]
 enum NonPortable {

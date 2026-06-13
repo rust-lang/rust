@@ -218,7 +218,7 @@ impl<I: Write + ?Sized> BufferedWriterSpec for BufWriter<I> {
 
         loop {
             let buf = self.buffer_mut();
-            let mut read_buf: BorrowedBuf<'_> = buf.spare_capacity_mut().into();
+            let mut read_buf: BorrowedBuf<'_, u8> = buf.spare_capacity_mut().into();
 
             if init {
                 // SAFETY: `init` is only true after `reader` initializes
@@ -272,7 +272,7 @@ fn stack_buffer_copy<R: Read + ?Sized, W: Write + ?Sized>(
     writer: &mut W,
 ) -> Result<u64> {
     let buf: &mut [_] = &mut [MaybeUninit::uninit(); DEFAULT_BUF_SIZE];
-    let mut buf: BorrowedBuf<'_> = buf.into();
+    let mut buf: BorrowedBuf<'_, u8> = buf.into();
 
     let mut len = 0;
 

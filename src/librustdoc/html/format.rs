@@ -1509,15 +1509,21 @@ pub(crate) fn print_constness_with_space(
     overall_stab: Option<StableSince>,
     const_stab: Option<ConstStability>,
 ) -> &'static str {
-    match c {
-        hir::Constness::Const => match (overall_stab, const_stab) {
+    match *c {
+        hir::Constness::Const { always } => match (overall_stab, const_stab) {
             // const stable...
             (_, Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }))
             // ...or when feature(staged_api) is not set...
             | (_, None)
             // ...or when const unstable, but overall unstable too
             | (None, Some(ConstStability { level: StabilityLevel::Unstable { .. }, .. })) => {
-                "const "
+                if always {
+                    // FIXME(comptime) show something when stable, currently relying on the attribute
+                    // being rendered as part of the regular attribute list.
+                    ""
+                } else {
+                    "const "
+                }
             }
             // const unstable (and overall stable)
             (Some(_), Some(ConstStability { level: StabilityLevel::Unstable { .. }, .. })) => "",

@@ -2902,7 +2902,7 @@ impl str {
     /// assert!(!comp.eq_ignore_case_unnormalized(decomp));
     /// ```
     ///
-    /// [normalization]: https://www.unicode.org/faq/normalization
+    /// [normalization]: https://www.unicode.org/faq/normalization.html
     #[unstable(feature = "casefold", issue = "154742")]
     #[must_use]
     #[inline]
@@ -3266,7 +3266,7 @@ impl_fn_for_zst! {
     #[derive(Clone)]
     struct CharEscapeDebugContinue impl Fn = |c: char| -> char::EscapeDebug {
         c.escape_debug_ext(EscapeDebugExtArgs {
-            escape_grapheme_extended: false,
+            escape_grapheme_extender: false,
             escape_single_quote: true,
             escape_double_quote: true
         })

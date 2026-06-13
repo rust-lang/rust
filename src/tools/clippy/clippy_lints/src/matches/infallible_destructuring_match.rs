@@ -9,25 +9,31 @@ use rustc_lint::LateContext;
 use super::INFALLIBLE_DESTRUCTURING_MATCH;
 
 pub(crate) fn check(cx: &LateContext<'_>, local: &LetStmt<'_>) -> bool {
+    // turn this:
+    //
+    // let local = match target {
+    //     Variant(binding arg) => { arg }
+    // };
+    //
+    // into this:
+    //
+    // let Variant(binding local) = target;
     if !local.span.from_expansion()
         && let Some(expr) = local.init
-        && let ExprKind::Match(target, arms, MatchSource::Normal) = expr.kind
-        && arms.len() == 1
-        && arms[0].guard.is_none()
-        && let PatKind::TupleStruct(QPath::Resolved(None, variant_name), args, _) = arms[0].pat.kind
-        && args.len() == 1
-        && let PatKind::Binding(binding, arg, ..) = strip_pat_refs(&args[0]).kind
-        && let body = peel_blocks(arms[0].body)
-        && body.res_local_id() == Some(arg)
+        && let ExprKind::Match(target, [arm], MatchSource::Normal) = expr.kind
+        && arm.guard.is_none()
+        && let PatKind::TupleStruct(QPath::Resolved(None, variant_name), [arg_lhs], _) = arm.pat.kind
+        && let PatKind::Binding(binding, arg_lhs, ..) = strip_pat_refs(arg_lhs).kind
+        && let arg_rhs = peel_blocks(arm.body)
+        && Some(arg_lhs) == arg_rhs.res_local_id()
     {
         let mut applicability = Applicability::MachineApplicable;
         span_lint_and_sugg(
             cx,
             INFALLIBLE_DESTRUCTURING_MATCH,
             local.span,
-            "you seem to be trying to use `match` to destructure a single infallible pattern. \
-            Consider using `let`",
-            "try",
+            "you seem to be trying to use `match` to destructure a single infallible pattern",
+            "consider using `let`",
             format!(
                 "let {}({}{}) = {};",
                 snippet_with_applicability(cx, variant_name.span, "..", &mut applicability),

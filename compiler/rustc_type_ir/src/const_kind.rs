@@ -94,8 +94,26 @@ impl<I: Interner> UnevaluatedConst<I> {
         kind: UnevaluatedConstKind<I>,
         args: I::GenericArgs,
     ) -> UnevaluatedConst<I> {
-        interner.debug_assert_args_compatible(kind.def_id(), args);
+        if cfg!(debug_assertions) {
+            let def_id = match kind {
+                ty::UnevaluatedConstKind::Projection { def_id } => def_id.into(),
+                ty::UnevaluatedConstKind::Inherent { def_id } => def_id.into(),
+                ty::UnevaluatedConstKind::Free { def_id } => def_id.into(),
+                ty::UnevaluatedConstKind::Anon { def_id } => def_id.into(),
+            };
+            interner.debug_assert_args_compatible(def_id, args);
+        }
         UnevaluatedConst { kind, args, _use_unevaluated_const_new_instead: () }
+    }
+
+    pub fn type_of(self, interner: I) -> ty::Unnormalized<I, I::Ty> {
+        let def_id = match self.kind {
+            ty::UnevaluatedConstKind::Projection { def_id } => def_id.into(),
+            ty::UnevaluatedConstKind::Inherent { def_id } => def_id.into(),
+            ty::UnevaluatedConstKind::Free { def_id } => def_id.into(),
+            ty::UnevaluatedConstKind::Anon { def_id } => def_id.into(),
+        };
+        interner.type_of(def_id).instantiate(interner, self.args)
     }
 }
 
@@ -124,12 +142,30 @@ impl<I: Interner> UnevaluatedConstKind<I> {
         interner.unevaluated_const_kind_from_def_id(def_id)
     }
 
-    pub fn def_id(self) -> I::DefId {
+    pub fn is_type_const(self, interner: I) -> bool {
         match self {
-            UnevaluatedConstKind::Projection { def_id } => def_id.into(),
-            UnevaluatedConstKind::Inherent { def_id } => def_id.into(),
-            UnevaluatedConstKind::Free { def_id } => def_id.into(),
-            UnevaluatedConstKind::Anon { def_id } => def_id.into(),
+            UnevaluatedConstKind::Projection { def_id } => interner.is_type_const(def_id.into()),
+            UnevaluatedConstKind::Inherent { def_id } => interner.is_type_const(def_id.into()),
+            UnevaluatedConstKind::Free { def_id } => interner.is_type_const(def_id.into()),
+            UnevaluatedConstKind::Anon { def_id } => interner.is_type_const(def_id.into()),
+        }
+    }
+
+    pub fn def_span(self, interner: I) -> I::Span {
+        match self {
+            UnevaluatedConstKind::Projection { def_id } => interner.def_span(def_id.into()),
+            UnevaluatedConstKind::Inherent { def_id } => interner.def_span(def_id.into()),
+            UnevaluatedConstKind::Free { def_id } => interner.def_span(def_id.into()),
+            UnevaluatedConstKind::Anon { def_id } => interner.def_span(def_id.into()),
+        }
+    }
+
+    pub fn opt_def_id(self) -> Option<I::DefId> {
+        match self {
+            UnevaluatedConstKind::Projection { def_id } => Some(def_id.into()),
+            UnevaluatedConstKind::Inherent { def_id } => Some(def_id.into()),
+            UnevaluatedConstKind::Free { def_id } => Some(def_id.into()),
+            UnevaluatedConstKind::Anon { def_id } => Some(def_id.into()),
         }
     }
 }
@@ -253,9 +289,6 @@ pub enum AnonConstKind {
     GCE,
     /// stable `min_const_generics` anon consts are not allowed to use any generic parameters
     MCG,
-    /// `feature(generic_const_args)` anon consts are allowed to use arbitrary
-    /// generic parameters in scope, but only if they syntactically reference them.
-    GCA,
     /// anon consts used as the length of a repeat expr are syntactically allowed to use generic parameters
     /// but must not depend on the actual instantiation. See #76200 for more information
     RepeatExprCount,

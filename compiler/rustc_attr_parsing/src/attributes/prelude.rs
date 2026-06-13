@@ -1,7 +1,5 @@
 // data structures
 #[doc(hidden)]
-pub(super) use rustc_feature::{AttributeTemplate, template};
-#[doc(hidden)]
 pub(super) use rustc_hir::attrs::AttributeKind;
 #[doc(hidden)]
 pub(super) use rustc_hir::{MethodKind, Target};
@@ -27,3 +25,4 @@ pub(super) use crate::target_checking::Policy::{Allow, Error, Warn};
 pub(super) use crate::target_checking::{ALL_TARGETS, AllowedTargets};
 #[doc(hidden)]
 pub(super) use crate::unstable;
+pub(super) use crate::{AttributeTemplate, template};

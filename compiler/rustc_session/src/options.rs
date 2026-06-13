@@ -2431,6 +2431,14 @@ options! {
          `=skip-entry`
          `=skip-exit`
          Multiple options can be combined with commas."),
+    // The only purpose of this flag is to act as a deterrent:
+    // Marking a feature that's only meant for testing as internal might not preclude somebody from
+    // trying to use it in `core` or `std` as both enable various internal features and utilize them
+    // throughout. This is intentionally a flag not another internal feature as having to modify the
+    // build cfg in `bootstrap` is arguably scarier than just needing to add `#![feature]`. It also
+    // stands out a lot more during code review making it easier to get caught.
+    internal_testing_features: bool = (false, parse_bool, [TRACKED],
+        "allow certain internal language features to be enabled that help exercise & test the compiler"),
     large_data_threshold: Option<u64> = (None, parse_opt_number, [TRACKED],
         "set the threshold for objects to be stored in a \"large data\" section \
          (only effective with -Ccode-model=medium, default: 65536)"),
@@ -2688,6 +2696,8 @@ written to standard error output)"),
         "control stack smash protection strategy (`rustc --print stack-protector-strategies` for details)"),
     staticlib_allow_rdylib_deps: bool = (false, parse_bool, [TRACKED],
         "allow staticlibs to have rust dylib dependencies"),
+    staticlib_hide_internal_symbols: bool = (false, parse_bool, [TRACKED],
+        "hide non-exported symbols in ELF static libraries by setting STV_HIDDEN"),
     staticlib_prefer_dynamic: bool = (false, parse_bool, [TRACKED],
         "prefer dynamic linking to static linking for staticlibs (default: no)"),
     strict_init_checks: bool = (false, parse_bool, [TRACKED],
@@ -2735,9 +2745,9 @@ written to standard error output)"),
         "in diagnostics, use heuristics to shorten paths referring to items"),
     tune_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
         "select processor to schedule for (`rustc --print target-cpus` for details)"),
-    #[rustc_lint_opt_deny_field_access("use `TyCtxt::use_typing_mode_borrowck` instead of this field")]
-    typing_mode_borrowck: bool = (false, parse_bool, [TRACKED],
-        "enable `TypingMode::Borrowck`, changing the way opaque types are handled during MIR borrowck"),
+    #[rustc_lint_opt_deny_field_access("use `TyCtxt::use_typing_mode_post_typeck` instead of this field")]
+    typing_mode_post_typeck_until_borrowck: bool = (false, parse_bool, [TRACKED],
+        "enable `TypingMode::PostTypeckUntilBorrowck`, changing the way opaque types are handled during MIR borrowck"),
     #[rustc_lint_opt_deny_field_access("use `Session::ub_checks` instead of this field")]
     ub_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "emit runtime checks for Undefined Behavior (default: -Cdebug-assertions)"),

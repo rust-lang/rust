@@ -1,9 +1,14 @@
 //! Client-side types.
 
 use std::cell::RefCell;
-use std::marker::PhantomData;
+use std::ops::{Bound, Range};
+use std::sync::Once;
+use std::{fmt, mem, panic};
 
-use super::*;
+use crate::bridge::{
+    ApiTags, BridgeConfig, Buffer, Decode, Diagnostic, Encode, ExpnGlobals, Literal, PanicMessage,
+    TokenTree, closure, handle,
+};
 
 pub(crate) struct TokenStream {
     handle: handle::Handle,
@@ -208,26 +213,13 @@ pub(crate) fn is_available() -> bool {
 /// A client-side RPC entry-point, which may be using a different `proc_macro`
 /// from the one used by the server, but can be invoked compatibly.
 ///
-/// Note that the (phantom) `I` ("input") and `O` ("output") type parameters
-/// decorate the `Client<I, O>` with the RPC "interface" of the entry-point, but
-/// do not themselves participate in ABI, at all, only facilitate type-checking.
-///
-/// E.g. `Client<TokenStream, TokenStream>` is the common proc macro interface,
-/// used for `#[proc_macro] fn foo(input: TokenStream) -> TokenStream`,
-/// indicating that the RPC input and output will be serialized token streams,
-/// and forcing the use of APIs that take/return `S::TokenStream`, server-side.
+/// Note that the input and output type parameters are erased. They do not
+/// participate in the ABI, so while using the wrong runN method will likely
+/// result in a panic, it will not result in UB.
 #[repr(C)]
-pub struct Client<I, O> {
+#[derive(Copy, Clone)]
+pub struct Client {
     pub(super) run: extern "C" fn(BridgeConfig<'_>) -> Buffer,
-
-    pub(super) _marker: PhantomData<fn(I) -> O>,
-}
-
-impl<I, O> Copy for Client<I, O> {}
-impl<I, O> Clone for Client<I, O> {
-    fn clone(&self) -> Self {
-        *self
-    }
 }
 
 fn maybe_install_panic_hook(force_show_panics: bool) {
@@ -286,18 +278,15 @@ fn run_client<A: for<'a, 's> Decode<'a, 's, ()>>(
     buf
 }
 
-impl Client<crate::TokenStream, crate::TokenStream> {
+impl Client {
     pub const fn expand1(f: impl Fn(crate::TokenStream) -> crate::TokenStream + Copy) -> Self {
         Client {
             run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
                 run_client(bridge, |input| f(input))
             }),
-            _marker: PhantomData,
         }
     }
-}
 
-impl Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream> {
     pub const fn expand2(
         f: impl Fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream + Copy,
     ) -> Self {
@@ -305,59 +294,6 @@ impl Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream> {
             run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
                 run_client(bridge, |(input, input2)| f(input, input2))
             }),
-            _marker: PhantomData,
         }
-    }
-}
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub enum ProcMacro {
-    CustomDerive {
-        trait_name: &'static str,
-        attributes: &'static [&'static str],
-        client: Client<crate::TokenStream, crate::TokenStream>,
-    },
-
-    Attr {
-        name: &'static str,
-        client: Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream>,
-    },
-
-    Bang {
-        name: &'static str,
-        client: Client<crate::TokenStream, crate::TokenStream>,
-    },
-}
-
-impl ProcMacro {
-    pub fn name(&self) -> &'static str {
-        match self {
-            ProcMacro::CustomDerive { trait_name, .. } => trait_name,
-            ProcMacro::Attr { name, .. } => name,
-            ProcMacro::Bang { name, .. } => name,
-        }
-    }
-
-    pub const fn custom_derive(
-        trait_name: &'static str,
-        attributes: &'static [&'static str],
-        expand: impl Fn(crate::TokenStream) -> crate::TokenStream + Copy,
-    ) -> Self {
-        ProcMacro::CustomDerive { trait_name, attributes, client: Client::expand1(expand) }
-    }
-
-    pub const fn attr(
-        name: &'static str,
-        expand: impl Fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream + Copy,
-    ) -> Self {
-        ProcMacro::Attr { name, client: Client::expand2(expand) }
-    }
-
-    pub const fn bang(
-        name: &'static str,
-        expand: impl Fn(crate::TokenStream) -> crate::TokenStream + Copy,
-    ) -> Self {
-        ProcMacro::Bang { name, client: Client::expand1(expand) }
     }
 }

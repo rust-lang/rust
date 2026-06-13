@@ -55,7 +55,7 @@ where
         Ok(n)
     }
 
-    fn read_buf(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, mut cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         let prev_written = cursor.written();
 
         Read::read_buf(&mut Cursor::split(self).1, cursor.reborrow())?;
@@ -93,7 +93,7 @@ where
         result
     }
 
-    fn read_buf_exact(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf_exact(&mut self, mut cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         let prev_written = cursor.written();
 
         let result = Read::read_buf_exact(&mut Cursor::split(self).1, cursor.reborrow());

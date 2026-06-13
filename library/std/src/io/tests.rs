@@ -187,7 +187,7 @@ fn read_exact_slice() {
 #[test]
 fn read_buf_exact() {
     let buf: &mut [_] = &mut [0; 4];
-    let mut buf: BorrowedBuf<'_> = buf.into();
+    let mut buf: BorrowedBuf<'_, u8> = buf.into();
 
     let mut c = Cursor::new(&b""[..]);
     assert_eq!(c.read_buf_exact(buf.unfilled()).unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
@@ -731,7 +731,7 @@ fn bench_take_read_buf(b: &mut test::Bencher) {
     b.iter(|| {
         let buf: &mut [_] = &mut [MaybeUninit::uninit(); 64];
 
-        let mut buf: BorrowedBuf<'_> = buf.into();
+        let mut buf: BorrowedBuf<'_, u8> = buf.into();
 
         [255; 128].take(64).read_buf(buf.unfilled()).unwrap();
     });
@@ -773,7 +773,7 @@ impl Read for DataAndErrorReader {
         panic!("We want tests to use `read_buf`")
     }
 
-    fn read_buf(&mut self, buf: io::BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, buf: io::BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.0.read_buf(buf).unwrap();
         Err(io::Error::other("error"))
     }

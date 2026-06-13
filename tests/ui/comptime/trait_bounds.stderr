@@ -1,0 +1,27 @@
+error: `[const]` is not allowed here
+  --> $DIR/trait_bounds.rs:13:27
+   |
+LL | fn conditionally_const<T: [const] Trait>() {
+   |                           ^^^^^^^
+   |
+note: this function is not `const`, so it cannot have `[const]` trait bounds
+  --> $DIR/trait_bounds.rs:13:4
+   |
+LL | fn conditionally_const<T: [const] Trait>() {
+   |    ^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `T: const Trait` is not satisfied
+  --> $DIR/trait_bounds.rs:15:5
+   |
+LL |     T::method()
+   |     ^
+
+error[E0277]: the trait bound `T: const Trait` is not satisfied
+  --> $DIR/trait_bounds.rs:21:5
+   |
+LL |     T::method()
+   |     ^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -26,10 +26,11 @@ pub enum LangItemTarget {
     TraitId(TraitId),
     EnumVariantId(EnumVariantId),
     ConstId(ConstId),
+    MacroId(MacroId),
 }
 
 impl_from!(
-    EnumId, FunctionId, ImplId, StaticId, StructId, UnionId, TypeAliasId, TraitId, EnumVariantId, ConstId for LangItemTarget
+    EnumId, FunctionId, ImplId, StaticId, StructId, UnionId, TypeAliasId, TraitId, EnumVariantId, ConstId, MacroId for LangItemTarget
 );
 
 /// Salsa query. This will look for lang items in a specific crate.
@@ -276,7 +277,6 @@ impl LangItems {
             (self.BitXorAssign, &mut self.BitXorAssign_bitxor_assign, sym::bitxor_assign),
             (self.BitOrAssign, &mut self.BitOrAssign_bitor_assign, sym::bitor_assign),
             (self.BitAndAssign, &mut self.BitAndAssign_bitand_assign, sym::bitand_assign),
-            (self.Drop, &mut self.Drop_drop, sym::drop),
             (self.Debug, &mut self.Debug_fmt, sym::fmt),
             (self.Deref, &mut self.Deref_deref, sym::deref),
             (self.DerefMut, &mut self.DerefMut_deref_mut, sym::deref_mut),
@@ -304,6 +304,13 @@ impl LangItems {
                     (&mut self.PartialOrd_ge, sym::ge),
                     (&mut self.PartialOrd_gt, sym::gt),
                 ],
+            );
+            Some(())
+        })();
+        (|| {
+            methods(
+                self.Drop?,
+                &mut [(&mut self.Drop_drop, sym::drop), (&mut self.Drop_pin_drop, sym::pin_drop)],
             );
             Some(())
         })();
@@ -397,11 +404,15 @@ macro_rules! language_item_table {
         }
 
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+        #[allow(non_camel_case_types)]
         pub enum LangItemEnum {
             $(
                 $(#[$attr])*
                 $lang_item,
             )*
+            $( $non_lang_trait, )*
+            $( $non_lang_macro_field, )*
+            $( $resolve_manually, )*
         }
 
         impl LangItemEnum {
@@ -409,6 +420,9 @@ macro_rules! language_item_table {
             pub fn from_lang_items(self, lang_items: &LangItems) -> Option<LangItemTarget> {
                 match self {
                     $( LangItemEnum::$lang_item => lang_items.$lang_item.map(Into::into), )*
+                    $( LangItemEnum::$non_lang_trait => lang_items.$non_lang_trait.map(Into::into), )*
+                    $( LangItemEnum::$non_lang_macro_field => lang_items.$non_lang_macro_field.map(Into::into), )*
+                    $( LangItemEnum::$resolve_manually => lang_items.$resolve_manually.map(Into::into), )*
                 }
             }
 
@@ -716,6 +730,7 @@ language_item_table! { LangItems =>
     PartialOrd_ge,                 FunctionId;
     PartialOrd_gt,                 FunctionId;
     Drop_drop,                     FunctionId;
+    Drop_pin_drop,                     FunctionId;
     Debug_fmt,                     FunctionId;
     Deref_deref,                   FunctionId;
     DerefMut_deref_mut,            FunctionId;

@@ -10,7 +10,7 @@ pub(crate) fn target() -> Target {
     base.llvm_abiname = LlvmAbi::Lp64d;
     base.max_atomic_width = Some(64);
     base.stack_probes = StackProbeType::Inline;
-    base.supported_sanitizers = SanitizerSet::SHADOWCALLSTACK;
+    base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::SHADOWCALLSTACK;
     base.default_sanitizers = SanitizerSet::SHADOWCALLSTACK;
     base.supports_xray = true;
 

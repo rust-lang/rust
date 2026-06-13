@@ -1,12 +1,6 @@
 #![warn(clippy::manual_bits)]
-#![allow(
-    clippy::no_effect,
-    clippy::useless_conversion,
-    path_statements,
-    unused_must_use,
-    clippy::unnecessary_operation,
-    clippy::unnecessary_cast
-)]
+#![allow(clippy::no_effect, clippy::unnecessary_cast, clippy::useless_conversion)]
+#![expect(clippy::unnecessary_operation)]
 
 use std::mem::{size_of, size_of_val};
 

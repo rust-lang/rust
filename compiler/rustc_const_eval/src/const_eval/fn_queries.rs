@@ -11,13 +11,13 @@ fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Constness {
     let node = tcx.hir_node_by_def_id(def_id);
 
     match node {
-        Node::Ctor(VariantData::Tuple(..)) => Constness::Const,
+        Node::Ctor(VariantData::Tuple(..)) => Constness::Const { always: false },
         Node::ForeignItem(item) if let ForeignItemKind::Fn(..) = item.kind => {
             // Foreign functions cannot be evaluated at compile-time.
             Constness::NotConst
         }
         Node::Expr(e) if let ExprKind::Closure(c) = e.kind => {
-            if let Constness::Const = c.constness && tcx.hir_body_const_context(tcx.local_parent(def_id)).is_none() {
+            if let Constness::Const { .. } = c.constness && tcx.hir_body_const_context(tcx.local_parent(def_id)).is_none() {
                 tcx.dcx().span_err(tcx.def_span(def_id), "cannot use `const` closures outside of const contexts");
                 return Constness::NotConst;
             }
@@ -37,7 +37,7 @@ fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Constness {
             ..
         }) => {
             match sig.header.constness {
-                Constness::Const => Constness::Const,
+                Constness::Const { always } => Constness::Const { always },
                 // inherent impl could be const
                 Constness::NotConst => tcx.constness(tcx.local_parent(def_id)),
             }

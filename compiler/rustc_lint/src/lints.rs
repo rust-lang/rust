@@ -21,7 +21,7 @@ use rustc_span::{Ident, Span, Symbol, sym};
 
 use crate::LateContext;
 use crate::builtin::{InitError, ShorthandAssocTyCollector, TypeAliasBounds};
-use crate::errors::{OverruledAttributeSub, RequestedLevel};
+use crate::diagnostics::{OverruledAttributeSub, RequestedLevel};
 use crate::lifetime_syntax::LifetimeSyntaxCategories;
 
 // array_into_iter.rs

@@ -101,6 +101,12 @@ pub struct VarsOs {
     inner: env_imp::Env,
 }
 
+#[stable(feature = "env_vars_unimpl_send_sync", since = "CURRENT_RUSTC_VERSION")]
+impl !Send for VarsOs {}
+
+#[stable(feature = "env_vars_unimpl_send_sync", since = "CURRENT_RUSTC_VERSION")]
+impl !Sync for VarsOs {}
+
 /// Returns an iterator of (variable, value) pairs of strings, for all the
 /// environment variables of the current process.
 ///
@@ -600,6 +606,7 @@ impl Error for JoinPathsError {
 /// For example, [XDG Base Directories] on Unix or the `LOCALAPPDATA` and `APPDATA` environment variables on Windows.
 ///
 /// [XDG Base Directories]: https://specifications.freedesktop.org/basedir-spec/latest/
+//  feature(xdg_basedir): This should link to std::os::unix::xdg once it's stabilized
 ///
 /// # Unix
 ///

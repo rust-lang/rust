@@ -3,7 +3,7 @@
 fn uninhabited_variant::{closure#0}(_1: &mut {async fn body of uninhabited_variant()}) -> () {
     debug _task_context => _2;
     let mut _0: ();
-    let mut _2: &mut std::task::Context<'_>;
+    let mut _2: std::future::ResumeTy;
     let _3: {async block@$DIR/async_fn.rs:106:13: 106:18};
     let mut _4: std::option::Option<Never>;
     let mut _5: isize;
@@ -18,10 +18,10 @@ fn uninhabited_variant::{closure#0}(_1: &mut {async fn body of uninhabited_varia
     let mut _15: &mut {async block@$DIR/async_fn.rs:106:13: 106:18};
     let mut _16: &mut std::task::Context<'_>;
     let mut _17: &mut std::task::Context<'_>;
-    let mut _18: &mut std::task::Context<'_>;
+    let mut _18: std::future::ResumeTy;
     let mut _19: isize;
     let mut _21: !;
-    let mut _22: &mut std::task::Context<'_>;
+    let mut _22: std::future::ResumeTy;
     let mut _23: ();
     let _25: ();
     let mut _26: {async fn body of uninhabited_variant::{closure#0}::unreachable()};
@@ -34,10 +34,10 @@ fn uninhabited_variant::{closure#0}(_1: &mut {async fn body of uninhabited_varia
     let mut _34: &mut {async fn body of uninhabited_variant::{closure#0}::unreachable()};
     let mut _35: &mut std::task::Context<'_>;
     let mut _36: &mut std::task::Context<'_>;
-    let mut _37: &mut std::task::Context<'_>;
+    let mut _37: std::future::ResumeTy;
     let mut _38: isize;
     let mut _40: !;
-    let mut _41: &mut std::task::Context<'_>;
+    let mut _41: std::future::ResumeTy;
     let mut _42: ();
     let mut _43: bool;
     let mut _44: ();

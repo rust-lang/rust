@@ -147,7 +147,16 @@ fn maybe_normalize_erasing_regions<'tcx>(
     cx: &LateContext<'tcx>,
     value: Unnormalized<'tcx, Ty<'tcx>>,
 ) -> Ty<'tcx> {
-    cx.tcx.try_normalize_erasing_regions(cx.typing_env(), value).unwrap_or(value.skip_norm_wip())
+    // Use `TypingMode::Borrowck` so the new solver doesn't reveal opaque types since we're now
+    // past hir typeck. If we were to attempt to reveal more opaque types, dropping the
+    // `InferCtxt` would ICE (see #156352).
+    let typing_env = if let Some(body_id) = cx.enclosing_body {
+        let body_def_id = cx.tcx.hir_enclosing_body_owner(body_id.hir_id);
+        ty::TypingEnv::new(cx.param_env, ty::TypingMode::borrowck(cx.tcx, body_def_id))
+    } else {
+        cx.typing_env()
+    };
+    cx.tcx.try_normalize_erasing_regions(typing_env, value).unwrap_or(value.skip_norm_wip())
 }
 
 /// Check a variant of a non-exhaustive enum for improper ctypes
@@ -468,12 +477,15 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         base_ty: Unnormalized<'tcx, Ty<'tcx>>,
         base_fn_mode: CItemKind,
     ) -> Self {
-        ImproperCTypesVisitor {
-            cx,
-            base_ty: maybe_normalize_erasing_regions(cx, base_ty),
-            base_fn_mode,
-            cache: FxHashSet::default(),
-        }
+        // Skip normalization for opaques: even in `TypingMode::Borrowck` the body's own
+        // defining opaques still get revealed, leaving entries in `OpaqueTypeStorage` that
+        // ICE on `InferCtxt` drop (issue #156352).
+        let base_ty = if base_ty.skip_norm_wip().has_opaque_types() {
+            base_ty.skip_norm_wip()
+        } else {
+            maybe_normalize_erasing_regions(cx, base_ty)
+        };
+        ImproperCTypesVisitor { cx, base_ty, base_fn_mode, cache: FxHashSet::default() }
     }
 
     /// Checks if the given indirection (box,ref,pointer) is "ffi-safe".
@@ -894,6 +906,19 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 help: None,
             },
 
+            // Safety net for when normalization reveals a body's own defining opaque
+            // (e.g. `async extern fn`'s `impl Future` → `Coroutine`); the nicer
+            // "opaque types have no C equivalent" message comes from `visit_for_opaque_ty`
+            // in `check_type` before normalization (issue #156352).
+            ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..) => FfiUnsafe {
+                ty,
+                reason: msg!("closures and coroutines are not FFI-safe"),
+                help: None,
+            },
+
             ty::Param(..)
             | ty::Alias(ty::AliasTy {
                 kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
@@ -902,10 +927,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             | ty::Infer(..)
             | ty::Bound(..)
             | ty::Error(_)
-            | ty::Closure(..)
-            | ty::CoroutineClosure(..)
-            | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
             | ty::Placeholder(..)
             | ty::FnDef(..) => bug!("unexpected type in foreign function: {:?}", ty),
         }
@@ -941,6 +962,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         state: VisitorState,
         ty: Unnormalized<'tcx, Ty<'tcx>>,
     ) -> FfiResult<'tcx> {
+        // Catch opaques before normalization so the new solver doesn't reveal them
+        // (e.g. `async extern fn` return → `Coroutine`) and we get the nicer
+        // "opaque types have no C equivalent" message.
+        if let Some(res) = self.visit_for_opaque_ty(ty.skip_norm_wip()) {
+            return res;
+        }
         let ty = maybe_normalize_erasing_regions(self.cx, ty);
         if let Some(res) = self.visit_for_opaque_ty(ty) {
             return res;

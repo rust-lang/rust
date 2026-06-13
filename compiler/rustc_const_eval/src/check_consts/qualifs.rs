@@ -102,7 +102,7 @@ impl Qualif for HasMutInterior {
         let freeze_def_id = cx.tcx.require_lang_item(LangItem::Freeze, cx.body.span);
         let did = cx.body.source.def_id().expect_local();
 
-        let typing_env = if cx.tcx.use_typing_mode_borrowck() {
+        let typing_env = if cx.tcx.use_typing_mode_post_typeck_until_borrowck() {
             cx.typing_env
         } else {
             ty::TypingEnv::new(cx.typing_env.param_env, TypingMode::analysis_in_body(cx.tcx, did))

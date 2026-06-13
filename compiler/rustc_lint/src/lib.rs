@@ -36,11 +36,11 @@ mod context;
 mod dangling;
 mod default_could_be_derived;
 mod deref_into_dyn_supertrait;
+mod diagnostics;
 mod disallowed_pass_by_ref;
 mod drop_forget_useless;
 mod early;
 mod enum_intrinsics_non_enums;
-mod errors;
 mod expect;
 mod for_loops_over_fallibles;
 mod foreign_modules;
@@ -376,10 +376,6 @@ fn register_builtins(store: &mut LintStore) {
     store.register_renamed("static_mut_ref", "static_mut_refs");
     store.register_renamed("temporary_cstring_as_ptr", "dangling_pointers_from_temporaries");
     store.register_renamed("elided_named_lifetimes", "mismatched_lifetime_syntaxes");
-    store.register_renamed(
-        "repr_transparent_external_private_fields",
-        "repr_transparent_non_zst_fields",
-    );
 
     // These were moved to tool lints, but rustc still sees them when compiling normally, before
     // tool lints are registered, so `check_tool_name_for_backwards_compat` doesn't work. Use
@@ -653,6 +649,16 @@ fn register_builtins(store: &mut LintStore) {
     store.register_removed(
         "inline_always_mismatching_target_features",
         "replaced by a hard error for `#[inline(always)]` with `#[target_feature]`",
+    );
+    store.register_removed(
+        "repr_transparent_external_private_fields",
+        "converted into hard error, \
+         see <https://github.com/rust-lang/rust/issues/78586> for more information",
+    );
+    store.register_removed(
+        "repr_transparent_non_zst_fields",
+        "converted into hard error, \
+         see <https://github.com/rust-lang/rust/issues/78586> for more information",
     );
 }
 

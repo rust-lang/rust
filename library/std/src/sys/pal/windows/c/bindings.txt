@@ -2154,6 +2154,8 @@ GENERIC_ALL
 GENERIC_EXECUTE
 GENERIC_READ
 GENERIC_WRITE
+GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
+GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT
 GetActiveProcessorCount
 getaddrinfo
 GetCommandLineW
@@ -2178,6 +2180,7 @@ GetFullPathNameW
 GetLastError
 GetModuleFileNameW
 GetModuleHandleA
+GetModuleHandleExW
 GetModuleHandleW
 GetOverlappedResult
 getpeername

@@ -32,7 +32,7 @@ use hir_expand::{
     name::AsName,
 };
 use hir_ty::{
-    InferBodyId, InferenceResult,
+    InferBodyId, InferenceResult, LoweringMode,
     db::AnonConstId,
     diagnostics::unsafe_operations,
     infer_query_with_inspect,
@@ -2564,6 +2564,20 @@ impl<'db> SemanticsImpl<'db> {
         Some(locals)
     }
 
+    pub fn evaluate_where_clause_at(
+        &self,
+        node: &SyntaxNode,
+        offset: TextSize,
+        where_clause: ast::WhereClause,
+    ) -> crate::PredicateEvaluationResult {
+        let Some(analyzer) = self.analyze_with_offset_no_infer(node, offset) else {
+            return crate::PredicateEvaluationResult::unsupported(
+                "predicate evaluation is only supported in files that belong to a crate",
+            );
+        };
+        analyzer.evaluate_where_clause(self.db, where_clause)
+    }
+
     pub fn get_failed_obligations(&self, token: SyntaxToken) -> Option<String> {
         let node = token.parent()?;
         let node = self.find_file(&node);
@@ -2587,6 +2601,7 @@ impl<'db> SemanticsImpl<'db> {
                             RESULT.with(|ctx| ctx.borrow_mut().push(data));
                         }
                     }),
+                    LoweringMode::Ide,
                 );
                 let data: Vec<ProofTreeData> =
                     RESULT.with(|data| data.borrow_mut().drain(..).collect());

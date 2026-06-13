@@ -5,7 +5,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{Span, sym};
 use tracing::{debug, info};
 
-use crate::errors::{
+use crate::diagnostics::{
     PeekArgumentNotALocal, PeekArgumentUntracked, PeekBitNotSet, PeekMustBeNotTemporary,
     PeekMustBePlaceOrRefPlace, StopAfterDataFlowEndedCompilation,
 };

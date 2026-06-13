@@ -7,9 +7,6 @@ use crate::sys::{AsInner, FromInner, IntoInner};
 // Keep this in mind when applying changes to this file that only apply to `unix`.
 
 /// Platform-specific extensions to [`OsString`].
-///
-/// This trait is sealed: it cannot be implemented outside the standard library.
-/// This is so that future additional methods are not breaking changes.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub impl(self) trait OsStringExt {
     /// Creates an [`OsString`] from a byte vector.
@@ -38,9 +35,6 @@ impl OsStringExt for OsString {
 }
 
 /// Platform-specific extensions to [`OsStr`].
-///
-/// This trait is sealed: it cannot be implemented outside the standard library.
-/// This is so that future additional methods are not breaking changes.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub impl(self) trait OsStrExt {
     #[stable(feature = "rust1", since = "1.0.0")]
