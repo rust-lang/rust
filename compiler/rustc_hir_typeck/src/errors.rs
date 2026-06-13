@@ -101,6 +101,14 @@ impl IntoDiagArg for ReturnLikeStatementKind {
 }
 
 #[derive(Diagnostic)]
+#[diag("the `?` operator cannot be used to return from inside a `{$keyword}` initializer", code = E0807)]
+pub(crate) struct QuestionMarkInConst {
+    #[primary_span]
+    pub span: Span,
+    pub keyword: &'static str,
+}
+
+#[derive(Diagnostic)]
 #[diag("functions with the \"rust-call\" ABI must take a single non-self tuple argument")]
 pub(crate) struct RustCallIncorrectArgs {
     #[primary_span]
