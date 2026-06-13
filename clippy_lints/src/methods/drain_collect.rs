@@ -4,64 +4,34 @@ use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet;
 use clippy_utils::{is_range_full, std_or_core, sym};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, LangItem, Path, QPath};
+use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_middle::ty::Ty;
-use rustc_span::Symbol;
 
-/// Checks if both types match the given diagnostic item, e.g.:
-///
-/// `vec![1,2].drain(..).collect::<Vec<_>>()`
-///  ^^^^^^^^^                     ^^^^^^   true
-/// `vec![1,2].drain(..).collect::<HashSet<_>>()`
-///  ^^^^^^^^^                     ^^^^^^^^^^  false
-fn types_match_diagnostic_item(cx: &LateContext<'_>, expr: Ty<'_>, recv: Ty<'_>, sym: Symbol) -> bool {
-    if let Some(expr_adt) = expr.ty_adt_def()
-        && let Some(recv_adt) = recv.ty_adt_def()
-    {
-        cx.tcx.is_diagnostic_item(sym, expr_adt.did()) && cx.tcx.is_diagnostic_item(sym, recv_adt.did())
-    } else {
-        false
-    }
-}
-
-/// Checks `std::{vec::Vec, collections::VecDeque}`.
-fn check_vec(cx: &LateContext<'_>, args: &[Expr<'_>], expr: Ty<'_>, recv: Ty<'_>, recv_path: &Path<'_>) -> bool {
-    (types_match_diagnostic_item(cx, expr, recv, sym::Vec)
-        || types_match_diagnostic_item(cx, expr, recv, sym::VecDeque))
-        && matches!(args, [arg] if is_range_full(cx, arg, Some(recv_path)))
-}
-
-/// Checks `std::string::String`
-fn check_string(cx: &LateContext<'_>, args: &[Expr<'_>], expr: Ty<'_>, recv: Ty<'_>, recv_path: &Path<'_>) -> bool {
-    expr.is_lang_item(cx, LangItem::String)
-        && recv.is_lang_item(cx, LangItem::String)
-        && matches!(args, [arg] if is_range_full(cx, arg, Some(recv_path)))
-}
-
-/// Checks `std::collections::{HashSet, HashMap, BinaryHeap}`.
-fn check_collections(cx: &LateContext<'_>, expr: Ty<'_>, recv: Ty<'_>) -> Option<&'static str> {
-    types_match_diagnostic_item(cx, expr, recv, sym::HashSet)
-        .then_some("HashSet")
-        .or_else(|| types_match_diagnostic_item(cx, expr, recv, sym::HashMap).then_some("HashMap"))
-        .or_else(|| types_match_diagnostic_item(cx, expr, recv, sym::BinaryHeap).then_some("BinaryHeap"))
-}
-
-pub(super) fn check(cx: &LateContext<'_>, args: &[Expr<'_>], expr: &Expr<'_>, recv: &Expr<'_>) {
-    let expr_ty = cx.typeck_results().expr_ty(expr);
-    let recv_ty = cx.typeck_results().expr_ty(recv);
-    let recv_ty_no_refs = recv_ty.peel_refs();
-
-    if let ExprKind::Path(QPath::Resolved(_, recv_path)) = recv.kind
-        && let Some(typename) = check_vec(cx, args, expr_ty, recv_ty_no_refs, recv_path)
-            .then_some("Vec")
-            .or_else(|| check_string(cx, args, expr_ty, recv_ty_no_refs, recv_path).then_some("String"))
-            .or_else(|| check_collections(cx, expr_ty, recv_ty_no_refs))
+pub(super) fn check(cx: &LateContext<'_>, arg: Option<&Expr<'_>>, expr: &Expr<'_>, recv: &Expr<'_>) {
+    let ty = cx.typeck_results().expr_ty(recv);
+    let (is_ref, ty) = match *ty.kind() {
+        ty::Ref(_, ty, _) => (true, ty),
+        _ => (false, ty),
+    };
+    if cx.typeck_results().expr_ty(expr) == ty
+        && let Some(did) = ty.opt_def_id()
+        && (cx.tcx.lang_items().string() == Some(did)
+            || matches!(
+                ty.opt_diag_name(cx),
+                Some(sym::HashMap | sym::HashSet | sym::BinaryHeap | sym::Vec | sym::VecDeque)
+            ))
+        && arg.is_none_or(|arg| {
+            if let ExprKind::Path(QPath::Resolved(None, path)) = recv.kind {
+                is_range_full(cx, arg, Some(path))
+            } else {
+                false
+            }
+        })
         && let Some(exec_context) = std_or_core(cx)
     {
         let recv = snippet(cx, recv.span, "<expr>");
-        let sugg = if let ty::Ref(..) = recv_ty.kind() {
+        let sugg = if is_ref {
             format!("{exec_context}::mem::take({recv})")
         } else {
             format!("{exec_context}::mem::take(&mut {recv})")
@@ -71,8 +41,8 @@ pub(super) fn check(cx: &LateContext<'_>, args: &[Expr<'_>], expr: &Expr<'_>, re
             cx,
             DRAIN_COLLECT,
             expr.span,
-            format!("you seem to be trying to move all elements into a new `{typename}`"),
-            "consider using `mem::take`",
+            "draining all elements of a collection into a new collection of the same type",
+            "use `mem::take` to avoid creating a new allocation",
             sugg,
             Applicability::MachineApplicable,
         );
