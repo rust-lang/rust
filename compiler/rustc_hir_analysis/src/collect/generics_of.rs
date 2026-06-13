@@ -97,8 +97,6 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             match tcx.anon_const_kind(def_id) {
                 // Stable: anon consts are not able to use any generic parameters...
                 ty::AnonConstKind::MCG => None,
-                // GCA anon consts inherit their parent's generics.
-                ty::AnonConstKind::GCA => Some(parent_did),
                 // we provide generics to repeat expr counts as a backwards compatibility hack. #76200
                 ty::AnonConstKind::RepeatExprCount => Some(parent_did),
 
