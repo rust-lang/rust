@@ -14,15 +14,6 @@ use crate::AttributeTemplate;
 use crate::context::Suggestion;
 
 #[derive(Diagnostic)]
-#[diag("invalid predicate `{$predicate}`", code = E0537)]
-pub(crate) struct InvalidPredicate {
-    #[primary_span]
-    pub span: Span,
-
-    pub predicate: String,
-}
-
-#[derive(Diagnostic)]
 #[diag("{$attr_str} attribute cannot have empty value")]
 pub(crate) struct DocAliasEmpty<'a> {
     #[primary_span]
