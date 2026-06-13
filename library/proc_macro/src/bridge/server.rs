@@ -1,10 +1,16 @@
 //! Server-side traits.
 
 use std::cell::Cell;
+use std::hash::Hash;
+use std::ops::{Bound, Range};
 use std::sync::atomic::AtomicU32;
 use std::sync::mpsc;
+use std::{panic, thread};
 
-use super::*;
+use crate::bridge::{
+    ApiTags, BridgeConfig, Buffer, Decode, Diagnostic, Encode, ExpnGlobals, Literal, Mark, Marked,
+    PanicMessage, TokenTree, client, handle,
+};
 
 pub(super) struct HandleStore<S: Server> {
     token_stream: handle::OwnedStore<MarkedTokenStream<S>>,
