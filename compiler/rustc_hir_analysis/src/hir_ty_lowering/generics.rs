@@ -17,7 +17,7 @@ use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
 use super::{HirTyLowerer, IsMethodCall};
-use crate::errors::wrong_number_of_generic_args::{GenericArgsInfo, WrongNumberOfGenericArgs};
+use crate::diagnostics::wrong_number_of_generic_args::{GenericArgsInfo, WrongNumberOfGenericArgs};
 use crate::hir_ty_lowering::errors::prohibit_assoc_item_constraint;
 use crate::hir_ty_lowering::{
     ExplicitLateBound, GenericArgCountMismatch, GenericArgCountResult, GenericArgPosition,

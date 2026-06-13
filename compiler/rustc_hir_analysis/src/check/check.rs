@@ -38,6 +38,7 @@ use crate::check::wfcheck::{
     check_associated_item, check_trait_item, check_type_defn, check_variances_for_type_defn,
     check_where_clauses, enter_wf_checking_ctxt,
 };
+use crate::diagnostics;
 
 fn add_abi_diag_help<T: EmissionGuarantee>(abi: ExternAbi, diag: &mut Diag<'_, T>) {
     if let ExternAbi::Cdecl { unwind } = abi {
@@ -95,7 +96,7 @@ pub fn check_custom_abi(tcx: TyCtxt<'_>, def_id: LocalDefId, fn_sig: FnSig<'_>, 
     if fn_sig.abi() == ExternAbi::Custom {
         // Function definitions that use `extern "custom"` must be naked functions.
         if !find_attr!(tcx, def_id, Naked(_)) {
-            tcx.dcx().emit_err(crate::errors::AbiCustomClothedFunction {
+            tcx.dcx().emit_err(crate::diagnostics::AbiCustomClothedFunction {
                 span: fn_sig_span,
                 naked_span: tcx.def_span(def_id).shrink_to_lo(),
             });
@@ -181,9 +182,9 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
                 Some(Node::Field(field)) => (field.span, field.ty.span),
                 _ => unreachable!("mir field has to correspond to hir field"),
             };
-            tcx.dcx().emit_err(errors::InvalidUnionField {
+            tcx.dcx().emit_err(diagnostics::InvalidUnionField {
                 field_span,
-                sugg: errors::InvalidUnionFieldSuggestion {
+                sugg: diagnostics::InvalidUnionFieldSuggestion {
                     lo: ty_span.shrink_to_lo(),
                     hi: ty_span.shrink_to_hi(),
                 },
@@ -217,7 +218,7 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             if matches!(tcx.def_kind(def_id), DefKind::Static{ .. }
                 if tcx.def_kind(tcx.local_parent(def_id)) == DefKind::ForeignMod) =>
         {
-            tcx.dcx().emit_err(errors::TooLargeStatic { span });
+            tcx.dcx().emit_err(diagnostics::TooLargeStatic { span });
             return;
         }
         // SIMD types with invalid layout (e.g., zero-length) should emit an error
@@ -599,7 +600,7 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
             }
             hir::PreciseCapturingArg::Lifetime(&hir::Lifetime { hir_id, ident, .. }) => {
                 if let Some(prev_non_lifetime_param) = prev_non_lifetime_param {
-                    tcx.dcx().emit_err(errors::LifetimesMustBeFirst {
+                    tcx.dcx().emit_err(diagnostics::LifetimesMustBeFirst {
                         lifetime_span: ident.span,
                         name: ident.name,
                         other_span: prev_non_lifetime_param.span,
@@ -611,7 +612,7 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
 
         let ident = ident.normalize_to_macros_2_0();
         if let Some(span) = seen_params.insert(ident, ident.span) {
-            tcx.dcx().emit_err(errors::DuplicatePreciseCapture {
+            tcx.dcx().emit_err(diagnostics::DuplicatePreciseCapture {
                 name: ident.name,
                 first_span: span,
                 second_span: ident.span,
@@ -675,14 +676,14 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
                                 .map_opaque_lifetime_to_parent_lifetime(param.def_id.expect_local())
                                 .opt_param_def_id(tcx, tcx.parent(opaque_def_id.to_def_id()))
                         {
-                            tcx.dcx().emit_err(errors::LifetimeNotCaptured {
+                            tcx.dcx().emit_err(diagnostics::LifetimeNotCaptured {
                                 opaque_span,
                                 use_span,
                                 param_span: tcx.def_span(def_id),
                             });
                         } else {
                             if tcx.def_kind(tcx.parent(param.def_id)) == DefKind::Trait {
-                                tcx.dcx().emit_err(errors::LifetimeImplicitlyCaptured {
+                                tcx.dcx().emit_err(diagnostics::LifetimeImplicitlyCaptured {
                                     opaque_span,
                                     param_span: tcx.def_span(param.def_id),
                                 });
@@ -691,7 +692,7 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
                                 // have not duplicated the lifetime but captured the original.
                                 // The "effective" `use_span` will be the span of the opaque itself,
                                 // and the param span will be the def span of the param.
-                                tcx.dcx().emit_err(errors::LifetimeNotCaptured {
+                                tcx.dcx().emit_err(diagnostics::LifetimeNotCaptured {
                                     opaque_span,
                                     use_span: opaque_span,
                                     param_span: use_span,
@@ -704,13 +705,13 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
                 ty::GenericParamDefKind::Type { .. } => {
                     if matches!(tcx.def_kind(param.def_id), DefKind::Trait | DefKind::TraitAlias) {
                         // FIXME(precise_capturing): Structured suggestion for this would be useful
-                        tcx.dcx().emit_err(errors::SelfTyNotCaptured {
+                        tcx.dcx().emit_err(diagnostics::SelfTyNotCaptured {
                             trait_span: tcx.def_span(param.def_id),
                             opaque_span: tcx.def_span(opaque_def_id),
                         });
                     } else {
                         // FIXME(precise_capturing): Structured suggestion for this would be useful
-                        tcx.dcx().emit_err(errors::ParamNotCaptured {
+                        tcx.dcx().emit_err(diagnostics::ParamNotCaptured {
                             param_span: tcx.def_span(param.def_id),
                             opaque_span: tcx.def_span(opaque_def_id),
                             kind: "type",
@@ -719,7 +720,7 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
                 }
                 ty::GenericParamDefKind::Const { .. } => {
                     // FIXME(precise_capturing): Structured suggestion for this would be useful
-                    tcx.dcx().emit_err(errors::ParamNotCaptured {
+                    tcx.dcx().emit_err(diagnostics::ParamNotCaptured {
                         param_span: tcx.def_span(param.def_id),
                         opaque_span: tcx.def_span(opaque_def_id),
                         kind: "const",
@@ -755,7 +756,7 @@ fn check_static_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             ty::Adt(adt_def, args) => !is_enum_of_nonnullable_ptr(tcx, *adt_def, *args),
             _ => true,
         } {
-            tcx.dcx().emit_err(errors::LinkageType { span: tcx.def_span(def_id) });
+            tcx.dcx().emit_err(diagnostics::LinkageType { span: tcx.def_span(def_id) });
         }
     }
 }
@@ -1238,8 +1239,8 @@ pub(super) fn check_specialization_validity<'tcx>(
             let ident = tcx.item_ident(impl_item);
 
             let err = match tcx.span_of_impl(parent_impl) {
-                Ok(sp) => errors::ImplNotMarkedDefault::Ok { span, ident, ok_label: sp },
-                Err(cname) => errors::ImplNotMarkedDefault::Err { span, ident, cname },
+                Ok(sp) => diagnostics::ImplNotMarkedDefault::Ok { span, ident, ok_label: sp },
+                Err(cname) => diagnostics::ImplNotMarkedDefault::Err { span, ident, cname },
             };
 
             tcx.dcx().emit_err(err);
@@ -1255,7 +1256,7 @@ fn check_overriding_final_trait_item<'tcx>(
     impl_item: ty::AssocItem,
 ) {
     if trait_item.defaultness(tcx).is_final() {
-        tcx.dcx().emit_err(errors::OverridingFinalTraitFunction {
+        tcx.dcx().emit_err(diagnostics::OverridingFinalTraitFunction {
             impl_span: tcx.def_span(impl_item.def_id),
             trait_span: tcx.def_span(trait_item.def_id),
             ident: tcx.item_ident(impl_item.def_id),
@@ -1330,7 +1331,7 @@ fn check_impl_items_against_trait<'tcx>(
                 rustc_lint_defs::builtin::DEAD_CODE,
                 tcx.local_def_id_to_hir_id(ty_impl_item.def_id.expect_local()),
                 tcx.def_span(ty_impl_item.def_id),
-                errors::UselessImplItem,
+                diagnostics::UselessImplItem,
             )
         }
 
@@ -1638,7 +1639,7 @@ pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: ty::AdtDef<'_>) {
         // over-aligned field to an aligned location before running its destructor, which would
         // move a structurally pinned field out from under a `Pin<&mut _>` that was handed out.
         if def.is_pin_project() {
-            tcx.dcx().emit_err(errors::PinV2OnPacked {
+            tcx.dcx().emit_err(diagnostics::PinV2OnPacked {
                 span: sp,
                 pin_v2_span: find_attr!(tcx, def.did(), PinV2(span) => *span),
                 adt_name: tcx.item_name(def.did()),
@@ -2119,11 +2120,11 @@ fn check_type_alias_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalD
                 || (*bounded_params).get(&param.index).is_some_and(|&&pred_sp| pred_sp != span);
             let const_param_help = !has_explicit_bounds;
 
-            let mut diag = tcx.dcx().create_err(errors::UnusedGenericParameter {
+            let mut diag = tcx.dcx().create_err(diagnostics::UnusedGenericParameter {
                 span,
                 param_name,
                 param_def_kind: tcx.def_descr(param.def_id),
-                help: errors::UnusedGenericParameterHelp::TyAlias { param_name },
+                help: diagnostics::UnusedGenericParameterHelp::TyAlias { param_name },
                 usage_spans: vec![],
                 const_param_help,
             });
