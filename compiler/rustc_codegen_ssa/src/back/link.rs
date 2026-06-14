@@ -35,7 +35,7 @@ use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_session::config::{
-    self, CFGuard, CrateType, DebugInfo, LinkerFeaturesCli, OutFileName, OutputFilenames,
+    self, CFGuard, CfiMode, CrateType, DebugInfo, LinkerFeaturesCli, OutFileName, OutputFilenames,
     OutputType, PrintKind, SplitDwarfKind, Strip,
 };
 use rustc_session::lint::builtin::LINKER_MESSAGES;
@@ -1456,6 +1456,9 @@ fn add_sanitizer_libraries(
     }
     if sanitizer.contains(SanitizerSet::REALTIME) {
         link_sanitizer_runtime(sess, flavor, linker, "rtsan");
+    }
+    if sanitizer.contains(SanitizerSet::CFI) && sess.opts.unstable_opts.cfi_mode == CfiMode::Diag {
+        link_sanitizer_runtime(sess, flavor, linker, "ubsan");
     }
 }
 
