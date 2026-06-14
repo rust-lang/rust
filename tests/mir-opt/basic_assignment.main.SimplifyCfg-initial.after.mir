@@ -73,14 +73,19 @@ fn main() -> () {
     }
 
     bb6 (cleanup): {
+        BackwardIncompatibleDropHint(_6);
         drop(_5) -> [return: bb7, unwind terminate(cleanup)];
     }
 
     bb7 (cleanup): {
+        BackwardIncompatibleDropHint(_5);
         drop(_4) -> [return: bb8, unwind terminate(cleanup)];
     }
 
     bb8 (cleanup): {
+        BackwardIncompatibleDropHint(_4);
+        BackwardIncompatibleDropHint(_2);
+        BackwardIncompatibleDropHint(_1);
         resume;
     }
 }

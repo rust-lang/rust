@@ -16,22 +16,22 @@ fn move_out_by_subslice() -> () {
     bb0: {
         StorageLive(_1);
         StorageLive(_2);
-        _2 = Box::<i32>::new(const 1_i32) -> [return: bb1, unwind: bb9];
+        _2 = Box::<i32>::new(const 1_i32) -> [return: bb1, unwind: bb11];
     }
 
     bb1: {
         StorageLive(_3);
-        _3 = Box::<i32>::new(const 2_i32) -> [return: bb2, unwind: bb8];
+        _3 = Box::<i32>::new(const 2_i32) -> [return: bb2, unwind: bb9];
     }
 
     bb2: {
         _1 = [move _2, move _3];
-        drop(_3) -> [return: bb3, unwind: bb8];
+        drop(_3) -> [return: bb3, unwind: bb9];
     }
 
     bb3: {
         StorageDead(_3);
-        drop(_2) -> [return: bb4, unwind: bb9];
+        drop(_2) -> [return: bb4, unwind: bb10];
     }
 
     bb4: {
@@ -46,7 +46,7 @@ fn move_out_by_subslice() -> () {
 
     bb5: {
         StorageDead(_4);
-        drop(_1) -> [return: bb6, unwind: bb9];
+        drop(_1) -> [return: bb6, unwind: bb8];
     }
 
     bb6: {
@@ -55,14 +55,26 @@ fn move_out_by_subslice() -> () {
     }
 
     bb7 (cleanup): {
-        drop(_1) -> [return: bb9, unwind terminate(cleanup)];
+        nop;
+        drop(_1) -> [return: bb8, unwind terminate(cleanup)];
     }
 
     bb8 (cleanup): {
-        drop(_2) -> [return: bb9, unwind terminate(cleanup)];
+        nop;
+        goto -> bb11;
     }
 
     bb9 (cleanup): {
+        nop;
+        drop(_2) -> [return: bb10, unwind terminate(cleanup)];
+    }
+
+    bb10 (cleanup): {
+        nop;
+        goto -> bb11;
+    }
+
+    bb11 (cleanup): {
         resume;
     }
 }

@@ -8,7 +8,7 @@ fn vec_macro() -> Vec<i32> {
     bb0: {
         StorageLive(_1);
         StorageLive(_2);
-        _2 = Box::<[i32; 8]>::new_uninit() -> [return: bb1, unwind: bb5];
+        _2 = Box::<[i32; 8]>::new_uninit() -> [return: bb1, unwind: bb7];
     }
 
     bb1: {
@@ -19,7 +19,7 @@ fn vec_macro() -> Vec<i32> {
 
     bb2: {
         StorageDead(_2);
-        _0 = std::boxed::box_assume_init_into_vec_unsafe::<i32, 8>(move _1) -> [return: bb3, unwind: bb4];
+        _0 = std::boxed::box_assume_init_into_vec_unsafe::<i32, 8>(move _1) -> [return: bb3, unwind: bb5];
     }
 
     bb3: {
@@ -28,10 +28,20 @@ fn vec_macro() -> Vec<i32> {
     }
 
     bb4 (cleanup): {
-        drop(_1) -> [return: bb5, unwind terminate(cleanup)];
+        nop;
+        goto -> bb5;
     }
 
     bb5 (cleanup): {
+        drop(_1) -> [return: bb6, unwind terminate(cleanup)];
+    }
+
+    bb6 (cleanup): {
+        nop;
+        goto -> bb7;
+    }
+
+    bb7 (cleanup): {
         resume;
     }
 }

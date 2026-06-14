@@ -975,6 +975,7 @@ pub enum TerminatorKind<'tcx> {
 
 #[derive(
     Clone,
+    Copy,
     Debug,
     TyEncodable,
     TyDecodable,
@@ -986,6 +987,7 @@ pub enum TerminatorKind<'tcx> {
 )]
 pub enum BackwardIncompatibleDropReason {
     Edition2024,
+    UnwindStorageDead,
 }
 
 #[derive(Debug, Clone, TyEncodable, TyDecodable, Hash, StableHash, PartialEq)]

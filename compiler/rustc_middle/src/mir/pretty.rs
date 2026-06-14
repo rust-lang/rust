@@ -880,8 +880,8 @@ impl Debug for StatementKind<'_> {
             ConstEvalCounter => write!(fmt, "ConstEvalCounter"),
             Nop => write!(fmt, "nop"),
             BackwardIncompatibleDropHint { ref place, reason: _ } => {
-                // For now, we don't record the reason because there is only one use case,
-                // which is to report breaking change in drop order by Edition 2024
+                // The reason is intentionally omitted to keep MIR diffs stable
+                // across future-compatibility lint implementation details.
                 write!(fmt, "BackwardIncompatibleDropHint({place:?})")
             }
         }

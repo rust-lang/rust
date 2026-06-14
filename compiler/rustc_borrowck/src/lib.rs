@@ -46,7 +46,7 @@ use rustc_mir_dataflow::move_paths::{
 };
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_mir_dataflow::{Analysis, EntryStates, Results, ResultsVisitor, visit_results};
-use rustc_session::lint::builtin::{TAIL_EXPR_DROP_ORDER, UNUSED_MUT};
+use rustc_session::lint::builtin::{TAIL_EXPR_DROP_ORDER, UNUSED_MUT, UNWIND_DROP_ORDER};
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
@@ -844,11 +844,8 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, 
             // These do not actually affect borrowck
             StatementKind::ConstEvalCounter | StatementKind::StorageLive(..) => {}
             // This does not affect borrowck
-            StatementKind::BackwardIncompatibleDropHint {
-                place,
-                reason: BackwardIncompatibleDropReason::Edition2024,
-            } => {
-                self.check_backward_incompatible_drop(location, **place, state);
+            StatementKind::BackwardIncompatibleDropHint { place, reason } => {
+                self.check_backward_incompatible_drop(location, **place, *reason, state);
             }
             StatementKind::StorageDead(local) => {
                 self.access_place(
@@ -1391,6 +1388,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         &mut self,
         location: Location,
         place: Place<'tcx>,
+        reason: BackwardIncompatibleDropReason,
         state: &BorrowckDomain,
     ) {
         let tcx = self.infcx.tcx;
@@ -1424,17 +1422,36 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     borrow,
                     Some((WriteKind::StorageDeadOrDrop, place)),
                 );
-                this.infcx.tcx.emit_node_span_lint(
-                    TAIL_EXPR_DROP_ORDER,
-                    CRATE_HIR_ID,
-                    borrowed,
-                    session_diagnostics::TailExprDropOrder {
-                        borrowed,
-                        callback: |diag| {
-                            explain.add_explanation_to_diagnostic(&this, diag, "", None, None);
-                        },
-                    },
-                );
+                match reason {
+                    BackwardIncompatibleDropReason::Edition2024 => {
+                        this.infcx.tcx.emit_node_span_lint(
+                            TAIL_EXPR_DROP_ORDER,
+                            CRATE_HIR_ID,
+                            borrowed,
+                            session_diagnostics::TailExprDropOrder {
+                                borrowed,
+                                callback: |diag| {
+                                    explain
+                                        .add_explanation_to_diagnostic(&this, diag, "", None, None);
+                                },
+                            },
+                        );
+                    }
+                    BackwardIncompatibleDropReason::UnwindStorageDead => {
+                        this.infcx.tcx.emit_node_span_lint(
+                            UNWIND_DROP_ORDER,
+                            CRATE_HIR_ID,
+                            borrowed,
+                            session_diagnostics::UnwindDropOrder {
+                                borrowed,
+                                callback: |diag| {
+                                    explain
+                                        .add_explanation_to_diagnostic(&this, diag, "", None, None);
+                                },
+                            },
+                        );
+                    }
+                }
                 // We may stop at the first case
                 ControlFlow::Break(())
             },

@@ -13,7 +13,7 @@ fn box_new(_1: T) -> Box<[T; 1024]> {
 
     bb0: {
         StorageLive(_2);
-        _2 = Box::<[T; 1024]>::new_uninit() -> [return: bb1, unwind: bb7];
+        _2 = Box::<[T; 1024]>::new_uninit() -> [return: bb1, unwind: bb9];
     }
 
     bb1: {
@@ -31,12 +31,12 @@ fn box_new(_1: T) -> Box<[T; 1024]> {
 
     bb2: {
         StorageDead(_4);
-        _0 = Box::<MaybeUninit<[T; 1024]>>::assume_init(move _3) -> [return: bb3, unwind: bb5];
+        _0 = Box::<MaybeUninit<[T; 1024]>>::assume_init(move _3) -> [return: bb3, unwind: bb6];
     }
 
     bb3: {
         StorageDead(_3);
-        drop(_2) -> [return: bb4, unwind: bb7];
+        drop(_2) -> [return: bb4, unwind: bb8];
     }
 
     bb4: {
@@ -45,14 +45,25 @@ fn box_new(_1: T) -> Box<[T; 1024]> {
     }
 
     bb5 (cleanup): {
-        drop(_3) -> [return: bb6, unwind terminate(cleanup)];
+        nop;
+        goto -> bb6;
     }
 
     bb6 (cleanup): {
-        drop(_2) -> [return: bb7, unwind terminate(cleanup)];
+        drop(_3) -> [return: bb7, unwind terminate(cleanup)];
     }
 
     bb7 (cleanup): {
+        nop;
+        drop(_2) -> [return: bb8, unwind terminate(cleanup)];
+    }
+
+    bb8 (cleanup): {
+        nop;
+        goto -> bb9;
+    }
+
+    bb9 (cleanup): {
         resume;
     }
 }

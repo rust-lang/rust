@@ -1,0 +1,19 @@
+error: relative drop order on unwind changing in a future release
+  --> $DIR/unwind-drop-order-future-compat.rs:21:18
+   |
+LL |         x = Wrap(&y);
+   |                  ^^ this value would be considered dead on an unwind path
+...
+LL | }
+   | - borrow might be used here, when `x` is dropped and runs the `Drop` code for type `Wrap`
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
+   = warning: this will change its meaning in a future release!
+   = note: for more information, see issue #147875 <https://github.com/rust-lang/rust/issues/147875>
+note: the lint level is defined here
+  --> $DIR/unwind-drop-order-future-compat.rs:5:9
+   |
+LL | #![deny(unwind_drop_order)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
