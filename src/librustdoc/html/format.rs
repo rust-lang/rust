@@ -879,7 +879,7 @@ pub(crate) fn print_anchor(did: DefId, text: Symbol, cx: &Context<'_>) -> impl D
                 r#"<a class="{kind}" href="{url}{anchor}" title="{kind} {path}">{text}</a>"#,
                 anchor = fragment(did, cx.tcx()),
                 path = join_path_syms(rust_path),
-                text = EscapeBodyText(text.as_str()),
+                text = EscapeBodyText(text),
             )
         } else {
             f.write_str(text.as_str())
