@@ -200,7 +200,7 @@ use core::ops::{
 };
 #[cfg(not(no_global_oom_handling))]
 use core::ops::{Residual, Try};
-use core::pin::{Pin, PinCoerceUnsized};
+use core::pin::{Pin, PinSafePointer};
 use core::ptr::{self, NonNull, Unique};
 use core::task::{Context, Poll};
 
@@ -2320,8 +2320,27 @@ impl<Args: Tuple, F: AsyncFn<Args> + ?Sized, A: Allocator> AsyncFn<Args> for Box
 #[unstable(feature = "coerce_unsized", issue = "18598")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Box<U, A>> for Box<T, A> {}
 
+// A pointer can only be pin safe if it does not implement certain safe traits
+// maliciously. Since `Box` is fundamental, downstream crates may be able to
+// implement those traits for `Box<LocalType>`, so we must carefully check that
+// this is not a problem for each trait.
+//
+// The `Box` type always implements `Deref` and `DerefMut`, so despite being
+// fundamental, downstream crates cannot implement these traits for
+// `Box<LocalType>`.
+//
+// Conversely, downstream crates are able to implement `Clone`, `Debug`, and
+// `Display` for `Box<LocalType>` as long as `LocalType` does not implement
+// said trait. However, the `Box<T>` type does not treat the existence of an
+// `&Box<T>` as evidence that the `T` is not pinned, so this is not
+// problematic.
+//
+// Finally, even if downstream crates provide their own implementation of
+// `Clone` for `Box<LocalType>`, it is not problematic for the cloned box to be
+// wrapped in `Pin`, since the same conversion could have been carried out
+// safely as `Box::pin((*p).clone())`.
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
-unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Box<T, A> {}
+unsafe impl<T: ?Sized, A: Allocator + 'static> PinSafePointer for Box<T, A> {}
 
 // It is quite crucial that we only allow the `Global` allocator here.
 // Handling arbitrary custom allocators (which can affect the `Box` layout heavily!)
