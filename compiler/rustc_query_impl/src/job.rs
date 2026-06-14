@@ -1,6 +1,5 @@
 use std::io::Write;
 use std::ops::ControlFlow;
-use std::sync::Arc;
 use std::{iter, mem};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -140,7 +139,7 @@ fn abstracted_waiters_of(job_map: &QueryJobMap<'_>, query: QueryJobId) -> Vec<Ab
 
     // Add the explicit waiters which use condvars and are resumable
     if let Some(latch) = job_map.latch_of(query) {
-        for (i, waiter) in latch.waiters.lock().as_ref().unwrap().iter().enumerate() {
+        for (i, waiter) in latch.inner.lock().as_ref().unwrap().waiters.iter().enumerate() {
             result.push(AbstractedWaiter {
                 span: waiter.span,
                 parent: waiter.parent,
@@ -308,7 +307,7 @@ fn process_cycle<'tcx>(job_map: &QueryJobMap<'tcx>, stack: Vec<(Span, QueryJobId
 fn find_and_process_cycle<'tcx>(
     job_map: &QueryJobMap<'tcx>,
     query: QueryJobId,
-) -> Option<Arc<QueryWaiter<'tcx>>> {
+) -> Option<QueryWaiter> {
     let mut visited = FxHashSet::default();
     let mut stack = Vec::new();
     if let ControlFlow::Break(resumable) =
@@ -321,11 +320,16 @@ fn find_and_process_cycle<'tcx>(
         // edge which is resumable / waited using a query latch
         let (waitee_query, waiter_idx) = resumable.unwrap();
 
-        // Extract the waiter we want to resume
-        let waiter = job_map.latch_of(waitee_query).unwrap().extract_waiter(waiter_idx);
+        let latch = job_map.latch_of(waitee_query).unwrap();
+        let mut latch_state_lock = latch.inner.lock();
+        let latch_state = latch_state_lock.as_mut().expect("non-empty waiters vec");
+
+        // Remove the waiter from the list of waiters we want to resume
+        let waiter = latch_state.waiters.remove(waiter_idx);
 
         // Set the cycle error so it will be picked up when resumed
-        *waiter.cycle.lock() = Some(error);
+        let old = latch_state.cycle.replace(error);
+        assert!(old.is_none(), "expected query cycle to break on a single waiter");
 
         // Put the waiter on the list of things to resume
         Some(waiter)
