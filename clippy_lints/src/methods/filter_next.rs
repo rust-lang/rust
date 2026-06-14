@@ -41,40 +41,32 @@ pub(super) fn check(
         expr.span,
         format!("called `filter(..).{next_method}()` on an `{required_trait}`"),
         |diag| {
-            let sugg_msg = format!("use `.{find_method}(..)` instead");
-
             let mut app = Applicability::MachineApplicable;
-            // add note if not multi-line
             let filter_snippet = snippet_with_applicability(cx, filter_arg.span, "..", &mut app);
-            if filter_snippet.lines().count() <= 1 {
-                let iter_snippet = snippet_with_applicability(cx, recv.span, "..", &mut app);
-                let pat = if let Some(id) = path_to_local_with_projections(recv)
-                    && let Node::Pat(pat) = cx.tcx.hir_node(id)
-                    && let PatKind::Binding(BindingMode(_, Mutability::Not), _, ident, _) = pat.kind
-                {
-                    app = Applicability::Unspecified;
-                    Some((pat.span, ident))
-                } else {
-                    None
-                };
+            let iter_snippet = snippet_with_applicability(cx, recv.span, "..", &mut app);
 
-                diag.span_suggestion_verbose(
-                    expr.span,
-                    sugg_msg,
-                    format!("{iter_snippet}.{find_method}({filter_snippet})"),
-                    app,
-                );
-
-                if let Some((pat_span, ident)) = pat {
-                    diag.span_help(
-                        pat_span,
-                        format!(
-                            "you will also need to make `{ident}` mutable, because `{find_method}` takes `&mut self`"
-                        ),
-                    );
-                }
+            let pat = if let Some(id) = path_to_local_with_projections(recv)
+                && let Node::Pat(pat) = cx.tcx.hir_node(id)
+                && let PatKind::Binding(BindingMode(_, Mutability::Not), _, ident, _) = pat.kind
+            {
+                app = Applicability::Unspecified;
+                Some((pat.span, ident))
             } else {
-                diag.help(sugg_msg);
+                None
+            };
+
+            diag.span_suggestion_verbose(
+                expr.span,
+                format!("use `.{find_method}(..)` instead"),
+                format!("{iter_snippet}.{find_method}({filter_snippet})"),
+                app,
+            );
+
+            if let Some((pat_span, ident)) = pat {
+                diag.span_help(
+                    pat_span,
+                    format!("you will also need to make `{ident}` mutable, because `{find_method}` takes `&mut self`"),
+                );
             }
         },
     );
