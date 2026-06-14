@@ -29,6 +29,13 @@ that you read and understand the [rustc-dev-guide] before making a contribution.
 talks about the different bots in the Rust ecosystem, the Rust development tools,
 bootstrapping, the compiler architecture, source code representation, and more.
 
+## LLM policy
+
+We have a policy for how LLMs are allowed to be used in contributions to `rust-lang/rust`.
+You can read it [on Forge][LLM policy].
+
+[LLM policy]: https://forge.rust-lang.org/policies/llm-usage.html
+
 ## [Getting help](https://rustc-dev-guide.rust-lang.org/getting-started.html#asking-questions)
 
 There are many ways you can get help when you're stuck. Rust has two platforms for this:
