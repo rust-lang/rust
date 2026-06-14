@@ -1,6 +1,8 @@
 use std::borrow::Cow;
 use std::cmp::Ordering;
+use std::collections::hash_map::DefaultHasher;
 use std::fmt::{self, Display, Write as _};
+use std::hash::{Hash, Hasher};
 use std::iter;
 
 use askama::Template;
@@ -38,7 +40,7 @@ use crate::html::format::{
 };
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 use crate::html::render::sidebar::filters;
-use crate::html::render::{document_full, document_item_info};
+use crate::html::render::{document_full, document_item_info, notable_trait_badges};
 use crate::html::url_parts_builder::UrlPartsBuilder;
 
 const ITEM_TABLE_OPEN: &str = "<dl class=\"item-table\">";
@@ -51,6 +53,15 @@ struct PathComponent {
     name: Symbol,
 }
 
+struct NotableTraitBadgeVars {
+    name: String,
+    full_path: String,
+    /// Relative URL to the trait page, or empty when not linkable.
+    href: String,
+    /// Pre-rendered `style="..."` attribute.
+    style_attr: String,
+}
+
 #[derive(Template)]
 #[template(path = "print_item.html")]
 struct ItemVars<'a> {
@@ -59,6 +70,7 @@ struct ItemVars<'a> {
     item_type: &'a str,
     path_components: Vec<PathComponent>,
     stability_since_raw: &'a str,
+    notable_trait_badges: Vec<NotableTraitBadgeVars>,
     src_href: Option<&'a str>,
 }
 
@@ -112,6 +124,27 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
         let src_href =
             if cx.info.include_sources && !item.is_primitive() { cx.src_href(item) } else { None };
 
+        let notable_trait_badges: Vec<NotableTraitBadgeVars> = notable_trait_badges(item, cx)
+            .into_iter()
+            .map(|info| {
+                // Stable per-trait color from a hash of the trait path so the
+                // same trait gets the same badge color across pages.
+                // This won't be stable between releases though.
+                let mut h = DefaultHasher::new();
+                info.full_path.hash(&mut h);
+                // Evenly-spaced OKLCH hues at fixed light/chroma.
+                const BADGE_HUES: u64 = 8;
+                let hue = (h.finish() % BADGE_HUES) * 360 / BADGE_HUES;
+                let style_attr = format!("style=\"background: oklch(0.55 0.21 {hue})\"");
+                NotableTraitBadgeVars {
+                    name: info.name,
+                    full_path: info.full_path,
+                    href: info.href.unwrap_or_default(),
+                    style_attr,
+                }
+            })
+            .collect();
+
         let path_components = if item.is_fake_item() {
             vec![]
         } else {
@@ -135,6 +168,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
             item_type: &item.type_().to_string(),
             path_components,
             stability_since_raw: &stability_since_raw,
+            notable_trait_badges,
             src_href: src_href.as_deref(),
         };
 

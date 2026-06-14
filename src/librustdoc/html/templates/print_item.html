@@ -20,6 +20,15 @@
     </h1> {# #}
     <rustdoc-toolbar></rustdoc-toolbar> {# #}
     <span class="sub-heading">
+        {% if !notable_trait_badges.is_empty() %}
+        <div class="notable-trait-badge-container">
+            {% for badge in notable_trait_badges.iter() %}
+            <a class="notable-trait-badge" {# #} {% if !badge.href.is_empty()
+                %}href="{{badge.href|safe}}" {% endif %} {#+ #} title="{{badge.full_path}}" {#+ #}
+                {{badge.style_attr|safe}}>{{badge.name}}</a>
+            {% endfor %}
+        </div>
+        {% endif %}
         {% if !stability_since_raw.is_empty() %}
         {{ stability_since_raw|safe +}}
         {% endif %}
