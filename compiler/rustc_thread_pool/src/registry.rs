@@ -617,19 +617,26 @@ impl Registry {
 /// Mark a Rayon worker thread as blocked. This triggers the deadlock handler
 /// if no other worker thread is active
 #[inline]
-pub fn mark_blocked() {
+pub fn park<T>(mut mutex_guard: parking_lot::MutexGuard<'_, T>) {
     let worker_thread = WorkerThread::current();
     assert!(!worker_thread.is_null());
     unsafe {
-        let registry = &(*worker_thread).registry;
-        registry.sleep.mark_blocked(&registry.deadlock_handler)
+        let worker_thread = &*worker_thread;
+        let registry = &worker_thread.registry;
+        registry.sleep.mark_blocked(&registry.deadlock_handler);
+        registry.release_thread();
+        registry.thread_infos[worker_thread.index].condvar.wait(&mut mutex_guard);
+        // Release the lock before we potentially block in `acquire_thread`
+        drop(mutex_guard);
+        registry.acquire_thread();
     }
 }
 
 /// Mark a previously blocked Rayon worker thread as unblocked
 #[inline]
-pub fn mark_unblocked(registry: &Registry) {
-    registry.sleep.mark_unblocked()
+pub fn unpark(registry: &Registry, thread_index: usize) -> bool {
+    registry.sleep.mark_unblocked();
+    registry.thread_infos[thread_index].condvar.notify_one()
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -655,6 +662,8 @@ struct ThreadInfo {
 
     /// the "stealer" half of the worker's deque
     stealer: Stealer<JobRef>,
+
+    condvar: parking_lot::Condvar,
 }
 
 impl ThreadInfo {
@@ -663,6 +672,7 @@ impl ThreadInfo {
             primed: LockLatch::new(),
             stopped: LockLatch::new(),
             terminate: OnceLatch::new(),
+            condvar: parking_lot::Condvar::new(),
             stealer,
         }
     }

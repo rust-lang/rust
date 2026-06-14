@@ -252,7 +252,7 @@ fn wait_for_query<'tcx, C: QueryCache>(
     let query_blocked_prof_timer = tcx.prof.query_blocked();
 
     // With parallel queries we might just have to wait on some other thread.
-    let result = latch.wait_on(tcx, current, span);
+    let result = latch.wait_on(current, span);
 
     match result {
         Ok(()) => {

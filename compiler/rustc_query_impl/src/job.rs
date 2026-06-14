@@ -1,13 +1,12 @@
 use std::io::Write;
 use std::ops::ControlFlow;
-use std::sync::Arc;
 use std::{iter, mem};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{Diag, DiagCtxtHandle};
 use rustc_hir::def::DefKind;
 use rustc_middle::queries::TaggedQueryKey;
-use rustc_middle::query::{Cycle, QueryJob, QueryJobId, QueryLatch, QueryStackFrame, QueryWaiter};
+use rustc_middle::query::{Cycle, QueryJob, QueryJobId, QueryLatch, QueryStackFrame};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{DUMMY_SP, Span};
 
@@ -304,11 +303,8 @@ fn process_cycle<'tcx>(job_map: &QueryJobMap<'tcx>, stack: Vec<(Span, QueryJobId
 }
 
 /// Looks for a query cycle starting at `query`.
-/// Returns a waiter to resume if a cycle is found.
-fn find_and_process_cycle<'tcx>(
-    job_map: &QueryJobMap<'tcx>,
-    query: QueryJobId,
-) -> Option<Arc<QueryWaiter<'tcx>>> {
+/// Returns a waiter thread's index to resume if a cycle is found.
+fn find_and_process_cycle<'tcx>(job_map: &QueryJobMap<'tcx>, query: QueryJobId) -> Option<usize> {
     let mut visited = FxHashSet::default();
     let mut stack = Vec::new();
     if let ControlFlow::Break(resumable) =
@@ -327,8 +323,9 @@ fn find_and_process_cycle<'tcx>(
         // Set the cycle error so it will be picked up when resumed
         *waiter.cycle.lock() = Some(error);
 
-        // Put the waiter on the list of things to resume
-        Some(waiter)
+        // Return waiter thread's index to resume and drop `QueryWaiter::cycle` for resumed thread
+        // to use `Arc::get_mut`.
+        Some(waiter.thread_index)
     } else {
         None
     }
@@ -342,17 +339,15 @@ fn find_and_process_cycle<'tcx>(
 /// there will be multiple rounds through the deadlock handler if multiple cycles are present.
 #[allow(rustc::potential_query_instability)]
 pub fn break_query_cycle<'tcx>(job_map: QueryJobMap<'tcx>, registry: &rustc_thread_pool::Registry) {
-    // Look for a cycle starting at each query job
-    let waiter = job_map
+    // Look for a cycle starting at each query job,
+    let waiter_thread = job_map
         .map
         .keys()
         .find_map(|query| find_and_process_cycle(&job_map, *query))
         .expect("unable to find a query cycle");
 
-    // Mark the thread we're about to wake up as unblocked.
-    rustc_thread_pool::mark_unblocked(registry);
-
-    assert!(waiter.condvar.notify_one(), "unable to wake the waiter");
+    // Unpark one waiter thread.
+    assert!(rustc_thread_pool::unpark(registry, waiter_thread), "unable to wake the waiter");
 }
 
 pub fn print_query_stack<'tcx>(
