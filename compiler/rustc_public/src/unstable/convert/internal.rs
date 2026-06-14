@@ -178,6 +178,9 @@ impl RustcInternal for RigidTy {
                 let (sig_tys, hdr) = sig.internal(tables, tcx).split();
                 rustc_ty::TyKind::FnPtr(sig_tys, hdr)
             }
+            RigidTy::UnsafeBinder(binder) => {
+                rustc_ty::TyKind::UnsafeBinder(binder.internal(tables, tcx).into())
+            }
             RigidTy::Closure(def, args) => {
                 rustc_ty::TyKind::Closure(def.0.internal(tables, tcx), args.internal(tables, tcx))
             }
@@ -737,6 +740,9 @@ impl RustcInternal for ProjectionElem {
             }
             ProjectionElem::OpaqueCast(ty) => {
                 rustc_middle::mir::PlaceElem::OpaqueCast(ty.internal(tables, tcx))
+            }
+            ProjectionElem::UnwrapUnsafeBinder(ty) => {
+                rustc_middle::mir::PlaceElem::UnwrapUnsafeBinder(ty.internal(tables, tcx))
             }
         }
     }
