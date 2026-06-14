@@ -30,6 +30,10 @@ impl WCStr {
         unsafe { &*(s as *const [u16] as *const Self) }
     }
 
+    pub const fn to_wchars_with_null_unchecked(&self) -> &[u16] {
+        &self.0
+    }
+
     pub fn as_ptr(&self) -> *const u16 {
         self.0.as_ptr()
     }
