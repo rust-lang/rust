@@ -136,27 +136,25 @@
 -         _11 = copy _3;
 -         StorageLive(_12);
 -         _12 = copy _4;
--         _10 = add(move _11, move _12) -> [return: bb1, unwind: bb49];
+-         _10 = add(move _11, move _12) -> [return: bb1, unwind: bb42];
 +         _53 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
 +         _52 = std::future::ResumeTy(move _53);
 +         _51 = copy (_1.0: &mut {async fn body of build_aggregate()});
 +         _50 = discriminant((*_51));
-+         switchInt(move _50) -> [0: bb49, 1: bb48, 2: bb47, 3: bb45, 4: bb46, otherwise: bb7];
++         switchInt(move _50) -> [0: bb35, 1: bb34, 2: bb33, 3: bb31, 4: bb32, otherwise: bb6];
       }
   
       bb1: {
           StorageDead(_12);
           StorageDead(_11);
--         _9 = <{async fn body of add()} as IntoFuture>::into_future(move _10) -> [return: bb2, unwind: bb48];
-+         _9 = <{async fn body of add()} as IntoFuture>::into_future(move _10) -> [return: bb2, unwind: bb38];
+-         _9 = <{async fn body of add()} as IntoFuture>::into_future(move _10) -> [return: bb2, unwind: bb43];
++         _9 = <{async fn body of add()} as IntoFuture>::into_future(move _10) -> [return: bb2, unwind: bb29];
       }
   
       bb2: {
           StorageDead(_10);
-          PlaceMention(_9);
 -         StorageLive(_13);
 -         _13 = move _9;
-+         nop;
 +         (((*_51) as variant#3).2: {async fn body of add()}) = move _9;
           goto -> bb3;
       }
@@ -170,8 +168,8 @@
 -         _19 = &mut _13;
 +         _19 = &mut (((*_51) as variant#3).2: {async fn body of add()});
           _18 = &mut (*_19);
--         _17 = Pin::<&mut {async fn body of add()}>::new_unchecked(move _18) -> [return: bb4, unwind: bb44];
-+         _17 = Pin::<&mut {async fn body of add()}>::new_unchecked(move _18) -> [return: bb4, unwind: bb34];
+-         _17 = Pin::<&mut {async fn body of add()}>::new_unchecked(move _18) -> [return: bb4, unwind: bb39];
++         _17 = Pin::<&mut {async fn body of add()}>::new_unchecked(move _18) -> [return: bb4, unwind: bb26];
       }
   
       bb4: {
@@ -180,41 +178,43 @@
           StorageLive(_21);
           StorageLive(_22);
 -         _22 = copy _2;
--         _21 = std::future::get_context::<'_, '_>(move _22) -> [return: bb5, unwind: bb42];
+-         _21 = std::future::get_context::<'_, '_>(move _22) -> [return: bb5, unwind: bb37];
+-     }
+- 
+-     bb5: {
 +         _22 = copy _52;
 +         _21 = copy (_22.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
-+         goto -> bb5;
-      }
-  
-      bb5: {
           _20 = &mut (*_21);
           StorageDead(_22);
--         _16 = <{async fn body of add()} as Future>::poll(move _17, move _20) -> [return: bb6, unwind: bb43];
-+         _16 = <{async fn body of add()} as Future>::poll(move _17, move _20) -> [return: bb6, unwind: bb33];
+-         _16 = <{async fn body of add()} as Future>::poll(move _17, move _20) -> [return: bb6, unwind: bb38];
++         _16 = <{async fn body of add()} as Future>::poll(move _17, move _20) -> [return: bb5, unwind: bb25];
       }
   
-      bb6: {
+-     bb6: {
++     bb5: {
           StorageDead(_21);
           StorageDead(_20);
           StorageDead(_19);
           StorageDead(_17);
-          PlaceMention(_16);
           _23 = discriminant(_16);
-          switchInt(move _23) -> [0: bb9, 1: bb8, otherwise: bb7];
+-         switchInt(move _23) -> [0: bb9, 1: bb8, otherwise: bb7];
++         switchInt(move _23) -> [0: bb8, 1: bb7, otherwise: bb6];
       }
   
-      bb7: {
+-     bb7: {
++     bb6: {
           unreachable;
       }
   
-      bb8: {
+-     bb8: {
++     bb7: {
           _15 = const ();
           StorageDead(_16);
           StorageDead(_15);
           StorageLive(_26);
           StorageLive(_27);
           _27 = ();
--         _26 = yield(move _27) -> [resume: bb10, drop: bb28];
+-         _26 = yield(move _27) -> [resume: bb10, drop: bb25];
 +         _0 = Poll::<u32>::Pending;
 +         StorageDead(_3);
 +         StorageDead(_4);
@@ -226,7 +226,8 @@
 +         return;
       }
   
-      bb9: {
+-     bb9: {
++     bb8: {
           StorageLive(_24);
           _24 = copy ((_16 as Ready).0: u32);
 -         _8 = copy _24;
@@ -234,22 +235,21 @@
           StorageDead(_24);
           StorageDead(_16);
           StorageDead(_15);
--         drop(_13) -> [return: bb11, unwind: bb46];
-+         drop((((*_51) as variant#3).2: {async fn body of add()})) -> [return: bb11, unwind: bb36];
+-         drop(_13) -> [return: bb11, unwind: bb41];
++         drop((((*_51) as variant#3).2: {async fn body of add()})) -> [return: bb9, unwind: bb30];
       }
   
-      bb10: {
-          StorageDead(_27);
+-     bb10: {
+-         StorageDead(_27);
 -         _2 = move _26;
-+         _52 = move _26;
-          StorageDead(_26);
-          _14 = const ();
-          goto -> bb3;
-      }
-  
-      bb11: {
+-         StorageDead(_26);
+-         _14 = const ();
+-         goto -> bb3;
+-     }
+- 
+-     bb11: {
 -         StorageDead(_13);
-+         nop;
++     bb9: {
           StorageLive(_28);
           StorageLive(_29);
           StorageLive(_30);
@@ -258,29 +258,31 @@
 +         _31 = copy (((*_51) as variant#3).0: u32);
           StorageLive(_32);
 -         _32 = copy _6;
--         _30 = add(move _31, move _32) -> [return: bb12, unwind: bb39];
+-         _30 = add(move _31, move _32) -> [return: bb12, unwind: bb34];
 +         _32 = copy (((*_51) as variant#3).1: u32);
-+         _30 = add(move _31, move _32) -> [return: bb12, unwind: bb30];
++         _30 = add(move _31, move _32) -> [return: bb10, unwind: bb22];
       }
   
-      bb12: {
+-     bb12: {
++     bb10: {
           StorageDead(_32);
           StorageDead(_31);
--         _29 = <{async fn body of add()} as IntoFuture>::into_future(move _30) -> [return: bb13, unwind: bb38];
-+         _29 = <{async fn body of add()} as IntoFuture>::into_future(move _30) -> [return: bb13, unwind: bb29];
+-         _29 = <{async fn body of add()} as IntoFuture>::into_future(move _30) -> [return: bb13, unwind: bb35];
++         _29 = <{async fn body of add()} as IntoFuture>::into_future(move _30) -> [return: bb11, unwind: bb23];
       }
   
-      bb13: {
+-     bb13: {
++     bb11: {
           StorageDead(_30);
-          PlaceMention(_29);
 -         StorageLive(_33);
 -         _33 = move _29;
-+         nop;
+-         goto -> bb14;
 +         (((*_51) as variant#4).1: {async fn body of add()}) = move _29;
-          goto -> bb14;
++         goto -> bb12;
       }
   
-      bb14: {
+-     bb14: {
++     bb12: {
           StorageLive(_34);
           StorageLive(_35);
           StorageLive(_36);
@@ -289,47 +291,49 @@
 -         _38 = &mut _33;
 +         _38 = &mut (((*_51) as variant#4).1: {async fn body of add()});
           _37 = &mut (*_38);
--         _36 = Pin::<&mut {async fn body of add()}>::new_unchecked(move _37) -> [return: bb15, unwind: bb35];
-+         _36 = Pin::<&mut {async fn body of add()}>::new_unchecked(move _37) -> [return: bb15, unwind: bb26];
+-         _36 = Pin::<&mut {async fn body of add()}>::new_unchecked(move _37) -> [return: bb15, unwind: bb31];
++         _36 = Pin::<&mut {async fn body of add()}>::new_unchecked(move _37) -> [return: bb13, unwind: bb19];
       }
   
-      bb15: {
+-     bb15: {
++     bb13: {
           StorageDead(_37);
           StorageLive(_39);
           StorageLive(_40);
           StorageLive(_41);
 -         _41 = copy _2;
--         _40 = std::future::get_context::<'_, '_>(move _41) -> [return: bb16, unwind: bb33];
+-         _40 = std::future::get_context::<'_, '_>(move _41) -> [return: bb16, unwind: bb29];
+-     }
+- 
+-     bb16: {
 +         _41 = copy _52;
 +         _40 = copy (_41.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
-+         goto -> bb16;
-      }
-  
-      bb16: {
           _39 = &mut (*_40);
           StorageDead(_41);
--         _35 = <{async fn body of add()} as Future>::poll(move _36, move _39) -> [return: bb17, unwind: bb34];
-+         _35 = <{async fn body of add()} as Future>::poll(move _36, move _39) -> [return: bb17, unwind: bb25];
+-         _35 = <{async fn body of add()} as Future>::poll(move _36, move _39) -> [return: bb17, unwind: bb30];
++         _35 = <{async fn body of add()} as Future>::poll(move _36, move _39) -> [return: bb14, unwind: bb18];
       }
   
-      bb17: {
+-     bb17: {
++     bb14: {
           StorageDead(_40);
           StorageDead(_39);
           StorageDead(_38);
           StorageDead(_36);
-          PlaceMention(_35);
           _42 = discriminant(_35);
-          switchInt(move _42) -> [0: bb19, 1: bb18, otherwise: bb7];
+-         switchInt(move _42) -> [0: bb19, 1: bb18, otherwise: bb7];
++         switchInt(move _42) -> [0: bb16, 1: bb15, otherwise: bb6];
       }
   
-      bb18: {
+-     bb18: {
++     bb15: {
           _34 = const ();
           StorageDead(_35);
           StorageDead(_34);
           StorageLive(_45);
           StorageLive(_46);
           _46 = ();
--         _45 = yield(move _46) -> [resume: bb20, drop: bb25];
+-         _45 = yield(move _46) -> [resume: bb20, drop: bb23];
 +         _0 = Poll::<u32>::Pending;
 +         StorageDead(_3);
 +         StorageDead(_4);
@@ -343,43 +347,34 @@
 +         return;
       }
   
-      bb19: {
+-     bb19: {
++     bb16: {
           StorageLive(_43);
           _43 = copy ((_35 as Ready).0: u32);
           _28 = copy _43;
           StorageDead(_43);
           StorageDead(_35);
           StorageDead(_34);
--         drop(_33) -> [return: bb21, unwind: bb37];
-+         drop((((*_51) as variant#4).1: {async fn body of add()})) -> [return: bb21, unwind: bb28];
+-         drop(_33) -> [return: bb21, unwind: bb33];
++         drop((((*_51) as variant#4).1: {async fn body of add()})) -> [return: bb17, unwind: bb21];
       }
   
-      bb20: {
-          StorageDead(_46);
+-     bb20: {
+-         StorageDead(_46);
 -         _2 = move _45;
-+         _52 = move _45;
-          StorageDead(_45);
-          _14 = const ();
-          goto -> bb14;
-      }
-  
-      bb21: {
+-         StorageDead(_45);
+-         _14 = const ();
+-         goto -> bb14;
+-     }
+- 
+-     bb21: {
 -         StorageDead(_33);
 -         _7 = (move _8, move _28);
-+         nop;
++     bb17: {
 +         _7 = (move (((*_51) as variant#4).0: u32), move _28);
           StorageDead(_28);
 -         StorageDead(_8);
-+         nop;
-          goto -> bb22;
-      }
-  
-      bb22: {
           StorageDead(_29);
-          goto -> bb23;
-      }
-  
-      bb23: {
           StorageDead(_9);
           StorageLive(_47);
           _47 = copy (_7.0: u32);
@@ -392,243 +387,188 @@
           StorageDead(_7);
 -         StorageDead(_6);
 -         StorageDead(_5);
-+         nop;
-+         nop;
           StorageDead(_4);
           StorageDead(_3);
--         drop(_1) -> [return: bb24, unwind: bb52];
-+         goto -> bb43;
-      }
-  
-      bb24: {
+-         drop(_1) -> [return: bb22, unwind: bb45];
+-     }
+- 
+-     bb22: {
 +         _0 = Poll::<u32>::Ready(move _49);
 +         discriminant((*_51)) = 1;
           return;
       }
   
--     bb25: {
+-     bb23: {
 -         StorageDead(_46);
 -         StorageDead(_45);
--         drop(_33) -> [return: bb26, unwind: bb53];
+-         drop(_33) -> [return: bb24, unwind: bb46];
+-     }
+- 
+-     bb24: {
+-         StorageDead(_33);
+-         StorageDead(_28);
+-         StorageDead(_8);
+-         StorageDead(_29);
+-         goto -> bb27;
+-     }
+- 
+-     bb25: {
+-         StorageDead(_27);
+-         StorageDead(_26);
+-         drop(_13) -> [return: bb26, unwind: bb47];
 -     }
 - 
 -     bb26: {
--         StorageDead(_33);
--         StorageDead(_28);
+-         StorageDead(_13);
 -         StorageDead(_8);
 -         goto -> bb27;
 -     }
 - 
 -     bb27: {
--         StorageDead(_29);
--         goto -> bb30;
--     }
-- 
--     bb28: {
--         StorageDead(_27);
--         StorageDead(_26);
--         drop(_13) -> [return: bb29, unwind: bb55];
--     }
-- 
--     bb29: {
--         StorageDead(_13);
--         StorageDead(_8);
--         goto -> bb30;
--     }
-- 
--     bb30: {
--         goto -> bb31;
--     }
-- 
--     bb31: {
 -         StorageDead(_9);
 -         StorageDead(_7);
 -         StorageDead(_6);
 -         StorageDead(_5);
 -         StorageDead(_4);
 -         StorageDead(_3);
--         drop(_1) -> [return: bb32, unwind: bb52];
+-         drop(_1) -> [return: bb28, unwind: bb45];
 -     }
 - 
--     bb32: {
+-     bb28: {
 -         coroutine_drop;
 -     }
 - 
--     bb33 (cleanup): {
+-     bb29 (cleanup): {
 -         StorageDead(_41);
--         goto -> bb34;
+-         goto -> bb30;
 -     }
 - 
--     bb34 (cleanup): {
-+     bb25 (cleanup): {
+-     bb30 (cleanup): {
++     bb18 (cleanup): {
           StorageDead(_40);
           StorageDead(_39);
--         goto -> bb36;
-+         goto -> bb27;
+-         goto -> bb32;
++         goto -> bb20;
       }
   
--     bb35 (cleanup): {
-+     bb26 (cleanup): {
+-     bb31 (cleanup): {
++     bb19 (cleanup): {
           StorageDead(_37);
--         goto -> bb36;
-+         goto -> bb27;
+-         goto -> bb32;
++         goto -> bb20;
       }
   
--     bb36 (cleanup): {
-+     bb27 (cleanup): {
+-     bb32 (cleanup): {
++     bb20 (cleanup): {
           StorageDead(_38);
           StorageDead(_36);
           StorageDead(_35);
           StorageDead(_34);
--         drop(_33) -> [return: bb37, unwind terminate(cleanup)];
-+         drop((((*_51) as variant#4).1: {async fn body of add()})) -> [return: bb28, unwind terminate(cleanup)];
+-         drop(_33) -> [return: bb33, unwind terminate(cleanup)];
++         drop((((*_51) as variant#4).1: {async fn body of add()})) -> [return: bb21, unwind terminate(cleanup)];
       }
   
--     bb37 (cleanup): {
+-     bb33 (cleanup): {
 -         StorageDead(_33);
-+     bb28 (cleanup): {
-+         nop;
++     bb21 (cleanup): {
           StorageDead(_28);
 -         StorageDead(_8);
--         goto -> bb41;
-+         nop;
-+         goto -> bb32;
+-         goto -> bb36;
++         goto -> bb24;
       }
   
--     bb38 (cleanup): {
--         goto -> bb40;
-+     bb29 (cleanup): {
-+         goto -> bb31;
-      }
-  
--     bb39 (cleanup): {
-+     bb30 (cleanup): {
+-     bb34 (cleanup): {
++     bb22 (cleanup): {
           StorageDead(_32);
           StorageDead(_31);
--         goto -> bb40;
-+         goto -> bb31;
+-         goto -> bb35;
++         goto -> bb23;
       }
   
--     bb40 (cleanup): {
-+     bb31 (cleanup): {
+-     bb35 (cleanup): {
++     bb23 (cleanup): {
           StorageDead(_30);
           StorageDead(_28);
 -         StorageDead(_8);
--         goto -> bb41;
-+         nop;
-+         goto -> bb32;
+-         goto -> bb36;
++         goto -> bb24;
       }
   
--     bb41 (cleanup): {
-+     bb32 (cleanup): {
+-     bb36 (cleanup): {
++     bb24 (cleanup): {
           StorageDead(_29);
--         goto -> bb47;
-+         goto -> bb37;
+-         goto -> bb44;
++         goto -> bb30;
       }
   
--     bb42 (cleanup): {
+-     bb37 (cleanup): {
 -         StorageDead(_22);
--         goto -> bb43;
+-         goto -> bb38;
 -     }
 - 
--     bb43 (cleanup): {
-+     bb33 (cleanup): {
+-     bb38 (cleanup): {
++     bb25 (cleanup): {
           StorageDead(_21);
           StorageDead(_20);
--         goto -> bb45;
-+         goto -> bb35;
+-         goto -> bb40;
++         goto -> bb27;
       }
   
--     bb44 (cleanup): {
-+     bb34 (cleanup): {
+-     bb39 (cleanup): {
++     bb26 (cleanup): {
           StorageDead(_18);
--         goto -> bb45;
-+         goto -> bb35;
+-         goto -> bb40;
++         goto -> bb27;
       }
   
--     bb45 (cleanup): {
-+     bb35 (cleanup): {
+-     bb40 (cleanup): {
++     bb27 (cleanup): {
           StorageDead(_19);
           StorageDead(_17);
           StorageDead(_16);
           StorageDead(_15);
--         drop(_13) -> [return: bb46, unwind terminate(cleanup)];
-+         drop((((*_51) as variant#3).2: {async fn body of add()})) -> [return: bb36, unwind terminate(cleanup)];
+-         drop(_13) -> [return: bb41, unwind terminate(cleanup)];
++         drop((((*_51) as variant#3).2: {async fn body of add()})) -> [return: bb30, unwind terminate(cleanup)];
       }
   
--     bb46 (cleanup): {
+-     bb41 (cleanup): {
 -         StorageDead(_13);
 -         StorageDead(_8);
--         goto -> bb47;
-+     bb36 (cleanup): {
-+         nop;
-+         nop;
-+         goto -> bb37;
-      }
-  
--     bb47 (cleanup): {
--         goto -> bb51;
-+     bb37 (cleanup): {
-+         goto -> bb41;
-      }
-  
--     bb48 (cleanup): {
--         goto -> bb50;
-+     bb38 (cleanup): {
-+         goto -> bb40;
-      }
-  
--     bb49 (cleanup): {
-+     bb39 (cleanup): {
+-         goto -> bb44;
+-     }
+- 
+-     bb42 (cleanup): {
++     bb28 (cleanup): {
           StorageDead(_12);
           StorageDead(_11);
--         goto -> bb50;
-+         goto -> bb40;
+-         goto -> bb43;
++         goto -> bb29;
       }
   
--     bb50 (cleanup): {
-+     bb40 (cleanup): {
+-     bb43 (cleanup): {
++     bb29 (cleanup): {
           StorageDead(_10);
 -         StorageDead(_8);
--         goto -> bb51;
-+         nop;
-+         goto -> bb41;
+-         goto -> bb44;
++         goto -> bb30;
       }
   
--     bb51 (cleanup): {
-+     bb41 (cleanup): {
+-     bb44 (cleanup): {
++     bb30 (cleanup): {
           StorageDead(_9);
           StorageDead(_7);
 -         StorageDead(_6);
 -         StorageDead(_5);
-+         nop;
-+         nop;
           StorageDead(_4);
           StorageDead(_3);
--         drop(_1) -> [return: bb52, unwind terminate(cleanup)];
-+         goto -> bb42;
-      }
-  
--     bb52 (cleanup): {
-+     bb42 (cleanup): {
-+         goto -> bb44;
-+     }
-+ 
-+     bb43: {
-+         goto -> bb24;
-+     }
-+ 
-+     bb44 (cleanup): {
+-         drop(_1) -> [return: bb45, unwind terminate(cleanup)];
 +         discriminant((*_51)) = 2;
-          resume;
++         resume;
       }
   
--     bb53 (cleanup): {
--         StorageDead(_33);
--         StorageDead(_28);
--         StorageDead(_8);
--         goto -> bb54;
-+     bb45: {
+-     bb45 (cleanup): {
+-         resume;
++     bb31: {
 +         StorageLive(_3);
 +         StorageLive(_4);
 +         StorageLive(_7);
@@ -636,13 +576,20 @@
 +         StorageLive(_26);
 +         StorageLive(_27);
 +         _26 = move _52;
-+         goto -> bb10;
++         StorageDead(_27);
++         _52 = move _26;
++         StorageDead(_26);
++         _14 = const ();
++         goto -> bb3;
       }
   
--     bb54 (cleanup): {
+-     bb46 (cleanup): {
+-         StorageDead(_33);
+-         StorageDead(_28);
+-         StorageDead(_8);
 -         StorageDead(_29);
--         goto -> bb56;
-+     bb46: {
+-         goto -> bb48;
++     bb32: {
 +         StorageLive(_3);
 +         StorageLive(_4);
 +         StorageLive(_7);
@@ -652,49 +599,48 @@
 +         StorageLive(_45);
 +         StorageLive(_46);
 +         _45 = move _52;
-+         goto -> bb20;
++         StorageDead(_46);
++         _52 = move _45;
++         StorageDead(_45);
++         _14 = const ();
++         goto -> bb12;
       }
   
--     bb55 (cleanup): {
+-     bb47 (cleanup): {
 -         StorageDead(_13);
 -         StorageDead(_8);
--         goto -> bb56;
-+     bb47: {
-+         assert(const false, "`async fn` resumed after panicking") -> [success: bb47, unwind continue];
+-         goto -> bb48;
++     bb33: {
++         assert(const false, "`async fn` resumed after panicking") -> [success: bb33, unwind continue];
       }
   
--     bb56 (cleanup): {
--         goto -> bb57;
-+     bb48: {
-+         assert(const false, "`async fn` resumed after completion") -> [success: bb48, unwind continue];
-      }
-  
--     bb57 (cleanup): {
+-     bb48 (cleanup): {
 -         StorageDead(_9);
 -         StorageDead(_7);
 -         StorageDead(_6);
 -         StorageDead(_5);
 -         StorageDead(_4);
 -         StorageDead(_3);
--         drop(_1) -> [return: bb52, unwind terminate(cleanup)];
-+     bb49: {
+-         drop(_1) -> [return: bb45, unwind terminate(cleanup)];
++     bb34: {
++         assert(const false, "`async fn` resumed after completion") -> [success: bb34, unwind continue];
++     }
++ 
++     bb35: {
 +         StorageLive(_3);
 +         _3 = copy ((*_51).0: u32);
 +         StorageLive(_4);
 +         _4 = copy ((*_51).1: u32);
-+         nop;
 +         (((*_51) as variant#3).0: u32) = copy ((*_51).2: u32);
-+         nop;
 +         (((*_51) as variant#3).1: u32) = copy ((*_51).3: u32);
 +         StorageLive(_7);
-+         nop;
 +         StorageLive(_9);
 +         StorageLive(_10);
 +         StorageLive(_11);
 +         _11 = copy _3;
 +         StorageLive(_12);
 +         _12 = copy _4;
-+         _10 = add(move _11, move _12) -> [return: bb1, unwind: bb39];
++         _10 = add(move _11, move _12) -> [return: bb1, unwind: bb28];
       }
   }
   

@@ -160,6 +160,7 @@ const SELF_ARG: Local = Local::arg(0);
 pub(crate) const CTX_ARG: Local = Local::arg(1);
 
 /// A `yield` point in the coroutine.
+#[derive(Debug)]
 struct SuspensionPoint<'tcx> {
     /// State discriminant used when suspending or resuming at this point.
     state: usize,
@@ -867,12 +868,6 @@ fn create_coroutine_resume_function<'tcx>(
         }
     }
 
-    // Make sure we remove dead blocks to remove
-    // unrelated code from the drop part of the function
-    simplify::remove_dead_blocks(body);
-
-    pm::run_passes_no_validate(tcx, body, &[&abort_unwinding_calls::AbortUnwindingCalls], None);
-
     // Run derefer to fix Derefs that are not in the first place
     deref_finder(tcx, body, false);
 
@@ -883,6 +878,17 @@ fn create_coroutine_resume_function<'tcx>(
     if let Some(dumper) = MirDumper::new(tcx, "coroutine_resume", body) {
         dumper.dump_mir(body);
     }
+
+    pm::run_passes_no_validate(
+        tcx,
+        body,
+        &[
+            &crate::abort_unwinding_calls::AbortUnwindingCalls,
+            &crate::simplify::SimplifyCfg::PostStateTransform,
+            &crate::simplify::SimplifyLocals::PostStateTransform,
+        ],
+        None,
+    );
 }
 
 /// An operation that can be performed on a coroutine.

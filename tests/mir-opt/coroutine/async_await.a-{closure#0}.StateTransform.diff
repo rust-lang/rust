@@ -30,32 +30,25 @@
 +         _6 = std::future::ResumeTy(move _7);
 +         _5 = copy (_1.0: &mut {async fn body of a()});
 +         _4 = discriminant((*_5));
-+         switchInt(move _4) -> [0: bb5, 1: bb3, otherwise: bb4];
++         switchInt(move _4) -> [0: bb3, 1: bb1, otherwise: bb2];
       }
   
       bb1: {
-+         _0 = Poll::<()>::Ready(move _3);
-+         discriminant((*_5)) = 1;
-          return;
+-         return;
++         assert(const false, "`async fn` resumed after completion") -> [success: bb1, unwind continue];
       }
   
 -     bb2 (cleanup): {
 -         resume;
 +     bb2: {
-+         goto -> bb1;
-+     }
-+ 
-+     bb3: {
-+         assert(const false, "`async fn` resumed after completion") -> [success: bb3, unwind continue];
-+     }
-+ 
-+     bb4: {
 +         unreachable;
 +     }
 + 
-+     bb5: {
++     bb3: {
 +         _3 = const ();
-+         goto -> bb2;
++         _0 = Poll::<()>::Ready(move _3);
++         discriminant((*_5)) = 1;
++         return;
       }
   }
   

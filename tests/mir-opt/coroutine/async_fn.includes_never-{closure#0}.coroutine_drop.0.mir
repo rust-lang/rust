@@ -82,66 +82,58 @@ fn includes_never::{closure#0}(_1: &mut {async fn body of includes_never()}) -> 
 
     bb0: {
         _49 = discriminant((*_1));
-        switchInt(move _49) -> [0: bb9, 3: bb12, otherwise: bb13];
+        switchInt(move _49) -> [0: bb7, 3: bb10, otherwise: bb11];
     }
 
     bb1: {
         StorageDead(_23);
         StorageDead(_22);
-        drop((((*_1) as variant#3).2: {async block@$DIR/async_fn.rs:61:18: 61:23})) -> [return: bb2, unwind: bb6];
+        drop((((*_1) as variant#3).2: {async block@$DIR/async_fn.rs:61:18: 61:23})) -> [return: bb2, unwind: bb5];
     }
 
     bb2: {
         nop;
-        goto -> bb3;
-    }
-
-    bb3: {
         StorageDead(_6);
         StorageDead(_5);
         nop;
         nop;
-        goto -> bb10;
-    }
-
-    bb4: {
-        return;
-    }
-
-    bb5 (cleanup): {
-        resume;
-    }
-
-    bb6 (cleanup): {
-        nop;
-        goto -> bb7;
-    }
-
-    bb7 (cleanup): {
-        StorageDead(_6);
-        StorageDead(_5);
-        nop;
-        nop;
-        goto -> bb5;
-    }
-
-    bb8: {
-        return;
-    }
-
-    bb9: {
-        goto -> bb11;
-    }
-
-    bb10: {
-        goto -> bb4;
-    }
-
-    bb11: {
         goto -> bb8;
     }
 
-    bb12: {
+    bb3: {
+        return;
+    }
+
+    bb4 (cleanup): {
+        resume;
+    }
+
+    bb5 (cleanup): {
+        nop;
+        StorageDead(_6);
+        StorageDead(_5);
+        nop;
+        nop;
+        goto -> bb4;
+    }
+
+    bb6: {
+        return;
+    }
+
+    bb7: {
+        goto -> bb9;
+    }
+
+    bb8: {
+        goto -> bb3;
+    }
+
+    bb9: {
+        goto -> bb6;
+    }
+
+    bb10: {
         StorageLive(_5);
         StorageLive(_6);
         StorageLive(_22);
@@ -149,7 +141,7 @@ fn includes_never::{closure#0}(_1: &mut {async fn body of includes_never()}) -> 
         goto -> bb1;
     }
 
-    bb13: {
+    bb11: {
         return;
     }
 }
