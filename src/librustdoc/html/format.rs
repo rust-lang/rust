@@ -27,7 +27,7 @@ use tracing::{debug, trace};
 use super::url_parts_builder::UrlPartsBuilder;
 use crate::clean::types::ExternalLocation;
 use crate::clean::utils::find_nearest_parent_module;
-use crate::clean::{self, ExternalCrate, PrimitiveType};
+use crate::clean::{self, ExternalCrate, PrimitiveType, WherePredicate};
 use crate::display::{Joined as _, MaybeDisplay as _, WithOpts, Wrapped};
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
@@ -164,69 +164,59 @@ pub(crate) fn print_where_clause(
         return None;
     }
 
+    fn where_preds(
+        predicates: &[WherePredicate],
+        cx: &Context<'_>,
+        sep: impl Display,
+    ) -> impl Display {
+        fmt::from_fn(move |f| {
+            predicates.iter().map(|predicate| print_where_predicate(predicate, cx)).joined(&sep, f)
+        })
+    }
+
+    let spaces = |n: usize| crate::display::repeat(' ', n);
+
     Some(fmt::from_fn(move |f| {
-        let where_preds = fmt::from_fn(|f| {
-            gens.where_predicates
-                .iter()
-                .map(|predicate| {
-                    fmt::from_fn(|f| {
-                        if f.alternate() {
-                            f.write_str(" ")?;
-                        } else {
-                            f.write_str("\n")?;
-                        }
-                        print_where_predicate(predicate, cx).fmt(f)
-                    })
-                })
-                .joined(",", f)
-        });
-
-        let clause = if f.alternate() {
+        if f.alternate() {
+            write!(f, " where {:#}", where_preds(&gens.where_predicates, cx, ", "))?;
             if ending == Ending::Newline {
-                format!(" where{where_preds:#},")
-            } else {
-                format!(" where{where_preds:#}")
+                f.write_char(',')?;
             }
-        } else {
-            let mut br_with_padding = String::with_capacity(6 * indent + 28);
-            br_with_padding.push('\n');
+            return Ok(());
+        }
 
-            let where_indent = 3;
+        const WHERE_INDENT: usize = 3;
+
+        let padding = {
             let padding_amount = if ending == Ending::Newline {
                 indent + 4
             } else if indent == 0 {
                 4
             } else {
-                indent + where_indent + "where ".len()
+                indent + WHERE_INDENT + "where ".len()
             };
-
-            for _ in 0..padding_amount {
-                br_with_padding.push(' ');
-            }
-            let where_preds = where_preds.to_string().replace('\n', &br_with_padding);
-
-            if ending == Ending::Newline {
-                let mut clause = " ".repeat(indent.saturating_sub(1));
-                write!(clause, "<div class=\"where\">where{where_preds},</div>")?;
-                clause
-            } else {
-                // insert a newline after a single space but before multiple spaces at the start
-                if indent == 0 {
-                    format!("\n<span class=\"where\">where{where_preds}</span>")
-                } else {
-                    // put the first one on the same line as the 'where' keyword
-                    let where_preds = where_preds.replacen(&br_with_padding, " ", 1);
-
-                    let mut clause = br_with_padding;
-                    // +1 is for `\n`.
-                    clause.truncate(indent + 1 + where_indent);
-
-                    write!(clause, "<span class=\"where\">where{where_preds}</span>")?;
-                    clause
-                }
-            }
+            spaces(padding_amount)
         };
-        write!(f, "{clause}")
+
+        let br_with_padding = format_args!("\n{padding}");
+        let sep = format_args!(",{br_with_padding}");
+        let where_preds = where_preds(&gens.where_predicates, cx, sep);
+
+        if ending == Ending::Newline {
+            write!(
+                f,
+                "{indent}<div class=\"where\">where{br_with_padding}{where_preds},</div>",
+                indent = spaces(indent.saturating_sub(1)),
+            )
+        } else if indent == 0 {
+            write!(f, "\n<span class=\"where\">where{br_with_padding}{where_preds}</span>")
+        } else {
+            write!(
+                f,
+                "\n{indent}<span class=\"where\">where {where_preds}</span>",
+                indent = spaces(indent + WHERE_INDENT),
+            )
+        }
     }))
 }
 
