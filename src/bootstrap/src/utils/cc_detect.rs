@@ -25,7 +25,7 @@ use std::collections::HashSet;
 use std::iter;
 use std::path::{Path, PathBuf};
 
-use crate::core::config::TargetSelection;
+use crate::core::config::{RustcLto, TargetSelection};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::{Build, CLang, GitRepo};
 
@@ -51,6 +51,15 @@ fn new_cc_build(build: &Build, target: TargetSelection) -> cc::Build {
             if target.contains("musl") {
                 cfg.static_flag(true);
             }
+        }
+    }
+    match build.config.rust_lto {
+        RustcLto::Off | RustcLto::ThinLocal => {}
+        RustcLto::Thin => {
+            cfg.flag_if_supported("-flto=thin");
+        }
+        RustcLto::Fat => {
+            cfg.flag_if_supported("-flto=full");
         }
     }
     cfg
@@ -113,7 +122,7 @@ pub fn fill_target_compiler(build: &mut Build, target: TargetSelection) {
     };
 
     build.cc.insert(target, compiler.clone());
-    let mut cflags = build.cc_handled_clags(target, CLang::C);
+    let mut cflags = build.cc_handled_cflags(target, CLang::C);
     cflags.extend(build.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::C));
 
     // If we use llvm-libunwind, we will need a C++ compiler as well for all targets
@@ -140,7 +149,7 @@ pub fn fill_target_compiler(build: &mut Build, target: TargetSelection) {
     build.do_if_verbose(|| println!("CC_{} = {:?}", target.triple, build.cc(target)));
     build.do_if_verbose(|| println!("CFLAGS_{} = {cflags:?}", target.triple));
     if let Ok(cxx) = build.cxx(target) {
-        let mut cxxflags = build.cc_handled_clags(target, CLang::Cxx);
+        let mut cxxflags = build.cc_handled_cflags(target, CLang::Cxx);
         cxxflags.extend(build.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::Cxx));
         build.do_if_verbose(|| println!("CXX_{} = {cxx:?}", target.triple));
         build.do_if_verbose(|| println!("CXXFLAGS_{} = {cxxflags:?}", target.triple));
