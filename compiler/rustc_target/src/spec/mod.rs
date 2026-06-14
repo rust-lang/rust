@@ -991,7 +991,7 @@ crate::target_spec_enum! {
         /// On PowerPC only: build for SPE.
         PowerPcSpe = "powerpc-spe",
         /// On x86-32/64, aarch64, and S390x: do not use any FPU or SIMD registers for the ABI.
-        Softfloat = "softfloat", "x86-softfloat",
+        Softfloat = "softfloat",
     }
 
     parse_error_type = "rustc abi";
