@@ -2591,6 +2591,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let variant_def = adt_def.variant_with_id(variant_did);
         let variant_idx = adt_def.variant_index_with_id(variant_did).as_u32();
 
+        for init in inits {
+            if !variant_def.fields.iter().any(|field_def| field_def.name == init.field.name) {
+                let err = tcx.dcx().struct_span_err(
+                    init.field.span,
+                    format!("struct expression has no field named `{}`", init.field),
+                );
+                return ty::Const::new_error(tcx, err.emit());
+            }
+        }
+
         let fields = variant_def
             .fields
             .iter()
