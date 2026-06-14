@@ -162,7 +162,7 @@ struct DropData {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) enum DropKind {
+enum DropKind {
     Value,
     Storage,
     ForLint,
@@ -1390,47 +1390,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     // Scheduling drops
     // ================
 
-    pub(crate) fn schedule_drop_storage_and_value(
-        &mut self,
-        span: Span,
-        region_scope: region::Scope,
-        local: Local,
-    ) {
-        self.schedule_drop(span, region_scope, local, DropKind::Storage);
-        self.schedule_drop(span, region_scope, local, DropKind::Value);
-    }
-
     /// Indicates that `place` should be dropped on exit from `region_scope`.
     ///
     /// When called with `DropKind::Storage`, `place` shouldn't be the return
     /// place, or a function parameter.
-    pub(crate) fn schedule_drop(
+    fn schedule_drop(
         &mut self,
         span: Span,
         region_scope: region::Scope,
         local: Local,
         drop_kind: DropKind,
     ) {
-        let needs_drop = match drop_kind {
-            DropKind::Value | DropKind::ForLint => {
-                if !self.local_decls[local].ty.needs_drop(self.tcx, self.typing_env()) {
-                    return;
-                }
-                true
-            }
-            DropKind::Storage => {
-                if local.index() <= self.arg_count {
-                    span_bug!(
-                        span,
-                        "`schedule_drop` called with body argument {:?} \
-                        but its storage does not require a drop",
-                        local,
-                    )
-                }
-                false
-            }
-        };
-
         // When building drops, we try to cache chains of drops to reduce the
         // number of `DropTree::add_drop` calls. This, however, means that
         // whenever we add a drop into a scope which already had some entries
@@ -1477,7 +1447,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // path, we only need to invalidate the cache for drops that happen on
         // the unwind or coroutine drop paths. This means that for
         // non-coroutines we don't need to invalidate caches for `DropKind::Storage`.
-        let invalidate_caches = needs_drop || self.coroutine.is_some();
+        let invalidate_caches = match drop_kind {
+            DropKind::Value | DropKind::ForLint => true,
+            DropKind::Storage => self.coroutine.is_some(),
+        };
         for scope in self.scopes.scopes.iter_mut().rev() {
             if invalidate_caches {
                 scope.invalidate_cache();
@@ -1501,6 +1474,39 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         span_bug!(span, "region scope {:?} not in scope to drop {:?}", region_scope, local);
     }
 
+    /// Indicates that `place` should be marked `StorageDead` on exit from `region_scope`.
+    ///
+    /// `place` must not be the return place, or a function parameter.
+    pub(crate) fn schedule_drop_storage(
+        &mut self,
+        span: Span,
+        region_scope: region::Scope,
+        local: Local,
+    ) {
+        if local.index() <= self.arg_count {
+            span_bug!(
+                span,
+                "`schedule_drop` called with body argument {:?} \
+                but its storage does not require a drop",
+                local,
+            )
+        }
+        self.schedule_drop(span, region_scope, local, DropKind::Storage);
+    }
+
+    /// Indicates that `place` should be dropped on exit from `region_scope`.
+    pub(crate) fn schedule_drop_value(
+        &mut self,
+        span: Span,
+        region_scope: region::Scope,
+        local: Local,
+    ) {
+        if !self.local_decls[local].ty.needs_drop(self.tcx, self.typing_env()) {
+            return;
+        }
+        self.schedule_drop(span, region_scope, local, DropKind::Value);
+    }
+
     /// Schedule emission of a backwards incompatible drop lint hint.
     /// Applicable only to temporary values for now.
     #[instrument(level = "debug", skip(self))]
@@ -1512,28 +1518,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) {
         // Note that we are *not* gating BIDs here on whether they have significant destructor.
         // We need to know all of them so that we can capture potential borrow-checking errors.
-        for scope in self.scopes.scopes.iter_mut().rev() {
-            // Since we are inserting linting MIR statement, we have to invalidate the caches
-            scope.invalidate_cache();
-            if scope.region_scope == region_scope {
-                let region_scope_span = region_scope.span(self.tcx, self.region_scope_tree);
-                let scope_end = self.tcx.sess.source_map().end_point(region_scope_span);
-
-                scope.drops.push(DropData {
-                    source_info: SourceInfo { span: scope_end, scope: scope.source_scope },
-                    local,
-                    kind: DropKind::ForLint,
-                });
-
-                return;
-            }
-        }
-        span_bug!(
-            span,
-            "region scope {:?} not in scope to drop {:?} for linting",
-            region_scope,
-            local
-        );
+        self.schedule_drop(span, region_scope, local, DropKind::ForLint);
     }
 
     /// Indicates that the "local operand" stored in `local` is
