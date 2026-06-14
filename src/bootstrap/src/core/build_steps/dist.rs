@@ -712,26 +712,12 @@ impl Step for DebuggerScripts {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let target = self.target;
         let sysroot = self.sysroot;
         let dst = sysroot.join("lib/rustlib/etc");
         t!(fs::create_dir_all(&dst));
         let cp_debugger_script = |file: &str| {
             builder.install(&builder.src.join("src/etc/").join(file), &dst, FileType::Regular);
         };
-        if target.contains("windows-msvc") {
-            // windbg debugger scripts
-            builder.install(
-                &builder.src.join("src/etc/rust-windbg.cmd"),
-                &sysroot.join("bin"),
-                FileType::Script,
-            );
-
-            cp_debugger_script("natvis/intrinsic.natvis");
-            cp_debugger_script("natvis/liballoc.natvis");
-            cp_debugger_script("natvis/libcore.natvis");
-            cp_debugger_script("natvis/libstd.natvis");
-        }
 
         cp_debugger_script("rust_types.py");
 
