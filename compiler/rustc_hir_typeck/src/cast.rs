@@ -742,7 +742,17 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     #[instrument(skip(fcx), level = "debug")]
     pub(crate) fn check(mut self, fcx: &FnCtxt<'a, 'tcx>) {
         self.expr_ty = fcx.structurally_resolve_type(self.expr_span, self.expr_ty);
-        self.cast_ty = fcx.structurally_resolve_type(self.cast_span, self.cast_ty);
+        self.cast_ty = fcx.resolve_vars_with_obligations(self.cast_ty);
+        if self.cast_ty.is_ty_var() {
+            self.cast_ty =
+                if let Some(guar) = fcx.try_report_ambiguous_binop_for_infer_cast(self.cast_span) {
+                    let err = Ty::new_error(fcx.tcx, guar);
+                    fcx.demand_suptype(self.cast_span, err, self.cast_ty);
+                    err
+                } else {
+                    fcx.type_must_be_known_at_this_point(self.cast_span, self.cast_ty)
+                };
+        }
 
         debug!("check_cast({}, {:?} as {:?})", self.expr.hir_id, self.expr_ty, self.cast_ty);
 

@@ -46,3 +46,17 @@ fn main() {
 fn magic_foo(arg: Baz) -> Foo {
     arg.into()
 }
+
+struct Value;
+
+impl PartialEq<Value> for u32 {
+    fn eq(&self, _: &Value) -> bool {
+        false
+    }
+}
+
+fn partial_eq_with_infer_cast() {
+    // https://github.com/rust-lang/rust/issues/156004
+    let n: u32 = 17;
+    let _ = n == 42usize as _; //~ ERROR E0283
+}
