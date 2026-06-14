@@ -5,9 +5,9 @@ mod tests;
 pub use core::io::Cursor;
 
 use crate::alloc::Allocator;
-use crate::cmp;
 use crate::io::prelude::*;
 use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut, SeekFrom};
+use crate::{cmp, fmt};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> io::Seek for Cursor<T>
@@ -379,6 +379,15 @@ where
         Ok(())
     }
 
+    fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> io::Result<()> {
+        if let Some(s) = args.as_statically_known_str() {
+            self.write_all(s.as_bytes())
+        } else {
+            self.inner.reserve(args.estimated_capacity());
+            io::default_write_fmt(self, args)
+        }
+    }
+
     #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
@@ -415,6 +424,15 @@ where
         let (pos, inner) = self.into_parts_mut();
         vec_write_all_vectored(pos, inner, bufs)?;
         Ok(())
+    }
+
+    fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> io::Result<()> {
+        if let Some(s) = args.as_statically_known_str() {
+            self.write_all(s.as_bytes())
+        } else {
+            self.inner.reserve(args.estimated_capacity());
+            io::default_write_fmt(self, args)
+        }
     }
 
     #[inline]
