@@ -662,11 +662,20 @@ impl<'a> Parser<'a> {
         let mut constness = self.parse_constness(Case::Sensitive);
         let safety = self.parse_safety(Case::Sensitive);
         self.expect_keyword(exp!(Impl))?;
-
+        let mut generics_snapshot = None;
         // First, parse generic parameters if necessary.
         let mut generics = if self.choose_generics_over_qpath(0) {
             self.parse_generics()?
         } else {
+            // We might be mistakenly trying to use a generic type as a generic parameter.
+            // impl<X<T>> Trait for Y<T> { ... }
+            if self.look_ahead(0, |t| t == &token::Lt)
+                && self.look_ahead(1, |t| t.is_ident())
+                && self.look_ahead(2, |t| t == &token::Lt)
+            {
+                generics_snapshot = Some(self.create_snapshot_for_diagnostic());
+            }
+
             let mut generics = Generics::default();
             // impl A for B {}
             //    /\ this is where `generics.span` should point when there are no type params.
@@ -703,9 +712,13 @@ impl<'a> Parser<'a> {
                 for_span: span.to(self.token.span),
             }));
         } else {
-            self.parse_ty_with_generics_recovery(&generics)?
+            self.parse_ty_with_generics_recovery(&generics).map_err(|e| {
+                let Some(mut snapshot) = generics_snapshot else {
+                    return e;
+                };
+                snapshot.maybe_type_in_generic_parameter(e)
+            })?
         };
-
         // If `for` is missing we try to recover.
         let has_for = self.eat_keyword(exp!(For));
         let missing_for_span = self.prev_token.span.between(self.token.span);
