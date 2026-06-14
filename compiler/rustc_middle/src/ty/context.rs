@@ -15,12 +15,12 @@ use std::ops::Deref;
 use std::sync::{Arc, OnceLock};
 use std::{fmt, iter, mem};
 
+use parking_lot::Mutex;
 use rustc_abi::{ExternAbi, FieldIdx, Layout, LayoutData, TargetDataLayout, VariantIdx};
 use rustc_ast as ast;
 use rustc_data_structures::defer;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
-use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hash::StableHash;
@@ -61,7 +61,7 @@ use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature};
 use crate::middle::resolve_bound_vars;
 use crate::mir::interpret::{self, Allocation, ConstAllocation};
 use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
-use crate::query::{IntoQueryKey, LocalCrate, Providers, QuerySystem, TyCtxtAt};
+use crate::query::{IntoQueryKey, LocalCrate, Providers, QuerySystem, QueryWaiter, TyCtxtAt};
 use crate::thir::Thir;
 use crate::traits;
 use crate::traits::solve::{ExternalConstraints, ExternalConstraintsData, PredefinedOpaques};
@@ -706,6 +706,7 @@ impl<'tcx> Deref for TyCtxt<'tcx> {
 pub struct GlobalCtxt<'tcx> {
     pub arena: &'tcx WorkerLocal<Arena<'tcx>>,
     pub hir_arena: &'tcx WorkerLocal<hir::Arena<'tcx>>,
+    pub waiters: WorkerLocal<Mutex<Option<QueryWaiter<'tcx>>>>,
 
     interners: CtxtInterners<'tcx>,
 
@@ -772,9 +773,6 @@ pub struct GlobalCtxt<'tcx> {
     pub(crate) alloc_map: interpret::AllocMap<'tcx>,
 
     current_gcx: CurrentGcx,
-
-    /// A jobserver reference used to release then acquire a token while waiting on a query.
-    pub jobserver_proxy: Arc<Proxy>,
 }
 
 impl<'tcx> GlobalCtxt<'tcx> {
@@ -950,7 +948,6 @@ impl<'tcx> TyCtxt<'tcx> {
         query_system: QuerySystem<'tcx>,
         hooks: crate::hooks::Providers,
         current_gcx: CurrentGcx,
-        jobserver_proxy: Arc<Proxy>,
         f: impl FnOnce(TyCtxt<'tcx>) -> T,
     ) -> T {
         let data_layout = sess.target.parse_data_layout().unwrap_or_else(|err| {
@@ -967,6 +964,7 @@ impl<'tcx> TyCtxt<'tcx> {
             stable_crate_id,
             arena,
             hir_arena,
+            waiters: Default::default(),
             interners,
             dep_graph,
             hooks,
@@ -988,7 +986,6 @@ impl<'tcx> TyCtxt<'tcx> {
             data_layout,
             alloc_map: interpret::AllocMap::new(),
             current_gcx,
-            jobserver_proxy,
         });
 
         // This is a separate function to work around a crash with parallel rustc (#135870)

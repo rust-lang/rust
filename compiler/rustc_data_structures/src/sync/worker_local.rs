@@ -129,6 +129,18 @@ impl<T> WorkerLocal<T> {
     pub fn into_inner(self) -> impl Iterator<Item = T> {
         self.locals.into_vec().into_iter().map(|local| local.0)
     }
+
+    #[inline]
+    pub unsafe fn as_slice_unchecked(this: &Self) -> &[CacheAligned<T>] {
+        &this.locals
+    }
+}
+
+impl<T: Sync> WorkerLocal<T> {
+    #[inline]
+    pub fn as_slice(this: &Self) -> &[CacheAligned<T>] {
+        &this.locals
+    }
 }
 
 impl<T> Deref for WorkerLocal<T> {

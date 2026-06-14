@@ -1006,7 +1006,6 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
         ),
         providers.hooks,
         compiler.current_gcx.clone(),
-        Arc::clone(&compiler.jobserver_proxy),
         |tcx| {
             let feed = tcx.create_crate_num(stable_crate_id).unwrap();
             assert_eq!(feed.key(), LOCAL_CRATE);

@@ -15,6 +15,7 @@ categories = ["concurrency"]
 [dependencies]
 crossbeam-deque = "0.8"
 crossbeam-utils = "0.8"
+parking_lot = "0.12"
 smallvec = "1.8.1"
 
 [dev-dependencies]

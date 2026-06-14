@@ -133,7 +133,7 @@ fn init_stack_size(early_dcx: &EarlyDiagCtxt) -> usize {
     })
 }
 
-fn run_in_thread_with_globals<F: FnOnce(CurrentGcx, Arc<Proxy>) -> R + Send, R: Send>(
+fn run_in_thread_with_globals<F: FnOnce(CurrentGcx) -> R + Send, R: Send>(
     thread_stack_size: usize,
     edition: Edition,
     sm_inputs: SourceMapInputs,
@@ -159,7 +159,7 @@ fn run_in_thread_with_globals<F: FnOnce(CurrentGcx, Arc<Proxy>) -> R + Send, R: 
                     edition,
                     extra_symbols,
                     Some(sm_inputs),
-                    || f(CurrentGcx::new(), Proxy::new()),
+                    || f(CurrentGcx::new()),
                 )
             })
             .unwrap()
@@ -172,10 +172,7 @@ fn run_in_thread_with_globals<F: FnOnce(CurrentGcx, Arc<Proxy>) -> R + Send, R: 
     })
 }
 
-pub(crate) fn run_in_thread_pool_with_globals<
-    F: FnOnce(CurrentGcx, Arc<Proxy>) -> R + Send,
-    R: Send,
->(
+pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send, R: Send>(
     thread_builder_diag: &EarlyDiagCtxt,
     edition: Edition,
     threads: usize,
@@ -199,11 +196,11 @@ pub(crate) fn run_in_thread_pool_with_globals<
             edition,
             sm_inputs,
             extra_symbols,
-            |current_gcx, jobserver_proxy| {
+            |current_gcx| {
                 // Register the thread for use with the `WorkerLocal` type.
                 registry.register();
 
-                f(current_gcx, jobserver_proxy)
+                f(current_gcx)
             },
         );
     };
@@ -212,13 +209,12 @@ pub(crate) fn run_in_thread_pool_with_globals<
     let current_gcx2 = current_gcx.clone();
 
     let proxy = Proxy::new();
-
     let proxy_ = Arc::clone(&proxy);
-    let proxy__ = Arc::clone(&proxy);
+
     let builder = rustc_thread_pool::ThreadPoolBuilder::new()
         .thread_name(|_| "rustc".to_string())
-        .acquire_thread_handler(move || proxy_.acquire_thread())
-        .release_thread_handler(move || proxy__.release_thread())
+        .acquire_thread_handler(move || proxy.acquire_thread())
+        .release_thread_handler(move || proxy_.release_thread())
         .num_threads(threads)
         .deadlock_handler(move || {
             // On deadlock, creates a new thread and forwards information in thread
@@ -263,7 +259,7 @@ internal compiler error: query cycle handler thread panicked, aborting process";
                                         )
                                     },
                                 );
-                                break_query_cycle(job_map, &registry);
+                                break_query_cycle(tcx, job_map, &registry);
                             })
                         })
                     });
@@ -294,7 +290,7 @@ internal compiler error: query cycle handler thread panicked, aborting process";
                     },
                     // Run `f` on the first thread in the thread pool.
                     move |pool: &rustc_thread_pool::ThreadPool| {
-                        pool.install(|| f(current_gcx.into_inner(), proxy))
+                        pool.install(|| f(current_gcx.into_inner()))
                     },
                 )
                 .unwrap_or_else(|err| {

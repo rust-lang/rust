@@ -53,11 +53,7 @@ impl JobsEventCounter {
 }
 
 /// Number of bits used for the thread counters.
-#[cfg(target_pointer_width = "64")]
-const THREADS_BITS: usize = 16;
-
-#[cfg(target_pointer_width = "32")]
-const THREADS_BITS: usize = 8;
+const THREADS_BITS: usize = usize::BITS.ilog2() as usize;
 
 /// Bits to shift to select the sleeping threads
 /// (used with `select_bits`).
