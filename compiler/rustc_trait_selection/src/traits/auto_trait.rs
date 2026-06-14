@@ -13,7 +13,7 @@ use rustc_span::DUMMY_SP;
 use tracing::debug;
 
 use super::*;
-use crate::errors::UnableToConstructConstantValue;
+use crate::diagnostics::UnableToConstructConstantValue;
 use crate::infer::TypeFreshener;
 use crate::infer::region_constraints::{ConstraintKind, RegionConstraintData};
 use crate::regions::OutlivesEnvironmentBuildExt;
