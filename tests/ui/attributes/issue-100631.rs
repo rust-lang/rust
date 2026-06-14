@@ -2,6 +2,7 @@
 // can reasonably deal with multiple attributes.
 // `repr` will use `TyCtxt::get_attrs` since it's `DuplicatesOk`.
 #[repr(C)] //~ ERROR: unsupported representation for zero-variant enum [E0084]
+//~^ WARN representation attribute is specified more than once
 #[repr(C)]
 enum Foo {}
 

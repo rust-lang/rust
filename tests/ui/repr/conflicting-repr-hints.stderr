@@ -17,6 +17,33 @@ LL | #[repr(u32, u64)]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
 
+warning: representation attribute is specified more than once
+  --> $DIR/conflicting-repr-hints.rs:39:8
+   |
+LL | #[repr(packed, packed(2))]
+   |        ^^^^^^  ^^^^^^^^^
+   |
+   = note: for consistency, only specify the representation once
+   = note: `#[warn(repeated_reprs)]` on by default
+
+warning: representation attribute is specified more than once
+  --> $DIR/conflicting-repr-hints.rs:42:8
+   |
+LL | #[repr(packed(2))]
+   |        ^^^^^^^^^
+LL | #[repr(packed)]
+   |        ^^^^^^
+   |
+   = note: for consistency, only specify the representation once
+
+warning: representation attribute is specified more than once
+  --> $DIR/conflicting-repr-hints.rs:46:8
+   |
+LL | #[repr(packed, packed(1))]
+   |        ^^^^^^  ^^^^^^^^^
+   |
+   = note: for consistency, only specify the representation once
+
 error[E0587]: type has conflicting packed and align representation hints
   --> $DIR/conflicting-repr-hints.rs:29:1
    |
@@ -77,7 +104,7 @@ error[E0587]: type has conflicting packed and align representation hints
 LL | pub union U {
    | ^^^^^^^^^^^
 
-error: aborting due to 12 previous errors
+error: aborting due to 12 previous errors; 3 warnings emitted
 
 Some errors have detailed explanations: E0566, E0587, E0634.
 For more information about an error, try `rustc --explain E0566`.
