@@ -57,20 +57,78 @@ impl fmt::Display for AllocError {
 /// allocator does not support this (like jemalloc) or responds by returning a null pointer
 /// (such as `libc::malloc`), this must be caught by the implementation.
 ///
+/// ### Equivalent allocators
+///
+/// Multiple allocator values can sometimes be interchangeable with each other.
+/// When this is the case, we refer to those allocators as being *equivalent* to
+/// each other.
+///
+/// The following conditions are sufficient conditions for allocators to be equivalent.
+/// * An allocator is equivalent to itself. (Equivalence is reflexive.)
+/// * If an allocator is equivalent to a second allocator, then
+///   the second allocator is also equivalent to the first. (Equivalence is symmetric.)
+/// * If an allocator is equivalent to a second allocator, and
+///   the second allocator is equivalent to a third allocator, then
+///   the first allocator is also equivalent to the third allocator.
+///   (Equivalence is transitive.)
+/// * Moving, subtyping, unsize-coercing, or trait-upcasting an allocator does not change
+///   what the allocator is equivalent to.
+/// * Copying or cloning allocator results in an allocator that's
+///   equivalent to the initial allocator.
+///
+/// Additionally, implementors of `Allocator` may specify additional equivalences
+/// between allocators. It is the responsibility of such implementors to make sure
+/// that equivalent allocators have "compatible" `Allocator` implementations.
+/// In particular, the standard library specifies the following equivalences:
+/// * A reference to an allocator (either `&` or `&mut`) is equivalent to
+///   the allocator being referenced.
+/// * A `Box`, `Rc`, or `Arc` containing an allocator is equivalent to
+///   the allocator inside.
+/// * All `Global` allocator instances are equivalent with each other.
+/// * All `System` allocator instances are equivalent with each other.
+///
+/// Note: Currently, the interaction between cloning and unsize-coercing allocators
+/// is unsound, and there is ongoing discussion on how to revise the `Allocator` trait
+/// to fix this. See [#156920].
+///
+/// [#156920]: https://github.com/rust-lang/rust/issues/156920
+///
 /// ### Currently allocated memory
 ///
-/// Some of the methods require that a memory block is *currently allocated* by an allocator.
+/// Some of the methods require that a memory block is *currently allocated* by specific allocator.
 /// This means that:
-///  * the starting address for that memory block was previously
-///    returned by [`allocate`], [`grow`], or [`shrink`], and
-///  * the memory block has not subsequently been deallocated.
+/// * the starting address for that memory block was previously
+///   returned by the [`allocate`], [`allocate_zeroed`], [`grow`], or [`shrink`] methods,
+///   called on an allocator that's equivalent to this specific allocator; and
+/// * the memory block has not subsequently been [*invalidated*].
 ///
-/// A memory block is deallocated by a call to [`deallocate`],
-/// or by a call to [`grow`] or [`shrink`] that returns `Ok`.
-/// A call to `grow` or `shrink` that returns `Err`,
-/// does not deallocate the memory block passed to it.
+/// [*invalidated*]: #invalidating-memory-blocks
+///
+/// ### Invalidating memory blocks
+///
+/// A memory block that is currently allocated becomes *invalidated* when one
+/// of the following happens:
+/// * The memory block is deallocated. This occurs when the memory block
+///   is passed as an argument to a [`deallocate`] call, or when it is passed
+///   as an argument to a [`grow`] or [`shrink`] call that returns `Ok`.
+/// * All (equivalent) allocators that this memory block is allocated with,
+///   each has one of the following happen to them:
+///   * The allocator's destructor runs.
+///   * The allocator is mutated through public API taking `&mut` access.
+///   * One of the borrow-checker lifetimes in the allocator's type expires.
+///
+/// Note that these conditions imply that a collection may ensure that
+/// any specific currently allocated memory block won't be invalidated, by:
+/// * not deallocating that memory block,
+/// * owning an allocator that memory block is allocated with, and
+/// * not publicly exposing `&mut` access to that allocator.
+///
+/// Also note that accessing an allocator with `&` access cannot invalidate
+/// its memory blocks. Therefore, collections may safely expose `&` access
+/// to its allocator.
 ///
 /// [`allocate`]: Allocator::allocate
+/// [`allocate_zeroed`]: Allocator::allocate_zeroed
 /// [`grow`]: Allocator::grow
 /// [`shrink`]: Allocator::shrink
 /// [`deallocate`]: Allocator::deallocate
@@ -89,16 +147,12 @@ impl fmt::Display for AllocError {
 ///
 /// # Safety
 ///
-/// Memory blocks that are [*currently allocated*] by an allocator,
-/// must point to valid memory, and retain their validity until either:
-///  - the memory block is deallocated, or
-///  - the allocator is dropped.
-///
-/// Copying, cloning, or moving the allocator must not invalidate memory blocks returned from it.
-/// A copied or cloned allocator must behave like the original allocator.
-///
-/// A memory block which is [*currently allocated*] may be passed to
-/// any method of the allocator that accepts such an argument.
+/// Implementors of `Allocator` must ensure that a memory block that
+/// are [*currently allocated*] by the allocator points to valid memory,
+/// until that memory block is [*invalidated*]. The implementor must also
+/// not violate this invariant of `Allocator` via allocator equivalences
+/// that are in the implementor's control (e.g., via a misbehaving
+/// `impl Clone for Box<MyAllocator>`).
 ///
 /// Additionally, any memory block returned by the allocator must
 /// satisfy the allocation invariants described in `core::ptr`.
@@ -107,7 +161,9 @@ impl fmt::Display for AllocError {
 ///
 /// This ensures that pointer arithmetic within the allocation
 /// (for example, `ptr.add(len)`) cannot overflow the address space.
+///
 /// [*currently allocated*]: #currently-allocated-memory
+/// [*invalidated*]: #invalidating-memory-blocks
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 pub const unsafe trait Allocator {
@@ -118,11 +174,13 @@ pub const unsafe trait Allocator {
     /// The returned block may have a larger size than specified by `layout.size()`, and may or may
     /// not have its contents initialized.
     ///
-    /// The returned block of memory remains valid as long as it is [*currently allocated*] and the shorter of:
-    ///   - the borrow-checker lifetime of the allocator type itself.
-    ///   - as long as the allocator and all its clones have not been dropped.
+    /// Note that the returned block of memory is considered [*currently allocated*]
+    /// with this allocator (and equivalent allocators).
+    /// Therefore, it is the responsibility of implementors of `Allocator` to make sure that
+    /// this block of memory points to valid memory until the block is [*invalidated*]
     ///
     /// [*currently allocated*]: #currently-allocated-memory
+    /// [*invalidated*]: #invalidating-memory-blocks
     ///
     /// # Errors
     ///
@@ -178,13 +236,12 @@ pub const unsafe trait Allocator {
     /// memory. The pointer is suitable for holding data described by `new_layout`. To accomplish
     /// this, the allocator may extend the allocation referenced by `ptr` to fit the new layout.
     ///
-    /// If this returns `Ok`, then ownership of the memory block referenced by `ptr` has been
-    /// transferred to this allocator. Any access to the old `ptr` is Undefined Behavior, even if the
-    /// allocation was grown in-place. The newly returned pointer is the only valid pointer
-    /// for accessing this memory now.
+    /// If this returns `Ok`, then the memory block referenced by `ptr` has been [*invalidated*].
+    /// Any access to the old `ptr` is Undefined Behavior, even if the allocation was grown in-place.
+    /// The newly returned pointer is the only valid pointer for accessing this memory now.
     ///
-    /// If this method returns `Err`, then ownership of the memory block has not been transferred to
-    /// this allocator, and the contents of the memory block are unaltered.
+    /// If this method returns `Err`, then the memory block has not been *invalidated*,
+    /// and the contents of the memory block are unaltered.
     ///
     /// # Safety
     ///
@@ -196,6 +253,7 @@ pub const unsafe trait Allocator {
     ///
     /// [*currently allocated*]: #currently-allocated-memory
     /// [*fit*]: #memory-fitting
+    /// [*invalidated*]: #invalidating-memory-blocks
     ///
     /// # Errors
     ///
@@ -305,13 +363,13 @@ pub const unsafe trait Allocator {
     /// memory. The pointer is suitable for holding data described by `new_layout`. To accomplish
     /// this, the allocator may shrink the allocation referenced by `ptr` to fit the new layout.
     ///
-    /// If this returns `Ok`, then ownership of the memory block referenced by `ptr` has been
-    /// transferred to this allocator. Any access to the old `ptr` is Undefined Behavior, even if the
-    /// allocation was shrunk in-place. The newly returned pointer is the only valid pointer
-    /// for accessing this memory now.
     ///
-    /// If this method returns `Err`, then ownership of the memory block has not been transferred to
-    /// this allocator, and the contents of the memory block are unaltered.
+    /// If this returns `Ok`, then the memory block referenced by `ptr` has been [*invalidated*].
+    /// Any access to the old `ptr` is Undefined Behavior, even if the allocation was shrunk in-place.
+    /// The newly returned pointer is the only valid pointer for accessing this memory now.
+    ///
+    /// If this method returns `Err`, then the memory block has not been *invalidated*,
+    /// and the contents of the memory block are unaltered.
     ///
     /// # Safety
     ///
@@ -323,6 +381,7 @@ pub const unsafe trait Allocator {
     ///
     /// [*currently allocated*]: #currently-allocated-memory
     /// [*fit*]: #memory-fitting
+    /// [*invalidated*]: #invalidating-memory-blocks
     ///
     /// # Errors
     ///
