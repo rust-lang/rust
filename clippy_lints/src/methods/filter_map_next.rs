@@ -18,21 +18,15 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg:
             expr.span,
             "called `filter_map(..).next()` on an `Iterator`",
             |diag| {
-                let sugg_msg = "use `.find_map(..)` instead";
-
                 let mut app = Applicability::MachineApplicable;
+                let iter_snippet = snippet_with_applicability(cx, recv.span, "_", &mut app);
                 let filter_snippet = snippet_with_applicability(cx, arg.span, "..", &mut app);
-                if filter_snippet.lines().count() <= 1 {
-                    let iter_snippet = snippet_with_applicability(cx, recv.span, "_", &mut app);
-                    diag.span_suggestion_verbose(
-                        expr.span,
-                        sugg_msg,
-                        format!("{iter_snippet}.find_map({filter_snippet})"),
-                        app,
-                    );
-                } else {
-                    diag.help(sugg_msg);
-                }
+                diag.span_suggestion_verbose(
+                    expr.span,
+                    "use `.find_map(..)` instead",
+                    format!("{iter_snippet}.find_map({filter_snippet})"),
+                    app,
+                );
             },
         );
     }

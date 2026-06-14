@@ -13,7 +13,32 @@ LL +     let element: Option<i32> = a.iter().find_map(|s| s.parse().ok());
    |
 
 error: called `filter_map(..).next()` on an `Iterator`
-  --> tests/ui/filter_map_next.rs:20:26
+  --> tests/ui/filter_map_next.rs:11:26
+   |
+LL |       let _: Option<u32> = vec![1, 2, 3, 4, 5, 6]
+   |  __________________________^
+...  |
+LL | |         })
+LL | |         .next();
+   | |_______________^
+   |
+help: use `.find_map(..)` instead
+   |
+LL ~     let _: Option<u32> = vec![1, 2, 3, 4, 5, 6]
+LL +
+LL + 
+LL + 
+LL +         .into_iter().find_map(|x| {
+LL +             if x == 2 {
+LL +                 Some(x * 2)
+LL +             } else {
+LL +                 None
+LL +             }
+LL ~         });
+   |
+
+error: called `filter_map(..).next()` on an `Iterator`
+  --> tests/ui/filter_map_next.rs:35:26
    |
 LL |     let _: Option<i32> = a.iter().filter_map(|s| s.parse().ok()).next();
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,5 +49,5 @@ LL -     let _: Option<i32> = a.iter().filter_map(|s| s.parse().ok()).next();
 LL +     let _: Option<i32> = a.iter().find_map(|s| s.parse().ok());
    |
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 

@@ -6,6 +6,21 @@ fn main() {
     let element: Option<i32> = a.iter().filter_map(|s| s.parse().ok()).next();
     //~^ filter_map_next
     assert_eq!(element, Some(1));
+
+    #[rustfmt::skip]
+    let _: Option<u32> = vec![1, 2, 3, 4, 5, 6]
+    //~^ filter_map_next
+
+
+        .into_iter()
+        .filter_map(|x| {
+            if x == 2 {
+                Some(x * 2)
+            } else {
+                None
+            }
+        })
+        .next();
 }
 
 #[clippy::msrv = "1.29"]
