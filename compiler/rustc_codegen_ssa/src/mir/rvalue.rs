@@ -190,6 +190,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     assert_eq!(operands.len(), 1);
                 }
                 for (i, operand) in operands.iter_enumerated() {
+                    // Do not generate stores for entirely uninit constant fields.
+                    // Leaving the field uninitialized is correct for MaybeUninit and avoids
+                    // LLVM materializing the undef as zeros (causing unnecessary memset/stores).
+                    if let mir::Operand::Constant(const_op) = operand {
+                        let val = self.eval_mir_constant(const_op);
+                        if val.all_bytes_uninit(self.cx.tcx()) {
+                            continue;
+                        }
+                    }
                     let op = self.codegen_operand(bx, operand);
                     // Do not generate stores and GEPis for zero-sized fields.
                     if !op.layout.is_zst() {
