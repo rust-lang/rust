@@ -166,10 +166,16 @@ pub fn prebuilt_llvm_config(
 
     static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
     let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
+        // Key LLVM on the commit hash and the configuration from bootstrap.toml.
+        let hash_input = format!(
+            "sha={sha}\nkey={key}",
+            sha = builder.in_tree_llvm_info.sha().unwrap_or_default(),
+            key = builder.config.llvm_cache_key,
+        );
         generate_smart_stamp_hash(
             builder,
             &builder.config.src.join("src/llvm-project"),
-            builder.in_tree_llvm_info.sha().unwrap_or_default(),
+            &hash_input,
         )
     });
 

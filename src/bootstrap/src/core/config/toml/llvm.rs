@@ -43,6 +43,95 @@ define_config! {
     }
 }
 
+impl Llvm {
+    /// A key that is used to determine whether LLVM should be rebuilt.
+    pub(crate) fn cache_key(&self) -> String {
+        let helper = || {
+            let mut key = String::with_capacity(512);
+
+            let Self {
+                optimize,
+                thin_lto,
+                release_debuginfo,
+                assertions,
+                tests,
+                enzyme,
+                plugins,
+                static_libstdcpp,
+                libzstd,
+                ninja,
+                targets,
+                experimental_targets,
+                link_jobs,
+                link_shared,
+                version_suffix,
+                clang_cl,
+                cflags,
+                cxxflags,
+                ldflags,
+                use_libcxx,
+                use_linker,
+                allow_old_toolchain,
+                offload,
+                polly,
+                offload_clang_dir,
+                clang,
+                enable_warnings,
+                build_config,
+                download_ci_llvm: _,
+            } = self;
+
+            use std::fmt::Write;
+            write!(key, "{:?}", optimize)?;
+            write!(key, "{:?}", thin_lto)?;
+            write!(key, "{:?}", release_debuginfo)?;
+            write!(key, "{:?}", assertions)?;
+            write!(key, "{:?}", tests)?;
+            write!(key, "{:?}", enzyme)?;
+            write!(key, "{:?}", plugins)?;
+            write!(key, "{:?}", static_libstdcpp)?;
+            write!(key, "{:?}", libzstd)?;
+            write!(key, "{:?}", ninja)?;
+            write!(key, "{:?}", targets)?;
+            write!(key, "{:?}", experimental_targets)?;
+            write!(key, "{:?}", link_jobs)?;
+            write!(key, "{:?}", link_shared)?;
+            write!(key, "{:?}", version_suffix)?;
+            write!(key, "{:?}", clang_cl)?;
+            write!(key, "{:?}", cflags)?;
+            write!(key, "{:?}", cxxflags)?;
+            write!(key, "{:?}", ldflags)?;
+            write!(key, "{:?}", use_libcxx)?;
+            write!(key, "{:?}", use_linker)?;
+            write!(key, "{:?}", allow_old_toolchain)?;
+            write!(key, "{:?}", offload)?;
+            write!(key, "{:?}", polly)?;
+            write!(key, "{:?}", offload_clang_dir)?;
+            write!(key, "{:?}", clang)?;
+            write!(key, "{:?}", enable_warnings)?;
+
+            match build_config {
+                None => {
+                    write!(key, "None")?;
+                }
+                Some(c) => {
+                    let mut build_config = c.iter().collect::<Vec<_>>();
+                    build_config.sort();
+
+                    for (k, v) in build_config {
+                        write!(key, "{}: {}", k, v)?;
+                    }
+                }
+            }
+
+            Ok::<_, std::fmt::Error>(key)
+        };
+
+        // write! to a String always succeeds unless OOM.
+        helper().unwrap()
+    }
+}
+
 /// Compares the current `Llvm` options against those in the CI LLVM builder and detects any incompatible options.
 /// It does this by destructuring the `Llvm` instance to make sure every `Llvm` field is covered and not missing.
 #[cfg(not(test))]
