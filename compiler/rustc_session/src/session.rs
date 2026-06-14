@@ -1175,7 +1175,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     // Do the same for sample profile data.
-    if let Some(ref path) = sess.opts.unstable_opts.profile_sample_use {
+    if let Some(ref path) = sess.opts.cg.profile_sample_use {
         if !path.exists() {
             sess.dcx().emit_err(errors::ProfileSampleUseFileDoesNotExist { path });
         }
