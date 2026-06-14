@@ -1125,6 +1125,10 @@ unsafe extern "C" {
         NewFn: &mut Option<&'a Value>,
     ) -> bool;
     pub(crate) fn LLVMRustIsTargetIntrinsic(ID: NonZero<c_uint>) -> bool;
+    pub(crate) fn LLVMRustIntrinsicGetBaseName(
+        ID: NonZero<c_uint>,
+        NameLength: &mut size_t,
+    ) -> *const c_char;
 
     // Operations on parameters
     pub(crate) fn LLVMIsAArgument(Val: &Value) -> Option<&Value>;

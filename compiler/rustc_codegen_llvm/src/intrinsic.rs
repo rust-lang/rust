@@ -1237,12 +1237,123 @@ fn autocast<'ll>(
     }
 }
 
+fn parse_integer(string: &mut &[u8]) -> Option<u64> {
+    let mut number = 0;
+    let mut position = 0;
+    while let Some(&digit @ b'0'..=b'9') = string.get(position) {
+        number = (10 * number) + (digit - b'0') as u64;
+        position += 1;
+    }
+
+    if position != number.checked_ilog10().unwrap_or(0) as usize + 1 {
+        return None;
+    }
+
+    *string = &string[position..];
+    Some(number)
+}
+
+fn strip_off_prefix(slice: &mut &[u8], prefix: &[u8]) -> bool {
+    slice.strip_prefix(prefix).map(|remainder| *slice = remainder).is_some()
+}
+
+fn demangle_type_str<'ll>(cx: &CodegenCx<'ll, '_>, slice: &mut &[u8]) -> Option<&'ll Type> {
+    Some(if strip_off_prefix(slice, b"isVoid") {
+        cx.type_void()
+    } else if strip_off_prefix(slice, b"f16") {
+        cx.type_f16()
+    } else if strip_off_prefix(slice, b"bf16") {
+        cx.type_bf16()
+    } else if strip_off_prefix(slice, b"f32") {
+        cx.type_f32()
+    } else if strip_off_prefix(slice, b"f64") {
+        cx.type_f64()
+    } else if strip_off_prefix(slice, b"f128") {
+        cx.type_f128()
+    } else if strip_off_prefix(slice, b"i") {
+        let width = parse_integer(slice)?;
+        cx.type_ix(width)
+    } else if strip_off_prefix(slice, b"p") {
+        let address_space = parse_integer(slice)?;
+        cx.type_ptr_ext(AddressSpace(address_space as u32))
+    } else if strip_off_prefix(slice, b"v") {
+        let length = parse_integer(slice)?;
+        let element_type = demangle_type_str(cx, slice)?;
+        cx.type_vector(element_type, length)
+    } else if strip_off_prefix(slice, b"nxv") {
+        let length = parse_integer(slice)?;
+        let element_type = demangle_type_str(cx, slice)?;
+        cx.type_scalable_vector(element_type, length)
+    } else if strip_off_prefix(slice, b"a") {
+        let length = parse_integer(slice)?;
+        let element_type = demangle_type_str(cx, slice)?;
+        cx.type_array(element_type, length)
+    } else if strip_off_prefix(slice, b"sl_") {
+        let mut elements = Vec::new();
+
+        loop {
+            if let Some(remainder) = slice.strip_prefix(b"s")
+                && !remainder.starts_with(b"_")
+                && !remainder.starts_with(b"l_")
+            {
+                *slice = remainder;
+                break cx.type_struct(&elements, true);
+            }
+            elements.push(demangle_type_str(cx, slice)?);
+        }
+    } else if strip_off_prefix(slice, b"f_") {
+        let return_type = demangle_type_str(cx, slice)?;
+        let mut arguments = Vec::new();
+
+        loop {
+            if let Some(remainder) = slice.strip_prefix(b"f")
+                && !remainder.starts_with(b"_")
+            {
+                *slice = remainder;
+                break cx.type_func(&arguments, return_type);
+            }
+            if strip_off_prefix(slice, b"varargf") {
+                break cx.type_variadic_func(&arguments, return_type);
+            }
+            arguments.push(demangle_type_str(cx, slice)?);
+        }
+    } else {
+        return None;
+    })
+}
+
+fn parse_type_parameters<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
+    intrinsic: llvm::Intrinsic,
+    name: &str,
+) -> Option<Vec<&'ll Type>> {
+    let base_name: &'ll [u8] = intrinsic.base_name();
+
+    let slice = &mut name.as_bytes().strip_prefix(base_name).unwrap();
+
+    if !intrinsic.is_overloaded() {
+        return slice.is_empty().then(|| Vec::new());
+    }
+
+    let mut type_params = Vec::new();
+
+    while !slice.is_empty() {
+        if !strip_off_prefix(slice, b".") {
+            return None;
+        }
+
+        type_params.push(demangle_type_str(cx, slice)?);
+    }
+
+    Some(type_params)
+}
+
 fn intrinsic_fn<'ll, 'tcx>(
     bx: &Builder<'_, 'll, 'tcx>,
     name: &str,
     rust_return_ty: &'ll Type,
     rust_argument_tys: Vec<&'ll Type>,
-    instance: ty::Instance<'tcx>,
+    instance: Instance<'tcx>,
 ) -> &'ll Value {
     let tcx = bx.tcx;
 
@@ -1268,10 +1379,9 @@ fn intrinsic_fn<'ll, 'tcx>(
     }
 
     if let Some(intrinsic) = intrinsic
-        && !intrinsic.is_overloaded()
+        && let Some(type_params) = parse_type_parameters(bx.cx, intrinsic, name)
     {
-        // FIXME: also do this for overloaded intrinsics
-        let llfn = intrinsic.get_declaration(bx.llmod, &[]);
+        let llfn = intrinsic.get_declaration(bx.llmod, &type_params);
         let llvm_fn_ty = bx.get_type_of_global(llfn);
 
         let llvm_return_ty = bx.get_return_type(llvm_fn_ty);
