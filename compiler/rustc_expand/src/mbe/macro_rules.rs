@@ -166,7 +166,7 @@ pub struct MacroRulesMacroExpander {
     node_id: NodeId,
     name: Ident,
     span: Span,
-    on_unmatch_args: Option<Directive>,
+    on_unmatched_args: Option<Directive>,
     transparency: Transparency,
     kinds: MacroKinds,
     rules: Vec<MacroRule>,
@@ -249,7 +249,7 @@ impl MacroRulesMacroExpander {
                     FailedMacro::Derive,
                     body,
                     rules,
-                    self.on_unmatch_args.as_ref(),
+                    self.on_unmatched_args.as_ref(),
                 );
                 cx.macro_error_and_trace_macros_diag();
                 Err(guar)
@@ -274,7 +274,7 @@ impl TTMacroExpander for MacroRulesMacroExpander {
             self.transparency,
             input,
             &self.rules,
-            self.on_unmatch_args.as_ref(),
+            self.on_unmatched_args.as_ref(),
         ))
     }
 }
@@ -309,7 +309,7 @@ impl AttrProcMacro for MacroRulesMacroExpander {
             args,
             body,
             &self.rules,
-            self.on_unmatch_args.as_ref(),
+            self.on_unmatched_args.as_ref(),
         )
     }
 }
@@ -371,7 +371,7 @@ impl<'matcher> Tracker<'matcher> for NoopTracker {
 }
 
 /// Expands the rules based macro defined by `rules` for a given input `arg`.
-#[instrument(skip(cx, transparency, arg, rules, on_unmatch_args))]
+#[instrument(skip(cx, transparency, arg, rules, on_unmatched_args))]
 fn expand_macro<'cx, 'a: 'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
@@ -381,7 +381,7 @@ fn expand_macro<'cx, 'a: 'cx>(
     transparency: Transparency,
     arg: TokenStream,
     rules: &'a [MacroRule],
-    on_unmatch_args: Option<&Directive>,
+    on_unmatched_args: Option<&Directive>,
 ) -> Box<dyn MacResult + 'cx> {
     let psess = &cx.sess.psess;
 
@@ -440,7 +440,7 @@ fn expand_macro<'cx, 'a: 'cx>(
                 FailedMacro::Func,
                 &arg,
                 rules,
-                on_unmatch_args,
+                on_unmatched_args,
             );
             cx.macro_error_and_trace_macros_diag();
             DummyResult::any(span, guar)
@@ -449,7 +449,7 @@ fn expand_macro<'cx, 'a: 'cx>(
 }
 
 /// Expands the rules based macro defined by `rules` for a given attribute `args` and `body`.
-#[instrument(skip(cx, transparency, args, body, rules, on_unmatch_args))]
+#[instrument(skip(cx, transparency, args, body, rules, on_unmatched_args))]
 fn expand_macro_attr(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
@@ -461,7 +461,7 @@ fn expand_macro_attr(
     args: TokenStream,
     body: TokenStream,
     rules: &[MacroRule],
-    on_unmatch_args: Option<&Directive>,
+    on_unmatched_args: Option<&Directive>,
 ) -> Result<TokenStream, ErrorGuaranteed> {
     let psess = &cx.sess.psess;
     // Macros defined in the current crate have a real node id,
@@ -526,7 +526,7 @@ fn expand_macro_attr(
                 FailedMacro::Attr(&args),
                 &body,
                 rules,
-                on_unmatch_args,
+                on_unmatched_args,
             );
             cx.trace_macros_diag();
             Err(guar)
@@ -865,9 +865,9 @@ pub fn compile_declarative_macro(
         return dummy_syn_ext(guar);
     }
 
-    let on_unmatch_args = find_attr!(
+    let on_unmatched_args = find_attr!(
         attrs,
-        OnUnmatchArgs { directive, .. } => directive.clone()
+        OnUnmatchedArgs { directive, .. } => directive.clone()
     )
     .flatten()
     .map(|directive| *directive);
@@ -877,7 +877,7 @@ pub fn compile_declarative_macro(
         kinds,
         span,
         node_id,
-        on_unmatch_args,
+        on_unmatched_args,
         transparency,
         rules,
         macro_rules,

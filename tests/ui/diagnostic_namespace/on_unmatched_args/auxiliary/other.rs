@@ -1,7 +1,7 @@
 #![feature(diagnostic_on_unmatch_args)]
 
 #[macro_export]
-#[diagnostic::on_unmatch_args(
+#[diagnostic::on_unmatched_args(
     message = "invalid arguments to {This} macro invocation",
     label = "expected a type and value here",
     note = "this macro expects a type and a value, like `pair!(u8, 0)`",

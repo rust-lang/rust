@@ -301,7 +301,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::NoMangle(..) => (),
             AttributeKind::NoStd { .. } => (),
             AttributeKind::OnUnknown { .. } => (),
-            AttributeKind::OnUnmatchArgs { .. } => (),
+            AttributeKind::OnUnmatchedArgs { .. } => (),
             AttributeKind::Optimize(..) => (),
             AttributeKind::PanicRuntime => (),
             AttributeKind::PatchableFunctionEntry { .. } => (),

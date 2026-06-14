@@ -1458,7 +1458,7 @@ symbols! {
         on_type_error,
         on_unimplemented,
         on_unknown,
-        on_unmatch_args,
+        on_unmatched_args,
         opaque,
         opaque_module_name_placeholder: "<opaque>",
         ops,
