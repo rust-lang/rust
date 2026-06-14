@@ -214,6 +214,11 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     // - https://github.com/rust-lang/rust/issues/153629
     sym::splat,
 
+    // RFC 3917
+    // `#[instrument_fn = "on|off"]` to insert or inhibit instrumentation function
+    // calls inside a function, usually around the prologue.
+    sym::instrument_fn,
+
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================
