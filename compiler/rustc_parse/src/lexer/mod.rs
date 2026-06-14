@@ -1031,7 +1031,82 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 );
         }
 
+        // If this is a doc comment, check whether any `/*` appears inside
+        // backtick-delimited code spans. The lexer doesn't parse Markdown,
+        // so such occurrences cause unexpected nesting depth.
+        if doc_style.is_some() {
+            let content = self.str_from(start);
+            if Self::has_comment_marker_in_backticks(content) {
+                err.note(
+                    "`/*` or `*/` inside a Markdown code span \
+                     is still interpreted as a block comment delimiter; \
+                     the lexer does not parse Markdown",
+                );
+                err.help(concat!(
+                    "consider removing the `/*` from the code ",
+                    "span, closing it with a matching `*/`, or ",
+                    "using a raw string doc attribute: ",
+                    r#"`#![doc = r"..."]`"#,
+                ));
+            }
+        }
+
         err.emit();
+    }
+
+    /// Checks whether the text of a block comment contains `/*` or `*/`
+    /// inside a backtick-delimited inline code span.
+    ///
+    /// This is a best-effort heuristic: it tracks single-backtick and
+    /// multi-backtick spans (like single and triple backticks), but does not
+    /// attempt full Markdown parsing. Unmatched backticks are ignored
+    /// gracefully (the "inside backtick" state simply stays false once
+    /// we reach the end without a closing match).
+    fn has_comment_marker_in_backticks(content: &str) -> bool {
+        let bytes = content.as_bytes();
+        let len = bytes.len();
+        let mut i = 0;
+
+        while i < len {
+            if bytes[i] == b'`' {
+                let backtick_start = i;
+                while i < len && bytes[i] == b'`' {
+                    i += 1;
+                }
+                let backtick_count = i - backtick_start;
+
+                let mut found_comment_marker = false;
+                loop {
+                    if i >= len {
+                        break;
+                    }
+                    if bytes[i] == b'`' {
+                        let close_start = i;
+                        while i < len && bytes[i] == b'`' {
+                            i += 1;
+                        }
+                        if i - close_start == backtick_count {
+                            if found_comment_marker {
+                                return true;
+                            }
+                            break;
+                        }
+                    } else {
+                        if i + 1 < len
+                            && ((bytes[i] == b'/' && bytes[i + 1] == b'*')
+                                || (bytes[i] == b'*' && bytes[i + 1] == b'/'))
+                        {
+                            found_comment_marker = true;
+                        }
+                        i += 1;
+                    }
+                }
+            } else {
+                i += 1;
+            }
+        }
+
+        false
     }
 
     // RFC 3101 introduced the idea of (reserved) prefixes. As of Rust 2021,
