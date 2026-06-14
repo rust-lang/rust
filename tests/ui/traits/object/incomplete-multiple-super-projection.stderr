@@ -1,12 +1,64 @@
-error[E0119]: conflicting implementations of trait `Trait` for type `(dyn Dyn<(), ()> + 'static)`
-  --> $DIR/incomplete-multiple-super-projection.rs:20:1
+error: conflicting associated type bindings for `Assoc`
+  --> $DIR/incomplete-multiple-super-projection.rs:20:22
    |
-LL | impl Trait for dyn Dyn<(), ()> {
-   | ------------------------------ first implementation here
-...
 LL | impl<A, B> Trait for dyn Dyn<A, B> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn Dyn<(), ()> + 'static)`
+   |                      ^^^^^^^^^^^^^
+   |
+   = note: `Assoc` is specified to be `B`
+   = note: `Assoc` is also specified to be `A`
 
-error: aborting due to 1 previous error
+error: conflicting associated type bindings for `Assoc`
+  --> $DIR/incomplete-multiple-super-projection.rs:25:29
+   |
+LL | fn call<A, B>(x: usize) -> <dyn Dyn<A, B> as Trait>::Assoc {
+   |                             ^^^^^^^^^^^^^
+   |
+   = note: `Assoc` is specified to be `B`
+   = note: `Assoc` is also specified to be `A`
 
-For more information about this error, try `rustc --explain E0119`.
+error: conflicting associated type bindings for `Assoc`
+  --> $DIR/incomplete-multiple-super-projection.rs:25:29
+   |
+LL | fn call<A, B>(x: usize) -> <dyn Dyn<A, B> as Trait>::Assoc {
+   |                             ^^^^^^^^^^^^^
+   |
+   = note: `Assoc` is specified to be `B`
+   = note: `Assoc` is also specified to be `A`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: conflicting associated type bindings for `Assoc`
+  --> $DIR/incomplete-multiple-super-projection.rs:25:29
+   |
+LL | fn call<A, B>(x: usize) -> <dyn Dyn<A, B> as Trait>::Assoc {
+   |                             ^^^^^^^^^^^^^
+   |
+   = note: `Assoc` is specified to be `B`
+   = note: `Assoc` is also specified to be `A`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0277]: the trait bound `(dyn Dyn<A, B> + 'static): Trait` is not satisfied
+  --> $DIR/incomplete-multiple-super-projection.rs:25:28
+   |
+LL | fn call<A, B>(x: usize) -> <dyn Dyn<A, B> as Trait>::Assoc {
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `(dyn Dyn<A, B> + 'static)`
+   |
+help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
+   |
+LL | fn call<A, B>(x: usize) -> <dyn Dyn<A, B> as Trait>::Assoc where (dyn Dyn<A, B> + 'static): Trait {
+   |                                                            ++++++++++++++++++++++++++++++++++++++
+
+error[E0277]: the trait bound `(dyn Dyn<A, B> + 'static): Trait` is not satisfied
+  --> $DIR/incomplete-multiple-super-projection.rs:25:28
+   |
+LL | fn call<A, B>(x: usize) -> <dyn Dyn<A, B> as Trait>::Assoc {
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `(dyn Dyn<A, B> + 'static)`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
+   |
+LL | fn call<A, B>(x: usize) -> <dyn Dyn<A, B> as Trait>::Assoc where (dyn Dyn<A, B> + 'static): Trait {
+   |                                                            ++++++++++++++++++++++++++++++++++++++
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

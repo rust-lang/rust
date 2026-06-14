@@ -1,5 +1,7 @@
+use std::assert_matches;
+
 use rustc_ast::TraitObjectSyntax;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, StashKey,
@@ -11,8 +13,8 @@ use rustc_hir::{self as hir, HirId, LangItem};
 use rustc_lint_defs::builtin::{BARE_TRAIT_OBJECTS, UNUSED_ASSOCIATED_TYPE_BOUNDS};
 use rustc_middle::ty::elaborate::ClauseWithSupertraitSpan;
 use rustc_middle::ty::{
-    self, BottomUpFolder, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt, TypeFoldable,
-    TypeVisitableExt, Upcast,
+    self, AliasTermKind, BottomUpFolder, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt,
+    TypeFoldable, TypeVisitableExt, Upcast,
 };
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::{ErrorGuaranteed, Span};
@@ -69,7 +71,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 dummy_self,
                 &mut user_written_bounds,
                 PredicateFilter::SelfOnly,
-                OverlappingAsssocItemConstraints::Forbidden,
+                OverlappingAsssocItemConstraints::Allowed,
             );
             if let Err(GenericArgCountMismatch { invalid_args, .. }) = result.correct {
                 potential_assoc_items.extend(invalid_args);
@@ -87,6 +89,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             span,
         );
 
+        // Note: This only includes elaboration due to trait aliases.
+        // It does not include elaboration due to supertraits.
         let (mut elaborated_trait_bounds, elaborated_projection_bounds) =
             traits::expand_trait_aliases(tcx, user_written_bounds.iter().copied());
 
@@ -177,7 +181,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             );
             if let Some((old_proj, old_proj_span)) =
                 projection_bounds.insert(key, (proj, proj_span))
-                && tcx.anonymize_bound_vars(proj) != tcx.anonymize_bound_vars(old_proj)
+                && proj != old_proj
             {
                 let kind = tcx.def_descr(item_def_id);
                 let name = tcx.item_name(item_def_id);
@@ -203,6 +207,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // <https://github.com/rust-lang/rust/pull/136458>.
         // We achieve a stable ordering by walking over the unsubstituted principal trait ref.
         let mut ordered_associated_items = vec![];
+
+        // Detect conflicting bounds from expanding supertraits.
+        //
+        // We need to prohibit conflicting bounds from the same item_def_id,
+        // even if they have different generics. This is because those generics might
+        // end up being instantiated with the same concrete type, causing unsoundness.
+        // See https://github.com/rust-lang/rust/issues/154662.
+        //
+        // This check could be more lenient, allowing conflicting bounds on different
+        // generics that we know for sure cannot be instantiated into identical concrete
+        // types. But for now, we're being conservative.
+        let mut seen_projection_bounds_ignoring_generics = FxHashMap::default();
 
         if let Some((principal_trait, ref spans)) = principal_trait {
             let principal_trait = principal_trait.map_bound(|trait_pred| {
@@ -240,6 +256,38 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         );
                     }
                     ty::ClauseKind::Projection(pred) => {
+                        // See the comment above `let seen_projection_bounds_ignoring_generics`
+                        let kind = pred.projection_term.kind;
+                        assert_matches!(
+                            kind,
+                            AliasTermKind::ProjectionTy { .. }
+                                | AliasTermKind::ProjectionConst { .. },
+                            "Unexpected projection kind in lower_trait_object_ty"
+                        );
+                        let term = pred.term;
+                        // This clause specifies that the `kind` is equal to `term`.
+                        // We record this, and check for duplicates.
+                        if let Some(old_term) =
+                            seen_projection_bounds_ignoring_generics.insert(kind, term)
+                            && old_term != term
+                        {
+                            let name = tcx.item_name(kind.def_id());
+                            self.dcx()
+                                .struct_span_err(
+                                    span,
+                                    format!(
+                                        "conflicting {} bindings for `{}`",
+                                        kind.descr(),
+                                        name,
+                                    ),
+                                )
+                                // FIXME: Improve diagnostics by pointing to
+                                // where the bound is specified.
+                                .with_note(format!("`{name}` is specified to be `{old_term}`"))
+                                .with_note(format!("`{name}` is also specified to be `{term}`"))
+                                .emit();
+                        }
+
                         let pred = bound_predicate.rebind(pred);
                         // A `Self` within the original bound will be instantiated with a
                         // `trait_object_dummy_self`, so check for that.
@@ -285,6 +333,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
             }
         }
+        drop(seen_projection_bounds_ignoring_generics);
 
         // Flag assoc item bindings that didn't really need to be specified.
         for &(projection_bound, span) in projection_bounds.values() {
