@@ -81,7 +81,7 @@ impl<T: PrintAttribute> PrintAttribute for ThinVec<T> {
         p.word("]");
     }
 }
-impl<T: PrintAttribute> PrintAttribute for FxIndexMap<T, Span> {
+impl<T: PrintAttribute, T2: PrintAttribute> PrintAttribute for FxIndexMap<T, T2> {
     fn should_render(&self) -> bool {
         self.is_empty() || self[0].should_render()
     }

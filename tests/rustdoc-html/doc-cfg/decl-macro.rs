@@ -45,7 +45,7 @@ pub mod auto_cfg_disabled {
 }
 
 #[cfg(feature = "routing")]
-#[doc(auto_cfg(hide(feature = "routing")))]
+#[doc(auto_cfg(hide(feature, values("routing"))))]
 pub mod auto_cfg_hidden {
     //@ count 'foo/macro.hidden_cfg_macro.html' '//*[@class="stab portability"]' 0
     #[macro_export]
@@ -55,9 +55,9 @@ pub mod auto_cfg_hidden {
 }
 
 #[cfg(feature = "routing")]
-#[doc(auto_cfg(hide(feature = "routing")))]
+#[doc(auto_cfg(hide(feature, values("routing"))))]
 pub mod auto_cfg_shown {
-    #[doc(auto_cfg(show(feature = "routing")))]
+    #[doc(auto_cfg(show(feature, values("routing"))))]
     pub mod inner {
         //@ has 'foo/macro.shown_cfg_macro.html' '//*[@class="stab portability"]' 'Available on crate feature routing only.'
         #[macro_export]
