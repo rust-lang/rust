@@ -1660,11 +1660,6 @@ pub fn reveal_opaque_types_in_bounds<'tcx>(
     val.fold_with(&mut visitor)
 }
 
-/// Determines whether an item is directly annotated with `doc(hidden)`.
-fn is_doc_hidden(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-    find_attr!(tcx, def_id, Doc(doc) if doc.hidden.is_some())
-}
-
 /// Determines whether an item is annotated with `doc(notable_trait)`.
 pub fn is_doc_notable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     find_attr!(tcx, def_id, Doc(doc) if doc.notable_trait.is_some())
@@ -1696,7 +1691,6 @@ pub fn intrinsic_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::Intrinsi
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         reveal_opaque_types_in_bounds,
-        is_doc_hidden,
         is_doc_notable_trait,
         intrinsic_raw,
         ..*providers
