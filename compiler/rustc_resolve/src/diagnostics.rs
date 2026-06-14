@@ -2429,17 +2429,96 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             match binding.kind {
                 DeclKind::Import { source_decl, import, .. } => {
-                    // Don't include `{{root}}` in suggestions - it's an internal symbol
-                    // that should never be shown to users.
-                    let path = import
-                        .module_path
-                        .iter()
-                        .filter(|seg| seg.ident.name != kw::PathRoot)
-                        .map(|seg| seg.ident.clone())
-                        .chain(std::iter::once(ident))
-                        .collect::<Vec<_>>();
                     let through_reexport = !matches!(source_decl.kind, DeclKind::Def(_));
-                    sugg_paths.push((path, through_reexport));
+                    let uses_relative_path = import
+                        .module_path
+                        .first()
+                        .is_some_and(|seg| matches!(seg.ident.name, kw::SelfLower | kw::Super));
+                    let res_def_id = res.opt_def_id();
+                    let path = if uses_relative_path {
+                        // A path recovered from `self`/`super` is only useful if both the
+                        // target and every module segment can be named from the failing use site.
+                        let module_path = if let Some(ModuleOrUniformRoot::Module(module)) =
+                            import.imported_module.get()
+                            && module.is_local()
+                            && let Some(module_path) = self.module_path_names(module)
+                            && let Some(mut def_id) = module.opt_def_id()
+                            && res_def_id.is_none_or(|def_id| {
+                                self.is_accessible_from(
+                                    self.tcx.visibility(def_id),
+                                    parent_scope.module,
+                                )
+                            }) {
+                            // `module_path_names` tells us the resolved module's canonical path.
+                            // Before suggesting that path from the failing use site, make sure
+                            // every segment in it can actually be named from there.
+                            let mut visible_from_use_site = true;
+                            while let Some(parent) = self.tcx.opt_parent(def_id) {
+                                if !self.is_accessible_from(
+                                    self.tcx.visibility(def_id),
+                                    parent_scope.module,
+                                ) {
+                                    visible_from_use_site = false;
+                                    break;
+                                }
+                                if parent.is_top_level_module() {
+                                    break;
+                                }
+                                def_id = parent;
+                            }
+                            if visible_from_use_site { Some(module_path) } else { None }
+                        } else {
+                            None
+                        };
+
+                        if let Some(module_path) = module_path {
+                            // `import.module_path` is relative to the import's module, not to the
+                            // failing use site.
+                            let mut suggestion = ImportSuggestion {
+                                did: res_def_id,
+                                descr: "",
+                                path: Path {
+                                    span: ident.span,
+                                    segments: module_path
+                                        .into_iter()
+                                        .chain(std::iter::once(ident.name))
+                                        .map(|name| {
+                                            ast::PathSegment::from_ident(Ident::with_dummy_span(
+                                                name,
+                                            ))
+                                        })
+                                        .collect(),
+                                    tokens: None,
+                                },
+                                accessible: true,
+                                doc_visible: true,
+                                via_import: false,
+                                note: None,
+                                is_stable: true,
+                            };
+                            // Reuse the existing relative shortening policy. The fields above
+                            // other than `did` and `path` are not used by this helper.
+                            self.shorten_candidate_path(&mut suggestion, parent_scope.module);
+                            Some(suggestion.path.segments.iter().map(|seg| seg.ident).collect())
+                        } else {
+                            None
+                        }
+                    } else {
+                        // Don't include `{{root}}` in suggestions - it's an internal symbol
+                        // that should never be shown to users.
+                        Some(
+                            import
+                                .module_path
+                                .iter()
+                                .filter(|seg| seg.ident.name != kw::PathRoot)
+                                .map(|seg| seg.ident.clone())
+                                .chain(std::iter::once(ident))
+                                .collect::<Vec<_>>(),
+                        )
+                    };
+                    if let Some(path) = path {
+                        sugg_paths.push((path, through_reexport));
+                    }
                 }
                 DeclKind::Def(_) => {}
             }

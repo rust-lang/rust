@@ -76,6 +76,66 @@ LL -     use crate::rename::inner::Item as Item1;
 LL +     use outer::actual::Item as Item1;
    |
 
-error: aborting due to 4 previous errors
+error[E0603]: struct import `Hi` is private
+  --> $DIR/private-import-suggestion-path-156244.rs:51:14
+   |
+LL | use testing::Hi;
+   |              ^^ private struct import
+   |
+note: the struct import `Hi` is defined here...
+  --> $DIR/private-import-suggestion-path-156244.rs:48:9
+   |
+LL |     use super::public::Hi;
+   |         ^^^^^^^^^^^^^^^^^
+note: ...and refers to the struct `Hi` which is defined here
+  --> $DIR/private-import-suggestion-path-156244.rs:44:5
+   |
+LL |     pub struct Hi;
+   |     ^^^^^^^^^^^^^^ you could import this directly
+help: import `Hi` directly
+   |
+LL - use testing::Hi;
+LL + use public::Hi;
+   |
+
+error[E0603]: struct import `Hi` is private
+  --> $DIR/private-import-suggestion-path-156244.rs:67:37
+   |
+LL | use inaccessible_ancestor::testing::Hi;
+   |                                     ^^ private struct import
+   |
+note: the struct import `Hi` is defined here...
+  --> $DIR/private-import-suggestion-path-156244.rs:63:13
+   |
+LL |         use super::private::public::Hi;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...and refers to the struct `Hi` which is defined here
+  --> $DIR/private-import-suggestion-path-156244.rs:58:13
+   |
+LL |             pub struct Hi;
+   |             ^^^^^^^^^^^^^^ you could import this directly
+
+error[E0603]: module import `mem` is private
+  --> $DIR/private-import-suggestion-path-156244.rs:77:21
+   |
+LL | use external_alias::mem;
+   |                     ^^^ private module import
+   |
+note: the module import `mem` is defined here...
+  --> $DIR/private-import-suggestion-path-156244.rs:74:9
+   |
+LL |     use super::s::mem;
+   |         ^^^^^^^^^^^^^
+note: ...and refers to the module `mem` which is defined here
+  --> $SRC_DIR/std/src/lib.rs:LL:COL
+   |
+   = note: you could import this directly
+help: import `mem` directly
+   |
+LL - use external_alias::mem;
+LL + use core::mem;
+   |
+
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0603`.
