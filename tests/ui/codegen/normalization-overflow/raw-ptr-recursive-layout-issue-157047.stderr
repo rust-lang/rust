@@ -1,0 +1,7 @@
+error: queries overflow the depth limit!
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`raw_ptr_recursive_layout_issue_157047`)
+   = note: query depth increased by 130 when computing layout of `Thing<i32>`
+
+error: aborting due to 1 previous error
+

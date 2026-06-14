@@ -1033,7 +1033,16 @@ where
         let optimize = tcx.sess.opts.optimize != OptLevel::No;
 
         let pointee_info = match *this.ty.kind() {
-            ty::RawPtr(_, _) | ty::FnPtr(..) if offset.bytes() == 0 => {
+            ty::RawPtr(pointee, _) if offset.bytes() == 0 => {
+                // Raw pointers do not promise dereferenceability or alignment, but
+                // codegen still needs to force layout checking for the pointee type.
+                tcx.layout_of(typing_env.as_query_input(pointee)).ok().map(|_| PointeeInfo {
+                    safe: None,
+                    size: Size::ZERO,
+                    align: Align::ONE,
+                })
+            }
+            ty::FnPtr(..) if offset.bytes() == 0 => {
                 Some(PointeeInfo { safe: None, size: Size::ZERO, align: Align::ONE })
             }
             ty::Ref(_, ty, mt) if offset.bytes() == 0 => {
