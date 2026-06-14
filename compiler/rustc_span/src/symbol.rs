@@ -1856,6 +1856,7 @@ symbols! {
         saturating_sub,
         sdylib,
         search_unbox,
+        section,
         select_unpredictable,
         self_in_typedefs,
         self_struct_ctor,

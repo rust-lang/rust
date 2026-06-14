@@ -24,3 +24,11 @@ pub fn no_parameters_given() {}
 #[patchable_function_entry(prefix_nops = 255, prefix_nops = 255)]
 //~^ ERROR malformed
 pub fn duplicate_parameter() {}
+
+#[patchable_function_entry(section = 255)]
+//~^ ERROR malformed
+pub fn invalid_section_parameter() {}
+
+#[patchable_function_entry(section = "foo", section = "bar")]
+//~^ ERROR malformed
+pub fn duplicate_section_parameter() {}
