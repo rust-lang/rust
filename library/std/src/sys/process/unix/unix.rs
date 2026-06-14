@@ -91,6 +91,9 @@ impl Command {
         // The child calls `mem::forget` to leak the lock, which is crucial because
         // releasing a lock is not async-signal-safe.
         let env_lock = sys::env::env_read_lock();
+        let paths = self.find_path_var(envp.as_ref());
+        let max_path_len = self.compute_max_len(paths);
+        let mut buf = Box::new_uninit_slice(max_path_len);
         let pid = unsafe { self.do_fork()? };
 
         if pid == 0 {
@@ -101,7 +104,7 @@ impl Command {
             if self.get_create_pidfd() {
                 self.send_pidfd(&output);
             }
-            let Err(err) = unsafe { self.do_exec(theirs, envp.as_ref()) };
+            let Err(err) = unsafe { self.do_exec(theirs, envp.as_ref(), paths, &mut buf) };
             let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
             let errno = errno.to_be_bytes();
             let bytes = [
@@ -235,13 +238,66 @@ impl Command {
                     // the environment is synchronized, so make sure to grab the
                     // environment lock before we try to exec.
                     let _lock = sys::env::env_read_lock();
-
-                    let Err(e) = self.do_exec(theirs, envp.as_ref());
+                    let paths = self.find_path_var(envp.as_ref());
+                    let max_path_len = self.compute_max_len(paths);
+                    let mut buf = Box::new_uninit_slice(max_path_len);
+                    let Err(e) = self.do_exec(theirs, envp.as_ref(), paths, &mut buf);
                     e
                 }
             }
             Err(e) => e,
         }
+    }
+
+    /// Helper function to locate the PATH environment variable from an environ pointer.
+    /// This omits the "PATH=" value and returns just the colon delimited paths. The lifetime
+    /// of the resulting u8 slice is dependent on our passed in environment pointer and not
+    /// `Command`, so we don't have a lasting immutable borrow occurring on `Command`, which
+    /// will conflict with mutable borrow that will occur later on `Command` through
+    /// `Command::do_exec`.
+    ///
+    /// If we could not locate the PATH environment variable, this function will return `None`.
+    fn find_path_var<'a>(&self, maybe_envp: Option<&'a CStringArray>) -> Option<&'a [u8]> {
+        let mut envp_ptr =
+            maybe_envp.map(|envp| envp.as_ptr()).unwrap_or(unsafe { *sys::env::environ() });
+
+        if !envp_ptr.is_null() {
+            // SAFETY: We should be guaranteed to have a nul terminated array either via
+            // from CStringArray or from what `environ()` returns
+            unsafe {
+                while !(*envp_ptr).is_null() {
+                    let c_str_as_bytes = crate::ffi::CStr::from_ptr(*envp_ptr).to_bytes();
+                    if c_str_as_bytes.starts_with(b"PATH=") {
+                        return Some(&c_str_as_bytes[5..]);
+                    } else {
+                        envp_ptr = envp_ptr.add(1);
+                    }
+                }
+            }
+            None
+        } else {
+            None
+        }
+    }
+
+    /// Helper function to calculate the maximum path len we'll see from the concatenation
+    /// of a PATH environment + the program cstr + a separator byte. The returned value
+    /// is used to pre-allocate a buffer that will be used for the entire duration of
+    /// `Command::do_exec()`.
+    fn compute_max_len(&self, paths: Option<&[u8]>) -> usize {
+        // Defer to default path from `_CS_PATH_` if PATH environment variable was
+        // not found
+        let paths = paths.unwrap_or(self.get_default_path().as_encoded_bytes());
+        let longest_path_len = paths.split(|b| *b == b':').map(|path| path.len()).max();
+
+        // Parsed path len from envp + file path len + 1 for separator byte + 1 for nul terminated byte
+        if let Some(longest_path_len) = longest_path_len {
+            return longest_path_len + self.get_program_cstr().count_bytes() + 2;
+        }
+
+        // Empty paths do not need a separator byte, so this pre-allocates only for the file
+        // and nul byte
+        self.get_program_cstr().count_bytes() + 1
     }
 
     // And at this point we've reached a special time in the life of the
@@ -279,6 +335,8 @@ impl Command {
         &mut self,
         stdio: ChildPipes,
         maybe_envp: Option<&CStringArray>,
+        paths: Option<&[u8]>,
+        buf: &mut [crate::mem::MaybeUninit<u8>],
     ) -> Result<!, io::Error> {
         use crate::sys::{self, cvt_r};
 
@@ -384,28 +442,70 @@ impl Command {
             callback()?;
         }
 
-        // Although we're performing an exec here we may also return with an
-        // error from this function (without actually exec'ing) in which case we
-        // want to be sure to restore the global environment back to what it
-        // once was, ensuring that our temporary override, when free'd, doesn't
-        // corrupt our process's environment.
-        let mut _reset = None;
-        if let Some(envp) = maybe_envp {
-            struct Reset(*const *const libc::c_char);
+        let file = self.get_program_cstr();
+        let file_as_bytes = file.to_bytes_with_nul();
+        let argv = self.get_argv();
+        let envp_ptr =
+            maybe_envp.map(|envp| envp.as_ptr()).unwrap_or(unsafe { *sys::env::environ() });
+        let paths = paths.unwrap_or(self.get_default_path().as_encoded_bytes());
 
-            impl Drop for Reset {
-                fn drop(&mut self) {
-                    unsafe {
-                        *sys::env::environ() = self.0;
+        // Path searching does not occur when our file contains a `/`
+        if file_as_bytes.contains(&b'/') {
+            libc::execve(file.as_ptr(), argv.as_ptr(), envp_ptr);
+        } else {
+            let mut got_perm_denied = false;
+            for path in paths.split(|b| *b == b':') {
+                let path_len = path.len();
+
+                // Copy path to execute in the pre-allocated buffer accordingly
+                // Use the current path entry, plus a '/' if nonempty, plus the file to
+                // execute.
+                if path_len != 0 {
+                    buf[0..path_len].write_copy_of_slice(path);
+                    if path[path_len - 1] != b'/' {
+                        buf[path_len].write(b'/');
+                        buf[path_len + 1..path_len + 1 + file_as_bytes.len()]
+                            .write_copy_of_slice(file_as_bytes);
+                    } else {
+                        buf[path_len..path_len + file_as_bytes.len()]
+                            .write_copy_of_slice(file_as_bytes);
                     }
+                } else {
+                    buf[0..file_as_bytes.len()].write_copy_of_slice(file_as_bytes);
+                }
+
+                // Try executing on path
+                libc::execve(buf.as_ptr().cast(), argv.as_ptr(), envp_ptr);
+                let err = crate::sys::io::errno();
+
+                match err {
+                    // Record that we got a 'Permission Denied' error in the event that if we
+                    // find no executable to use, we should report that there was a usable
+                    // executable but we were denied access to it.
+                    libc::EACCES => got_perm_denied = true,
+                    // Try the next path.
+                    libc::ENOENT
+                    | libc::ESTALE
+                    | libc::ENOTDIR
+                    | libc::ENODEV
+                    | libc::ETIMEDOUT => {}
+                    // Any other error returned by execve should be returned. For example,
+                    // ENAMETOOLONG is an error that is returned due to security risks on
+                    // executing the wrong program through setting a very long path
+                    _ => return Err(io::Error::from_raw_os_error(err)),
                 }
             }
 
-            _reset = Some(Reset(*sys::env::environ()));
-            *sys::env::environ() = envp.as_ptr();
+            // At least one failure was due to lack of permissions, so we should
+            // report that failure first
+            if got_perm_denied {
+                return Err(io::Error::from_raw_os_error(libc::EACCES));
+            }
+
+            // No paths were executable
+            return Err(io::Error::from_raw_os_error(libc::ENOENT));
         }
 
-        libc::execvp(self.get_program_cstr().as_ptr(), self.get_argv().as_ptr());
         Err(io::Error::last_os_error())
     }
 

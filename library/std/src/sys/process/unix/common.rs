@@ -10,6 +10,7 @@ use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::os::unix::prelude::*;
 use crate::path::Path;
 use crate::process::StdioPipes;
+use crate::sys::conf::confstr;
 use crate::sys::fd::FileDesc;
 use crate::sys::fs::File;
 #[cfg(not(target_os = "fuchsia"))]
@@ -87,6 +88,7 @@ pub struct Command {
     program: CString,
     args: CStringArray,
     env: CommandEnv,
+    default_path: OsString,
 
     program_kind: ProgramKind,
     cwd: Option<CString>,
@@ -164,10 +166,12 @@ impl Command {
         let program = os2c(program, &mut saw_nul);
         let mut args = CStringArray::with_capacity(1);
         args.push(program.clone());
+
         Command {
             program,
             args,
             env: Default::default(),
+            default_path: confstr(libc::_CS_PATH, None).unwrap_or(OsString::new()),
             program_kind,
             cwd: None,
             chroot: None,
@@ -265,6 +269,10 @@ impl Command {
 
     pub fn get_env_clear(&self) -> bool {
         self.env.does_clear()
+    }
+
+    pub fn get_default_path(&self) -> &OsStr {
+        &self.default_path
     }
 
     pub fn get_resolved_envs(&self) -> CommandResolvedEnvs {

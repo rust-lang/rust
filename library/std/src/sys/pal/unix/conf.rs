@@ -6,13 +6,10 @@ pub fn page_size() -> usize {
     unsafe { libc::sysconf(libc::_SC_PAGESIZE) as usize }
 }
 
-/// Returns the value for [`confstr(key, ...)`][posix_confstr]. Currently only
-/// used on Darwin, but should work on any unix (in case we need to get
-/// `_CS_PATH` or `_CS_V[67]_ENV` in the future).
+/// Returns the value for [`confstr(key, ...)`][posix_confstr].
 ///
 /// [posix_confstr]:
 ///     https://pubs.opengroup.org/onlinepubs/9699919799/functions/confstr.html
-#[cfg(target_vendor = "apple")]
 pub fn confstr(
     key: crate::ffi::c_int,
     size_hint: Option<usize>,
