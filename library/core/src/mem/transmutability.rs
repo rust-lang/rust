@@ -208,13 +208,15 @@ pub struct Assume {
     ///
     /// let src: u8 = 3;
     ///
-    /// struct EvenU8 {
-    ///     // SAFETY: `val` must be an even number.
-    ///     val: u8,
+    /// mod owner {
+    ///     pub struct EvenU8 {
+    ///         // SAFETY: `val` must be an even number.
+    ///         val: u8,
+    ///     }
     /// }
     ///
     /// // SAFETY: No safety obligations.
-    /// let dst: EvenU8 = unsafe {
+    /// let dst: owner::EvenU8 = unsafe {
     ///     <_ as TransmuteFrom<_>>::transmute(src)
     /// };
     /// ```
@@ -229,12 +231,20 @@ pub struct Assume {
     ///
     /// let src: u8 = 42;
     ///
-    /// struct EvenU8 {
-    ///     // SAFETY: `val` must be an even number.
-    ///     val: u8,
+    /// mod owner {
+    ///     pub struct EvenU8 {
+    ///         // SAFETY: `val` must be an even number.
+    ///         val: u8,
+    ///     }
+    ///
+    ///     impl EvenU8 {
+    ///         pub fn get(&self) -> u8 {
+    ///             self.val
+    ///         }
+    ///     }
     /// }
     ///
-    /// let maybe_dst: Option<EvenU8> = if src % 2 == 0 {
+    /// let maybe_dst: Option<owner::EvenU8> = if src % 2 == 0 {
     ///     // SAFETY: We have checked above that the value of `src` is even.
     ///     Some(unsafe {
     ///         <_ as TransmuteFrom<_, { Assume::SAFETY }>>::transmute(src)
@@ -243,7 +253,7 @@ pub struct Assume {
     ///     None
     /// };
     ///
-    /// assert!(matches!(maybe_dst, Some(EvenU8 { val: 42 })));
+    /// assert_eq!(maybe_dst.map(|dst| dst.get()), Some(42));
     /// ```
     pub safety: bool,
 

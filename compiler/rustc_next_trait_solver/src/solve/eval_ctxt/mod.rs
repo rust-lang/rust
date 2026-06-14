@@ -137,6 +137,7 @@ where
     nested_goals: Vec<(GoalSource, Goal<I, I::Predicate>, Option<GoalStalledOn<I>>)>,
 
     pub(super) origin_span: I::Span,
+    root_body_id: Option<I::LocalDefId>,
 
     // Has this `EvalCtxt` errored out with `NoSolution` in `try_evaluate_added_goals`?
     //
@@ -168,6 +169,7 @@ pub trait SolverDelegateEvalExt: SolverDelegate {
         &self,
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
         span: <Self::Interner as Interner>::Span,
+        body_id: Option<<Self::Interner as Interner>::LocalDefId>,
         stalled_on: Option<GoalStalledOn<Self::Interner>>,
     ) -> Result<GoalEvaluation<Self::Interner>, NoSolution>;
 
@@ -215,11 +217,13 @@ where
         &self,
         goal: Goal<I, I::Predicate>,
         span: I::Span,
+        body_id: Option<I::LocalDefId>,
         stalled_on: Option<GoalStalledOn<I>>,
     ) -> Result<GoalEvaluation<I>, NoSolution> {
-        let result = EvalCtxt::enter_root(self, self.cx().recursion_limit(), span, |ecx| {
-            ecx.evaluate_goal(GoalSource::Misc, goal, stalled_on)
-        });
+        let result =
+            EvalCtxt::enter_root(self, self.cx().recursion_limit(), span, body_id, |ecx| {
+                ecx.evaluate_goal(GoalSource::Misc, goal, stalled_on)
+            });
 
         match result {
             Ok(i) => Ok(i),
@@ -236,7 +240,7 @@ where
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
     ) -> bool {
         self.probe(|| {
-            EvalCtxt::enter_root(self, self.cx().recursion_limit(), I::Span::dummy(), |ecx| {
+            EvalCtxt::enter_root(self, self.cx().recursion_limit(), I::Span::dummy(), None, |ecx| {
                 ecx.evaluate_goal(GoalSource::Misc, goal, None)
             })
             .is_ok_and(|r| match r.certainty {
@@ -259,7 +263,7 @@ where
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
     ) -> bool {
         self.probe(|| {
-            EvalCtxt::enter_root(self, root_depth, I::Span::dummy(), |ecx| {
+            EvalCtxt::enter_root(self, root_depth, I::Span::dummy(), None, |ecx| {
                 ecx.evaluate_goal(GoalSource::Misc, goal, None)
             })
         })
@@ -339,6 +343,7 @@ where
         delegate: &D,
         root_depth: usize,
         origin_span: I::Span,
+        root_body_id: Option<I::LocalDefId>,
         f: impl FnOnce(&mut EvalCtxt<'_, D>) -> R,
     ) -> R {
         let mut search_graph = SearchGraph::new(root_depth);
@@ -357,6 +362,7 @@ where
             var_values: CanonicalVarValues::dummy(),
             current_goal_kind: CurrentGoalKind::Misc,
             origin_span,
+            root_body_id,
             tainted: Ok(()),
             opaque_accesses: AccessedOpaques::default(),
         };
@@ -382,6 +388,7 @@ where
         search_graph: &'a mut SearchGraph<D>,
         canonical_input: CanonicalInput<I>,
         proof_tree_builder: &mut inspect::ProofTreeBuilder<D>,
+        root_body_id: Option<I::LocalDefId>,
         f: impl FnOnce(
             &mut EvalCtxt<'_, D>,
             Goal<I, I::Predicate>,
@@ -421,6 +428,7 @@ where
             search_graph,
             nested_goals: Default::default(),
             origin_span: I::Span::dummy(),
+            root_body_id,
             tainted: Ok(()),
             inspect: proof_tree_builder.new_evaluation_step(var_values),
             opaque_accesses: AccessedOpaques::default(),
@@ -572,11 +580,12 @@ where
                     TypingMode::ErasedNotCoherence(MayBeErased),
                 );
 
+                let mut inspect = inspect::ProofTreeBuilder::new_noop(self.root_body_id);
                 let (canonical_result, accessed_opaques) = self.search_graph.evaluate_goal(
                     self.cx(),
                     canonical_goal,
                     step_kind,
-                    &mut inspect::ProofTreeBuilder::new_noop(),
+                    &mut inspect,
                 );
 
                 let should_rerun = self.should_rerun_after_erased_canonicalization(
@@ -599,12 +608,9 @@ where
             let (orig_values, canonical_goal) =
                 canonicalize_goal(self.delegate, goal, &opaque_types, typing_mode);
 
-            let (canonical_result, accessed_opaques) = self.search_graph.evaluate_goal(
-                self.cx(),
-                canonical_goal,
-                step_kind,
-                &mut inspect::ProofTreeBuilder::new_noop(),
-            );
+            let mut inspect = inspect::ProofTreeBuilder::new_noop(self.root_body_id);
+            let (canonical_result, accessed_opaques) =
+                self.search_graph.evaluate_goal(self.cx(), canonical_goal, step_kind, &mut inspect);
             assert!(
                 !accessed_opaques.might_rerun(),
                 "we run without TypingMode::ErasedNotCoherence, so opaques are available, and we don't retry if the outer typing mode is ErasedNotCoherence: {accessed_opaques:?} after {goal:?}"
@@ -1526,7 +1532,7 @@ where
         dst: I::Ty,
         assume: I::Const,
     ) -> Result<Certainty, NoSolution> {
-        self.delegate.is_transmutable(dst, src, assume)
+        self.delegate.is_transmutable(dst, src, assume, self.root_body_id)
     }
 
     pub(super) fn replace_bound_vars<T: TypeFoldable<I>>(

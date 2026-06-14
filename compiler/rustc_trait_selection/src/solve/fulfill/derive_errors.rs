@@ -91,6 +91,7 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
         match <&SolverDelegate<'tcx>>::from(infcx).evaluate_root_goal(
             root_obligation.as_goal(),
             root_obligation.cause.span,
+            Some(root_obligation.cause.body_id),
             None,
         ) {
             Ok(GoalEvaluation {

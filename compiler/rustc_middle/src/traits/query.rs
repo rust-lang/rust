@@ -16,6 +16,7 @@ use crate::ty::{self, GenericArg, Ty, TyCtxt};
 
 pub mod type_op {
     use rustc_macros::{StableHash, TypeFoldable, TypeVisitable};
+    use rustc_span::def_id::LocalDefId;
 
     use crate::ty::{Predicate, Ty, UserType};
 
@@ -40,6 +41,7 @@ pub mod type_op {
     #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, StableHash, TypeFoldable, TypeVisitable)]
     pub struct ProvePredicate<'tcx> {
         pub predicate: Predicate<'tcx>,
+        pub body_id: LocalDefId,
     }
 
     /// Normalizes, but not in the new solver.

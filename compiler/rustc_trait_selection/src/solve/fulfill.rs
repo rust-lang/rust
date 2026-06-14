@@ -134,6 +134,7 @@ impl<'tcx> ObligationStorage<'tcx> {
                         let result = <&SolverDelegate<'tcx>>::from(infcx).evaluate_root_goal(
                             goal,
                             o.cause.span,
+                            Some(o.cause.body_id),
                             stalled_on.take(),
                         );
                         matches!(result, Ok(GoalEvaluation { has_changed: HasChanged::Yes, .. }))
@@ -236,7 +237,12 @@ where
                     continue;
                 }
 
-                let result = delegate.evaluate_root_goal(goal, obligation.cause.span, stalled_on);
+                let result = delegate.evaluate_root_goal(
+                    goal,
+                    obligation.cause.span,
+                    Some(obligation.cause.body_id),
+                    stalled_on,
+                );
                 self.inspect_evaluated_obligation(infcx, &obligation, &result);
                 let GoalEvaluation { goal, certainty, has_changed, stalled_on } = match result {
                     Ok(result) => result,
