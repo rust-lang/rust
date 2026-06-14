@@ -753,3 +753,22 @@ struct VariableExists {
 struct VariableDoesNotExist {
     sub: String,
 }
+
+#[derive(Diagnostic)]
+#[diag("this is an example message", msrv = "1.1.1")]
+struct Msrv;
+
+#[derive(Diagnostic)]
+#[diag("this is an example message", msrv = 1.1.1)]
+//~^ ERROR expected a string containing a rust version
+struct MsrvNoString;
+
+#[derive(Diagnostic)]
+#[diag("this is an example message", msrv = "stable")]
+//~^ ERROR expected a string containing a rust version
+struct MsrvBadVersion;
+
+#[derive(Diagnostic)]
+#[diag("this is an example message", msrv = foo())]
+//~^ ERROR expected a string containing a rust version
+struct MsrvBadVersionExpr;

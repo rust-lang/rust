@@ -55,6 +55,7 @@ where
             message: None,
             code: None,
             used_fields: HashSet::new(),
+            msrv: None,
         };
         f(builder, variant)
     });
@@ -86,6 +87,10 @@ pub(crate) struct DiagnosticDeriveVariantBuilder {
     /// Error codes are a optional part of the struct attribute - this is only set to detect
     /// multiple specifications.
     pub code: SpannedOption<()>,
+
+    /// MSRV is an optional part of the struct attribute - this is only set to detect
+    /// multiple specifications.
+    pub msrv: SpannedOption<()>,
 
     pub used_fields: HashSet<proc_macro2::Ident>,
 }
@@ -233,9 +238,29 @@ impl DiagnosticDeriveVariantBuilder {
                                 diag.code(#arg_value);
                             });
                         }
+                        "msrv" => {
+                            let arg_span = arg_name.span().unwrap();
+                            self.msrv.set_once((), arg_span);
+                            if let syn::Expr::Lit(syn::ExprLit {
+                                lit: syn::Lit::Str(arg_value),
+                                ..
+                            }) = arg_value
+                                && let arg_value = arg_value.value()
+                                && let mut components = arg_value.splitn(3, '.')
+                                && let Some(major) = components.next().and_then(|c| c.parse::<u16>().ok())
+                                && let Some(minor) = components.next().and_then(|c| c.parse::<u16>().ok())
+                                && let Some(patch) = components.next().and_then(|c| c.parse::<u16>().ok())
+                            {
+                                tokens.extend(quote! {
+                                    diag.rust_version(#major, #minor, #patch);
+                                });
+                            } else {
+                                span_err(arg_span, "expected a string containing a rust version (xx.yy.zz)").emit();
+                            }
+                        }
                         _ => {
                             span_err(arg_name.span().unwrap(), "unknown argument")
-                                .note("only the `code` parameter is valid after the message")
+                                .note("only the `code` or `msrv` parameters are valid after the message")
                                 .emit();
                         }
                     }

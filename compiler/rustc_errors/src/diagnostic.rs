@@ -7,6 +7,7 @@ use std::panic;
 use std::path::PathBuf;
 use std::thread::panicking;
 
+use rustc_ast::attr::version::RustcVersion;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_error_messages::{DiagArgMap, DiagArgName, DiagArgValue, IntoDiagArg};
 use rustc_lint_defs::{Applicability, LintExpectationId};
@@ -256,6 +257,8 @@ pub struct DiagInner {
     /// With `-Ztrack_diagnostics` enabled,
     /// we print where in rustc this error was emitted.
     pub emitted_at: DiagLocation,
+    /// Used to avoid lints which would affect MSRV
+    pub rust_version: Option<RustcVersion>,
 }
 
 impl DiagInner {
@@ -279,6 +282,7 @@ impl DiagInner {
             is_lint: None,
             long_ty_path: None,
             emitted_at: DiagLocation::caller(),
+            rust_version: None,
         }
     }
 
@@ -372,6 +376,7 @@ impl DiagInner {
             // omit self.sort_span
             &self.is_lint,
             // omit self.emitted_at
+            // omit self.rust_version
         )
     }
 }
@@ -1161,6 +1166,13 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     /// Add an error code.
     pub fn code(&mut self, code: ErrCode) -> &mut Self {
         self.code = Some(code);
+        self
+    } }
+
+    with_fn! { with_rust_version,
+    /// Add a minimum Rust version.
+    pub fn rust_version(&mut self, major: u16, minor: u16, patch: u16) -> &mut Self {
+        self.rust_version = Some(RustcVersion { major, minor, patch });
         self
     } }
 

@@ -78,7 +78,7 @@ error: derive(Diagnostic): unknown argument
 LL | #[diag("this is an example message", code = E0123, slug = "foo")]
    |                                                    ^^^^
    |
-   = note: only the `code` parameter is valid after the message
+   = note: only the `code` or `msrv` parameters are valid after the message
 
 error: derive(Diagnostic): `#[suggestion = ...]` is not a valid attribute
   --> $DIR/diagnostic-derive-inline.rs:94:5
@@ -494,6 +494,24 @@ LL | #[diag("does not exist: {$nosub}")]
    |
    = help: Available fields: "sub"
 
+error: derive(Diagnostic): expected a string containing a rust version (xx.yy.zz)
+  --> $DIR/diagnostic-derive-inline.rs:762:38
+   |
+LL | #[diag("this is an example message", msrv = 1.1.1)]
+   |                                      ^^^^
+
+error: derive(Diagnostic): expected a string containing a rust version (xx.yy.zz)
+  --> $DIR/diagnostic-derive-inline.rs:767:38
+   |
+LL | #[diag("this is an example message", msrv = "stable")]
+   |                                      ^^^^
+
+error: derive(Diagnostic): expected a string containing a rust version (xx.yy.zz)
+  --> $DIR/diagnostic-derive-inline.rs:772:38
+   |
+LL | #[diag("this is an example message", msrv = foo())]
+   |                                      ^^^^
+
 error: cannot find attribute `nonsense` in this scope
   --> $DIR/diagnostic-derive-inline.rs:60:3
    |
@@ -574,5 +592,5 @@ LL |     #[multipart_suggestion("with a suggestion")]
    |
    = note: `multipart_suggestion` is an attribute that can be used by the derive macro `Subdiagnostic`, you might be missing a `derive` attribute
 
-error: aborting due to 75 previous errors
+error: aborting due to 78 previous errors
 
