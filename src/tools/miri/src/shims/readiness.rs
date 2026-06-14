@@ -38,6 +38,20 @@ impl std::ops::BitAnd for Readiness {
     }
 }
 
+impl std::ops::BitOr for Readiness {
+    type Output = Readiness;
+
+    fn bitor(self, rhs: Readiness) -> Self::Output {
+        Readiness {
+            readable: self.readable | rhs.readable,
+            writable: self.writable | rhs.writable,
+            read_closed: self.read_closed | rhs.read_closed,
+            write_closed: self.write_closed | rhs.write_closed,
+            error: self.error | rhs.error,
+        }
+    }
+}
+
 impl std::ops::BitOrAssign for Readiness {
     fn bitor_assign(&mut self, rhs: Self) {
         self.readable |= rhs.readable;

@@ -201,6 +201,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         self.eval_path_scalar(&["libc", name])
     }
 
+    /// Helper function to get a `libc` constant as an `i16`.
+    fn eval_libc_i16(&self, name: &str) -> i16 {
+        // TODO: Cache the result.
+        self.eval_libc(name).to_i16().unwrap_or_else(|_err| {
+            panic!("required libc item has unexpected type (not `i16`): {name}")
+        })
+    }
+
+    /// Helper function to get a `libc` constant as an `u16`.
+    fn eval_libc_u16(&self, name: &str) -> u16 {
+        // TODO: Cache the result.
+        self.eval_libc(name).to_u16().unwrap_or_else(|_err| {
+            panic!("required libc item has unexpected type (not `u16`): {name}")
+        })
+    }
+
     /// Helper function to get a `libc` constant as an `i32`.
     fn eval_libc_i32(&self, name: &str) -> i32 {
         // TODO: Cache the result.
