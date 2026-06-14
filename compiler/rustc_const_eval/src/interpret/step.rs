@@ -552,16 +552,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let old_stack = self.frame_idx();
                 let old_loc = self.frame().loc;
 
+                // Evaluation order consistent with assignment: destination first.
+                let dest_place = self.eval_place(destination)?;
                 let EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location } =
                     self.eval_callee_and_args(terminator, func, args, &destination)?;
 
-                let destination = self.eval_place(destination)?;
                 self.init_fn_call(
                     callee,
                     (fn_sig.abi(), fn_abi),
                     &args,
                     with_caller_location,
-                    &destination,
+                    &dest_place,
                     target,
                     if fn_abi.can_unwind { unwind } else { mir::UnwindAction::Unreachable },
                 )?;
