@@ -26,7 +26,7 @@ impl<'tcx> MirLint<'tcx> for CheckForceInline {
         if let Err(reason) =
             is_inline_valid_on_fn(tcx, def_id).and_then(|_| is_inline_valid_on_body(tcx, body))
         {
-            tcx.dcx().emit_err(crate::errors::InvalidForceInline {
+            tcx.dcx().emit_err(crate::diagnostics::InvalidForceInline {
                 attr_span,
                 callee_span: tcx.def_span(def_id),
                 callee: tcx.def_path_str(def_id),

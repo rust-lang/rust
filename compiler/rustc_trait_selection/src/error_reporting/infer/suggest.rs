@@ -17,13 +17,13 @@ use rustc_middle::ty::{
 use rustc_span::{Span, sym};
 use tracing::debug;
 
-use crate::error_reporting::TypeErrCtxt;
-use crate::error_reporting::infer::hir::Path;
-use crate::errors::{
+use crate::diagnostics::{
     ConsiderAddingAwait, FnConsiderCasting, FnConsiderCastingBoth, FnItemsAreDistinct, FnUniqTypes,
     FunctionPointerSuggestion, SuggestAccessingField, SuggestRemoveSemiOrReturnBinding,
     SuggestTuplePatternMany, SuggestTuplePatternOne, TypeErrorAdditionalDiags,
 };
+use crate::error_reporting::TypeErrCtxt;
+use crate::error_reporting::infer::hir::Path;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 enum StatementAsExpression {

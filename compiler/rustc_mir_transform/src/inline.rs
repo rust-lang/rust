@@ -253,7 +253,7 @@ impl<'tcx> Inliner<'tcx> for ForceInliner<'tcx> {
 
         let call_span = callsite.source_info.span;
         let callee = tcx.def_path_str(callsite.callee.def_id());
-        tcx.dcx().emit_err(crate::errors::ForceInlineFailure {
+        tcx.dcx().emit_err(crate::diagnostics::ForceInlineFailure {
             call_span,
             attr_span,
             caller_span: tcx.def_span(self.def_id),
@@ -262,7 +262,7 @@ impl<'tcx> Inliner<'tcx> for ForceInliner<'tcx> {
             callee: callee.clone(),
             reason,
             justification: justification
-                .map(|sym| crate::errors::ForceInlineJustification { sym, callee }),
+                .map(|sym| crate::diagnostics::ForceInlineJustification { sym, callee }),
         });
     }
 }

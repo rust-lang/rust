@@ -23,11 +23,11 @@ use rustc_span::{BytePos, DUMMY_SP, Ident, Span, sym};
 use tracing::{debug, instrument, warn};
 
 use super::nice_region_error::placeholder_error::Highlighted;
-use crate::error_reporting::TypeErrCtxt;
-use crate::errors::{
+use crate::diagnostics::{
     AmbiguousImpl, AmbiguousReturn, AnnotationRequired, InferenceBadError,
     SourceKindMultiSuggestion, SourceKindSubdiag,
 };
+use crate::error_reporting::TypeErrCtxt;
 use crate::infer::{InferCtxt, TyOrConstInferVar};
 
 pub enum TypeAnnotationNeeded {
