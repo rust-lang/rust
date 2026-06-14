@@ -6,6 +6,7 @@
     clippy::useless_conversion,
     clippy::diverging_sub_expression,
     clippy::let_unit_value,
+    self_type_conversion,
     unused
 )]
 
