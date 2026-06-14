@@ -3,7 +3,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::UNREACHABLE_CODE;
 
-use crate::errors::UnreachableDueToUninhabited;
+use crate::diagnostics::UnreachableDueToUninhabited;
 
 /// Lint unreachable code due to uninhabited values from function calls,
 /// and remove return edges from those calls.
