@@ -94,7 +94,9 @@ bitflags! {
         /// See [`TyAndLayout::pass_indirectly_in_non_rustic_abis`] for details.
         const PASS_INDIRECTLY_IN_NON_RUSTIC_ABIS = 1 << 5;
         const IS_SCALABLE        = 1 << 6;
-         // Any of these flags being set prevent field reordering optimisation.
+        /// If true, enum niche-filling may repack variant fields around the reserved niche.
+        const CAN_REPACK_VARIANT_AROUND_NICHE = 1 << 7;
+        // Any of these flags being set prevent field reordering optimisation.
         const FIELD_ORDER_UNOPTIMIZABLE = ReprFlags::IS_C.bits()
                                  | ReprFlags::IS_SIMD.bits()
                                  | ReprFlags::IS_SCALABLE.bits()
@@ -224,6 +226,12 @@ impl ReprOptions {
     /// was enabled for its declaration crate.
     pub fn can_randomize_type_layout(&self) -> bool {
         !self.inhibit_struct_field_reordering() && self.flags.contains(ReprFlags::RANDOMIZE_LAYOUT)
+    }
+
+    /// Returns `true` if enum niche-filling can try to pack variant fields around
+    /// the reserved niche when whole-variant placement fails.
+    pub fn can_repack_variant_around_niche(&self) -> bool {
+        self.flags.contains(ReprFlags::CAN_REPACK_VARIANT_AROUND_NICHE)
     }
 
     /// Returns `true` if this `#[repr()]` should inhibit union ABI optimisations.

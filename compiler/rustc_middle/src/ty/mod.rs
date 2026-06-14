@@ -1603,6 +1603,10 @@ impl<'tcx> TyCtxt<'tcx> {
             flags.insert(ReprFlags::RANDOMIZE_LAYOUT);
         }
 
+        if self.def_span(did).edition().at_least_edition_future() {
+            flags.insert(ReprFlags::CAN_REPACK_VARIANT_AROUND_NICHE);
+        }
+
         // box is special, on the one hand the compiler assumes an ordered layout, with the pointer
         // always at offset zero. On the other hand we want scalar abi optimizations.
         let is_box = self.is_lang_item(did.to_def_id(), LangItem::OwnedBox);

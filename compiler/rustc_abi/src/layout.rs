@@ -608,7 +608,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             let mut combined_seed = repr.field_shuffle_seed;
 
             let mut variants_info = IndexVec::<VariantIdx, _>::with_capacity(variants.len());
-            let mut variant_layouts = variants
+            let variant_layouts = variants
                 .iter()
                 .map(|v| {
                     let st = self.univariant(v, repr, StructKind::AlwaysSized).ok()?;
@@ -624,122 +624,167 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 })
                 .collect::<Option<IndexVec<VariantIdx, _>>>()?;
 
-            let largest_variant_index = variant_layouts
-                .iter_enumerated()
-                .max_by_key(|(_i, layout)| layout.size.bytes())
-                .map(|(i, _layout)| i)?;
+            let try_niche_variant =
+                |largest_variant_index: VariantIdx| -> Option<LayoutData<FieldIdx, VariantIdx>> {
+                    //so niche_variant candidates don't contaminate each other if one fails
+                    let mut variant_layouts = variant_layouts.clone();
 
-            let all_indices = variants.indices();
-            let needs_disc =
-                |index: VariantIdx| index != largest_variant_index && !absent(&variants[index]);
-            let niche_variants = RangeInclusive {
-                start: all_indices.clone().find(|v| needs_disc(*v)).unwrap(),
-                last: all_indices.rev().find(|v| needs_disc(*v)).unwrap(),
-            };
+                    let all_indices = variants.indices();
+                    let needs_disc = |index: VariantIdx| {
+                        index != largest_variant_index && !absent(&variants[index])
+                    };
+                    let niche_variants = RangeInclusive {
+                        start: all_indices.clone().find(|v| needs_disc(*v)).unwrap(),
+                        last: all_indices.rev().find(|v| needs_disc(*v)).unwrap(),
+                    };
 
-            let count =
-                (niche_variants.last.index() as u128 - niche_variants.start.index() as u128) + 1;
+                    let count = (niche_variants.last.index() as u128
+                        - niche_variants.start.index() as u128)
+                        + 1;
 
-            // Use the largest niche in the largest variant.
-            let niche = variant_layouts[largest_variant_index].largest_niche?;
-            let (niche_start, niche_scalar) = niche.reserve(dl, count)?;
-            let niche_offset = niche.offset;
-            let niche_size = niche.value.size(dl);
-            let size = variant_layouts[largest_variant_index].size.align_to(align);
+                    // Use the largest niche in the largest variant.
+                    let niche = variant_layouts[largest_variant_index].largest_niche?;
+                    let (niche_start, niche_scalar) = niche.reserve(dl, count)?;
+                    let niche_offset = niche.offset;
+                    let niche_size = niche.value.size(dl);
+                    let size = variant_layouts[largest_variant_index].size.align_to(align);
 
-            let all_variants_fit = variant_layouts.iter_enumerated_mut().all(|(i, layout)| {
-                if i == largest_variant_index {
-                    return true;
-                }
+                    let all_variants_fit =
+                        variant_layouts.iter_enumerated_mut().all(|(i, layout)| {
+                            if i == largest_variant_index {
+                                return true;
+                            }
 
-                layout.largest_niche = None;
+                            layout.largest_niche = None;
 
-                if layout.size <= niche_offset {
-                    // This variant will fit before the niche.
-                    return true;
-                }
+                            if layout.size <= niche_offset {
+                                // This variant will fit before the niche.
+                                return true;
+                            }
 
-                // Determine if it'll fit after the niche.
-                let this_align = variants_info[i].align_abi;
-                let this_offset = (niche_offset + niche_size).align_to(this_align);
+                            // Determine if it'll fit after the niche.
+                            let this_align = variants_info[i].align_abi;
+                            let this_offset = (niche_offset + niche_size).align_to(this_align);
 
-                if this_offset + layout.size > size {
-                    return false;
-                }
+                            if this_offset + layout.size <= size {
+                                // It'll fit, but we need to make some adjustments.
+                                for offset in layout.field_offsets.iter_mut() {
+                                    *offset += this_offset;
+                                }
 
-                // It'll fit, but we need to make some adjustments.
-                for offset in layout.field_offsets.iter_mut() {
-                    *offset += this_offset;
-                }
+                                // It can't be a Scalar or ScalarPair because the offset isn't 0.
+                                if !layout.is_uninhabited() {
+                                    layout.backend_repr = BackendRepr::Memory { sized: true };
+                                }
+                                layout.size += this_offset;
 
-                // It can't be a Scalar or ScalarPair because the offset isn't 0.
-                if !layout.is_uninhabited() {
-                    layout.backend_repr = BackendRepr::Memory { sized: true };
-                }
-                layout.size += this_offset;
+                                return true;
+                            }
+                            // Repacking is currently only on future edition. For editions where it is disabled,
+                            // fall back to the original niche-filling behaviour.
+                            if !repr.can_repack_variant_around_niche() {
+                                return false;
+                            }
+                            // The ordinary niche-filling path can only move a non-largest variant as a
+                            // whole before or after the chosen niche. If that fails, try placing the
+                            // variant's fields individually while treating the niche bytes as reserved.
+                            if let Some(repacked) = self.try_layout_variant_around_niche(
+                                &variants[i],
+                                repr,
+                                i,
+                                size,
+                                align,
+                                niche_offset,
+                                niche_size,
+                            ) {
+                                *layout = VariantLayout::from_layout(repacked);
+                                return true;
+                            }
 
-                true
-            });
+                            false
+                        });
 
-            if !all_variants_fit {
-                return None;
-            }
-
-            let largest_niche = Niche::from_scalar(dl, niche_offset, niche_scalar);
-
-            let others_zst = variant_layouts
-                .iter_enumerated()
-                .all(|(i, layout)| i == largest_variant_index || layout.size == Size::ZERO);
-            let same_size = size == variant_layouts[largest_variant_index].size;
-            let same_align = align == variants_info[largest_variant_index].align_abi;
-
-            let uninhabited = variant_layouts.iter().all(|v| v.is_uninhabited());
-            let abi = if same_size && same_align && others_zst {
-                match variant_layouts[largest_variant_index].backend_repr {
-                    // When the total alignment and size match, we can use the
-                    // same ABI as the scalar variant with the reserved niche.
-                    BackendRepr::Scalar(_) => BackendRepr::Scalar(niche_scalar),
-                    BackendRepr::ScalarPair(first, second) => {
-                        // Only the niche is guaranteed to be initialised,
-                        // so use union layouts for the other primitive.
-                        if niche_offset == Size::ZERO {
-                            BackendRepr::ScalarPair(niche_scalar, second.to_union())
-                        } else {
-                            BackendRepr::ScalarPair(first.to_union(), niche_scalar)
-                        }
+                    if !all_variants_fit {
+                        return None;
                     }
-                    _ => BackendRepr::Memory { sized: true },
+
+                    let largest_niche = Niche::from_scalar(dl, niche_offset, niche_scalar);
+
+                    let others_zst = variant_layouts
+                        .iter_enumerated()
+                        .all(|(i, layout)| i == largest_variant_index || layout.size == Size::ZERO);
+                    let same_size = size == variant_layouts[largest_variant_index].size;
+                    let same_align = align == variants_info[largest_variant_index].align_abi;
+
+                    let uninhabited = variant_layouts.iter().all(|v| v.is_uninhabited());
+                    let abi = if same_size && same_align && others_zst {
+                        match variant_layouts[largest_variant_index].backend_repr {
+                            // When the total alignment and size match, we can use the
+                            // same ABI as the scalar variant with the reserved niche.
+                            BackendRepr::Scalar(_) => BackendRepr::Scalar(niche_scalar),
+                            BackendRepr::ScalarPair(first, second) => {
+                                // Only the niche is guaranteed to be initialised,
+                                // so use union layouts for the other primitive.
+                                if niche_offset == Size::ZERO {
+                                    BackendRepr::ScalarPair(niche_scalar, second.to_union())
+                                } else {
+                                    BackendRepr::ScalarPair(first.to_union(), niche_scalar)
+                                }
+                            }
+                            _ => BackendRepr::Memory { sized: true },
+                        }
+                    } else {
+                        BackendRepr::Memory { sized: true }
+                    };
+
+                    let layout = LayoutData {
+                        variants: Variants::Multiple {
+                            tag: niche_scalar,
+                            tag_encoding: TagEncoding::Niche {
+                                untagged_variant: largest_variant_index,
+                                niche_variants,
+                                niche_start,
+                            },
+                            tag_field: FieldIdx::new(0),
+                            variants: variant_layouts,
+                        },
+                        fields: FieldsShape::Arbitrary {
+                            offsets: [niche_offset].into(),
+                            in_memory_order: [FieldIdx::new(0)].into(),
+                        },
+                        backend_repr: abi,
+                        largest_niche,
+                        uninhabited,
+                        size,
+                        align: AbiAlign::new(align),
+                        max_repr_align,
+                        unadjusted_abi_align,
+                        randomization_seed: combined_seed,
+                    };
+
+                    Some(layout)
+                };
+            if repr.can_repack_variant_around_niche() {
+                let max_variant_size = variant_layouts.iter().map(|layout| layout.size).max()?;
+                // Chooses the first max-sized niche-providing variant whose layout succeeds.
+                for (largest_variant_index, _) in
+                    variant_layouts.iter_enumerated().filter(|&(_, layout)| {
+                        layout.size == max_variant_size && layout.largest_niche.is_some()
+                    })
+                {
+                    if let Some(layout) = try_niche_variant(largest_variant_index) {
+                        return Some(layout);
+                    }
                 }
+
+                None
             } else {
-                BackendRepr::Memory { sized: true }
-            };
-
-            let layout = LayoutData {
-                variants: Variants::Multiple {
-                    tag: niche_scalar,
-                    tag_encoding: TagEncoding::Niche {
-                        untagged_variant: largest_variant_index,
-                        niche_variants,
-                        niche_start,
-                    },
-                    tag_field: FieldIdx::new(0),
-                    variants: variant_layouts,
-                },
-                fields: FieldsShape::Arbitrary {
-                    offsets: [niche_offset].into(),
-                    in_memory_order: [FieldIdx::new(0)].into(),
-                },
-                backend_repr: abi,
-                largest_niche,
-                uninhabited,
-                size,
-                align: AbiAlign::new(align),
-                max_repr_align,
-                unadjusted_abi_align,
-                randomization_seed: combined_seed,
-            };
-
-            Some(layout)
+                let largest_variant_index = variant_layouts
+                    .iter_enumerated()
+                    .max_by_key(|(_i, layout)| layout.size.bytes())
+                    .map(|(i, _layout)| i)?;
+                try_niche_variant(largest_variant_index)
+            }
         };
 
         let niche_filling_layout = calculate_niche_filling_layout();
@@ -1089,6 +1134,121 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         };
 
         Ok(best_layout)
+    }
+
+    fn try_layout_variant_around_niche<
+        'a,
+        FieldIdx: Idx,
+        VariantIdx: Idx,
+        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
+    >(
+        &self,
+        fields: &IndexSlice<FieldIdx, F>,
+        repr: &ReprOptions,
+        variant_index: VariantIdx,
+        total_size: Size,
+        total_align: Align,
+        niche_offset: Size,
+        niche_size: Size,
+    ) -> Option<LayoutData<FieldIdx, VariantIdx>> {
+        let dl = self.cx.data_layout();
+
+        if repr.inhibit_struct_field_reordering() {
+            return None;
+        }
+        if fields.iter().any(|f| f.is_unsized()) {
+            return None;
+        }
+
+        // This is only a necessary condition: alignment can still make placement fail below.
+        let min_used_size = fields.iter().try_fold(niche_size, |size, field| {
+            if field.is_zst() { Some(size) } else { size.checked_add(field.size, dl) }
+        })?;
+        if min_used_size > total_size {
+            return None;
+        }
+
+        let mut offsets = IndexVec::from_elem(Size::ZERO, fields);
+        let mut in_memory_order: IndexVec<u32, FieldIdx> = fields.indices().collect();
+
+        in_memory_order.raw.sort_by_key(|&i| {
+            let field = &fields[i];
+
+            let field_align = if let Some(pack) = repr.pack {
+                field.align.min(AbiAlign::new(pack))
+            } else {
+                field.align
+            };
+
+            (cmp::Reverse(field_align.abi.bytes()), cmp::Reverse(field.size.bytes()))
+        });
+
+        let niche_end = niche_offset.checked_add(niche_size, dl)?;
+        let mut occupied = vec![(niche_offset, niche_end)];
+
+        let mut max_repr_align = repr.align;
+        let mut unadjusted_abi_align =
+            if repr.pack.is_some() { dl.i8_align } else { dl.aggregate_align };
+
+        for &i in &in_memory_order {
+            let field = &fields[i];
+
+            let field_align = if let Some(pack) = repr.pack {
+                field.align.min(AbiAlign::new(pack))
+            } else {
+                field.align
+            };
+
+            max_repr_align = max_repr_align.max(field.max_repr_align);
+            unadjusted_abi_align = unadjusted_abi_align.max(field_align.abi);
+
+            let mut candidate = Size::ZERO;
+            'search: loop {
+                candidate = candidate.align_to(field_align.abi);
+
+                let end = candidate.checked_add(field.size, dl)?;
+                if end > total_size {
+                    return None;
+                }
+
+                for &(occupied_start, occupied_end) in &occupied {
+                    if end <= occupied_start {
+                        break;
+                    }
+                    if candidate < occupied_end {
+                        candidate = occupied_end;
+                        continue 'search;
+                    }
+                }
+
+                offsets[i] = candidate;
+
+                if !field.is_zst() {
+                    occupied.push((candidate, end));
+                    occupied.sort_by_key(|&(start, _end)| start);
+                }
+
+                break;
+            }
+        }
+
+        in_memory_order.raw.sort_by_key(|&i| offsets[i]);
+
+        Some(LayoutData {
+            variants: Variants::Single { index: variant_index },
+            fields: FieldsShape::Arbitrary { offsets, in_memory_order },
+            backend_repr: BackendRepr::Memory { sized: true },
+            largest_niche: None,
+            uninhabited: fields.iter().any(|f| f.is_uninhabited()),
+            align: AbiAlign::new(total_align),
+            size: total_size,
+            max_repr_align,
+            unadjusted_abi_align,
+            randomization_seed: fields
+                .iter()
+                .fold(Hash64::ZERO, |acc, f| acc.wrapping_add(f.randomization_seed))
+                .wrapping_add(repr.field_shuffle_seed),
+        })
     }
 
     fn univariant_biased<
