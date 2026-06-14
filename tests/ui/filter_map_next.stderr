@@ -1,15 +1,17 @@
 error: called `filter_map(..).next()` on an `Iterator`. This is more succinctly expressed by calling `.find_map(..)` instead
-  --> tests/ui/filter_map_next.rs:7:26
+  --> tests/ui/filter_map_next.rs:6:32
    |
-LL |       let _: Option<u32> = vec![1, 2, 3, 4, 5, 6]
-   |  __________________________^
-...  |
-LL | |         })
-LL | |         .next();
-   | |_______________^
+LL |     let element: Option<i32> = a.iter().filter_map(|s| s.parse().ok()).next();
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `a.iter().find_map(|s| s.parse().ok())`
    |
    = note: `-D clippy::filter-map-next` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::filter_map_next)]`
 
-error: aborting due to 1 previous error
+error: called `filter_map(..).next()` on an `Iterator`. This is more succinctly expressed by calling `.find_map(..)` instead
+  --> tests/ui/filter_map_next.rs:20:26
+   |
+LL |     let _: Option<i32> = a.iter().filter_map(|s| s.parse().ok()).next();
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `a.iter().find_map(|s| s.parse().ok())`
+
+error: aborting due to 2 previous errors
 
