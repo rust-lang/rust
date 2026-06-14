@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
-use clippy_utils::source::snippet;
+use clippy_utils::source::snippet_with_applicability;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
@@ -20,14 +20,15 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg:
             |diag| {
                 let sugg_msg = "use `.find_map(..)` instead";
 
-                let filter_snippet = snippet(cx, arg.span, "..");
+                let mut app = Applicability::MachineApplicable;
+                let filter_snippet = snippet_with_applicability(cx, arg.span, "..", &mut app);
                 if filter_snippet.lines().count() <= 1 {
-                    let iter_snippet = snippet(cx, recv.span, "_");
+                    let iter_snippet = snippet_with_applicability(cx, recv.span, "_", &mut app);
                     diag.span_suggestion_verbose(
                         expr.span,
                         sugg_msg,
                         format!("{iter_snippet}.find_map({filter_snippet})"),
-                        Applicability::MachineApplicable,
+                        app,
                     );
                 } else {
                     diag.help(sugg_msg);
