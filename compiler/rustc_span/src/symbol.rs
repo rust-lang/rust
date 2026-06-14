@@ -816,6 +816,7 @@ symbols! {
         diagnostic_on_type_error,
         diagnostic_on_unknown,
         diagnostic_on_unmatch_args,
+        diagnostic_on_unmatched_args,
         dialect,
         direct,
         discriminant_kind,

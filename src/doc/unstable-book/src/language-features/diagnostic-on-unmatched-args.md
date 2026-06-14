@@ -1,4 +1,4 @@
-# `diagnostic_on_unmatch_args`
+# `diagnostic_on_unmatched_args`
 
 The tracking issue for this feature is: [#155642]
 
@@ -6,7 +6,7 @@ The tracking issue for this feature is: [#155642]
 
 ------------------------
 
-The `diagnostic_on_unmatch_args` feature adds the
+The `diagnostic_on_unmatched_args` feature adds the
 `#[diagnostic::on_unmatched_args(...)]` attribute for declarative macros.
 It lets a macro definition customize diagnostics for matcher failures after all arms have been
 tried, such as incomplete invocations or trailing extra arguments.
@@ -16,7 +16,7 @@ It is currently used for errors emitted by declarative macro matching itself; fr
 errors still use their existing diagnostics.
 
 ```rust,compile_fail
-#![feature(diagnostic_on_unmatch_args)]
+#![feature(diagnostic_on_unmatched_args)]
 
 #[diagnostic::on_unmatched_args(
     message = "invalid arguments to {This} macro invocation",

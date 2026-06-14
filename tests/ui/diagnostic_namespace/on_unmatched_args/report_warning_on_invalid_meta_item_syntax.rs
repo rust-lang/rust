@@ -1,5 +1,5 @@
 //@ check-pass
-#![feature(diagnostic_on_unmatch_args)]
+#![feature(diagnostic_on_unmatched_args)]
 
 #[diagnostic::on_unmatched_args = "foo"]
 //~^ WARN malformed `diagnostic::on_unmatched_args` attribute [malformed_diagnostic_attributes]

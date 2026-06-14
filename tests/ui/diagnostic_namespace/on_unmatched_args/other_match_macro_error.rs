@@ -1,4 +1,4 @@
-#![feature(diagnostic_on_unmatch_args)]
+#![feature(diagnostic_on_unmatched_args)]
 
 #[diagnostic::on_unmatched_args(
     message = "invalid route method",

@@ -1,4 +1,4 @@
-#![feature(diagnostic_on_unmatch_args)]
+#![feature(diagnostic_on_unmatched_args)]
 
 #[macro_export]
 #[diagnostic::on_unmatched_args(

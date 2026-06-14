@@ -1,4 +1,4 @@
-#![feature(diagnostic_on_unmatch_args)]
+#![feature(diagnostic_on_unmatched_args)]
 
 #[diagnostic::on_unmatched_args(
     note = "this macro expects a type and a value, like `pair!(u8, 0)`",
