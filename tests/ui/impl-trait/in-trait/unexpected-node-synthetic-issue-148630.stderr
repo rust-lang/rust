@@ -1,0 +1,89 @@
+error[E0277]: expected a `FnOnce(&'a mut i32)` closure, found `(dyn Foo + 'static)`
+  --> $DIR/unexpected-node-synthetic-issue-148630.rs:8:17
+   |
+LL |     fn foo() -> impl Sized
+   |                 ^^^^^^^^^^ expected an `FnOnce(&'a mut i32)` closure, found `(dyn Foo + 'static)`
+   |
+   = help: the trait `for<'a> FnOnce(&'a mut i32)` is not implemented for `(dyn Foo + 'static)`
+
+error[E0277]: expected a `FnOnce(&'a mut i32)` closure, found `(dyn Foo + 'static)`
+  --> $DIR/unexpected-node-synthetic-issue-148630.rs:8:17
+   |
+LL |     fn foo() -> impl Sized
+   |                 ^^^^^^^^^^ expected an `FnOnce(&'a mut i32)` closure, found `(dyn Foo + 'static)`
+   |
+   = help: the trait `for<'a> FnOnce(&'a mut i32)` is not implemented for `(dyn Foo + 'static)`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0277]: expected a `FnOnce(&'a mut i32)` closure, found `(dyn Foo + 'static)`
+  --> $DIR/unexpected-node-synthetic-issue-148630.rs:8:5
+   |
+LL | /     fn foo() -> impl Sized
+...  |
+LL | |     where
+LL | |         for<'a> <dyn Foo as FnOnce<(&'a mut i32,)>>::Output: Future<Output = ()> + 'a,
+   | |______________________________________________________________________________________^ expected an `FnOnce(&'a mut i32)` closure, found `(dyn Foo + 'static)`
+   |
+   = help: the trait `for<'a> FnOnce(&'a mut i32)` is not implemented for `(dyn Foo + 'static)`
+
+error[E0277]: expected a `FnOnce(&'a mut i32)` closure, found `(dyn Foo + 'static)`
+  --> $DIR/unexpected-node-synthetic-issue-148630.rs:8:17
+   |
+LL |     fn foo() -> impl Sized
+   |                 ^^^^^^^^^^ expected an `FnOnce(&'a mut i32)` closure, found `(dyn Foo + 'static)`
+   |
+   = help: the trait `for<'a> FnOnce(&'a mut i32)` is not implemented for `(dyn Foo + 'static)`
+
+error[E0038]: the trait `Foo` is not dyn compatible
+  --> $DIR/unexpected-node-synthetic-issue-148630.rs:17:84
+   |
+LL |         for<'a> <dyn Foo as FnOnce<(&'a mut i32,)>>::Output: Future<Output = ()> + 'a,
+   |                                                                                    ^^ `Foo` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/unexpected-node-synthetic-issue-148630.rs:8:8
+   |
+LL | trait Foo {
+   |       --- this trait is not dyn compatible...
+LL |     fn foo() -> impl Sized
+   |        ^^^ ...because associated function `foo` has no `self` parameter
+help: consider turning `foo` into a method by giving it a `&self` argument
+   |
+LL |     fn foo(&self) -> impl Sized
+   |            +++++
+help: alternatively, consider constraining `foo` so it does not apply to trait objects
+   |
+LL |         for<'a> <dyn Foo as FnOnce<(&'a mut i32,)>>::Output: Future<Output = ()> + 'a, Self: Sized
+   |                                                                                        +++++++++++
+
+error[E0277]: expected a `FnOnce(&'a mut i32)` closure, found `(dyn Foo + 'static)`
+  --> $DIR/unexpected-node-synthetic-issue-148630.rs:8:22
+   |
+LL |     fn foo() -> impl Sized
+   |                      ^^^^^ expected an `FnOnce(&'a mut i32)` closure, found `(dyn Foo + 'static)`
+   |
+   = help: the trait `for<'a> FnOnce(&'a mut i32)` is not implemented for `(dyn Foo + 'static)`
+
+error[E0277]: expected a `FnOnce(&'a mut i32)` closure, found `(dyn Foo + 'static)`
+  --> $DIR/unexpected-node-synthetic-issue-148630.rs:8:17
+   |
+LL |     fn foo() -> impl Sized
+   |                 ^^^^^^^^^^ expected an `FnOnce(&'a mut i32)` closure, found `(dyn Foo + 'static)`
+   |
+   = help: the trait `for<'a> FnOnce(&'a mut i32)` is not implemented for `(dyn Foo + 'static)`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0277]: expected a `FnOnce(&'a mut i32)` closure, found `(dyn Foo + 'static)`
+  --> $DIR/unexpected-node-synthetic-issue-148630.rs:8:17
+   |
+LL |     fn foo() -> impl Sized
+   |                 ^^^^^^^^^^ expected an `FnOnce(&'a mut i32)` closure, found `(dyn Foo + 'static)`
+   |
+   = help: the trait `for<'a> FnOnce(&'a mut i32)` is not implemented for `(dyn Foo + 'static)`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0038, E0277.
+For more information about an error, try `rustc --explain E0038`.

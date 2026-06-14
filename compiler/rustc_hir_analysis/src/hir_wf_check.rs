@@ -189,6 +189,9 @@ pub(super) fn diagnostic_hir_wf_check<'tcx>(
                     vec![]
                 }
             }
+            // Synthetic nodes are created by query feeding for items like RPITIT
+            // opaque types that have no corresponding HIR type to walk.
+            hir::Node::Synthetic => vec![],
             ref node => bug!("Unexpected node {:?}", node),
         },
         WellFormedLoc::Param { function: _, param_idx } => {
