@@ -1,5 +1,5 @@
 error: unexpected end of macro invocation
-  --> $DIR/feature-gate-diagnostic-on-unmatch-args.rs:12:13
+  --> $DIR/feature-gate-diagnostic-on-unmatched-args.rs:12:13
    |
 LL | macro_rules! pair {
    | ----------------- when calling this macro
@@ -8,7 +8,7 @@ LL |     pair!(u8);
    |             ^ missing tokens in macro arguments
    |
 note: while trying to match `,`
-  --> $DIR/feature-gate-diagnostic-on-unmatch-args.rs:7:12
+  --> $DIR/feature-gate-diagnostic-on-unmatched-args.rs:7:12
    |
 LL |     ($ty:ty, $value:expr) => {};
    |            ^

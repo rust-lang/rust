@@ -1,4 +1,4 @@
-warning: this format argument is not allowed in `#[diagnostic::on_unmatch_args]`
+warning: this format argument is not allowed in `#[diagnostic::on_unmatched_args]`
   --> $DIR/report_warning_on_invalid_formats.rs:5:17
    |
 LL |     message = "{T}! is missing arguments",

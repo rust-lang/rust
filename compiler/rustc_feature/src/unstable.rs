@@ -515,7 +515,7 @@ declare_features! (
     /// Allows giving unresolved imports a custom diagnostic message
     (unstable, diagnostic_on_unknown, "1.96.0", Some(152900)),
     /// Allows macros to customize macro argument matcher diagnostics.
-    (unstable, diagnostic_on_unmatch_args, "1.97.0", Some(155642)),
+    (unstable, diagnostic_on_unmatched_args, "1.97.0", Some(155642)),
     /// Allows `#[doc(cfg(...))]`.
     (unstable, doc_cfg, "1.21.0", Some(43781)),
     /// Allows `#[doc(masked)]`.

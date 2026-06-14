@@ -33,7 +33,7 @@ pub(super) fn failed_to_match_macro(
     args: FailedMacro<'_>,
     body: &TokenStream,
     rules: &[MacroRule],
-    on_unmatch_args: Option<&Directive>,
+    on_unmatched_args: Option<&Directive>,
 ) -> (Span, ErrorGuaranteed) {
     debug!("failed to match macro");
     let def_head_span = if !def_span.is_dummy() && !psess.source_map().is_imported(def_span) {
@@ -77,7 +77,7 @@ pub(super) fn failed_to_match_macro(
     let CustomDiagnostic {
         message: custom_message, label: custom_label, notes: custom_notes, ..
     } = {
-        on_unmatch_args
+        on_unmatched_args
             .map(|directive| directive.eval(None, &FormatArgs { this: name.to_string(), .. }))
             .unwrap_or_default()
     };
