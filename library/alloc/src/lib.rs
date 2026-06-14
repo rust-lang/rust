@@ -132,7 +132,6 @@
 #![feature(inplace_iteration)]
 #![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
-#![feature(layout_for_ptr)]
 #![feature(legacy_receiver_trait)]
 #![feature(likely_unlikely)]
 #![feature(local_waker)]
