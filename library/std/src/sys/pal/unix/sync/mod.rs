@@ -9,8 +9,10 @@
 )))]
 #![forbid(unsafe_op_in_unsafe_fn)]
 
+#[cfg(not(target_vendor = "apple"))]
 mod condvar;
 mod mutex;
 
+#[cfg(not(target_vendor = "apple"))]
 pub use condvar::Condvar;
 pub use mutex::Mutex;
