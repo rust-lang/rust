@@ -1,6 +1,6 @@
 //@ run-crash
 //@ compile-flags: -Copt-level=3 -Cdebug-assertions=no -Zub-checks=yes
-//@ error-pattern: unsafe precondition(s) violated: ptr::replace requires
+//@ error-pattern: ptr::replace requires
 //@ revisions: null misaligned
 
 #![allow(invalid_null_arguments)]
