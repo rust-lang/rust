@@ -34,8 +34,17 @@ fn square<T: std::ops::Mul<Output = T> + Copy>(x: &T) -> T {
 // F64-NEXT: ; Function Attrs: {{.*}}
 // F64-NEXT: define internal {{.*}} void
 // F64-NEXT: start:
-// F64-NEXT:   {{(tail )?}}call {{(fastcc )?}}void @diffe_{{.*}}(double {{.*}}, ptr {{.*}})
-// F64-NEXT: ret void
+// F64-NEXT:   {{(tail )?}}call {{.*}}{ double } @diffe_{{.*}}(ptr {{.*}}, ptr {{.*}}, double {{.*}})
+// F64: ret void
+
+// Ensure that `square::<f64>` is generated so that it can be differentiated
+
+// F64-LABEL: ; generic::square::<f64>
+// F64-NEXT: ; Function Attrs: {{.*}}
+// F64-NEXT: define internal {{.*}} double
+// F64-NEXT: start:
+// F64-NOT: ret
+// F64: fmul double
 
 // Main-LABEL: ; generic::main
 // Main: ; call generic::square::<f32>
