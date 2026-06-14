@@ -70,11 +70,11 @@ use rustc_middle::ty::{
 use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Pos, Span, sym};
 use tracing::{debug, instrument};
 
+use crate::diagnostics::{ObligationCauseFailureCode, TypeErrorAdditionalDiags};
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::traits::ambiguity::{
     CandidateSource, compute_applicable_impls_for_diagnostics,
 };
-use crate::errors::{ObligationCauseFailureCode, TypeErrorAdditionalDiags};
 use crate::infer;
 use crate::infer::relate::{self, RelateResult, TypeRelation};
 use crate::infer::{InferCtxt, InferCtxtExt as _, TypeTrace, ValuePairs};
