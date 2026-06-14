@@ -348,7 +348,7 @@ impl<'tcx> InstanceKind<'tcx> {
     }
 }
 
-fn type_length<'tcx>(item: impl TypeVisitable<TyCtxt<'tcx>>) -> usize {
+pub fn type_length<'tcx>(item: impl TypeVisitable<TyCtxt<'tcx>>) -> usize {
     struct Visitor<'tcx> {
         type_length: usize,
         cache: FxHashMap<Ty<'tcx>, usize>,
