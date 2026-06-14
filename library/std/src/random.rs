@@ -1,7 +1,9 @@
 //! Random value generation.
 
 #[unstable(feature = "random", issue = "130703")]
-pub use core::random::*;
+pub use core::random::Distribution;
+#[stable(feature = "random_source", since = "CURRENT_RUSTC_VERSION")]
+pub use core::random::RandomSource;
 
 use crate::sys::random as sys;
 
@@ -61,10 +63,10 @@ use crate::sys::random as sys;
 /// [`get-random-bytes`]: https://github.com/WebAssembly/WASI/blob/main/proposals/random/imports.md#get-random-bytes-func
 #[doc(alias = "getrandom", alias = "getentropy", alias = "arc4random")]
 #[derive(Default, Debug, Clone, Copy)]
-#[unstable(feature = "random", issue = "130703")]
+#[stable(feature = "random_source", since = "CURRENT_RUSTC_VERSION")]
 pub struct DefaultRandomSource;
 
-#[unstable(feature = "random", issue = "130703")]
+#[stable(feature = "random_source", since = "CURRENT_RUSTC_VERSION")]
 impl RandomSource for DefaultRandomSource {
     fn fill_bytes(&mut self, bytes: &mut [u8]) {
         sys::fill_bytes(bytes)

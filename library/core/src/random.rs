@@ -3,7 +3,7 @@
 use crate::ops::RangeFull;
 
 /// A source of randomness.
-#[unstable(feature = "random", issue = "130703")]
+#[stable(feature = "random_source", since = "CURRENT_RUSTC_VERSION")]
 pub trait RandomSource {
     /// Fills `bytes` with random bytes.
     ///
@@ -11,6 +11,7 @@ pub trait RandomSource {
     /// with a larger buffer. A `RandomSource` is allowed to return different bytes for those two
     /// cases. For instance, this allows a `RandomSource` to generate a word at a time and throw
     /// part of it away if not needed.
+    #[stable(feature = "random_source", since = "CURRENT_RUSTC_VERSION")]
     fn fill_bytes(&mut self, bytes: &mut [u8]);
 }
 
