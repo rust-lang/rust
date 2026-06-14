@@ -50,6 +50,8 @@ where
 {
     fn self_ty(self) -> I::Ty;
 
+    fn args(self) -> I::GenericArgs;
+
     fn trait_ref(self, cx: I) -> ty::TraitRef<I>;
 
     fn with_replaced_self_ty(self, cx: I, self_ty: I::Ty) -> Self;
@@ -541,7 +543,7 @@ where
         let cx = self.cx();
         cx.for_each_relevant_impl(
             goal.predicate.trait_def_id(cx),
-            goal.predicate.self_ty(),
+            goal.predicate.args(),
             |impl_def_id| -> Result<_, _> {
                 // For every `default impl`, there's always a non-default `impl`
                 // that will *also* apply. There's no reason to register a candidate

@@ -36,6 +36,10 @@ where
         self.self_ty()
     }
 
+    fn args(self) -> I::GenericArgs {
+        self.trait_ref.args
+    }
+
     fn trait_ref(self, _: I) -> ty::TraitRef<I> {
         self.trait_ref
     }
@@ -1253,7 +1257,7 @@ where
             let mut disqualifying_impl = None;
             self.cx().for_each_relevant_impl(
                 goal.predicate.def_id(),
-                goal.predicate.self_ty(),
+                goal.predicate.trait_ref.args,
                 |impl_def_id| {
                     disqualifying_impl = Some(impl_def_id);
                 },

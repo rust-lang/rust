@@ -27,6 +27,10 @@ where
         self.self_ty()
     }
 
+    fn args(self) -> I::GenericArgs {
+        self.trait_ref.args
+    }
+
     fn trait_ref(self, _: I) -> ty::TraitRef<I> {
         self.trait_ref
     }
