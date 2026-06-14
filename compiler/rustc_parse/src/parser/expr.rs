@@ -2646,7 +2646,7 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let attrs = self.parse_outer_attributes()?;
         self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
-            let pat = Box::new(this.parse_pat_no_top_alt(Some(Expected::ParameterName), None)?);
+            let pat = Box::new(this.parse_pat_no_top_alt(Some(Expected::ParamName), None)?);
             let ty = if this.eat(exp!(Colon)) {
                 this.parse_ty()?
             } else {

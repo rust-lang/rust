@@ -1843,16 +1843,17 @@ pub(crate) struct AttributeOnEmptyType {
 }
 
 #[derive(Diagnostic)]
-#[diag("patterns aren't allowed in methods without bodies", code = E0642)]
-pub(crate) struct PatternMethodParamWithoutBody {
+#[diag("parameters can't have complex patterns in {$context}", code = E0642)]
+pub(crate) struct ComplexParamPat {
     #[primary_span]
     #[suggestion(
-        "give this argument a name or use an underscore to ignore it",
+        "give this parameter a name or use an underscore to ignore it",
         code = "_",
         applicability = "machine-applicable",
         style = "verbose"
     )]
     pub span: Span,
+    pub context: &'static str,
 }
 
 #[derive(Diagnostic)]

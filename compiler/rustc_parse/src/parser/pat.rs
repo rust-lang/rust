@@ -34,20 +34,20 @@ use crate::{exp, maybe_recover_from_interpolated_ty_qpath};
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum Expected {
-    ParameterName,
-    ArgumentName,
-    Identifier,
-    BindingPattern,
+    ParamName,
+    TyOrParamName,
+    Ident,
+    BindingPat,
 }
 
 impl Expected {
     // FIXME(#100717): migrate users of this to proper localization
     fn to_string_or_fallback(expected: Option<Expected>) -> &'static str {
         match expected {
-            Some(Expected::ParameterName) => "parameter name",
-            Some(Expected::ArgumentName) => "argument name",
-            Some(Expected::Identifier) => "identifier",
-            Some(Expected::BindingPattern) => "binding pattern",
+            Some(Expected::ParamName) => "parameter name",
+            Some(Expected::TyOrParamName) => "type or parameter name",
+            Some(Expected::Ident) => "identifier",
+            Some(Expected::BindingPat) => "binding pattern",
             None => "pattern",
         }
     }
@@ -319,7 +319,7 @@ impl<'a> Parser<'a> {
         }
 
         self.parse_pat_before_ty(
-            Some(Expected::ParameterName),
+            Some(Expected::ParamName),
             RecoverComma::No,
             PatternLocation::FunctionParameter,
         )
@@ -904,7 +904,7 @@ impl<'a> Parser<'a> {
         // A typoed rest pattern `...`.
         self.bump(); // `...`
 
-        if let Some(Expected::ParameterName) = expected {
+        if let Some(Expected::ParamName) = expected {
             // We have `...` in a closure argument, likely meant to be var-arg, which aren't
             // supported in closures (#146489).
             PatKind::Err(self.dcx().emit_err(DotDotDotRestPattern {
@@ -1088,7 +1088,7 @@ impl<'a> Parser<'a> {
         }
 
         // Parse the pattern we hope to be an identifier.
-        let mut pat = self.parse_pat_no_top_alt(Some(Expected::Identifier), None)?;
+        let mut pat = self.parse_pat_no_top_alt(Some(Expected::Ident), None)?;
 
         // If we don't have `mut $ident (@ pat)?`, error.
         if let PatKind::Ident(BindingMode(br @ ByRef::No, m @ Mutability::Not), ..) = &mut pat.kind
@@ -1366,7 +1366,7 @@ impl<'a> Parser<'a> {
         }
 
         let sub = if self.eat(exp!(At)) {
-            Some(Box::new(self.parse_pat_no_top_alt(Some(Expected::BindingPattern), None)?))
+            Some(Box::new(self.parse_pat_no_top_alt(Some(Expected::BindingPat), None)?))
         } else {
             None
         };
@@ -1484,7 +1484,7 @@ impl<'a> Parser<'a> {
             // We cannot use `parse_pat_ident()` since it will complain `box`
             // is not an identifier.
             let sub = if self.eat(exp!(At)) {
-                Some(Box::new(self.parse_pat_no_top_alt(Some(Expected::BindingPattern), None)?))
+                Some(Box::new(self.parse_pat_no_top_alt(Some(Expected::BindingPat), None)?))
             } else {
                 None
             };

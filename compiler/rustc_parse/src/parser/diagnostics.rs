@@ -29,15 +29,15 @@ use super::{
 use crate::errors::{
     AddParen, AmbiguousPlus, AsyncMoveBlockIn2015, AsyncUseBlockIn2015, AttributeOnParamType,
     AwaitSuggestion, BadQPathStage2, BadTypePlus, BadTypePlusSub, ColonAsSemi,
-    ComparisonOperatorsCannotBeChained, ComparisonOperatorsCannotBeChainedSugg,
+    ComparisonOperatorsCannotBeChained, ComparisonOperatorsCannotBeChainedSugg, ComplexParamPat,
     DocCommentDoesNotDocumentAnything, DocCommentOnParamType, DoubleColonInBound,
     ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg, GenericParamsWithoutAngleBrackets,
     GenericParamsWithoutAngleBracketsSugg, HelpIdentifierStartsWithNumber, HelpUseLatestEdition,
     InInTypo, IncorrectAwait, IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse,
-    MisspelledKw, PatternMethodParamWithoutBody, QuestionMarkInType, QuestionMarkInTypeSugg,
-    SelfParamNotFirst, StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg,
-    SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma, TernaryOperator,
-    TernaryOperatorSuggestion, UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
+    MisspelledKw, QuestionMarkInType, QuestionMarkInTypeSugg, SelfParamNotFirst,
+    StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg, SuggAddMissingLetStmt,
+    SuggEscapeIdentifier, SuggRemoveComma, TernaryOperator, TernaryOperatorSuggestion,
+    UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
     UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead, WrapType,
 };
 use crate::exp;
@@ -2271,6 +2271,7 @@ impl<'a> Parser<'a> {
                 if matches!(fn_parse_mode.context, crate::parser::item::FnContext::Trait)
                     && (fn_parse_mode.req_name)(ed, IsDotDotDot::No)
                 {
+                    // FIXME: and beyond
                     err.note("anonymous parameters are removed in the 2018 edition (see RFC 1685)");
                 }
             };
@@ -2389,16 +2390,23 @@ impl<'a> Parser<'a> {
     }
 
     #[cold]
-    pub(super) fn recover_arg_parse(&mut self) -> PResult<'a, (Box<ast::Pat>, Box<ast::Ty>)> {
-        let pat = self.parse_pat_no_top_alt(Some(Expected::ArgumentName), None)?;
+    pub(super) fn recover_complex_param_pat(
+        &mut self,
+        context: FnContext,
+    ) -> PResult<'a, (Box<ast::Pat>, Box<ast::Ty>)> {
+        let pat = self.parse_pat_no_top_alt(Some(Expected::TyOrParamName), None)?;
         self.expect(exp!(Colon))?;
         let ty = self.parse_ty()?;
 
-        self.dcx().emit_err(PatternMethodParamWithoutBody { span: pat.span });
+        let context = match context {
+            FnContext::FnPtrTy => "function pointer types",
+            FnContext::Trait => "associated functions in traits in Rust 2015",
+            _ => unreachable!(),
+        };
+        let guar = self.dcx().emit_err(ComplexParamPat { span: pat.span, context });
 
-        // Pretend the pattern is `_`, to avoid duplicate errors from AST validation.
         let pat = Box::new(Pat {
-            kind: PatKind::Wild,
+            kind: PatKind::Err(guar),
             span: pat.span,
             id: ast::DUMMY_NODE_ID,
             tokens: None,
