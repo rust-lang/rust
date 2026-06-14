@@ -26,7 +26,7 @@ use rustc_session::config::{
 use rustc_session::{EarlyDiagCtxt, Session, filesearch};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMapInputs;
-use rustc_span::{SessionGlobals, Symbol, sym};
+use rustc_span::{Symbol, sym};
 use rustc_target::spec::Target;
 use tracing::info;
 
@@ -221,56 +221,36 @@ pub(crate) fn run_in_thread_pool_with_globals<
         .release_thread_handler(move || proxy__.release_thread())
         .num_threads(threads)
         .deadlock_handler(move || {
-            // On deadlock, creates a new thread and forwards information in thread
-            // locals to it. The new thread runs the deadlock handler.
+            // On deadlock, one of thread pool's workers runs the deadlock handler.
 
-            let current_gcx2 = current_gcx2.clone();
-            let registry = rustc_thread_pool::Registry::current();
-            let session_globals = rustc_span::with_session_globals(|session_globals| {
-                session_globals as *const SessionGlobals as usize
+            // FIXME: consider unwinding now that separate thread is no more
+            let on_panic = defer(|| {
+                // Split this long string so that it doesn't cause rustfmt to
+                // give up on the entire builder expression.
+                // <https://github.com/rust-lang/rustfmt/issues/3863>
+                const MESSAGE: &str = "\
+internal compiler error: query cycle handler panicked, aborting process";
+                eprintln!("{MESSAGE}");
+                // We need to abort here as we failed to resolve the deadlock,
+                // otherwise the compiler could just hang,
+                process::abort();
             });
-            thread::Builder::new()
-                .name("rustc query cycle handler".to_string())
-                .spawn(move || {
-                    let on_panic = defer(|| {
-                        // Split this long string so that it doesn't cause rustfmt to
-                        // give up on the entire builder expression.
-                        // <https://github.com/rust-lang/rustfmt/issues/3863>
-                        const MESSAGE: &str = "\
-internal compiler error: query cycle handler thread panicked, aborting process";
-                        eprintln!("{MESSAGE}");
-                        // We need to abort here as we failed to resolve the deadlock,
-                        // otherwise the compiler could just hang,
-                        process::abort();
-                    });
 
-                    // Get a `GlobalCtxt` reference from `CurrentGcx` as we cannot rely on having a
-                    // `TyCtxt` TLS reference here.
-                    current_gcx2.access(|gcx| {
-                        tls::enter_context(&tls::ImplicitCtxt::new(gcx), || {
-                            tls::with(|tcx| {
-                                // Accessing session globals is sound as they outlive `GlobalCtxt`.
-                                // They are needed to hash query keys containing spans or symbols.
-                                let job_map = rustc_span::set_session_globals_then(
-                                    unsafe { &*(session_globals as *const SessionGlobals) },
-                                    || {
-                                        // Ensure there were no errors collecting all active jobs.
-                                        // We need the complete map to ensure we find a cycle to
-                                        // break.
-                                        collect_active_query_jobs(
-                                            tcx,
-                                            CollectActiveJobsKind::FullNoContention,
-                                        )
-                                    },
-                                );
-                                break_query_cycle(job_map, &registry);
-                            })
-                        })
+            let parent = tls::with_context_opt(|icx| icx.and_then(|icx| icx.query));
+            current_gcx2.access(|gcx| {
+                let icx = tls::ImplicitCtxt::new(gcx);
+                tls::enter_context(&icx, || {
+                    // Ensure there were no errors collecting all active jobs.
+                    // We need the complete map to ensure we find a cycle to break.
+                    let job_map =
+                        collect_active_query_jobs(icx.tcx, CollectActiveJobsKind::FullNoContention);
+                    rustc_thread_pool::Registry::with_current(|registry| {
+                        break_query_cycle(job_map, registry, parent)
                     });
-
-                    on_panic.disable();
                 })
-                .unwrap();
+            });
+
+            on_panic.disable();
         })
         .stack_size(thread_stack_size);
 

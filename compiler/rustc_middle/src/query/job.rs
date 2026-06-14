@@ -3,7 +3,7 @@ use std::hash::Hash;
 use std::num::NonZero;
 use std::sync::Arc;
 
-use parking_lot::{Condvar, Mutex};
+use parking_lot::{Condvar, Mutex, MutexGuard};
 use rustc_span::Span;
 
 use crate::query::Cycle;
@@ -52,65 +52,89 @@ impl<'tcx> QueryJob<'tcx> {
 }
 
 #[derive(Debug)]
-pub struct QueryWaiter<'tcx> {
+pub struct QueryWaiter {
     pub parent: Option<QueryJobId>,
-    pub condvar: Condvar,
+    pub condvar: Arc<Condvar>,
     pub span: Span,
-    pub cycle: Mutex<Option<Cycle<'tcx>>>,
 }
 
 #[derive(Clone, Debug)]
 pub struct QueryLatch<'tcx> {
     /// The `Option` is `Some(..)` when the job is active, and `None` once completed.
-    pub waiters: Arc<Mutex<Option<Vec<Arc<QueryWaiter<'tcx>>>>>>,
+    pub inner: Arc<Mutex<Option<QueryLatchState<'tcx>>>>,
+}
+
+#[derive(Debug)]
+pub struct QueryLatchState<'tcx> {
+    pub waiters: Vec<QueryWaiter>,
+    pub cycle: Option<(usize, Cycle<'tcx>)>,
 }
 
 impl<'tcx> QueryLatch<'tcx> {
     fn new() -> Self {
-        QueryLatch { waiters: Arc::new(Mutex::new(Some(Vec::new()))) }
+        QueryLatch {
+            inner: Arc::new(Mutex::new(Some(QueryLatchState { waiters: Vec::new(), cycle: None }))),
+        }
     }
 
     /// Awaits for the query job to complete.
     pub fn wait_on(
         &self,
         tcx: TyCtxt<'tcx>,
-        query: Option<QueryJobId>,
+        parent: Option<QueryJobId>,
         span: Span,
     ) -> Result<(), Cycle<'tcx>> {
-        let mut waiters_guard = self.waiters.lock();
-        let Some(waiters) = &mut *waiters_guard else {
+        let mut state_lock = self.inner.lock();
+        let Some(state) = &mut *state_lock else {
             return Ok(()); // already complete
         };
 
-        let waiter = Arc::new(QueryWaiter {
-            parent: query,
-            span,
-            cycle: Mutex::new(None),
-            condvar: Condvar::new(),
-        });
+        let condvar = Arc::new(Condvar::new());
+        let waiter = QueryWaiter { parent, span, condvar: Arc::clone(&condvar) };
 
+        state.waiters.reserve(state.waiters.len().saturating_sub(tcx.sess.threads()));
         // We push the waiter on to the `waiters` list. It can be accessed inside
         // the `wait` call below, by 1) the `set` method or 2) by deadlock detection.
         // Both of these will remove it from the `waiters` list before resuming
         // this thread.
-        waiters.push(Arc::clone(&waiter));
+        state.waiters.push(waiter);
 
         // Awaits the caller on this latch by blocking the current thread.
         // If this detects a deadlock and the deadlock handler wants to resume this thread
         // we have to be in the `wait` call. This is ensured by the deadlock handler
         // getting the self.info lock.
-        rustc_thread_pool::mark_blocked();
-        tcx.jobserver_proxy.release_thread();
-        waiter.condvar.wait(&mut waiters_guard);
+        let cycle = rustc_thread_pool::Registry::with_current(|registry| {
+            let handler = rustc_thread_pool::mark_blocked(registry);
+            tcx.jobserver_proxy.release_thread();
+            if let Some(handler) = handler {
+                MutexGuard::unlocked(&mut state_lock, handler);
+            }
+
+            let cv_addr = (&*condvar as *const Condvar).addr();
+            if handler.is_some()
+                && let Some((_, cycle)) = state_lock
+                    .as_mut()?
+                    .cycle
+                    .take_if(|(resumed_cv_addr, _)| *resumed_cv_addr == cv_addr)
+            {
+                return Some(cycle);
+            }
+
+            condvar.wait(&mut state_lock);
+            let (resumed_cv_addr, cycle) = state_lock
+                .as_mut()?
+                .cycle
+                .take()
+                .expect("resumed waiter for unfinished query without a cycle");
+            assert_eq!(resumed_cv_addr, cv_addr);
+            Some(cycle)
+        });
+
         // Release the lock before we potentially block in `acquire_thread`
-        drop(waiters_guard);
+        drop(state_lock);
         tcx.jobserver_proxy.acquire_thread();
 
-        // FIXME: Get rid of this lock. We have ownership of the QueryWaiter
-        // although another thread may still have a Arc reference so we cannot
-        // use Arc::get_mut
-        let mut cycle = waiter.cycle.lock();
-        match cycle.take() {
+        match cycle {
             None => Ok(()),
             Some(cycle) => Err(cycle),
         }
@@ -118,21 +142,13 @@ impl<'tcx> QueryLatch<'tcx> {
 
     /// Sets the latch and resumes all waiters on it
     fn set(&self) {
-        let mut waiters_guard = self.waiters.lock();
-        let waiters = waiters_guard.take().unwrap(); // mark the latch as complete
-        let registry = rustc_thread_pool::Registry::current();
-        for waiter in waiters {
-            rustc_thread_pool::mark_unblocked(&registry);
-            waiter.condvar.notify_one();
-        }
-    }
-
-    /// Removes a single waiter from the list of waiters.
-    /// This is used to break query cycles.
-    pub fn extract_waiter(&self, waiter: usize) -> Arc<QueryWaiter<'tcx>> {
-        let mut waiters_guard = self.waiters.lock();
-        let waiters = waiters_guard.as_mut().expect("non-empty waiters vec");
-        // Remove the waiter from the list of waiters
-        waiters.remove(waiter)
+        let mut state_lock = self.inner.lock();
+        let waiters = state_lock.take().unwrap().waiters; // mark the latch as complete
+        rustc_thread_pool::Registry::with_current(|registry| {
+            for waiter in waiters {
+                rustc_thread_pool::mark_unblocked(&registry);
+                waiter.condvar.notify_one();
+            }
+        });
     }
 }

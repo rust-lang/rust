@@ -7,7 +7,6 @@ use std::thread;
 
 use crossbeam_utils::CachePadded;
 
-use crate::DeadlockHandler;
 use crate::latch::CoreLatch;
 use crate::registry::WorkerThread;
 
@@ -31,10 +30,8 @@ struct SleepData {
 impl SleepData {
     /// Checks if the conditions for a deadlock holds and if so calls the deadlock handler
     #[inline]
-    pub(super) fn deadlock_check(&self, deadlock_handler: &Option<Box<DeadlockHandler>>) {
-        if self.active_threads == 0 && self.blocked_threads > 0 {
-            (deadlock_handler.as_ref().unwrap())();
-        }
+    pub(super) fn deadlock_check(&self) -> bool {
+        self.active_threads == 0 && self.blocked_threads > 0
     }
 }
 
@@ -102,14 +99,14 @@ impl Sleep {
     /// Mark a Rayon worker thread as blocked. This triggers the deadlock handler
     /// if no other worker thread is active
     #[inline]
-    pub(super) fn mark_blocked(&self, deadlock_handler: &Option<Box<DeadlockHandler>>) {
+    pub(super) fn mark_blocked(&self) -> bool {
         let mut data = self.data.lock().unwrap();
         debug_assert!(data.active_threads > 0);
         debug_assert!(data.blocked_threads < data.worker_count);
         data.active_threads -= 1;
         data.blocked_threads += 1;
 
-        data.deadlock_check(deadlock_handler);
+        data.deadlock_check()
     }
 
     /// Mark a previously blocked Rayon worker thread as unblocked
@@ -227,23 +224,32 @@ impl Sleep {
             // the one that wakes us.)
             self.counters.sub_sleeping_thread();
         } else {
-            {
+            let is_deadlock = {
                 // Decrement the number of active threads and check for a deadlock
                 let mut data = self.data.lock().unwrap();
                 data.active_threads -= 1;
-                data.deadlock_check(&thread.registry.deadlock_handler);
+                data.deadlock_check()
+            };
+
+            if is_deadlock {
+                thread.registry.release_thread();
+                *is_blocked = true;
+                drop(is_blocked);
+                (thread.registry.deadlock_handler.as_deref().unwrap())();
+                is_blocked = sleep_state.is_blocked.lock().unwrap();
+            } else {
+                // If we don't see an injected job (the normal case), then flag
+                // ourselves as asleep and wait till we are notified.
+                //
+                // (Note that `is_blocked` is held under a mutex and the mutex was
+                // acquired *before* we incremented the "sleepy counter". This means
+                // that whomever is coming to wake us will have to wait until we
+                // release the mutex in the call to `wait`, so they will see this
+                // boolean as true.)
+                thread.registry.release_thread();
+                *is_blocked = true;
             }
 
-            // If we don't see an injected job (the normal case), then flag
-            // ourselves as asleep and wait till we are notified.
-            //
-            // (Note that `is_blocked` is held under a mutex and the mutex was
-            // acquired *before* we incremented the "sleepy counter". This means
-            // that whomever is coming to wake us will have to wait until we
-            // release the mutex in the call to `wait`, so they will see this
-            // boolean as true.)
-            thread.registry.release_thread();
-            *is_blocked = true;
             while *is_blocked {
                 is_blocked = sleep_state.condvar.wait(is_blocked).unwrap();
             }
