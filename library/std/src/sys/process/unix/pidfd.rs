@@ -1,14 +1,14 @@
+use super::ExitStatus;
 use crate::io;
 use crate::os::fd::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use crate::sys::fd::FileDesc;
-use crate::sys::process::ExitStatus;
 use crate::sys::{AsInner, FromInner, IntoInner, cvt};
 
 #[cfg(test)]
 mod tests;
 
 #[derive(Debug)]
-pub(crate) struct PidFd(FileDesc);
+pub struct PidFd(FileDesc);
 
 impl PidFd {
     pub fn kill(&self) -> io::Result<()> {
@@ -16,14 +16,14 @@ impl PidFd {
     }
 
     #[cfg(any(test, target_env = "gnu", target_env = "musl"))]
-    pub(crate) fn current_process() -> io::Result<PidFd> {
+    pub fn current_process() -> io::Result<PidFd> {
         let pid = crate::process::id();
         let pidfd = cvt(unsafe { libc::syscall(libc::SYS_pidfd_open, pid, 0) })?;
         Ok(unsafe { PidFd::from_raw_fd(pidfd as RawFd) })
     }
 
     #[cfg(any(test, target_env = "gnu", target_env = "musl"))]
-    pub(crate) fn pid(&self) -> io::Result<u32> {
+    pub fn pid(&self) -> io::Result<u32> {
         use crate::sys::weak::weak;
 
         // since kernel 6.13
@@ -82,7 +82,7 @@ impl PidFd {
         }
     }
 
-    pub(crate) fn send_signal(&self, signal: i32) -> io::Result<()> {
+    pub fn send_signal(&self, signal: i32) -> io::Result<()> {
         cvt(unsafe {
             libc::syscall(
                 libc::SYS_pidfd_send_signal,
@@ -95,7 +95,7 @@ impl PidFd {
         .map(drop)
     }
 
-    pub(crate) fn send_process_group_signal(&self, signal: i32) -> io::Result<()> {
+    pub fn send_process_group_signal(&self, signal: i32) -> io::Result<()> {
         // since kernel 6.9
         // https://lore.kernel.org/all/20240210-chihuahua-hinzog-3945b6abd44a@brauner/
         cvt(unsafe {
