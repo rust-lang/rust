@@ -25,6 +25,7 @@ use super::{
     PredicateObligation, ProjectionCacheEntry, ProjectionCacheKey, Selection, SelectionContext,
     SelectionError, specialization_graph, translate_args, util,
 };
+use crate::error_reporting::InferCtxtErrorExt;
 use crate::errors::InherentProjectionNormalizationOverflow;
 use crate::infer::{BoundRegionConversionTime, InferOk};
 use crate::traits::normalize::{normalize_with_depth, normalize_with_depth_to};
@@ -234,6 +235,7 @@ fn project_and_unify_term<'cx, 'tcx>(
             obligation.cause.span,
             obligation.param_env,
         );
+    debug!(?new, "replace_opaque_types_with_inference_vars new obligations");
     obligations.extend(new);
 
     // Need to define opaque types to support nested opaque types like `impl Fn() -> impl Trait`
@@ -243,6 +245,15 @@ fn project_and_unify_term<'cx, 'tcx>(
         actual,
     ) {
         Ok(InferOk { obligations: inferred_obligations, value: () }) => {
+            // If we are adding any new obligations, make sure we are not recursing infinitely
+            // Since the general recursion check in `process_obligation` is explicitly skipped for us
+            if !inferred_obligations.is_empty() {
+                if !selcx.tcx().recursion_limit().value_within_limit(obligation.recursion_depth) {
+                    selcx.infcx.err_ctxt().report_overflow_obligation(&obligation, false);
+                }
+            }
+
+            debug!(?inferred_obligations, "obligations from eq");
             obligations.extend(inferred_obligations);
             ProjectAndUnifyResult::Holds(obligations)
         }
