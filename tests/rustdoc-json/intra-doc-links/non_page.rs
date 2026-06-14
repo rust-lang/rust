@@ -6,6 +6,9 @@
 //! [`Trait::AssocType`]
 //! [`Trait::ASSOC_CONST`]
 //! [`Trait::method`]
+//! [`std::vec::Vec::push`]
+//! [`std::io::ErrorKind::NotFound`]
+//! [`usize::MAX`]
 
 //@ set struct_field = "$.index[?(@.name=='struct_field')].id"
 //@ set Variant = "$.index[?(@.name=='Variant')].id"
@@ -18,6 +21,16 @@
 //@ is "$.index[?(@.name=='non_page')].links['`Trait::AssocType`']" $AssocType
 //@ is "$.index[?(@.name=='non_page')].links['`Trait::ASSOC_CONST`']" $ASSOC_CONST
 //@ is "$.index[?(@.name=='non_page')].links['`Trait::method`']" $method
+
+// Regression test for <https://github.com/rust-lang/rust/issues/152511>:
+// link target IDs for associated items need matching `paths` entries.
+//@ has "$.paths[*].path" '["non_page", "Struct", "struct_field"]'
+//@ has "$.paths[*].path" '["non_page", "Trait", "AssocType"]'
+//@ has "$.paths[*].path" '["non_page", "Trait", "ASSOC_CONST"]'
+//@ has "$.paths[*].path" '["non_page", "Trait", "method"]'
+//@ has "$.paths[*].path" '["alloc", "vec", "Vec", "push"]'
+//@ has "$.paths[*].path" '["core", "io", "error", "ErrorKind", "NotFound"]'
+//@ has "$.paths[*].path" '["std", "usize", "MAX"]'
 
 pub struct Struct {
     pub struct_field: i32,
