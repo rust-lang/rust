@@ -1635,7 +1635,7 @@ fn truncate_leak() {
 
 #[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
-fn truncate_front_leak() {
+fn retain_back_leak() {
     struct_with_counted_drop!(D(bool), DROPS => |this: &D| if this.0 { panic!("panic in `drop`"); } );
 
     let mut q = VecDeque::new();
@@ -1648,7 +1648,7 @@ fn truncate_front_leak() {
     q.push_front(D(false));
     q.push_front(D(false));
 
-    catch_unwind(AssertUnwindSafe(|| q.truncate_front(1))).ok();
+    catch_unwind(AssertUnwindSafe(|| q.retain_back(1))).ok();
 
     assert_eq!(DROPS.get(), 7);
 }
@@ -1817,20 +1817,20 @@ fn test_collect_from_into_iter_keeps_allocation() {
 }
 
 #[test]
-fn test_truncate_front() {
+fn test_retain_back() {
     let mut v = VecDeque::with_capacity(13);
     v.extend(0..7);
     assert_eq!(v.as_slices(), ([0, 1, 2, 3, 4, 5, 6].as_slice(), [].as_slice()));
-    v.truncate_front(10);
+    v.retain_back(10);
     assert_eq!(v.len(), 7);
     assert_eq!(v.as_slices(), ([0, 1, 2, 3, 4, 5, 6].as_slice(), [].as_slice()));
-    v.truncate_front(7);
+    v.retain_back(7);
     assert_eq!(v.len(), 7);
     assert_eq!(v.as_slices(), ([0, 1, 2, 3, 4, 5, 6].as_slice(), [].as_slice()));
-    v.truncate_front(3);
+    v.retain_back(3);
     assert_eq!(v.as_slices(), ([4, 5, 6].as_slice(), [].as_slice()));
     assert_eq!(v.len(), 3);
-    v.truncate_front(0);
+    v.retain_back(0);
     assert_eq!(v.as_slices(), ([].as_slice(), [].as_slice()));
     assert_eq!(v.len(), 0);
 
@@ -1841,13 +1841,13 @@ fn test_truncate_front() {
     v.push_front(8);
     v.push_front(7);
     assert_eq!(v.as_slices(), ([7, 8, 9].as_slice(), [0, 1, 2, 3, 4, 5, 6].as_slice()));
-    v.truncate_front(12);
+    v.retain_back(12);
     assert_eq!(v.as_slices(), ([7, 8, 9].as_slice(), [0, 1, 2, 3, 4, 5, 6].as_slice()));
-    v.truncate_front(10);
+    v.retain_back(10);
     assert_eq!(v.as_slices(), ([7, 8, 9].as_slice(), [0, 1, 2, 3, 4, 5, 6].as_slice()));
-    v.truncate_front(8);
+    v.retain_back(8);
     assert_eq!(v.as_slices(), ([9].as_slice(), [0, 1, 2, 3, 4, 5, 6].as_slice()));
-    v.truncate_front(5);
+    v.retain_back(5);
     assert_eq!(v.as_slices(), ([2, 3, 4, 5, 6].as_slice(), [].as_slice()));
 }
 
@@ -1855,7 +1855,7 @@ fn test_truncate_front() {
 fn test_extend_from_within() {
     let mut v = VecDeque::with_capacity(8);
     v.extend(0..6);
-    v.truncate_front(4);
+    v.retain_back(4);
     assert_eq!(v, [2, 3, 4, 5]);
     v.extend_from_within(1..4);
     assert_eq!(v, [2, 3, 4, 5, 3, 4, 5]);
@@ -1915,7 +1915,7 @@ fn test_extend_from_within_clone() {
         panic: false,
     }));
     // remove the dummy elements
-    v.truncate_front(4);
+    v.retain_back(4);
     assert_eq!(v.iter().map(|tr| tr.id).collect::<Vec<_>>(), [0, 1, 2, 3]);
 
     v.extend_from_within(2..);
@@ -1947,7 +1947,7 @@ fn test_extend_from_within_clone_panic() {
         panic: false,
     }));
     // remove the dummy elements
-    v.truncate_front(4);
+    v.retain_back(4);
     assert_eq!(v.iter().map(|tr| tr.id).collect::<Vec<_>>(), [0, 1, 2, 3]);
 
     // panic after wrapping
@@ -1963,7 +1963,7 @@ fn test_extend_from_within_clone_panic() {
     // nothing should have been dropped
     assert_eq!(drop_count.get(), 0);
 
-    v.truncate_front(2);
+    v.retain_back(2);
     assert_eq!(drop_count.get(), 4);
     assert_eq!(v.iter().map(|tr| tr.id).collect::<Vec<_>>(), [0, 1]);
 
@@ -1985,7 +1985,7 @@ fn test_extend_from_within_clone_panic() {
 fn test_prepend_from_within() {
     let mut v = VecDeque::with_capacity(8);
     v.extend(0..6);
-    v.truncate_front(4);
+    v.retain_back(4);
     v.prepend_from_within(..=0);
     assert_eq!(v.as_slices(), ([2, 2, 3, 4, 5].as_slice(), [].as_slice()));
     v.prepend_from_within(2..);
@@ -2007,7 +2007,7 @@ fn test_prepend_from_within_clone() {
         panic: false,
     }));
     // remove the dummy elements
-    v.truncate_front(4);
+    v.retain_back(4);
     assert_eq!(v.iter().map(|tr| tr.id).collect::<Vec<_>>(), [0, 1, 2, 3]);
 
     v.prepend_from_within(..2);
@@ -2034,7 +2034,7 @@ fn test_prepend_from_within_clone_panic() {
         panic: false,
     }));
     // remove the dummy elements
-    v.truncate_front(4);
+    v.retain_back(4);
     assert_eq!(v.iter().map(|tr| tr.id).collect::<Vec<_>>(), [0, 1, 2, 3]);
 
     // panic after wrapping
@@ -2050,7 +2050,7 @@ fn test_prepend_from_within_clone_panic() {
     // nothing should have been dropped
     assert_eq!(drop_count.get(), 0);
 
-    v.truncate_front(2);
+    v.retain_back(2);
     assert_eq!(drop_count.get(), 4);
     assert_eq!(v.iter().map(|tr| tr.id).collect::<Vec<_>>(), [2, 3]);
 
@@ -2071,7 +2071,7 @@ fn test_prepend_from_within_clone_panic() {
 #[test]
 fn test_extend_and_prepend_from_within() {
     let mut v = ('0'..='9').map(String::from).collect::<VecDeque<_>>();
-    v.truncate_front(5);
+    v.retain_back(5);
     v.extend_from_within(4..);
     v.prepend_from_within(..2);
     assert_eq!(v.iter().map(|s| &**s).collect::<String>(), "56567899");
@@ -2095,7 +2095,7 @@ fn test_extend_front() {
     let mut v = VecDeque::with_capacity(8);
     let cap = v.capacity();
     v.extend(0..4);
-    v.truncate_front(2);
+    v.retain_back(2);
     v.extend_front(4..8);
     assert_eq!(v.as_slices(), ([7, 6].as_slice(), [5, 4, 2, 3].as_slice()));
     assert_eq!(v.capacity(), cap);
