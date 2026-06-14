@@ -995,7 +995,13 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 // Nothing to check.
                 interp_ok(true)
             }
-            ty::UnsafeBinder(_) => todo!("FIXME(unsafe_binder)"),
+            ty::UnsafeBinder(unsafe_binder_ty) => {
+                let inner_ty =
+                    self.ecx.tcx.instantiate_bound_regions_with_erased((*unsafe_binder_ty).into());
+                let inner = value.transmute(self.ecx.layout_of(inner_ty)?, self.ecx)?;
+                self.visit_value(&inner)?;
+                interp_ok(true)
+            }
             // The above should be all the primitive types. The rest is compound, we
             // check them by visiting their fields/variants.
             ty::Adt(..)
