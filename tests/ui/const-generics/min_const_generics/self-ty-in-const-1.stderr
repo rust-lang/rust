@@ -6,6 +6,7 @@ LL |     fn t1() -> [u8; std::mem::size_of::<Self>()];
    |
    = note: type parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: generic `Self` types are currently not permitted in anonymous constants
   --> $DIR/self-ty-in-const-1.rs:12:41
@@ -18,6 +19,8 @@ note: not a concrete type
    |
 LL | impl<T> Bar<T> {
    |         ^^^^^^
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error: aborting due to 2 previous errors
 

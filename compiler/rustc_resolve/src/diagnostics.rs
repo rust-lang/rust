@@ -1071,9 +1071,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     span,
                     name,
                     param_kind: is_type,
-                    help: self.tcx.sess.is_nightly_build(),
+                    help: self.tcx.sess.is_nightly_build()
+                        && !self.tcx.features().min_generic_const_args(),
                     is_gca,
                     help_gca: is_gca,
+                    help_suggest_gca: self.tcx.sess.is_nightly_build() && !is_gca,
                 })
             }
             ResolutionError::ParamInEnumDiscriminant { name, param_kind: is_type } => self
