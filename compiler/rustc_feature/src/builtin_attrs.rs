@@ -114,7 +114,6 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     // ABI, linking, symbols, and FFI
     sym::link,
     sym::link_name,
-    sym::no_link,
     sym::repr,
     // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
     sym::rustc_align,
