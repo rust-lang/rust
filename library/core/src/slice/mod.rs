@@ -5609,11 +5609,8 @@ where
         // But since it can't be relied on we also have an explicit specialization for T: Copy.
         let len = self.len();
         let src = &src[..len];
-        // FIXME(const_hack): make this a `for idx in 0..self.len()` loop.
-        let mut idx = 0;
-        while idx < self.len() {
-            self[idx].clone_from(&src[idx]);
-            idx += 1;
+        for i in 0..len {
+            self[i].clone_from(&src[i]);
         }
     }
 }
