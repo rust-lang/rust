@@ -49,6 +49,7 @@ use crate::sys::random as sys;
 /// WASIp2                 | [`get-random-bytes`]
 /// WASIp3                 | [`get-random-bytes`]
 /// ZKVM                   | `sys_rand`
+/// OpenVM                 | `sys_rand`
 ///
 /// Note that the sources used might change over time.
 ///
