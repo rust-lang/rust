@@ -12,9 +12,11 @@ use rustc_resolve::rustdoc::{prepare_to_doc_link_resolution, source_span_for_mar
 use rustc_span::def_id::DefId;
 use rustc_span::{Span, Symbol};
 
-use crate::clean::Item;
 use crate::clean::utils::{find_nearest_parent_module, inherits_doc_hidden};
+use crate::clean::{Item, inline};
 use crate::core::DocContext;
+use crate::formats::item_type::ItemType;
+use crate::html::format::href_relative_parts;
 use crate::html::markdown::main_body_opts;
 
 #[derive(Debug)]
@@ -71,12 +73,13 @@ fn check_redundant_explicit_link_for_did(
         return;
     };
 
-    check_redundant_explicit_link(cx, item, hir_id, doc, resolutions);
+    check_redundant_explicit_link(cx, item, module_id, hir_id, doc, resolutions);
 }
 
 fn check_redundant_explicit_link<'md>(
     cx: &DocContext<'_>,
     item: &Item,
+    module_id: DefId,
     hir_id: HirId,
     doc: &'md str,
     resolutions: &DocLinkResMap,
@@ -114,35 +117,35 @@ fn check_redundant_explicit_link<'md>(
                 continue;
             }
 
-            if dest_url.ends_with(resolvable_link) || resolvable_link.ends_with(&*dest_url) {
-                match link_type {
-                    LinkType::Inline | LinkType::ReferenceUnknown => {
-                        check_inline_or_reference_unknown_redundancy(
-                            cx,
-                            item,
-                            hir_id,
-                            doc,
-                            resolutions,
-                            link_range,
-                            dest_url.to_string(),
-                            link_data,
-                            if link_type == LinkType::Inline { (b'(', b')') } else { (b'[', b']') },
-                        );
-                    }
-                    LinkType::Reference => {
-                        check_reference_redundancy(
-                            cx,
-                            item,
-                            hir_id,
-                            doc,
-                            resolutions,
-                            link_range,
-                            &dest_url,
-                            link_data,
-                        );
-                    }
-                    _ => {}
+            match link_type {
+                LinkType::Inline | LinkType::ReferenceUnknown => {
+                    check_inline_or_reference_unknown_redundancy(
+                        cx,
+                        item,
+                        module_id,
+                        hir_id,
+                        doc,
+                        resolutions,
+                        link_range,
+                        dest_url.to_string(),
+                        link_data,
+                        if link_type == LinkType::Inline { (b'(', b')') } else { (b'[', b']') },
+                    );
                 }
+                LinkType::Reference => {
+                    check_reference_redundancy(
+                        cx,
+                        item,
+                        module_id,
+                        hir_id,
+                        doc,
+                        resolutions,
+                        link_range,
+                        &dest_url,
+                        link_data,
+                    );
+                }
+                _ => {}
             }
         }
     }
@@ -154,6 +157,7 @@ fn check_redundant_explicit_link<'md>(
 fn check_inline_or_reference_unknown_redundancy(
     cx: &DocContext<'_>,
     item: &Item,
+    module_id: DefId,
     hir_id: HirId,
     doc: &str,
     resolutions: &DocLinkResMap,
@@ -198,10 +202,8 @@ fn check_inline_or_reference_unknown_redundancy(
 
     let (resolvable_link, resolvable_link_range) =
         (&link_data.resolvable_link?, &link_data.resolvable_link_range?);
-    let (dest_res, display_res) =
-        (find_resolution(resolutions, &dest)?, find_resolution(resolutions, resolvable_link)?);
 
-    if dest_res == display_res {
+    if explicit_link_is_redundant(cx, module_id, resolutions, &dest, resolvable_link) {
         let link_span =
             match source_span_for_markdown_range(cx.tcx, doc, &link_range, &item.attrs.doc_strings)
             {
@@ -254,6 +256,7 @@ fn check_inline_or_reference_unknown_redundancy(
 fn check_reference_redundancy(
     cx: &DocContext<'_>,
     item: &Item,
+    module_id: DefId,
     hir_id: HirId,
     doc: &str,
     resolutions: &DocLinkResMap,
@@ -296,10 +299,8 @@ fn check_reference_redundancy(
 
     let (resolvable_link, resolvable_link_range) =
         (&link_data.resolvable_link?, &link_data.resolvable_link_range?);
-    let (dest_res, display_res) =
-        (find_resolution(resolutions, dest)?, find_resolution(resolutions, resolvable_link)?);
 
-    if dest_res == display_res {
+    if explicit_link_is_redundant(cx, module_id, resolutions, dest, resolvable_link) {
         let link_span =
             match source_span_for_markdown_range(cx.tcx, doc, &link_range, &item.attrs.doc_strings)
             {
@@ -353,6 +354,61 @@ fn check_reference_redundancy(
     }
 
     None
+}
+
+fn explicit_link_is_redundant(
+    cx: &DocContext<'_>,
+    module_id: DefId,
+    resolutions: &DocLinkResMap,
+    dest: &str,
+    resolvable_link: &str,
+) -> bool {
+    let Some(display_res) = find_resolution(resolutions, resolvable_link) else {
+        return false;
+    };
+
+    if (dest.ends_with(resolvable_link) || resolvable_link.ends_with(dest))
+        && find_resolution(resolutions, dest).is_some_and(|dest_res| dest_res == display_res)
+    {
+        return true;
+    }
+
+    if dest.contains('#') || !dest.ends_with(".html") {
+        return false;
+    }
+
+    local_href_for_res(cx, module_id, display_res).is_some_and(|href| href == dest)
+}
+
+fn local_href_for_res(cx: &DocContext<'_>, module_id: DefId, res: Res<NodeId>) -> Option<String> {
+    let mut did = res.opt_def_id()?;
+    if matches!(cx.tcx.def_kind(did), DefKind::Ctor(..)) {
+        did = cx.tcx.parent(did);
+    }
+
+    if matches!(
+        cx.tcx.def_kind(did),
+        DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst { .. } | DefKind::Variant
+    ) || !did.is_local()
+    {
+        return None;
+    }
+
+    let item_type = ItemType::from_def_id(did, cx.tcx);
+    let fqp = inline::get_item_path(cx.tcx, did, item_type);
+    let module_fqp = if item_type == ItemType::Module { &fqp[..] } else { &fqp[..fqp.len() - 1] };
+    let current_fqp = inline::get_item_path(cx.tcx, module_id, ItemType::Module);
+
+    let mut url_parts = href_relative_parts(module_fqp, &current_fqp);
+    match item_type {
+        ItemType::Module => url_parts.push("index.html"),
+        _ => url_parts.push_fmt(format_args!(
+            "{}.{last}.html",
+            item_type.as_str(),
+            last = fqp.last()?
+        )),
+    }
+    Some(url_parts.finish())
 }
 
 fn find_resolution(resolutions: &DocLinkResMap, path: &str) -> Option<Res<NodeId>> {
