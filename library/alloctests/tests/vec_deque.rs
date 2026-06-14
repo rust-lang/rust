@@ -7,6 +7,7 @@ use std::collections::vec_deque::Drain;
 use std::fmt::Debug;
 use std::ops::Bound::*;
 use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use Taggy::*;
 use Taggypar::*;
@@ -2359,4 +2360,138 @@ fn test_splice_wrapping_and_resize() {
     vec.splice(1..1, [2, 3, 4]);
 
     assert_eq!(Vec::from(vec), [1, 2, 3, 4, 1, 1, 1, 1, 1])
+}
+
+#[test]
+fn truncate_to_range_basic() {
+    // no-op
+    let mut v: VecDeque<_> = (0..6).collect();
+    v.truncate_to_range(..);
+    assert_eq!(v, [0, 1, 2, 3, 4, 5]);
+
+    // clear
+    let mut v: VecDeque<_> = (0..6).collect();
+    v.truncate_to_range(3..3);
+    assert_eq!(v, [] as [i32; 0]);
+
+    // truncate
+    let mut v: VecDeque<_> = (0..6).collect();
+    v.truncate_to_range(..3);
+    assert_eq!(v, [0, 1, 2]);
+
+    // truncate front
+    let mut v: VecDeque<_> = (0..6).collect();
+    v.truncate_to_range(2..);
+    assert_eq!(v, [2, 3, 4, 5]);
+
+    let mut v: VecDeque<_> = (0..6).collect();
+    v.truncate_to_range(2..5);
+    assert_eq!(v, [2, 3, 4]);
+
+    let mut v: VecDeque<_> = (0..6).collect();
+    v.truncate_to_range(3..=5);
+    assert_eq!(v, [3, 4, 5]);
+
+    let mut v: VecDeque<_> = (0..6).collect();
+    v.truncate_to_range(..=3);
+    assert_eq!(v, [0, 1, 2, 3]);
+}
+
+fn make_wrapped() -> VecDeque<i32> {
+    let mut v = VecDeque::new();
+    v.extend(0..5);
+    v.push_front(-1);
+    v.push_front(-2);
+    v.push_front(-3);
+    assert_eq!(v.as_slices(), ([-3, -2, -1].as_slice(), [0, 1, 2, 3, 4].as_slice()));
+    v
+}
+
+#[test]
+fn truncate_to_range_kept_in_front() {
+    let mut v = make_wrapped();
+    v.truncate_to_range(1..3);
+    assert_eq!(v, [-2, -1]);
+}
+
+#[test]
+fn truncate_to_range_kept_in_back() {
+    let mut v = make_wrapped();
+    v.truncate_to_range(4..7);
+    assert_eq!(v, [1, 2, 3]);
+}
+
+#[test]
+fn truncate_to_range_kept_straddles() {
+    let mut v = make_wrapped();
+    v.truncate_to_range(1..6);
+    assert_eq!(v, [-2, -1, 0, 1, 2]);
+}
+
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn truncate_to_range_leak() {
+    struct_with_counted_drop!(D(bool), DROPS => |this: &D| if this.0 { panic!("panic in `drop`"); } );
+
+    let mut q = VecDeque::new();
+    q.push_back(D(true));
+    q.push_back(D(false));
+    q.push_back(D(false));
+    q.push_back(D(false));
+    q.push_back(D(false));
+    q.push_front(D(false));
+    q.push_front(D(false));
+    q.push_front(D(false));
+
+    catch_unwind(AssertUnwindSafe(|| q.truncate_to_range(4..7))).ok();
+
+    assert_eq!(DROPS.get(), 5);
+}
+
+#[test]
+fn truncate_to_range_calls_drop() {
+    static DROPPED: AtomicUsize = AtomicUsize::new(0);
+
+    #[derive(Debug)]
+    struct Foo(u8);
+
+    impl Drop for Foo {
+        fn drop(&mut self) {
+            DROPPED.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+
+    let mut deque: VecDeque<_> = (0..12).map(Foo).collect();
+    deque.truncate_to_range(1..5);
+    assert!(deque.iter().map(|x| x.0).eq([1, 2, 3, 4]));
+    assert_eq!(8, DROPPED.load(Ordering::Relaxed));
+}
+
+#[test]
+#[should_panic]
+fn truncate_to_range_start_greater_than_end() {
+    let mut v: VecDeque<_> = (0..6).collect();
+    #[allow(clippy::reversed_empty_ranges)]
+    v.truncate_to_range(4..2);
+}
+
+#[test]
+#[should_panic]
+fn truncate_to_range_end_past_len() {
+    let mut v: VecDeque<_> = (0..6).collect();
+    v.truncate_to_range(2..7);
+}
+
+#[test]
+#[should_panic]
+fn truncate_to_range_start_past_len() {
+    let mut v: VecDeque<_> = (0..6).collect();
+    v.truncate_to_range(7..8);
+}
+
+#[test]
+#[should_panic]
+fn truncate_to_range_inclusive_end_overflow() {
+    let mut v: VecDeque<_> = (0..6).collect();
+    v.truncate_to_range(0..=usize::MAX);
 }
