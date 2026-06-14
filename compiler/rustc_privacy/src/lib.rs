@@ -1181,15 +1181,14 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
 
     fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
         self.span = hir_ty.span;
-        if self
-            .visit(
-                self.maybe_typeck_results
-                    .unwrap_or_else(|| span_bug!(hir_ty.span, "`hir::Ty` outside of a body"))
-                    .node_type(hir_ty.hir_id),
-            )
-            .is_break()
+        if let Some(ty) = self
+            .maybe_typeck_results
+            .unwrap_or_else(|| span_bug!(hir_ty.span, "`hir::Ty` outside of a body"))
+            .node_type_opt(hir_ty.hir_id)
         {
-            return;
+            if self.visit(ty).is_break() {
+                return;
+            }
         }
 
         intravisit::walk_ty(self, hir_ty);
