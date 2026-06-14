@@ -1351,6 +1351,10 @@ Generic collection of tests for suggestions, when no more specific directories a
 
 **FIXME**: Some overlap with `tests/ui/did_you_mean/`, that directory should probably be moved under here.
 
+## `tests/ui/supertrait-shadowing/`
+
+Tests for supertrait item shadowing (RFC 3624).
+
 ## `tests/ui/svh/`: Strict Version Hash
 
 Tests on the *Strict Version Hash* (SVH, also known as the "crate hash").

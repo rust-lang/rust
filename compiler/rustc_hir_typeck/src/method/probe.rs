@@ -2359,6 +2359,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     /// multiple conflicting picks if there is one pick whose trait container is a subtrait
     /// of the trait containers of all of the other picks.
     ///
+    /// This is the method-probe analogue of
+    /// `rustc_hir_analysis::hir_ty_lowering::HirTyLowerer::collapse_candidates_to_subtrait_pick`;
+    /// keep both implementations in sync.
+    ///
     /// This implements RFC #3624.
     fn collapse_candidates_to_subtrait_pick(
         &self,

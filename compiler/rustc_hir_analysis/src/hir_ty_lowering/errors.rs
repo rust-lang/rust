@@ -409,9 +409,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
     pub(super) fn report_ambiguous_assoc_item(
         &self,
-        bound1: ty::PolyTraitRef<'tcx>,
-        bound2: ty::PolyTraitRef<'tcx>,
-        matching_candidates: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
+        matching_candidates: &[ty::PolyTraitRef<'tcx>],
         qself: AssocItemQSelf,
         assoc_tag: ty::AssocTag,
         assoc_ident: Ident,
@@ -443,7 +441,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // predicates!).
         // FIXME: Turn this into a structured, translatable & more actionable suggestion.
         let mut where_bounds = vec![];
-        for bound in [bound1, bound2].into_iter().chain(matching_candidates) {
+        for &bound in matching_candidates {
             let bound_id = bound.def_id();
             let assoc_item = tcx.associated_items(bound_id).find_by_ident_and_kind(
                 tcx,
