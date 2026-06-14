@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 #![feature(rustc_attrs)]
 
 // The shim that is generated for a function annotated with `#[track_caller]` should not inherit

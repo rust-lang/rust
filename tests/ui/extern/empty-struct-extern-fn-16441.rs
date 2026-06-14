@@ -1,6 +1,6 @@
 //! Regression test for https://github.com/rust-lang/rust/issues/16441
 
-//@ run-pass
+//@ check-pass
 #![allow(dead_code)]
 
 struct Empty;

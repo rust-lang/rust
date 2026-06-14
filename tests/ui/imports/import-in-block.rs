@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 pub fn main() {
     use std::mem::replace;

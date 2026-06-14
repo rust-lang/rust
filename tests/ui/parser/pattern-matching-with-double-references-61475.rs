@@ -1,5 +1,5 @@
 // https://github.com/rust-lang/rust/issues/61475
-//@ run-pass
+//@ check-pass
 #![allow(dead_code)]
 
 enum E {

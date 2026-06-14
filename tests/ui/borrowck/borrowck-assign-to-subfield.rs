@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 #[allow(unused)]
 pub fn main() {

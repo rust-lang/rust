@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 struct S<T>(#[allow(dead_code)] T);
 

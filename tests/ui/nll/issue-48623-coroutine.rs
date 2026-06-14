@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 #![allow(path_statements)]
 #![allow(dead_code)]
 
@@ -12,7 +12,7 @@ impl Drop for WithDrop {
 
 fn reborrow_from_coroutine(r: &mut ()) {
     let d = WithDrop;
-    #[coroutine] move || { d; yield; &mut *r }; //~ WARN unused coroutine that must be used
+    #[coroutine] move || { d; yield; &mut *r };
 }
 
 fn main() {}

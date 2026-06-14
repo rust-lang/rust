@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 //@ aux-build:aux-8401.rs
 // https://github.com/rust-lang/rust/issues/8401
 

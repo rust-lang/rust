@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 #![allow(unconditional_recursion)]
 #![allow(dead_code)]

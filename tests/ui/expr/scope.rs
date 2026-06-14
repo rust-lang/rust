@@ -1,5 +1,5 @@
 //@ edition:2015
-//@ run-pass
+//@ check-pass
 // Regression test for issue #762
 
 

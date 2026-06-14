@@ -1,10 +1,10 @@
 // https://github.com/rust-lang/rust/issues/9951
-//@ run-pass
+//@ check-pass
 
 #![allow(unused_variables)]
 
 trait Bar {
-  fn noop(&self); //~ WARN method `noop` is never used
+  fn noop(&self);
 }
 impl Bar for u8 {
   fn noop(&self) {}

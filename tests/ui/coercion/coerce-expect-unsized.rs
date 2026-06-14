@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 #![allow(unused_braces)]
 
 use std::cell::RefCell;

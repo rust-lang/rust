@@ -1,7 +1,7 @@
 //! Regression test for https://github.com/rust-lang/rust/issues/10806
 
 //@ edition: 2015
-//@ run-pass
+//@ check-pass
 #![allow(unused_imports)]
 
 

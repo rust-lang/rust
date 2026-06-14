@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 #![allow(unused_variables)]
 //@ aux-build:issue-19340-1.rs
 

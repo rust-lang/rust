@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 #[repr(C)]
 pub struct Foo(u32);

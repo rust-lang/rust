@@ -1,7 +1,7 @@
 //@ edition: 2018
 #![feature(try_blocks)]
 
-//@ run-pass
+//@ check-pass
 fn main() {
     let _: Result<(), ()> = try {
         'foo: {

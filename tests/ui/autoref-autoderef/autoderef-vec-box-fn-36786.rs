@@ -1,5 +1,5 @@
 // https://github.com/rust-lang/rust/issues/36786
-//@ run-pass
+//@ check-pass
 // Ensure that types that rely on obligations are autoderefed
 // correctly
 

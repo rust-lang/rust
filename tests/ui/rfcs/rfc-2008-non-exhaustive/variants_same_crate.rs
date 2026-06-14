@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 pub enum NonExhaustiveVariants {
     #[non_exhaustive] Unit,

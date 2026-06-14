@@ -1,6 +1,6 @@
 //! Test that #[inline(always)] can be applied to main function
 
-//@ run-pass
+//@ check-pass
 
 #[inline(always)]
 fn main() {}

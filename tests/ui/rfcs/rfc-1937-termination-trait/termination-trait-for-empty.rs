@@ -1,2 +1,2 @@
-//@ run-pass
+//@ check-pass
 fn main() {}

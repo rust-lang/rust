@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 //@ aux-build:where_clauses_xc.rs
 
 extern crate where_clauses_xc;

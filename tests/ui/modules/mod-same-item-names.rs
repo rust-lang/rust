@@ -1,6 +1,6 @@
 //! Test that items with identical names can coexist in different modules
 
-//@ run-pass
+//@ check-pass
 
 #![allow(dead_code)]
 

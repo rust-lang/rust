@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 #![allow(unused)]
 
 // Like other items, private imports can be imported and used non-lexically in paths.

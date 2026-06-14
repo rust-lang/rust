@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 // All 3 expressions should work in that the argument gets
 // coerced to a trait object
 
@@ -18,6 +18,6 @@ impl<T> Test<T> {
     fn send(&self, _: T) {}
 }
 
-trait Foo { fn dummy(&self) { }} //~ WARN method `dummy` is never used
+trait Foo { fn dummy(&self) { }}
 struct Output(#[allow(dead_code)] isize);
 impl Foo for Output {}

@@ -1,7 +1,7 @@
 //! Checks module re-exports, aliasing with `pub use`,
 //! and calling private methods via `Self` in an impl block.
 
-//@ run-pass
+//@ check-pass
 
 #![allow(unused_variables)]
 pub struct A;

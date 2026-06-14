@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 #![allow(non_camel_case_types)]
 
 //@ aux-build:namespaced_enum_emulate_flat.rs

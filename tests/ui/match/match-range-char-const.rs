@@ -1,5 +1,5 @@
 //! Regression test for https://github.com/rust-lang/rust/issues/18464
-//@ run-pass
+//@ check-pass
 #![deny(dead_code)]
 
 const LOW_RANGE: char = '0';

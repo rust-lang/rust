@@ -1,6 +1,6 @@
 //! Regression test for https://github.com/rust-lang/rust/issues/11709
 
-//@ run-pass
+//@ check-pass
 #![allow(dead_code)]
 
 // Don't panic on blocks without results

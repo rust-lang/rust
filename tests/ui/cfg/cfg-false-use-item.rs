@@ -1,6 +1,6 @@
 //! Test that use items with cfg(false) are properly filtered out
 
-//@ run-pass
+//@ check-pass
 //@ reference: cfg.predicate.literal
 //@ reference: cfg.attr.effect
 

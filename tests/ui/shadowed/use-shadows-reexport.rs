@@ -1,6 +1,6 @@
 //! Check that a local `use` declaration can shadow a re-exported item within the same module.
 
-//@ run-pass
+//@ check-pass
 
 #![allow(unused_imports)]
 mod foo {

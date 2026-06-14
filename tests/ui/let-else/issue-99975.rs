@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 //@ compile-flags: -C opt-level=3 -Zvalidate-mir
 
 

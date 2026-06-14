@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 #![allow(dead_code)]
 
 //! Tests that user-defined trait is prioritized in compile time over

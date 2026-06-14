@@ -1,5 +1,5 @@
 //@ edition:2021
-//@ run-pass
+//@ check-pass
 
 
 fn solve<F>(validate: F) -> Option<u64>

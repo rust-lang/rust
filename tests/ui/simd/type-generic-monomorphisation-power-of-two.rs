@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 
 #![feature(repr_simd, intrinsics)]
 

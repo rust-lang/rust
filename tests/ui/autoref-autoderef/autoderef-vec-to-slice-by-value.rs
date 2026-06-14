@@ -2,7 +2,7 @@
 //! implemented for `&[isize]` with a by-value receiver (`self`), relying on auto-dereferencing
 //! from `Vec` to `&[isize]` during method resolution.
 
-//@ run-pass
+//@ check-pass
 
 trait Foo {
     fn foo(self);

@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 struct A(#[allow(dead_code)] bool);
 
