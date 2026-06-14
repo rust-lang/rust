@@ -39,8 +39,8 @@ use rustc_session::config::CrateType;
 use rustc_session::errors::feature_err;
 use rustc_session::lint;
 use rustc_session::lint::builtin::{
-    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
-    MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
+    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+    MALFORMED_DIAGNOSTIC_FORMAT_LITERALS, MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
 };
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
@@ -248,6 +248,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
             AttributeKind::OnMove { directive } => {
                 self.check_diagnostic_on_move(hir_id, directive.as_deref())
+            }
+            AttributeKind::OnTypeError { directive, .. } => {
+                self.check_diagnostic_on_type_error(hir_id, directive.as_deref())
             }
 
             // All of the following attributes have no specific checks.
@@ -594,6 +597,58 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             hir_id,
                             span,
                             errors::OnMoveMalformedFormatLiterals { name: argument_name },
+                        )
+                    }
+                });
+            }
+        }
+    }
+
+    fn check_diagnostic_on_type_error(&self, hir_id: HirId, directive: Option<&Directive>) {
+        if let Some(directive) = directive {
+            if let Node::Item(Item {
+                kind:
+                    ItemKind::Struct(_, generics, _)
+                    | ItemKind::Enum(_, generics, _)
+                    | ItemKind::Union(_, generics, _),
+                ..
+            }) = self.tcx.hir_node(hir_id)
+            {
+                let generic_count = generics
+                    .params
+                    .iter()
+                    .filter(|p| !matches!(p.kind, GenericParamKind::Lifetime { .. }))
+                    .count();
+
+                // Enforce: at most one generic
+                if generic_count != 1 {
+                    self.tcx.emit_node_span_lint(
+                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                        hir_id,
+                        generics.span,
+                        errors::OnTypeErrorNotExactlyOneGeneric { count: generic_count },
+                    );
+                }
+
+                directive.visit_params(&mut |argument_name, span| {
+                    let has_generic = generics.params.iter().any(|p| {
+                        if !matches!(p.kind, GenericParamKind::Lifetime { .. })
+                            && let ParamName::Plain(name) = p.name
+                            && name.name == argument_name
+                        {
+                            true
+                        } else {
+                            false
+                        }
+                    });
+
+                    let is_allowed = argument_name == sym::Expected || argument_name == sym::Found;
+                    if !(has_generic | is_allowed) {
+                        self.tcx.emit_node_span_lint(
+                            MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
+                            hir_id,
+                            span,
+                            errors::OnTypeErrorMalformedFormatLiterals { name: argument_name },
                         )
                     }
                 });
