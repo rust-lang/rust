@@ -70,6 +70,11 @@ where
     ) -> Result<[Self::Item; N], array::IntoIter<Self::Item, N>> {
         let mut array: [MaybeUninit<Self::Item>; N] = [const { MaybeUninit::uninit() }; N];
 
+        if N == 0 {
+            // SAFETY: the array is empty, vacuously initialized.
+            return Ok(unsafe { MaybeUninit::array_assume_init(array) });
+        }
+
         struct Guard<'a, T> {
             array: &'a mut [MaybeUninit<T>],
             initialized: usize,
@@ -91,10 +96,13 @@ where
 
         let result = self.iter.try_for_each(|element| {
             let idx = guard.initialized;
+            if idx >= N {
+                panic!("closure called after `ControlFlow::Break` was returned");
+            }
             let val = (self.f)(element);
             guard.initialized = idx + val.is_some() as usize;
 
-            // SAFETY: Loop conditions ensure the index is in bounds.
+            // SAFETY: idx < N is guaranteed by the check above.
 
             unsafe {
                 let opt_payload_at: *const MaybeUninit<B> =
@@ -111,12 +119,12 @@ where
 
         match result {
             ControlFlow::Break(()) => {
-                // SAFETY: The loop above is only explicitly broken when the array has been fully initialized
+                // SAFETY: The loop breaks only when initialized == N.
                 Ok(unsafe { MaybeUninit::array_assume_init(array) })
             }
             ControlFlow::Continue(()) => {
                 let initialized = guard.initialized;
-                // SAFETY: The range is in bounds since the loop breaks when reaching N elements.
+                // SAFETY: The range is in bounds: initialized <= N.
                 Err(unsafe { array::IntoIter::new_unchecked(array, 0..initialized) })
             }
         }

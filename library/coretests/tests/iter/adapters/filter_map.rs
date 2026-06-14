@@ -48,3 +48,33 @@ fn test_double_ended_filter_map() {
     assert_eq!(it.next().unwrap(), 4);
     assert_eq!(it.next_back(), None);
 }
+
+#[test]
+fn test_next_chunk_zero_len() {
+    let result = (0usize..).filter_map(Some).next_chunk::<0>();
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), [] as [usize; 0]);
+}
+
+#[test]
+#[should_panic(expected = "closure called after `ControlFlow::Break` was returned")]
+fn test_next_chunk_malicious_try_for_each() {
+    struct OverEager(usize, usize);
+    impl Iterator for OverEager {
+        type Item = usize;
+        fn next(&mut self) -> Option<usize> {
+            unreachable!()
+        }
+        fn try_for_each<F, R>(&mut self, mut f: F) -> R
+        where
+            F: FnMut(usize) -> R,
+            R: std::ops::Try<Output = ()>,
+        {
+            for i in 0..self.1 {
+                let _ = f(self.0 + i);
+            }
+            R::from_output(())
+        }
+    }
+    let _ = OverEager(0, 8).filter_map(Some).next_chunk::<4>();
+}
