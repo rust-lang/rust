@@ -740,7 +740,7 @@ fn resolved_path(
 fn primitive_link(
     f: &mut fmt::Formatter<'_>,
     prim: clean::PrimitiveType,
-    name: fmt::Arguments<'_>,
+    name: impl Display,
     cx: &Context<'_>,
 ) -> fmt::Result {
     primitive_link_fragment(f, prim, name, "", cx)
@@ -749,11 +749,11 @@ fn primitive_link(
 fn primitive_link_fragment(
     f: &mut fmt::Formatter<'_>,
     prim: clean::PrimitiveType,
-    name: fmt::Arguments<'_>,
+    name: impl Display,
     fragment: &str,
     cx: &Context<'_>,
 ) -> fmt::Result {
-    let m = &cx.cache();
+    let m = cx.cache();
     let mut needs_termination = false;
     if !f.alternate() {
         match m.primitive_locations.get(&prim) {
@@ -909,9 +909,9 @@ fn fmt_type(
         }
         clean::Infer => write!(f, "_"),
         clean::Primitive(clean::PrimitiveType::Never) => {
-            primitive_link(f, PrimitiveType::Never, format_args!("!"), cx)
+            primitive_link(f, PrimitiveType::Never, "!", cx)
         }
-        &clean::Primitive(prim) => primitive_link(f, prim, format_args!("{}", prim.as_sym()), cx),
+        &clean::Primitive(prim) => primitive_link(f, prim, prim.as_sym(), cx),
         clean::BareFunction(decl) => {
             print_higher_ranked_params_with_space(&decl.generic_params, cx, "for").fmt(f)?;
             decl.safety.print_with_space().fmt(f)?;
@@ -919,7 +919,7 @@ fn fmt_type(
             if f.alternate() {
                 f.write_str("fn")?;
             } else {
-                primitive_link(f, PrimitiveType::Fn, format_args!("fn"), cx)?;
+                primitive_link(f, PrimitiveType::Fn, "fn", cx)?;
             }
             print_fn_decl(&decl.decl, cx).fmt(f)
         }
@@ -928,14 +928,12 @@ fn fmt_type(
             print_type(&binder.ty, cx).fmt(f)
         }
         clean::Tuple(typs) => match &typs[..] {
-            &[] => primitive_link(f, PrimitiveType::Unit, format_args!("()"), cx),
+            &[] => primitive_link(f, PrimitiveType::Unit, "()", cx),
             [one] => {
                 if let clean::Generic(name) = one {
                     primitive_link(f, PrimitiveType::Tuple, format_args!("({name},)"), cx)
                 } else {
-                    write!(f, "(")?;
-                    print_type(one, cx).fmt(f)?;
-                    write!(f, ",)")
+                    write!(f, "({},)", WithOpts::from(f).display(print_type(one, cx)))
                 }
             }
             many => {
@@ -951,11 +949,7 @@ fn fmt_type(
                     primitive_link(
                         f,
                         PrimitiveType::Tuple,
-                        format_args!(
-                            "{}",
-                            Wrapped::with_parens()
-                                .wrap_fn(|f| generic_names.iter().joined(", ", f))
-                        ),
+                        Wrapped::with_parens().wrap_fn(|f| generic_names.iter().joined(", ", f)),
                         cx,
                     )
                 } else {
@@ -970,13 +964,10 @@ fn fmt_type(
         }
         clean::Slice(t) => Wrapped::with_square_brackets().wrap(print_type(t, cx)).fmt(f),
         clean::Type::Pat(t, pat) => {
-            fmt::Display::fmt(&print_type(t, cx), f)?;
-            write!(f, " is {pat}")
+            write!(f, "{} is {pat}", WithOpts::from(f).display(print_type(t, cx)))
         }
         clean::Type::FieldOf(t, field) => {
-            write!(f, "field_of!(")?;
-            fmt::Display::fmt(&print_type(t, cx), f)?;
-            write!(f, ", {field})")
+            write!(f, "field_of!({}, {field})", WithOpts::from(f).display(print_type(t, cx)))
         }
         clean::Array(clean::Generic(name), n) if !f.alternate() => primitive_link(
             f,
@@ -991,14 +982,14 @@ fn fmt_type(
                 if f.alternate() {
                     f.write_str(n)
                 } else {
-                    primitive_link(f, PrimitiveType::Array, format_args!("{n}", n = Escape(n)), cx)
+                    primitive_link(f, PrimitiveType::Array, Escape(n), cx)
                 }
             }))
             .fmt(f),
         clean::RawPointer(m, t) => {
             let m = m.ptr_str();
 
-            if matches!(**t, clean::Generic(_)) || t.is_assoc_ty() {
+            if matches!(t, clean::Generic(_)) || t.is_assoc_ty() {
                 primitive_link(
                     f,
                     clean::PrimitiveType::RawPointer,
@@ -1029,13 +1020,9 @@ fn fmt_type(
 
             write!(f, "{amp}{lt}{m}")?;
 
-            let needs_parens = match **ty {
-                clean::DynTrait(ref bounds, ref trait_lt)
-                    if bounds.len() > 1 || trait_lt.is_some() =>
-                {
-                    true
-                }
-                clean::ImplTrait(ref bounds) if bounds.len() > 1 => true,
+            let needs_parens = match ty {
+                clean::DynTrait(bounds, trait_lt) if bounds.len() > 1 || trait_lt.is_some() => true,
+                clean::ImplTrait(bounds) if bounds.len() > 1 => true,
                 _ => false,
             };
             Wrapped::with_parens()
@@ -1044,8 +1031,7 @@ fn fmt_type(
                 .fmt(f)
         }
         clean::ImplTrait(bounds) => {
-            f.write_str("impl ")?;
-            print_generic_bounds(bounds, cx).fmt(f)
+            write!(f, "impl {}", WithOpts::from(f).display(print_generic_bounds(bounds, cx)))
         }
         clean::QPath(qpath) => print_qpath_data(qpath, cx).fmt(f),
     }
@@ -1565,7 +1551,7 @@ fn print_import_source(import_source: &clean::ImportSource, cx: &Context<'_>) ->
             }
             let name = import_source.path.last();
             if let hir::def::Res::PrimTy(p) = import_source.path.res {
-                primitive_link(f, PrimitiveType::from(p), format_args!("{name}"), cx)?;
+                primitive_link(f, PrimitiveType::from(p), name, cx)?;
             } else {
                 f.write_str(name.as_str())?;
             }
