@@ -1,0 +1,16 @@
+warning: lint `fuzzy_provenance_casts` has been renamed to `implicit_provenance_casts`
+  --> $DIR/lint-strict-provenance-old-names.rs:6:9
+   |
+LL | #![deny(fuzzy_provenance_casts)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `implicit_provenance_casts`
+   |
+   = note: `#[warn(renamed_and_removed_lints)]` on by default
+
+warning: lint `lossy_provenance_casts` has been renamed to `implicit_provenance_casts`
+  --> $DIR/lint-strict-provenance-old-names.rs:8:9
+   |
+LL | #![deny(lossy_provenance_casts)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `implicit_provenance_casts`
+
+warning: 2 warnings emitted
+
