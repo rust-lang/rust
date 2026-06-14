@@ -54,8 +54,18 @@ unsafe extern "Rust" {
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[derive(Copy, Clone, Default, Debug)]
 // the compiler needs to know when a Box uses the global allocator vs a custom one
+// FIXME(nia-e): change everything to use the noalias_allocator lang item instead
 #[lang = "global_alloc_ty"]
 pub struct Global;
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+unsafe impl core::alloc::AllocatorClone for Global {}
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+unsafe impl core::alloc::StaticAllocator for Global {}
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+unsafe impl core::alloc::NoaliasAllocator for Global {}
 
 /// Allocates memory with the global allocator.
 ///
