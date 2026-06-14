@@ -1,5 +1,7 @@
 //@ run-rustfix
-//@ edition:2018
+//@ revisions: rust2015 rust2018
+//@[rust2015] edition:2015
+//@[rust2018] edition:2018
 
 #![allow(dead_code)]
 
