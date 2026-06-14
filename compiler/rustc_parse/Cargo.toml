@@ -20,6 +20,7 @@ rustc_span = { path = "../rustc_span" }
 thin-vec = "0.2.15"
 tracing = "0.1"
 unicode-normalization = "0.1.25"
+unicode-properties = { version = "0.1.4", default-features = false, features = ["emoji"] }
 unicode-width = "0.2.2"
 # tidy-alphabetical-end
 

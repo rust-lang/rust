@@ -231,7 +231,7 @@ fn lifetime() {
         "'abc",
         FrontmatterAllowed::No,
         expect![[r#"
-            Token { kind: Lifetime { starts_with_number: false }, len: 4 }
+            Token { kind: Lifetime { invalid: false }, len: 4 }
         "#]],
     );
 }

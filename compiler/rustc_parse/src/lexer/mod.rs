@@ -16,6 +16,7 @@ use rustc_session::lint::builtin::{
 use rustc_session::parse::ParseSess;
 use rustc_span::{BytePos, Pos, Span, Symbol, sym};
 use tracing::debug;
+use unicode_properties::emoji::UnicodeEmoji;
 
 use crate::errors;
 use crate::lexer::diagnostics::TokenTreeDiagInfo;
@@ -315,18 +316,42 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                     self.lint_literal_unicode_text_flow(symbol, kind, self.mk_sp(start, self.pos), "literal");
                     token::Literal(token::Lit { kind, symbol, suffix })
                 }
-                rustc_lexer::TokenKind::Lifetime { starts_with_number } => {
+                rustc_lexer::TokenKind::Lifetime { invalid } => {
                     // Include the leading `'` in the real identifier, for macro
                     // expansion purposes. See #12512 for the gory details of why
                     // this is necessary.
                     let lifetime_name = nfc_normalize(self.str_from(start));
                     self.last_lifetime = Some(self.mk_sp(start, start + BytePos(1)));
-                    if starts_with_number {
-                        let span = self.mk_sp(start, self.pos);
-                        self.dcx()
-                            .struct_err("lifetimes cannot start with a number")
-                            .with_span(span)
-                            .stash(span, StashKey::LifetimeIsChar);
+                    let span = self.mk_sp(start, self.pos);
+                    if invalid {
+                        let name = lifetime_name.as_str();
+                        // skip(1) to skip the `'`
+                        let starts_with_number = matches!(
+                            name.chars().skip(1).next(),
+                            Some(c) if c.is_ascii_digit()
+                        );
+                        if name.chars().any(|c| !c.is_ascii() && c.is_emoji_char()) {
+                            self.psess
+                                .bad_unicode_identifiers
+                                .borrow_mut()
+                                .entry(lifetime_name)
+                                .or_default()
+                                .push(span);
+                        }
+                        if starts_with_number {
+                            let mut err = self.dcx()
+                                .struct_err(format!(
+                                    "lifetimes cannot start with a number: `{name}`"
+                                ))
+                                .with_span(span);
+                            if name.len() > 2 {
+                                // Point at the first lifetime name character.
+                                let start_span = self.mk_sp(start + BytePos(1), start + BytePos(2));
+                                err.span(start_span);
+                                err.span_label(span, "");
+                            }
+                            err.stash(span, StashKey::LifetimeIsChar);
+                        }
                     }
                     token::Lifetime(lifetime_name, IdentIsRaw::No)
                 }
