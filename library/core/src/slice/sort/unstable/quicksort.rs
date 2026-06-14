@@ -61,8 +61,6 @@ pub(crate) fn quicksort<'a, T, F>(
 
         // Partition the slice.
         let num_lt = partition(v, pivot_pos, is_less);
-        // SAFETY: partition ensures that `num_lt` will be in-bounds.
-        unsafe { intrinsics::assume(num_lt < v.len()) };
 
         // Split the slice into `left`, `pivot`, and `right`.
         let (left, right) = v.split_at_mut(num_lt);
@@ -84,6 +82,8 @@ pub(crate) fn quicksort<'a, T, F>(
 /// on the left side of `v` followed by the other elements, notionally considered greater or
 /// equal to `pivot`.
 ///
+/// Aborts if the `pivot` or the returned value would be out of bounds of `v`.
+///
 /// Returns the number of elements that are compared true for `is_less(elem, pivot)`.
 ///
 /// If `is_less` does not implement a total order the resulting order and return value are
@@ -97,27 +97,18 @@ where
     let len = v.len();
 
     // Allows for panic-free code-gen by proving this property to the compiler.
-    if len == 0 {
-        return 0;
-    }
-
-    if pivot >= len {
+    if len == 0 || pivot >= len {
         intrinsics::abort();
     }
 
-    // SAFETY: We checked that `pivot` is in-bounds.
-    unsafe {
-        // Place the pivot at the beginning of slice.
-        v.swap_unchecked(0, pivot);
-    }
-    let (pivot, v_without_pivot) = v.split_at_mut(1);
+    v.swap(0, pivot);
+    let (pivot, v_without_pivot) = v.split_first_mut().unwrap_or_else(|| intrinsics::abort());
 
     // Assuming that Rust generates noalias LLVM IR we can be sure that a partition function
     // signature of the form `(v: &mut [T], pivot: &T)` guarantees that pivot and v can't alias.
     // Having this guarantee is crucial for optimizations. It's possible to copy the pivot value
     // into a stack value, but this creates issues for types with interior mutability mandating
     // a drop guard.
-    let pivot = &mut pivot[0];
 
     // This construct is used to limit the LLVM IR generated, which saves large amounts of
     // compile-time by only instantiating the code that is needed. Idea by Frank Steffahn.
@@ -127,11 +118,8 @@ where
         intrinsics::abort();
     }
 
-    // SAFETY: We checked that `num_lt` is in-bounds.
-    unsafe {
-        // Place the pivot between the two partitions.
-        v.swap_unchecked(0, num_lt);
-    }
+    // Place the pivot between the two partitions.
+    v.swap(0, num_lt);
 
     num_lt
 }
