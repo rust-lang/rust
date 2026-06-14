@@ -26,7 +26,7 @@ use rustc_lint_defs::builtin::LINKER_INFO;
 use rustc_macros::Diagnostic;
 use rustc_metadata::fs::{METADATA_FILENAME, copy_to_stdout, emit_wrapper_file};
 use rustc_metadata::{
-    EncodedMetadata, NativeLibSearchFallback, find_native_static_library,
+    EncodedMetadata, NativeLibSearchFallback, find_bundled_library, find_native_static_library,
     walk_native_lib_search_dirs,
 };
 use rustc_middle::bug;
@@ -320,8 +320,25 @@ fn link_rlib<'a>(
         .map(|obj| obj.file_name().unwrap().to_str().unwrap().to_string())
         .collect();
 
+    let native_lib_filenames: Vec<Option<Symbol>> = crate_info
+        .used_libraries
+        .iter()
+        .map(|lib| {
+            find_bundled_library(
+                lib.name,
+                Some(lib.verbatim),
+                lib.kind,
+                lib.cfg.is_some(),
+                sess,
+                &crate_info.crate_types,
+            )
+        })
+        .collect();
+
     let metadata_link_file = if matches!(flavor, RlibFlavor::Normal) {
-        let metadata_link = rmeta_link::RmetaLink { rust_object_files };
+        let native_lib_filenames: Vec<Option<String>> =
+            native_lib_filenames.iter().map(|f| f.map(|s| s.to_string())).collect();
+        let metadata_link = rmeta_link::RmetaLink { rust_object_files, native_lib_filenames };
         let metadata_link_data = metadata_link.encode();
         let (wrapper, _) =
             create_wrapper_file(sess, rmeta_link::SECTION.to_string(), &metadata_link_data);
@@ -404,12 +421,12 @@ fn link_rlib<'a>(
     // feature then we'll need to figure out how to record what objects were
     // loaded from the libraries found here and then encode that into the
     // metadata of the rlib we're generating somehow.
-    for lib in crate_info.used_libraries.iter() {
+    for (i, lib) in crate_info.used_libraries.iter().enumerate() {
         let NativeLibKind::Static { bundle: None | Some(true), .. } = lib.kind else {
             continue;
         };
         if flavor == RlibFlavor::Normal
-            && let Some(filename) = lib.filename
+            && let Some(filename) = native_lib_filenames[i]
         {
             let path = find_native_static_library(filename.as_str(), true, sess);
             let src = read(path)
@@ -522,11 +539,24 @@ fn link_staticlib(
         let lto = are_upstream_rust_objects_already_included(sess)
             && !ignored_for_lto(sess, crate_info, cnum);
 
-        let native_libs = crate_info.native_libraries[&cnum].iter();
-        let relevant = native_libs.clone().filter(|lib| relevant_lib(sess, lib));
-        let relevant_libs: FxIndexSet<_> = relevant.filter_map(|lib| lib.filename).collect();
+        let native_libs = &crate_info.native_libraries[&cnum];
+        let filenames: Vec<Option<Symbol>> = rmeta_link::read_from_path(&sess.target, path)
+            .map(|rl| {
+                rl.native_lib_filenames.iter().map(|f| f.as_deref().map(Symbol::intern)).collect()
+            })
+            .unwrap_or_default();
+        let relevant_libs: FxIndexSet<_> = native_libs
+            .iter()
+            .enumerate()
+            .filter(|(_, lib)| relevant_lib(sess, lib))
+            .filter_map(|(i, _)| filenames.get(i).copied().flatten())
+            .collect();
 
-        let bundled_libs: FxIndexSet<_> = native_libs.filter_map(|lib| lib.filename).collect();
+        let bundled_libs: FxIndexSet<_> = native_libs
+            .iter()
+            .enumerate()
+            .filter_map(|(i, _)| filenames.get(i).copied().flatten())
+            .collect();
         ab.add_archive(
             path,
             AddArchiveKind::Rlib(&|fname: &str, entry_kind| {
@@ -2933,13 +2963,42 @@ fn add_native_libs_from_crate(
             .unwrap_or_else(|e| sess.dcx().emit_fatal(e));
     }
 
-    let native_libs = match cnum {
-        LOCAL_CRATE => &crate_info.used_libraries,
-        _ => &crate_info.native_libraries[&cnum],
+    let (native_libs, filenames): (&Vec<NativeLib>, Vec<Option<Symbol>>) = match cnum {
+        LOCAL_CRATE => {
+            let libs = &crate_info.used_libraries;
+            let filenames = libs
+                .iter()
+                .map(|lib| {
+                    find_bundled_library(
+                        lib.name,
+                        Some(lib.verbatim),
+                        lib.kind,
+                        lib.cfg.is_some(),
+                        sess,
+                        &crate_info.crate_types,
+                    )
+                })
+                .collect();
+            (libs, filenames)
+        }
+        _ => {
+            let filenames: Vec<Option<Symbol>> = crate_info.used_crate_source[&cnum]
+                .rlib
+                .as_ref()
+                .and_then(|rlib_path| rmeta_link::read_from_path(&sess.target, rlib_path))
+                .map(|rl| {
+                    rl.native_lib_filenames
+                        .iter()
+                        .map(|f| f.as_deref().map(Symbol::intern))
+                        .collect()
+                })
+                .unwrap_or_default();
+            (&crate_info.native_libraries[&cnum], filenames)
+        }
     };
 
     let mut last = (None, NativeLibKind::Unspecified, false);
-    for lib in native_libs {
+    for (i, lib) in native_libs.iter().enumerate() {
         if !relevant_lib(sess, lib) {
             continue;
         }
@@ -2959,7 +3018,7 @@ fn add_native_libs_from_crate(
                     let bundle = bundle.unwrap_or(true);
                     let whole_archive = whole_archive == Some(true);
                     if bundle && cnum != LOCAL_CRATE {
-                        if let Some(filename) = lib.filename {
+                        if let Some(filename) = filenames.get(i).copied().flatten() {
                             // If rlib contains native libs as archives, they are unpacked to tmpdir.
                             let path = tmpdir.join(filename.as_str());
                             cmd.link_staticlib_by_path(&path, whole_archive);
@@ -3080,10 +3139,17 @@ fn add_upstream_rust_crates(
         match linkage {
             Linkage::Static | Linkage::IncludedFromDylib | Linkage::NotLinked => {
                 if link_static_crate {
-                    bundled_libs = crate_info.native_libraries[&cnum]
-                        .iter()
-                        .filter_map(|lib| lib.filename)
-                        .collect();
+                    bundled_libs = crate_info.used_crate_source[&cnum]
+                        .rlib
+                        .as_ref()
+                        .and_then(|rlib_path| rmeta_link::read_from_path(&sess.target, rlib_path))
+                        .map(|rl| {
+                            rl.native_lib_filenames
+                                .iter()
+                                .filter_map(|f| f.as_deref().map(Symbol::intern))
+                                .collect()
+                        })
+                        .unwrap_or_default();
                     add_static_crate(
                         cmd,
                         sess,

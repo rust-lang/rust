@@ -50,7 +50,8 @@ use crate::mir::operand::OperandValue;
 use crate::mir::place::PlaceRef;
 use crate::traits::*;
 use crate::{
-    CachedModuleCodegen, CodegenLintLevelSpecs, CrateInfo, ModuleCodegen, errors, meth, mir,
+    CachedModuleCodegen, CodegenLintLevelSpecs, CrateInfo, ModuleCodegen, NativeLib, errors, meth,
+    mir,
 };
 
 pub(crate) fn bin_op_to_icmp_predicate(op: BinOp, signed: bool) -> IntPredicate {
@@ -969,11 +970,11 @@ impl CrateInfo {
         info.native_libraries.reserve(n_crates);
 
         for &cnum in crates.iter() {
-            info.native_libraries
-                .insert(cnum, tcx.native_libraries(cnum).iter().map(Into::into).collect());
-            info.crate_name.insert(cnum, tcx.crate_name(cnum));
-
+            let native_libs: Vec<NativeLib> =
+                tcx.native_libraries(cnum).iter().map(Into::into).collect();
             let used_crate_source = tcx.used_crate_source(cnum);
+            info.native_libraries.insert(cnum, native_libs);
+            info.crate_name.insert(cnum, tcx.crate_name(cnum));
             info.used_crate_source.insert(cnum, Arc::clone(used_crate_source));
             if tcx.is_profiler_runtime(cnum) {
                 info.profiler_runtime = Some(cnum);
