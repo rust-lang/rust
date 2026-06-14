@@ -498,6 +498,7 @@ lint_any!(
     Clippy, "src/tools/clippy", "clippy", Mode::ToolRustcPrivate;
     CollectLicenseMetadata, "src/tools/collect-license-metadata", "collect-license-metadata", Mode::ToolTarget;
     Compiletest, "src/tools/compiletest", "compiletest", Mode::ToolTarget;
+    CompiletestLintDriver, "src/tools/compiletest-lint-driver", "compiletest-lint-driver", Mode::ToolRustcPrivate;
     CoverageDump, "src/tools/coverage-dump", "coverage-dump", Mode::ToolTarget;
     Jsondocck, "src/tools/jsondocck", "jsondocck", Mode::ToolTarget;
     Jsondoclint, "src/tools/jsondoclint", "jsondoclint", Mode::ToolTarget;

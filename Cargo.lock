@@ -904,6 +904,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "compiletest-lint-driver"
+version = "0.1.0"
+dependencies = [
+ "libloading 0.9.0",
+]
+
+[[package]]
 name = "console"
 version = "0.16.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
