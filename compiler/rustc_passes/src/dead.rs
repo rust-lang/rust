@@ -129,6 +129,7 @@ struct MarkSymbolVisitor<'tcx> {
     // macro)
     ignored_derived_traits: LocalDefIdMap<FxIndexSet<DefId>>,
     propagated_comes_from_allow_expect: ComesFromAllowExpect,
+    unsolved_items: Vec<LocalDefId>,
 }
 
 impl<'tcx> MarkSymbolVisitor<'tcx> {
@@ -419,6 +420,8 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
             if !self.scanned.insert((id, propagated)) {
                 continue;
+            } else if propagated == ComesFromAllowExpect::No {
+                self.scanned.insert((id, ComesFromAllowExpect::Yes));
             }
 
             // Avoid accessing the HIR for the synthesized associated type generated for RPITITs.
@@ -544,13 +547,17 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     /// `local_def_id` points to an impl or an impl item,
     /// both impl and impl item that may be passed to this function are of a trait,
     /// and added into the unsolved_items during `create_and_seed_worklist`
-    fn check_impl_or_impl_item_live(&mut self, local_def_id: LocalDefId) -> bool {
+    fn check_impl_or_impl_item_live(
+        &self,
+        local_def_id: LocalDefId,
+        defer_seeds_come_from_allow: bool,
+    ) -> Option<ComesFromAllowExpect> {
         let (impl_block_id, trait_def_id) = match self.tcx.def_kind(local_def_id) {
             // assoc impl items of traits are live if the corresponding trait items are live
             DefKind::AssocConst { .. } | DefKind::AssocTy | DefKind::AssocFn => {
-                let trait_item_id =
+                let trait_def_id =
                     self.tcx.trait_item_of(local_def_id).and_then(|def_id| def_id.as_local());
-                (self.tcx.local_parent(local_def_id), trait_item_id)
+                (self.tcx.local_parent(local_def_id), trait_def_id)
             }
             // impl items are live if the corresponding traits are live
             DefKind::Impl { of_trait: true } => {
@@ -559,10 +566,19 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             _ => bug!(),
         };
 
-        if let Some(trait_def_id) = trait_def_id
-            && !self.live_symbols.contains(&trait_def_id)
-        {
-            return false;
+        let mut trait_comes_from_allow = None;
+        if let Some(trait_def_id) = trait_def_id {
+            if defer_seeds_come_from_allow {
+                if !self.live_symbols.contains(&trait_def_id) {
+                    return None;
+                }
+            } else {
+                if !self.live_symbols.contains(&trait_def_id) {
+                    return has_allow_dead_code_or_lang_attr(self.tcx, trait_def_id);
+                }
+
+                trait_comes_from_allow = has_allow_dead_code_or_lang_attr(self.tcx, trait_def_id);
+            }
         }
 
         // The impl or impl item is used if the corresponding trait or trait item is used and the ty is used.
@@ -571,10 +587,70 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             && let Some(adt_def_id) = adt.did().as_local()
             && !self.live_symbols.contains(&adt_def_id)
         {
-            return false;
+            if defer_seeds_come_from_allow {
+                return None;
+            } else {
+                return trait_comes_from_allow
+                    .or_else(|| has_allow_dead_code_or_lang_attr(self.tcx, adt_def_id));
+            }
         }
 
-        true
+        Some(ComesFromAllowExpect::No)
+    }
+
+    fn collect_live_items_from_unsolved_items(
+        &mut self,
+        defer_seeds_come_from_allow: bool,
+    ) -> Vec<(LocalDefId, ComesFromAllowExpect)> {
+        let mut unsolved_items = std::mem::take(&mut self.unsolved_items);
+        let mut items_to_check = vec![];
+        unsolved_items.retain(|&def_id| {
+            let Some(comes_from_allow) =
+                self.check_impl_or_impl_item_live(def_id, defer_seeds_come_from_allow)
+            else {
+                return true;
+            };
+
+            items_to_check.push((def_id, comes_from_allow));
+            false
+        });
+        self.unsolved_items = unsolved_items;
+        items_to_check
+    }
+
+    fn mark_live_symbols_and_ignored_derived_traits(
+        &mut self,
+        defer_seeds_come_from_allow: bool,
+    ) -> Result<(), ErrorGuaranteed> {
+        if let ControlFlow::Break(guar) = self.mark_live_symbols() {
+            return Err(guar);
+        }
+
+        // We have marked the primary seeds as live. We now need to process unsolved items from traits
+        // and trait impls: add them to the work list if the trait or the implemented type is live.
+        let mut items_to_check =
+            self.collect_live_items_from_unsolved_items(defer_seeds_come_from_allow);
+
+        while !items_to_check.is_empty() {
+            self.worklist.extend(items_to_check.into_iter().map(|(id, comes_from_allow)| {
+                let own = if defer_seeds_come_from_allow {
+                    ComesFromAllowExpect::No
+                } else {
+                    has_allow_dead_code_or_lang_attr(self.tcx, id)
+                        .unwrap_or(ComesFromAllowExpect::No)
+                };
+
+                WorkItem { id, propagated: comes_from_allow, own }
+            }));
+            if let ControlFlow::Break(guar) = self.mark_live_symbols() {
+                return Err(guar);
+            }
+
+            items_to_check =
+                self.collect_live_items_from_unsolved_items(defer_seeds_come_from_allow);
+        }
+
+        Ok(())
     }
 }
 
@@ -843,21 +919,22 @@ fn maybe_record_as_seed<'tcx>(
             if allow_dead_code.is_none() {
                 let parent = tcx.local_parent(owner_id.def_id);
                 match tcx.def_kind(parent) {
-                    DefKind::Impl { of_trait: false } | DefKind::Trait => {}
-                    DefKind::Impl { of_trait: true } => {
-                        if let Some(trait_item_def_id) =
-                            tcx.associated_item(owner_id.def_id).trait_item_def_id()
-                            && let Some(trait_item_local_def_id) = trait_item_def_id.as_local()
+                    DefKind::Trait => {}
+                    DefKind::Impl { of_trait: false } => {
+                        if let ty::Adt(adt, _) =
+                            tcx.type_of(parent).instantiate_identity().skip_normalization().kind()
+                            && let Some(adt_def_id) = adt.did().as_local()
                             && let Some(comes_from_allow) =
-                                has_allow_dead_code_or_lang_attr(tcx, trait_item_local_def_id)
+                                has_allow_dead_code_or_lang_attr(tcx, adt_def_id)
                         {
                             push_into_worklist(WorkItem {
                                 id: owner_id.def_id,
                                 propagated: comes_from_allow,
-                                own: comes_from_allow,
+                                own: ComesFromAllowExpect::No,
                             });
                         }
-
+                    }
+                    DefKind::Impl { of_trait: true } => {
                         // We only care about associated items of traits,
                         // because they cannot be visited directly,
                         // so we later mark them as live if their corresponding traits
@@ -869,22 +946,21 @@ fn maybe_record_as_seed<'tcx>(
                 }
             }
         }
-        DefKind::Impl { of_trait: true } => {
-            if allow_dead_code.is_none() {
-                if let Some(trait_def_id) =
-                    tcx.impl_trait_ref(owner_id.def_id).skip_binder().def_id.as_local()
-                    && let Some(comes_from_allow) =
-                        has_allow_dead_code_or_lang_attr(tcx, trait_def_id)
-                {
-                    push_into_worklist(WorkItem {
-                        id: owner_id.def_id,
-                        propagated: comes_from_allow,
-                        own: comes_from_allow,
-                    });
-                }
-
-                unsolved_items.push(owner_id.def_id);
+        DefKind::Impl { of_trait: false } if allow_dead_code.is_none() => {
+            if let ty::Adt(adt, _) =
+                tcx.type_of(owner_id.def_id).instantiate_identity().skip_normalization().kind()
+                && let Some(adt_def_id) = adt.did().as_local()
+                && let Some(comes_from_allow) = has_allow_dead_code_or_lang_attr(tcx, adt_def_id)
+            {
+                push_into_worklist(WorkItem {
+                    id: owner_id.def_id,
+                    propagated: comes_from_allow,
+                    own: ComesFromAllowExpect::No,
+                });
             }
+        }
+        DefKind::Impl { of_trait: true } if allow_dead_code.is_none() => {
+            unsolved_items.push(owner_id.def_id);
         }
         DefKind::GlobalAsm => {
             // global_asm! is always live.
@@ -910,15 +986,21 @@ fn maybe_record_as_seed<'tcx>(
     }
 }
 
+#[derive(Default)]
+struct DeferredSeeds {
+    pub_reachables: Vec<WorkItem>,
+    come_from_allow: Vec<WorkItem>,
+}
+
 struct SeedWorklists {
     worklist: Vec<WorkItem>,
-    deferred_seeds: Vec<WorkItem>,
+    deferred_seeds: DeferredSeeds,
     unsolved_items: Vec<LocalDefId>,
 }
 
 fn create_and_seed_worklist(tcx: TyCtxt<'_>) -> SeedWorklists {
     let mut unsolved_items = Vec::new();
-    let mut deferred_seeds = Vec::new();
+    let mut deferred_seeds = DeferredSeeds::default();
     let mut worklist = Vec::new();
 
     if let Some((def_id, _)) = tcx.entry_fn(())
@@ -948,7 +1030,7 @@ fn create_and_seed_worklist(tcx: TyCtxt<'_>) -> SeedWorklists {
 
     for (id, effective_vis) in tcx.effective_visibilities(()).iter() {
         if effective_vis.is_public_at_level(Level::Reachable) {
-            deferred_seeds.push(WorkItem {
+            deferred_seeds.pub_reachables.push(WorkItem {
                 id: *id,
                 propagated: ComesFromAllowExpect::No,
                 own: ComesFromAllowExpect::No,
@@ -957,7 +1039,7 @@ fn create_and_seed_worklist(tcx: TyCtxt<'_>) -> SeedWorklists {
     }
 
     let mut push_into_worklist = |work_item: WorkItem| match work_item.own {
-        ComesFromAllowExpect::Yes => deferred_seeds.push(work_item),
+        ComesFromAllowExpect::Yes => deferred_seeds.come_from_allow.push(work_item),
         ComesFromAllowExpect::No => worklist.push(work_item),
     };
     let crate_items = tcx.hir_crate_items(());
@@ -972,8 +1054,7 @@ fn live_symbols_and_ignored_derived_traits(
     tcx: TyCtxt<'_>,
     (): (),
 ) -> Result<DeadCodeLivenessSummary, ErrorGuaranteed> {
-    let SeedWorklists { worklist, deferred_seeds, mut unsolved_items } =
-        create_and_seed_worklist(tcx);
+    let SeedWorklists { worklist, deferred_seeds, unsolved_items } = create_and_seed_worklist(tcx);
     let mut symbol_visitor = MarkSymbolVisitor {
         worklist,
         tcx,
@@ -986,15 +1067,23 @@ fn live_symbols_and_ignored_derived_traits(
         ignore_variant_stack: vec![],
         ignored_derived_traits: Default::default(),
         propagated_comes_from_allow_expect: ComesFromAllowExpect::No,
+        unsolved_items,
     };
-    mark_live_symbols_and_ignored_derived_traits(&mut symbol_visitor, &mut unsolved_items)?;
+    symbol_visitor.mark_live_symbols_and_ignored_derived_traits(true)?;
     let pre_deferred_seeding = DeadCodeLivenessSnapshot {
         live_symbols: symbol_visitor.live_symbols.clone(),
         ignored_derived_traits: symbol_visitor.ignored_derived_traits.clone(),
     };
 
-    symbol_visitor.worklist.extend(deferred_seeds);
-    mark_live_symbols_and_ignored_derived_traits(&mut symbol_visitor, &mut unsolved_items)?;
+    if !deferred_seeds.pub_reachables.is_empty() {
+        symbol_visitor.worklist.extend(deferred_seeds.pub_reachables);
+        symbol_visitor.mark_live_symbols_and_ignored_derived_traits(true)?;
+    }
+
+    if !deferred_seeds.come_from_allow.is_empty() {
+        symbol_visitor.worklist.extend(deferred_seeds.come_from_allow);
+        symbol_visitor.mark_live_symbols_and_ignored_derived_traits(false)?;
+    }
 
     Ok(DeadCodeLivenessSummary {
         pre_deferred_seeding,
@@ -1003,40 +1092,6 @@ fn live_symbols_and_ignored_derived_traits(
             ignored_derived_traits: symbol_visitor.ignored_derived_traits,
         },
     })
-}
-
-fn mark_live_symbols_and_ignored_derived_traits(
-    symbol_visitor: &mut MarkSymbolVisitor<'_>,
-    unsolved_items: &mut Vec<LocalDefId>,
-) -> Result<(), ErrorGuaranteed> {
-    if let ControlFlow::Break(guar) = symbol_visitor.mark_live_symbols() {
-        return Err(guar);
-    }
-
-    // We have marked the primary seeds as live. We now need to process unsolved items from traits
-    // and trait impls: add them to the work list if the trait or the implemented type is live.
-    let mut items_to_check: Vec<_> = unsolved_items
-        .extract_if(.., |&mut local_def_id| {
-            symbol_visitor.check_impl_or_impl_item_live(local_def_id)
-        })
-        .collect();
-
-    while !items_to_check.is_empty() {
-        symbol_visitor.worklist.extend(items_to_check.drain(..).map(|id| WorkItem {
-            id,
-            propagated: ComesFromAllowExpect::No,
-            own: ComesFromAllowExpect::No,
-        }));
-        if let ControlFlow::Break(guar) = symbol_visitor.mark_live_symbols() {
-            return Err(guar);
-        }
-
-        items_to_check.extend(unsolved_items.extract_if(.., |&mut local_def_id| {
-            symbol_visitor.check_impl_or_impl_item_live(local_def_id)
-        }));
-    }
-
-    Ok(())
 }
 
 struct DeadItem {
