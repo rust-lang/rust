@@ -6,5 +6,30 @@ LL | #![feature(generic_const_args)]
    |
    = help: enable all of these features
 
-error: aborting due to 1 previous error
+error[E0308]: mismatched types
+  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:31:26
+   |
+LL |     arr_with_weird_len = [(); 10];
+   |                          ^^^^^^^^ expected an array with a size of FREE::<_>, found one with a size of 10
 
+error[E0308]: mismatched types
+  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:38:26
+   |
+LL |     arr_with_weird_len = [(); 2];
+   |                          ^^^^^^^ expected an array with a size of FREE::<_>, found one with a size of 2
+
+error[E0308]: mismatched types
+  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:50:26
+   |
+LL |     arr_with_weird_len = [(); 10];
+   |                          ^^^^^^^^ expected an array with a size of <S as Trait>::PROJ::<_>, found one with a size of 10
+
+error[E0308]: mismatched types
+  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:57:26
+   |
+LL |     arr_with_weird_len = [(); 2];
+   |                          ^^^^^^^ expected an array with a size of <S as Trait>::PROJ::<_>, found one with a size of 2
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
