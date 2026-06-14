@@ -937,21 +937,41 @@ impl EarlyLintPass for UnusedParens {
                             && !dyn2015_exception
                         {
                             let s = poly_trait_ref.span;
-                            let spans = (!s.from_expansion()).then(|| {
-                                (
+                            // `poly_trait_ref.parens == Yes` only promises that the *parser*
+                            // saw parentheses around this bound. It does not guarantee that
+                            // the source text covered by `s` is literally wrapped in ASCII
+                            // parentheses, which is what the byte arithmetic below assumes:
+                            //
+                            //  - A proc-macro can synthesize the parentheses while reusing an
+                            //    unrelated span from its input (issue #144378), so `s` may not
+                            //    point at parentheses at all.
+                            //  - The parser recovers from Unicode parens such as `（ ）`, so
+                            //    the first and last *characters* of `s` may be parens, but
+                            //    multibyte ones.
+                            //
+                            // In both cases trimming a single byte off each end would corrupt
+                            // the suggestion or even ICE by slicing through a multibyte char.
+                            // So only lint when the source really is wrapped in ASCII parens;
+                            // those are exactly one byte each, which makes the trimming sound.
+                            if !s.from_expansion()
+                                && let Ok(snippet) = cx.sess().source_map().span_to_snippet(s)
+                                && snippet.starts_with('(')
+                                && snippet.ends_with(')')
+                            {
+                                let spans = Some((
                                     s.with_hi(s.lo() + rustc_span::BytePos(1)),
                                     s.with_lo(s.hi() - rustc_span::BytePos(1)),
-                                )
-                            });
+                                ));
 
-                            self.emit_unused_delims(
-                                cx,
-                                poly_trait_ref.span,
-                                spans,
-                                "type",
-                                (false, false),
-                                false,
-                            );
+                                self.emit_unused_delims(
+                                    cx,
+                                    poly_trait_ref.span,
+                                    spans,
+                                    "type",
+                                    (false, false),
+                                    false,
+                                );
+                            }
                         }
                     }
                 }
