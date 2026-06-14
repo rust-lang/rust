@@ -3791,7 +3791,6 @@ dependencies = [
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fs_util",
- "rustc_hashes",
  "rustc_hir",
  "rustc_index",
  "rustc_llvm",
