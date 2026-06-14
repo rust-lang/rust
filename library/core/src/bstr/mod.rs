@@ -155,19 +155,7 @@ unsafe impl DerefPure for ByteStr {}
 #[unstable(feature = "bstr", issue = "134915")]
 impl fmt::Debug for ByteStr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "\"")?;
-        for chunk in self.utf8_chunks() {
-            for c in chunk.valid().chars() {
-                match c {
-                    '\0' => write!(f, "\\0")?,
-                    '\x01'..='\x7f' => write!(f, "{}", (c as u8).escape_ascii())?,
-                    _ => write!(f, "{}", c.escape_debug())?,
-                }
-            }
-            write!(f, "{}", chunk.invalid().escape_ascii())?;
-        }
-        write!(f, "\"")?;
-        Ok(())
+        fmt::Debug::fmt(&self.utf8_chunks().debug(), f)
     }
 }
 
