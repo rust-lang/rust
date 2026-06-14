@@ -2,6 +2,7 @@ use crate::intrinsics;
 use crate::iter::{TrustedLen, TrustedRandomAccess, from_fn};
 use crate::num::NonZero;
 use crate::ops::{Range, Try};
+use crate::range::RangeIter;
 
 /// An iterator for stepping iterators by a custom amount.
 ///
@@ -503,6 +504,87 @@ macro_rules! spec_int_ranges {
                 acc
             }
         }
+
+        impl SpecRangeSetup<RangeIter<$t>> for RangeIter<$t> {
+            #[inline]
+            fn setup(mut r: RangeIter<$t>, step: usize) -> RangeIter<$t> {
+                let inner_len = r.size_hint().0;
+                // If step exceeds $t::MAX, then the count will be at most 1 and
+                // thus always fit into $t.
+                let yield_count = inner_len.div_ceil(step);
+                // Turn the range end into an iteration counter
+                r.0.end = yield_count as $t;
+                r
+            }
+        }
+
+        unsafe impl StepByImpl<RangeIter<$t>> for StepBy<RangeIter<$t>> {
+            #[inline]
+            fn spec_next(&mut self) -> Option<$t> {
+                // if a step size larger than the type has been specified fall back to
+                // t::MAX, in which case remaining will be at most 1.
+                let step = <$t>::try_from(self.original_step().get()).unwrap_or(<$t>::MAX);
+                let remaining = self.iter.0.end;
+                if remaining > 0 {
+                    let val = self.iter.0.start;
+                    // this can only overflow during the last step, after which the value
+                    // will not be used
+                    self.iter.0.start = val.wrapping_add(step);
+                    self.iter.0.end = remaining - 1;
+                    Some(val)
+                } else {
+                    None
+                }
+            }
+
+            #[inline]
+            fn spec_size_hint(&self) -> (usize, Option<usize>) {
+                let remaining = self.iter.0.end as usize;
+                (remaining, Some(remaining))
+            }
+
+            // The methods below are all copied from the Iterator trait default impls.
+            // We have to repeat them here so that the specialization overrides the StepByImpl defaults
+
+            #[inline]
+            fn spec_nth(&mut self, n: usize) -> Option<Self::Item> {
+                self.advance_by(n).ok()?;
+                self.next()
+            }
+
+            #[inline]
+            fn spec_try_fold<Acc, F, R>(&mut self, init: Acc, mut f: F) -> R
+                where
+                    F: FnMut(Acc, Self::Item) -> R,
+                    R: Try<Output = Acc>
+            {
+                let mut accum = init;
+                while let Some(x) = self.next() {
+                    accum = f(accum, x)?;
+                }
+                try { accum }
+            }
+
+            #[inline]
+            fn spec_fold<Acc, F>(self, init: Acc, mut f: F) -> Acc
+                where
+                    F: FnMut(Acc, Self::Item) -> Acc
+            {
+                // if a step size larger than the type has been specified fall back to
+                // t::MAX, in which case remaining will be at most 1.
+                let step = <$t>::try_from(self.original_step().get()).unwrap_or(<$t>::MAX);
+                let remaining = self.iter.0.end;
+                let mut acc = init;
+                let mut val = self.iter.0.start;
+                for _ in 0..remaining {
+                    acc = f(acc, val);
+                    // this can only overflow during the last step, after which the value
+                    // will no longer be used
+                    val = val.wrapping_add(step);
+                }
+                acc
+            }
+        }
     )*)
 }
 
@@ -564,11 +646,70 @@ macro_rules! spec_int_ranges_r {
     )*)
 }
 
+macro_rules! spec_int_range_iters_r {
+    ($($t:ty)*) => ($(
+        const _: () = assert!(usize::BITS >= <$t>::BITS);
+
+        unsafe impl StepByBackImpl<RangeIter<$t>> for StepBy<RangeIter<$t>> {
+
+            #[inline]
+            fn spec_next_back(&mut self) -> Option<Self::Item> {
+                let step = self.original_step().get() as $t;
+                let remaining = self.iter.0.end;
+                if remaining > 0 {
+                    let start = self.iter.0.start;
+                    self.iter.0.end = remaining - 1;
+                    Some(start + step * (remaining - 1))
+                } else {
+                    None
+                }
+            }
+
+            // The methods below are all copied from the Iterator trait default impls.
+            // We have to repeat them here so that the specialization overrides the StepByImplBack defaults
+
+            #[inline]
+            fn spec_nth_back(&mut self, n: usize) -> Option<Self::Item> {
+                if self.advance_back_by(n).is_err() {
+                    return None;
+                }
+                self.next_back()
+            }
+
+            #[inline]
+            fn spec_try_rfold<Acc, F, R>(&mut self, init: Acc, mut f: F) -> R
+            where
+                F: FnMut(Acc, Self::Item) -> R,
+                R: Try<Output = Acc>
+            {
+                let mut accum = init;
+                while let Some(x) = self.next_back() {
+                    accum = f(accum, x)?;
+                }
+                try { accum }
+            }
+
+            #[inline]
+            fn spec_rfold<Acc, F>(mut self, init: Acc, mut f: F) -> Acc
+            where
+                F: FnMut(Acc, Self::Item) -> Acc
+            {
+                let mut accum = init;
+                while let Some(x) = self.next_back() {
+                    accum = f(accum, x);
+                }
+                accum
+            }
+        }
+    )*)
+}
+
 #[cfg(target_pointer_width = "64")]
 spec_int_ranges!(u8 u16 u32 u64 usize);
 // DoubleEndedIterator requires ExactSizeIterator, which isn't implemented for Range<u64>
 #[cfg(target_pointer_width = "64")]
 spec_int_ranges_r!(u8 u16 u32 usize);
+spec_int_range_iters_r!(u8 u16 usize);
 
 #[cfg(target_pointer_width = "32")]
 spec_int_ranges!(u8 u16 u32 usize);
