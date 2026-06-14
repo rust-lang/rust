@@ -196,6 +196,20 @@ declare_rustdoc_lint! {
     "detects redundant explicit links in doc comments"
 }
 
+declare_rustdoc_lint! {
+    /// This lint checks for uses of footnote references without definition.
+    BROKEN_FOOTNOTE,
+    Warn,
+    "detects footnote references with no associated definition"
+}
+
+declare_rustdoc_lint! {
+    /// This lint checks if all footnote definitions are used.
+    UNUSED_FOOTNOTE_DEFINITION,
+    Warn,
+    "detects unused footnote definitions"
+}
+
 pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
     vec![
         BROKEN_INTRA_DOC_LINKS,
@@ -209,6 +223,8 @@ pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
         MISSING_CRATE_LEVEL_DOCS,
         UNESCAPED_BACKTICKS,
         REDUNDANT_EXPLICIT_LINKS,
+        BROKEN_FOOTNOTE,
+        UNUSED_FOOTNOTE_DEFINITION,
     ]
 });
 
