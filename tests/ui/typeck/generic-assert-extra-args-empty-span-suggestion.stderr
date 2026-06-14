@@ -1,0 +1,103 @@
+error[E0061]: this struct takes 1 argument but 3 arguments were supplied
+  --> $DIR/generic-assert-extra-args-empty-span-suggestion.rs:11:20
+   |
+LL |                 >= FloatWrapper(
+   |                    ^^^^^^^^^^^^
+...
+LL |                     size_of::<u16>,
+   |                     -------------- unexpected argument #2 of type `fn() -> usize {std::mem::size_of::<u16>}`
+LL |                     size_of::<usize> as fn() -> usize,
+   |                     --------------------------------- unexpected argument #3 of type `fn() -> usize`
+   |
+note: expected `f64`, found fn item
+  --> $DIR/generic-assert-extra-args-empty-span-suggestion.rs:8:5
+   |
+LL | /     assert!(
+LL | |         (0.0 / 0.0 >= 0.0)
+LL | |             == (FloatWrapper(0.0 / 0.0)
+LL | |                 >= FloatWrapper(
+...  |
+LL | |                 ))
+LL | |     );
+   | |_____^
+   = note: expected type `f64`
+           found fn item `fn() -> usize {std::mem::size_of::<u8>}`
+note: tuple struct defined here
+  --> $DIR/generic-assert-extra-args-empty-span-suggestion.rs:5:8
+   |
+LL | struct FloatWrapper(f64);
+   |        ^^^^^^^^^^^^
+help: remove the extra arguments
+   |
+LL -                     size_of::<u16>,
+LL -                     size_of::<usize> as fn() -> usize,
+LL +                     ,
+   |
+
+error[E0061]: this struct takes 1 argument but 3 arguments were supplied
+  --> $DIR/generic-assert-extra-args-empty-span-suggestion.rs:11:20
+   |
+LL |                 >= FloatWrapper(
+   |                    ^^^^^^^^^^^^
+...
+LL |                     size_of::<u16>,
+   |                     -------------- unexpected argument #2 of type `fn() -> usize {std::mem::size_of::<u16>}`
+LL |                     size_of::<usize> as fn() -> usize,
+   |                     --------------------------------- unexpected argument #3 of type `fn() -> usize`
+   |
+note: expected `f64`, found fn item
+  --> $DIR/generic-assert-extra-args-empty-span-suggestion.rs:8:5
+   |
+LL | /     assert!(
+LL | |         (0.0 / 0.0 >= 0.0)
+LL | |             == (FloatWrapper(0.0 / 0.0)
+LL | |                 >= FloatWrapper(
+...  |
+LL | |                 ))
+LL | |     );
+   | |_____^
+   = note: expected type `f64`
+           found fn item `fn() -> usize {std::mem::size_of::<u8>}`
+note: tuple struct defined here
+  --> $DIR/generic-assert-extra-args-empty-span-suggestion.rs:5:8
+   |
+LL | struct FloatWrapper(f64);
+   |        ^^^^^^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: remove the extra arguments
+   |
+LL -                     size_of::<u16>,
+LL -                     size_of::<usize> as fn() -> usize,
+LL +                     ,
+   |
+
+error[E0369]: binary operation `>=` cannot be applied to type `FloatWrapper`
+  --> $DIR/generic-assert-extra-args-empty-span-suggestion.rs:11:17
+   |
+LL |               == (FloatWrapper(0.0 / 0.0)
+   |                   ----------------------- FloatWrapper
+LL |                   >= FloatWrapper(
+   |  _________________^^_-
+LL | |
+LL | |
+LL | |                     size_of::<u8>,
+LL | |                     size_of::<u16>,
+LL | |                     size_of::<usize> as fn() -> usize,
+LL | |                 ))
+   | |_________________- FloatWrapper
+   |
+note: an implementation of `PartialOrd` might be missing for `FloatWrapper`
+  --> $DIR/generic-assert-extra-args-empty-span-suggestion.rs:5:1
+   |
+LL | struct FloatWrapper(f64);
+   | ^^^^^^^^^^^^^^^^^^^ must implement `PartialOrd`
+help: consider annotating `FloatWrapper` with `#[derive(PartialEq, PartialOrd)]`
+   |
+LL + #[derive(PartialEq, PartialOrd)]
+LL | struct FloatWrapper(f64);
+   |
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0061, E0369.
+For more information about an error, try `rustc --explain E0061`.
