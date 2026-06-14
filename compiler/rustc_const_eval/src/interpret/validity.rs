@@ -35,6 +35,7 @@ use super::{
     format_interp_error,
 };
 use crate::enter_trace_span;
+use crate::interpret::ensure_monomorphic_enough;
 
 // for the validation errors
 #[rustfmt::skip]
@@ -734,11 +735,11 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             )
         }
         // Do not allow references to uninhabited types.
-        if place.layout.is_uninhabited() {
+        if !place.layout.ty.is_opsem_inhabited(*self.ecx.tcx, self.ecx.typing_env) {
             let ty = place.layout.ty;
             throw_validation_failure!(
                 self.path,
-                format!("encountered a {ptr_kind} pointing to uninhabited type {ty}")
+                format!("encountered a {ptr_kind} pointing to uninhabited type `{ty}`")
             )
         }
 
@@ -1572,8 +1573,9 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
         }
 
         // Assert that we checked everything there is to check about this type.
+        // `is_opsem_inhabited` implies that the layout is inhabited (checked by layout invariants).
         assert!(
-            !val.layout.is_uninhabited(),
+            val.layout.ty.is_opsem_inhabited(*self.ecx.tcx, self.ecx.typing_env),
             "a value of type `{}` passed validation but that type is uninhabited",
             val.layout.ty
         );
@@ -1630,6 +1632,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         start_in_may_dangle: bool,
     ) -> InterpResult<'tcx> {
         trace!("validate_operand_internal: {:?}, {:?}", *val, val.layout.ty);
+
+        // We can't check validity if there are any generics left.
+        ensure_monomorphic_enough(*self.tcx, val.layout.ty)?;
 
         // Run the visitor.
         self.run_for_validation_mut(|ecx| {
