@@ -11,6 +11,8 @@
 //@ normalize-stdout: "compilation took \d+\.\d+s" -> "compilation took $$TIME"
 //@ failure-status: 101
 
+#![allow(rustdoc::failed_merged_doctest_compilation)]
+
 /// <https://github.com/rust-lang/rust/pull/137899#discussion_r1976743383>
 ///
 /// ```rust
