@@ -25,7 +25,7 @@ use super::{
     PredicateObligation, ProjectionCacheEntry, ProjectionCacheKey, Selection, SelectionContext,
     SelectionError, specialization_graph, translate_args, util,
 };
-use crate::errors::InherentProjectionNormalizationOverflow;
+use crate::diagnostics::InherentProjectionNormalizationOverflow;
 use crate::infer::{BoundRegionConversionTime, InferOk};
 use crate::traits::normalize::{normalize_with_depth, normalize_with_depth_to};
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;

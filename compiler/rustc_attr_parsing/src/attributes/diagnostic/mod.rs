@@ -27,7 +27,7 @@ pub(crate) mod on_move;
 pub(crate) mod on_type_error;
 pub(crate) mod on_unimplemented;
 pub(crate) mod on_unknown;
-pub(crate) mod on_unmatch_args;
+pub(crate) mod on_unmatched_args;
 
 #[derive(Copy, Clone)]
 pub(crate) enum Mode {
@@ -41,8 +41,8 @@ pub(crate) enum Mode {
     DiagnosticOnMove,
     /// `#[diagnostic::on_unknown]`
     DiagnosticOnUnknown,
-    /// `#[diagnostic::on_unmatch_args]`
-    DiagnosticOnUnmatchArgs,
+    /// `#[diagnostic::on_unmatched_args]`
+    DiagnosticOnUnmatchedArgs,
     /// `#[diagnostic::on_type_error]`
     DiagnosticOnTypeError,
 }
@@ -55,7 +55,7 @@ impl Mode {
             Self::DiagnosticOnConst => "diagnostic::on_const",
             Self::DiagnosticOnMove => "diagnostic::on_move",
             Self::DiagnosticOnUnknown => "diagnostic::on_unknown",
-            Self::DiagnosticOnUnmatchArgs => "diagnostic::on_unmatch_args",
+            Self::DiagnosticOnUnmatchedArgs => "diagnostic::on_unmatched_args",
             Self::DiagnosticOnTypeError => "diagnostic::on_type_error",
         }
     }
@@ -73,7 +73,7 @@ impl Mode {
             Self::DiagnosticOnConst => DEFAULT,
             Self::DiagnosticOnMove => DEFAULT,
             Self::DiagnosticOnUnknown => DEFAULT,
-            Self::DiagnosticOnUnmatchArgs => DEFAULT,
+            Self::DiagnosticOnUnmatchedArgs => DEFAULT,
             Self::DiagnosticOnTypeError => DIAGNOSTIC_ON_TYPE_ERROR_EXPECTED_OPTIONS,
         }
     }
@@ -90,7 +90,7 @@ impl Mode {
             Self::DiagnosticOnConst => DEFAULT,
             Self::DiagnosticOnMove => DEFAULT,
             Self::DiagnosticOnUnknown => DEFAULT,
-            Self::DiagnosticOnUnmatchArgs => DEFAULT,
+            Self::DiagnosticOnUnmatchedArgs => DEFAULT,
             Self::DiagnosticOnTypeError => DIAGNOSTIC_ON_TYPE_ERROR_ALLOWED_OPTIONS,
         }
     }
@@ -112,7 +112,7 @@ impl Mode {
             Self::DiagnosticOnUnknown => {
                 "only `This` is allowed as a format argument, referring to the failed import"
             }
-            Self::DiagnosticOnUnmatchArgs => {
+            Self::DiagnosticOnUnmatchedArgs => {
                 "only `This` is allowed as a format argument, referring to the macro's name"
             }
             Self::DiagnosticOnTypeError => {
@@ -313,7 +313,7 @@ fn parse_directive_items<'p>(
                 | Mode::DiagnosticOnConst
                 | Mode::DiagnosticOnMove
                 | Mode::DiagnosticOnUnknown
-                | Mode::DiagnosticOnUnmatchArgs,
+                | Mode::DiagnosticOnUnmatchedArgs,
                 sym::message,
             ) => {
                 let value = or_malformed!(value?);
@@ -329,7 +329,7 @@ fn parse_directive_items<'p>(
                 | Mode::DiagnosticOnConst
                 | Mode::DiagnosticOnMove
                 | Mode::DiagnosticOnUnknown
-                | Mode::DiagnosticOnUnmatchArgs,
+                | Mode::DiagnosticOnUnmatchedArgs,
                 sym::label,
             ) => {
                 let value = or_malformed!(value?);
@@ -469,7 +469,7 @@ fn parse_arg(
             (
                 Mode::DiagnosticOnUnknown
                 | Mode::DiagnosticOnMove
-                | Mode::DiagnosticOnUnmatchArgs
+                | Mode::DiagnosticOnUnmatchedArgs
                 | Mode::DiagnosticOnTypeError,
                 sym::This,
             ) => FormatArg::This,
@@ -502,7 +502,7 @@ fn parse_arg(
             ) => FormatArg::GenericParam { generic_param, span },
 
             // Generics are explicitly not allowed, we print those back as is.
-            (Mode::DiagnosticOnUnknown | Mode::DiagnosticOnUnmatchArgs, as_is) => {
+            (Mode::DiagnosticOnUnknown | Mode::DiagnosticOnUnmatchedArgs, as_is) => {
                 warnings.push(FormatWarning::DisallowedPlaceholder {
                     span,
                     attr: mode.as_str(),

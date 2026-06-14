@@ -1,5 +1,5 @@
 error: unexpected end of macro invocation
-  --> $DIR/on_unmatch_args.rs:14:13
+  --> $DIR/on_unmatched_args.rs:14:13
    |
 LL | macro_rules! pair {
    | ----------------- when calling this macro
@@ -8,7 +8,7 @@ LL |     pair!(u8);
    |             ^ missing tokens in macro arguments
    |
 note: while trying to match `,`
-  --> $DIR/on_unmatch_args.rs:9:12
+  --> $DIR/on_unmatched_args.rs:9:12
    |
 LL |     ($ty:ty, $value:expr) => {};
    |            ^

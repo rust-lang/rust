@@ -302,8 +302,8 @@ pub(crate) struct DiagnosticOnUnknownOnlyForImports {
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[diagnostic::on_unmatch_args]` can only be applied to macro definitions")]
-pub(crate) struct DiagnosticOnUnmatchArgsOnlyForMacros;
+#[diag("`#[diagnostic::on_unmatched_args]` can only be applied to macro definitions")]
+pub(crate) struct DiagnosticOnUnmatchedArgsOnlyForMacros;
 
 #[derive(Diagnostic)]
 #[diag("`#[diagnostic::on_type_error]` can only be applied to enums, structs or unions")]

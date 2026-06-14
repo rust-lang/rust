@@ -31,7 +31,21 @@ pub(crate) fn orphan_check_impl(
         Err(err) => match orphan_check(tcx, impl_def_id, OrphanCheckMode::Compat) {
             Ok(()) => match err {
                 OrphanCheckErr::UncoveredTyParams(uncovered_ty_params) => {
-                    lint_uncovered_ty_params(tcx, uncovered_ty_params, impl_def_id)
+                    let hir_id = tcx.local_def_id_to_hir_id(impl_def_id);
+
+                    for param_def_id in uncovered_ty_params.uncovered {
+                        let ident = tcx.item_ident(param_def_id);
+
+                        tcx.emit_node_span_lint(
+                            UNCOVERED_PARAM_IN_PROJECTION,
+                            hir_id,
+                            ident.span,
+                            diagnostics::UncoveredTyParam {
+                                param: ident,
+                                local_ty: uncovered_ty_params.local_ty,
+                            },
+                        );
+                    }
                 }
                 OrphanCheckErr::NonLocalInputType(_) => {
                     bug!("orphanck: shouldn't've gotten non-local input tys in compat mode")
@@ -458,53 +472,15 @@ fn emit_orphan_check_error<'tcx>(
             diag.emit()
         }
         traits::OrphanCheckErr::UncoveredTyParams(UncoveredTyParams { uncovered, local_ty }) => {
-            let mut reported = None;
+            let mut guar = None;
             for param_def_id in uncovered {
-                let name = tcx.item_ident(param_def_id);
-                let span = name.span;
-
-                reported.get_or_insert(match local_ty {
-                    Some(local_type) => tcx.dcx().emit_err(diagnostics::TyParamFirstLocal {
-                        span,
-                        note: (),
-                        param: name,
-                        local_type,
-                    }),
-                    None => {
-                        tcx.dcx().emit_err(diagnostics::TyParamSome { span, note: (), param: name })
-                    }
-                });
+                guar.get_or_insert(tcx.dcx().emit_err(diagnostics::UncoveredTyParam {
+                    param: tcx.item_ident(param_def_id),
+                    local_ty,
+                }));
             }
-            reported.unwrap() // FIXME(fmease): This is very likely reachable.
+            guar.unwrap()
         }
-    }
-}
-
-fn lint_uncovered_ty_params<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    UncoveredTyParams { uncovered, local_ty }: UncoveredTyParams<TyCtxt<'tcx>, FxIndexSet<DefId>>,
-    impl_def_id: LocalDefId,
-) {
-    let hir_id = tcx.local_def_id_to_hir_id(impl_def_id);
-
-    for param_def_id in uncovered {
-        let span = tcx.def_ident_span(param_def_id).unwrap();
-        let name = tcx.item_ident(param_def_id);
-
-        match local_ty {
-            Some(local_type) => tcx.emit_node_span_lint(
-                UNCOVERED_PARAM_IN_PROJECTION,
-                hir_id,
-                span,
-                diagnostics::TyParamFirstLocalLint { span, note: (), param: name, local_type },
-            ),
-            None => tcx.emit_node_span_lint(
-                UNCOVERED_PARAM_IN_PROJECTION,
-                hir_id,
-                span,
-                diagnostics::TyParamSomeLint { span, note: (), param: name },
-            ),
-        };
     }
 }
 

@@ -1604,7 +1604,7 @@ impl<T> SizedTypeProperties for T {}
 /// [`offset_of_enum`]: https://doc.rust-lang.org/nightly/unstable-book/language-features/offset-of-enum.html
 /// [`offset_of_slice`]: https://doc.rust-lang.org/nightly/unstable-book/language-features/offset-of-slice.html
 #[stable(feature = "offset_of", since = "1.77.0")]
-#[diagnostic::on_unmatch_args(
+#[diagnostic::on_unmatched_args(
     note = "this macro expects a container type and a (nested) field path, like `offset_of!(Type, field)`"
 )]
 #[doc(alias = "memoffset")]

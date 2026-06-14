@@ -35,7 +35,7 @@ use crate::attributes::diagnostic::on_move::*;
 use crate::attributes::diagnostic::on_type_error::*;
 use crate::attributes::diagnostic::on_unimplemented::*;
 use crate::attributes::diagnostic::on_unknown::*;
-use crate::attributes::diagnostic::on_unmatch_args::*;
+use crate::attributes::diagnostic::on_unmatched_args::*;
 use crate::attributes::doc::*;
 use crate::attributes::dummy::*;
 use crate::attributes::inline::*;
@@ -149,7 +149,7 @@ attribute_parsers!(
         OnTypeErrorParser,
         OnUnimplementedParser,
         OnUnknownParser,
-        OnUnmatchArgsParser,
+        OnUnmatchedArgsParser,
         RustcAlignParser,
         RustcAlignStaticParser,
         RustcCguTestAttributeParser,

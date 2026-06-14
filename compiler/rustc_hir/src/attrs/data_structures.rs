@@ -1191,8 +1191,8 @@ pub enum AttributeKind {
         directive: Option<Box<Directive>>,
     },
 
-    /// Represents `#[diagnostic::on_unmatch_args]`.
-    OnUnmatchArgs {
+    /// Represents `#[diagnostic::on_unmatched_args]`.
+    OnUnmatchedArgs {
         /// None if the directive was malformed in some way.
         directive: Option<Box<Directive>>,
     },
