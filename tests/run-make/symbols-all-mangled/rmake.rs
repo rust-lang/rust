@@ -39,6 +39,10 @@ fn symbols_check_archive(path: &str) {
             continue; // Unfortunately LLVM doesn't allow us to mangle this symbol
         }
 
+        if name.starts_with("enzyme_") {
+            continue; // Enzyme metadata markers are allowed to be unmangled
+        }
+
         if name.contains(".llvm.") {
             // Starting in LLVM 21 we get various implementation-detail functions which
             // contain .llvm. that are not a problem.
