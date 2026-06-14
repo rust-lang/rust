@@ -9,7 +9,7 @@ use rustc_session::Session;
 use tracing::trace;
 
 use crate::lint::lint_body;
-use crate::{errors, validate};
+use crate::{diagnostics, validate};
 
 thread_local! {
     /// Maps MIR pass names to a snake case form to match profiling naming style
@@ -255,14 +255,14 @@ fn run_passes_inner<'tcx>(
 
     let mut unknown_found = false;
     for &name in named_passes.difference(&*crate::PASS_NAMES) {
-        tcx.dcx().emit_warn(errors::UnknownPassName { name });
+        tcx.dcx().emit_warn(diagnostics::UnknownPassName { name });
         unknown_found = true;
     }
 
     if unknown_found {
         let mut valid_pass_names = crate::PASS_NAMES.iter().copied().collect::<Vec<_>>();
         valid_pass_names.sort();
-        tcx.dcx().emit_note(errors::ValidPassNames { valid_passes: valid_pass_names.into() });
+        tcx.dcx().emit_note(diagnostics::ValidPassNames { valid_passes: valid_pass_names.into() });
     }
 
     // Verify that no passes are missing from the `declare_passes` invocation
