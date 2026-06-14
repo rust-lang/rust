@@ -557,8 +557,22 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                 let mut inner = self.infcx.inner.borrow_mut();
                 let vid = inner.type_variables().root_var(vid);
                 if TermVid::Ty(vid) == self.root_vid {
-                    // If sub-roots are equal, then `root_vid` and
-                    // `vid` are related via subtyping.
+                    // `root_vid` occurs in the term we're generalizing, so
+                    // instantiating it would result in a cyclic type.
+                    Err(self.cyclic_term_error())
+                } else if self.infcx.next_trait_solver()
+                    && let TermVid::Ty(root_vid) = self.root_vid
+                    && inner.type_variables().sub_unification_table_root_var(vid)
+                        == inner.type_variables().sub_unification_table_root_var(root_vid)
+                {
+                    // If the sub-unification roots of `root_vid` and `vid` are equal, then
+                    // the two variables are related via subtyping. As subtyping never
+                    // changes the structure of a type, instantiating `root_vid` with a
+                    // type containing `vid` would also result in a cyclic type.
+                    //
+                    // We only check this with the new trait solver. Doing so with the old
+                    // solver is unsound as its evaluation cache does not consider the
+                    // `sub_unification_table`.
                     Err(self.cyclic_term_error())
                 } else {
                     let probe = inner.type_variables().probe(vid);
