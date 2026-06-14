@@ -17,6 +17,7 @@ impl NoArgsAttributeParser for ComptimeParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Fn),
+        Allow(Target::Impl { of_trait: false }),
     ]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcComptime;

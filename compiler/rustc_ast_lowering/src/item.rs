@@ -526,7 +526,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     .arena
                     .alloc_from_iter(impl_items.iter().map(|item| self.lower_impl_item_ref(item)));
 
-                let constness = self.lower_constness(*constness);
+                let constness = self.lower_constness(attrs, *constness);
 
                 hir::ItemKind::Impl(hir::Impl {
                     generics,
@@ -546,7 +546,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 bounds,
                 items,
             }) => {
-                let constness = self.lower_constness(*constness);
+                let constness = self.lower_constness(attrs, *constness);
                 let impl_restriction = self.lower_impl_restriction(impl_restriction);
                 let ident = self.lower_ident(*ident);
                 let (generics, (safety, items, bounds)) = self.lower_generics(
@@ -577,7 +577,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
             }
             ItemKind::TraitAlias(TraitAlias { constness, ident, generics, bounds }) => {
-                let constness = self.lower_constness(*constness);
+                let constness = self.lower_constness(attrs, *constness);
                 let ident = self.lower_ident(*ident);
                 let (generics, bounds) = self.lower_generics(
                     generics,
@@ -1763,21 +1763,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             safety.into()
         };
 
-        let mut constness = self.lower_constness(h.constness);
-        if let Some(&attr_span) = find_attr!(attrs, RustcComptime(span) => span) {
-            match std::mem::replace(&mut constness, rustc_hir::Constness::Const { always: true }) {
-                rustc_hir::Constness::Const { always: true } => {
-                    unreachable!("lower_constness cannot produce comptime")
-                }
-                // A function can't be `const` and `comptime` at the same time
-                rustc_hir::Constness::Const { always: false } => {
-                    let Const::Yes(span) = h.constness else { unreachable!() };
-                    self.dcx().emit_err(ConstComptimeFn { span, attr_span });
-                }
-                // Good
-                rustc_hir::Constness::NotConst => {}
-            }
-        }
+        let constness = self.lower_constness(attrs, h.constness);
 
         hir::FnHeader { safety, asyncness, constness, abi: self.lower_extern(h.ext) }
     }
@@ -1839,11 +1825,27 @@ impl<'hir> LoweringContext<'_, 'hir> {
         });
     }
 
-    pub(super) fn lower_constness(&mut self, c: Const) -> hir::Constness {
-        match c {
+    pub(super) fn lower_constness(&mut self, attrs: &[hir::Attribute], c: Const) -> hir::Constness {
+        let mut constness = match c {
             Const::Yes(_) => hir::Constness::Const { always: false },
             Const::No => hir::Constness::NotConst,
+        };
+
+        if let Some(&attr_span) = find_attr!(attrs, RustcComptime(span) => span) {
+            match std::mem::replace(&mut constness, rustc_hir::Constness::Const { always: true }) {
+                rustc_hir::Constness::Const { always: true } => {
+                    unreachable!("lower_constness cannot produce comptime")
+                }
+                // A function can't be `const` and `comptime` at the same time
+                rustc_hir::Constness::Const { always: false } => {
+                    let Const::Yes(span) = c else { unreachable!() };
+                    self.dcx().emit_err(ConstComptimeFn { span, attr_span });
+                }
+                // Good
+                rustc_hir::Constness::NotConst => {}
+            }
         }
+        constness
     }
 
     pub(super) fn lower_safety(&self, s: Safety, default: hir::Safety) -> hir::Safety {
