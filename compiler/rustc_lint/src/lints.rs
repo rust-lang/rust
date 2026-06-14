@@ -614,6 +614,33 @@ pub(crate) enum BuiltinSpecialModuleNameUsed {
     Main,
 }
 
+// c_void_return.rs
+#[derive(Diagnostic)]
+#[diag("`c_void` should not be used as a return type")]
+#[help("returning `()` in Rust is equivalent to returning `void` in C")]
+pub(crate) struct CVoidReturn {
+    #[suggestion(
+        "remove the return type to implicitly return `()`",
+        code = "",
+        applicability = "maybe-incorrect"
+    )]
+    pub suggestion: Span,
+}
+
+// c_void_return.rs
+#[derive(Diagnostic)]
+#[diag("declarations returning `c_void` are not compatible with C functions returning `void`")]
+#[help("returning `()` in Rust is equivalent to returning `void` in C")]
+#[note("`c_void` is only used through raw pointers for compatibility with `void` pointers")]
+pub(crate) struct ExternCVoidReturn {
+    #[suggestion(
+        "remove the return type to implicitly return `()`",
+        code = "",
+        applicability = "maybe-incorrect"
+    )]
+    pub suggestion: Span,
+}
+
 // deref_into_dyn_supertrait.rs
 #[derive(Diagnostic)]
 #[diag("this `Deref` implementation is covered by an implicit supertrait coercion")]
