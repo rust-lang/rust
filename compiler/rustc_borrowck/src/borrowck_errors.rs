@@ -195,6 +195,7 @@ impl<'infcx, 'tcx> crate::MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         old_span: Span,
         noun_old: &str,
         kind_old: &str,
+        old_place_desc_for_label: Option<&str>,
         msg_old: &str,
         old_load_end_span: Option<Span>,
     ) -> Diag<'infcx> {
@@ -215,7 +216,14 @@ impl<'infcx, 'tcx> crate::MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         if msg_new.is_empty() {
             // If `msg_new` is empty, then this isn't a borrow of a union field.
             err.span_label(span, format!("{kind_new} borrow occurs here"));
-            err.span_label(old_span, format!("{kind_old} borrow occurs here"));
+            if let Some(old_place_desc_for_label) = old_place_desc_for_label {
+                err.span_label(
+                    old_span,
+                    format!("{kind_old} borrow of {old_place_desc_for_label} occurs here"),
+                );
+            } else {
+                err.span_label(old_span, format!("{kind_old} borrow occurs here"));
+            }
         } else {
             // If `msg_new` isn't empty, then this a borrow of a union field.
             err.span_label(
