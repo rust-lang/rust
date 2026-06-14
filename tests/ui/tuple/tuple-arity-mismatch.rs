@@ -1,5 +1,6 @@
 // Issue #6155
-
+//@ reference: expr.tuple.type
+//@ reference: type.tuple.field-number
 //@ dont-require-annotations: NOTE
 
 fn first((value, _): (isize, f64)) -> isize { value }
