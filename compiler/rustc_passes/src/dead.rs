@@ -679,7 +679,10 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 return ImplItemCheckResult::Dead { require: adt_def_id };
             }
 
-            return match trait_comes_from_allow {
+            let comes_from_allow = trait_comes_from_allow
+                .or_else(|| has_allow_dead_code_or_lang_attr(self.tcx, adt_def_id));
+
+            return match comes_from_allow {
                 Some(comes_from_allow) => ImplItemCheckResult::Live(comes_from_allow),
                 None => ImplItemCheckResult::Dead { require: adt_def_id },
             };
@@ -1019,6 +1022,17 @@ fn maybe_record_as_seed<'tcx>(
     push_into_worklist: &mut impl FnMut(WorkItem),
     unsolved_items: &mut Vec<LocalDefId>,
 ) {
+    let self_comes_from_allow = |impl_did| {
+        if let ty::Adt(adt, _) =
+            tcx.type_of(impl_did).instantiate_identity().skip_normalization().kind()
+            && let Some(adt_def_id) = adt.did().as_local()
+        {
+            has_allow_dead_code_or_lang_attr(tcx, adt_def_id)
+        } else {
+            None
+        }
+    };
+
     match tcx.def_kind(owner_id) {
         DefKind::GlobalAsm => {
             // global_asm! is always live.
@@ -1067,7 +1081,7 @@ fn maybe_record_as_seed<'tcx>(
         DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy => {
             let parent = tcx.local_parent(owner_id.def_id);
             match tcx.def_kind(parent) {
-                DefKind::Impl { of_trait: false } | DefKind::Trait => {}
+                DefKind::Trait => {}
                 DefKind::Impl { of_trait: true } => {
                     // We only care about associated items of traits,
                     // because they cannot be visited directly,
@@ -1076,11 +1090,32 @@ fn maybe_record_as_seed<'tcx>(
                     // but inherent associated items can be visited and marked directly.
                     unsolved_items.push(owner_id.def_id);
                 }
+                DefKind::Impl { of_trait: false } => {
+                    // Record inherent items if the self type is allowed
+                    if let Some(comes_from_allow) = self_comes_from_allow(parent) {
+                        push_into_worklist(WorkItem {
+                            id: owner_id.def_id,
+                            propagated: comes_from_allow,
+                            own: ComesFromAllowExpect::No,
+                            propagated_trivial_usage_site: None,
+                        });
+                    }
+                }
                 _ => bug!(),
             }
         }
         DefKind::Impl { of_trait: true } => {
             unsolved_items.push(owner_id.def_id);
+        }
+        DefKind::Impl { of_trait: false } => {
+            if let Some(comes_from_allow) = self_comes_from_allow(owner_id.def_id) {
+                push_into_worklist(WorkItem {
+                    id: owner_id.def_id,
+                    propagated: comes_from_allow,
+                    own: ComesFromAllowExpect::No,
+                    propagated_trivial_usage_site: None,
+                });
+            }
         }
         _ => {}
     }
