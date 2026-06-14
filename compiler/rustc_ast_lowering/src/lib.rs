@@ -519,6 +519,28 @@ fn compute_hir_hash(
     tcx: TyCtxt<'_>,
     owners: &IndexSlice<LocalDefId, hir::MaybeOwner<'_>>,
 ) -> Fingerprint {
+    // `-Z metadata-crate-hash=no` reverts to the legacy HIR hash so that the resulting crate hash
+    // matches the pre-metadata-hashing behavior.
+    if !tcx.sess.opts.unstable_opts.metadata_crate_hash {
+        return legacy_compute_hir_hash(tcx, owners);
+    }
+
+    owners
+        .iter_enumerated()
+        .filter_map(|(_, info)| {
+            let info = info.as_owner()?;
+            Some(info.fingerprint())
+        })
+        .reduce(Fingerprint::combine_commutative)
+        .expect("HIR hash requested without any content")
+}
+
+/// The pre-metadata-hashing way of computing the HIR hash. Only reached under
+/// `-Z metadata-crate-hash=no`.
+fn legacy_compute_hir_hash(
+    tcx: TyCtxt<'_>,
+    owners: &IndexSlice<LocalDefId, hir::MaybeOwner<'_>>,
+) -> Fingerprint {
     let mut hir_body_nodes: Vec<_> = owners
         .iter_enumerated()
         .filter_map(|(def_id, info)| {

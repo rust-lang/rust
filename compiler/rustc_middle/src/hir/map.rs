@@ -10,7 +10,7 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{DynSend, DynSync, par_for_each_in, spawn, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalModDefId};
+use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lints::DelayedLints;
@@ -19,6 +19,7 @@ use rustc_hir_pretty as pprust_hir;
 use rustc_span::def_id::StableCrateId;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, with_metavar_spans};
 
+use crate::hir::def_id::LOCAL_CRATE;
 use crate::hir::{ModuleItems, ProjectedMaybeOwner, nested_filter};
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
 use crate::query::{IntoQueryKey, LocalCrate};
@@ -1169,6 +1170,40 @@ impl<'tcx> pprust_hir::PpAnn for TyCtxt<'tcx> {
 }
 
 pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
+    // `-Z metadata-crate-hash=no` opts back into computing the SVH from the HIR rather than
+    // from the encoded crate metadata. This is a safety fallback for the metadata-based hashing.
+    if !tcx.sess.opts.unstable_opts.metadata_crate_hash {
+        return legacy_crate_hash(tcx);
+    }
+
+    if tcx.needs_metadata() {
+        *tcx.untracked()
+            .local_crate_hash
+            .get()
+            .expect("crate_hash(LOCAL_CRATE) called before metadata encoding")
+    } else {
+        let krate = tcx.hir_crate(());
+        let hir_body_hash =
+            krate.opt_hir_hash.expect("HIR hash missing while computing crate hash");
+
+        let upstream_crates = upstream_crates(tcx);
+
+        let crate_hash: Fingerprint = tcx.with_stable_hashing_context(|mut hcx| {
+            let mut stable_hasher = StableHasher::new();
+            hir_body_hash.stable_hash(&mut hcx, &mut stable_hasher);
+            upstream_crates.stable_hash(&mut hcx, &mut stable_hasher);
+            tcx.sess.opts.dep_tracking_hash(true).stable_hash(&mut hcx, &mut stable_hasher);
+            tcx.stable_crate_id(LOCAL_CRATE).stable_hash(&mut hcx, &mut stable_hasher);
+
+            stable_hasher.finish()
+        });
+
+        Svh::new(crate_hash)
+    }
+}
+
+/// Only reached when `-Z metadata-crate-hash=no` reverts to the pre-metadata-hashing behavior.
+fn legacy_crate_hash(tcx: TyCtxt<'_>) -> Svh {
     let krate = tcx.hir_crate(());
     let hir_body_hash = krate.opt_hir_hash.expect("HIR hash missing while computing crate hash");
 

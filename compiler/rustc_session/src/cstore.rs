@@ -4,8 +4,10 @@
 
 use std::any::Any;
 use std::path::PathBuf;
+use std::sync::OnceLock;
 
 use rustc_abi::ExternAbi;
+use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{self, AppendOnlyIndexVec, FreezeLock};
 use rustc_hir::attrs::{CfgEntry, NativeLibKind, PeImportNameType};
 use rustc_hir::def_id::{
@@ -223,4 +225,6 @@ pub struct Untracked {
     pub definitions: FreezeLock<Definitions>,
     /// The interned [StableCrateId]s.
     pub stable_crate_ids: FreezeLock<StableCrateIdMap>,
+    /// The hash of the local crate as computed in metadata encoding.
+    pub local_crate_hash: OnceLock<Svh>,
 }
