@@ -8,7 +8,7 @@ LL |     0u16.foo(b);
 help: try using a fully qualified path to specify the expected types
    |
 LL -     0u16.foo(b);
-LL +     <u16 as Foo<I>>::foo(0u16, b);
+LL +     <u16 as Foo<_>>::foo(0u16, b);
    |
 
 error[E0283]: type annotations needed
@@ -36,7 +36,7 @@ LL |     fn foo(self, x: <u8 as Element<I>>::Array);
 help: try using a fully qualified path to specify the expected types
    |
 LL -     0u16.foo(b);
-LL +     <u16 as Foo<I>>::foo(0u16, b);
+LL +     <u16 as Foo<_>>::foo(0u16, b);
    |
 
 error: aborting due to 2 previous errors

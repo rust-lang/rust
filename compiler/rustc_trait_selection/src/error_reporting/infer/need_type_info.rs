@@ -29,6 +29,7 @@ use crate::errors::{
     SourceKindMultiSuggestion, SourceKindSubdiag,
 };
 use crate::infer::{InferCtxt, TyOrConstInferVar};
+use crate::traits::{ObligationCause, ObligationCtxt};
 
 pub enum TypeAnnotationNeeded {
     /// ```compile_fail,E0282
@@ -75,6 +76,14 @@ pub struct InferenceDiagnosticsParentData {
 pub enum UnderspecifiedArgKind {
     Type { prefix: Cow<'static, str> },
     Const { is_parameter: bool },
+}
+
+enum InferenceSuggestionFormat {
+    /// The inference suggestion will the provided as the explicit type of a binding.
+    BindingType,
+    /// The inference suggestion will the provided in the same expression where the error occurred,
+    /// expanding method calls into fully-qualified paths specifying the self-type and trait.
+    FullyQualifiedMethodCall,
 }
 
 impl InferenceDiagnosticsData {
@@ -490,6 +499,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         term: Term<'tcx>,
         error_code: TypeAnnotationNeeded,
         should_label_span: bool,
+        param_env: ty::ParamEnv<'tcx>,
+        originating_projection: Option<ty::ProjectionPredicate<'tcx>>,
     ) -> Diag<'a> {
         self.emit_inference_failure_err_with_type_hint(
             body_def_id,
@@ -497,6 +508,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             term,
             error_code,
             should_label_span,
+            param_env,
+            originating_projection,
             None,
         )
     }
@@ -508,6 +521,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         term: Term<'tcx>,
         error_code: TypeAnnotationNeeded,
         should_label_span: bool,
+        param_env: ty::ParamEnv<'tcx>,
+        originating_projection: Option<ty::ProjectionPredicate<'tcx>>,
         ty: Option<Ty<'tcx>>,
     ) -> Diag<'a> {
         let term = self.resolve_vars_if_possible(term);
@@ -565,17 +580,56 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let mut infer_subdiags = Vec::new();
         let mut multi_suggestions = Vec::new();
         match kind {
-            InferSourceKind::LetBinding { insert_span, pattern_name, ty, def_id } => {
-                infer_subdiags.push(SourceKindSubdiag::LetLike {
-                    span: insert_span,
-                    name: pattern_name.map(|name| name.to_string()).unwrap_or_else(String::new),
-                    x_kind: arg_data.where_x_is_kind(self.infcx, ty),
-                    prefix_kind: arg_data.kind.clone(),
-                    prefix: arg_data.kind.try_get_prefix().unwrap_or_default(),
-                    arg_name: arg_data.name,
-                    kind: if pattern_name.is_some() { "with_pattern" } else { "other" },
-                    type_name: ty_to_string(self, ty, def_id),
-                });
+            InferSourceKind::LetBinding {
+                insert_span,
+                pattern_name,
+                ty,
+                def_id,
+                init_expr_hir_id,
+            } => {
+                let mut paths = vec![];
+                if let Some(trait_def_id) = def_id
+                    && let Some(hir_id) = init_expr_hir_id
+                    && let expr = self.infcx.tcx.hir_expect_expr(hir_id)
+                    && let hir::ExprKind::MethodCall(_, rcvr, _, _) = expr.kind
+                    && let Some(ty) = typeck_results.node_type_opt(rcvr.hir_id)
+                {
+                    paths = self.get_fully_qualified_path_suggestions_from_impls(
+                        ty,
+                        trait_def_id,
+                        InferenceSuggestionFormat::BindingType,
+                        param_env,
+                        originating_projection,
+                    );
+                }
+
+                if !(1..6).contains(&paths.len()) {
+                    infer_subdiags.push(SourceKindSubdiag::LetLike {
+                        span: insert_span,
+                        name: pattern_name.map(|name| name.to_string()).unwrap_or_else(String::new),
+                        x_kind: arg_data.where_x_is_kind(self.infcx, ty),
+                        prefix_kind: arg_data.kind.clone(),
+                        prefix: arg_data.kind.try_get_prefix().unwrap_or_default(),
+                        arg_name: arg_data.name,
+                        kind: if pattern_name.is_some() { "with_pattern" } else { "other" },
+                        type_name: ty_to_string(self, ty, trait_def_id),
+                    });
+                } else {
+                    for type_name in paths {
+                        infer_subdiags.push(SourceKindSubdiag::LetLike {
+                            span: insert_span,
+                            name: pattern_name
+                                .map(|name| name.to_string())
+                                .unwrap_or_else(String::new),
+                            x_kind: arg_data.where_x_is_kind(self.infcx, ty),
+                            prefix_kind: arg_data.kind.clone(),
+                            prefix: arg_data.kind.try_get_prefix().unwrap_or_default(),
+                            arg_name: arg_data.name.clone(),
+                            kind: if pattern_name.is_some() { "with_pattern" } else { "other" },
+                            type_name,
+                        });
+                    }
+                }
             }
             InferSourceKind::ClosureArg { insert_span, ty, .. } => {
                 infer_subdiags.push(SourceKindSubdiag::LetLike {
@@ -717,12 +771,35 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         _ => "",
                     };
 
-                    multi_suggestions.push(SourceKindMultiSuggestion::new_fully_qualified(
-                        receiver.span,
-                        def_path,
-                        adjustment,
-                        successor,
-                    ));
+                    // Look for all the possible implementations to suggest, otherwise we'll show
+                    // just suggest the syntax for the fully qualified path with placeholders.
+                    let paths = self.get_fully_qualified_path_suggestions_from_impls(
+                        args.type_at(0),
+                        def_id,
+                        InferenceSuggestionFormat::FullyQualifiedMethodCall,
+                        param_env,
+                        originating_projection,
+                    );
+                    if !(1..6).contains(&paths.len()) {
+                        // This will show the fallback impl, so the expression will have type
+                        // parameter placeholders, but it's better than nothing.
+                        multi_suggestions.push(SourceKindMultiSuggestion::new_fully_qualified(
+                            receiver.span,
+                            def_path,
+                            adjustment,
+                            successor,
+                        ));
+                    } else {
+                        // These are the paths to specific impls.
+                        for path in paths {
+                            multi_suggestions.push(SourceKindMultiSuggestion::new_fully_qualified(
+                                receiver.span,
+                                path,
+                                adjustment,
+                                successor,
+                            ));
+                        }
+                    }
                 }
             }
             InferSourceKind::ClosureReturn { ty, data, should_wrap_expr } => {
@@ -773,6 +850,159 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
         err
     }
+
+    /// Given a `self_ty` and a trait item `def_id`, find all relevant `impl`s and provide suitable
+    /// code for a suggestion.
+    ///
+    /// If `suggestion_style` corresponds to a method call expression, then we suggest the
+    /// fully-qualified path for the associated item.
+    ///
+    /// If `suggestion_style` corresponds to a let binding, then we suggest a type suitable for it
+    /// corresponding to the return type of the associated item.
+    ///
+    /// If `originating_projection` corresponds to a math operation, we restrict the suggestions to
+    /// only `impl`s for the same type that was expected (instead of showing every integer type,
+    /// mention only the one that is most likely to be relevant).
+    ///
+    /// `trait From` is treated specially, in order to look for suitable `Into` `impl`s as well.
+    fn get_fully_qualified_path_suggestions_from_impls(
+        &self,
+        self_ty: Ty<'tcx>,
+        def_id: DefId,
+        suggestion_style: InferenceSuggestionFormat,
+        param_env: ty::ParamEnv<'tcx>,
+        originating_projection: Option<ty::ProjectionPredicate<'tcx>>,
+    ) -> Vec<String> {
+        let tcx = self.infcx.tcx;
+        let mut paths = vec![];
+        let name = tcx.item_name(def_id);
+        let trait_def_id = tcx.parent(def_id);
+        tcx.for_each_relevant_impl(trait_def_id, self_ty, |impl_def_id| {
+            let impl_args = self.fresh_args_for_item(DUMMY_SP, impl_def_id);
+            let impl_trait_ref =
+                tcx.impl_trait_ref(impl_def_id).instantiate(tcx, impl_args).skip_norm_wip();
+            let impl_self_ty = impl_trait_ref.self_ty();
+            if self.probe(|_| {
+                ObligationCtxt::new(self.infcx)
+                    .eq(&ObligationCause::dummy(), param_env, self_ty, impl_self_ty)
+                    .is_ok()
+            }) {
+                // The expr's self type could conform to this impl's self type.
+            } else {
+                // Nope, don't bother.
+                return;
+            }
+
+            let filter = None;
+            tracing::info!(?originating_projection);
+            // let filter = if let Some(ty::ProjectionPredicate {
+            //     projection_term: ty::AliasTerm { def_id, .. },
+            //     term,
+            // }) = originating_projection
+            //     && let ty::TermKind::Ty(assoc_ty) = term.kind()
+            //     && tcx.item_name(def_id) == sym::Output
+            //     && hir::lang_items::BINARY_OPERATORS
+            //         .iter()
+            //         .map(|&op| tcx.lang_items().get(op))
+            //         .any(|op| op == Some(tcx.parent(def_id)))
+            // {
+            //     // If the predicate that failed to be inferred is an associated type called
+            //     // "Output" (from one of the math traits), we will only mention the `Into` and
+            //     // `From` impls that correspond to the self type as well, so as to avoid showing
+            //     // multiple conversion options.
+            //     Some(assoc_ty)
+            // } else {
+            //     None
+            // };
+            let assocs = tcx.associated_items(impl_def_id);
+
+            if tcx.is_diagnostic_item(sym::blanket_into_impl, impl_def_id)
+                && let Some(did) = tcx.get_diagnostic_item(sym::From)
+            {
+                let mut found = false;
+                for (_ , def_ids) in tcx.trait_impls_of(did).non_blanket_impls().iter() {
+                    for impl_def_id in def_ids {
+                        // We had an `<A as Into<B>::into` and we've hit the blanket
+                        // impl for `From<A>`. So we try and look for the right `From`
+                        // impls that *would* apply. We *could* do this in a generalized
+                        // version by evaluating the `where` clauses, but that would be
+                        // way too involved to implement. Instead we special case the
+                        // arguably most common case of `expr.into()`.
+                        let header = tcx.impl_trait_header(*impl_def_id);
+                        let target = header.trait_ref.skip_binder().args.type_at(0);
+                        if filter.is_some() && filter != Some(target) {
+                            continue;
+                        };
+                        let target = header.trait_ref.skip_binder().args.type_at(0);
+                        let ty = header.trait_ref.skip_binder().args.type_at(1);
+                        if ty == self_ty {
+                            match suggestion_style {
+                                InferenceSuggestionFormat::BindingType => {
+                                    paths.push(if let ty::Infer(_) = target.kind() {
+                                        "/* Type */".to_string()
+                                    } else {
+                                        format!("{target}")
+                                    });
+                                }
+                                InferenceSuggestionFormat::FullyQualifiedMethodCall => {
+                                    paths.push(format!("<{self_ty} as Into<{target}>>::into"));
+                                }
+                            }
+                            found = true;
+                        }
+                    }
+                }
+                if found {
+                    return;
+                }
+            }
+
+            // We're at the `impl` level, but we want to get the same method we
+            // called *on this `impl`*, in order to get the right DefId and args.
+            let assoc = if let Some(assoc) = assocs.filter_by_name_unhygienic(name).next() {
+                // Method in the `impl`.
+                assoc
+            } else {
+                let assocs = tcx.associated_items(trait_def_id);
+                if let Some(assoc) = assocs.filter_by_name_unhygienic(name).next() {
+                    // Method in the `trait`.
+                    assoc
+                } else {
+                    // The method isn't in this `impl` or `trait`? Not useful to us then.
+                    return;
+                }
+            };
+            let Some(trait_assoc_item) = assoc.trait_item_def_id() else {
+                return;
+            };
+            let args = impl_trait_ref
+                .args
+                .extend_to(tcx, trait_assoc_item, |def, _| self.var_for_def(DUMMY_SP, def));
+            match suggestion_style {
+                InferenceSuggestionFormat::BindingType => {
+                    let fn_sig = tcx.fn_sig(def_id).instantiate(tcx, args);
+                    let ret = fn_sig.skip_binder().output();
+                    paths.push(if let ty::Infer(_) = ret.kind() {
+                        "/* Type */".to_string()
+                    } else {
+                        format!("{ret}")
+                    });
+                }
+                InferenceSuggestionFormat::FullyQualifiedMethodCall => {
+                    if let Some(did) = tcx.get_diagnostic_item(sym::Into)
+                        && did == trait_def_id
+                        && let Some(arg) = impl_args.types().skip(1).next()
+                        && let ty::Infer(_) | ty::Param(_) = arg.kind()
+                    {
+                        // Skip `<T as Into<_>>` blanket
+                    } else {
+                        paths.push(self.tcx.value_path_str_with_args(def_id, args));
+                    }
+                }
+            }
+        });
+        paths
+    }
 }
 
 #[derive(Debug)]
@@ -788,6 +1018,7 @@ enum InferSourceKind<'tcx> {
         pattern_name: Option<Ident>,
         ty: Ty<'tcx>,
         def_id: Option<DefId>,
+        init_expr_hir_id: Option<HirId>,
     },
     ClosureArg {
         insert_span: Span,
@@ -990,8 +1221,11 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         let cost = self.source_cost(&new_source) + self.attempt;
         debug!(?cost);
         self.attempt += 1;
-        if let Some(InferSource { kind: InferSourceKind::GenericArg { def_id: did, .. }, .. }) =
-            self.infer_source
+        if let Some(InferSource { kind: InferSourceKind::GenericArg { def_id: did, .. }, .. })
+        | Some(InferSource {
+            kind: InferSourceKind::FullyQualifiedMethodCall { def_id: did, .. },
+            ..
+        }) = self.infer_source
             && let InferSourceKind::LetBinding { ref ty, ref mut def_id, .. } = new_source.kind
             && ty.is_ty_or_numeric_infer()
         {
@@ -1335,6 +1569,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                             pattern_name: local.pat.simple_ident(),
                             ty,
                             def_id: local.init.and_then(|expr| get_did(self.typeck_results, expr)),
+                            init_expr_hir_id: local.init.map(|e| e.hir_id),
                         },
                     });
                 }

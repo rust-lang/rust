@@ -16,7 +16,7 @@ LL |         if String::from("a") == "a".try_into().unwrap() {}
 help: try using a fully qualified path to specify the expected types
    |
 LL -         if String::from("a") == "a".try_into().unwrap() {}
-LL +         if String::from("a") == <&str as TryInto<T>>::try_into("a").unwrap() {}
+LL +         if String::from("a") == <_ as TryInto<_>>::try_into("a").unwrap() {}
    |
 
 error: aborting due to 1 previous error
