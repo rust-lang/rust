@@ -194,6 +194,7 @@ impl<I: Idx, T> IndexVec<I, T> {
         self.mutate(|raw| target.extend(raw.drain(range)))
     }
 
+    #[inline(always)]
     pub fn mutate<U, F: FnOnce(&mut Vec<T>) -> U>(&mut self, f: F) -> U {
         let mut vec = std::mem::take(self).into_vec();
         let v = f(&mut vec);
