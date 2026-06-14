@@ -3,7 +3,7 @@ use std::sync::Arc;
 use rustc_abi::FieldIdx;
 use rustc_middle::mir::{Pinnedness, Place, PlaceElem, ProjectionElem};
 use rustc_middle::span_bug;
-use rustc_middle::thir::{Ascription, DerefPatBorrowMode, FieldPat, Pat, PatKind};
+use rustc_middle::thir::{Ascription, DerefPatBorrowMode, ExprId, FieldPat, Pat, PatKind};
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_span::Span;
 
@@ -87,11 +87,15 @@ impl<'tcx> FlatPat<'tcx> {
     /// when squashing any or-patterns.
     fn from_inter_pat(inter_pat: InterPat<'tcx>) -> Self {
         let mut match_pairs = vec![];
+        let mut guard_patterns = vec![];
+        if let Some(guard_pat) = inter_pat.guard_pat {
+            guard_patterns.push(super::OrderedPatternData::One(guard_pat));
+        }
         let mut extra_data = PatternExtraData {
             span: inter_pat.pattern_span,
-            bindings: vec![],
-            ascriptions: vec![],
+            guard_patterns,
             is_never: inter_pat.is_never,
+            ..Default::default()
         };
         squash_inter_pat(inter_pat, &mut match_pairs, &mut extra_data);
 
@@ -114,12 +118,17 @@ fn squash_inter_pat<'tcx>(
         or_subpats,
         ascriptions,
         binding,
+        guard_pat,
         pattern_span,
         is_never: _, // Not needed by `MatchPairTree` forests.
     } = inter_pat;
 
     // Type ascriptions can appear regardless of whether the node is an or-pattern.
     extra_data.ascriptions.extend(ascriptions);
+
+    guard_pat.inspect(|&guard_pat| {
+        extra_data.guard_patterns.push(super::OrderedPatternData::One(guard_pat));
+    });
 
     // Or and non-or patterns have very different handling.
     if let Some(or_subpats) = or_subpats {
@@ -139,7 +148,10 @@ fn squash_inter_pat<'tcx>(
             // or-patterns that will be simplified by `merge_trivial_subcandidates`. In
             // other words, we can assume this expands into subcandidates.
             // FIXME(@dianne): this needs updating/removing if we always merge or-patterns
-            extra_data.bindings.push(super::SubpatternBindings::FromOrPattern);
+            extra_data.bindings.push(super::OrderedPatternData::FromOrPattern);
+        }
+        if or_subpats.iter().any(|pat| !pat.extra_data.guard_patterns.is_empty()) {
+            extra_data.guard_patterns.push(super::OrderedPatternData::FromOrPattern);
         }
 
         match_pairs.push(MatchPairTree {
@@ -179,7 +191,7 @@ fn squash_inter_pat<'tcx>(
         // the binding to `copy_field` will occur before the binding for `x`.
         // See <https://github.com/rust-lang/rust/issues/69971> for more background.
         if let Some(binding) = binding {
-            extra_data.bindings.push(super::SubpatternBindings::One(binding));
+            extra_data.bindings.push(super::OrderedPatternData::One(binding));
         }
     }
 }
@@ -213,6 +225,8 @@ struct InterPat<'tcx> {
     ascriptions: Vec<super::Ascription<'tcx>>,
     /// Binding to establish for a [`PatKind::Binding`] node.
     binding: Option<super::Binding<'tcx>>,
+
+    guard_pat: Option<ExprId>,
 
     /// Span field of the THIR pattern this node was created from.
     pattern_span: Span,
@@ -256,6 +270,7 @@ impl<'tcx> InterPat<'tcx> {
         let mut or_subpats = None;
         let mut ascriptions = vec![];
         let mut binding = None;
+        let mut guard_pat = None;
 
         // Apply any type ascriptions to the value at `match_pair.place`.
         if let Some(place) = place
@@ -454,8 +469,10 @@ impl<'tcx> InterPat<'tcx> {
                 Some(TestableCase::Deref { temp, mutability })
             }
 
-            PatKind::Guard { .. } => {
-                // FIXME(guard_patterns)
+            PatKind::Guard { ref subpattern, condition } => {
+                let subpattern = InterPat::lower_thir_pat(cx, place_builder, subpattern);
+                subpats.push(subpattern);
+                guard_pat = Some(condition);
                 None
             }
 
@@ -479,6 +496,7 @@ impl<'tcx> InterPat<'tcx> {
             or_subpats,
             ascriptions,
             binding,
+            guard_pat,
             pattern_span: pattern.span,
             is_never,
         }
