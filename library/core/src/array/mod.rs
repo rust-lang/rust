@@ -969,6 +969,56 @@ const impl<T: [const] Destruct> Drop for Guard<'_, T> {
     }
 }
 
+/// Panic guard for incremental initialization of arrays from the back.
+///
+/// Elements of the array are populated starting from the end towards the beginning.
+/// Disarm the guard with `mem::forget` once the array has been fully initialized.
+///
+/// # Safety
+///
+/// All write accesses to this structure are unsafe and must maintain a correct
+/// count of `initialized` elements.
+struct GuardBack<'a, T> {
+    /// The array to be initialized (will be filled from the end).
+    pub array_mut: &'a mut [MaybeUninit<T>],
+    /// The number of items that have been initialized so far.
+    pub initialized: usize,
+}
+
+impl<T> GuardBack<'_, T> {
+    /// Adds an item to the array and updates the initialized item counter.
+    ///
+    /// # Safety
+    ///
+    /// No more than N elements must be initialized.
+    #[rustc_const_unstable(feature = "array_try_from_fn", issue = "89379")]
+    #[inline]
+    pub(crate) const unsafe fn push_unchecked(&mut self, item: T) {
+        // SAFETY: If `initialized` was correct before and the caller does not
+        // invoke this method more than N times, then writes will be in-bounds
+        // and slots will not be initialized more than once.
+        unsafe {
+            let offset = self.initialized.unchecked_add(1);
+            let index = self.array_mut.len().unchecked_sub(offset);
+            self.array_mut.get_unchecked_mut(index).write(item);
+            self.initialized = offset;
+        }
+    }
+}
+
+#[rustc_const_unstable(feature = "array_try_from_fn", issue = "89379")]
+const impl<T: [const] Destruct> Drop for GuardBack<'_, T> {
+    #[inline]
+    fn drop(&mut self) {
+        debug_assert!(self.initialized <= self.array_mut.len());
+        let len = self.array_mut.len();
+        // SAFETY: this slice will contain only initialized objects.
+        unsafe {
+            self.array_mut.get_unchecked_mut(len - self.initialized..len).assume_init_drop();
+        }
+    }
+}
+
 /// Pulls `N` items from `iter` and returns them as an array. If the iterator
 /// yields fewer than `N` items, `Err` is returned containing an iterator over
 /// the already yielded items.
@@ -1064,6 +1114,119 @@ const fn iter_next_chunk_erased<T>(
         let Some(item) = iter.next() else {
             // Unlike `try_from_fn_erased`, we want to keep the partial results,
             // so we need to defuse the guard instead of using `?`.
+            let initialized = guard.initialized;
+            mem::forget(guard);
+            return Err(initialized);
+        };
+
+        // SAFETY: The loop condition ensures we have space to push the item
+        unsafe { guard.push_unchecked(item) };
+    }
+
+    mem::forget(guard);
+    Ok(())
+}
+
+/// Pulls `N` items from the back of `iter` and returns them as an array.
+/// If the iterator yields fewer than `N` items, `Err` is returned containing
+/// an iterator over the already yielded items.
+///
+/// Since the iterator is passed as a mutable reference and this function calls
+/// `next_back` at most `N` times, the iterator can still be used afterwards to
+/// retrieve the remaining items.
+///
+/// If `iter.next_back()` panics, all items already yielded by the iterator are
+/// dropped.
+///
+/// Used for [`DoubleEndedIterator::next_chunk_back`].
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+#[inline]
+pub(crate) const fn iter_next_chunk_back<T, const N: usize>(
+    iter: &mut impl [const] DoubleEndedIterator<Item = T>,
+) -> Result<[T; N], IntoIter<T, N>> {
+    iter.spec_next_chunk_back()
+}
+
+pub(crate) const trait SpecNextChunkBack<T, const N: usize>:
+    DoubleEndedIterator<Item = T>
+{
+    fn spec_next_chunk_back(&mut self) -> Result<[T; N], IntoIter<T, N>>;
+}
+
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+const impl<I: [const] DoubleEndedIterator<Item = T>, T, const N: usize> SpecNextChunkBack<T, N>
+    for I
+{
+    #[inline]
+    default fn spec_next_chunk_back(&mut self) -> Result<[T; N], IntoIter<T, N>> {
+        let mut array = [const { MaybeUninit::uninit() }; N];
+        let r = iter_next_chunk_back_erased(&mut array, self);
+        match r {
+            Ok(()) => {
+                // SAFETY: All elements of `array` were populated.
+                Ok(unsafe { MaybeUninit::array_assume_init(array) })
+            }
+            Err(initialized) => {
+                // SAFETY: Only the last `initialized` elements were populated
+                Err(unsafe { IntoIter::new_unchecked(array, N - initialized..N) })
+            }
+        }
+    }
+}
+
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+const impl<I: [const] DoubleEndedIterator<Item = T> + TrustedLen, T, const N: usize>
+    SpecNextChunkBack<T, N> for I
+{
+    fn spec_next_chunk_back(&mut self) -> Result<[T; N], IntoIter<T, N>> {
+        let len = (*self).size_hint().0;
+        let mut array = [const { MaybeUninit::uninit() }; N];
+        if len < N {
+            // SAFETY: `TrustedLen`, an unsafe trait, requires that i can get len items out of it.
+            unsafe { write_back(&mut array, self, len) };
+            // SAFETY: Only the last `len` elements were populated
+            Err(unsafe { IntoIter::new_unchecked(array, N - len..N) })
+        } else {
+            // SAFETY: `TrustedLen`, an unsafe trait, requires that i can get N items out of it.
+            unsafe { write_back(&mut array, self, N) };
+            // SAFETY: All N items were populated
+            Ok(unsafe { MaybeUninit::array_assume_init(array) })
+        }
+    }
+}
+
+// SAFETY: `from` must have len items, and len items must be < N.
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+const unsafe fn write_back<T, const N: usize>(
+    to: &mut [MaybeUninit<T>; N],
+    from: &mut impl [const] DoubleEndedIterator<Item = T>,
+    len: usize,
+) {
+    let mut guard = GuardBack { array_mut: to, initialized: 0 };
+    while guard.initialized < len {
+        // SAFETY: caller has guaranteed, from has len items.
+        let item = unsafe { from.next_back().unwrap_unchecked() };
+        // SAFETY: guard.initialized < len < N
+        unsafe { guard.push_unchecked(item) };
+    }
+    crate::mem::forget(guard);
+}
+
+/// Version of [`iter_next_chunk_back`] using a passed-in slice
+/// in order to avoid needing to monomorphize for every array length.
+///
+/// Unfortunately this loop has two exit conditions, the buffer filling up
+/// or the iterator running out of items, making it tend to optimize poorly.
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+#[inline]
+const fn iter_next_chunk_back_erased<T>(
+    buffer: &mut [MaybeUninit<T>],
+    iter: &mut impl [const] DoubleEndedIterator<Item = T>,
+) -> Result<(), usize> {
+    // if `Iterator::next_back` panics, this guard will drop already initialized items
+    let mut guard = GuardBack { array_mut: buffer, initialized: 0 };
+    while guard.initialized < guard.array_mut.len() {
+        let Some(item) = iter.next_back() else {
             let initialized = guard.initialized;
             mem::forget(guard);
             return Err(initialized);
