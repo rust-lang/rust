@@ -133,6 +133,7 @@ pub(crate) struct FullCx<'ll, 'tcx> {
     /// Extra per-CGU codegen state needed when coverage instrumentation is enabled.
     pub coverage_cx: Option<coverageinfo::CguCoverageContext<'ll, 'tcx>>,
     pub dbg_cx: Option<debuginfo::CodegenUnitDebugContext<'ll, 'tcx>>,
+    pub sanitizer_ignorelist: Option<crate::llvm::SanitizerIgnoreList>,
 
     eh_personality: Cell<Option<&'ll Value>>,
     pub rust_try_fn: Cell<Option<(&'ll Type, &'ll Value)>>,
@@ -658,6 +659,26 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             None
         };
 
+        // FIXME: This parses the ignorelist files for each CGU, which adds a performance overhead.
+        // Clang parses it once per frontend invocation. LLVM's `SpecialCaseList::inSection`
+        // mutates an internal `LazyInit` cache and is not thread-safe. We either need to wrap
+        // the queries in a lock or wait for LLVM to expose a thread-safe way to query it.
+        let sanitizer_ignorelist = if !tcx.sess.opts.unstable_opts.sanitizer_ignorelist.is_empty() {
+            for path in &tcx.sess.opts.unstable_opts.sanitizer_ignorelist {
+                let _ = tcx.sess.source_map().load_file(std::path::Path::new(path));
+            }
+            match crate::llvm::SanitizerIgnoreList::new(
+                &tcx.sess.opts.unstable_opts.sanitizer_ignorelist,
+            ) {
+                Ok(list) => Some(list),
+                Err(err) => {
+                    tcx.dcx().fatal(format!("failed to parse sanitizer ignorelist: {}", err));
+                }
+            }
+        } else {
+            None
+        };
+
         GenericCx(
             FullCx {
                 tcx,
@@ -677,6 +698,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 scalar_lltypes: Default::default(),
                 coverage_cx,
                 dbg_cx,
+                sanitizer_ignorelist,
                 eh_personality: Cell::new(None),
                 rust_try_fn: Cell::new(None),
                 intrinsics: Default::default(),

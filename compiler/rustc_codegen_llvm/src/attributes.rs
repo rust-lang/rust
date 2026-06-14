@@ -111,9 +111,9 @@ pub(crate) fn sanitize_attrs<'ll, 'tcx>(
     cx: &SimpleCx<'ll>,
     tcx: TyCtxt<'tcx>,
     sanitizer_fn_attr: SanitizerFnAttrs,
+    enabled: SanitizerSet,
 ) -> SmallVec<[&'ll Attribute; 4]> {
     let mut attrs = SmallVec::new();
-    let enabled = tcx.sess.sanitizers() - sanitizer_fn_attr.disabled;
     if enabled.contains(SanitizerSet::ADDRESS) || enabled.contains(SanitizerSet::KERNELADDRESS) {
         attrs.push(llvm::AttributeKind::SanitizeAddress.create_attr(cx.llcx));
     }
@@ -409,6 +409,7 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     llfn: &'ll Value,
     codegen_fn_attrs: &CodegenFnAttrs,
     instance: Option<ty::Instance<'tcx>>,
+    sanitizer_ignorelist: Option<&crate::llvm::SanitizerIgnoreList>,
 ) {
     let sess = tcx.sess;
     let mut to_add = SmallVec::<[_; 16]>::new();
@@ -470,7 +471,67 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         // not used.
     } else {
         // Do not set sanitizer attributes for naked functions.
-        to_add.extend(sanitize_attrs(cx, tcx, codegen_fn_attrs.sanitizers));
+        let mut enabled = tcx.sess.sanitizers() - codegen_fn_attrs.sanitizers.disabled;
+        if let Some(ignorelist) = sanitizer_ignorelist {
+            if let Some(instance) = instance {
+                let sym_name = tcx.symbol_name(instance).name;
+                let span = tcx.def_span(instance.def_id());
+                let source_map = tcx.sess.source_map();
+                let filename =
+                    source_map.span_to_filename(span).prefer_local_unconditionally().to_string();
+
+                let mainfile = tcx
+                    .sess
+                    .local_crate_source_file()
+                    .and_then(|path| path.local_path().map(|p| p.display().to_string()))
+                    .unwrap_or_default();
+
+                let demangled = rustc_middle::ty::print::with_no_trimmed_paths!(
+                    tcx.def_path_str(instance.def_id())
+                );
+                let is_ignored = |section: &std::ffi::CStr| -> bool {
+                    ignorelist.contains_prefix(section, c"fun", sym_name)
+                        || ignorelist.contains_prefix(section, c"fun", &demangled)
+                        || ignorelist.contains_prefix(section, c"src", &filename)
+                        || (!mainfile.is_empty()
+                            && ignorelist.contains_prefix(section, c"mainfile", &mainfile))
+                };
+
+                let ignore_address = is_ignored(c"address");
+                let ignore_kernel_address = ignore_address || is_ignored(c"kernel-address");
+                let ignore_hwaddress = is_ignored(c"hwaddress");
+                let ignore_kernel_hwaddress = ignore_hwaddress || is_ignored(c"kernel-hwaddress");
+
+                if enabled.contains(SanitizerSet::ADDRESS) && ignore_address {
+                    enabled.remove(SanitizerSet::ADDRESS);
+                }
+                if enabled.contains(SanitizerSet::KERNELADDRESS) && ignore_kernel_address {
+                    enabled.remove(SanitizerSet::KERNELADDRESS);
+                }
+                if enabled.contains(SanitizerSet::MEMORY) && is_ignored(c"memory") {
+                    enabled.remove(SanitizerSet::MEMORY);
+                }
+                if enabled.contains(SanitizerSet::THREAD) && is_ignored(c"thread") {
+                    enabled.remove(SanitizerSet::THREAD);
+                }
+                if enabled.contains(SanitizerSet::HWADDRESS) && ignore_hwaddress {
+                    enabled.remove(SanitizerSet::HWADDRESS);
+                }
+                if enabled.contains(SanitizerSet::KERNELHWADDRESS) && ignore_kernel_hwaddress {
+                    enabled.remove(SanitizerSet::KERNELHWADDRESS);
+                }
+                if enabled.contains(SanitizerSet::SAFESTACK) && is_ignored(c"safestack") {
+                    enabled.remove(SanitizerSet::SAFESTACK);
+                }
+                if is_ignored(c"cfi") {
+                    to_add.push(llvm::CreateAttrString(cx.llcx, "no-sanitize-cfi"));
+                }
+                if is_ignored(c"kcfi") {
+                    to_add.push(llvm::CreateAttrString(cx.llcx, "no-sanitize-kcfi"));
+                }
+            }
+        }
+        to_add.extend(sanitize_attrs(cx, tcx, codegen_fn_attrs.sanitizers, enabled));
 
         // For non-naked functions, set branch protection attributes on aarch64.
         if let Some(BranchProtection { bti, pac_ret, gcs }) =

@@ -690,7 +690,7 @@ pub(crate) enum CompressionKind {
 }
 
 unsafe extern "C" {
-    type Opaque;
+    pub(crate) type Opaque;
 }
 #[repr(C)]
 struct InvariantOpaque<'a> {
@@ -2499,6 +2499,19 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustPrintPasses();
     pub(crate) fn LLVMRustSetNormalizedTarget(M: &Module, triple: *const c_char);
     pub(crate) fn LLVMRustRunRestrictionPass(M: &Module, syms: *const *const c_char, len: size_t);
+
+    pub(crate) fn LLVMRustSpecialCaseListCreate(
+        Paths: *const *const c_char,
+        NumPaths: size_t,
+        ErrorMsg: &RustString,
+    ) -> *mut Opaque;
+    pub(crate) fn LLVMRustSpecialCaseListDestroy(List: *mut Opaque);
+    pub(crate) fn LLVMRustSpecialCaseListContainsPrefix(
+        List: *const Opaque,
+        Section: *const c_char,
+        Prefix: *const c_char,
+        Query: *const c_char,
+    ) -> bool;
 
     pub(crate) fn LLVMRustWriteTwineToString(T: &Twine, s: &RustString);
 

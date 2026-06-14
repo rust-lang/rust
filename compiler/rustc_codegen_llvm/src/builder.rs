@@ -1848,7 +1848,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
 
         // Emit KCFI operand bundle
         let kcfi_bundle = self.kcfi_operand_bundle(fn_attrs, fn_abi, instance, llfn);
-        if let Some(kcfi_bundle) = kcfi_bundle.as_ref().map(|b| b.as_ref()) {
+        if let Some(kcfi_bundle) = kcfi_bundle.as_ref().map(|bundle| bundle.as_ref()) {
             bundles.push(kcfi_bundle);
         }
 
@@ -1891,6 +1891,9 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             {
                 return;
             }
+            if crate::llvm::HasStringAttribute(self.llfn(), "no-sanitize-cfi") {
+                return;
+            }
 
             let mut options = cfi::TypeIdOptions::empty();
             if self.tcx.sess.is_sanitizer_cfi_generalize_pointers_enabled() {
@@ -1900,11 +1903,29 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
                 options.insert(cfi::TypeIdOptions::NORMALIZE_INTEGERS);
             }
 
+            let inputs: Vec<_> = fn_abi.args.iter().map(|arg| arg.layout.ty).collect();
+            let output = fn_abi.ret.layout.ty;
+            let mut fn_sig_kind = rustc_middle::ty::FnSigKind::default();
+            fn_sig_kind = fn_sig_kind.set_safety(rustc_hir::Safety::Safe);
+            fn_sig_kind = fn_sig_kind.set_c_variadic(fn_abi.c_variadic);
+            let fn_sig = self.tcx.mk_fn_sig(inputs, output, fn_sig_kind);
+            let fn_ptr = Ty::new_fn_ptr(self.tcx, rustc_middle::ty::Binder::dummy(fn_sig));
+            let type_name = rustc_middle::ty::print::with_no_trimmed_paths!(fn_ptr.to_string());
+
             let typeid = if let Some(instance) = instance {
                 cfi::typeid_for_instance(self.tcx, instance, options)
             } else {
                 cfi::typeid_for_fnabi(self.tcx, fn_abi, options)
             };
+
+            if self
+                .cx
+                .sanitizer_ignorelist
+                .as_ref()
+                .is_some_and(|ignorelist| ignorelist.contains_prefix(c"cfi", c"type", &type_name))
+            {
+                return;
+            }
             let typeid_metadata = self.cx.create_metadata(typeid.as_bytes());
             let dbg_loc = self.get_dbg_loc();
 
@@ -1940,34 +1961,53 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         llfn: &'ll Value,
     ) -> Option<llvm::OperandBundleBox<'ll>> {
         let is_indirect_call = unsafe { llvm::LLVMRustIsNonGVFunctionPointerTy(llfn) };
-        let kcfi_bundle = if self.tcx.sess.is_sanitizer_kcfi_enabled()
-            && let Some(fn_abi) = fn_abi
-            && is_indirect_call
-        {
-            if let Some(fn_attrs) = fn_attrs
-                && fn_attrs.sanitizers.disabled.contains(SanitizerSet::KCFI)
+        let kcfi_bundle =
+            if self.tcx.sess.is_sanitizer_kcfi_enabled()
+                && let Some(fn_abi) = fn_abi
+                && is_indirect_call
             {
-                return None;
-            }
+                if let Some(fn_attrs) = fn_attrs
+                    && fn_attrs.sanitizers.disabled.contains(SanitizerSet::KCFI)
+                {
+                    return None;
+                }
+                if crate::llvm::HasStringAttribute(self.llfn(), "no-sanitize-kcfi") {
+                    return None;
+                }
 
-            let mut options = kcfi::TypeIdOptions::empty();
-            if self.tcx.sess.is_sanitizer_cfi_generalize_pointers_enabled() {
-                options.insert(kcfi::TypeIdOptions::GENERALIZE_POINTERS);
-            }
-            if self.tcx.sess.is_sanitizer_cfi_normalize_integers_enabled() {
-                options.insert(kcfi::TypeIdOptions::NORMALIZE_INTEGERS);
-            }
+                let mut options = kcfi::TypeIdOptions::empty();
+                if self.tcx.sess.is_sanitizer_cfi_generalize_pointers_enabled() {
+                    options.insert(kcfi::TypeIdOptions::GENERALIZE_POINTERS);
+                }
+                if self.tcx.sess.is_sanitizer_cfi_normalize_integers_enabled() {
+                    options.insert(kcfi::TypeIdOptions::NORMALIZE_INTEGERS);
+                }
 
-            let kcfi_typeid = if let Some(instance) = instance {
-                kcfi::typeid_for_instance(self.tcx, instance, options)
+                let inputs: Vec<_> = fn_abi.args.iter().map(|arg| arg.layout.ty).collect();
+                let output = fn_abi.ret.layout.ty;
+                let mut fn_sig_kind = rustc_middle::ty::FnSigKind::default();
+                fn_sig_kind = fn_sig_kind.set_safety(rustc_hir::Safety::Safe);
+                fn_sig_kind = fn_sig_kind.set_c_variadic(fn_abi.c_variadic);
+                let fn_sig = self.tcx.mk_fn_sig(inputs, output, fn_sig_kind);
+                let fn_ptr = Ty::new_fn_ptr(self.tcx, rustc_middle::ty::Binder::dummy(fn_sig));
+                let type_name = rustc_middle::ty::print::with_no_trimmed_paths!(fn_ptr.to_string());
+
+                if self.cx.sanitizer_ignorelist.as_ref().is_some_and(|ignorelist| {
+                    ignorelist.contains_prefix(c"kcfi", c"type", &type_name)
+                }) {
+                    return None;
+                }
+
+                let kcfi_typeid = if let Some(instance) = instance {
+                    kcfi::typeid_for_instance(self.tcx, instance, options)
+                } else {
+                    kcfi::typeid_for_fnabi(self.tcx, fn_abi, options)
+                };
+
+                Some(llvm::OperandBundleBox::new("kcfi", &[self.const_u32(kcfi_typeid)]))
             } else {
-                kcfi::typeid_for_fnabi(self.tcx, fn_abi, options)
+                None
             };
-
-            Some(llvm::OperandBundleBox::new("kcfi", &[self.const_u32(kcfi_typeid)]))
-        } else {
-            None
-        };
         kcfi_bundle
     }
 
