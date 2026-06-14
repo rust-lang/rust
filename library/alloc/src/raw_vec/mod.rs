@@ -187,6 +187,14 @@ const impl<T, A: [const] Allocator + [const] Destruct> RawVec<T, A> {
         // SAFETY: All calls on self.inner pass T::LAYOUT as the elem_layout
         unsafe { self.inner.grow_one(T::LAYOUT) }
     }
+
+    /// A specialized version of `self.reserve(len, 1)` which requires the
+    /// caller to ensure `len == self.capacity()`.
+    #[inline(never)]
+    pub(crate) fn try_grow_one(&mut self) -> Result<(), TryReserveError> {
+        // SAFETY: All calls on self.inner pass T::LAYOUT as the elem_layout
+        unsafe { self.inner.try_grow_one(T::LAYOUT) }
+    }
 }
 
 impl<T, A: Allocator> RawVec<T, A> {
@@ -492,6 +500,16 @@ const impl<A: [const] Allocator + [const] Destruct> RawVecInner<A> {
         if let Err(err) = unsafe { self.grow_amortized(self.cap.as_inner(), 1, elem_layout) } {
             handle_error(err);
         }
+    }
+
+    /// # Safety
+    /// - `elem_layout` must be valid for `self`, i.e. it must be the same `elem_layout` used to
+    ///   initially construct `self`
+    /// - `elem_layout`'s size must be a multiple of its alignment
+    #[inline]
+    unsafe fn try_grow_one(&mut self, elem_layout: Layout) -> Result<(), TryReserveError> {
+        // SAFETY: Precondition passed to caller
+        unsafe { self.grow_amortized(self.cap.as_inner(), 1, elem_layout) }
     }
 
     /// # Safety

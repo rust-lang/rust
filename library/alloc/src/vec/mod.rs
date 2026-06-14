@@ -1050,6 +1050,27 @@ const impl<T, A: [const] Allocator + [const] Destruct> Vec<T, A> {
     }
 }
 
+// Functions used exclusively by alloc::collections::fallible::Vec
+impl<T, A: Allocator> Vec<T, A> {
+    #[inline]
+    pub(crate) fn try_push_mut(&mut self, value: T) -> Result<&mut T, TryReserveError> {
+        // Inform codegen that the length does not change across grow_one().
+        let len = self.len;
+        // This will panic or abort if we would allocate > isize::MAX bytes
+        // or if the length increment would overflow for zero-sized types.
+        if len == self.buf.capacity() {
+            self.buf.try_grow_one()?;
+        }
+        unsafe {
+            let end = self.as_mut_ptr().add(len);
+            ptr::write(end, value);
+            self.len = len + 1;
+            // SAFETY: We just wrote a value to the pointer that will live the lifetime of the reference.
+            Ok(&mut *end)
+        }
+    }
+}
+
 impl<T, A: Allocator> Vec<T, A> {
     /// Constructs a new, empty `Vec<T, A>`.
     ///
