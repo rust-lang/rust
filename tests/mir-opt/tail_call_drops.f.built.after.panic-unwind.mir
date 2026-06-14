@@ -24,7 +24,7 @@ fn f() -> () {
 
     bb0: {
         StorageLive(_2);
-        _2 = String::new() -> [return: bb1, unwind: bb23];
+        _2 = String::new() -> [return: bb1, unwind: bb24];
     }
 
     bb1: {
@@ -33,13 +33,13 @@ fn f() -> () {
         _3 = const 12_i32;
         FakeRead(ForLet(None), _3);
         StorageLive(_4);
-        _4 = String::new() -> [return: bb2, unwind: bb22];
+        _4 = String::new() -> [return: bb2, unwind: bb23];
     }
 
     bb2: {
         FakeRead(ForLet(None), _4);
         StorageLive(_5);
-        _5 = String::new() -> [return: bb3, unwind: bb21];
+        _5 = String::new() -> [return: bb3, unwind: bb22];
     }
 
     bb3: {
@@ -47,7 +47,7 @@ fn f() -> () {
         StorageLive(_6);
         StorageLive(_7);
         _7 = move _4;
-        _6 = std::mem::drop::<String>(move _7) -> [return: bb4, unwind: bb19];
+        _6 = std::mem::drop::<String>(move _7) -> [return: bb4, unwind: bb20];
     }
 
     bb4: {
@@ -61,81 +61,86 @@ fn f() -> () {
 
     bb6: {
         StorageDead(_6);
-        drop(_5) -> [return: bb7, unwind: bb21];
+        goto -> bb7;
     }
 
     bb7: {
-        StorageDead(_5);
-        drop(_4) -> [return: bb8, unwind: bb22];
+        drop(_5) -> [return: bb8, unwind: bb22];
     }
 
     bb8: {
-        StorageDead(_4);
-        drop(_2) -> [return: bb9, unwind: bb23];
+        StorageDead(_5);
+        drop(_4) -> [return: bb9, unwind: bb23];
     }
 
     bb9: {
+        StorageDead(_4);
+        StorageDead(_3);
+        drop(_2) -> [return: bb10, unwind: bb24];
+    }
+
+    bb10: {
         StorageDead(_2);
         tailcall g();
     }
 
-    bb10: {
-        goto -> bb11;
-    }
-
     bb11: {
-        drop(_5) -> [return: bb12, unwind: bb21];
+        goto -> bb12;
     }
 
     bb12: {
-        StorageDead(_5);
-        goto -> bb13;
+        drop(_5) -> [return: bb13, unwind: bb22];
     }
 
     bb13: {
-        drop(_4) -> [return: bb14, unwind: bb22];
+        StorageDead(_5);
+        goto -> bb14;
     }
 
     bb14: {
-        StorageDead(_4);
-        goto -> bb15;
+        drop(_4) -> [return: bb15, unwind: bb23];
     }
 
     bb15: {
-        StorageDead(_3);
+        StorageDead(_4);
         goto -> bb16;
     }
 
     bb16: {
-        drop(_2) -> [return: bb17, unwind: bb23];
+        StorageDead(_3);
+        goto -> bb17;
     }
 
     bb17: {
+        drop(_2) -> [return: bb18, unwind: bb24];
+    }
+
+    bb18: {
         StorageDead(_2);
         unreachable;
     }
 
-    bb18: {
+    bb19: {
         return;
     }
 
-    bb19 (cleanup): {
-        drop(_7) -> [return: bb20, unwind terminate(cleanup)];
-    }
-
     bb20 (cleanup): {
-        drop(_5) -> [return: bb21, unwind terminate(cleanup)];
+        drop(_7) -> [return: bb21, unwind terminate(cleanup)];
     }
 
     bb21 (cleanup): {
-        drop(_4) -> [return: bb22, unwind terminate(cleanup)];
+        drop(_5) -> [return: bb22, unwind terminate(cleanup)];
     }
 
     bb22 (cleanup): {
-        drop(_2) -> [return: bb23, unwind terminate(cleanup)];
+        drop(_4) -> [return: bb23, unwind terminate(cleanup)];
     }
 
     bb23 (cleanup): {
+        drop(_2) -> [return: bb24, unwind terminate(cleanup)];
+    }
+
+    bb24 (cleanup): {
         resume;
     }
 }

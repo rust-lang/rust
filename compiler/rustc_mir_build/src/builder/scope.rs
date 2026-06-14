@@ -553,9 +553,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let breakable_scope = self.scopes.breakable_scopes.pop().unwrap();
         assert!(breakable_scope.region_scope == region_scope);
         let break_block =
-            self.build_exit_tree(breakable_scope.break_drops, region_scope, span, None);
+            self.build_exit_tree(breakable_scope.break_drops, region_scope, span, None, &[]);
         if let Some(drops) = breakable_scope.continue_drops {
-            self.build_exit_tree(drops, region_scope, span, loop_block);
+            self.build_exit_tree(drops, region_scope, span, loop_block, &[]);
         }
         match (normal_exit_block, break_block) {
             (Some(block), None) | (None, Some(block)) => block,
@@ -609,6 +609,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             region_scope,
             span,
             None,
+            &[],
         );
 
         match (normal_exit_block, break_block) {
@@ -664,8 +665,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let if_then_scope = mem::replace(&mut self.scopes.if_then_scope, previous_scope).unwrap();
         assert!(if_then_scope.region_scope == region_scope);
 
-        let else_block =
-            self.build_exit_tree(if_then_scope.else_drops, region_scope, span, None).map_or_else(
+        let else_block = self
+            .build_exit_tree(if_then_scope.else_drops, region_scope, span, None, &[])
+            .map_or_else(
                 || self.cfg.start_new_block(),
                 |else_block_and| else_block_and.into_block(),
             );
@@ -1046,7 +1048,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // (See `<ExitScopes as DropTreeBuilder>::link_entry_point`.)
         self.cfg.terminate(drop_and_continue_block, source_info, TerminatorKind::UnwindResume);
 
-        self.build_exit_tree(drops, region_scope, span, Some(real_target));
+        self.build_exit_tree(drops, region_scope, span, Some(real_target), &[]);
 
         return self.cfg.start_new_block().unit();
     }
@@ -1091,7 +1093,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Instead, all scheduled drops are immediately added to the CFG.
     pub(crate) fn break_for_tail_call(
         &mut self,
-        mut block: BasicBlock,
+        block: BasicBlock,
         args: &[Spanned<Operand<'tcx>>],
         source_info: SourceInfo,
     ) -> BlockAnd<()> {
@@ -1114,88 +1116,42 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             })
             .collect();
 
-        let mut unwind_to = self.diverge_cleanup_target(
-            self.scopes.scopes.iter().rev().nth(1).unwrap().region_scope,
-            DUMMY_SP,
-        );
-        let typing_env = self.typing_env();
-        let unwind_drops = &mut self.scopes.unwind_drops;
+        let end_span = self.tcx.sess.source_map().end_point(source_info.span);
 
+        let mut drops = DropTree::new();
+        let mut drop_idx = ROOT_NODE;
         // the innermost scope contains only the destructors for the tail call arguments
         // we only want to drop these in case of a panic, so we skip it
-        for scope in self.scopes.scopes[1..].iter().rev().skip(1) {
-            // FIXME(explicit_tail_calls) code duplication with `build_scope_drops`
-            for drop_data in scope.drops.iter().rev() {
-                let source_info = drop_data.source_info;
-                let local = drop_data.local;
-
-                if !self.local_decls[local].ty.needs_drop(self.tcx, typing_env) {
-                    continue;
-                }
-
-                match drop_data.kind {
-                    DropKind::Value => {
-                        // `unwind_to` should drop the value that we're about to
-                        // schedule. If dropping this value panics, then we continue
-                        // with the *next* value on the unwind path.
-                        debug_assert_eq!(
-                            unwind_drops.drop_nodes[unwind_to].data.local,
-                            drop_data.local
-                        );
-                        debug_assert_eq!(
-                            unwind_drops.drop_nodes[unwind_to].data.kind,
-                            drop_data.kind
-                        );
-                        unwind_to = unwind_drops.drop_nodes[unwind_to].next;
-
-                        let mut unwind_entry_point = unwind_to;
-
-                        // the tail call arguments must be dropped if any of these drops panic
-                        for drop in arg_drops.iter().copied() {
-                            unwind_entry_point = unwind_drops.add_drop(drop, unwind_entry_point);
-                        }
-
-                        unwind_drops.add_entry_point(block, unwind_entry_point);
-
-                        let next = self.cfg.start_new_block();
-                        self.cfg.terminate(
-                            block,
-                            source_info,
-                            TerminatorKind::Drop {
-                                place: local.into(),
-                                target: next,
-                                unwind: UnwindAction::Continue,
-                                replace: false,
-                                drop: None,
-                            },
-                        );
-                        block = next;
-                    }
-                    DropKind::ForLint => {
-                        self.cfg.push(
-                            block,
-                            Statement::new(
-                                source_info,
-                                StatementKind::BackwardIncompatibleDropHint {
-                                    place: Box::new(local.into()),
-                                    reason: BackwardIncompatibleDropReason::Edition2024,
-                                },
-                            ),
-                        );
-                    }
-                    DropKind::Storage => {
-                        // Only temps and vars need their storage dead.
-                        assert!(local.index() > self.arg_count);
-                        self.cfg.push(
-                            block,
-                            Statement::new(source_info, StatementKind::StorageDead(local)),
-                        );
-                    }
+        for scope in &self.scopes.scopes[1..self.scopes.scopes.len() - 1] {
+            for drop in &scope.drops {
+                let should_emit = match drop.kind {
+                    DropKind::Value | DropKind::ForLint => !scope.moved_locals.contains(drop.local),
+                    DropKind::Storage => true,
+                };
+                if should_emit {
+                    let mut drop = *drop;
+                    drop.source_info.span = end_span;
+                    drop_idx = drops.add_drop(drop, drop_idx);
                 }
             }
         }
 
-        block.unit()
+        // We registered no drop, do not clutter the generated MIR with silly goto blocks.
+        if drop_idx == ROOT_NODE {
+            return block.unit();
+        }
+
+        drops.add_entry_point(block, drop_idx);
+
+        // `build_exit_tree` doesn't have access to our source_info, so we
+        // create a dummy terminator now. `TerminatorKind::UnwindResume` is used
+        // because MIR type checking will panic if it hasn't been overwritten.
+        // (See `<ExitScopes as DropTreeBuilder>::link_entry_point`.)
+        self.cfg.terminate(block, source_info, TerminatorKind::UnwindResume);
+
+        let outer_scope = self.scopes.scopes[0].region_scope;
+        self.build_exit_tree(drops, outer_scope, DUMMY_SP, None, &arg_drops)
+            .unwrap_or_else(|| self.cfg.start_new_block().unit())
     }
 
     fn is_async_drop_impl(
@@ -1242,7 +1198,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let source_info = scope.drops[0].source_info;
         self.cfg.terminate(block, source_info, TerminatorKind::UnwindResume);
 
-        self.build_exit_tree(drops, outer_scope, DUMMY_SP, None)
+        self.build_exit_tree(drops, outer_scope, DUMMY_SP, None, &[])
             .map_or_else(|| self.cfg.start_new_block(), |block| block.into_block())
     }
 
@@ -1797,6 +1753,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         else_scope: region::Scope,
         span: Span,
         continue_block: Option<BasicBlock>,
+        extra_unwind_drops: &[DropData],
     ) -> Option<BlockAnd<()>> {
         let blocks = drops.build_mir::<ExitScopes>(&mut self.cfg, continue_block);
         let is_coroutine = self.coroutine.is_some();
@@ -1823,10 +1780,13 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
                             .scopes
                             .unwind_drops
                             .add_drop(drop_node.data, unwind_indices[drop_node.next]);
-                        self.scopes.unwind_drops.add_entry_point(
-                            blocks[drop_idx].unwrap(),
-                            unwind_indices[drop_node.next],
-                        );
+                        let mut unwind_to = unwind_indices[drop_node.next];
+                        for extra_drop in extra_unwind_drops {
+                            unwind_to = self.scopes.unwind_drops.add_drop(*extra_drop, unwind_to);
+                        }
+                        self.scopes
+                            .unwind_drops
+                            .add_entry_point(blocks[drop_idx].unwrap(), unwind_to);
                         unwind_indices.push(unwind_drop);
                     }
                 }

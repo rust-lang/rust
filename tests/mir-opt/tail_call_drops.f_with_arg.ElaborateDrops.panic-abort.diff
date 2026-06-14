@@ -68,28 +68,29 @@
       }
   
       bb6: {
-          drop(_7) -> [return: bb7, unwind: bb20];
+          drop(_7) -> [return: bb7, unwind: bb12];
       }
   
       bb7: {
           StorageDead(_7);
--         drop(_6) -> [return: bb8, unwind: bb18];
+-         drop(_6) -> [return: bb8, unwind: bb14];
 +         goto -> bb8;
       }
   
       bb8: {
 +         _12 = const false;
           StorageDead(_6);
+          StorageDead(_5);
           drop(_4) -> [return: bb9, unwind: bb16];
       }
   
       bb9: {
           StorageDead(_4);
-          drop(_2) -> [return: bb10, unwind: bb14];
+          drop(_2) -> [return: bb10, unwind: bb18];
       }
   
       bb10: {
-          drop(_1) -> [return: bb11, unwind: bb12];
+          drop(_1) -> [return: bb11, unwind: bb20];
       }
   
       bb11: {
@@ -101,15 +102,17 @@
       }
   
       bb13 (cleanup): {
-          drop(_11) -> [return: bb29, unwind terminate(cleanup)];
+          drop(_11) -> [return: bb25, unwind terminate(cleanup)];
       }
   
       bb14 (cleanup): {
-          drop(_10) -> [return: bb15, unwind terminate(cleanup)];
+-         drop(_10) -> [return: bb15, unwind terminate(cleanup)];
++         goto -> bb15;
       }
   
       bb15 (cleanup): {
-          drop(_11) -> [return: bb28, unwind terminate(cleanup)];
+-         drop(_11) -> [return: bb26, unwind terminate(cleanup)];
++         goto -> bb26;
       }
   
       bb16 (cleanup): {
@@ -121,13 +124,11 @@
       }
   
       bb18 (cleanup): {
--         drop(_10) -> [return: bb19, unwind terminate(cleanup)];
-+         goto -> bb19;
+          drop(_10) -> [return: bb19, unwind terminate(cleanup)];
       }
   
       bb19 (cleanup): {
--         drop(_11) -> [return: bb26, unwind terminate(cleanup)];
-+         goto -> bb26;
+          drop(_11) -> [return: bb28, unwind terminate(cleanup)];
       }
   
       bb20 (cleanup): {
@@ -135,7 +136,7 @@
       }
   
       bb21 (cleanup): {
-          drop(_11) -> [return: bb25, unwind terminate(cleanup)];
+          drop(_11) -> [return: bb29, unwind terminate(cleanup)];
       }
   
       bb22 (cleanup): {
