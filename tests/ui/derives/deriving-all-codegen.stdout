@@ -1239,6 +1239,84 @@ impl ::core::cmp::Ord for Fieldless {
     }
 }
 
+// A C-like, fieldless enum with variants of varying name lengths.
+enum Fieldless0 { A, BBB, CC, }
+#[automatically_derived]
+impl ::core::fmt::Debug for Fieldless0 {
+    #[inline]
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        ::core::fmt::Formatter::write_str(f,
+            match self {
+                Fieldless0::A => "A",
+                Fieldless0::BBB => "BBB",
+                Fieldless0::CC => "CC",
+            })
+    }
+}
+
+
+// A C-like, fieldless enum with 39 variants.
+enum Fieldless39 {
+    AAAAA,
+    BBBB,
+    CC,
+    DDDDDDDD,
+    E,
+    FFFFFFFFFFFFF,
+    GGGGGG,
+    Hatsune,
+    IIIIIII,
+    JJJJJJJJJ,
+    KKK,
+    LLLLLL,
+    Miku,
+    N,
+    OO,
+    P,
+    Q,
+    R,
+    SSSSSS,
+    TTT,
+    U,
+    VV,
+    W,
+    X,
+    Y,
+    ZZZZZZZZZZZZZZZZZ,
+    IDONT,
+    KNOW,
+    WHAT,
+    TO,
+    SAY,
+    HERE,
+    SO,
+    JUST,
+    SOME,
+    RANDOM,
+    STUFF,
+    GUGUGAGA,
+    LOL,
+}
+#[automatically_derived]
+impl ::core::fmt::Debug for Fieldless39 {
+    #[inline]
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        const __NAMES: &str =
+            "AAAAABBBBCCDDDDDDDDEFFFFFFFFFFFFFGGGGGGHatsuneIIIIIIIJJJJJJJJJKKKLLLLLLMikuNOOPQRSSSSSSTTTUVVWXYZZZZZZZZZZZZZZZZZIDONTKNOWWHATTOSAYHERESOJUSTSOMERANDOMSTUFFGUGUGAGALOL";
+        const __OFFSET: [usize; 40] =
+            [0usize, 5usize, 9usize, 11usize, 19usize, 20usize, 33usize,
+                    39usize, 46usize, 53usize, 62usize, 65usize, 71usize,
+                    75usize, 76usize, 78usize, 79usize, 80usize, 81usize,
+                    87usize, 90usize, 91usize, 93usize, 94usize, 95usize,
+                    96usize, 113usize, 118usize, 122usize, 126usize, 128usize,
+                    131usize, 135usize, 137usize, 141usize, 145usize, 151usize,
+                    156usize, 164usize, 167usize];
+        let __d = ::core::intrinsics::discriminant_value(self) as usize;
+        ::core::fmt::Formatter::debug_c_like_enum_write_str(f, __NAMES,
+            &__OFFSET, __d)
+    }
+}
+
 // An enum with multiple fieldless and fielded variants.
 enum Mixed {
 
