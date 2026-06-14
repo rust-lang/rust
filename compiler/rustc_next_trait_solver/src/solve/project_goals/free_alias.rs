@@ -1,4 +1,4 @@
-//! Computes a normalizes-to (projection) goal for inherent associated types,
+//! Computes a projection goal for inherent associated types,
 //! `#![feature(lazy_type_alias)]` and `#![feature(type_alias_impl_trait)]`.
 //!
 //! Since a free alias is never ambiguous, this just computes the `type_of` of
@@ -17,10 +17,10 @@ where
 {
     pub(super) fn normalize_free_alias(
         &mut self,
-        goal: Goal<I, ty::NormalizesTo<I>>,
+        goal: Goal<I, ty::ProjectionPredicate<I>>,
     ) -> QueryResultOrRerunNonErased<I> {
         let cx = self.cx();
-        let free_alias = goal.predicate.alias;
+        let free_alias = goal.predicate.projection_term;
 
         // Check where clauses
         self.add_goals(
@@ -41,15 +41,18 @@ where
                 .skip_norm_wip()
                 .into(),
             ty::AliasTermKind::FreeConst { .. } => {
-                return self.evaluate_const_and_instantiate_normalizes_to_term(
-                    goal,
+                return self.evaluate_const_and_instantiate_projection_term(
+                    goal.param_env,
+                    free_alias,
+                    goal.predicate.term,
                     free_alias.expect_ct(),
                 );
             }
             kind => panic!("expected free alias, found {kind:?}"),
         };
 
-        self.instantiate_normalizes_to_term(goal, actual);
+        self.push_const_arg_has_type_goal(goal.param_env, goal.predicate.projection_term, actual);
+        self.eq(goal.param_env, goal.predicate.term, actual)?;
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 }

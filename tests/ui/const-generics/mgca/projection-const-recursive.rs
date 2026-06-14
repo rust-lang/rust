@@ -10,7 +10,7 @@ trait Trait {
 
 impl Trait for () {
     type const A: () = <() as Trait>::A;
-    //~^ ERROR type mismatch resolving `<() as Trait>::A normalizes-to _`
+    //~^ ERROR type mismatch resolving `<() as Trait>::A == _`
     //~| ERROR the constant `<() as Trait>::A` is not of type `()`
 }
 

@@ -1,7 +1,4 @@
-mod anon_const;
-mod free_alias;
-mod inherent;
-mod opaque_types;
+use std::debug_assert_matches;
 
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
@@ -35,25 +32,11 @@ where
         goal: Goal<I, NormalizesTo<I>>,
     ) -> QueryResultOrRerunNonErased<I> {
         debug_assert!(self.term_is_fully_unconstrained(goal));
-        match goal.predicate.alias.kind {
-            ty::AliasTermKind::ProjectionTy { .. } | ty::AliasTermKind::ProjectionConst { .. } => {
-                self.normalize_associated_term(goal)
-            }
-            ty::AliasTermKind::InherentTy { .. } | ty::AliasTermKind::InherentConst { .. } => {
-                self.normalize_inherent_associated_term(goal)
-            }
-            ty::AliasTermKind::OpaqueTy { .. } => self.normalize_opaque_type(goal),
-            ty::AliasTermKind::FreeTy { .. } | ty::AliasTermKind::FreeConst { .. } => {
-                self.normalize_free_alias(goal)
-            }
-            ty::AliasTermKind::AnonConst { .. } => self.normalize_anon_const(goal),
-        }
-    }
+        debug_assert_matches!(
+            goal.predicate.alias.kind,
+            ty::AliasTermKind::ProjectionTy { .. } | ty::AliasTermKind::ProjectionConst { .. }
+        );
 
-    fn normalize_associated_term(
-        &mut self,
-        goal: Goal<I, NormalizesTo<I>>,
-    ) -> QueryResultOrRerunNonErased<I> {
         let cx = self.cx();
 
         let trait_ref = goal.predicate.alias.trait_ref(cx);
@@ -111,6 +94,27 @@ where
         )
     }
 
+    /// When normalizing a const alias, register a `ConstArgHasType` goal
+    /// to ensure the const value's type matches the declared type.
+    pub fn push_const_arg_has_type_goal(
+        &mut self,
+        param_env: I::ParamEnv,
+        alias: ty::AliasTerm<I>,
+        term: I::Term,
+    ) {
+        if let Some(ct) = term.as_const() {
+            let cx = self.cx();
+            let expected_ty = alias.expect_ct().type_of(cx).skip_norm_wip();
+            self.add_goal(
+                GoalSource::Misc,
+                Goal {
+                    param_env,
+                    predicate: ty::ClauseKind::ConstArgHasType(ct, expected_ty).upcast(cx),
+                },
+            );
+        }
+    }
+
     /// When normalizing an associated item, constrain the expected term to `term`.
     ///
     /// We know `term` to always be a fully unconstrained inference variable, so
@@ -137,27 +141,15 @@ where
     /// fires a `span_bug!`. Registering the obligation here ensures the type
     /// mismatch is reported during normalization itself, tainting the MIR
     /// before validation runs.
-    pub fn instantiate_normalizes_to_term(
-        &mut self,
-        goal: Goal<I, NormalizesTo<I>>,
-        term: I::Term,
-    ) {
-        if let Some(ct) = term.as_const() {
-            let cx = self.cx();
-            let alias = goal.predicate.alias;
-            let expected_ty = alias.expect_ct().type_of(cx).skip_norm_wip();
-            self.add_goal(
-                GoalSource::Misc,
-                goal.with(cx, ty::ClauseKind::ConstArgHasType(ct, expected_ty)),
-            );
-        }
+    fn instantiate_normalizes_to_term(&mut self, goal: Goal<I, NormalizesTo<I>>, term: I::Term) {
+        self.push_const_arg_has_type_goal(goal.param_env, goal.predicate.alias, term);
         self.eq(goal.param_env, goal.predicate.term, term)
             .expect("expected goal term to be fully unconstrained");
     }
 
     /// Unlike `instantiate_normalizes_to_term` this instantiates the expected term
     /// with a rigid alias. Using this is pretty much always wrong.
-    pub fn structurally_instantiate_normalizes_to_term(
+    fn structurally_instantiate_normalizes_to_term(
         &mut self,
         goal: Goal<I, NormalizesTo<I>>,
         term: ty::AliasTerm<I>,
@@ -458,7 +450,12 @@ where
                         },
                         target_args,
                     );
-                    return ecx.evaluate_const_and_instantiate_normalizes_to_term(goal, uv);
+                    return ecx.evaluate_const_and_instantiate_projection_term(
+                        goal.param_env,
+                        goal.predicate.alias,
+                        goal.predicate.term,
+                        uv,
+                    );
                 }
                 kind => panic!("expected projection, found {kind:?}"),
             };

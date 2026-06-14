@@ -1,16 +1,16 @@
-error[E0271]: type mismatch resolving `Loop normalizes-to _`
+error[E0271]: type mismatch resolving `_ == Loop`
   --> $DIR/inherent-impls-overflow.rs:8:1
    |
 LL | type Loop = Loop;
    | ^^^^^^^^^ types differ
 
-error[E0271]: type mismatch resolving `Loop normalizes-to _`
+error[E0271]: type mismatch resolving `_ == Loop`
   --> $DIR/inherent-impls-overflow.rs:12:1
    |
 LL | impl Loop {}
    | ^^^^^^^^^^^^ types differ
 
-error[E0271]: type mismatch resolving `Loop normalizes-to _`
+error[E0271]: type mismatch resolving `_ == Loop`
   --> $DIR/inherent-impls-overflow.rs:12:6
    |
 LL | impl Loop {}
