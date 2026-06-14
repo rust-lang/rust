@@ -12,7 +12,7 @@ fn main() {
     fn mismatch_types2() -> i32 {
         match 2 {
             x => {
-                return dbg!(x) //~ ERROR mismatched types
+                return dbg!(x); //~ ERROR mismatched types
             }
         }
         todo!()
@@ -27,7 +27,7 @@ fn main() {
 
     fn mismatch_types4() -> i32 {
         match 1 {
-            _ => {return dbg!(1)} //~ ERROR mismatched types
+            _ => {return dbg!(1);} //~ ERROR mismatched types
         }
         todo!()
     }
