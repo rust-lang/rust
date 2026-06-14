@@ -74,7 +74,6 @@ impl ByteStr {
     /// it helps dereferencing other "container" types,
     /// for example `Box<ByteStr>` or `Arc<ByteStr>`.
     #[inline]
-    // #[unstable(feature = "str_as_str", issue = "130366")]
     #[unstable(feature = "bstr", issue = "134915")]
     pub const fn as_byte_str(&self) -> &ByteStr {
         self
@@ -86,7 +85,6 @@ impl ByteStr {
     /// it helps dereferencing other "container" types,
     /// for example `Box<ByteStr>` or `MutexGuard<ByteStr>`.
     #[inline]
-    // #[unstable(feature = "str_as_str", issue = "130366")]
     #[unstable(feature = "bstr", issue = "134915")]
     pub const fn as_mut_byte_str(&mut self) -> &mut ByteStr {
         self
