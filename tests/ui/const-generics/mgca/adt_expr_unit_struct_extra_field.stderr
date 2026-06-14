@@ -1,0 +1,8 @@
+error: struct expression has no field named `field`
+  --> $DIR/adt_expr_unit_struct_extra_field.rs:9:19
+   |
+LL |     foo::<{ Foo { field: const { 1 } } }>();
+   |                   ^^^^^
+
+error: aborting due to 1 previous error
+
