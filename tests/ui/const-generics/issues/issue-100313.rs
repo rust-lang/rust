@@ -1,5 +1,5 @@
 //@ dont-require-annotations: NOTE
-//@ ignore-parallel-frontend different alloc ids
+
 #![allow(incomplete_features)]
 #![feature(adt_const_params, unsized_const_params)]
 
@@ -15,7 +15,7 @@ impl<const B: &'static bool> T<B> {
 
 const _: () = {
     let x = T::<{ &true }>;
-    x.set_false(); //~ ERROR writing to ALLOC0 which is read-only
+    x.set_false(); //~ ERROR writing to ALLOC$ID which is read-only
 };
 
 fn main() {}

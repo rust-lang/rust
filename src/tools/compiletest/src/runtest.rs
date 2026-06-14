@@ -2575,34 +2575,20 @@ impl<'test> TestCx<'test> {
         // AllocId are numbered globally in a compilation session. This can lead to changes
         // depending on the exact compilation flags and host architecture. Meanwhile, we want
         // to keep them numbered, to see if the same id appears multiple times.
-        // So we remap to deterministic numbers that only depend on the subset of allocations
-        // that actually appear in the output.
+        // Unfortunately, due to parallel frontend assigning alloc-ids
+        // nondeterministically we resort to dropping ids altogether for now.
         // We use uppercase ALLOC to distinguish from the non-normalized version.
         {
-            let mut seen_allocs = indexmap::IndexSet::new();
-
             // The alloc-id appears in pretty-printed allocations.
             normalized = static_regex!(
-                r"╾─*a(lloc)?([0-9]+)(\+0x[0-9a-f]+)?(<imm>)?( \([0-9]+ ptr bytes\))?─*╼"
+                r"╾─*(?:a(?:lloc)?|A(:?LLOC)?)\d+(:?\+0x[[:alnum:]]+)?(:?<imm>)?(:? ?\(\d+ ptr bytes\))?─*╼"
             )
-            .replace_all(&normalized, |caps: &Captures<'_>| {
-                // Renumber the captured index.
-                let index = caps.get(2).unwrap().as_str().to_string();
-                let (index, _) = seen_allocs.insert_full(index);
-                let offset = caps.get(3).map_or("", |c| c.as_str());
-                let imm = caps.get(4).map_or("", |c| c.as_str());
-                // Do not bother keeping it pretty, just make it deterministic.
-                format!("╾ALLOC{index}{offset}{imm}╼")
-            })
+            .replace_all(&normalized, |_: &Captures<'_>| "╾ALLOC$ID╼".to_string())
             .into_owned();
 
             // The alloc-id appears in a sentence.
-            normalized = static_regex!(r"\balloc([0-9]+)\b")
-                .replace_all(&normalized, |caps: &Captures<'_>| {
-                    let index = caps.get(1).unwrap().as_str().to_string();
-                    let (index, _) = seen_allocs.insert_full(index);
-                    format!("ALLOC{index}")
-                })
+            normalized = static_regex!(r"\b(?:alloc|ALLOC)\d+\b")
+                .replace_all(&normalized, |_: &Captures<'_>| "ALLOC$ID".to_string())
                 .into_owned();
         }
 

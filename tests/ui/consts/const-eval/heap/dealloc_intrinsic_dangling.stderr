@@ -6,10 +6,10 @@ LL | const _X: &'static u8 = unsafe {
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼                         │ ╾──────╼
            }
 
-error[E0080]: memory access failed: ALLOC1 has been freed, so this pointer is dangling
+error[E0080]: memory access failed: ALLOC$ID has been freed, so this pointer is dangling
   --> $DIR/dealloc_intrinsic_dangling.rs:22:5
    |
 LL |     *reference

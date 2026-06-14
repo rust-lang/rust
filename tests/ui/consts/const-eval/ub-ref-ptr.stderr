@@ -6,7 +6,7 @@ LL | const UNALIGNED: &u16 = unsafe { mem::transmute(&[0u8; 4]) };
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼                         │ ╾──────╼
            }
 
 error[E0080]: constructing invalid value of type Box<u16>: encountered an unaligned box (required 2 byte alignment but found 1)
@@ -17,7 +17,7 @@ LL | const UNALIGNED_BOX: Box<u16> = unsafe { mem::transmute(&[0u8; 4]) };
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼                         │ ╾──────╼
            }
 
 error[E0080]: constructing invalid value of type &u16: encountered a null reference
@@ -50,7 +50,7 @@ LL | const MAYBE_NULL_BOX: Box<()> = unsafe { mem::transmute({
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼                         │ ╾──────╼
            }
 
 error[E0080]: unable to turn pointer into integer
@@ -114,7 +114,7 @@ LL | const USIZE_AS_BOX: Box<u8> = unsafe { mem::transmute(1337usize) };
                HEX_DUMP
            }
 
-error[E0080]: reading memory at ALLOC5[0x%..0x%], but memory is uninitialized at [0x%..0x%], and this operation requires initialized memory
+error[E0080]: reading memory at ALLOC$ID[0x%..0x%], but memory is uninitialized at [0x%..0x%], and this operation requires initialized memory
   --> $DIR/ub-ref-ptr.rs:54:41
    |
 LL | const UNINIT_PTR: *const i32 = unsafe { MaybeUninit { uninit: () }.init };
@@ -135,7 +135,7 @@ LL | const NULL_FN_PTR: fn() = unsafe { mem::transmute(0usize) };
                HEX_DUMP
            }
 
-error[E0080]: reading memory at ALLOC6[0x%..0x%], but memory is uninitialized at [0x%..0x%], and this operation requires initialized memory
+error[E0080]: reading memory at ALLOC$ID[0x%..0x%], but memory is uninitialized at [0x%..0x%], and this operation requires initialized memory
   --> $DIR/ub-ref-ptr.rs:59:38
    |
 LL | const UNINIT_FN_PTR: fn() = unsafe { MaybeUninit { uninit: () }.init };
@@ -156,7 +156,7 @@ LL | const DANGLING_FN_PTR: fn() = unsafe { mem::transmute(13usize) };
                HEX_DUMP
            }
 
-error[E0080]: constructing invalid value of type fn(): encountered ALLOC3<imm>, but expected a function pointer
+error[E0080]: constructing invalid value of type fn(): encountered ALLOC$ID<imm>, but expected a function pointer
   --> $DIR/ub-ref-ptr.rs:63:1
    |
 LL | const DATA_FN_PTR: fn() = unsafe { mem::transmute(&13) };
@@ -164,10 +164,10 @@ LL | const DATA_FN_PTR: fn() = unsafe { mem::transmute(&13) };
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼                         │ ╾──────╼
            }
 
-error[E0080]: constructing invalid value of type fn(): encountered ALLOC4+0xa, but expected a function pointer
+error[E0080]: constructing invalid value of type fn(): encountered ALLOC$ID+0xa, but expected a function pointer
   --> $DIR/ub-ref-ptr.rs:65:1
    |
 LL | const MAYBE_NULL_FN_PTR: fn() = unsafe { mem::transmute({
@@ -175,7 +175,7 @@ LL | const MAYBE_NULL_FN_PTR: fn() = unsafe { mem::transmute({
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼                         │ ╾──────╼
            }
 
 error[E0080]: accessing memory based on pointer with alignment 1, but alignment 4 is required
