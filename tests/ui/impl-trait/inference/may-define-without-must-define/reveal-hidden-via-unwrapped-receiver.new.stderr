@@ -1,0 +1,11 @@
+error[E0308]: mismatched types
+  --> $DIR/reveal-hidden-via-unwrapped-receiver.rs:33:20
+   |
+LL |     let _: IShow = x.show();
+   |            -----   ^^^^^^^^ expected `IShow`, found `OnIShow`
+   |            |
+   |            expected due to this
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
