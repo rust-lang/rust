@@ -1,5 +1,6 @@
 use crate::fmt::{Debug, Display, Formatter, LowerExp, Result, UpperExp};
 use crate::mem::MaybeUninit;
+use crate::num::FpCategory;
 use crate::num::imp::{flt2dec, fmt as numfmt};
 
 #[doc(hidden)]
@@ -36,7 +37,7 @@ impl_general_format! { f32 f64 }
 fn float_to_decimal_common_exact<T>(
     fmt: &mut Formatter<'_>,
     num: &T,
-    sign: flt2dec::Sign,
+    sign: &'static str,
     precision: u16,
 ) -> Result
 where
@@ -45,14 +46,14 @@ where
     let mut buf: [MaybeUninit<u8>; 1024] = [MaybeUninit::uninit(); 1024]; // enough for f32 and f64
     let mut parts: [MaybeUninit<numfmt::Part<'_>>; 4] = [MaybeUninit::uninit(); 4];
     let formatted = flt2dec::to_exact_fixed_str(
-        flt2dec::strategy::grisu::format_exact,
+        flt2dec::format_fixed,
         *num,
         sign,
         precision.into(),
         &mut buf,
         &mut parts,
     );
-    // SAFETY: `to_exact_fixed_str` and `format_exact` produce only ASCII characters.
+    // SAFETY: `to_exact_fixed_str` and `format_fixed` produce only ASCII characters.
     unsafe { fmt.pad_formatted_parts(&formatted) }
 }
 
@@ -62,7 +63,7 @@ where
 fn float_to_decimal_common_shortest<T>(
     fmt: &mut Formatter<'_>,
     num: &T,
-    sign: flt2dec::Sign,
+    sign: &'static str,
     precision: u16,
 ) -> Result
 where
@@ -73,27 +74,21 @@ where
         [MaybeUninit::uninit(); flt2dec::MAX_SIG_DIGITS];
     let mut parts: [MaybeUninit<numfmt::Part<'_>>; 4] = [MaybeUninit::uninit(); 4];
     let formatted = flt2dec::to_shortest_str(
-        flt2dec::strategy::grisu::format_shortest,
+        flt2dec::format_short,
         *num,
         sign,
         precision.into(),
         &mut buf,
         &mut parts,
     );
-    // SAFETY: `to_shortest_str` and `format_shortest` produce only ASCII characters.
+    // SAFETY: `to_shortest_str` and `format_short` produce only ASCII characters.
     unsafe { fmt.pad_formatted_parts(&formatted) }
 }
 
-fn float_to_decimal_display<T>(fmt: &mut Formatter<'_>, num: &T) -> Result
+fn float_to_decimal_display<T>(fmt: &mut Formatter<'_>, num: &T, sign: &'static str) -> Result
 where
     T: flt2dec::DecodableFloat,
 {
-    let force_sign = fmt.sign_plus();
-    let sign = match force_sign {
-        false => flt2dec::Sign::Minus,
-        true => flt2dec::Sign::MinusPlus,
-    };
-
     if let Some(precision) = fmt.options.get_precision() {
         float_to_decimal_common_exact(fmt, num, sign, precision)
     } else {
@@ -108,7 +103,7 @@ where
 fn float_to_exponential_common_exact<T>(
     fmt: &mut Formatter<'_>,
     num: &T,
-    sign: flt2dec::Sign,
+    sign: &'static str,
     precision: u16,
     upper: bool,
 ) -> Result
@@ -118,7 +113,7 @@ where
     let mut buf: [MaybeUninit<u8>; 1024] = [MaybeUninit::uninit(); 1024]; // enough for f32 and f64
     let mut parts: [MaybeUninit<numfmt::Part<'_>>; 6] = [MaybeUninit::uninit(); 6];
     let formatted = flt2dec::to_exact_exp_str(
-        flt2dec::strategy::grisu::format_exact,
+        flt2dec::format_fixed,
         *num,
         sign,
         precision.into(),
@@ -126,7 +121,7 @@ where
         &mut buf,
         &mut parts,
     );
-    // SAFETY: `to_exact_exp_str` and `format_exact` produce only ASCII characters.
+    // SAFETY: `to_exact_exp_str` and `format_fixed` produce only ASCII characters.
     unsafe { fmt.pad_formatted_parts(&formatted) }
 }
 
@@ -136,7 +131,7 @@ where
 fn float_to_exponential_common_shortest<T>(
     fmt: &mut Formatter<'_>,
     num: &T,
-    sign: flt2dec::Sign,
+    sign: &'static str,
     upper: bool,
 ) -> Result
 where
@@ -147,7 +142,7 @@ where
         [MaybeUninit::uninit(); flt2dec::MAX_SIG_DIGITS];
     let mut parts: [MaybeUninit<numfmt::Part<'_>>; 6] = [MaybeUninit::uninit(); 6];
     let formatted = flt2dec::to_shortest_exp_str(
-        flt2dec::strategy::grisu::format_shortest,
+        flt2dec::format_short,
         *num,
         sign,
         (0, 0),
@@ -155,21 +150,20 @@ where
         &mut buf,
         &mut parts,
     );
-    // SAFETY: `to_shortest_exp_str` and `format_shortest` produce only ASCII characters.
+    // SAFETY: `to_shortest_exp_str` and `format_short` produce only ASCII characters.
     unsafe { fmt.pad_formatted_parts(&formatted) }
 }
 
 // Common code of floating point LowerExp and UpperExp.
-fn float_to_exponential_common<T>(fmt: &mut Formatter<'_>, num: &T, upper: bool) -> Result
+fn float_to_exponential_common<T>(
+    fmt: &mut Formatter<'_>,
+    num: &T,
+    sign: &'static str,
+    upper: bool,
+) -> Result
 where
     T: flt2dec::DecodableFloat,
 {
-    let force_sign = fmt.sign_plus();
-    let sign = match force_sign {
-        false => flt2dec::Sign::Minus,
-        true => flt2dec::Sign::MinusPlus,
-    };
-
     if let Some(precision) = fmt.options.get_precision() {
         float_to_exponential_common_exact(fmt, num, sign, precision, upper)
     } else {
@@ -177,16 +171,10 @@ where
     }
 }
 
-fn float_to_general_debug<T>(fmt: &mut Formatter<'_>, num: &T) -> Result
+fn float_to_general_debug<T>(fmt: &mut Formatter<'_>, num: &T, sign: &'static str) -> Result
 where
     T: flt2dec::DecodableFloat + GeneralFormat,
 {
-    let force_sign = fmt.sign_plus();
-    let sign = match force_sign {
-        false => flt2dec::Sign::Minus,
-        true => flt2dec::Sign::MinusPlus,
-    };
-
     if let Some(precision) = fmt.options.get_precision() {
         // this behavior of {:.PREC?} predates exponential formatting for {:?}
         float_to_decimal_common_exact(fmt, num, sign, precision)
@@ -202,36 +190,106 @@ where
     }
 }
 
+/// Determines which sign to format, if any.
+macro_rules! sign_of {
+    ($v:ident, $f:ident) => {
+        if ($v).is_sign_negative() {
+            "-"
+        } else if ($f).sign_plus() {
+            "+"
+        } else {
+            ""
+        }
+    };
+}
+
 macro_rules! floating {
-    ($($ty:ident)*) => {
+    ($($T:ident)*) => {
         $(
-            #[stable(feature = "rust1", since = "1.0.0")]
-            impl Debug for $ty {
-                fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
-                    float_to_general_debug(fmt, self)
-                }
-            }
 
-            #[stable(feature = "rust1", since = "1.0.0")]
-            impl Display for $ty {
-                fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
-                    float_to_decimal_display(fmt, self)
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl Debug for $T {
+            fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+                let sign: &'static str = sign_of!(self, f);
+                match self.classify() {
+                    FpCategory::Nan => f.pad_number("", 3, | w | w.write_str("NaN")),
+                    FpCategory::Infinite => f.pad_number(sign, 3, | w | w.write_str("inf")),
+                    FpCategory::Zero => match f.precision() {
+                        None | Some(1) => f.pad_number(sign, 3, | w | w.write_str("0.0")),
+                        Some(0) => f.pad_number(sign, 1, | w | w.write_str("0")),
+                        Some(n) => f.pad_number(sign, "0.".len() + n, | w | {
+                            w.write_str("0.")?;
+                            w.write_zeroes(n)
+                        }),
+                    },
+                    FpCategory::Subnormal | FpCategory::Normal => float_to_general_debug(f, self, sign),
                 }
             }
+        }
 
-            #[stable(feature = "rust1", since = "1.0.0")]
-            impl LowerExp for $ty {
-                fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
-                    float_to_exponential_common(fmt, self, false)
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl Display for $T {
+            fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+                let sign: &'static str = sign_of!(self, f);
+                match self.classify() {
+                    FpCategory::Nan => f.pad_number("", 3, | w | w.write_str("NaN")),
+                    FpCategory::Infinite => f.pad_number(sign, 3, | w | w.write_str("inf")),
+                    FpCategory::Zero => match f.precision() {
+                        None | Some(0) => f.pad_number(sign, 1, | w | w.write_str("0")),
+                        Some(n) => f.pad_number(sign, "0.".len() + n, | w | {
+                            w.write_str("0.")?;
+                            w.write_zeroes(n)
+                        }),
+                    },
+                    FpCategory::Subnormal | FpCategory::Normal => float_to_decimal_display(f, self, sign),
                 }
             }
+        }
 
-            #[stable(feature = "rust1", since = "1.0.0")]
-            impl UpperExp for $ty {
-                fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
-                    float_to_exponential_common(fmt, self, true)
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl LowerExp for $T {
+            fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+                let sign: &'static str = sign_of!(self, f);
+                match self.classify() {
+                    FpCategory::Nan => f.pad_number("", 3, | w | w.write_str("NaN")),
+                    FpCategory::Infinite => f.pad_number(sign, 3, | w | w.write_str("inf")),
+                    FpCategory::Zero => {
+                        match f.precision() {
+                            None | Some(0) => f.pad_number(sign, 3, | w | w.write_str("0e0")),
+                            Some(n) => f.pad_number(sign, "0.".len() + n + "e0".len(), | w | {
+                                w.write_str("0.")?;
+                                w.write_zeroes(n)?;
+                                w.write_str("e0")
+                            }),
+                        }
+                    },
+                    FpCategory::Subnormal | FpCategory::Normal => float_to_exponential_common(f, self, sign, false)
                 }
             }
+        }
+
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl UpperExp for $T {
+            fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+                let sign: &'static str = sign_of!(self, f);
+                match self.classify() {
+                    FpCategory::Nan => f.pad_number("", 3, | w | w.write_str("NaN")),
+                    FpCategory::Infinite => f.pad_number(sign, 3, | w | w.write_str("inf")),
+                    FpCategory::Zero => {
+                        match f.precision() {
+                            None | Some(0) => f.pad_number(sign, 3, | w | w.write_str("0E0")),
+                            Some(n) => f.pad_number(sign, "0.".len() + n + "E0".len(), | w | {
+                                w.write_str("0.")?;
+                                w.write_zeroes(n)?;
+                                w.write_str("E0")
+                            }),
+                        }
+                    },
+                    FpCategory::Subnormal | FpCategory::Normal => float_to_exponential_common(f, self, sign, true)
+                }
+            }
+        }
+
         )*
     };
 }
