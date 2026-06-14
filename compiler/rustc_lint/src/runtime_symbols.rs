@@ -11,7 +11,9 @@ use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
     /// The `invalid_runtime_symbol_definitions` lint checks the signature of items whose
-    /// symbol name is a runtime symbol expected by `core`.
+    /// symbol name is a runtime symbol expected by `core` differs significantly from the
+    /// expected signature (like mismatch ABI, mismatch C variadics, mismatch argument count,
+    /// missing return type, ...).
     ///
     /// ### Example
     ///
@@ -38,7 +40,37 @@ declare_lint! {
     "invalid definition of a symbol used by the standard library"
 }
 
-declare_lint_pass!(RuntimeSymbols => [INVALID_RUNTIME_SYMBOL_DEFINITIONS]);
+declare_lint! {
+    /// The `suspicious_runtime_symbol_definitions` lint checks the signature of items whose
+    /// symbol name is a runtime symbol expected by `core`.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,no_run,standalone_crate
+    #[cfg_attr(not(bootstrap), doc = "#[unsafe(no_mangle)]")]
+    /// pub extern "C" fn strlen(ptr: *mut f32) -> usize { 0 }
+    /// // suspicious definition of the `strlen` function
+    /// // `ptr` should be `*const std::ffi::c_char`
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Up-most care is required when defining runtime symbols assumed and
+    /// used by the standard library. They must follow the C specification, not use any
+    /// standard-library facility or undefined behavior may occur.
+    ///
+    /// The symbols currently checked are `memcpy`, `memmove`, `memset`, `memcmp`,
+    /// `bcmp` and `strlen`.
+    ///
+    /// [^1]: https://doc.rust-lang.org/core/index.html#how-to-use-the-core-library
+    pub SUSPICIOUS_RUNTIME_SYMBOL_DEFINITIONS,
+    Warn,
+    "suspicious definition of a symbol used by the standard library"
+}
+
+declare_lint_pass!(RuntimeSymbols => [INVALID_RUNTIME_SYMBOL_DEFINITIONS, SUSPICIOUS_RUNTIME_SYMBOL_DEFINITIONS]);
 
 static EXPECTED_SYMBOLS: &[ExpectedSymbol] = &[
     ExpectedSymbol { symbol: "memcpy", lang: LanguageItems::memcpy_fn },
@@ -149,15 +181,32 @@ fn check_fn(cx: &LateContext<'_>, symbol_name: &str, sig: FnSig<'_>, did: LocalD
         let expected = Ty::new_fn_ptr(cx.tcx, lang_sig);
         let actual = Ty::new_fn_ptr(cx.tcx, user_sig);
 
-        cx.emit_span_lint(
-            INVALID_RUNTIME_SYMBOL_DEFINITIONS,
-            sig.span,
-            RedefiningRuntimeSymbolsDiag::FnDef {
-                symbol_name: symbol_name.to_string(),
-                found_fn_sig: actual,
-                expected_fn_sig: expected,
-            },
-        );
+        if lang_sig.abi() != user_sig.abi()
+            || lang_sig.c_variadic() != user_sig.c_variadic()
+            || lang_sig.inputs().skip_binder().len() != user_sig.inputs().skip_binder().len()
+            || (!lang_sig.output().skip_binder().is_unit()
+                && user_sig.output().skip_binder().is_unit())
+        {
+            cx.emit_span_lint(
+                INVALID_RUNTIME_SYMBOL_DEFINITIONS,
+                sig.span,
+                RedefiningRuntimeSymbolsDiag::FnDefInvalid {
+                    symbol_name: symbol_name.to_string(),
+                    found_fn_sig: actual,
+                    expected_fn_sig: expected,
+                },
+            );
+        } else {
+            cx.emit_span_lint(
+                SUSPICIOUS_RUNTIME_SYMBOL_DEFINITIONS,
+                sig.span,
+                RedefiningRuntimeSymbolsDiag::FnDefSuspicious {
+                    symbol_name: symbol_name.to_string(),
+                    found_fn_sig: actual,
+                    expected_fn_sig: expected,
+                },
+            );
+        };
     }
 }
 

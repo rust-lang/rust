@@ -821,7 +821,19 @@ pub(crate) enum RedefiningRuntimeSymbolsDiag<'tcx> {
     #[help(
         "either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = \"{$symbol_name}\")]`, or `#[link_name = \"{$symbol_name}\"]`"
     )]
-    FnDef { symbol_name: String, expected_fn_sig: Ty<'tcx>, found_fn_sig: Ty<'tcx> },
+    FnDefInvalid { symbol_name: String, expected_fn_sig: Ty<'tcx>, found_fn_sig: Ty<'tcx> },
+    #[diag(
+        "suspicious definition of the runtime `{$symbol_name}` symbol used by the standard library"
+    )]
+    #[note(
+        "expected `{$expected_fn_sig}`
+    found    `{$found_fn_sig}`"
+    )]
+    #[help(
+        "either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = \"{$symbol_name}\")]`, or `#[link_name = \"{$symbol_name}\"]`"
+    )]
+    #[help("allow this lint if the signature is compatible")]
+    FnDefSuspicious { symbol_name: String, expected_fn_sig: Ty<'tcx>, found_fn_sig: Ty<'tcx> },
     #[diag(
         "invalid definition of the runtime `{$symbol_name}` symbol used by the standard library"
     )]
