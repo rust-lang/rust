@@ -2,8 +2,10 @@
 
 use std::iter::once;
 use std::sync::Arc;
+use std::vec;
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::smallvec::smallvec;
 use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_hir::def::{DefKind, MacroKinds, Res};
 use rustc_hir::def_id::{DefId, DefIdSet, LocalDefId, LocalModDefId};
@@ -17,6 +19,7 @@ use rustc_span::symbol::{Symbol, sym};
 use tracing::{debug, trace};
 
 use super::{Item, extract_cfg_from_attrs};
+use crate::clean::paths::ItemPath;
 use crate::clean::{
     self, Attributes, CfgInfo, ImplKind, ItemId, Type, clean_bound_vars, clean_generics,
     clean_impl_item, clean_middle_assoc_item, clean_middle_field, clean_middle_ty,
@@ -234,7 +237,7 @@ pub(crate) fn load_attrs<'hir>(tcx: TyCtxt<'hir>, did: DefId) -> &'hir [hir::Att
     tcx.get_all_attrs(did)
 }
 
-pub(crate) fn item_relative_path(tcx: TyCtxt<'_>, def_id: DefId) -> Vec<Symbol> {
+pub(crate) fn item_relative_path(tcx: TyCtxt<'_>, def_id: DefId) -> ItemPath {
     tcx.def_path(def_id).data.into_iter().filter_map(|elem| elem.data.get_opt_name()).collect()
 }
 
@@ -242,7 +245,7 @@ pub(crate) fn item_relative_path(tcx: TyCtxt<'_>, def_id: DefId) -> Vec<Symbol> 
 ///
 /// In particular: we handle macro differently: if it's not a macro 2.0 oe a built-in macro, then
 /// it is generated at the top-level of the crate and its path will be `[crate_name, macro_name]`.
-pub(crate) fn get_item_path(tcx: TyCtxt<'_>, def_id: DefId, kind: ItemType) -> Vec<Symbol> {
+pub(crate) fn get_item_path(tcx: TyCtxt<'_>, def_id: DefId, kind: ItemType) -> ItemPath {
     let crate_name = tcx.crate_name(def_id.krate);
     let relative = item_relative_path(tcx, def_id);
 
@@ -255,7 +258,7 @@ pub(crate) fn get_item_path(tcx: TyCtxt<'_>, def_id: DefId, kind: ItemType) -> V
         ) {
             once(crate_name).chain(relative).collect()
         } else {
-            vec![crate_name, *relative.last().expect("relative was empty")]
+            smallvec![crate_name, *relative.last().expect("relative was empty")].into()
         }
     } else {
         once(crate_name).chain(relative).collect()

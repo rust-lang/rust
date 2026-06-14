@@ -1,6 +1,7 @@
 use std::mem;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::smallvec::smallvec;
 use rustc_hir::StabilityLevel;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet};
 use rustc_metadata::creader::CStore;
@@ -8,6 +9,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Symbol;
 use tracing::debug;
 
+use crate::clean::paths::ItemPath;
 use crate::clean::types::ExternalLocation;
 use crate::clean::{self, ExternalCrate, ItemId, PrimitiveType};
 use crate::config::RenderOptions;
@@ -42,11 +44,11 @@ pub(crate) struct Cache {
     /// URLs when a type is being linked to. External paths are not located in
     /// this map because the `External` type itself has all the information
     /// necessary.
-    pub(crate) paths: FxIndexMap<DefId, (Vec<Symbol>, ItemType)>,
+    pub(crate) paths: FxIndexMap<DefId, (ItemPath, ItemType)>,
 
     /// Similar to `paths`, but only holds external paths. This is only used for
     /// generating explicit hyperlinks to other crates.
-    pub(crate) external_paths: FxIndexMap<DefId, (Vec<Symbol>, ItemType)>,
+    pub(crate) external_paths: FxIndexMap<DefId, (ItemPath, ItemType)>,
 
     /// Maps local `DefId`s of exported types to fully qualified paths.
     /// Unlike 'paths', this mapping ignores any renames that occur
@@ -58,7 +60,7 @@ pub(crate) struct Cache {
     /// to the path used if the corresponding type is inlined. By
     /// doing this, we can detect duplicate impls on a trait page, and only display
     /// the impl for the inlined type.
-    pub(crate) exact_paths: DefIdMap<Vec<Symbol>>,
+    pub(crate) exact_paths: DefIdMap<ItemPath>,
 
     /// This map contains information about all known traits of this crate.
     /// Implementations of a crate should inherit the documentation of the
@@ -98,7 +100,7 @@ pub(crate) struct Cache {
     pub(crate) masked_crates: FxHashSet<CrateNum>,
 
     // Private fields only used when initially crawling a crate to build a cache
-    stack: Vec<Symbol>,
+    stack: ItemPath,
     parent_stack: Vec<ParentStackItem>,
     stripped_mod: bool,
 
@@ -193,7 +195,7 @@ impl Cache {
                     render_options.extern_html_root_urls.get(name.as_str()).map(|u| &**u);
                 e.location(extern_url, extern_url_takes_precedence, dst, tcx)
             });
-            cx.cache.external_paths.insert(e.def_id(), (vec![name], ItemType::Module));
+            cx.cache.external_paths.insert(e.def_id(), (smallvec![name].into(), ItemType::Module));
         }
 
         // FIXME: avoid this clone (requires implementing Default manually)
@@ -204,7 +206,7 @@ impl Cache {
             // If that restriction is ever lifted, this will have to include the relative paths instead.
             cx.cache
                 .external_paths
-                .insert(def_id, (vec![crate_name, prim.as_sym()], ItemType::Primitive));
+                .insert(def_id, (smallvec![crate_name, prim.as_sym()].into(), ItemType::Primitive));
         }
 
         let (krate, mut impl_ids) = {
@@ -572,7 +574,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
             if item_def_id.is_crate_root() || cache.stripped_mod {
                 return;
             }
-            (None, &*cache.stack)
+            (None, &cache.stack[..])
         }
     };
 
@@ -600,7 +602,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
     let index_item = IndexItem {
         defid: Some(defid),
         name,
-        module_path: parent_path.to_vec(),
+        module_path: parent_path.into(),
         parent: parent_did,
         parent_idx: None,
         trait_parent,
