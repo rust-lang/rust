@@ -138,6 +138,7 @@ struct QueryModifiers {
     // tidy-alphabetical-start
     arena_cache: Option<Ident>,
     cache_on_disk: Option<Ident>,
+    callfront: Option<Ident>,
     depth_limit: Option<Ident>,
     desc: Desc,
     eval_always: Option<Ident>,
@@ -153,6 +154,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
     // tidy-alphabetical-start
     let mut arena_cache = None;
     let mut cache_on_disk = None;
+    let mut callfront = None;
     let mut depth_limit = None;
     let mut desc = None;
     let mut eval_always = None;
@@ -179,6 +181,8 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
             try_insert!(arena_cache = modifier);
         } else if modifier == "cache_on_disk" {
             try_insert!(cache_on_disk = modifier);
+        } else if modifier == "callfront" {
+            try_insert!(callfront = modifier);
         } else if modifier == "depth_limit" {
             try_insert!(depth_limit = modifier);
         } else if modifier == "desc" {
@@ -211,6 +215,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
         // tidy-alphabetical-start
         arena_cache,
         cache_on_disk,
+        callfront,
         depth_limit,
         desc,
         eval_always,
@@ -247,6 +252,7 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
         // tidy-alphabetical-start
         arena_cache,
         cache_on_disk,
+        callfront,
         depth_limit,
         desc,
         eval_always,
@@ -261,6 +267,7 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
     // tidy-alphabetical-start
     let arena_cache = arena_cache.is_some();
     let cache_on_disk = cache_on_disk.is_some();
+    let callfront = callfront.is_some();
     let depth_limit = depth_limit.is_some();
     let desc = {
         // Put a description closure in the `desc` modifier.
@@ -284,7 +291,7 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
     // tidy-alphabetical-end
 
     // Giving an input span to the modifier names in the modifier list seems
-    // to give slightly more helpful errors when one of the callback macros
+    // to give slightly more helpful errors when one of the callfront macros
     // fails to parse the modifier list.
     let query_name_span = query.name.span();
     quote_spanned! {
@@ -293,6 +300,7 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
         // tidy-alphabetical-start
         arena_cache: #arena_cache,
         cache_on_disk: #cache_on_disk,
+        callfront: #callfront,
         depth_limit: #depth_limit,
         desc: #desc,
         eval_always: #eval_always,

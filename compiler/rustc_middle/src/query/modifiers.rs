@@ -28,6 +28,9 @@ pub(crate) struct arena_cache;
 /// be loadable from crate metadata instead.
 pub(crate) struct cache_on_disk;
 
+/// # `callfront` query modifier
+pub(crate) struct callfront;
+
 /// # `depth_limit` query modifier
 ///
 /// Impose a recursion call depth limit on the query to prevent stack overflow.
