@@ -2,6 +2,7 @@
 //@ assembly-output: emit-asm
 //@ compile-flags: --target nvptx64-nvidia-cuda
 //@ needs-llvm-components: nvptx
+//@ ignore-backends: gcc
 
 #![feature(no_core, asm_experimental_arch)]
 #![crate_type = "rlib"]
