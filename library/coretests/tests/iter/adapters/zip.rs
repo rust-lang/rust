@@ -370,3 +370,45 @@ fn test_issue_82291() {
     zip.next();
     assert_eq!(called.get(), 1);
 }
+
+#[test]
+fn test_zip_nth_back() {
+    let xs = [0, 1, 2, 4, 5];
+    let ys = [10, 11, 12];
+
+    let mut it = xs.iter().zip(&ys);
+    assert_eq!(it.nth_back(0), Some((&2, &12)));
+    assert_eq!(it.nth_back(1), Some((&0, &10)));
+    assert_eq!(it.nth_back(0), None);
+
+    let mut it = xs.iter().zip(&ys);
+    assert_eq!(it.nth_back(3), None);
+
+    let mut it = ys.iter().zip(&xs);
+    assert_eq!(it.nth_back(3), None);
+}
+
+#[test]
+fn test_zip_nth_back_after_next() {
+    let xs = [0, 1, 2, 3, 4];
+    let ys = [10, 11, 12, 13, 14];
+
+    let mut it = xs.iter().zip(&ys);
+    assert_eq!(it.next(), Some((&0, &10)));
+    assert_eq!(it.nth_back(1), Some((&3, &13)));
+    assert_eq!(it.nth_back(0), Some((&2, &12)));
+    assert_eq!(it.next(), Some((&1, &11)));
+    assert_eq!(it.next(), None);
+}
+
+#[test]
+fn test_zip_rev_nth_uses_nth_back() {
+    // This is the motivating use-case from issue #54054:
+    // (0..N).rev().step_by(K) should be fast because step_by uses nth,
+    // and rev delegates nth to nth_back.
+    let xs = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    let ys = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
+
+    let v: Vec<_> = xs.iter().zip(&ys).rev().step_by(3).collect();
+    assert_eq!(v, vec![(&9, &19), (&6, &16), (&3, &13), (&0, &10)]);
+}
