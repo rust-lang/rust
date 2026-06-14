@@ -1,5 +1,4 @@
-//@ check-pass
-//@ known-bug: #144442
+// regression test for #144442
 
 // Same family as #84366 / #112905: a coroutine that yields a non-`'static`
 // reference is wrongly `: 'static`, allowing a `Box<dyn Any>` downcast to
@@ -19,7 +18,7 @@ type Payload = Box<i32>;
 fn make_coro<'a>()
 -> impl Coroutine<Yield = Rc<RefCell<Option<&'a Payload>>>, Return = ()> + 'static {
     #[coroutine]
-    || {
+    || { //~ERROR lifetime may not live long enough
         let storage: Rc<RefCell<Option<&'a Payload>>> = Rc::new(RefCell::new(None));
         yield storage.clone();
         yield storage;

@@ -2342,7 +2342,7 @@ pub const trait Iterator {
         // These closure "factory" functions exist to avoid genericity in `Self`.
 
         #[inline]
-        fn is_false<'a, T>(
+        fn is_false<'a, T: 'a>(
             predicate: &'a mut impl FnMut(&T) -> bool,
             true_count: &'a mut usize,
         ) -> impl FnMut(&&mut T) -> bool + 'a {
@@ -2354,7 +2354,9 @@ pub const trait Iterator {
         }
 
         #[inline]
-        fn is_true<T>(predicate: &mut impl FnMut(&T) -> bool) -> impl FnMut(&&mut T) -> bool + '_ {
+        fn is_true<'a, T: 'a>(
+            predicate: &'a mut impl FnMut(&T) -> bool,
+        ) -> impl FnMut(&&mut T) -> bool + 'a {
             move |x| predicate(&**x)
         }
 
