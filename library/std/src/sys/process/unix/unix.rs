@@ -380,6 +380,13 @@ impl Command {
             }
         }
 
+        // Execute any registered dup2 file actions. These are used to manipulate
+        // file descriptors in the child (e.g., clearing CLOEXEC via dup2(fd, fd))
+        // without requiring a pre_exec closure, which would prevent posix_spawn.
+        for &(oldfd, newfd) in self.get_dup2_file_actions() {
+            cvt_r(|| libc::dup2(oldfd, newfd))?;
+        }
+
         for callback in self.get_closures().iter_mut() {
             callback()?;
         }
@@ -717,6 +724,16 @@ impl Command {
             }
             if let Some((f, cwd)) = addchdir {
                 cvt_nz(f(file_actions.0.as_mut_ptr(), cwd.as_ptr()))?;
+            }
+
+            // Add any registered dup2 file actions (e.g., for clearing CLOEXEC
+            // on inherited fds like jobserver pipes).
+            for &(oldfd, newfd) in self.get_dup2_file_actions() {
+                cvt_nz(libc::posix_spawn_file_actions_adddup2(
+                    file_actions.0.as_mut_ptr(),
+                    oldfd,
+                    newfd,
+                ))?;
             }
 
             if let Some(pgroup) = pgroup {
