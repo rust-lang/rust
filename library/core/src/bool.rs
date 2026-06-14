@@ -1,6 +1,8 @@
 //! impl bool {}
 
+use crate::intrinsics;
 use crate::marker::Destruct;
+use crate::ub_checks::assert_unsafe_precondition;
 
 impl bool {
     /// Returns `Some(t)` if the `bool` is [`true`](../std/keyword.true.html),
@@ -128,5 +130,45 @@ impl bool {
         f: F,
     ) -> Result<(), E> {
         if self { Ok(()) } else { Err(f()) }
+    }
+
+    /// Disjoint, bitwise or. Computes `self | rhs`, assuming inequality.
+    ///
+    /// Practically, this requires that `self | rhs` and `self ^ rhs` both yield the
+    /// same result, allowing for any of the two to be emitted in code gen -- depending
+    /// on whichever is cheapest.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(disjoint_bitor)]
+    ///
+    /// assert_eq!(
+    ///     // SAFETY: `false` and `true` are inequal.
+    ///     unsafe { false.unchecked_disjoint_bitor(true) },
+    ///     true,
+    /// );
+    /// ```
+    ///
+    /// # Safety
+    ///
+    /// This results in undefined behaviour if `self` and `rhs` are equal.
+    #[unstable(feature = "disjoint_bitor", issue = "135758")]
+    #[rustc_const_unstable(feature = "disjoint_bitor", issue = "135758")]
+    #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+    #[inline]
+    pub const unsafe fn unchecked_disjoint_bitor(self, rhs: Self) -> Self {
+        assert_unsafe_precondition!(
+            check_language_ub,
+            "bool::unchecked_disjoint_bitor cannot bitor equal values",
+            (
+                lhs: bool = self,
+                rhs: bool = rhs,
+            ) => lhs != rhs,
+        );
+
+        // SAFETY: Same precondition.
+        unsafe { intrinsics::disjoint_bitor(self, rhs) }
     }
 }
