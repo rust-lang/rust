@@ -1,0 +1,122 @@
+error[E0658]: #![feature(partial_init_locals)] might be able to enable the initialisation here
+  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:31:5
+   |
+LL |     d.x = 10;
+   |     ^^^^^^^^
+   |
+   = note: see issue #153699 <https://github.com/rust-lang/rust/issues/153699> for more information
+   = help: add `#![feature(partial_init_locals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0381]: assigned binding `d` isn't fully initialized
+  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:31:5
+   |
+LL |     let d: D;
+   |         - binding declared here but left uninitialized
+LL |     d.x = 10;
+   |     ^^^^^^^^ `d` assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0658]: #![feature(partial_init_locals)] might be able to enable the initialisation here
+  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:37:5
+   |
+LL |     d.x = 10;
+   |     ^^^^^^^^
+   |
+   = note: see issue #153699 <https://github.com/rust-lang/rust/issues/153699> for more information
+   = help: add `#![feature(partial_init_locals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0381]: assigned binding `d` isn't fully initialized
+  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:37:5
+   |
+LL |     let mut d: D;
+   |         ----- binding declared here but left uninitialized
+LL |     d.x = 10;
+   |     ^^^^^^^^ `d` assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0382]: assign of moved value: `d`
+  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:44:5
+   |
+LL |     let mut d = D { x: 0, s: S { y: 0, z: 0 } };
+   |         ----- move occurs because `d` has type `D`, which does not implement the `Copy` trait
+LL |     drop(d);
+   |          - value moved here
+LL |     d.x = 10;
+   |     ^^^^^^^^ value assigned here after move
+   |
+note: if `D` implemented `Clone`, you could clone the value
+  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:15:1
+   |
+LL | struct D {
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     drop(d);
+   |          - you could clone this value
+
+error[E0658]: #![feature(partial_init_locals)] might be able to enable the initialisation here
+  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:50:5
+   |
+LL |     d.s.y = 20;
+   |     ^^^^^^^^^^
+   |
+   = note: see issue #153699 <https://github.com/rust-lang/rust/issues/153699> for more information
+   = help: add `#![feature(partial_init_locals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0381]: partially assigned binding `d` isn't fully initialized
+  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:50:5
+   |
+LL |     let d: D;
+   |         - binding declared here but left uninitialized
+LL |     d.s.y = 20;
+   |     ^^^^^^^^^^ `d.s` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0658]: #![feature(partial_init_locals)] might be able to enable the initialisation here
+  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:56:5
+   |
+LL |     d.s.y = 20;
+   |     ^^^^^^^^^^
+   |
+   = note: see issue #153699 <https://github.com/rust-lang/rust/issues/153699> for more information
+   = help: add `#![feature(partial_init_locals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0381]: partially assigned binding `d` isn't fully initialized
+  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:56:5
+   |
+LL |     let mut d: D;
+   |         ----- binding declared here but left uninitialized
+LL |     d.s.y = 20;
+   |     ^^^^^^^^^^ `d.s` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0382]: assign to part of moved value: `d`
+  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:63:5
+   |
+LL |     let mut d = D { x: 0, s: S { y: 0, z: 0 } };
+   |         ----- move occurs because `d` has type `D`, which does not implement the `Copy` trait
+LL |     drop(d);
+   |          - value moved here
+LL |     d.s.y = 20;
+   |     ^^^^^^^^^^ value partially assigned here after move
+   |
+note: if `D` implemented `Clone`, you could clone the value
+  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:15:1
+   |
+LL | struct D {
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     drop(d);
+   |          - you could clone this value
+
+error: aborting due to 10 previous errors
+
+Some errors have detailed explanations: E0381, E0382, E0658.
+For more information about an error, try `rustc --explain E0381`.
