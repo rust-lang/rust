@@ -2960,12 +2960,25 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 span,
                 "use of `const` in the type system not defined as `type const`",
             );
-            if def_id.is_local() {
+            if let Some(local_def_id) = def_id.as_local() {
                 let name = tcx.def_path_str(def_id);
+                let (insertion_span, sugg) = match tcx.hir_node_by_def_id(local_def_id) {
+                    hir::Node::Item(item) if !item.vis_span.is_empty() => {
+                        (item.vis_span.shrink_to_hi(), " type")
+                    }
+                    hir::Node::ImplItem(impl_item)
+                        if let Some(vis_span) =
+                            impl_item.vis_span().filter(|span| !span.is_empty()) =>
+                    {
+                        (vis_span.shrink_to_hi(), " type")
+                    }
+                    _ => (tcx.def_span(def_id).shrink_to_lo(), "type "),
+                };
+
                 err.span_suggestion_verbose(
-                    tcx.def_span(def_id).shrink_to_lo(),
+                    insertion_span,
                     format!("add `type` before `const` for `{name}`"),
-                    format!("type "),
+                    sugg,
                     Applicability::MaybeIncorrect,
                 );
             } else {
