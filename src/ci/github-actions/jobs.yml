@@ -265,7 +265,10 @@ auto:
   - name: dist-powerpc64le-linux-musl
     <<: *job-linux-4c
 
-  - name: dist-riscv64-linux
+  - name: dist-riscv64-linux-gnu
+    <<: *job-linux-4c
+
+  - name: dist-riscv64-linux-musl
     <<: *job-linux-4c
 
   - name: dist-s390x-linux
