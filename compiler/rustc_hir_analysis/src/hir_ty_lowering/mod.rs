@@ -3000,11 +3000,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             hir::TyKind::InferDelegation(infer) => self.lower_delegation_ty(*infer),
             hir::TyKind::Slice(ty) => Ty::new_slice(tcx, self.lower_ty(ty)),
             hir::TyKind::Ptr(mt) => Ty::new_ptr(tcx, self.lower_ty(mt.ty), mt.mutbl),
-            hir::TyKind::Ref(region, mt) => {
-                let r = self.lower_lifetime(region, RegionInferReason::Reference);
-                debug!(?r);
-                let t = self.lower_ty(mt.ty);
-                Ty::new_ref(tcx, r, t, mt.mutbl)
+            hir::TyKind::Ref(lt, mt) => {
+                let re = self.lower_lifetime(lt, RegionInferReason::Reference);
+                eprintln!("::: Ref|  lt={lt:?}  re={re:?}");
+                debug!(?re);
+                let ty = self.lower_ty(mt.ty);
+                Ty::new_ref(tcx, re, ty, mt.mutbl)
             }
             hir::TyKind::Never => tcx.types.never,
             hir::TyKind::Tup(fields) => {

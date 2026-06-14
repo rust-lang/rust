@@ -444,6 +444,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let region_bound = self.lower_trait_object_lifetime(lifetime, predicates, span);
 
+        eprintln!("::: Dyn|  lt={lifetime:?}  re={region_bound:?}");
+
         Ty::new_dynamic(tcx, predicates, region_bound)
     }
 
@@ -453,10 +455,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
         span: Span,
     ) -> ty::Region<'tcx> {
-        // Curiously, we also use the *object region bound* for `Infer` (`'_`)
-        // while we obviously don't use the *object lifetime default* for it...
-        if let hir::LifetimeKind::ImplicitObjectLifetimeDefault | hir::LifetimeKind::Infer =
-            lifetime.kind
+        // FIXME(fmease): AST lowering should only lower to IOLD in item signatures.
+        //                In bodies, it should just lower to `Infer`.
+        if let hir::LifetimeKind::ImplicitObjectLifetimeDefault = lifetime.kind
+            // FIXME(fmease): HACK:
+            && self.infcx().is_none()
             && let Some(region) = self.compute_object_lifetime_bound(span, predicates)
         {
             return region;
