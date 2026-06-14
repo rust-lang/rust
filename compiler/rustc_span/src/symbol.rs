@@ -9,7 +9,7 @@ use rustc_arena::DroplessArena;
 use rustc_data_structures::fx::FxBuildHasher;
 use rustc_data_structures::hash_table::{Entry, HashTable};
 use rustc_data_structures::stable_hash::{StableCompare, StableHash, StableHashCtxt, StableHasher};
-use rustc_data_structures::sync::Lock;
+use rustc_data_structures::sync::{Lock, RwLock};
 use rustc_macros::{Decodable, Encodable, StableHash, symbols};
 
 use crate::edit_distance::find_best_match_for_name;
@@ -2759,15 +2759,17 @@ impl StableHash for ByteSymbol {
 // string with identical contents (e.g. "foo" and b"foo") are both interned,
 // only one copy will be stored and the resulting `Symbol` and `ByteSymbol`
 // will have the same index.
-pub(crate) struct Interner(Lock<InternerInner>);
+pub(crate) struct Interner {
+    map: RwLock<InternerMap>,
+    arena: Lock<DroplessArena>,
+}
 
 // The `&'static [u8]`s in this type actually point into the arena.
 //
 // This type is private to prevent accidentally constructing more than one
 // `Interner` on the same thread, which makes it easy to mix up `Symbol`s
 // between `Interner`s.
-struct InternerInner {
-    arena: DroplessArena,
+struct InternerMap {
     indices: HashTable<(&'static [u8], u32)>,
     byte_strs: Vec<&'static [u8]>,
 }
@@ -2804,7 +2806,7 @@ impl Interner {
             )
         }
 
-        Interner(Lock::new(InternerInner { arena: Default::default(), indices, byte_strs }))
+        Self { map: RwLock::new(InternerMap { byte_strs, indices }), arena: Default::default() }
     }
 
     fn intern_str(&self, str: &str) -> Symbol {
@@ -2820,26 +2822,31 @@ impl Interner {
         let hasher = FxBuildHasher::default();
         let hash_of_byte_str = hasher.hash_one(byte_str);
 
-        self.0.with_lock(|inner| {
-            match inner.indices.entry(
-                hash_of_byte_str,
-                |&(s, _)| s == byte_str,
-                |&(s, _)| hasher.hash_one(s),
-            ) {
-                Entry::Occupied(v) => v.get().1,
-                Entry::Vacant(view) => {
-                    let byte_str: &[u8] = inner.arena.alloc_slice(byte_str);
+        let map_read_lock = self.map.read();
+        let entry = map_read_lock.indices.find(hash_of_byte_str, |&x| x.0 == byte_str);
+        if let Some(&(_, idx)) = entry {
+            return idx;
+        }
+        drop(map_read_lock);
 
-                    // SAFETY: we can extend the arena allocation to `'static` because we
-                    // only access these while the arena is still alive.
-                    let byte_str: &'static [u8] = unsafe { &*(byte_str as *const [u8]) };
-                    let idx = inner.byte_strs.len() as u32;
-                    view.insert((byte_str, idx));
-                    inner.byte_strs.push(byte_str);
-                    idx
-                }
+        let mut map_write_lock = self.map.write();
+        let InternerMap { ref mut byte_strs, ref mut indices } = *map_write_lock;
+        match indices.entry(hash_of_byte_str, |&(s, _)| s == byte_str, |&(s, _)| hasher.hash_one(s))
+        {
+            Entry::Occupied(v) => v.get().1,
+            Entry::Vacant(view) => {
+                let arena_write_lock = self.arena.lock();
+                let byte_str: &[u8] = arena_write_lock.alloc_slice(byte_str);
+
+                // SAFETY: we can extend the arena allocation to `'static` because we
+                // only access these while the arena is still alive.
+                let byte_str: &'static [u8] = unsafe { &*(byte_str as *const [u8]) };
+                let idx = byte_strs.len() as u32;
+                view.insert((byte_str, idx));
+                byte_strs.push(byte_str);
+                idx
             }
-        })
+        }
     }
 
     /// Get the symbol as a string.
@@ -2859,7 +2866,8 @@ impl Interner {
     }
 
     fn get_inner(&self, index: usize) -> &[u8] {
-        self.0.with_lock(|inner| inner.byte_strs[index])
+        let read_lock = self.map.read();
+        read_lock.byte_strs[index]
     }
 }
 
