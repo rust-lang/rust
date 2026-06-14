@@ -2,8 +2,8 @@
 
 use super::*;
 
-// Fix return CoroutineState<Yv, Rv>::Pending statement into CoroutineState<(), ()>::Pending for
-// async drop function.
+/// Fix return CoroutineState<Yv, Rv>::Pending statement into CoroutineState<(), ()>::Pending.
+// FIXME(async_drop) Is this correct with async generators?
 struct FixReturnPendingVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
@@ -28,7 +28,7 @@ impl<'tcx> MutVisitor<'tcx> for FixReturnPendingVisitor<'tcx> {
         if let Rvalue::Aggregate(kind, _) = rvalue
             && let AggregateKind::Adt(_, _, ref mut args, _, _) = **kind
         {
-            *args = self.tcx.mk_args(&[args.type_at(0).into(), self.tcx.types.unit.into()]);
+            *args = self.tcx.mk_args(&[self.tcx.types.unit.into(), self.tcx.types.unit.into()]);
         }
     }
 }
