@@ -1642,12 +1642,10 @@ impl<T> Option<T> {
     pub const fn or_else<F>(self, f: F) -> Option<T>
     where
         F: [const] FnOnce() -> Option<T> + [const] Destruct,
-        //FIXME(const_hack): this `T: [const] Destruct` is unnecessary, but even precise live drops can't tell
-        // no value of type `T` gets dropped here
-        T: [const] Destruct,
     {
         match self {
-            x @ Some(_) => x,
+            // FIXME(const_hack): change back to `x @ Some(_) => x` once const dropck is smart enough
+            Some(x) => Some(x),
             None => f(),
         }
     }
