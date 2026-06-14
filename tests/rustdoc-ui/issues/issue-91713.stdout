@@ -6,6 +6,7 @@ strip-aliased-non-local - strips all non-local private aliased items from the ou
        strip-private - strips all private items from a crate which cannot be seen externally, implies strip-priv-imports
   strip-priv-imports - strips all private import statements (`use`, `extern crate`) from a crate
  propagate-stability - propagates stability to child items
+  inject-safety-docs - injects `#[safety::requires]` text from a TOML spec into the item docs
 collect-intra-doc-links - resolves intra-doc links
  collect-trait-impls - retrieves trait impls for items in the crate
 calculate-doc-coverage - counts the number of items with and without documentation
@@ -19,6 +20,7 @@ strip-aliased-non-local
         strip-hidden  (when not --document-hidden-items)
        strip-private  (when not --document-private-items)
   strip-priv-imports  (when --document-private-items)
+  inject-safety-docs
 collect-intra-doc-links
  propagate-stability
            run-lints
