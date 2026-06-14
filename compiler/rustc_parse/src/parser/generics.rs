@@ -371,7 +371,6 @@ impl<'a> Parser<'a> {
                 },
                 None => self.mk_unit_expr(decls_and_precond.span),
             };
-            let precond = self.mk_closure_expr(precond.span, precond);
             let decls = decls_and_precond.stmts;
             (decls, Some(precond))
         } else {
