@@ -328,6 +328,11 @@ impl<'a, 'b, 'tcx> TypeOutlivesDelegate<'tcx> for &'a mut ConstraintConversion<'
         a: ty::Region<'tcx>,
         bound: VerifyBound<'tcx>,
     ) {
+        debug_assert!(
+            !bound.must_hold(),
+            "Bound {bound:?} on {kind:?} is a no-op, should never have been emitted!"
+        );
+
         let kind = self.replace_placeholders_with_nll(kind);
         let bound = self.replace_placeholders_with_nll(bound);
         let type_test = self.verify_to_type_test(kind, a, bound);
