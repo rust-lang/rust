@@ -1,4 +1,7 @@
 // rust-lang/miri#4778
+//
+// This UB should be detected even with validation disabled.
+//@compile-flags: -Zmiri-disable-validation
 #![feature(never_type)]
 
 #[repr(C)]

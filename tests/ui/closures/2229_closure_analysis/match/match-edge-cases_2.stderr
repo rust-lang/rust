@@ -1,5 +1,19 @@
+error[E0505]: cannot move out of `sv` because it is borrowed
+  --> $DIR/match-edge-cases_2.rs:23:22
+   |
+LL |     let _a = || {
+   |              -- borrow of `sv` occurs here
+LL |         match sv {
+   |               -- borrow occurs due to use in closure
+...
+LL |     let mut mut_sv = sv;
+   |                      ^^ move out of `sv` occurs here
+LL |
+LL |     _a();
+   |     -- borrow later used here
+
 error[E0505]: cannot move out of `ts` because it is borrowed
-  --> $DIR/match-edge-cases_2.rs:32:22
+  --> $DIR/match-edge-cases_2.rs:33:22
    |
 LL |     let _b = || { match ts {
    |              --         -- borrow occurs due to use in closure
@@ -12,6 +26,49 @@ LL |
 LL |     _b();
    |     -- borrow later used here
 
-error: aborting due to 1 previous error
+error[E0502]: cannot borrow `x.0` as immutable because it is also borrowed as mutable
+  --> $DIR/match-edge-cases_2.rs:67:13
+   |
+LL |     let r = &mut x.0;
+   |             -------- mutable borrow occurs here
+LL |     let _ = || {
+   |             ^^ immutable borrow occurs here
+LL |
+LL |         let (SingleVariant::A, a) = x;
+   |                                     - second borrow occurs due to use of `x.0` in closure
+...
+LL |     let _ = *r;
+   |             -- mutable borrow later used here
 
-For more information about this error, try `rustc --explain E0505`.
+error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
+  --> $DIR/match-edge-cases_2.rs:102:13
+   |
+LL |     let SSingle::A { a: ref mut r, .. } = x;
+   |                         --------- mutable borrow occurs here
+LL |     let _ = || {
+   |             ^^ immutable borrow occurs here
+LL |
+LL |         let SSingle::A { b, .. } = x;
+   |                                    - second borrow occurs due to use of `x` in closure
+...
+LL |     let _ = *r;
+   |             -- mutable borrow later used here
+
+error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
+  --> $DIR/match-edge-cases_2.rs:113:13
+   |
+LL |     let TSingle::A(ref mut r, _) = x;
+   |                    --------- mutable borrow occurs here
+LL |     let _ = || {
+   |             ^^ immutable borrow occurs here
+LL |
+LL |         let TSingle::A(_, a) = x;
+   |                                - second borrow occurs due to use of `x` in closure
+...
+LL |     let _ = *r;
+   |             -- mutable borrow later used here
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0502, E0505.
+For more information about an error, try `rustc --explain E0502`.

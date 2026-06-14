@@ -53,7 +53,7 @@ LL |     let _e = || { match e2 { E2::A => (), E2::B => (), _ => todo!() } };
    |                                                      ++++++++++++++
 
 error[E0505]: cannot move out of `l2` because it is borrowed
-  --> $DIR/non-exhaustive-match.rs:42:22
+  --> $DIR/non-exhaustive-match.rs:44:22
    |
 LL |     let _c = || { match l2 { L2::C => (), _ => () }  };
    |              --         -- borrow occurs due to use in closure
@@ -66,7 +66,7 @@ LL |     _c();
    |     -- borrow later used here
 
 error[E0505]: cannot move out of `e3` because it is borrowed
-  --> $DIR/non-exhaustive-match.rs:48:22
+  --> $DIR/non-exhaustive-match.rs:50:22
    |
 LL |     let _g = || { match e3 { E3::C => (), _ => () }  };
    |              --         -- borrow occurs due to use in closure
@@ -78,7 +78,20 @@ LL |
 LL |     _g();
    |     -- borrow later used here
 
-error: aborting due to 5 previous errors
+error[E0505]: cannot move out of `e4` because it is borrowed
+  --> $DIR/non-exhaustive-match.rs:56:22
+   |
+LL |     let _h = || { match e4 { E4::D => (), _ => () }  };
+   |              --         -- borrow occurs due to use in closure
+   |              |
+   |              borrow of `e4` occurs here
+LL |     let mut mut_e4 = e4;
+   |                      ^^ move out of `e4` occurs here
+LL |
+LL |     _h();
+   |     -- borrow later used here
+
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0004, E0505.
 For more information about an error, try `rustc --explain E0004`.

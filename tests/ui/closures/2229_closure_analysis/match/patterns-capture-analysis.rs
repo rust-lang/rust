@@ -41,22 +41,23 @@ enum SingleVariant {
     Points(u32)
 }
 
-// Should not capture the discriminant since the single variant mentioned
-// in the match arm does not trigger a binding
-fn test_3_should_not_capture_single_variant() {
+// Should capture the discriminant despite there only being one variant
+fn test_3_should_capture_single_variant() {
     let variant = SingleVariant::Points(1);
     let c =  #[rustc_capture_analysis]
     || {
     //~^ ERROR First Pass analysis includes:
+    //~| ERROR Min Capture analysis includes:
         match variant {
+        //~^ NOTE: Capturing variant[] -> Immutable
+        //~| NOTE: Min Capture variant[] -> Immutable
             SingleVariant::Points(_) => {}
         }
     };
     c();
 }
 
-// Should not capture the discriminant since the single variant mentioned
-// in the match arm does not trigger a binding
+// Should capture the discriminant despite there only being one variant
 fn test_6_should_capture_single_variant() {
     let variant = SingleVariant::Points(1);
     let c =  #[rustc_capture_analysis]
@@ -64,8 +65,9 @@ fn test_6_should_capture_single_variant() {
     //~^ ERROR First Pass analysis includes:
     //~| ERROR Min Capture analysis includes:
         match variant {
-            //~^ NOTE: Capturing variant[(0, 0)] -> Immutable
-            //~| NOTE: Min Capture variant[(0, 0)] -> Immutable
+        //~^ NOTE: Capturing variant[] -> Immutable
+        //~| NOTE: Capturing variant[(0, 0)] -> Immutable
+        //~| NOTE: Min Capture variant[] -> Immutable
             SingleVariant::Points(a) => {
                 println!("{:?}", a);
             }
@@ -198,7 +200,7 @@ fn test_8_capture_slice_wild() {
 fn main() {
     test_1_should_capture();
     test_2_should_not_capture();
-    test_3_should_not_capture_single_variant();
+    test_3_should_capture_single_variant();
     test_6_should_capture_single_variant();
     test_4_should_not_capture_array();
     test_5_should_capture_multi_variant();

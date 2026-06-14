@@ -13,4 +13,5 @@ pub union U {
 
 fn main() {
     let E::A(ref _a) = unsafe { &(&U { u: () }).e };
+    //~^ ERROR: read discriminant of an uninhabited enum variant
 }

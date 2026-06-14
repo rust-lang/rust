@@ -55,7 +55,7 @@ fn main() {
     {
         let mut e = Baz::X(2);
         let x = e.x();
-        match e {
+        match e { //~ ERROR cannot use `e` because it was mutably borrowed
             Baz::X(value) => value //~ ERROR cannot use `e.0` because it was mutably borrowed
         };
         drop(x);
@@ -92,7 +92,7 @@ fn main() {
     {
         let mut e = Box::new(Baz::X(3));
         let x = e.x();
-        match *e {
+        match *e { //~ ERROR cannot use `*e` because it was mutably borrowed
             Baz::X(value) => value
             //~^ ERROR cannot use `e.0` because it was mutably borrowed
         };

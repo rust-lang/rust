@@ -41,6 +41,7 @@ fn single_variant(x: &mut Single) {
     match x {
         &mut Single::V(ref mut y, _) => {
             match x {
+            //~^ ERROR: cannot use `*x` because it was mutably borrowed
                 &mut Single::V(_, ref mut z) => {
                     let _y = y;
                     let _z = z;
