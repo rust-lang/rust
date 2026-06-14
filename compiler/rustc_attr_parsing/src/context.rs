@@ -32,6 +32,7 @@ use crate::attributes::deprecation::*;
 use crate::attributes::diagnostic::do_not_recommend::*;
 use crate::attributes::diagnostic::on_const::*;
 use crate::attributes::diagnostic::on_move::*;
+use crate::attributes::diagnostic::on_type_error::*;
 use crate::attributes::diagnostic::on_unimplemented::*;
 use crate::attributes::diagnostic::on_unknown::*;
 use crate::attributes::diagnostic::on_unmatch_args::*;
@@ -145,6 +146,7 @@ attribute_parsers!(
         NakedParser,
         OnConstParser,
         OnMoveParser,
+        OnTypeErrorParser,
         OnUnimplementedParser,
         OnUnknownParser,
         OnUnmatchArgsParser,
