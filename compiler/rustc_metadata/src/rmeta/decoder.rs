@@ -1538,6 +1538,15 @@ impl CrateMetadata {
         tcx.arena.alloc_from_iter(self.root.exported_generic_symbols.decode((self, tcx)))
     }
 
+    fn exported_generic_symbol_hashes<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+    ) -> &'tcx [rustc_hashes::Hash128] {
+        let table: exported_symbol_hash_map::ExportedSymbolHashTableRef =
+            self.root.exported_generic_symbol_hashes.decode(&self.blob);
+        tcx.arena.alloc_from_iter(table.keys())
+    }
+
     fn get_macro(&self, tcx: TyCtxt<'_>, id: DefIndex) -> ast::MacroDef {
         match self.def_kind(id) {
             DefKind::Macro(_) => {
