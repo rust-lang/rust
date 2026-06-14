@@ -636,9 +636,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn volatile_load(&mut self, ty: &'ll Type, ptr: &'ll Value) -> &'ll Value {
+    fn volatile_load(&mut self, ty: &'ll Type, ptr: &'ll Value, align: Align) -> &'ll Value {
         unsafe {
-            let load = llvm::LLVMBuildLoad2(self.llbuilder, ty, ptr, UNNAMED);
+            let load = self.load(ty, ptr, align);
             llvm::LLVMSetVolatile(load, llvm::TRUE);
             load
         }
