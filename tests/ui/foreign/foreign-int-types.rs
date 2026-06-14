@@ -4,7 +4,7 @@
 
 mod xx {
     extern "C" {
-        pub fn strlen(str: *const u8) -> usize;
+        pub fn strlen2(str: *const u8) -> usize;
         pub fn foo(x: isize, y: usize);
     }
 }
