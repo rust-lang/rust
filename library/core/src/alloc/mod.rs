@@ -375,6 +375,41 @@ pub const unsafe trait Allocator {
     }
 }
 
+/// An [`Allocator`] that can be registered as the standard library’s default
+/// through the `#[global_allocator]` attribute.
+///
+/// Types implementing this trait can be used as the default allocator for
+/// memory allocations through `Box`, `Vec` and the collection types. For
+/// instance, the `System` allocator implements this trait, and thus can be
+/// explicitly set as the default like so:
+/// ```
+/// use std::alloc::System;
+///
+/// #[global_allocator]
+/// static ALLOCATOR: System = System;
+/// ```
+///
+/// The `Global` allocator forwards all memory allocation requests to the
+/// `static` annotated with `#[global_allocator]`. Hence, `Global` does not
+/// implement `GlobalAllocator` itself, as that would lead to infinite recursion.
+///
+/// # Note to implementors
+///
+/// This trait is used to prevent the infinite recursion that would occur if the
+/// default allocator were to attempt to allocate memory through `Global` (and
+/// thus from itself).
+///
+/// When to implement this trait:
+/// * for custom global allocators that only use system memory allocation
+///   services.
+/// * for allocators that wrap another allocator that implements `GlobalAllocator`.
+///
+/// When **not** to implement this trait:
+/// * for wrappers of arbitrary allocators (which might end up being `Global`,
+///   leading to infinite recursion).
+#[unstable(feature = "allocator_api", issue = "32838")]
+pub trait GlobalAllocator: Allocator {}
+
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 const unsafe impl<A> Allocator for &A
@@ -432,6 +467,9 @@ where
 }
 
 #[unstable(feature = "allocator_api", issue = "32838")]
+impl<A> GlobalAllocator for &A where A: GlobalAllocator + ?Sized {}
+
+#[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl<A> Allocator for &mut A
 where
     A: Allocator + ?Sized,
@@ -485,3 +523,6 @@ where
         unsafe { (**self).shrink(ptr, old_layout, new_layout) }
     }
 }
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+impl<A> GlobalAllocator for &mut A where A: GlobalAllocator + ?Sized {}

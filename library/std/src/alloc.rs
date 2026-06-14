@@ -63,13 +63,14 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![stable(feature = "alloc_module", since = "1.28.0")]
 
-use core::ptr::NonNull;
-use core::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
-use core::{hint, mem, ptr};
-
 #[stable(feature = "alloc_module", since = "1.28.0")]
 #[doc(inline)]
 pub use alloc_crate::alloc::*;
+
+use crate::ptr::NonNull;
+use crate::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
+use crate::sys::alloc as imp;
+use crate::{hint, mem, ptr};
 
 /// The default memory allocator provided by the operating system.
 ///
@@ -145,11 +146,7 @@ impl System {
             0 => Ok(layout.dangling_ptr().cast_slice(0)),
             // SAFETY: `layout` is non-zero in size,
             size => unsafe {
-                let raw_ptr = if zeroed {
-                    GlobalAlloc::alloc_zeroed(self, layout)
-                } else {
-                    GlobalAlloc::alloc(self, layout)
-                };
+                let raw_ptr = if zeroed { imp::alloc_zeroed(layout) } else { imp::alloc(layout) };
                 let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;
                 Ok(ptr.cast_slice(size))
             },
@@ -182,7 +179,7 @@ impl System {
                 // `realloc` probably checks for `new_size >= old_layout.size()` or something similar.
                 hint::assert_unchecked(new_size >= old_layout.size());
 
-                let raw_ptr = GlobalAlloc::realloc(self, ptr.as_ptr(), old_layout, new_size);
+                let raw_ptr = imp::realloc(ptr.as_ptr(), old_layout, new_size);
                 let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;
                 if zeroed {
                     raw_ptr.add(old_size).write_bytes(0, new_size - old_size);
@@ -205,8 +202,8 @@ impl System {
     }
 }
 
-// The Allocator impl checks the layout size to be non-zero and forwards to the GlobalAlloc impl,
-// which is in `std::sys::*::alloc`.
+// The Allocator impl checks the layout size to be non-zero and forwards to the
+// platform functions in `std::sys::*::alloc`.
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl Allocator for System {
     #[inline]
@@ -224,7 +221,7 @@ unsafe impl Allocator for System {
         if layout.size() != 0 {
             // SAFETY: `layout` is non-zero in size,
             // other conditions must be upheld by the caller
-            unsafe { GlobalAlloc::dealloc(self, ptr.as_ptr(), layout) }
+            unsafe { imp::dealloc(ptr.as_ptr(), layout) }
         }
     }
 
@@ -274,7 +271,7 @@ unsafe impl Allocator for System {
                 // `realloc` probably checks for `new_size <= old_layout.size()` or something similar.
                 hint::assert_unchecked(new_size <= old_layout.size());
 
-                let raw_ptr = GlobalAlloc::realloc(self, ptr.as_ptr(), old_layout, new_size);
+                let raw_ptr = imp::realloc(ptr.as_ptr(), old_layout, new_size);
                 let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;
                 Ok(ptr.cast_slice(new_size))
             },
@@ -293,6 +290,9 @@ unsafe impl Allocator for System {
         }
     }
 }
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+impl GlobalAllocator for System {}
 
 static HOOK: AtomicPtr<()> = AtomicPtr::new(ptr::null_mut());
 
@@ -435,7 +435,12 @@ pub fn rust_oom(layout: Layout) -> ! {
 #[allow(unused_attributes)]
 #[unstable(feature = "alloc_internals", issue = "none")]
 pub mod __default_lib_allocator {
-    use super::{GlobalAlloc, Layout, System};
+    use super::Layout;
+    // We call the system functions directly to avoid any overheads introduced
+    // by the roundtrip through `impl Allocator for System` and
+    // `impl<A: GlobalAllocator> GlobalAlloc for A`.
+    use crate::sys::alloc as imp;
+
     // These magic symbol names are used as a fallback for implementing the
     // `__rust_alloc` etc symbols (see `src/liballoc/alloc.rs`) when there is
     // no `#[global_allocator]` attribute.
@@ -452,7 +457,7 @@ pub mod __default_lib_allocator {
         // `GlobalAlloc::alloc`.
         unsafe {
             let layout = Layout::from_size_align_unchecked(size, align);
-            System.alloc(layout)
+            imp::alloc(layout)
         }
     }
 
@@ -460,7 +465,7 @@ pub mod __default_lib_allocator {
     pub unsafe extern "C" fn __rdl_dealloc(ptr: *mut u8, size: usize, align: usize) {
         // SAFETY: see the guarantees expected by `Layout::from_size_align` and
         // `GlobalAlloc::dealloc`.
-        unsafe { System.dealloc(ptr, Layout::from_size_align_unchecked(size, align)) }
+        unsafe { imp::dealloc(ptr, Layout::from_size_align_unchecked(size, align)) }
     }
 
     #[rustc_std_internal_symbol]
@@ -474,7 +479,7 @@ pub mod __default_lib_allocator {
         // `GlobalAlloc::realloc`.
         unsafe {
             let old_layout = Layout::from_size_align_unchecked(old_size, align);
-            System.realloc(ptr, old_layout, new_size)
+            imp::realloc(ptr, old_layout, new_size)
         }
     }
 
@@ -484,7 +489,7 @@ pub mod __default_lib_allocator {
         // `GlobalAlloc::alloc_zeroed`.
         unsafe {
             let layout = Layout::from_size_align_unchecked(size, align);
-            System.alloc_zeroed(layout)
+            imp::alloc_zeroed(layout)
         }
     }
 }
