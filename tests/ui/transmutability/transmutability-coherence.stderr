@@ -1,0 +1,19 @@
+error[E0747]: type provided when a constant was expected
+  --> $DIR/transmutability-coherence.rs:4:37
+   |
+LL | impl<T: std::mem::TransmuteFrom<(), ()>> OpaqueTrait for T {}
+   |                                     ^^
+
+error[E0119]: conflicting implementations of trait `OpaqueTrait` for type `&_`
+  --> $DIR/transmutability-coherence.rs:7:1
+   |
+LL | impl<T: std::mem::TransmuteFrom<(), ()>> OpaqueTrait for T {}
+   | ---------------------------------------------------------- first implementation here
+...
+LL | impl<T> OpaqueTrait for &T where T: OpaqueTrait {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `&_`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0119, E0747.
+For more information about an error, try `rustc --explain E0119`.
