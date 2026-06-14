@@ -956,6 +956,8 @@ impl Session {
 fn default_emitter(sopts: &config::Options, source_map: Arc<SourceMap>) -> Box<DynEmitter> {
     let macro_backtrace = sopts.unstable_opts.macro_backtrace;
     let track_diagnostics = sopts.unstable_opts.track_diagnostics;
+    let show_suggestions_with_unavailable_source =
+        sopts.unstable_opts.show_suggestions_with_unavailable_source;
     let terminal_url = match sopts.unstable_opts.terminal_urls {
         TerminalUrl::Auto => {
             match (std::env::var("COLORTERM").as_deref(), std::env::var("TERM").as_deref()) {
@@ -983,6 +985,9 @@ fn default_emitter(sopts: &config::Options, source_map: Arc<SourceMap>) -> Box<D
                     .track_diagnostics(track_diagnostics)
                     .terminal_url(terminal_url)
                     .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
+                    .show_suggestions_with_unavailable_source(
+                        show_suggestions_with_unavailable_source,
+                    )
                     .ignored_directories_in_source_blocks(
                         sopts.unstable_opts.ignore_directory_in_diagnostics_source_blocks.clone(),
                     );
@@ -1004,7 +1009,8 @@ fn default_emitter(sopts: &config::Options, source_map: Arc<SourceMap>) -> Box<D
             .diagnostic_width(sopts.diagnostic_width)
             .macro_backtrace(macro_backtrace)
             .track_diagnostics(track_diagnostics)
-            .terminal_url(terminal_url),
+            .terminal_url(terminal_url)
+            .show_suggestions_with_unavailable_source(show_suggestions_with_unavailable_source),
         ),
     }
 }

@@ -9,6 +9,9 @@ LL | | }
 ...
 LL |       A(2, vec![])
    |       ^^^^^^^^^^^^
+   |
+help: use struct literal syntax instead of calling
+  --> $SRC_DIR/alloc/src/macros.rs:LL:COL
 
 error: aborting due to 1 previous error
 
