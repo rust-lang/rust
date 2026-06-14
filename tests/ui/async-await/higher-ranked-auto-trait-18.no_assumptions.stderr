@@ -1,0 +1,13 @@
+error: higher-ranked lifetime error
+  --> $DIR/higher-ranked-auto-trait-18.rs:69:5
+   |
+LL | /     require_send(async {
+LL | |         let r = Receiver::<Box<dyn MyTrait>> { _value: None, _not_sync: PhantomData };
+LL | |         let _ = r.await;
+LL | |     });
+   | |______^
+   |
+   = note: could not prove `{async block@$DIR/higher-ranked-auto-trait-18.rs:69:18: 69:23}: Send`
+
+error: aborting due to 1 previous error
+
