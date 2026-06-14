@@ -25,8 +25,8 @@
 #![recursion_limit = "512"] // For rustdoc
 // tidy-alphabetical-end
 
+pub mod diagnostics;
 pub mod error_reporting;
-pub mod errors;
 pub mod infer;
 pub mod opaque_types;
 pub mod regions;

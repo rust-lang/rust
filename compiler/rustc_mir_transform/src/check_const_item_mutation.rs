@@ -6,7 +6,7 @@ use rustc_session::lint::builtin::CONST_ITEM_MUTATION;
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
 
-use crate::errors;
+use crate::diagnostics;
 
 pub(super) struct CheckConstItemMutation;
 
@@ -108,7 +108,7 @@ impl<'tcx> Visitor<'tcx> for ConstMutationChecker<'_, 'tcx> {
                     CONST_ITEM_MUTATION,
                     lint_root,
                     span,
-                    errors::ConstMutate::Modify { konst: item },
+                    diagnostics::ConstMutate::Modify { konst: item },
                 );
             }
 
@@ -154,7 +154,7 @@ impl<'tcx> Visitor<'tcx> for ConstMutationChecker<'_, 'tcx> {
                         CONST_ITEM_MUTATION,
                         lint_root,
                         span,
-                        errors::ConstMutate::MutBorrow { method_call, konst: item },
+                        diagnostics::ConstMutate::MutBorrow { method_call, konst: item },
                     );
                 }
             }

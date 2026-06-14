@@ -5,9 +5,9 @@ use rustc_errors::Diag;
 use rustc_middle::ty;
 use tracing::debug;
 
+use crate::diagnostics::ExplicitLifetimeRequired;
 use crate::error_reporting::infer::nice_region_error::NiceRegionError;
 use crate::error_reporting::infer::nice_region_error::find_anon_type::find_anon_type;
-use crate::errors::ExplicitLifetimeRequired;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// When given a `ConcreteFailure` for a function with parameters containing a named region and
