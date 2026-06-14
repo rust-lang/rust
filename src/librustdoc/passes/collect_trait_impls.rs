@@ -2,11 +2,14 @@
 //! defines a struct that implements a trait, this pass will note that the
 //! struct implements that trait.
 
+use std::borrow::Cow;
+
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::attrs::{AttributeKind, DocAttribute};
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE};
 use rustc_hir::{Attribute, find_attr};
 use rustc_middle::ty;
+use rustc_span::symbol::sym::Target;
 use tracing::debug;
 
 use super::Pass;
@@ -126,14 +129,14 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
         }
     });
 
-    let mut cleaner = BadImplStripper { prims, items: crate_items, cache: &cx.cache };
-    let mut type_did_to_deref_target: DefIdMap<&Type> = DefIdMap::default();
+    let mut cleaner = BadImplStripper { prims, items: crate_items };
+    let mut type_did_to_deref_target: DefIdMap<Cow<'_, Type>> = DefIdMap::default();
 
     // Follow all `Deref` targets of included items and recursively add them as valid
     fn add_deref_target(
-        cx: &DocContext<'_>,
-        map: &DefIdMap<&Type>,
-        cleaner: &mut BadImplStripper<'_>,
+        cx: &mut DocContext<'_>,
+        map: &DefIdMap<Cow<'_, Type>>,
+        cleaner: &mut BadImplStripper,
         targets: &mut DefIdSet,
         type_did: DefId,
     ) {
@@ -156,17 +159,43 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
     // scan through included items ahead of time to splice in Deref targets to the "valid" sets
     for it in new_items_external.iter().chain(new_items_local.iter()) {
         if let ImplItem(Impl { ref for_, ref trait_, ref items, polarity, .. }) = it.kind
-            && trait_.as_ref().map(|t| t.def_id()) == tcx.lang_items().deref_trait()
+            && let Some(trait_def_id) = trait_.as_ref().map(|t| t.def_id())
+            && Some(trait_def_id) == tcx.lang_items().deref_trait()
             && polarity != ty::ImplPolarity::Negative
-            && cleaner.keep_impl(for_, true)
+            && cleaner.keep_impl(for_, true, cx)
         {
-            let target = items
-                .iter()
-                .find_map(|item| match item.kind {
-                    AssocTypeItem(ref t, _) => Some(&t.type_),
-                    _ => None,
-                })
-                .expect("Deref impl without Target type");
+            let target = match items.iter().find_map(|item| match item.kind {
+                AssocTypeItem(ref t, _) => Some(Cow::Borrowed(&t.type_)),
+                _ => None,
+            }) {
+                Some(target) => target,
+                None => {
+                    if tcx.specialization_enabled_in(LOCAL_CRATE)
+                        && let Some(impl_def_id) = it.def_id()
+                        && let Some(target_item) = tcx
+                            .associated_items(trait_def_id)
+                            .filter_by_name_unhygienic_and_kind(Target, ty::AssocTag::Type)
+                            .next()
+                        && let Ok(ancestors) = rustc_middle::traits::specialization_graph::ancestors(
+                            tcx,
+                            trait_def_id,
+                            impl_def_id,
+                        )
+                        && let Some(target_item) = ancestors.leaf_def(tcx, target_item.def_id)
+                    {
+                        let assoc_ty = clean_middle_assoc_item(
+                            &tcx.associated_item(target_item.item.def_id),
+                            cx,
+                        );
+                        match assoc_ty.inner.kind {
+                            AssocTypeItem(t, _) => Cow::Owned(t.type_),
+                            _ => unreachable!(),
+                        }
+                    } else {
+                        panic!("Deref impl without Target type");
+                    }
+                }
+            };
 
             if let Some(prim) = target.primitive_type() {
                 cleaner.prims.insert(prim);
@@ -199,6 +228,7 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
             cleaner.keep_impl(
                 for_,
                 trait_.as_ref().map(|t| t.def_id()) == tcx.lang_items().deref_trait(),
+                cx,
             ) || trait_.as_ref().is_some_and(|t| cleaner.keep_impl_with_def_id(t.def_id().into()))
                 || kind.is_blanket()
         } else {
@@ -265,20 +295,19 @@ impl DocVisitor<'_> for ItemAndAliasCollector<'_> {
     }
 }
 
-struct BadImplStripper<'a> {
+struct BadImplStripper {
     prims: FxHashSet<PrimitiveType>,
     items: FxHashSet<ItemId>,
-    cache: &'a Cache,
 }
 
-impl BadImplStripper<'_> {
-    fn keep_impl(&self, ty: &Type, is_deref: bool) -> bool {
+impl BadImplStripper {
+    fn keep_impl(&self, ty: &Type, is_deref: bool, cx: &DocContext<'_>) -> bool {
         if let Generic(_) = ty {
             // keep impls made on generics
             true
         } else if let Some(prim) = ty.primitive_type() {
             self.prims.contains(&prim)
-        } else if let Some(did) = ty.def_id(self.cache) {
+        } else if let Some(did) = ty.def_id(&cx.cache) {
             is_deref || self.keep_impl_with_def_id(did.into())
         } else {
             false
