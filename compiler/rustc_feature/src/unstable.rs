@@ -688,7 +688,7 @@ declare_features! (
     (unstable, powerpc_target_feature, "1.27.0", Some(150255)),
     /// The prfchw target feature on x86.
     (unstable, prfchw_target_feature, "1.78.0", Some(150256)),
-    /// Allows macro attributes on expressions, statements and non-inline modules.
+    /// Allows macro attributes on expressions and statements.
     (unstable, proc_macro_hygiene, "1.30.0", Some(54727)),
     /// Allows the use of raw-dylibs on ELF platforms
     (incomplete, raw_dylib_elf, "1.87.0", Some(135694)),

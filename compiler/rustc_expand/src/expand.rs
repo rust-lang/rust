@@ -5,7 +5,7 @@ use std::{iter, mem, slice};
 
 use rustc_ast::mut_visit::*;
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::visit::{self, AssocCtxt, Visitor, VisitorResult, try_visit, walk_list};
+use rustc_ast::visit::{AssocCtxt, Visitor, VisitorResult, try_visit, walk_list};
 use rustc_ast::{
     self as ast, AssocItemKind, AstNodeWrapper, AttrArgs, AttrItemKind, AttrStyle, AttrVec,
     DUMMY_NODE_ID, DelegationSource, DelegationSuffixes, EarlyParsedAttribute, ExprKind,
@@ -20,7 +20,7 @@ use rustc_attr_parsing::{
 };
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{PResult, msg};
+use rustc_errors::PResult;
 use rustc_feature::Features;
 use rustc_hir::Target;
 use rustc_hir::def::MacroKinds;
@@ -29,7 +29,6 @@ use rustc_parse::parser::{
     AllowConstBlockItems, AttemptLocalParseRecovery, CommaRecoveryMode, ForceCollect, Parser,
     RecoverColon, RecoverComma, Recovery, token_descr,
 };
-use rustc_session::Session;
 use rustc_session::errors::feature_err;
 use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
 use rustc_span::hygiene::SyntaxContext;
@@ -770,7 +769,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
             InvocationKind::Attr { attr, pos, mut item, derives } => {
                 if let Some(expander) = ext.as_attr() {
-                    self.gate_proc_macro_input(&item);
                     self.gate_proc_macro_attr_item(span, &item);
                     let tokens = match &item {
                         // FIXME: Collect tokens and use them instead of generating
@@ -904,9 +902,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             InvocationKind::Derive { path, item, is_const } => match ext {
                 SyntaxExtensionKind::Derive(expander)
                 | SyntaxExtensionKind::LegacyDerive(expander) => {
-                    if let SyntaxExtensionKind::Derive(..) = ext {
-                        self.gate_proc_macro_input(&item);
-                    }
                     // The `MetaItem` representing the trait to derive can't
                     // have an unsafe around it (as of now).
                     let meta = ast::MetaItem {
@@ -1041,37 +1036,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             format!("custom attributes cannot be applied to {kind}"),
         )
         .emit();
-    }
-
-    fn gate_proc_macro_input(&self, annotatable: &Annotatable) {
-        struct GateProcMacroInput<'a> {
-            sess: &'a Session,
-        }
-
-        impl<'ast, 'a> Visitor<'ast> for GateProcMacroInput<'a> {
-            fn visit_item(&mut self, item: &'ast ast::Item) {
-                match &item.kind {
-                    ItemKind::Mod(_, _, mod_kind)
-                        if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _)) =>
-                    {
-                        feature_err(
-                            self.sess,
-                            sym::proc_macro_hygiene,
-                            item.span,
-                            msg!("file modules in proc macro input are unstable"),
-                        )
-                        .emit();
-                    }
-                    _ => {}
-                }
-
-                visit::walk_item(self, item);
-            }
-        }
-
-        if !self.cx.ecfg.features.proc_macro_hygiene() {
-            annotatable.visit_with(&mut GateProcMacroInput { sess: self.cx.sess });
-        }
     }
 
     fn parse_ast_fragment(
