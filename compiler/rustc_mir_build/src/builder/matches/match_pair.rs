@@ -88,12 +88,12 @@ impl<'tcx> FlatPat<'tcx> {
     fn from_inter_pat(inter_pat: InterPat<'tcx>) -> Self {
         let mut match_pairs = vec![];
         let mut guard_patterns = vec![];
-        if let Some(guard_pat) = inter_pat.guard_pat {
+        if let Some(guard_pat) = inter_pat.guard {
             guard_patterns.push(super::OrderedPatternData::One(guard_pat));
         }
         let mut extra_data = PatternExtraData {
             span: inter_pat.pattern_span,
-            guard_patterns,
+            guards: guard_patterns,
             is_never: inter_pat.is_never,
             ..Default::default()
         };
@@ -118,17 +118,14 @@ fn squash_inter_pat<'tcx>(
         or_subpats,
         ascriptions,
         binding,
-        guard_pat,
+        guard,
         pattern_span,
         is_never: _, // Not needed by `MatchPairTree` forests.
     } = inter_pat;
 
     // Type ascriptions can appear regardless of whether the node is an or-pattern.
     extra_data.ascriptions.extend(ascriptions);
-
-    guard_pat.inspect(|&guard_pat| {
-        extra_data.guard_patterns.push(super::OrderedPatternData::One(guard_pat));
-    });
+    guard.inspect(|&g| extra_data.guards.push(super::OrderedPatternData::One(g)));
 
     // Or and non-or patterns have very different handling.
     if let Some(or_subpats) = or_subpats {
@@ -150,8 +147,9 @@ fn squash_inter_pat<'tcx>(
             // FIXME(@dianne): this needs updating/removing if we always merge or-patterns
             extra_data.bindings.push(super::OrderedPatternData::FromOrPattern);
         }
-        if or_subpats.iter().any(|pat| !pat.extra_data.guard_patterns.is_empty()) {
-            extra_data.guard_patterns.push(super::OrderedPatternData::FromOrPattern);
+
+        if or_subpats.iter().any(|pat| !pat.extra_data.guards.is_empty()) {
+            extra_data.guards.push(super::OrderedPatternData::FromOrPattern);
         }
 
         match_pairs.push(MatchPairTree {
@@ -226,7 +224,7 @@ struct InterPat<'tcx> {
     /// Binding to establish for a [`PatKind::Binding`] node.
     binding: Option<super::Binding<'tcx>>,
 
-    guard_pat: Option<ExprId>,
+    guard: Option<ExprId>,
 
     /// Span field of the THIR pattern this node was created from.
     pattern_span: Span,
@@ -270,7 +268,7 @@ impl<'tcx> InterPat<'tcx> {
         let mut or_subpats = None;
         let mut ascriptions = vec![];
         let mut binding = None;
-        let mut guard_pat = None;
+        let mut guard = None;
 
         // Apply any type ascriptions to the value at `match_pair.place`.
         if let Some(place) = place
@@ -472,7 +470,7 @@ impl<'tcx> InterPat<'tcx> {
             PatKind::Guard { ref subpattern, condition } => {
                 let subpattern = InterPat::lower_thir_pat(cx, place_builder, subpattern);
                 subpats.push(subpattern);
-                guard_pat = Some(condition);
+                guard = Some(condition);
                 None
             }
 
@@ -496,7 +494,7 @@ impl<'tcx> InterPat<'tcx> {
             or_subpats,
             ascriptions,
             binding,
-            guard_pat,
+            guard,
             pattern_span: pattern.span,
             is_never,
         }
