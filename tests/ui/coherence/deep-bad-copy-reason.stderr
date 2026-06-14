@@ -1,5 +1,5 @@
 error[E0204]: the trait `Copy` cannot be implemented for this type
-  --> $DIR/deep-bad-copy-reason.rs:38:24
+  --> $DIR/deep-bad-copy-reason.rs:39:24
    |
 LL | pub struct List<'tcx, T>(Interned<'tcx, ListS<T>>);
    |                          ------------------------ this field does not implement `Copy`
@@ -8,13 +8,13 @@ LL | impl<'tcx, T> Copy for List<'tcx, T> {}
    |                        ^^^^^^^^^^^^^
    |
 note: the `Copy` impl for `Interned<'tcx, ListS<T>>` requires that `OpaqueListContents: Sized`
-  --> $DIR/deep-bad-copy-reason.rs:26:26
+  --> $DIR/deep-bad-copy-reason.rs:27:26
    |
 LL | pub struct List<'tcx, T>(Interned<'tcx, ListS<T>>);
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the size for values of type `OpaqueListContents` cannot be known at compilation time
-  --> $DIR/deep-bad-copy-reason.rs:26:26
+  --> $DIR/deep-bad-copy-reason.rs:27:26
    |
 LL | pub struct List<'tcx, T>(Interned<'tcx, ListS<T>>);
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time

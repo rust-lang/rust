@@ -200,6 +200,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             &mut bounds,
             tcx.types.self_param,
             self_bounds,
+            &[],
             ImpliedBoundsContext::TraitDef(def_id),
             span,
         );
@@ -207,6 +208,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             &mut bounds,
             tcx.types.self_param,
             self_bounds,
+            &[],
             ImpliedBoundsContext::TraitDef(def_id),
             span,
         );
@@ -239,14 +241,16 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     &mut bounds,
                     param_ty,
                     &[],
-                    ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
+                    hir_generics.predicates,
+                    ImpliedBoundsContext::TyParam(param.def_id),
                     param.span,
                 );
                 icx.lowerer().add_default_traits(
                     &mut bounds,
                     param_ty,
                     &[],
-                    ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
+                    hir_generics.predicates,
+                    ImpliedBoundsContext::TyParam(param.def_id),
                     param.span,
                 );
                 trace!(?bounds);
@@ -692,6 +696,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
                 &mut bounds,
                 self_param_ty,
                 superbounds,
+                &[],
                 ImpliedBoundsContext::TraitDef(trait_def_id),
                 item.span,
             );
@@ -699,6 +704,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
                 &mut bounds,
                 self_param_ty,
                 superbounds,
+                &[],
                 ImpliedBoundsContext::TraitDef(trait_def_id),
                 item.span,
             );
@@ -994,14 +1000,16 @@ impl<'tcx> ItemCtxt<'tcx> {
                             &mut bounds,
                             param_ty,
                             &[],
-                            ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
+                            hir_generics.predicates,
+                            ImpliedBoundsContext::TyParam(param.def_id),
                             param.span,
                         );
                         self.lowerer().add_default_traits(
                             &mut bounds,
                             param_ty,
                             &[],
-                            ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
+                            hir_generics.predicates,
+                            ImpliedBoundsContext::TyParam(param.def_id),
                             param.span,
                         );
                     }
