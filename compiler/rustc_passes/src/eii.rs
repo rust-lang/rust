@@ -6,10 +6,11 @@ use std::iter;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::attrs::{EiiDecl, EiiImpl};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_middle::error::DuplicateEiiImpls;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
 
-use crate::errors::{DuplicateEiiImpls, EiiWithoutImpl};
+use crate::errors::EiiWithoutImpl;
 
 #[derive(Clone, Copy, Debug)]
 enum CheckingMode {
