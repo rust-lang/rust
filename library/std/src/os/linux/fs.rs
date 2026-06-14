@@ -4,10 +4,29 @@
 
 #![stable(feature = "metadata_ext", since = "1.1.0")]
 
+use core::mem;
+
 use crate::fs::Metadata;
 #[allow(deprecated)]
 use crate::os::linux::raw;
+use crate::os::raw::{c_uint, c_void};
 use crate::sys::AsInner;
+use crate::sys::fs::cfg_has_statx;
+cfg_has_statx! {{
+    use crate::sys::fs::{FileAttr, StatxExtraFields};
+    use crate::sys::FromInner;
+} else {
+    use crate::sys::unsupported;
+}}
+
+/// This is the [`statx`] mask expected by [`Metadata::from_statx`], which sets both
+/// `STATX_BASIC_STATS` and `STATX_BTIME`. See the [Linux man page] for statx for more
+/// details.
+///
+/// [`statx`]: https://docs.rs/libc/latest/libc/struct.statx.html
+/// [Linux man page]: https://man7.org/linux/man-pages/man2/statx.2.html
+#[unstable(feature = "metadata_statx", issue = "156268")]
+pub const STATX_MASK: c_uint = libc::STATX_BASIC_STATS | libc::STATX_BTIME;
 
 /// OS-specific extensions to [`fs::Metadata`].
 ///
@@ -40,6 +59,53 @@ pub trait MetadataExt {
     #[deprecated(since = "1.8.0", note = "other methods of this trait are now preferred")]
     #[allow(deprecated)]
     fn as_raw_stat(&self) -> &raw::stat;
+
+    /// Creates a [`Metadata`] from a const void pointer populated by the [`statx`] syscall.
+    ///
+    /// Currently [`Metadata::from_statx`] is only supported on Linux platforms with a target
+    /// environment of GNU.
+    ///
+    /// # Safety
+    ///
+    /// The caller must take care to provide a valid const void pointer containing information
+    /// populated by the [`statx`] syscall. In particular, the provided pointer should contain
+    /// statx information pertaining to the mask [`STATX_MASK`], so that there will be no
+    /// uninitialized data encountered in constructing [`Metadata`].
+    ///
+    /// Note that the relevant information is copied out of the structure and the pointer is
+    /// not retained past the call.
+    ///
+    /// [`Metadata`]: crate::fs::Metadata
+    /// [`statx`]: https://docs.rs/libc/latest/libc/struct.statx.html
+    ///
+    /// ```no_run
+    /// #![feature(metadata_statx)]
+    /// use libc::statx;
+    /// use std::ffi::c_void;
+    /// use std::fs::{write, Metadata};
+    /// use std::io;
+    /// use std::os::linux::fs::{MetadataExt, STATX_MASK};
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     write("hello.txt", "Hello World!")?;
+    ///     let mut buf = Box::<statx>::new_uninit();
+    ///     unsafe {
+    ///         libc::statx(
+    ///             libc::AT_FDCWD,
+    ///             "hello.txt".as_ptr().cast(),
+    ///             libc::AT_STATX_SYNC_AS_STAT,
+    ///             STATX_MASK,
+    ///             buf.as_mut_ptr().cast()
+    ///         );
+    ///     }
+    ///     let statxbuf: Box<statx> = unsafe { buf.assume_init() };
+    ///     let metadata = unsafe { Metadata::from_statx(&*statxbuf as *const statx as *const c_void) };
+    ///     assert_eq!(metadata.len(), 12); // "Hello World!" is 12 bytes
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "metadata_statx", issue = "156268")]
+    unsafe fn from_statx(statxbuf: *const c_void) -> Self;
 
     /// Returns the device ID on which this file resides.
     ///
@@ -337,6 +403,39 @@ impl MetadataExt for Metadata {
             &*(self.as_inner().as_inner() as *const libc::stat64 as *const raw::stat)
         }
     }
+    cfg_has_statx! {{
+        unsafe fn from_statx(statxbuf: *const c_void) -> Metadata {
+            let buf =  statxbuf as *const libc::statx;
+
+            // We cannot fill `stat64` exhaustively because of private padding fields.
+            let mut stat: libc::stat64 = mem::zeroed();
+            // `c_ulong` on gnu-mips, `dev_t` otherwise
+            stat.st_dev = libc::makedev((*buf).stx_dev_major, (*buf).stx_dev_minor) as _;
+            stat.st_ino = (*buf).stx_ino as libc::ino64_t;
+            stat.st_nlink = (*buf).stx_nlink as libc::nlink_t;
+            stat.st_mode = (*buf).stx_mode as libc::mode_t;
+            stat.st_uid = (*buf).stx_uid as libc::uid_t;
+            stat.st_gid = (*buf).stx_gid as libc::gid_t;
+            stat.st_rdev = libc::makedev((*buf).stx_rdev_major, (*buf).stx_rdev_minor) as _;
+            stat.st_size = (*buf).stx_size as libc::off64_t;
+            stat.st_blksize = (*buf).stx_blksize as libc::blksize_t;
+            stat.st_blocks = (*buf).stx_blocks as libc::blkcnt64_t;
+            stat.st_atime = (*buf).stx_atime.tv_sec as libc::time_t;
+            // `i64` on gnu-x86_64-x32, `c_ulong` otherwise.
+            stat.st_atime_nsec = (*buf).stx_atime.tv_nsec as _;
+            stat.st_mtime = (*buf).stx_mtime.tv_sec as libc::time_t;
+            stat.st_mtime_nsec = (*buf).stx_mtime.tv_nsec as _;
+            stat.st_ctime = (*buf).stx_ctime.tv_sec as libc::time_t;
+            stat.st_ctime_nsec = (*buf).stx_ctime.tv_nsec as _;
+
+            let extra = StatxExtraFields::from_statx(statxbuf);
+
+            Metadata::from_inner(FileAttr::from_statx(stat, Some(extra)))
+        }} else {
+            unsafe fn from_statx(statxbuf: *const c_void) -> Self {
+                unsupported();
+            }
+    }}
     fn st_dev(&self) -> u64 {
         self.as_inner().as_inner().st_dev as u64
     }

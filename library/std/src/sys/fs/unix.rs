@@ -83,6 +83,9 @@ use crate::fmt::{self, Write as _};
 use crate::fs::TryLockError;
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd};
+cfg_has_statx! {{
+    use crate::os::raw::c_void;
+} else {}}
 #[cfg(target_family = "unix")]
 use crate::os::unix::prelude::*;
 #[cfg(target_os = "wasi")]
@@ -125,6 +128,8 @@ macro_rules! cfg_has_statx {
     };
 }
 
+pub(crate) use cfg_has_statx;
+
 cfg_has_statx! {{
     #[derive(Clone)]
     pub struct FileAttr {
@@ -133,7 +138,7 @@ cfg_has_statx! {{
     }
 
     #[derive(Clone)]
-    struct StatxExtraFields {
+    pub struct StatxExtraFields {
         // This is needed to check if btime is supported by the filesystem.
         stx_mask: u32,
         stx_btime: libc::statx_timestamp,
@@ -525,9 +530,30 @@ pub struct DirBuilder {
 struct Mode(mode_t);
 
 cfg_has_statx! {{
+    impl StatxExtraFields {
+        pub unsafe fn from_statx(statxbuf: *const c_void) -> Self {
+            let buf =  statxbuf as *const libc::statx;
+
+            StatxExtraFields {
+                stx_mask: (*buf).stx_mask,
+                stx_btime: (*buf).stx_btime,
+                // Store full times to avoid 32-bit `time_t` truncation.
+                #[cfg(target_pointer_width = "32")]
+                stx_atime: (*buf).stx_atime,
+                #[cfg(target_pointer_width = "32")]
+                stx_ctime: (*buf).stx_ctime,
+                #[cfg(target_pointer_width = "32")]
+                stx_mtime: (*buf).stx_mtime,
+            }
+        }
+    }
     impl FileAttr {
         fn from_stat64(stat: stat64) -> Self {
             Self { stat, statx_extra_fields: None }
+        }
+
+        pub fn from_statx(stat: stat64, extra: Option<StatxExtraFields>) -> Self {
+            Self {stat, statx_extra_fields: extra}
         }
 
         #[cfg(target_pointer_width = "32")]
