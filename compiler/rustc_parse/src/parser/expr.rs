@@ -1278,10 +1278,14 @@ impl<'a> Parser<'a> {
             None
         };
         let open_paren = self.token.span;
+        let call_depth = self.token_cursor.stack.len();
 
         let seq = match self.parse_expr_paren_seq() {
             Ok(args) => Ok(self.mk_expr(lo.to(self.prev_token.span), self.mk_call(fun, args))),
-            Err(err) if self.is_expected_raw_ref_mut() => {
+            Err(err)
+                if self.is_expected_raw_ref_mut()
+                    && self.token_cursor.stack.len() == call_depth =>
+            {
                 let guar = err.emit();
                 // Preserve the call expression so later passes can still diagnose the callee,
                 // while treating the malformed `&raw <expr>` argument as an error expression.
@@ -1299,9 +1303,8 @@ impl<'a> Parser<'a> {
     fn recover_raw_ref_call_args(&mut self, guar: ErrorGuaranteed) -> ThinVec<Box<Expr>> {
         let err_span = self.prev_token.span.to(self.token.span);
         let mut args = thin_vec![self.mk_expr_err(err_span, guar)];
-        while self.token != token::Eof && self.token != token::CloseParen {
-            if self.eat(exp!(Comma)) && self.token != token::Eof && self.token != token::CloseParen
-            {
+        while !self.token.kind.is_close_delim_or_eof() {
+            if self.eat(exp!(Comma)) && !self.token.kind.is_close_delim_or_eof() {
                 args.push(self.mk_expr_err(self.prev_token.span.shrink_to_hi(), guar));
             } else {
                 self.parse_token_tree();
