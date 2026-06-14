@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `(): Id` is not satisfied
+  --> $DIR/ice-normalize-erasing-regions-132767.rs:15:28
+   |
+LL | fn invalid_impl_trait() -> impl Id {}
+   |                            ^^^^^^^ the trait `Id` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/ice-normalize-erasing-regions-132767.rs:13:1
+   |
+LL | trait Id {}
+   | ^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.
