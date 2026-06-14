@@ -64,7 +64,7 @@ where
     F: FnOnce() + Send + 'static,
 {
     // We assert that current registry has not terminated.
-    unsafe { spawn_in(func, &Registry::current()) }
+    Registry::current(|registry| unsafe { spawn_in(func, registry) });
 }
 
 /// Spawns an asynchronous job in `registry.`
@@ -134,7 +134,7 @@ where
     F: FnOnce() + Send + 'static,
 {
     // We assert that current registry has not terminated.
-    unsafe { spawn_fifo_in(func, &Registry::current()) }
+    Registry::current(|registry| unsafe { spawn_fifo_in(func, registry) });
 }
 
 /// Spawns an asynchronous FIFO job in `registry.`
@@ -154,10 +154,10 @@ where
 
     // If we're in the pool, use our thread's private fifo for this thread to execute
     // in a locally-FIFO order. Otherwise, just use the pool's global injector.
-    match registry.current_thread() {
+    registry.current_thread_with(|worker| match worker {
         Some(worker) => unsafe { worker.push_fifo(job_ref) },
         None => registry.inject(job_ref),
-    }
+    });
     mem::forget(abort_guard);
 }
 
