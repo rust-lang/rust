@@ -271,6 +271,12 @@ impl File {
         })
     }
 
+    pub fn close(self) -> io::Result<()> {
+        // vexFileClose can't fail. Just implicitly drop `self`.
+        let _ = self;
+        Ok(())
+    }
+
     pub fn file_attr(&self) -> io::Result<FileAttr> {
         // `vexFileSize` returns -1 upon error, so u64::try_from will fail on error.
         if let Ok(size) = u64::try_from(unsafe {
@@ -537,7 +543,9 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     let mut reader = File::open(from)?;
     let mut writer = File::create(to)?;
 
-    io::copy(&mut reader, &mut writer)
+    let ret = io::copy(&mut reader, &mut writer)?;
+    writer.close()?;
+    Ok(ret)
 }
 
 fn map_fresult(fresult: vex_sdk::FRESULT) -> io::Result<()> {

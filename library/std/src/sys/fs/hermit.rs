@@ -345,6 +345,10 @@ impl File {
         Ok(File(unsafe { FileDesc::from_raw_fd(fd as i32) }))
     }
 
+    pub fn close(self) -> io::Result<()> {
+        self.0.close()
+    }
+
     pub fn file_attr(&self) -> io::Result<FileAttr> {
         let mut stat_val: stat_struct = unsafe { mem::zeroed() };
         self.0.fstat(&mut stat_val)?;

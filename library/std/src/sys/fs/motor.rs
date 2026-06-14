@@ -173,6 +173,10 @@ impl File {
             .map_err(map_motor_error)
     }
 
+    pub fn close(self) -> io::Result<()> {
+        self.0.close()
+    }
+
     pub fn file_attr(&self) -> io::Result<FileAttr> {
         moto_rt::fs::get_file_attr(self.as_raw_fd())
             .map(|inner| -> FileAttr { FileAttr { inner } })
