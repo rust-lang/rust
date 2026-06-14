@@ -1,5 +1,6 @@
 //! Routines for manipulating the control-flow graph.
 
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use tracing::debug;
@@ -122,7 +123,7 @@ impl<'tcx> CFG<'tcx> {
         block: BasicBlock,
         source_info: SourceInfo,
         kind: TerminatorKind<'tcx>,
-    ) {
+    ) -> &mut Terminator<'tcx> {
         debug!("terminating block {:?} <- {:?}", block, kind);
         debug_assert!(
             self.block_data(block).terminator.is_none(),
@@ -130,11 +131,18 @@ impl<'tcx> CFG<'tcx> {
             block,
             self.block_data(block)
         );
-        self.block_data_mut(block).terminator = Some(Terminator { source_info, kind });
+        self.block_data_mut(block).terminator =
+            Some(Terminator { source_info, kind, attributes: ThinVec::new() });
+        self.block_data_mut(block).terminator.as_mut().unwrap()
     }
 
     /// In the `origin` block, push a `goto -> target` terminator.
-    pub(crate) fn goto(&mut self, origin: BasicBlock, source_info: SourceInfo, target: BasicBlock) {
+    pub(crate) fn goto(
+        &mut self,
+        origin: BasicBlock,
+        source_info: SourceInfo,
+        target: BasicBlock,
+    ) -> &mut Terminator<'tcx> {
         self.terminate(origin, source_info, TerminatorKind::Goto { target })
     }
 }

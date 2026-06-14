@@ -62,6 +62,7 @@ use crate::attributes::stability::*;
 use crate::attributes::test_attrs::*;
 use crate::attributes::traits::*;
 use crate::attributes::transparency::*;
+use crate::attributes::unroll::*;
 use crate::attributes::{AttributeParser as _, AttributeSafety, Combine, Single, WithoutArgs};
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, NameValueParser,
@@ -230,6 +231,7 @@ attribute_parsers!(
         Single<ShouldPanicParser>,
         Single<TestRunnerParser>,
         Single<TypeLengthLimitParser>,
+        Single<UnrollParser>,
         Single<WindowsSubsystemParser>,
         Single<WithoutArgs<AllowInternalUnsafeParser>>,
         Single<WithoutArgs<AutomaticallyDerivedParser>>,
