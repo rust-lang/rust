@@ -792,6 +792,20 @@ impl server::Server for Rustc<'_, '_> {
             return None;
         }
 
+        // Reject subspans whose boundaries don't fall on UTF-8 char boundaries
+        // in the source text.
+        let on_boundary = self
+            .psess()
+            .source_map()
+            .span_to_source(span, |src, span_start, _| {
+                Ok(src.is_char_boundary(span_start + start)
+                    && src.is_char_boundary(span_start + end))
+            })
+            .unwrap_or(true);
+        if !on_boundary {
+            return None;
+        }
+
         let new_lo = span.lo() + BytePos::from_usize(start);
         let new_hi = span.lo() + BytePos::from_usize(end);
         Some(span.with_lo(new_lo).with_hi(new_hi))
