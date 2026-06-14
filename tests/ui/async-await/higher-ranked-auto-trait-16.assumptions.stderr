@@ -1,6 +1,12 @@
 error: implementation of `AsyncFnOnce` is not general enough
   --> $DIR/higher-ranked-auto-trait-16.rs:18:5
    |
+LL |   async fn commit_if_ok<'a>(ctxt: &mut Ctxt<'a>, f: impl AsyncFnOnce(&mut Ctxt<'a>)) {
+   |  ____________________________________________________________________________________-
+LL | |     f(&mut ctxt.clone()).await;
+LL | | }
+   | |_- this async fn captures a value whose type is not `AsyncFnOnce`
+...
 LL | /     assert_send(async {
 LL | |         commit_if_ok(&mut ctxt, async |_| todo!()).await;
 LL | |     });
@@ -12,6 +18,12 @@ LL | |     });
 error: implementation of `AsyncFnOnce` is not general enough
   --> $DIR/higher-ranked-auto-trait-16.rs:18:5
    |
+LL |   async fn commit_if_ok<'a>(ctxt: &mut Ctxt<'a>, f: impl AsyncFnOnce(&mut Ctxt<'a>)) {
+   |  ____________________________________________________________________________________-
+LL | |     f(&mut ctxt.clone()).await;
+LL | | }
+   | |_- this async fn captures a value whose type is not `AsyncFnOnce`
+...
 LL | /     assert_send(async {
 LL | |         commit_if_ok(&mut ctxt, async |_| todo!()).await;
 LL | |     });
