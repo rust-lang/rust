@@ -12,7 +12,7 @@ edition = "2024"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-itertools = "0.14.0"
+itertools = "0.15"
 proc-macro2 = "1.0"
 quote = "1.0"
 regex = "1.5"
