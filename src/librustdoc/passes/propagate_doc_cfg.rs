@@ -1,4 +1,6 @@
-//! Propagates [`#[doc(cfg(...))]`](https://github.com/rust-lang/rust/issues/43781) to child items.
+//! Propagates `#[doc(cfg(…))]` ([RFC 3631]) to child items.
+//!
+//! [RFC 3631]: https://rust-lang.github.io/rfcs/3631-rustdoc-cfgs-handling.html
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::Attribute;
@@ -8,13 +10,6 @@ use crate::clean::inline::{load_attrs, merge_attrs};
 use crate::clean::{CfgInfo, Crate, Item, ItemId, ItemKind};
 use crate::core::DocContext;
 use crate::fold::DocFolder;
-use crate::passes::Pass;
-
-pub(crate) const PROPAGATE_DOC_CFG: Pass = Pass {
-    name: "propagate-doc-cfg",
-    run: Some(propagate_doc_cfg),
-    description: "propagates `#[doc(cfg(...))]` to child items",
-};
 
 pub(crate) fn propagate_doc_cfg(cr: Crate, cx: &mut DocContext<'_>) -> Crate {
     if cx.tcx.features().doc_cfg() {
