@@ -853,6 +853,67 @@ pub(crate) fn clean_generics<'tcx>(
     }
 }
 
+/// Cleans delegation generics with HIR ordering and ty-side fallback.
+fn clean_delegation_generics<'tcx>(
+    gens: &hir::Generics<'tcx>,
+    cx: &mut DocContext<'tcx>,
+    ty_generics: Generics,
+) -> Generics {
+    let mut hir_generics = clean_generics(gens, cx);
+    let impl_trait_param_def_ids = hir_generics
+        .params
+        .iter()
+        .filter(|param| param.is_synthetic_param())
+        .map(|param| param.def_id)
+        .collect::<Vec<_>>();
+
+    for def_id in impl_trait_param_def_ids {
+        cx.impl_trait_bounds.remove(&def_id.into());
+    }
+    hir_generics.params.retain(|param| !param.is_synthetic_param());
+    hir_generics.where_predicates =
+        hir_generics
+            .where_predicates
+            .into_iter()
+            .filter_map(|mut pred| {
+                if retain_delegation_predicate(cx.tcx, &mut pred) { Some(pred) } else { None }
+            })
+            .collect();
+
+    let Generics { params: ty_params, where_predicates } = ty_generics;
+    let where_predicates =
+        where_predicates
+            .into_iter()
+            .filter_map(|mut pred| {
+                if retain_delegation_predicate(cx.tcx, &mut pred) { Some(pred) } else { None }
+            })
+            .collect();
+    let mut generics = Generics { params: hir_generics.params, where_predicates };
+
+    for param in ty_params {
+        if !generics.params.iter().any(|existing| existing.def_id == param.def_id) {
+            generics.params.push(param);
+        }
+    }
+    for pred in hir_generics.where_predicates {
+        if !generics.where_predicates.contains(&pred) {
+            generics.where_predicates.push(pred);
+        }
+    }
+
+    generics
+}
+
+fn retain_delegation_predicate(tcx: TyCtxt<'_>, pred: &mut WherePredicate) -> bool {
+    match pred {
+        WherePredicate::BoundPredicate { bounds, .. } => {
+            bounds.retain(|bound| !bound.is_meta_sized_bound(tcx));
+            !bounds.is_empty()
+        }
+        WherePredicate::RegionPredicate { .. } | WherePredicate::EqPredicate { .. } => true,
+    }
+}
+
 fn clean_ty_generics<'tcx>(cx: &mut DocContext<'tcx>, def_id: DefId) -> Generics {
     clean_ty_generics_inner(cx, cx.tcx.generics_of(def_id), cx.tcx.explicit_predicates_of(def_id))
 }
@@ -1086,10 +1147,10 @@ fn clean_fn_or_proc_macro<'tcx>(
         None => {
             let mut func = clean_function(
                 cx,
+                item.owner_id.to_def_id(),
                 sig,
                 generics,
                 ParamsSrc::Body(body_id),
-                item.owner_id.to_def_id(),
             );
             clean_fn_decl_legacy_const_generics(&mut func, attrs);
             FunctionItem(func)
@@ -1125,33 +1186,32 @@ enum ParamsSrc<'tcx> {
 
 fn clean_function<'tcx>(
     cx: &mut DocContext<'tcx>,
+    def_id: DefId,
     sig: &hir::FnSig<'tcx>,
     generics: &hir::Generics<'tcx>,
     params: ParamsSrc<'tcx>,
-    def_id: DefId,
 ) -> Box<Function> {
+    if sig.decl.opt_delegation_sig_id().is_some() {
+        return enter_impl_trait(cx, |cx| {
+            // Delegation HIR signatures are unresolved, so clean the resolved ty-side function.
+            let mut function = inline::build_function(cx, def_id);
+            let ty_generics = mem::take(&mut function.generics);
+            function.generics = clean_delegation_generics(generics, cx, ty_generics);
+            function
+        });
+    }
+
     let (generics, decl) = enter_impl_trait(cx, |cx| {
         // NOTE: Generics must be cleaned before params.
         let generics = clean_generics(generics, cx);
-        let decl = if sig.decl.opt_delegation_sig_id().is_some() {
-            // A delegation item (`reuse path::method`) has no resolved signature in the
-            // HIR: its inputs and return type are `InferDelegation` nodes that clean to
-            // `_`, and an `async` header over that inferred return type would panic in
-            // `sugared_async_return_type`. The resolved signature only exists on the ty
-            // side, so clean that instead, exactly like an inlined item. This both fixes
-            // the rendered `-> _` / `self: _` and makes the async sugaring well-defined.
-            let sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
-            clean_poly_fn_sig(cx, Some(def_id), sig)
-        } else {
-            let params = match params {
-                ParamsSrc::Body(body_id) => clean_params_via_body(cx, sig.decl.inputs, body_id),
-                // Let's not perpetuate anon params from Rust 2015; use `_` for them.
-                ParamsSrc::Idents(idents) => clean_params(cx, sig.decl.inputs, idents, |ident| {
-                    Some(ident.map_or(kw::Underscore, |ident| ident.name))
-                }),
-            };
-            clean_fn_decl_with_params(cx, sig.decl, Some(&sig.header), params)
+        let params = match params {
+            ParamsSrc::Body(body_id) => clean_params_via_body(cx, sig.decl.inputs, body_id),
+            // Let's not perpetuate anon params from Rust 2015; use `_` for them.
+            ParamsSrc::Idents(idents) => clean_params(cx, sig.decl.inputs, idents, |ident| {
+                Some(ident.map_or(kw::Underscore, |ident| ident.name))
+            }),
         };
+        let decl = clean_fn_decl_with_params(cx, sig.decl, Some(&sig.header), params);
         (generics, decl)
     });
     Box::new(Function { decl, generics })
@@ -1284,16 +1344,16 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
                 let m =
-                    clean_function(cx, sig, trait_item.generics, ParamsSrc::Body(body), local_did);
+                    clean_function(cx, local_did, sig, trait_item.generics, ParamsSrc::Body(body));
                 MethodItem(m, Defaultness::from_trait_item(trait_item.defaultness))
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(idents)) => {
                 let m = clean_function(
                     cx,
+                    local_did,
                     sig,
                     trait_item.generics,
                     ParamsSrc::Idents(idents),
-                    local_did,
                 );
                 RequiredMethodItem(m, Defaultness::from_trait_item(trait_item.defaultness))
             }
@@ -1335,7 +1395,7 @@ pub(crate) fn clean_impl_item<'tcx>(
                 type_: clean_ty(ty, cx),
             })),
             hir::ImplItemKind::Fn(ref sig, body) => {
-                let m = clean_function(cx, sig, impl_.generics, ParamsSrc::Body(body), local_did);
+                let m = clean_function(cx, local_did, sig, impl_.generics, ParamsSrc::Body(body));
                 let defaultness = match impl_.impl_kind {
                     hir::ImplItemImplKind::Inherent { .. } => hir::Defaultness::Final,
                     hir::ImplItemImplKind::Trait { defaultness, .. } => defaultness,
@@ -3277,7 +3337,7 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
     cx.with_param_env(def_id, |cx| {
         let kind = match item.kind {
             hir::ForeignItemKind::Fn(sig, idents, generics) => ForeignFunctionItem(
-                clean_function(cx, &sig, generics, ParamsSrc::Idents(idents), def_id),
+                clean_function(cx, def_id, &sig, generics, ParamsSrc::Idents(idents)),
                 sig.header.safety(),
             ),
             hir::ForeignItemKind::Static(ty, mutability, safety) => ForeignStaticItem(
