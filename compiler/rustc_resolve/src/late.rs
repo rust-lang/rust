@@ -1437,22 +1437,38 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                     // generic parameters like an inline const.
                     self.resolve_anon_const(anon_const, AnonConstKind::InlineConst);
                 }
-                InlineAsmOperand::Sym { sym } => self.visit_inline_asm_sym(sym),
+                InlineAsmOperand::Sym { sym } => {
+                    // global_asm! can be defined as an inner item, but should not be able to use
+                    // generic parameters from outer items.
+                    let rib_kind = match asm.asm_macro {
+                        AsmMacro::Asm | AsmMacro::NakedAsm => RibKind::InlineAsmSym,
+                        AsmMacro::GlobalAsm => {
+                            RibKind::Item(HasGenericParams::No, DefKind::GlobalAsm)
+                        }
+                    };
+
+                    // This is similar to the code for AnonConst.
+                    self.with_rib(ValueNS, rib_kind, |this| {
+                        this.with_rib(TypeNS, rib_kind, |this| {
+                            this.with_label_rib(rib_kind, |this| {
+                                this.smart_resolve_path(
+                                    sym.id,
+                                    &sym.qself,
+                                    &sym.path,
+                                    PathSource::Expr(None),
+                                );
+                                visit::walk_inline_asm_sym(this, sym);
+                            });
+                        })
+                    });
+                }
                 InlineAsmOperand::Label { block } => self.visit_block(block),
             }
         }
     }
 
-    fn visit_inline_asm_sym(&mut self, sym: &'ast InlineAsmSym) {
-        // This is similar to the code for AnonConst.
-        self.with_rib(ValueNS, RibKind::InlineAsmSym, |this| {
-            this.with_rib(TypeNS, RibKind::InlineAsmSym, |this| {
-                this.with_label_rib(RibKind::InlineAsmSym, |this| {
-                    this.smart_resolve_path(sym.id, &sym.qself, &sym.path, PathSource::Expr(None));
-                    visit::walk_inline_asm_sym(this, sym);
-                });
-            })
-        });
+    fn visit_inline_asm_sym(&mut self, _sym: &'ast InlineAsmSym) {
+        unreachable!("handled in `visit_inline_asm`");
     }
 
     fn visit_variant(&mut self, v: &'ast Variant) {
