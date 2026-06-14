@@ -150,6 +150,11 @@ use core::num::NonZero;
 use core::ops::{Deref, DerefMut};
 use core::{fmt, ptr};
 
+#[unstable(feature = "binary_heap_extract_if", issue = "154721")]
+pub use self::extract_if::ExtractIf;
+
+mod extract_if;
+
 use crate::alloc::Global;
 use crate::collections::TryReserveError;
 use crate::slice;
@@ -1037,6 +1042,19 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
     pub fn drain_sorted(&mut self) -> DrainSorted<'_, T, A> {
         DrainSorted { inner: self }
+    }
+
+    /// Creates an iterator which uses a closure to determine if an element should be removed.
+    /// The items are checked in sorted order
+    ///
+    /// If the closure returns `true`, the element is marked to be removed and yielded
+    #[unstable(feature = "binary_heap_extract_if", issue = "154721")]
+    #[must_use]
+    pub fn extract_if<F>(&mut self, predicate: F) -> ExtractIf<'_, T, F, A>
+    where
+        F: FnMut(&mut T) -> bool,
+    {
+        ExtractIf::new(self, predicate)
     }
 
     /// Retains only the elements specified by the predicate.
