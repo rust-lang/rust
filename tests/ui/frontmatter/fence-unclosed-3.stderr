@@ -29,7 +29,9 @@ error: extra characters after frontmatter close are not allowed
   --> $DIR/fence-unclosed-3.rs:12:1
    |
 LL |     ---x
-   | ^^^^^^^^
+   | ^^^^^^^-
+   |        |
+   |        help: remove the extra characters
 
 error: unexpected closing delimiter: `}`
   --> $DIR/fence-unclosed-3.rs:15:1

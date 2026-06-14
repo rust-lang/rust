@@ -71,26 +71,37 @@ impl Token {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TokenKind {
     /// A line comment, e.g. `// comment`.
-    LineComment {
-        doc_style: Option<DocStyle>,
-    },
+    LineComment { doc_style: Option<DocStyle> },
 
     /// A block comment, e.g. `/* block comment */`.
     ///
     /// Block comments can be recursive, so a sequence like `/* /* */`
     /// will not be considered terminated and will result in a parsing error.
-    BlockComment {
-        doc_style: Option<DocStyle>,
-        terminated: bool,
-    },
+    BlockComment { doc_style: Option<DocStyle>, terminated: bool },
 
     /// Any whitespace character sequence.
     Whitespace,
 
-    Frontmatter {
-        has_invalid_preceding_whitespace: bool,
-        invalid_infostring: bool,
-    },
+    /// A frontmatter block delimited by `---` fences on their own lines:
+    ///
+    /// ```text
+    /// ---
+    /// key: value
+    /// ---
+    /// ```
+    ///
+    /// Only recognized at the very beginning of a file, before any other
+    /// non-whitespace tokens. See [tracking issue #136889] for the feature.
+    ///
+    /// `has_invalid_preceding_whitespace` is set when the character immediately
+    /// before the opening `---` is not a newline (i.e., the fence is not at the
+    /// start of a line).
+    /// `invalid_infostring` is set when the text following the opening `---` on
+    /// the same line does not form a valid single identifier (e.g. contains
+    /// spaces, commas, or other unexpected characters).
+    ///
+    /// [tracking issue #136889]: https://github.com/rust-lang/rust/issues/136889
+    Frontmatter { has_invalid_preceding_whitespace: bool, invalid_infostring: bool },
 
     /// An identifier or keyword, e.g. `ident` or `continue`.
     Ident,
@@ -133,15 +144,10 @@ pub enum TokenKind {
     /// this type will need to check for and reject that case.
     ///
     /// See [LiteralKind] for more details.
-    Literal {
-        kind: LiteralKind,
-        suffix_start: u32,
-    },
+    Literal { kind: LiteralKind, suffix_start: u32 },
 
     /// A lifetime, e.g. `'a`.
-    Lifetime {
-        starts_with_number: bool,
-    },
+    Lifetime { starts_with_number: bool },
 
     /// `;`
     Semi,
@@ -406,6 +412,11 @@ pub fn is_ident(string: &str) -> bool {
     }
 }
 
+/// Controls whether the lexer should recognize frontmatter blocks.
+///
+/// Frontmatter is only valid at the start of a file and must not appear
+/// when tokenizing a slice of a larger document. See [`tokenize`] for
+/// guidance on which variant to use.
 pub enum FrontmatterAllowed {
     Yes,
     No,
@@ -522,6 +533,12 @@ impl<'a> Cursor<'a> {
         }
     }
 
+    /// Advances the cursor up to but not including `byte`, or to the end of
+    /// input if `byte` is not found. Unlike [`eat_while`], this uses `memchr`
+    /// for fast scanning over the raw byte sequence and does not decode
+    /// characters. The target `byte` itself is left unconsumed.
+    ///
+    /// [`eat_while`]: Self::eat_while
     pub(crate) fn eat_until(&mut self, byte: u8) {
         self.chars = match memchr::memchr(byte, self.as_str().as_bytes()) {
             Some(index) => self.as_str()[index..].chars(),

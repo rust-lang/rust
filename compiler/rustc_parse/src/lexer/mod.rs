@@ -718,7 +718,13 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
 
         if !rest.trim_matches(is_horizontal_whitespace).is_empty() {
             let span = self.mk_sp(last_line_start_pos, self.pos);
-            self.dcx().emit_err(errors::FrontmatterExtraCharactersAfterClose { span });
+            // The extra characters start right after the closing dashes.
+            // `last_line_trimmed` has any leading whitespace stripped, so we
+            // must account for that offset when computing the absolute position.
+            let whitespace_len = last_line.len() - last_line_trimmed.len();
+            let extra_start = last_line_start_pos + BytePos((whitespace_len + len_close) as u32);
+            let remove = self.mk_sp(extra_start, self.pos);
+            self.dcx().emit_err(errors::FrontmatterExtraCharactersAfterClose { span, remove });
         }
     }
 
