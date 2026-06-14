@@ -1014,7 +1014,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .stack_index(self.scopes.const_continuable_scopes[break_index].region_scope, span);
         let scope = &mut self.scopes.const_continuable_scopes[break_index];
         self.cfg.push_assign(block, source_info, discr, rvalue);
-        let mut drop_and_continue_block = self.cfg.start_new_block();
+        let drop_and_continue_block = self.cfg.start_new_block();
         let imaginary_target = self.cfg.start_new_block();
         self.cfg.terminate(
             block,
@@ -1036,34 +1036,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let region_scope = scope.region_scope;
         let stack_index = self.scopes.stack_index(region_scope, span);
-        let needs_cleanup =
-            self.scopes.scopes[stack_index..].iter().any(|scope| scope.needs_cleanup());
-        let mut unwind_to = if needs_cleanup { self.diverge_cleanup() } else { DropIdx::MAX };
-        let has_async_drops = self.coroutine.is_some()
-            && self.scopes.scopes[stack_index..]
-                .iter()
-                .flat_map(|s| s.drops.iter())
-                .any(|v| v.kind == DropKind::Value && self.is_async_drop(v.local));
-        let mut dropline_to = if has_async_drops { Some(self.diverge_dropline()) } else { None };
-        let typing_env = self.typing_env();
-        for scope in self.scopes.scopes[stack_index..].iter().rev() {
-            (unwind_to, dropline_to) = unpack!(
-                drop_and_continue_block = build_scope_drops(
-                    &mut self.cfg,
-                    &mut self.scopes.unwind_drops,
-                    &mut self.scopes.coroutine_drops,
-                    scope,
-                    drop_and_continue_block,
-                    unwind_to,
-                    dropline_to,
-                    /* storage_dead_on_unwind */ false,
-                    self.arg_count,
-                    /* is_async_drop */
-                    |v: Local| Self::is_async_drop_impl(self.tcx, &self.local_decls, typing_env, v),
-                    &[],
-                )
-            );
-        }
+        let drop_and_continue_block =
+            self.leave_scopes(drop_and_continue_block, stack_index..self.scopes.scopes.len(), &[]);
         self.cfg.terminate(
             drop_and_continue_block,
             source_info,
@@ -1113,7 +1087,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Instead, all scheduled drops are immediately added to the CFG.
     pub(crate) fn break_for_tail_call(
         &mut self,
-        mut block: BasicBlock,
+        block: BasicBlock,
         args: &[Spanned<Operand<'tcx>>],
         source_info: SourceInfo,
     ) -> BlockAnd<()> {
@@ -1136,88 +1110,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             })
             .collect();
 
-        let mut unwind_to = self.diverge_cleanup_target(
-            self.scopes.scopes.iter().rev().nth(1).unwrap().region_scope,
-            DUMMY_SP,
-        );
-        let typing_env = self.typing_env();
-        let unwind_drops = &mut self.scopes.unwind_drops;
-
         // the innermost scope contains only the destructors for the tail call arguments
         // we only want to drop these in case of a panic, so we skip it
-        for scope in self.scopes.scopes[1..].iter().rev().skip(1) {
-            // FIXME(explicit_tail_calls) code duplication with `build_scope_drops`
-            for drop_data in scope.drops.iter().rev() {
-                let source_info = drop_data.source_info;
-                let local = drop_data.local;
-
-                if !self.local_decls[local].ty.needs_drop(self.tcx, typing_env) {
-                    continue;
-                }
-
-                match drop_data.kind {
-                    DropKind::Value => {
-                        // `unwind_to` should drop the value that we're about to
-                        // schedule. If dropping this value panics, then we continue
-                        // with the *next* value on the unwind path.
-                        debug_assert_eq!(
-                            unwind_drops.drop_nodes[unwind_to].data.local,
-                            drop_data.local
-                        );
-                        debug_assert_eq!(
-                            unwind_drops.drop_nodes[unwind_to].data.kind,
-                            drop_data.kind
-                        );
-                        unwind_to = unwind_drops.drop_nodes[unwind_to].next;
-
-                        let mut unwind_entry_point = unwind_to;
-
-                        // the tail call arguments must be dropped if any of these drops panic
-                        for drop in arg_drops.iter().copied() {
-                            unwind_entry_point = unwind_drops.add_drop(drop, unwind_entry_point);
-                        }
-
-                        unwind_drops.add_entry_point(block, unwind_entry_point);
-
-                        let next = self.cfg.start_new_block();
-                        self.cfg.terminate(
-                            block,
-                            source_info,
-                            TerminatorKind::Drop {
-                                place: local.into(),
-                                target: next,
-                                unwind: UnwindAction::Continue,
-                                replace: false,
-                                drop: None,
-                            },
-                        );
-                        block = next;
-                    }
-                    DropKind::ForLint => {
-                        self.cfg.push(
-                            block,
-                            Statement::new(
-                                source_info,
-                                StatementKind::BackwardIncompatibleDropHint {
-                                    place: Box::new(local.into()),
-                                    reason: BackwardIncompatibleDropReason::Edition2024,
-                                },
-                            ),
-                        );
-                    }
-                    DropKind::Storage => {
-                        // Only temps and vars need their storage dead.
-                        assert!(local.index() > self.arg_count);
-                        self.cfg.push(
-                            block,
-                            Statement::new(source_info, StatementKind::StorageDead(local)),
-                        );
-                    }
-                }
-            }
-        }
-
-        block.unit()
+        self.leave_scopes(block, 1..self.scopes.scopes.len() - 2, &arg_drops[..]).unit()
     }
 
     fn is_async_drop_impl(
@@ -1238,13 +1133,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     fn leave_top_scope(&mut self, block: BasicBlock) -> BasicBlock {
         let last = self.scopes.scopes.len() - 1;
-        self.leave_scopes(block, last..self.scopes.scopes.len())
+        self.leave_scopes(block, last..self.scopes.scopes.len(), &[])
     }
 
     fn leave_scopes(
         &mut self,
         mut block: BasicBlock,
         range: Range<usize>,
+        arg_drops: &[DropData],
     ) -> BasicBlock {
         // If we are emitting a `drop` statement, we need to have the cached
         // diverge cleanup pads ready in case that drop panics.
@@ -1284,6 +1180,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     self.arg_count,
                     /* is_async_drop */
                     |v: Local| Self::is_async_drop_impl(self.tcx, &self.local_decls, typing_env, v),
+                    arg_drops,
                 )
             );
         }
@@ -1857,6 +1754,7 @@ fn build_scope_drops<'tcx, F>(
     storage_dead_on_unwind: bool,
     arg_count: usize,
     is_async_drop: F,
+    extra_drops: &[DropData],
 ) -> BlockAnd<(DropIdx, Option<DropIdx>)>
 where
     F: Fn(Local) -> bool,
@@ -1927,10 +1825,19 @@ where
                     continue;
                 }
 
-                unwind_drops.add_entry_point(block, unwind_to);
-                if let Some(to) = dropline_to
+                // the tail call arguments must be dropped if any of these drops panic
+                let mut unwind_entry_point = unwind_to;
+                for drop in extra_drops.iter().copied() {
+                    unwind_entry_point = unwind_drops.add_drop(drop, unwind_entry_point);
+                }
+                unwind_drops.add_entry_point(block, unwind_entry_point);
+
+                if let Some(mut to) = dropline_to
                     && is_async_drop(local)
                 {
+                    for drop in extra_drops.iter().copied() {
+                        to = coroutine_drops.add_drop(drop, to);
+                    }
                     coroutine_drops.add_entry_point(block, to);
                 }
 
