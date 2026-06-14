@@ -805,6 +805,16 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 )
             }
 
+            sym::sve_zeroinitializer => {
+                assert_matches!(
+                    self.layout_of(fn_args.type_at(0)).backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        ..
+                    }
+                );
+                self.const_null(self.layout_of(fn_args.type_at(0)).immediate_llvm_type(self))
+            }
+
             _ if name.as_str().starts_with("simd_") => {
                 // Unpack non-power-of-2 #[repr(packed, simd)] arguments.
                 // This gives them the expected layout of a regular #[repr(simd)] vector.

@@ -64,3 +64,9 @@ pub unsafe fn sve_tuple_get<SVecTup, SVec, const IDX: i32>(tuple: SVecTup) -> SV
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn sve_tuple_set<SVecTup, SVec, const IDX: i32>(tuple: SVecTup, x: SVec) -> SVecTup;
+
+/// Returns a zeroed `SVec`, similar to `mem::zeroed()` but with support for scalable vector types.
+/// The LLVM backend will typically lower this to `zeroinitializer`.
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub unsafe fn sve_zeroinitializer<SVec>() -> SVec;
