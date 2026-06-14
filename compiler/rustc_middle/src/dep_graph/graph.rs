@@ -2,7 +2,7 @@ use std::assert_matches;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicPtr, AtomicU32, Ordering};
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::fx::FxHashSet;
@@ -54,7 +54,7 @@ pub enum QuerySideEffect {
 
 #[derive(Clone)]
 pub struct DepGraph {
-    data: Option<Arc<DepGraphData>>,
+    data: Arc<AtomicPtr<Option<DepGraphData>>>,
 
     /// This field is used for assigning DepNodeIndices when running in
     /// non-incremental mode. Even in non-incremental mode we make sure that
@@ -169,30 +169,32 @@ impl DepGraph {
         }
 
         DepGraph {
-            data: Some(Arc::new(DepGraphData {
+            data: Arc::new(AtomicPtr::new(Box::into_raw(Box::new(Some(DepGraphData {
                 previous_work_products: prev_work_products,
                 current,
                 previous: prev_graph,
                 colors,
                 debug_loaded_from_disk: Default::default(),
-            })),
+            }))))),
             virtual_dep_node_index: Arc::new(AtomicU32::new(0)),
         }
     }
 
     pub fn new_disabled() -> DepGraph {
-        DepGraph { data: None, virtual_dep_node_index: Arc::new(AtomicU32::new(0)) }
+        DepGraph {
+            data: Arc::new(AtomicPtr::new(Box::into_raw(Box::new(None)))),
+            virtual_dep_node_index: Arc::new(AtomicU32::new(0)),
+        }
     }
 
-    #[inline]
     pub fn data(&self) -> Option<&DepGraphData> {
-        self.data.as_deref()
+        unsafe { self.data.load(Ordering::Relaxed).as_ref_unchecked().as_ref() }
     }
 
     /// Returns `true` if we are actually building the full dep-graph, and `false` otherwise.
     #[inline]
     pub fn is_fully_enabled(&self) -> bool {
-        self.data.is_some()
+        self.data().is_some()
     }
 
     /// Returns a clone of the in-memory retained dep graph, if it is being built
@@ -200,11 +202,11 @@ impl DepGraph {
     /// callers from holding it while forcing queries, which would deadlock against a
     /// reentrant `record` under the parallel frontend.
     pub fn retained_dep_graph(&self) -> Option<RetainedDepGraph> {
-        self.data.as_ref().and_then(|data| data.current.encoder.retained_dep_graph())
+        self.data().as_ref().and_then(|data| data.current.encoder.retained_dep_graph())
     }
 
     pub fn assert_ignored(&self) {
-        if let Some(..) = self.data {
+        if let Some(..) = self.data() {
             read_deps(|task_deps| {
                 assert_matches!(
                     task_deps,
@@ -216,7 +218,7 @@ impl DepGraph {
     }
 
     pub fn assert_eval_always(&self) {
-        if self.data.is_some() {
+        if self.data().is_some() {
             read_deps(|deps| {
                 assert_matches!(deps, TaskDepsRef::EvalAlways, "expected eval always context")
             });
@@ -281,6 +283,17 @@ impl DepGraph {
         OP: FnOnce() -> R,
     {
         with_deps(TaskDepsRef::Forbid, op)
+    }
+
+    pub fn with_sandbox(&self, op: impl FnOnce()) {
+        self.with_query_deserialization(|| {
+            let real_graph = self.data.swap(Box::into_raw(Box::new(None)), Ordering::Relaxed);
+
+            op();
+
+            let fake_graph = self.data.swap(real_graph, Ordering::Relaxed);
+            unsafe { drop(Box::from_raw(fake_graph)) };
+        });
     }
 
     #[inline(always)]
@@ -458,7 +471,7 @@ impl DepGraphData {
 impl DepGraph {
     #[inline]
     pub fn read_index(&self, dep_node_index: DepNodeIndex) {
-        if let Some(ref data) = self.data {
+        if let Some(ref data) = self.data() {
             read_deps(|task_deps| {
                 let mut task_deps = match task_deps {
                     TaskDepsRef::Allow(deps) => deps.lock(),
@@ -515,7 +528,7 @@ impl DepGraph {
     /// it with the node, for use in the next session.
     #[inline]
     pub fn record_diagnostic<'tcx>(&self, tcx: TyCtxt<'tcx>, diagnostic: &DiagInner) {
-        if let Some(ref data) = self.data {
+        if let Some(ref data) = self.data() {
             read_deps(|task_deps| match task_deps {
                 TaskDepsRef::EvalAlways | TaskDepsRef::Ignore => return,
                 TaskDepsRef::Forbid | TaskDepsRef::Allow(..) => {
@@ -530,7 +543,7 @@ impl DepGraph {
     /// refer to a node created used `encode_side_effect` in the previous session.
     #[inline]
     pub fn force_side_effect<'tcx>(&self, tcx: TyCtxt<'tcx>, prev_index: SerializedDepNodeIndex) {
-        if let Some(ref data) = self.data {
+        if let Some(ref data) = self.data() {
             data.force_side_effect(tcx, prev_index);
         }
     }
@@ -541,7 +554,7 @@ impl DepGraph {
         tcx: TyCtxt<'tcx>,
         side_effect: QuerySideEffect,
     ) -> DepNodeIndex {
-        if let Some(ref data) = self.data {
+        if let Some(ref data) = self.data() {
             data.encode_side_effect(tcx, side_effect)
         } else {
             self.next_virtual_depnode_index()
@@ -571,7 +584,7 @@ impl DepGraph {
         hash_result: Option<fn(&mut StableHashState<'_>, &R) -> Fingerprint>,
         format_value_fn: fn(&R) -> String,
     ) -> DepNodeIndex {
-        if let Some(data) = self.data.as_ref() {
+        if let Some(data) = self.data().as_ref() {
             // The caller query has more dependencies than the node we are creating. We may
             // encounter a case where this created node is marked as green, but the caller query is
             // subsequently marked as red or recomputed. In this case, we will end up feeding a
@@ -810,23 +823,23 @@ impl DepGraph {
     /// Checks whether a previous work product exists for `v` and, if
     /// so, return the path that leads to it. Used to skip doing work.
     pub fn previous_work_product(&self, v: &WorkProductId) -> Option<WorkProduct> {
-        self.data.as_ref().and_then(|data| data.previous_work_products.get(v).cloned())
+        self.data().as_ref().and_then(|data| data.previous_work_products.get(v).cloned())
     }
 
     /// Access the map of work-products created during the cached run. Only
     /// used during saving of the dep-graph.
     pub fn previous_work_products(&self) -> &WorkProductMap {
-        &self.data.as_ref().unwrap().previous_work_products
+        &self.data().as_ref().unwrap().previous_work_products
     }
 
     pub fn debug_was_loaded_from_disk(&self, dep_node: DepNode) -> bool {
-        self.data.as_ref().unwrap().debug_loaded_from_disk.lock().contains(&dep_node)
+        self.data().as_ref().unwrap().debug_loaded_from_disk.lock().contains(&dep_node)
     }
 
     pub fn debug_dep_kind_was_loaded_from_disk(&self, dep_kind: DepKind) -> bool {
         // We only check if we have a dep node corresponding to the given dep kind.
         #[allow(rustc::potential_query_instability)]
-        self.data
+        self.data()
             .as_ref()
             .unwrap()
             .debug_loaded_from_disk
@@ -836,7 +849,7 @@ impl DepGraph {
     }
 
     fn node_color(&self, dep_node: &DepNode) -> DepNodeColor {
-        if let Some(ref data) = self.data {
+        if let Some(ref data) = self.data() {
             return data.node_color(dep_node);
         }
 
@@ -982,7 +995,7 @@ impl DepGraph {
         dep_node: &DepNode,
         msg: impl FnOnce() -> S,
     ) {
-        if let Some(data) = &self.data {
+        if let Some(data) = &self.data() {
             data.assert_dep_node_not_yet_allocated_in_current_session(sess, dep_node, msg)
         }
     }
@@ -998,7 +1011,7 @@ impl DepGraph {
     pub fn exec_cache_promotions<'tcx>(&self, tcx: TyCtxt<'tcx>) {
         let _prof_timer = tcx.prof.generic_activity("incr_comp_query_cache_promotion");
 
-        let data = self.data.as_ref().unwrap();
+        let data = self.data().unwrap();
         for prev_index in data.colors.values.indices() {
             match data.colors.get(prev_index) {
                 DepNodeColor::Green(_) => {
@@ -1019,11 +1032,15 @@ impl DepGraph {
     }
 
     pub(crate) fn finish_encoding(&self) -> FileEncodeResult {
-        if let Some(data) = &self.data { data.current.encoder.finish(&data.current) } else { Ok(0) }
+        if let Some(data) = &self.data() {
+            data.current.encoder.finish(&data.current)
+        } else {
+            Ok(0)
+        }
     }
 
     pub fn next_virtual_depnode_index(&self) -> DepNodeIndex {
-        debug_assert!(self.data.is_none());
+        debug_assert!(self.data().is_none());
         let index = self.virtual_dep_node_index.fetch_add(1, Ordering::Relaxed);
         DepNodeIndex::from_u32(index)
     }
@@ -1347,7 +1364,7 @@ pub(super) enum TrySetColorResult {
 #[inline(never)]
 #[cold]
 pub(crate) fn print_markframe_trace(graph: &DepGraph, frame: &MarkFrame<'_>) {
-    let data = graph.data.as_ref().unwrap();
+    let data = graph.data().unwrap();
 
     eprintln!("there was a panic while trying to force a dep node");
     eprintln!("try_mark_green dep node stack:");
