@@ -1,0 +1,42 @@
+error[E0282]: type annotations needed
+  --> $DIR/index-expr-ambiguous-type.rs:9:34
+   |
+LL |     let _foo = [1, 2, 3][bad_idx.into()] as i32;
+   |                                  ^^^^
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     let _foo = [1, 2, 3][bad_idx.into()] as i32;
+LL +     let _foo = [1, 2, 3][<u8 as Into<T>>::into(bad_idx)] as i32;
+   |
+
+error[E0282]: type annotations needed
+  --> $DIR/index-expr-ambiguous-type.rs:15:38
+   |
+LL |     let _foo = 0 + [1, 2, 3][bad_idx.into()];
+   |                                      ^^^^
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     let _foo = 0 + [1, 2, 3][bad_idx.into()];
+LL +     let _foo = 0 + [1, 2, 3][<u8 as Into<T>>::into(bad_idx)];
+   |
+
+error[E0283]: type annotations needed
+  --> $DIR/index-expr-ambiguous-type.rs:21:34
+   |
+LL |     let _foo = [1, 2, 3][bad_idx.into()];
+   |                                  ^^^^
+   |
+   = note: the type must implement `From<u8>`
+   = note: required for `u8` to implement `Into<_>`
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     let _foo = [1, 2, 3][bad_idx.into()];
+LL +     let _foo = [1, 2, 3][<u8 as Into<T>>::into(bad_idx)];
+   |
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0282, E0283.
+For more information about an error, try `rustc --explain E0282`.

@@ -741,7 +741,21 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
     #[instrument(skip(fcx), level = "debug")]
     pub(crate) fn check(mut self, fcx: &FnCtxt<'a, 'tcx>) {
-        self.expr_ty = fcx.structurally_resolve_type(self.expr_span, self.expr_ty);
+        if let hir::ExprKind::Index(_, idx, _) = self.expr.kind
+            && self.expr_ty.has_infer()
+        {
+            let idx_ty = fcx.resolve_vars_if_possible(fcx.node_ty(idx.hir_id));
+            if idx_ty.is_ty_var() {
+                let resolved = fcx.structurally_resolve_type(idx.span, idx_ty);
+                if resolved.references_error() {
+                    self.expr_ty = resolved;
+                }
+            }
+        }
+        // Skip if idx resolution above already emitted a diagnostic and set expr_ty to error.
+        if !self.expr_ty.references_error() {
+            self.expr_ty = fcx.structurally_resolve_type(self.expr_span, self.expr_ty);
+        }
         self.cast_ty = fcx.structurally_resolve_type(self.cast_span, self.cast_ty);
 
         debug!("check_cast({}, {:?} as {:?})", self.expr.hir_id, self.expr_ty, self.cast_ty);
