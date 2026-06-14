@@ -43,8 +43,7 @@ instead of those in the system. The stable boolean values for this flag are coar
 - `crto`: CRT objects (e.g. on `windows-gnu`, `musl`, `wasi` targets)
 - `libc`: libc static library (e.g. on `musl`, `wasi` targets)
 - `unwind`: libgcc/libunwind (e.g. on `windows-gnu`, `fuchsia`, `fortanix`, `gnullvm` targets)
-- `linker`: linker, dlltool, and their necessary libraries (e.g. on `windows-gnu` and for
-  `rust-lld`)
+- `linker`: linker and its necessary libraries (e.g. for `rust-lld`)
 - `sanitizers`: sanitizer runtime libraries
 - `mingw`: other MinGW libs and Windows import libs
 
