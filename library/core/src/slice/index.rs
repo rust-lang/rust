@@ -27,6 +27,7 @@ where
     I: [const] SliceIndex<[T]>,
 {
     #[inline(always)]
+    #[rustc_no_writable]
     fn index_mut(&mut self, index: I) -> &mut I::Output {
         index.index_mut(self)
     }
@@ -185,6 +186,7 @@ const unsafe impl<T> SliceIndex<[T]> for usize {
     }
 
     #[inline]
+    #[rustc_no_writable]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut T> {
         if self < slice.len() {
             // SAFETY: `self` is checked to be in bounds.
@@ -233,6 +235,7 @@ const unsafe impl<T> SliceIndex<[T]> for usize {
     }
 
     #[inline]
+    #[rustc_no_writable]
     fn index_mut(self, slice: &mut [T]) -> &mut T {
         // N.B., use intrinsic indexing
         &mut (*slice)[self]
@@ -256,6 +259,7 @@ const unsafe impl<T> SliceIndex<[T]> for ops::IndexRange {
     }
 
     #[inline]
+    #[rustc_no_writable]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
         if self.end() <= slice.len() {
             // SAFETY: `self` is checked to be valid and in bounds above.
@@ -304,6 +308,7 @@ const unsafe impl<T> SliceIndex<[T]> for ops::IndexRange {
     }
 
     #[inline]
+    #[rustc_no_writable]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
         if self.end() <= slice.len() {
             // SAFETY: `self` is checked to be valid and in bounds above.
@@ -336,6 +341,7 @@ const unsafe impl<T> SliceIndex<[T]> for ops::Range<usize> {
     }
 
     #[inline]
+    #[rustc_no_writable]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
         if let Some(new_len) = usize::checked_sub(self.end, self.start)
             && self.end <= slice.len()
@@ -405,6 +411,7 @@ const unsafe impl<T> SliceIndex<[T]> for ops::Range<usize> {
     }
 
     #[inline]
+    #[rustc_no_writable]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
         // Using checked_sub is a safe way to get `SubUnchecked` in MIR
         if let Some(new_len) = usize::checked_sub(self.end, self.start)
@@ -429,6 +436,7 @@ const unsafe impl<T> SliceIndex<[T]> for range::Range<usize> {
     }
 
     #[inline]
+    #[rustc_no_writable]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
         ops::Range::from(self).get_mut(slice)
     }
@@ -451,6 +459,7 @@ const unsafe impl<T> SliceIndex<[T]> for range::Range<usize> {
     }
 
     #[inline]
+    #[rustc_no_writable]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
         ops::Range::from(self).index_mut(slice)
     }
@@ -468,6 +477,7 @@ const unsafe impl<T> SliceIndex<[T]> for ops::RangeTo<usize> {
     }
 
     #[inline]
+    #[rustc_no_writable]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
         (0..self.end).get_mut(slice)
     }
@@ -490,6 +500,7 @@ const unsafe impl<T> SliceIndex<[T]> for ops::RangeTo<usize> {
     }
 
     #[inline]
+    #[rustc_no_writable]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
         (0..self.end).index_mut(slice)
     }
@@ -507,6 +518,7 @@ const unsafe impl<T> SliceIndex<[T]> for ops::RangeFrom<usize> {
     }
 
     #[inline]
+    #[rustc_no_writable]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
         (self.start..slice.len()).get_mut(slice)
     }
@@ -536,6 +548,7 @@ const unsafe impl<T> SliceIndex<[T]> for ops::RangeFrom<usize> {
     }
 
     #[inline]
+    #[rustc_no_writable]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
         if self.start > slice.len() {
             slice_index_fail(self.start, slice.len(), slice.len())
@@ -559,6 +572,7 @@ const unsafe impl<T> SliceIndex<[T]> for range::RangeFrom<usize> {
     }
 
     #[inline]
+    #[rustc_no_writable]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
         ops::RangeFrom::from(self).get_mut(slice)
     }
@@ -581,6 +595,7 @@ const unsafe impl<T> SliceIndex<[T]> for range::RangeFrom<usize> {
     }
 
     #[inline]
+    #[rustc_no_writable]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
         ops::RangeFrom::from(self).index_mut(slice)
     }
@@ -597,6 +612,7 @@ const unsafe impl<T> SliceIndex<[T]> for ops::RangeFull {
     }
 
     #[inline]
+    #[rustc_no_writable]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
         Some(slice)
     }
@@ -617,6 +633,7 @@ const unsafe impl<T> SliceIndex<[T]> for ops::RangeFull {
     }
 
     #[inline]
+    #[rustc_no_writable]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
         slice
     }
@@ -636,6 +653,7 @@ const unsafe impl<T> SliceIndex<[T]> for ops::RangeInclusive<usize> {
     }
 
     #[inline]
+    #[rustc_no_writable]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
         if *self.end() >= slice.len() { None } else { self.into_slice_range().get_mut(slice) }
     }
@@ -668,6 +686,7 @@ const unsafe impl<T> SliceIndex<[T]> for ops::RangeInclusive<usize> {
     }
 
     #[inline]
+    #[rustc_no_writable]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
         let Self { mut start, mut end, exhausted } = self;
         let len = slice.len();
@@ -694,6 +713,7 @@ const unsafe impl<T> SliceIndex<[T]> for range::RangeInclusive<usize> {
     }
 
     #[inline]
+    #[rustc_no_writable]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
         ops::RangeInclusive::from(self).get_mut(slice)
     }
@@ -716,6 +736,7 @@ const unsafe impl<T> SliceIndex<[T]> for range::RangeInclusive<usize> {
     }
 
     #[inline]
+    #[rustc_no_writable]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
         ops::RangeInclusive::from(self).index_mut(slice)
     }
@@ -733,6 +754,7 @@ const unsafe impl<T> SliceIndex<[T]> for ops::RangeToInclusive<usize> {
     }
 
     #[inline]
+    #[rustc_no_writable]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
         (0..=self.end).get_mut(slice)
     }
@@ -755,6 +777,7 @@ const unsafe impl<T> SliceIndex<[T]> for ops::RangeToInclusive<usize> {
     }
 
     #[inline]
+    #[rustc_no_writable]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
         (0..=self.end).index_mut(slice)
     }
@@ -772,6 +795,7 @@ const unsafe impl<T> SliceIndex<[T]> for range::RangeToInclusive<usize> {
     }
 
     #[inline]
+    #[rustc_no_writable]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
         (0..=self.last).get_mut(slice)
     }
@@ -794,6 +818,7 @@ const unsafe impl<T> SliceIndex<[T]> for range::RangeToInclusive<usize> {
     }
 
     #[inline]
+    #[rustc_no_writable]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
         (0..=self.last).index_mut(slice)
     }
@@ -1007,6 +1032,7 @@ unsafe impl<T> SliceIndex<[T]> for (ops::Bound<usize>, ops::Bound<usize>) {
     }
 
     #[inline]
+    #[rustc_no_writable]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut Self::Output> {
         try_into_slice_range(slice.len(), self)?.get_mut(slice)
     }
@@ -1029,6 +1055,7 @@ unsafe impl<T> SliceIndex<[T]> for (ops::Bound<usize>, ops::Bound<usize>) {
     }
 
     #[inline]
+    #[rustc_no_writable]
     fn index_mut(self, slice: &mut [T]) -> &mut Self::Output {
         into_slice_range(slice.len(), self).index_mut(slice)
     }
