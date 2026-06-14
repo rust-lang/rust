@@ -1,5 +1,5 @@
 error: this creates a dangling pointer because temporary `Vec<u8>` is dropped at end of statement
-  --> $DIR/methods.rs:4:15
+  --> $DIR/methods.rs:5:15
    |
 LL |     vec![0u8].as_ptr();
    |     --------- ^^^^^^ pointer created here
@@ -17,7 +17,7 @@ LL | #![deny(dangling_pointers_from_temporaries)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this creates a dangling pointer because temporary `Vec<u8>` is dropped at end of statement
-  --> $DIR/methods.rs:6:15
+  --> $DIR/methods.rs:7:15
    |
 LL |     vec![0u8].as_mut_ptr();
    |     --------- ^^^^^^^^^^ pointer created here
@@ -29,5 +29,18 @@ LL |     vec![0u8].as_mut_ptr();
    = note: returning a pointer to a local variable will always result in a dangling pointer
    = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
 
-error: aborting due to 2 previous errors
+error: this creates a dangling pointer because temporary `Vec<u8>` is dropped at end of statement
+  --> $DIR/methods.rs:9:15
+   |
+LL |     vec![0u8].as_non_null();
+   |     --------- ^^^^^^^^^^^ pointer created here
+   |     |
+   |     this `Vec<u8>` is dropped at end of statement
+   |
+   = help: bind the `Vec<u8>` to a variable such that it outlives the pointer returned by `as_non_null`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: aborting due to 3 previous errors
 
