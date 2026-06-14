@@ -547,6 +547,23 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 && expected.starts_with("struct")
             {
                 ("`async` blocks are only allowed in Rust 2018 or later".to_string(), suggestion)
+            } else if item_str.as_str() == "void"
+                && let Some((FnKind::Fn(.., fun), ..)) = self.diag_metadata.current_function
+                && let ast::FnRetTy::Ty(ty) = &fun.sig.decl.output
+                && ty.span == item_span
+            {
+                // check for accidental use of `void` as a return type
+                let return_ty_span =
+                    self.r.tcx.sess.source_map().span_extend_to_prev_char(item_span, ')', true);
+
+                (
+                    "functions with no return value use `()`".to_string(),
+                    Some((
+                        return_ty_span,
+                        "omit the return type to return `()` implicitly",
+                        "".to_owned(),
+                    )),
+                )
             } else {
                 // check if we are in situation of typo like `True` instead of `true`.
                 let override_suggestion =
