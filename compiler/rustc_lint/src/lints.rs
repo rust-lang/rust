@@ -706,7 +706,7 @@ pub(crate) enum InvalidNullArgumentsDiag {
     #[diag(
         "calling this function with a null pointer is undefined behavior, even if the result of the function is unused"
     )]
-    #[help(
+    #[note(
         "for more information, visit <https://doc.rust-lang.org/std/ptr/index.html> and <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>"
     )]
     NullPtrInline {
@@ -716,7 +716,7 @@ pub(crate) enum InvalidNullArgumentsDiag {
     #[diag(
         "calling this function with a null pointer is undefined behavior, even if the result of the function is unused"
     )]
-    #[help(
+    #[note(
         "for more information, visit <https://doc.rust-lang.org/std/ptr/index.html> and <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>"
     )]
     NullPtrThroughBinding {
@@ -811,6 +811,9 @@ pub(crate) enum UseLetUnderscoreIgnoreSuggestion {
 // drop_forget_useless.rs
 #[derive(Diagnostic)]
 #[diag("calls to `std::mem::drop` with a reference instead of an owned value does nothing")]
+#[note(
+    "for more information about `std::mem::drop`, see <https://doc.rust-lang.org/std/mem/fn.drop.html>"
+)]
 pub(crate) struct DropRefDiag<'a> {
     pub arg_ty: Ty<'a>,
     #[label("argument has type `{$arg_ty}`")]
@@ -821,6 +824,9 @@ pub(crate) struct DropRefDiag<'a> {
 
 #[derive(Diagnostic)]
 #[diag("calls to `std::mem::drop` with a value that implements `Copy` does nothing")]
+#[note(
+    "for more information about `std::mem::drop`, see <https://doc.rust-lang.org/std/mem/fn.drop.html>"
+)]
 pub(crate) struct DropCopyDiag<'a> {
     pub arg_ty: Ty<'a>,
     #[label("argument has type `{$arg_ty}`")]
@@ -897,7 +903,7 @@ pub(crate) enum InvalidFromUtf8Diag {
 #[diag("mutation of an interior mutable `const` item with call to `{$method_name}`")]
 #[note("each usage of a `const` item creates a new temporary")]
 #[note("only the temporaries and never the original `const {$const_name}` will be modified")]
-#[help(
+#[note(
     "for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>"
 )]
 pub(crate) struct ConstItemInteriorMutationsDiag<'tcx> {
@@ -1872,10 +1878,10 @@ impl<'a> Diagnostic<'a, ()> for DropGlue<'_> {
 #[help(
     "if you truly mean to create a pointer without provenance, use `std::ptr::without_provenance_mut`"
 )]
-#[help(
+#[note(
     "for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>"
 )]
-#[help(
+#[note(
     "for more information about exposed provenance, see <https://doc.rust-lang.org/std/ptr/index.html#exposed-provenance>"
 )]
 pub(crate) struct IntegerToPtrTransmutes<'tcx> {

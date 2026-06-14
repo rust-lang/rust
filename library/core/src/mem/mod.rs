@@ -1014,21 +1014,44 @@ pub const fn replace<T>(dest: &mut T, src: T) -> T {
 /// println!("{}", *borrow);
 /// ```
 ///
-/// Integers and other types implementing [`Copy`] are unaffected by `drop`.
+/// Integers, shared reference `&T` and other types implementing [`Copy`] are unaffected by `drop`.
 ///
 /// ```
 /// # #![allow(dropping_copy_types)]
+/// # #![allow(dropping_references)]
 /// #[derive(Copy, Clone)]
 /// struct Foo(u8);
 ///
 /// let x = 1;
+/// let ref_x = &x;
 /// let y = Foo(2);
 /// drop(x); // a copy of `x` is moved and dropped
+/// drop(ref_x); // a copy of `ref_x` is moved and dropped
 /// drop(y); // a copy of `y` is moved and dropped
 ///
-/// println!("x: {}, y: {}", x, y.0); // still available
+/// println!("x: {}, ref_x: {}, y: {}", x, ref_x, y.0); // still available
 /// ```
 ///
+/// Dropping a reference never affects the value it points to. However, calling `drop` on the reference variable behaves differently:
+/// - Shared reference `&T`: It implements [`Copy`]. It is copied into `drop`,
+///   so the original reference can still be used. The value it points to is not dropped.
+/// - Mutable reference `&mut T`: It does not implement [`Copy`]. It is moved
+///   into `drop`, so the original reference cannot be used anymore. The value it points to is not dropped.
+/// ```
+/// # #![allow(dropping_references)]
+///
+/// let mut x = 42;
+///
+/// let ref_x = &x;
+/// drop(ref_x);            // `ref_x` is copied. `x` is not affected.
+/// assert_eq!(*ref_x, 42); // `ref_x` can still be used.
+/// assert_eq!(x, 42);      // `x` can still be used directly.
+///
+/// let mut_ref_x = &mut x;
+/// drop(mut_ref_x);        // `mut_ref_x` is moved. `x` is not affected.
+/// // *mut_ref_x = 24;    // Error: use of moved value.
+/// assert_eq!(x, 42);      // `x` can still be used directly.
+/// ```
 /// [`RefCell`]: crate::cell::RefCell
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
