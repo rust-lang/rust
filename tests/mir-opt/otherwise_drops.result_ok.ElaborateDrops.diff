@@ -8,8 +8,6 @@
       let _3: std::string::String;
       let mut _4: std::string::String;
 +     let mut _5: bool;
-+     let mut _6: isize;
-+     let mut _7: isize;
       scope 1 {
           debug s => _3;
       }
@@ -50,7 +48,7 @@
   
       bb5: {
 -         drop(_1) -> [return: bb6, unwind: bb9];
-+         goto -> bb16;
++         goto -> bb10;
       }
   
       bb6: {
@@ -73,36 +71,6 @@
 + 
 +     bb10: {
 +         goto -> bb6;
-+     }
-+ 
-+     bb11 (cleanup): {
-+         goto -> bb9;
-+     }
-+ 
-+     bb12 (cleanup): {
-+         goto -> bb9;
-+     }
-+ 
-+     bb13: {
-+         goto -> bb10;
-+     }
-+ 
-+     bb14: {
-+         goto -> bb10;
-+     }
-+ 
-+     bb15 (cleanup): {
-+         goto -> bb9;
-+     }
-+ 
-+     bb16: {
-+         _6 = discriminant(_1);
-+         switchInt(move _6) -> [0: bb13, otherwise: bb14];
-+     }
-+ 
-+     bb17 (cleanup): {
-+         _7 = discriminant(_1);
-+         switchInt(move _7) -> [0: bb11, otherwise: bb15];
       }
   }
   
