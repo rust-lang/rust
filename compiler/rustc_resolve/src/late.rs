@@ -286,7 +286,8 @@ impl RibKind<'_> {
 #[derive(Debug)]
 pub(crate) struct Rib<'ra, R = Res> {
     pub bindings: FxIndexMap<Ident, R>,
-    pub patterns_with_skipped_bindings: UnordMap<DefId, Vec<(Span, Result<(), ErrorGuaranteed>)>>,
+    pub patterns_with_skipped_bindings:
+        UnordMap<DefId, Vec<(Span, Option<Span>, Result<(), ErrorGuaranteed>)>>,
     pub kind: RibKind<'ra>,
 }
 
@@ -4325,6 +4326,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         .push((
                             pat.span,
                             match rest {
+                                ast::PatFieldsRest::Rest(span) => Some(*span),
+                                _ => None,
+                            },
+                            match rest {
                                 ast::PatFieldsRest::Recovered(guar) => Err(*guar),
                                 _ => Ok(()),
                             },
@@ -5633,6 +5638,18 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
                     .filter(|param| matches!(param.kind, ast::GenericParamKind::Lifetime { .. }))
                     .count();
                 self.r.item_generics_num_lifetimes.insert(def_id, count);
+                let type_or_const_count = generics
+                    .params
+                    .iter()
+                    .filter(|param| {
+                        matches!(
+                            param.kind,
+                            ast::GenericParamKind::Type { .. }
+                                | ast::GenericParamKind::Const { .. }
+                        )
+                    })
+                    .count();
+                self.r.item_generics_num_type_or_const_params.insert(def_id, type_or_const_count);
             }
 
             ItemKind::ForeignMod(ForeignMod { items, .. }) => {

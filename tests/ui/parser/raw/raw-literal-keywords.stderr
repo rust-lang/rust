@@ -27,12 +27,22 @@ error[E0425]: cannot find value `r#struct` in this scope
    |
 LL |     let _ = r#struct;
    |             ^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named tuple variant
+   |
+LL + use std::mem::type_info::TypeKind::Struct;
+   |
 
 error[E0425]: cannot find value `union` in this scope
   --> $DIR/raw-literal-keywords.rs:22:13
    |
 LL |     let _ = r#union;
    |             ^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named tuple variant
+   |
+LL + use std::mem::type_info::TypeKind::Union;
+   |
 
 error: aborting due to 6 previous errors
 

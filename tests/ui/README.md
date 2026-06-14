@@ -818,6 +818,9 @@ Exercises let-else constructs.
 
 Exercises of the lexer.
 
+## `tests/ui/libstd-case-typo/`
+Tests for import suggestions with typo tolerance.
+
 ## `tests/ui/lifetimes/`
 
 Broad directory on lifetimes, including proper specifiers, lifetimes not living long enough, or undeclared lifetime names.
