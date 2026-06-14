@@ -1,5 +1,5 @@
 use rustc_ast::{ExprKind, ItemKind, MetaItem, PatKind, Safety, ast};
-use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_expand::base::{Annotatable, ExtCtxt, SpecialDerives};
 use rustc_span::{Ident, Span, sym};
 use thin_vec::{ThinVec, thin_vec};
 
@@ -43,7 +43,7 @@ pub(crate) fn expand_deriving_partial_ord(
     };
 
     let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
-    let has_derive_ord = cx.resolver.has_derive_ord(container_id);
+    let has_derive_ord = cx.resolver.has_derives(container_id, SpecialDerives::ORD);
     let is_simple_candidate = |params: &ThinVec<ast::GenericParam>| -> bool {
         has_derive_ord
             && !params.iter().any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. }))

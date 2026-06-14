@@ -4004,6 +4004,7 @@ dependencies = [
 name = "rustc_expand"
 version = "0.0.0"
 dependencies = [
+ "bitflags",
  "rustc_ast",
  "rustc_ast_passes",
  "rustc_ast_pretty",

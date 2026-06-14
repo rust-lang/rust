@@ -1115,10 +1115,8 @@ pub trait ResolverExpand {
     fn check_unused_macros(&mut self);
 
     // Resolver interfaces for specific built-in macros.
-    /// Does `#[derive(...)]` attribute with the given `ExpnId` have built-in `Copy` inside it?
-    fn has_derive_copy(&self, expn_id: LocalExpnId) -> bool;
-    /// Does `#[derive(...)]` attribute with the given `ExpnId` have built-in `Ord` inside it?
-    fn has_derive_ord(&self, expn_id: LocalExpnId) -> bool;
+    /// Does `#[derive(...)]` attribute with the given `ExpnId` have the given special built-in derives inside it?
+    fn has_derives(&self, expn_id: LocalExpnId, derives: SpecialDerives) -> bool;
     /// Resolve paths inside the `#[derive(...)]` attribute with the given `ExpnId`.
     fn resolve_derives(
         &mut self,
@@ -1386,6 +1384,17 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn check_unused_macros(&mut self) {
         self.resolver.check_unused_macros();
+    }
+}
+
+bitflags::bitflags! {
+    /// Set of special built-in derives that can affect expansion of other derives.
+    /// E.g., deriving `Copy` affects how `Clone` is derived,
+    /// and deriving `Ord` affects how `PartialOrd` is derived.
+    #[derive(PartialEq, Eq, Clone, Copy)]
+    pub struct SpecialDerives: u8 {
+        const COPY = 1 << 0;
+        const ORD  = 1 << 1;
     }
 }
 
