@@ -48,9 +48,6 @@ fn new_cc_build(build: &Build, target: TargetSelection) -> cc::Build {
             if target.is_msvc() {
                 cfg.static_crt(true);
             }
-            if target.contains("musl") {
-                cfg.static_flag(true);
-            }
         }
     }
     cfg
