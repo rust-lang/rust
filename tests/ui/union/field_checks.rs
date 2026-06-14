@@ -1,3 +1,9 @@
+//@ reference: items.union.field-restrictions
+//@ reference: items.union.field-copy
+//@ reference: items.union.field-references
+//@ reference: items.union.field-manually-drop
+//@ reference: items.union.field-tuple
+//@ reference: type.union.constraint
 use std::mem::ManuallyDrop;
 
 union U1 { // OK
