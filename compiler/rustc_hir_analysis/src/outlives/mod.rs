@@ -17,7 +17,7 @@ pub(super) fn inferred_outlives_of(
             let crate_map = tcx.inferred_outlives_crate(());
             crate_map.predicates.get(&item_def_id.to_def_id()).copied().unwrap_or(&[])
         }
-        DefKind::TyAlias if tcx.type_alias_is_lazy(item_def_id) => {
+        DefKind::TyAlias => {
             let crate_map = tcx.inferred_outlives_crate(());
             crate_map.predicates.get(&item_def_id.to_def_id()).copied().unwrap_or(&[])
         }

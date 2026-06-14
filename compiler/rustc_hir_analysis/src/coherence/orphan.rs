@@ -84,6 +84,8 @@ pub(crate) fn orphan_check_impl(
 
     if tcx.trait_is_auto(trait_def_id) {
         let self_ty = trait_ref.self_ty();
+        // FIXME(lazy_type_alias): Audit.
+        let self_ty = tcx.expand_free_alias_tys(self_ty);
 
         // If the impl is in the same crate as the auto-trait, almost anything
         // goes.
@@ -190,7 +192,7 @@ pub(crate) fn orphan_check_impl(
                     ty::Projection { .. } => "associated type",
                     // type Foo = (impl Sized, bool)
                     // impl AutoTrait for Foo {}
-                    ty::Free { .. } => "type alias",
+                    ty::Free { .. } => bug!("unexpected free alias type"),
                     // type Opaque = impl Trait;
                     // impl AutoTrait for Opaque {}
                     ty::Opaque { .. } => "opaque type",
