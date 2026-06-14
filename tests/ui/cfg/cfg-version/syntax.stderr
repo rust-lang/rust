@@ -133,7 +133,7 @@ note: found an item that was configured out
   --> $DIR/syntax.rs:32:4
    |
 LL | #[cfg(version = "1.43")]
-   |       ---------------- the item is gated behind the `1.43` feature
+   |       ---------------- the item is gated behind `version = "1.43"`
 LL |
 LL | fn key_value_form() {}
    |    ^^^^^^^^^^^^^^

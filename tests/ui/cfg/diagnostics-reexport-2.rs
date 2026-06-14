@@ -2,11 +2,11 @@
 
 mod original {
     #[cfg(false)]
-    //~^ NOTE the item is gated here
-    //~| NOTE the item is gated here
-    //~| NOTE the item is gated here
-    //~| NOTE the item is gated here
-    //~| NOTE the item is gated here
+    //~^ NOTE the item is disabled
+    //~| NOTE the item is disabled
+    //~| NOTE the item is disabled
+    //~| NOTE the item is disabled
+    //~| NOTE the item is disabled
     pub mod gated {
     //~^ NOTE found an item that was configured out
     //~| NOTE found an item that was configured out

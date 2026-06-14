@@ -105,7 +105,7 @@ LL | #[std::test]
 note: found an item that was configured out
   --> $SRC_DIR/std/src/lib.rs:LL:COL
    |
-   = note: the item is gated here
+   = note: the item is gated behind `test`
 
 error: aborting due to 16 previous errors
 

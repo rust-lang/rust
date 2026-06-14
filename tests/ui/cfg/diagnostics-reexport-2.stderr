@@ -8,7 +8,7 @@ note: found an item that was configured out
   --> $DIR/diagnostics-reexport-2.rs:10:13
    |
 LL |     #[cfg(false)]
-   |           ----- the item is gated here
+   |           ----- the item is disabled
 ...
 LL |     pub mod gated {
    |             ^^^^^
@@ -23,7 +23,7 @@ note: found an item that was configured out
   --> $DIR/diagnostics-reexport-2.rs:10:13
    |
 LL |     #[cfg(false)]
-   |           ----- the item is gated here
+   |           ----- the item is disabled
 ...
 LL |     pub mod gated {
    |             ^^^^^
@@ -38,7 +38,7 @@ note: found an item that was configured out
   --> $DIR/diagnostics-reexport-2.rs:10:13
    |
 LL |     #[cfg(false)]
-   |           ----- the item is gated here
+   |           ----- the item is disabled
 ...
 LL |     pub mod gated {
    |             ^^^^^
@@ -53,7 +53,7 @@ note: found an item that was configured out
   --> $DIR/diagnostics-reexport-2.rs:10:13
    |
 LL |     #[cfg(false)]
-   |           ----- the item is gated here
+   |           ----- the item is disabled
 ...
 LL |     pub mod gated {
    |             ^^^^^
@@ -68,7 +68,7 @@ note: found an item that was configured out
   --> $DIR/diagnostics-reexport-2.rs:10:13
    |
 LL |     #[cfg(false)]
-   |           ----- the item is gated here
+   |           ----- the item is disabled
 ...
 LL |     pub mod gated {
    |             ^^^^^

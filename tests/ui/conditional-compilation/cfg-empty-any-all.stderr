@@ -8,7 +8,7 @@ note: found an item that was configured out
   --> $DIR/cfg-empty-any-all.rs:4:8
    |
 LL | #[cfg(any())]  // Equivalent to cfg(false)
-   |          -- the item is gated here
+   |          -- the item is disabled
 LL | struct Disabled;
    |        ^^^^^^^^
 help: consider importing this unit variant
