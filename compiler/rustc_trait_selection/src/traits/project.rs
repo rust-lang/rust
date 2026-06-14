@@ -1650,9 +1650,6 @@ fn confirm_closure_candidate<'cx, 'tcx>(
     let closure_sig = match *self_ty.kind() {
         ty::Closure(_, args) => args.as_closure().sig(),
 
-        // Construct a "normal" `FnOnce` signature for coroutine-closure. This is
-        // basically duplicated with the `AsyncFnOnce::CallOnce` confirmation, but
-        // I didn't see a good way to unify those.
         ty::CoroutineClosure(def_id, args) => {
             let args = args.as_coroutine_closure();
             args.coroutine_closure_sig().map_bound(|sig| {
