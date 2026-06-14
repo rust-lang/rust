@@ -476,12 +476,14 @@ fn expr_to_lit<'sess>(
 
         // Suggest adding quotation marks to turn an identifier into a string literal
         if let ExprKind::Path(None, ref path) = expr.kind
-            && let [segment] = path.segments.as_slice()
+            && let [_] = path.segments.as_slice()
         {
-            err.span_suggestion(
-                expr.span,
-                "try adding quotation marks",
-                &format!("\"{}\"", segment.ident),
+            err.multipart_suggestion(
+                "you might have meant to write a string literal",
+                vec![
+                    (expr.span.shrink_to_lo(), "\"".to_string()),
+                    (expr.span.shrink_to_hi(), "\"".to_string()),
+                ],
                 Applicability::MaybeIncorrect,
             );
         }
