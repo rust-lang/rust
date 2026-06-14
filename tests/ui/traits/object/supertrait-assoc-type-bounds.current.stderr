@@ -1,0 +1,9 @@
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/supertrait-assoc-type-bounds.rs:21:39
+   |
+LL |     let _y: String = unchecked_copy::<dyn Sub<Assoc = String>>(&x);
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

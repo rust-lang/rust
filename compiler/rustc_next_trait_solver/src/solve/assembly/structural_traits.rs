@@ -886,6 +886,12 @@ where
     let cx = ecx.cx();
     let trait_ref = ecx.instantiate_binder_with_infer(trait_ref);
     let mut requirements = vec![];
+    // We use `explicit_implied_predicates_of` instead of `explicit_super_predicates_of`
+    // to also include associated type bounds from supertrait constraints.
+    // For example, `trait Sub: Super<Assoc: Copy>` expands to both `Self: Super` and
+    // `<Self as Super>::Assoc: Copy`. Both need to be checked for the trait object
+    // to be well-formed.
+    //
     // Elaborating all supertrait outlives obligations here is not soundness critical,
     // since if we just used the unelaborated set, then the transitive supertraits would
     // be reachable when proving the former. However, since we elaborate all supertrait
@@ -895,7 +901,7 @@ where
     // make impls coinductive always, since they'll always need to prove their supertraits.
     requirements.extend(elaborate::elaborate(
         cx,
-        cx.explicit_super_predicates_of(trait_ref.def_id)
+        cx.explicit_implied_predicates_of(trait_ref.def_id.into())
             .iter_instantiated(cx, trait_ref.args)
             .map(Unnormalized::skip_norm_wip)
             .map(|(pred, _)| pred),
