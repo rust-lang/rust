@@ -130,6 +130,7 @@ symbols! {
         ContractRequires:   "contract_requires",
         Default:            "default",
         MacroRules:         "macro_rules",
+        Only:               "only",
         Raw:                "raw",
         Reuse:              "reuse",
         Safe:               "safe",
