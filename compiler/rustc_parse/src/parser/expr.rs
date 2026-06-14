@@ -1938,7 +1938,8 @@ impl<'a> Parser<'a> {
             let lexpr = self.parse_expr_labeled(label, true)?;
             self.dcx().emit_err(errors::LabeledLoopInBreak {
                 span: lexpr.span,
-                sub: errors::WrapInParentheses::Expression {
+                sub: errors::WrapInParentheses::NonMacro {
+                    kind: errors::WrapInParenthesesNodeKind::Expression,
                     left: lexpr.span.shrink_to_lo(),
                     right: lexpr.span.shrink_to_hi(),
                 },

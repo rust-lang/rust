@@ -486,6 +486,7 @@ macro_rules! common_visitor_and_walkers {
             UnsafeBinderTy,
             UnsafeSource,
             UseTreeKind,
+            ViewKind,
             VisibilityKind,
             WhereBoundPredicate,
             WhereClause,

@@ -2563,6 +2563,8 @@ pub enum TyKind {
     /// Usually not written directly in user code but indirectly via the macro
     /// `core::field::field_of!(...)`.
     FieldOf(Box<Ty>, Option<Ident>, Ident),
+    /// A view of a type. `T.{ field_1, field_2 }`.
+    View(Box<Ty>, #[visitable(ignore)] ThinVec<Ident>),
     /// Sometimes we need a dummy value when no error has occurred.
     Dummy,
     /// Placeholder for a kind that has failed to be defined.
@@ -2572,6 +2574,17 @@ pub enum TyKind {
 impl TyKind {
     pub fn is_implicit_self(&self) -> bool {
         matches!(self, TyKind::ImplicitSelf)
+    }
+
+    pub fn as_implicit_self_maybe_wrapped_in_view(&self) -> Option<ViewKind> {
+        match self {
+            TyKind::ImplicitSelf => Some(ViewKind::Full),
+            TyKind::View(ty, fields) if ty.kind.is_implicit_self() => {
+                let fields = fields.clone();
+                Some(ViewKind::Partial { fields })
+            }
+            _ => None,
+        }
     }
 
     pub fn is_unit(&self) -> bool {
@@ -2928,6 +2941,12 @@ pub struct Param {
 ///
 /// E.g., `&mut self` as in `fn foo(&mut self)`.
 #[derive(Clone, Encodable, Decodable, Debug)]
+pub struct SelfParam {
+    pub kind: SelfKind,
+    pub view: ViewKind,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub enum SelfKind {
     /// `self`, `mut self`
     Value(Mutability),
@@ -2953,28 +2972,46 @@ impl SelfKind {
     }
 }
 
-pub type ExplicitSelf = Spanned<SelfKind>;
+/// Represents how a type is viewed.
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub enum ViewKind {
+    /// `T`. All the fields can be observed.
+    Full,
+    /// `T.{ foo, bar }`. Only `foo` and `bar` can be observed.
+    // FIXME(scrabsha): in the future, we may want to express more complex situations, such as
+    // mutably observing some fields while immutably observing others. Something like
+    // `T.{ foo, mut bar }`.
+    Partial {
+        #[visitable(ignore)]
+        fields: ThinVec<Ident>,
+    },
+}
+
+pub type ExplicitSelf = Spanned<SelfParam>;
 
 impl Param {
     /// Attempts to cast parameter to `ExplicitSelf`.
     pub fn to_self(&self) -> Option<ExplicitSelf> {
         if let PatKind::Ident(BindingMode(ByRef::No, mutbl), ident, _) = self.pat.kind {
             if ident.name == kw::SelfLower {
-                return match self.ty.kind {
-                    TyKind::ImplicitSelf => Some(respan(self.pat.span, SelfKind::Value(mutbl))),
-                    TyKind::Ref(lt, MutTy { ref ty, mutbl }) if ty.kind.is_implicit_self() => {
-                        Some(respan(self.pat.span, SelfKind::Region(lt, mutbl)))
+                let (kind, view, span) = match self.ty.kind {
+                    ref kind if let Some(view) = kind.as_implicit_self_maybe_wrapped_in_view() => {
+                        (SelfKind::Value(mutbl), view, self.pat.span)
+                    }
+                    TyKind::Ref(lt, MutTy { ref ty, mutbl })
+                        if let Some(view) = ty.kind.as_implicit_self_maybe_wrapped_in_view() =>
+                    {
+                        (SelfKind::Region(lt, mutbl), view, self.pat.span)
                     }
                     TyKind::PinnedRef(lt, MutTy { ref ty, mutbl })
-                        if ty.kind.is_implicit_self() =>
+                        if let Some(view) = ty.kind.as_implicit_self_maybe_wrapped_in_view() =>
                     {
-                        Some(respan(self.pat.span, SelfKind::Pinned(lt, mutbl)))
+                        (SelfKind::Pinned(lt, mutbl), view, self.pat.span)
                     }
-                    _ => Some(respan(
-                        self.pat.span.to(self.ty.span),
-                        SelfKind::Explicit(self.ty.clone(), mutbl),
-                    )),
+                    _ => (SelfKind::Explicit(self.ty.clone(), mutbl), ViewKind::Full, self.ty.span),
                 };
+                let param = respan(span, SelfParam { view, kind });
+                return Some(param);
             }
         }
         None
@@ -2992,13 +3029,21 @@ impl Param {
     /// Builds a `Param` object from `ExplicitSelf`.
     pub fn from_self(attrs: AttrVec, eself: ExplicitSelf, eself_ident: Ident) -> Param {
         let span = eself.span.to(eself_ident.span);
-        let infer_ty = Box::new(Ty {
+        let mut infer_ty = Box::new(Ty {
             id: DUMMY_NODE_ID,
             kind: TyKind::ImplicitSelf,
             span: eself_ident.span,
             tokens: None,
         });
-        let (mutbl, ty) = match eself.node {
+        if let ViewKind::Partial { fields } = eself.node.view {
+            infer_ty = Box::new(Ty {
+                id: DUMMY_NODE_ID,
+                kind: TyKind::View(infer_ty, fields),
+                span: eself_ident.span,
+                tokens: None,
+            });
+        }
+        let (mutbl, ty) = match eself.node.kind {
             SelfKind::Explicit(ty, mutbl) => (mutbl, ty),
             SelfKind::Value(mutbl) => (mutbl, infer_ty),
             SelfKind::Region(lt, mutbl) => (
@@ -3895,13 +3940,9 @@ pub struct Fn {
 impl Fn {
     pub fn is_pin_drop_sugar(&self) -> bool {
         self.ident.name == sym::drop
-            && self
-                .sig
-                .decl
-                .inputs
-                .first()
-                .and_then(|param| param.to_self())
-                .is_some_and(|eself| matches!(eself.node, SelfKind::Pinned(None, Mutability::Mut)))
+            && self.sig.decl.inputs.first().and_then(|param| param.to_self()).is_some_and(|eself| {
+                matches!(eself.node.kind, SelfKind::Pinned(None, Mutability::Mut))
+            })
     }
 }
 

@@ -1058,11 +1058,9 @@ pub(crate) struct LabeledLoopInBreak {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum WrapInParentheses {
-    #[multipart_suggestion(
-        "wrap the expression in parentheses",
-        applicability = "machine-applicable"
-    )]
-    Expression {
+    #[multipart_suggestion("wrap the {$kind} in parentheses", applicability = "machine-applicable")]
+    NonMacro {
+        kind: WrapInParenthesesNodeKind,
         #[suggestion_part(code = "(")]
         left: Span,
         #[suggestion_part(code = ")")]
@@ -1078,6 +1076,22 @@ pub(crate) enum WrapInParentheses {
         #[suggestion_part(code = ")")]
         right: Span,
     },
+}
+
+pub(crate) enum WrapInParenthesesNodeKind {
+    Expression,
+    Type,
+}
+
+impl IntoDiagArg for WrapInParenthesesNodeKind {
+    fn into_diag_arg(self, _path: &mut Option<PathBuf>) -> DiagArgValue {
+        let str = match self {
+            WrapInParenthesesNodeKind::Expression => "expression",
+            WrapInParenthesesNodeKind::Type => "type",
+        };
+
+        DiagArgValue::Str(Cow::Borrowed(str))
+    }
 }
 
 #[derive(Diagnostic)]

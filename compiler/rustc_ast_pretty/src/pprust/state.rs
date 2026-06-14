@@ -17,7 +17,7 @@ use rustc_ast::util::comments::{Comment, CommentStyle};
 use rustc_ast::{
     self as ast, AttrArgs, BindingMode, BlockCheckMode, ByRef, DelimArgs, GenericArg, GenericBound,
     InlineAsmOperand, InlineAsmOptions, InlineAsmRegOrRegClass, InlineAsmTemplatePiece, PatKind,
-    RangeEnd, RangeSyntax, Safety, SelfKind, Term, attr,
+    RangeEnd, RangeSyntax, Safety, SelfKind, Term, ViewKind, attr,
 };
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMap;
@@ -1259,6 +1259,20 @@ impl<'a> State<'a> {
         }
     }
 
+    fn print_view(&mut self, fields: &[Ident]) {
+        self.word(".{");
+
+        if !fields.is_empty() {
+            self.space();
+            self.commasep(Consistent, fields, |s, field| {
+                s.print_ident(*field);
+            });
+            self.space();
+        }
+
+        self.word("}");
+    }
+
     pub fn print_assoc_item_constraint(&mut self, constraint: &ast::AssocItemConstraint) {
         self.print_ident(constraint.ident);
         if let Some(args) = constraint.gen_args.as_ref() {
@@ -1440,6 +1454,10 @@ impl<'a> State<'a> {
 
                 self.end(ib);
                 self.pclose();
+            }
+            ast::TyKind::View(ty, fields) => {
+                self.print_type(ty);
+                self.print_view(fields);
             }
         }
         self.end(ib);
@@ -2057,7 +2075,7 @@ impl<'a> State<'a> {
     }
 
     fn print_explicit_self(&mut self, explicit_self: &ast::ExplicitSelf) {
-        match &explicit_self.node {
+        match &explicit_self.node.kind {
             SelfKind::Value(m) => {
                 self.print_mutability(*m, false);
                 self.word("self")
@@ -2081,6 +2099,10 @@ impl<'a> State<'a> {
                 self.word_space(":");
                 self.print_type(typ)
             }
+        }
+
+        if let ViewKind::Partial { fields } = &explicit_self.node.view {
+            self.print_view(fields);
         }
     }
 

@@ -429,7 +429,8 @@ impl<'a> Parser<'a> {
                 self.dcx().emit_err(errors::InvalidExpressionInLetElse {
                     span: init.span,
                     operator: op.node.as_str(),
-                    sugg: errors::WrapInParentheses::Expression {
+                    sugg: errors::WrapInParentheses::NonMacro {
+                        kind: errors::WrapInParenthesesNodeKind::Expression,
                         left: init.span.shrink_to_lo(),
                         right: init.span.shrink_to_hi(),
                     },
@@ -450,9 +451,18 @@ impl<'a> Parser<'a> {
                 ),
                 TrailingBrace::Expr(expr) => (
                     expr.span,
-                    errors::WrapInParentheses::Expression {
+                    errors::WrapInParentheses::NonMacro {
+                        kind: errors::WrapInParenthesesNodeKind::Expression,
                         left: expr.span.shrink_to_lo(),
                         right: expr.span.shrink_to_hi(),
+                    },
+                ),
+                TrailingBrace::Type(ty) => (
+                    ty.span,
+                    errors::WrapInParentheses::NonMacro {
+                        kind: errors::WrapInParenthesesNodeKind::Type,
+                        left: ty.span.shrink_to_lo(),
+                        right: ty.span.shrink_to_hi(),
                     },
                 ),
             };
