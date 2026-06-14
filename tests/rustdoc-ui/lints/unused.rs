@@ -1,3 +1,5 @@
+//@ revisions: unused_attr unused_cli
+//@[unused_cli] compile-flags: -Dunused_imports
 //@ check-pass
 
 // This test purpose is to check that unused_imports lint isn't fired
@@ -5,7 +7,7 @@
 // "everybody-loops" which replaces parts of code with "loop {}" to get
 // huge performance improvements.
 
-#![deny(unused_imports)]
+#![cfg_attr(unused_attr, deny(unused_imports))]
 
 use std::fs::File;
 
