@@ -788,6 +788,17 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             1 << 6,
         );
     }
+
+    pub(crate) fn is_sanitizer_type_ignored(
+        &self,
+        sanitizer: &std::ffi::CStr,
+        fn_abi: &rustc_target::callconv::FnAbi<'tcx, Ty<'tcx>>,
+    ) -> bool {
+        self.sanitizer_ignorelist.as_ref().is_some_and(|ignorelist| {
+            let type_name = crate::common::type_name_for_ignore_list(self.tcx, fn_abi);
+            ignorelist.contains_prefix(sanitizer, c"type", &type_name)
+        })
+    }
 }
 impl<'ll> SimpleCx<'ll> {
     pub(crate) fn get_type_of_global(&self, val: &'ll Value) -> &'ll Type {

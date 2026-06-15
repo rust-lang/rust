@@ -31,7 +31,7 @@ use tracing::{debug, instrument};
 
 use crate::abi::FnAbiLlvmExt;
 use crate::attributes;
-use crate::common::{type_name_for_ignore_list, Funclet};
+use crate::common::Funclet;
 use crate::context::{CodegenCx, FullCx, GenericCx, SCx};
 use crate::llvm::{
     self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, FromGeneric, GEPNoWrapFlags, Metadata, TRUE,
@@ -1887,14 +1887,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
                 options.insert(cfi::TypeIdOptions::NORMALIZE_INTEGERS);
             }
 
-            let type_name = type_name_for_ignore_list(self.tcx, fn_abi);
-
-            if self
-                .cx
-                .sanitizer_ignorelist
-                .as_ref()
-                .is_some_and(|ignorelist| ignorelist.contains_prefix(c"cfi", c"type", &type_name))
-            {
+            if self.cx.is_sanitizer_type_ignored(c"cfi", fn_abi) {
                 return;
             }
 
@@ -1938,46 +1931,41 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         llfn: &'ll Value,
     ) -> Option<llvm::OperandBundleBox<'ll>> {
         let is_indirect_call = unsafe { llvm::LLVMRustIsNonGVFunctionPointerTy(llfn) };
-        let kcfi_bundle =
-            if self.tcx.sess.is_sanitizer_kcfi_enabled()
-                && let Some(fn_abi) = fn_abi
-                && is_indirect_call
+        let kcfi_bundle = if self.tcx.sess.is_sanitizer_kcfi_enabled()
+            && let Some(fn_abi) = fn_abi
+            && is_indirect_call
+        {
+            if let Some(fn_attrs) = fn_attrs
+                && fn_attrs.sanitizers.disabled.contains(SanitizerSet::KCFI)
             {
-                if let Some(fn_attrs) = fn_attrs
-                    && fn_attrs.sanitizers.disabled.contains(SanitizerSet::KCFI)
-                {
-                    return None;
-                }
-                if crate::llvm::HasStringAttribute(self.llfn(), "no-sanitize-kcfi") {
-                    return None;
-                }
+                return None;
+            }
+            if crate::llvm::HasStringAttribute(self.llfn(), "no-sanitize-kcfi") {
+                return None;
+            }
 
-                let mut options = kcfi::TypeIdOptions::empty();
-                if self.tcx.sess.is_sanitizer_cfi_generalize_pointers_enabled() {
-                    options.insert(kcfi::TypeIdOptions::GENERALIZE_POINTERS);
-                }
-                if self.tcx.sess.is_sanitizer_cfi_normalize_integers_enabled() {
-                    options.insert(kcfi::TypeIdOptions::NORMALIZE_INTEGERS);
-                }
+            let mut options = kcfi::TypeIdOptions::empty();
+            if self.tcx.sess.is_sanitizer_cfi_generalize_pointers_enabled() {
+                options.insert(kcfi::TypeIdOptions::GENERALIZE_POINTERS);
+            }
+            if self.tcx.sess.is_sanitizer_cfi_normalize_integers_enabled() {
+                options.insert(kcfi::TypeIdOptions::NORMALIZE_INTEGERS);
+            }
 
-                let type_name = type_name_for_ignore_list(self.tcx, fn_abi);
+            if self.cx.is_sanitizer_type_ignored(c"kcfi", fn_abi) {
+                return None;
+            }
 
-                if self.cx.sanitizer_ignorelist.as_ref().is_some_and(|ignorelist| {
-                    ignorelist.contains_prefix(c"kcfi", c"type", &type_name)
-                }) {
-                    return None;
-                }
-
-                let kcfi_typeid = if let Some(instance) = instance {
-                    kcfi::typeid_for_instance(self.tcx, instance, options)
-                } else {
-                    kcfi::typeid_for_fnabi(self.tcx, fn_abi, options)
-                };
-
-                Some(llvm::OperandBundleBox::new("kcfi", &[self.const_u32(kcfi_typeid)]))
+            let kcfi_typeid = if let Some(instance) = instance {
+                kcfi::typeid_for_instance(self.tcx, instance, options)
             } else {
-                None
+                kcfi::typeid_for_fnabi(self.tcx, fn_abi, options)
             };
+
+            Some(llvm::OperandBundleBox::new("kcfi", &[self.const_u32(kcfi_typeid)]))
+        } else {
+            None
+        };
         kcfi_bundle
     }
 

@@ -25,7 +25,7 @@ use tracing::debug;
 
 use crate::abi::FnAbiLlvmExt;
 use crate::attributes;
-use crate::common::{type_name_for_ignore_list, AsCCharPtr};
+use crate::common::AsCCharPtr;
 use crate::context::{CodegenCx, GenericCx, SCx, SimpleCx};
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, FromGeneric, Type, Value, Visibility};
@@ -193,10 +193,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         if self.tcx.sess.is_sanitizer_cfi_enabled()
             && !crate::llvm::HasStringAttribute(llfn, "no-sanitize-cfi")
         {
-            let type_name = type_name_for_ignore_list(self.tcx, fn_abi);
-            let ignored = self.sanitizer_ignorelist.as_ref().is_some_and(|ignorelist| {
-                ignorelist.contains_prefix(c"cfi", c"type", &type_name)
-            });
+            let ignored = self.is_sanitizer_type_ignored(c"cfi", fn_abi);
 
             if !ignored {
                 if let Some(instance) = instance {
@@ -243,12 +240,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 options.insert(kcfi::TypeIdOptions::NORMALIZE_INTEGERS);
             }
 
-            let type_name = type_name_for_ignore_list(self.tcx, fn_abi);
-
-            let ignored = self
-                .sanitizer_ignorelist
-                .as_ref()
-                .is_some_and(|l| l.contains_prefix(c"kcfi", c"type", &type_name));
+            let ignored = self.is_sanitizer_type_ignored(c"kcfi", fn_abi);
 
             if !ignored {
                 let kcfi_typeid = if let Some(instance) = instance {
