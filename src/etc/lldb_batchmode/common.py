@@ -100,7 +100,7 @@ def from_dict(ty: type[Any], data: JsonType):
         if isinstance(val_ty, str):
             val_ty = annot_to_ty(val_ty)
 
-        if val_ty is Variable or val_ty is Child or val_ty is Field:
+        if val_ty in [Variable, Child, Type, Field]:
             return {k: from_dict(val_ty, data[k]) for k in data.keys()}
 
     # map dict -> dataclass, recursing for each field
@@ -142,8 +142,7 @@ class Field:
     type: str
     """The fully qualified name of the field's type. Full type information should be looked up
     via `TargetData.types`"""
-    offset: int
-    """In bytes"""
+    offset: ByteSize
 
 
 @dataclass(slots=True)
@@ -250,7 +249,7 @@ class TargetData:
     dictionary mapping variable names to their respective test data."""
 
 
-@dataclass(slots=True, init=False)
+@dataclass(slots=True)
 class TestData:
     """
     Top-level container for all test data.
