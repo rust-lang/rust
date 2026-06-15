@@ -1,0 +1,84 @@
+- // MIR for `aggregate_swap` before MoveElimination
++ // MIR for `aggregate_swap` after MoveElimination
+  
+  fn aggregate_swap(_1: u8, _2: u8) -> (u8, u8) {
+      debug x => _1;
+      debug y => _2;
+      let mut _0: (u8, u8);
+      let mut _3: (u8, u8);
+      let mut _4: u8;
+      let mut _5: u8;
+      let mut _8: u8;
+      let mut _9: u8;
++     let mut _10: u8;
+      scope 1 {
+-         debug pair => _3;
++         debug pair => _0;
+          let _6: u8;
+          scope 2 {
+-             debug a => _6;
++             debug a => _9;
+              let _7: u8;
+              scope 3 {
+-                 debug b => _7;
++                 debug b => (_0.1: u8);
+              }
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_3);
+-         StorageLive(_4);
+-         _4 = copy _1;
+-         StorageLive(_5);
+-         _5 = copy _2;
+-         _3 = (move _4, move _5);
+-         StorageDead(_5);
+-         StorageDead(_4);
+-         StorageLive(_6);
+-         _6 = copy (_3.0: u8);
+-         StorageLive(_7);
+-         _7 = copy (_3.1: u8);
+-         StorageLive(_8);
+-         _8 = copy _7;
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         _0 = (move _1, move _2);
++         nop;
++         nop;
++         nop;
+          StorageLive(_9);
+-         _9 = copy _6;
+-         _3 = (move _8, move _9);
++         _9 = copy (_0.0: u8);
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         StorageLive(_10);
++         _10 = no_retag move (_0.1: u8);
++         (_0.0: u8) = no_retag move _10;
++         (_0.1: u8) = no_retag move _9;
++         nop;
++         StorageDead(_10);
+          StorageDead(_9);
+-         StorageDead(_8);
+-         _0 = copy _3;
+-         StorageDead(_7);
+-         StorageDead(_6);
+-         StorageDead(_3);
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
+          return;
+      }
+  }
+  
