@@ -81,6 +81,13 @@ fn generic_element_array<T>(value: Box<[T; 10]>) -> Box<[T; 10]> {
     value
 }
 
+// lint: the size of `Vec<T>` is known regardless of the generic element type
+#[expect(clippy::box_collection)]
+fn generic_vec<T>(value: Box<Vec<T>>) -> Box<Vec<T>> {
+    //~^ unnecessary_box_returns
+    value
+}
+
 fn main() {
     // don't lint: this is a closure
     let a = || -> Box<usize> { Box::new(5) };
