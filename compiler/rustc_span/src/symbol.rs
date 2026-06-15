@@ -1454,6 +1454,7 @@ symbols! {
         old_name,
         omit_gdb_pretty_printer_section,
         on,
+        on_broken_pipe,
         on_const,
         on_move,
         on_type_error,
