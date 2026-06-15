@@ -1267,3 +1267,18 @@ pub(crate) struct GlobOrListDelegationUnusedTargetExpr {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("unknown parameter `{$name}`")]
+#[help(r#"expect either a generic argument name, {"`{This}`"}, {"`{Expected}`"} or {"`{Found}`"} as format argument"#)]
+pub(crate) struct OnTypeErrorMalformedFormatLiterals {
+    pub name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "`#[diagnostic::on_type_error]` only supports exactly one ADT generic parameter, but found `{$count}`"
+)]
+pub(crate) struct OnTypeErrorNotExactlyOneGeneric {
+    pub count: usize,
+}

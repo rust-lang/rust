@@ -21,7 +21,12 @@ cfg_select! {
     }
 }
 
+#[cfg(target_os = "linux")]
+mod pidfd;
+
 pub use imp::{ExitStatus, ExitStatusError, Process};
+#[cfg(target_os = "linux")]
+pub use pidfd::PidFd;
 
 pub use self::common::{
     ChildPipe, Command, CommandArgs, ExitCode, Stdio, getpid, getppid, read_output,

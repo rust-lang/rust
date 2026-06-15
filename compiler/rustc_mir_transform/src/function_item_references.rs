@@ -7,7 +7,7 @@ use rustc_middle::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt};
 use rustc_session::lint::builtin::FUNCTION_ITEM_REFERENCES;
 use rustc_span::{Span, Spanned, sym};
 
-use crate::errors;
+use crate::diagnostics;
 
 pub(super) struct FunctionItemReferences;
 
@@ -179,7 +179,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
             FUNCTION_ITEM_REFERENCES,
             lint_root,
             span,
-            errors::FnItemRef { span, sugg, ident },
+            diagnostics::FnItemRef { span, sugg, ident },
         );
     }
 }

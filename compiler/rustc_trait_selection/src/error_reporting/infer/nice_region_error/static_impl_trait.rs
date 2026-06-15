@@ -13,8 +13,8 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::{Ident, Span};
 use tracing::debug;
 
+use crate::diagnostics::ButNeedsToSatisfy;
 use crate::error_reporting::infer::nice_region_error::NiceRegionError;
-use crate::errors::ButNeedsToSatisfy;
 use crate::infer::{RegionResolutionError, SubregionOrigin};
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {

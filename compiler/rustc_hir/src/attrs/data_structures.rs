@@ -1173,6 +1173,12 @@ pub enum AttributeKind {
         directive: Option<Box<Directive>>,
     },
 
+    /// Represents`#[diagnostic::on_type_error]`.
+    OnTypeError {
+        span: Span,
+        directive: Option<Box<Directive>>,
+    },
+
     /// Represents `#[rustc_on_unimplemented]` and `#[diagnostic::on_unimplemented]`.
     OnUnimplemented {
         /// None if the directive was malformed in some way.
@@ -1185,8 +1191,8 @@ pub enum AttributeKind {
         directive: Option<Box<Directive>>,
     },
 
-    /// Represents `#[diagnostic::on_unmatch_args]`.
-    OnUnmatchArgs {
+    /// Represents `#[diagnostic::on_unmatched_args]`.
+    OnUnmatchedArgs {
         /// None if the directive was malformed in some way.
         directive: Option<Box<Directive>>,
     },

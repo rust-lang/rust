@@ -48,8 +48,8 @@ use super::{
     DefIdOrName, FindExprBySpan, ImplCandidate, Obligation, ObligationCause, ObligationCauseCode,
     PredicateObligation,
 };
+use crate::diagnostics;
 use crate::error_reporting::TypeErrCtxt;
-use crate::errors;
 use crate::infer::InferCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::{ImplDerivedCause, NormalizeExt, ObligationCtxt, SelectionContext};
@@ -6119,11 +6119,11 @@ fn hint_missing_borrow<'tcx>(
     }
 
     if !to_borrow.is_empty() {
-        err.subdiagnostic(errors::AdjustSignatureBorrow::Borrow { to_borrow });
+        err.subdiagnostic(diagnostics::AdjustSignatureBorrow::Borrow { to_borrow });
     }
 
     if !remove_borrow.is_empty() {
-        err.subdiagnostic(errors::AdjustSignatureBorrow::RemoveBorrow { remove_borrow });
+        err.subdiagnostic(diagnostics::AdjustSignatureBorrow::RemoveBorrow { remove_borrow });
     }
 }
 

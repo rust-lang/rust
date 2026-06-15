@@ -1763,8 +1763,6 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// Due to the aliasing guarantee, the following code is legal:
     ///
     /// ```rust
-    /// #![feature(box_as_ptr)]
-    ///
     /// unsafe {
     ///     let mut b = Box::new(0);
     ///     let ptr1 = Box::as_mut_ptr(&mut b);
@@ -1778,7 +1776,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     ///
     /// [`as_mut_ptr`]: Self::as_mut_ptr
     /// [`as_ptr`]: Self::as_ptr
-    #[unstable(feature = "box_as_ptr", issue = "129090")]
+    #[stable(feature = "box_as_ptr", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_never_returns_null_ptr]
     #[rustc_as_ptr]
     #[inline]
@@ -1809,8 +1807,6 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// Due to the aliasing guarantee, the following code is legal:
     ///
     /// ```rust
-    /// #![feature(box_as_ptr)]
-    ///
     /// unsafe {
     ///     let mut v = Box::new(0);
     ///     let ptr1 = Box::as_ptr(&v);
@@ -1827,7 +1823,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     ///
     /// [`as_mut_ptr`]: Self::as_mut_ptr
     /// [`as_ptr`]: Self::as_ptr
-    #[unstable(feature = "box_as_ptr", issue = "129090")]
+    #[stable(feature = "box_as_ptr", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_never_returns_null_ptr]
     #[rustc_as_ptr]
     #[inline]

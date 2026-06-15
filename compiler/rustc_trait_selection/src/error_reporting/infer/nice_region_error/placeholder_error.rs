@@ -10,11 +10,11 @@ use rustc_middle::ty::print::{FmtPrinter, Print, PrintTraitRefExt as _, RegionHi
 use rustc_middle::ty::{self, GenericArgsRef, RePlaceholder, Region, TyCtxt};
 use tracing::{debug, instrument};
 
-use crate::error_reporting::infer::nice_region_error::NiceRegionError;
-use crate::errors::{
+use crate::diagnostics::{
     ActualImplExpectedKind, ActualImplExpectedLifetimeKind, ActualImplExplNotes,
     TraitPlaceholderMismatch, TyOrSig,
 };
+use crate::error_reporting::infer::nice_region_error::NiceRegionError;
 use crate::infer::{RegionResolutionError, SubregionOrigin, TypeTrace, ValuePairs};
 use crate::traits::{ObligationCause, ObligationCauseCode};
 
