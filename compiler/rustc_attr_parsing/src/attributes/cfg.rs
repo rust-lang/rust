@@ -104,7 +104,7 @@ pub fn parse_cfg_entry(
                 Some(sym::version) => parse_cfg_entry_version(cx, list, meta.span())?,
                 _ => {
                     let mut possibilities = vec![sym::any, sym::all, sym::not, sym::target];
-                    if cx.features().cfg_version() {
+                    if cx.features_option().is_some_and(Features::cfg_version) {
                         possibilities.push(sym::version);
                     }
                     return Err(cx.adcx().expected_specific_argument(meta.span(), &possibilities));
