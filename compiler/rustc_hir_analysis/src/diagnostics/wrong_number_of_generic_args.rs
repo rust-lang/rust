@@ -1,10 +1,8 @@
-use std::iter;
-
 use GenericArgsInfo::*;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, Diagnostic, EmissionGuarantee, MultiSpan, pluralize};
 use rustc_hir as hir;
-use rustc_middle::ty::{self as ty, AssocItems, TyCtxt};
+use rustc_middle::ty::{self as ty, AssocItem, AssocItems, TyCtxt};
 use rustc_span::def_id::DefId;
 use tracing::debug;
 
@@ -485,13 +483,13 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             .collect()
     }
 
-    fn get_unbound_associated_types(&self) -> Vec<String> {
+    fn get_unbound_associated_item(&self) -> Vec<&AssocItem> {
         if self.tcx.is_trait(self.def_id) {
             let items: &AssocItems = self.tcx.associated_items(self.def_id);
             items
                 .in_definition_order()
                 .filter(|item| {
-                    item.is_type()
+                    (item.is_type() || item.is_type_const())
                         && !item.is_impl_trait_in_trait()
                         && !self
                             .gen_args
@@ -499,7 +497,6 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                             .iter()
                             .any(|constraint| constraint.ident.name == item.name())
                 })
-                .map(|item| self.tcx.item_ident(item.def_id).to_string())
                 .collect()
         } else {
             Vec::default()
@@ -905,7 +902,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     fn suggest_removing_args_or_generics(&self, err: &mut Diag<'_, impl EmissionGuarantee>) {
         let num_provided_lt_args = self.num_provided_lifetime_args();
         let num_provided_type_const_args = self.num_provided_type_or_const_args();
-        let unbound_types = self.get_unbound_associated_types();
+        let unbound_assoc_items = self.get_unbound_associated_item();
         let num_provided_args = num_provided_lt_args + num_provided_type_const_args;
         assert!(num_provided_args > 0);
 
@@ -917,8 +914,6 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         let redundant_type_or_const_args = num_redundant_type_or_const_args > 0;
 
         let remove_entire_generics = num_redundant_args >= self.gen_args.args.len();
-        let provided_args_matches_unbound_traits =
-            unbound_types.len() == num_redundant_type_or_const_args;
 
         let remove_lifetime_args = |err: &mut Diag<'_, _>| {
             let mut lt_arg_spans = Vec::new();
@@ -1012,24 +1007,41 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             );
         };
 
-        // If there is a single unbound associated type and a single excess generic param
-        // suggest replacing the generic param with the associated type bound
-        if provided_args_matches_unbound_traits && !unbound_types.is_empty() {
+        // If there is an identical amount of unbound associated items and excess generic args
+        // suggest turning the generic args into associated item bindings
+        if unbound_assoc_items.len() == num_redundant_type_or_const_args
+            && !unbound_assoc_items.is_empty()
+        {
             // Don't suggest if we're in a trait impl as
             // that would result in invalid syntax (fixes #116464)
             if !self.is_in_trait_impl() {
                 let unused_generics = &self.gen_args.args[self.num_expected_type_or_const_args()..];
-                let suggestions = iter::zip(unused_generics, &unbound_types)
-                    .map(|(potential, name)| {
-                        (potential.span().shrink_to_lo(), format!("{name} = "))
+                let mut unbound_assoc_consts =
+                    unbound_assoc_items.iter().filter(|item| item.is_type_const());
+                let mut unbound_assoc_types =
+                    unbound_assoc_items.iter().filter(|item| item.is_type());
+                let suggestions = unused_generics
+                    .iter()
+                    .filter_map(|potential| {
+                        let item = match potential {
+                            hir::GenericArg::Const(_) => unbound_assoc_consts.next(),
+                            hir::GenericArg::Type(_) => unbound_assoc_types.next(),
+                            _ => None,
+                        }?;
+                        Some((
+                            potential.span().shrink_to_lo(),
+                            // FIXME: This doesn't account for generic associated items
+                            format!("{} = ", self.tcx.item_ident(item.def_id)),
+                        ))
                     })
                     .collect::<Vec<_>>();
 
                 if !suggestions.is_empty() {
+                    let s = pluralize!(suggestions.len());
+                    let article = if suggestions.len() == 1 { "an " } else { "" };
                     err.multipart_suggestion(
                         format!(
-                            "replace the generic bound{s} with the associated type{s}",
-                            s = pluralize!(unbound_types.len())
+                            "turn the generic argument{s} into {article}associated item binding{s}"
                         ),
                         suggestions,
                         Applicability::MaybeIncorrect,
