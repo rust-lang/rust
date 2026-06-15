@@ -91,6 +91,10 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
             .filter(|i| !i.name.starts_with("svrevd"))
             // Skip `svpsel_lane_b*` intrinsics - not yet implemented!
             .filter(|i| !i.name.starts_with("svpsel_lane_b"))
+            // Skip `svundef*` intrinsics - to avoid undefined behaviour in Rust, these return
+            // zeroed vectors in Rust, which are inherently going to be different than the
+            // undefined vectors returned by the C intrinsics.
+            .filter(|i| !i.name.starts_with("svundef"))
             // Skip pointers for now, we would probably need to look at the return
             // type to work out how many elements we need to point to.
             .filter(|i| !i.arguments.iter().any(|a| a.is_ptr()))
