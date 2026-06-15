@@ -1,0 +1,8 @@
+error: implementing `CoerceShared` requires every target field to have a corresponding source field
+  --> $DIR/coerce-shared-missing-target-field.rs:14:5
+   |
+LL |     len: usize,
+   |     ^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

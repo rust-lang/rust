@@ -1,0 +1,11 @@
+error: implementing `CoerceShared` requires corresponding fields to match, be reborrowable with `CoerceShared`, or coerce a mutable reference field to a shared reference field
+  --> $DIR/coerce-shared-wrong-generic.rs:14:5
+   |
+LL |     value: &'a mut T,
+   |     ---------------- source field `value` has type `&'a mut T`
+...
+LL |     value: &'a U,
+   |     ^^^^^^^^^^^^ target field `value` has type `&'a U`
+
+error: aborting due to 1 previous error
+
