@@ -98,7 +98,7 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         // The body and typeck results are also set in `visit_fn`.
         // Only fetch the results if this is for a new body.
         if old_enclosing_body != Some(body_id) && !self.actually_rustdoc {
-            self.context.typeck_results = Some(self.context.tcx.typeck_body(body_id));
+            self.context.typeck_results = self.context.tcx.typeck_body(body_id);
         }
 
         let body = self.context.tcx.hir_body(body_id);
@@ -122,7 +122,7 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
     fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) {
         let generics = self.context.generics.take();
         self.context.generics = it.kind.generics();
-        let old_typeck_results = self.context.typeck_results.take();
+        let old_typeck_results = self.context.typeck_results;
         let old_enclosing_body = self.context.enclosing_body.take();
         self.with_lint_attrs(it.hir_id(), |cx| {
             cx.with_param_env(it.owner_id, |cx| {
@@ -188,7 +188,7 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         let old_enclosing_body = self.context.enclosing_body.replace(body_id);
         let old_typeck_results = self.context.typeck_results;
         if !self.actually_rustdoc {
-            self.context.typeck_results = Some(self.context.tcx.typeck_body(body_id));
+            self.context.typeck_results = self.context.tcx.typeck_body(body_id);
         }
         let body = self.context.tcx.hir_body(body_id);
         lint_callback!(self, check_fn, fk, decl, body, span, id);
@@ -340,7 +340,7 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     let context = LateContext {
         tcx,
         enclosing_body: None,
-        typeck_results: None,
+        typeck_results: tcx.dummy_typeck_results,
         param_env: ty::ParamEnv::empty(),
         effective_visibilities: tcx.effective_visibilities(()),
         last_node_with_lint_attrs: tcx.local_def_id_to_hir_id(mod_id),
@@ -418,7 +418,7 @@ fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
     let context = LateContext {
         tcx,
         enclosing_body: None,
-        typeck_results: None,
+        typeck_results: tcx.dummy_typeck_results,
         param_env: ty::ParamEnv::empty(),
         effective_visibilities: tcx.effective_visibilities(()),
         last_node_with_lint_attrs: hir::CRATE_HIR_ID,

@@ -30,7 +30,7 @@ use crate::ty::{
 #[derive(TyEncodable, TyDecodable, Debug, StableHash)]
 pub struct TypeckResults<'tcx> {
     /// The `HirId::owner` all `ItemLocalId`s in this table are relative to.
-    pub hir_owner: OwnerId,
+    pub hir_owner: Option<OwnerId>,
 
     /// Resolved definitions for `<T>::X` associated paths and
     /// method calls, including those of overloaded operators.
@@ -231,8 +231,8 @@ pub struct TypeckResults<'tcx> {
 }
 
 impl<'tcx> TypeckResults<'tcx> {
-    pub fn new(hir_owner: OwnerId) -> TypeckResults<'tcx> {
-        TypeckResults {
+    pub(crate) fn new_maybe_ownerless(hir_owner: Option<OwnerId>) -> Self {
+        Self {
             hir_owner,
             type_dependent_defs: Default::default(),
             splatted_defs: Default::default(),
@@ -262,6 +262,17 @@ impl<'tcx> TypeckResults<'tcx> {
             offloads_to_check: Default::default(),
             offset_of_data: Default::default(),
         }
+    }
+
+    #[inline]
+    pub fn new(hir_owner: OwnerId) -> TypeckResults<'tcx> {
+        Self::new_maybe_ownerless(Some(hir_owner))
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn expect_owner(&self) -> OwnerId {
+        self.hir_owner.expect("attempted to access the owner of the dummy `TypeckResults`")
     }
 
     /// Returns the final resolution of a `QPath` in an `Expr` or `Pat` node.
@@ -666,26 +677,30 @@ impl<'tcx> SplattedDef<'tcx> {
 /// would result in lookup errors, or worse, in silently wrong data being
 /// stored/returned.
 #[inline]
-fn validate_hir_id_for_typeck_results(hir_owner: OwnerId, hir_id: HirId) {
-    if hir_id.owner != hir_owner {
+fn validate_hir_id_for_typeck_results(hir_owner: Option<OwnerId>, hir_id: HirId) {
+    if Some(hir_id.owner) != hir_owner {
         invalid_hir_id_for_typeck_results(hir_owner, hir_id);
     }
 }
 
 #[cold]
 #[inline(never)]
-fn invalid_hir_id_for_typeck_results(hir_owner: OwnerId, hir_id: HirId) {
-    ty::tls::with(|tcx| {
-        bug!(
-            "node {} cannot be placed in TypeckResults with hir_owner {:?}",
-            tcx.hir_id_to_string(hir_id),
-            hir_owner
-        )
-    });
+fn invalid_hir_id_for_typeck_results(hir_owner: Option<OwnerId>, hir_id: HirId) {
+    if let Some(hir_owner) = hir_owner {
+        ty::tls::with(|tcx| {
+            bug!(
+                "node {} cannot be placed in TypeckResults with hir_owner {:?}",
+                tcx.hir_id_to_string(hir_id),
+                hir_owner
+            )
+        });
+    } else {
+        bug!("attempted access of the dummy `TypeckResults`");
+    }
 }
 
 pub struct LocalTableInContext<'a, V> {
-    hir_owner: OwnerId,
+    hir_owner: Option<OwnerId>,
     data: &'a ItemLocalMap<V>,
 }
 
@@ -723,7 +738,7 @@ impl<'a, V> ::std::ops::Index<HirId> for LocalTableInContext<'a, V> {
 }
 
 pub struct LocalTableInContextMut<'a, V> {
-    hir_owner: OwnerId,
+    hir_owner: Option<OwnerId>,
     data: &'a mut ItemLocalMap<V>,
 }
 
@@ -748,6 +763,10 @@ impl<'a, V> LocalTableInContextMut<'a, V> {
         self.data.insert(id.local_id, val)
     }
 
+    pub fn insert_local(&mut self, id: ItemLocalId, val: V) -> Option<V> {
+        self.data.insert(id, val)
+    }
+
     pub fn remove(&mut self, id: HirId) -> Option<V> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.data.remove(&id.local_id)
@@ -759,11 +778,18 @@ impl<'a, V> LocalTableInContextMut<'a, V> {
             (id.local_id, value)
         }))
     }
+
+    pub fn extend_local(
+        &mut self,
+        items: UnordItems<(ItemLocalId, V), impl Iterator<Item = (ItemLocalId, V)>>,
+    ) {
+        self.data.extend_unord(items);
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
 pub struct LocalSetInContext<'a> {
-    hir_owner: OwnerId,
+    hir_owner: Option<OwnerId>,
     data: &'a ItemLocalSet,
 }
 
@@ -780,7 +806,7 @@ impl<'a> LocalSetInContext<'a> {
 
 #[derive(Debug)]
 pub struct LocalSetInContextMut<'a> {
-    hir_owner: OwnerId,
+    hir_owner: Option<OwnerId>,
     data: &'a mut ItemLocalSet,
 }
 

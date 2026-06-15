@@ -53,10 +53,9 @@ impl<'tcx> LateLintPass<'tcx> for UnitBindings {
         // - explicitly wrote `let pat = ();`
         // - explicitly wrote `let () = init;`.
         if !local.span.from_expansion()
-            && let Some(tyck_results) = cx.typeck_results
             && let Some(init) = local.init
-            && let init_ty = tyck_results.expr_ty(init)
-            && let local_ty = tyck_results.node_type(local.hir_id)
+            && let init_ty = cx.typeck_results.expr_ty(init)
+            && let local_ty = cx.typeck_results.node_type(local.hir_id)
             && init_ty == cx.tcx.types.unit
             && local_ty == cx.tcx.types.unit
             && local.ty.is_none()

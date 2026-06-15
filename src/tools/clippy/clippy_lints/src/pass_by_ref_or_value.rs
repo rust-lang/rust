@@ -174,16 +174,12 @@ impl PassByRefOrValue {
                         && size <= self.ref_min_size
                         && let hir::TyKind::Ref(_, MutTy { ty: decl_ty, .. }) = input.kind
                     {
-                        if let Some(typeck) = cx.typeck_results
-                            // Don't lint if a raw pointer is created.
-                            // TODO: Limit the check only to raw pointers to the argument (or part of the argument)
-                            //       which escape the current function.
-                            && (typeck.node_types().items().any(|(_, &ty)| ty.is_raw_ptr())
-                                || typeck
+                        if cx.typeck_results.node_types().items().any(|(_, &ty)| ty.is_raw_ptr())
+                                || cx.typeck_results
                                     .adjustments()
                                     .items()
                                     .flat_map(|(_, a)| UnordItems::new(a.iter()))
-                                    .any(|a| matches!(a.kind, Adjust::Pointer(PointerCoercion::UnsafeFnPointer))))
+                                    .any(|a| matches!(a.kind, Adjust::Pointer(PointerCoercion::UnsafeFnPointer)))
                         {
                             continue;
                         }
