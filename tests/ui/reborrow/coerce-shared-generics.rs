@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![feature(reborrow)]
 #![allow(dead_code)]
 
@@ -24,7 +26,6 @@ impl<'a, T, U: Copy, const N: usize> Clone for BufferRef<'a, T, U, N> {
 impl<'a, T, U: Copy, const N: usize> Copy for BufferRef<'a, T, U, N> {}
 
 impl<'a, T, U: Copy, const N: usize> CoerceShared<BufferRef<'a, T, U, N>>
-//~^ ERROR
     for BufferMut<'a, T, U, N>
 {
 }

@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![feature(reborrow)]
 #![allow(dead_code)]
 
@@ -17,7 +19,6 @@ struct ReorderRef<'a> {
 }
 
 impl<'a> CoerceShared<ReorderRef<'a>> for ReorderMut<'a> {}
-//~^ ERROR
 
 fn read(value: ReorderRef<'_>) -> (u16, u8) {
     (*value.b, *value.a)

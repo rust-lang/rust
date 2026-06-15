@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![feature(reborrow)]
 #![allow(dead_code)]
 
@@ -29,7 +31,6 @@ impl<'a, T> Clone for OmitRef<'a, T> {
 impl<'a, T> Copy for OmitRef<'a, T> {}
 
 impl<'a, T> CoerceShared<OmitRef<'a, T>> for OmitMut<'a, T> {}
-//~^ ERROR
 
 fn read(value: OmitRef<'_, i32>) {
     assert_eq!(*value.value, 1);
