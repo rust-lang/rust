@@ -348,7 +348,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let (adjusted_ident, def_scope) = self.tcx.adjust_ident_and_get_scope(
                 field_ident,
                 base_def.did(),
-                typeck_results.hir_owner.def_id,
+                hir_id.owner.def_id,
             );
 
             let Some((_, field_def)) =
@@ -3156,17 +3156,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // type-checking; otherwise, get them by performing a query. This is needed to avoid
         // cycles. If we can't use resolved types because the coroutine comes from another crate,
         // we still provide a targeted error but without all the relevant spans.
-        let coroutine_data = match &self.typeck_results {
-            Some(t) if t.hir_owner.to_def_id() == coroutine_did_root => CoroutineData(t),
+        let (coroutine_data, coroutine_within_in_progress_typeck) = match &self.typeck_results {
+            Some(t) if t.hir_owner.map(|x| x.to_def_id()) == Some(coroutine_did_root) => {
+                (CoroutineData(t), true)
+            }
             _ if coroutine_did.is_local() => {
-                CoroutineData(self.tcx.typeck(coroutine_did.expect_local()))
+                (CoroutineData(self.tcx.typeck(coroutine_did.expect_local())), false)
             }
             _ => return false,
-        };
-
-        let coroutine_within_in_progress_typeck = match &self.typeck_results {
-            Some(t) => t.hir_owner.to_def_id() == coroutine_did_root,
-            _ => false,
         };
 
         let mut interior_or_upvar_span = None;

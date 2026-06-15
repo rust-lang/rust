@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
+use std::mem;
 
 use clippy_utils::res::MaybeDef;
 use rustc_errors::{Applicability, Diag};
@@ -294,7 +295,7 @@ impl<'tcx> Visitor<'tcx> for ImplicitHasherTypeVisitor<'_, 'tcx> {
 /// Looks for default-hasher-dependent constructors like `HashMap::new`.
 struct ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
     cx: &'a LateContext<'tcx>,
-    maybe_typeck_results: Option<&'tcx TypeckResults<'tcx>>,
+    typeck_results: &'tcx TypeckResults<'tcx>,
     target: &'b ImplicitHasherType<'tcx>,
     suggestions: BTreeMap<Span, String>,
 }
@@ -303,7 +304,7 @@ impl<'a, 'b, 'tcx> ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
     fn new(cx: &'a LateContext<'tcx>, target: &'b ImplicitHasherType<'tcx>) -> Self {
         Self {
             cx,
-            maybe_typeck_results: cx.typeck_results,
+            typeck_results: cx.typeck_results,
             target,
             suggestions: BTreeMap::new(),
         }
@@ -314,9 +315,9 @@ impl<'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'_, '_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_body(&mut self, body: &Body<'tcx>) {
-        let old_maybe_typeck_results = self.maybe_typeck_results.replace(self.cx.tcx.typeck_body(body.id()));
+        let old_typeck_results = mem::replace(&mut self.typeck_results, self.cx.tcx.typeck_body(body.id()));
         walk_body(self, body);
-        self.maybe_typeck_results = old_maybe_typeck_results;
+        self.typeck_results = old_typeck_results;
     }
 
     fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
@@ -326,7 +327,7 @@ impl<'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'_, '_, 'tcx> {
             && let TyKind::Path(QPath::Resolved(None, ty_path)) = ty.kind
             && let Some(ty_did) = ty_path.res.opt_def_id()
         {
-            if self.target.ty() != self.maybe_typeck_results.unwrap().expr_ty(e) {
+            if self.target.ty() != self.typeck_results.expr_ty(e) {
                 return;
             }
 

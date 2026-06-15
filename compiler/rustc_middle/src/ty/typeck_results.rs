@@ -3,7 +3,7 @@ use std::hash::Hash;
 use std::iter;
 
 use rustc_abi::{FieldIdx, VariantIdx};
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxBuildHasher, FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::{ExtendUnord, UnordItems, UnordSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, Res};
@@ -30,7 +30,7 @@ use crate::ty::{
 #[derive(TyEncodable, TyDecodable, Debug, StableHash)]
 pub struct TypeckResults<'tcx> {
     /// The `HirId::owner` all `ItemLocalId`s in this table are relative to.
-    pub hir_owner: OwnerId,
+    pub hir_owner: Option<OwnerId>,
 
     /// Resolved definitions for `<T>::X` associated paths and
     /// method calls, including those of overloaded operators.
@@ -228,9 +228,41 @@ pub struct TypeckResults<'tcx> {
 }
 
 impl<'tcx> TypeckResults<'tcx> {
+    pub(crate) fn dummy() -> Self {
+        Self {
+            hir_owner: None,
+            type_dependent_defs: Default::default(),
+            splatted_defs: Default::default(),
+            field_indices: Default::default(),
+            user_provided_types: Default::default(),
+            user_provided_sigs: Default::default(),
+            node_types: Default::default(),
+            node_args: Default::default(),
+            adjustments: Default::default(),
+            pat_binding_modes: Default::default(),
+            pat_adjustments: Default::default(),
+            rust_2024_migration_desugared_pats: Default::default(),
+            skipped_ref_pats: Default::default(),
+            closure_kind_origins: Default::default(),
+            liberated_fn_sigs: Default::default(),
+            fru_field_types: Default::default(),
+            coercion_casts: Default::default(),
+            used_trait_imports: Default::default(),
+            tainted_by_errors: None,
+            hidden_types: FxIndexMap::with_hasher(FxBuildHasher),
+            closure_min_captures: Default::default(),
+            closure_fake_reads: Default::default(),
+            coroutine_stalled_predicates: FxIndexSet::with_hasher(FxBuildHasher),
+            potentially_region_dependent_goals: FxIndexSet::with_hasher(FxBuildHasher),
+            closure_size_eval: Default::default(),
+            transmutes_to_check: Default::default(),
+            offset_of_data: Default::default(),
+        }
+    }
+
     pub fn new(hir_owner: OwnerId) -> TypeckResults<'tcx> {
         TypeckResults {
-            hir_owner,
+            hir_owner: Some(hir_owner),
             type_dependent_defs: Default::default(),
             splatted_defs: Default::default(),
             field_indices: Default::default(),
@@ -258,6 +290,17 @@ impl<'tcx> TypeckResults<'tcx> {
             transmutes_to_check: Default::default(),
             offset_of_data: Default::default(),
         }
+    }
+
+    #[inline]
+    pub fn is_dummy(&self) -> bool {
+        self.hir_owner.is_none()
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn expect_owner(&self) -> OwnerId {
+        self.hir_owner.expect("attempted to access the owner of the dummy `TypeckResults`")
     }
 
     /// Returns the final resolution of a `QPath` in an `Expr` or `Pat` node.
@@ -612,26 +655,30 @@ pub struct SplattedDef {
 /// would result in lookup errors, or worse, in silently wrong data being
 /// stored/returned.
 #[inline]
-fn validate_hir_id_for_typeck_results(hir_owner: OwnerId, hir_id: HirId) {
-    if hir_id.owner != hir_owner {
+fn validate_hir_id_for_typeck_results(hir_owner: Option<OwnerId>, hir_id: HirId) {
+    if Some(hir_id.owner) != hir_owner {
         invalid_hir_id_for_typeck_results(hir_owner, hir_id);
     }
 }
 
 #[cold]
 #[inline(never)]
-fn invalid_hir_id_for_typeck_results(hir_owner: OwnerId, hir_id: HirId) {
-    ty::tls::with(|tcx| {
-        bug!(
-            "node {} cannot be placed in TypeckResults with hir_owner {:?}",
-            tcx.hir_id_to_string(hir_id),
-            hir_owner
-        )
-    });
+fn invalid_hir_id_for_typeck_results(hir_owner: Option<OwnerId>, hir_id: HirId) {
+    if let Some(hir_owner) = hir_owner {
+        ty::tls::with(|tcx| {
+            bug!(
+                "node {} cannot be placed in TypeckResults with hir_owner {:?}",
+                tcx.hir_id_to_string(hir_id),
+                hir_owner
+            )
+        });
+    } else {
+        bug!("attempted access of the dummy `TypeckResults`");
+    }
 }
 
 pub struct LocalTableInContext<'a, V> {
-    hir_owner: OwnerId,
+    hir_owner: Option<OwnerId>,
     data: &'a ItemLocalMap<V>,
 }
 
@@ -669,7 +716,7 @@ impl<'a, V> ::std::ops::Index<HirId> for LocalTableInContext<'a, V> {
 }
 
 pub struct LocalTableInContextMut<'a, V> {
-    hir_owner: OwnerId,
+    hir_owner: Option<OwnerId>,
     data: &'a mut ItemLocalMap<V>,
 }
 
@@ -694,6 +741,10 @@ impl<'a, V> LocalTableInContextMut<'a, V> {
         self.data.insert(id.local_id, val)
     }
 
+    pub fn insert_local(&mut self, id: ItemLocalId, val: V) -> Option<V> {
+        self.data.insert(id, val)
+    }
+
     pub fn remove(&mut self, id: HirId) -> Option<V> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.data.remove(&id.local_id)
@@ -705,11 +756,18 @@ impl<'a, V> LocalTableInContextMut<'a, V> {
             (id.local_id, value)
         }))
     }
+
+    pub fn extend_local(
+        &mut self,
+        items: UnordItems<(ItemLocalId, V), impl Iterator<Item = (ItemLocalId, V)>>,
+    ) {
+        self.data.extend_unord(items);
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
 pub struct LocalSetInContext<'a> {
-    hir_owner: OwnerId,
+    hir_owner: Option<OwnerId>,
     data: &'a ItemLocalSet,
 }
 
@@ -726,7 +784,7 @@ impl<'a> LocalSetInContext<'a> {
 
 #[derive(Debug)]
 pub struct LocalSetInContextMut<'a> {
-    hir_owner: OwnerId,
+    hir_owner: Option<OwnerId>,
     data: &'a mut ItemLocalSet,
 }
 
