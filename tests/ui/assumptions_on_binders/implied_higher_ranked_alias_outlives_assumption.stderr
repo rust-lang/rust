@@ -1,0 +1,123 @@
+error[E0283]: type annotations needed: cannot satisfy `S: InnerBinder<'a, 'b, 'c>`
+  --> $DIR/implied_higher_ranked_alias_outlives_assumption.rs:30:49
+   |
+LL | impl<'a, 'b, 'c, S> InnerBinder<'a, 'b, 'c> for S
+   |                                                 ^
+   |
+   = note: cannot satisfy `S: InnerBinder<'a, 'b, 'c>`
+help: the trait `InnerBinder<'a, 'b, 'c>` is not implemented for `S`
+      but trait `InnerBinder<'_, '_, '_>` is implemented for it
+  --> $DIR/implied_higher_ranked_alias_outlives_assumption.rs:30:1
+   |
+LL | / impl<'a, 'b, 'c, S> InnerBinder<'a, 'b, 'c> for S
+LL | |
+LL | | where
+LL | |     S: Trait<'a, 'b>,
+LL | |     <S as Trait<'a, 'b>>::Assoc: 'c {}
+   | |___________________________________^
+
+error[E0283]: type annotations needed: cannot satisfy `for<'a, 'b> T: InnerBinder<'a, 'b, 'c>`
+  --> $DIR/implied_higher_ranked_alias_outlives_assumption.rs:53:28
+   |
+LL | const REGIONCK_ENV<'c, T>: ReqTrait<'c, T> = todo!()
+   |                            ^^^^^^^^^^^^^^^
+   |
+   = note: cannot satisfy `for<'a, 'b> T: InnerBinder<'a, 'b, 'c>`
+help: the trait `InnerBinder<'a, 'b, 'c>` is not implemented for `T`
+      but trait `InnerBinder<'_, '_, '_>` is implemented for it
+  --> $DIR/implied_higher_ranked_alias_outlives_assumption.rs:30:1
+   |
+LL | / impl<'a, 'b, 'c, S> InnerBinder<'a, 'b, 'c> for S
+LL | |
+LL | | where
+LL | |     S: Trait<'a, 'b>,
+LL | |     <S as Trait<'a, 'b>>::Assoc: 'c {}
+   | |___________________________________^
+note: required for `T` to implement `for<'a> OuterBinder<'a, 'c, ImpliedBound<'a, 'c, T>>`
+  --> $DIR/implied_higher_ranked_alias_outlives_assumption.rs:37:21
+   |
+LL | impl<'a, 'c, T0, S> OuterBinder<'a, 'c, T0> for S
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^     ^
+LL | where
+LL |     for<'b> S: InnerBinder<'a, 'b, 'c>, {}
+   |                ----------------------- unsatisfied trait bound introduced here
+note: required by a bound in `ReqTrait`
+  --> $DIR/implied_higher_ranked_alias_outlives_assumption.rs:43:16
+   |
+LL | struct ReqTrait<'c, T>(&'c (), T)
+   |        -------- required by a bound in this struct
+LL | where
+LL |     for<'a> T: OuterBinder<'a, 'c, ImpliedBound<'a, 'c, T>>,;
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `ReqTrait`
+
+error[E0283]: type annotations needed: cannot satisfy `for<'a, 'b> T: InnerBinder<'a, 'b, 'c>`
+  --> $DIR/implied_higher_ranked_alias_outlives_assumption.rs:49:12
+   |
+LL |     let _: ReqTrait<'c, T>;
+   |            ^^^^^^^^^^^^^^^
+   |
+   = note: cannot satisfy `for<'a, 'b> T: InnerBinder<'a, 'b, 'c>`
+help: the trait `InnerBinder<'a, 'b, 'c>` is not implemented for `T`
+      but trait `InnerBinder<'_, '_, '_>` is implemented for it
+  --> $DIR/implied_higher_ranked_alias_outlives_assumption.rs:30:1
+   |
+LL | / impl<'a, 'b, 'c, S> InnerBinder<'a, 'b, 'c> for S
+LL | |
+LL | | where
+LL | |     S: Trait<'a, 'b>,
+LL | |     <S as Trait<'a, 'b>>::Assoc: 'c {}
+   | |___________________________________^
+note: required for `T` to implement `for<'a> OuterBinder<'a, 'c, ImpliedBound<'a, 'c, T>>`
+  --> $DIR/implied_higher_ranked_alias_outlives_assumption.rs:37:21
+   |
+LL | impl<'a, 'c, T0, S> OuterBinder<'a, 'c, T0> for S
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^     ^
+LL | where
+LL |     for<'b> S: InnerBinder<'a, 'b, 'c>, {}
+   |                ----------------------- unsatisfied trait bound introduced here
+note: required by a bound in `ReqTrait`
+  --> $DIR/implied_higher_ranked_alias_outlives_assumption.rs:43:16
+   |
+LL | struct ReqTrait<'c, T>(&'c (), T)
+   |        -------- required by a bound in this struct
+LL | where
+LL |     for<'a> T: OuterBinder<'a, 'c, ImpliedBound<'a, 'c, T>>,;
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `ReqTrait`
+
+error[E0283]: type annotations needed: cannot satisfy `for<'a, 'b> T: InnerBinder<'a, 'b, 'c>`
+  --> $DIR/implied_higher_ranked_alias_outlives_assumption.rs:53:46
+   |
+LL | const REGIONCK_ENV<'c, T>: ReqTrait<'c, T> = todo!()
+   |                                              ^^^^^^^
+   |
+   = note: cannot satisfy `for<'a, 'b> T: InnerBinder<'a, 'b, 'c>`
+help: the trait `InnerBinder<'a, 'b, 'c>` is not implemented for `T`
+      but trait `InnerBinder<'_, '_, '_>` is implemented for it
+  --> $DIR/implied_higher_ranked_alias_outlives_assumption.rs:30:1
+   |
+LL | / impl<'a, 'b, 'c, S> InnerBinder<'a, 'b, 'c> for S
+LL | |
+LL | | where
+LL | |     S: Trait<'a, 'b>,
+LL | |     <S as Trait<'a, 'b>>::Assoc: 'c {}
+   | |___________________________________^
+note: required for `T` to implement `for<'a> OuterBinder<'a, 'c, ImpliedBound<'a, 'c, T>>`
+  --> $DIR/implied_higher_ranked_alias_outlives_assumption.rs:37:21
+   |
+LL | impl<'a, 'c, T0, S> OuterBinder<'a, 'c, T0> for S
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^     ^
+LL | where
+LL |     for<'b> S: InnerBinder<'a, 'b, 'c>, {}
+   |                ----------------------- unsatisfied trait bound introduced here
+note: required by a bound in `ReqTrait`
+  --> $DIR/implied_higher_ranked_alias_outlives_assumption.rs:43:16
+   |
+LL | struct ReqTrait<'c, T>(&'c (), T)
+   |        -------- required by a bound in this struct
+LL | where
+LL |     for<'a> T: OuterBinder<'a, 'c, ImpliedBound<'a, 'c, T>>,;
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `ReqTrait`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0283`.

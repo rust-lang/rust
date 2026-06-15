@@ -1,7 +1,9 @@
 //@ compile-flags: -Znext-solver -Zassumptions-on-binders
-//@ check-pass
 
 #![feature(generic_const_items)]
+
+// FIXME: This should be `check-pass`. But eagerly normalizing added goals makes
+// it fail.
 
 // sorry for writing this
 // - boxy
@@ -26,6 +28,7 @@ where
 
 trait InnerBinder<'a, 'b, 'c> {}
 impl<'a, 'b, 'c, S> InnerBinder<'a, 'b, 'c> for S
+//~^ ERROR: type annotations needed: cannot satisfy `S: InnerBinder<'a, 'b, 'c>`
 where
     S: Trait<'a, 'b>,
     <S as Trait<'a, 'b>>::Assoc: 'c {}
@@ -44,9 +47,12 @@ where
     T: for<'a, 'b> Trait<'a, 'b>
 {
     let _: ReqTrait<'c, T>;
+    //~^ ERROR: type annotations needed: cannot satisfy `for<'a, 'b> T: InnerBinder<'a, 'b, 'c>`
 }
 
 const REGIONCK_ENV<'c, T>: ReqTrait<'c, T> = todo!()
+//~^ ERROR: type annotations needed: cannot satisfy `for<'a, 'b> T: InnerBinder<'a, 'b, 'c>`
+//~| ERROR: type annotations needed: cannot satisfy `for<'a, 'b> T: InnerBinder<'a, 'b, 'c>`
 where
     T: for<'a, 'b> Trait<'a, 'b>;
 

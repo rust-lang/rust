@@ -50,7 +50,9 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         &self,
         u: ty::UniverseIndex,
     ) -> Option<rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>> {
-        self.placeholder_assumptions_for_next_solver.borrow().get(&u).unwrap().as_ref().cloned()
+        // FIXME(-Zassumptions_on_binders): We should actually make sure that
+        // we always register placeholder assumptions.
+        self.placeholder_assumptions_for_next_solver.borrow().get(&u)?.as_ref().cloned()
     }
 
     fn get_solver_region_constraint(

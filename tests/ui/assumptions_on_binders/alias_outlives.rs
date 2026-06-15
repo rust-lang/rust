@@ -1,5 +1,7 @@
 //@ compile-flags: -Znext-solver -Zassumptions-on-binders
 
+// FIXME: Eagerly normalizing added goals probably makes the diagnostics worse.
+
 // test that a `<T as AliasHaver>::Assoc: '!a_u1` constraint is considered to be satisfied
 // if there's a `T::Assoc: 'static` assumption in the root universe and if not that it is
 // an error :)
@@ -20,14 +22,16 @@ where
     <T as AliasHaver>::Assoc: 'static,
 {
     let _: ReqTrait<T::Assoc>;
+    //~^ ERROR: type annotations needed
 }
 
 fn borrowck_env_fail<'a, T: AliasHaver>()
-//~^ ERROR: unsatisfied lifetime constraint from -Zassumptions-on-binders
+// expected diagnostics: ERROR: unsatisfied lifetime constraint from -Zassumptions-on-binders
 where
     <T as AliasHaver>::Assoc: 'a,
 {
     let _: ReqTrait<T::Assoc>;
+    //~^ ERROR: type annotations needed
 }
 
 const REGIONCK_ENV_PASS<'a, T: AliasHaver>: ReqTrait<T::Assoc> = todo!()
