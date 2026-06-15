@@ -2,6 +2,7 @@ use std::fmt::Debug;
 
 use rustc_type_ir::data_structures::ensure_sufficient_stack;
 use rustc_type_ir::inherent::*;
+use rustc_type_ir::region_constraint::Assumptions;
 use rustc_type_ir::{
     self as ty, Binder, FallibleTypeFolder, InferConst, InferCtxtLike, InferTy, Interner,
     TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
@@ -120,6 +121,8 @@ where
     ) -> Result<I::Term, E> {
         let current_universe = self.infcx.universe();
         self.infcx.create_next_universe();
+        self.infcx
+            .insert_placeholder_assumptions(self.infcx.universe(), Some(Assumptions::empty()));
 
         let (normalized, normalization_was_ambiguous) = (self.normalize)(alias_term)?;
 
