@@ -2028,4 +2028,17 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     ) {
         self.call_intrinsic("llvm.instrprof.increment", &[], &[fn_name, hash, num_counters, index]);
     }
+
+    /// Emits a call to `llvm.instrprof.cover`. Used by single-byte coverage
+    /// instrumentation.
+    #[instrument(level = "debug", skip(self))]
+    pub(crate) fn instrprof_cover(
+        &mut self,
+        fn_name: &'ll Value,
+        hash: &'ll Value,
+        num_counters: &'ll Value,
+        index: &'ll Value,
+    ) {
+        self.call_intrinsic("llvm.instrprof.cover", &[], &[fn_name, hash, num_counters, index]);
+    }
 }

@@ -2193,6 +2193,7 @@ unsafe extern "C" {
         FuncName: *const c_uchar, // See "PTR_LEN_STR".
         FuncNameLen: size_t,
     ) -> &Value;
+    pub(crate) fn LLVMRustCoverageSetSingleByteProfileVersion(M: &Module);
     pub(crate) fn LLVMRustCoverageHashBytes(
         Bytes: *const c_uchar, // See "PTR_LEN_STR".
         NumBytes: size_t,

@@ -3,6 +3,8 @@
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringRef.h"
+#include "llvm/IR/Constants.h"
+#include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/Module.h"
 #include "llvm/ProfileData/Coverage/CoverageMapping.h"
 #include "llvm/ProfileData/Coverage/CoverageMappingWriter.h"
@@ -173,6 +175,28 @@ LLVMRustCoverageCreatePGOFuncNameVar(LLVMValueRef F, const char *FuncName,
                                      size_t FuncNameLen) {
   auto FuncNameRef = StringRef(FuncName, FuncNameLen);
   return wrap(createPGOFuncNameVar(*cast<Function>(unwrap(F)), FuncNameRef));
+}
+
+extern "C" void
+LLVMRustCoverageSetSingleByteProfileVersion(LLVMModuleRef MRef) {
+  Module &M = *unwrap(MRef);
+  const StringRef VarName(INSTR_PROF_QUOTE(INSTR_PROF_RAW_VERSION_VAR));
+  Type *IntTy64 = Type::getInt64Ty(M.getContext());
+  uint64_t ProfileVersion = INSTR_PROF_RAW_VERSION | VARIANT_MASK_BYTE_COVERAGE;
+
+  auto *VersionVariable = new GlobalVariable(
+      M, IntTy64, true, GlobalValue::WeakAnyLinkage,
+      Constant::getIntegerValue(IntTy64, APInt(64, ProfileVersion)), VarName);
+
+  VersionVariable->setVisibility(GlobalValue::HiddenVisibility);
+  Triple TT(M.getTargetTriple());
+  if (TT.isGPU())
+    VersionVariable->setVisibility(GlobalValue::ProtectedVisibility);
+  if (TT.supportsCOMDAT()) {
+    VersionVariable->setLinkage(GlobalValue::ExternalLinkage);
+    VersionVariable->setComdat(M.getOrInsertComdat(VarName));
+  }
+  VersionVariable->setDSOLocal(true);
 }
 
 extern "C" uint64_t LLVMRustCoverageHashBytes(const char *Bytes,

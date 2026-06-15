@@ -27,15 +27,55 @@
 use itertools::Itertools;
 use rustc_data_structures::graph::{DirectedGraph, Successors};
 use rustc_data_structures::thin_vec::ThinVec;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{Idx, IndexVec};
+use rustc_middle::mir::coverage::{CounterId, CovTerm};
 use rustc_middle::mir::*;
 use rustc_middle::{bug, ty};
 use rustc_span::{BytePos, DUMMY_SP, Pos, Span};
 
+use super::counters::make_direct_counters;
 use super::graph::{self, BasicCoverageBlock};
 
 fn bcb(index: u32) -> BasicCoverageBlock {
     BasicCoverageBlock::from_u32(index)
+}
+
+fn bcb_set(domain_size: usize, indices: &[u32]) -> DenseBitSet<BasicCoverageBlock> {
+    let mut set = DenseBitSet::new_empty(domain_size);
+    for &index in indices {
+        set.insert(bcb(index));
+    }
+    set
+}
+
+#[test]
+fn direct_counters_use_no_expressions() {
+    let bcb_needs_counter = bcb_set(5, &[0, 2, 3, 4]);
+    let bcbs_seen = bcb_set(5, &[0, 1, 2, 4]);
+
+    let counters = make_direct_counters(&bcb_needs_counter, &bcbs_seen);
+
+    assert_eq!(counters.next_counter_id.as_u32(), 3);
+    assert_eq!(
+        counters
+            .phys_counter_for_node
+            .iter()
+            .map(|(&bcb, &counter)| (bcb.as_u32(), counter.as_u32()))
+            .collect::<Vec<_>>(),
+        [(0, 0), (2, 1), (4, 2)]
+    );
+    assert_eq!(
+        counters.node_counters.raw,
+        [
+            Some(CovTerm::Counter(CounterId::from_u32(0))),
+            None,
+            Some(CovTerm::Counter(CounterId::from_u32(1))),
+            Some(CovTerm::Zero),
+            Some(CovTerm::Counter(CounterId::from_u32(2))),
+        ]
+    );
+    assert!(counters.expressions.is_empty());
 }
 
 // All `TEMP_BLOCK` targets should be replaced before calling `to_body() -> mir::Body`.

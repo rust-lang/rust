@@ -47,6 +47,14 @@ impl<'ll, 'tcx> CguCoverageContext<'ll, 'tcx> {
 
 impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     pub(crate) fn coverageinfo_finalize(&mut self) {
+        // Single-byte counters use a different raw profile layout; downstream tools
+        // expect to read the version to interpret the profile correctly.
+        // Do this before map generation, which can return early even when the
+        // module contains coverage intrinsics (for example, when all source
+        // spans were discarded during codegen).
+        if self.tcx.sess.instrument_coverage_single_byte() {
+            llvm_cov::set_single_byte_profile_version(self.llmod);
+        }
         mapgen::finalize(self)
     }
 
@@ -65,8 +73,8 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     }
 
     /// For LLVM codegen, returns a function-specific `Value` for a global
-    /// string, to hold the function name passed to LLVM intrinsic
-    /// `instrprof.increment()`. The `Value` is only created once per instance.
+    /// string, to hold the function name passed to an LLVM coverage intrinsic.
+    /// The `Value` is only created once per instance.
     /// Multiple invocations with the same instance return the same `Value`.
     ///
     /// This has the side-effect of causing coverage codegen to consider this
@@ -123,11 +131,19 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
                 let hash = bx.const_u64(function_coverage_info.function_source_hash);
                 let num_counters = bx.const_u32(ids_info.num_counters);
                 let index = bx.const_u32(id.as_u32());
-                debug!(
-                    "codegen intrinsic instrprof.increment(fn_name={:?}, hash={:?}, num_counters={:?}, index={:?})",
-                    fn_name, hash, num_counters, index,
-                );
-                bx.instrprof_increment(fn_name, hash, num_counters, index);
+                if bx.tcx.sess.instrument_coverage_single_byte() {
+                    debug!(
+                        "codegen intrinsic instrprof.cover(fn_name={:?}, hash={:?}, num_counters={:?}, index={:?})",
+                        fn_name, hash, num_counters, index,
+                    );
+                    bx.instrprof_cover(fn_name, hash, num_counters, index);
+                } else {
+                    debug!(
+                        "codegen intrinsic instrprof.increment(fn_name={:?}, hash={:?}, num_counters={:?}, index={:?})",
+                        fn_name, hash, num_counters, index,
+                    );
+                    bx.instrprof_increment(fn_name, hash, num_counters, index);
+                }
             }
             // If a BCB doesn't have an associated physical counter, there's nothing to codegen.
             CoverageKind::VirtualCounter { .. } => {}

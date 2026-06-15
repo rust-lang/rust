@@ -1,0 +1,82 @@
+Function name: single_byte::concurrent_hit
+Raw bytes (24): 0x[01, 01, 00, 04, 01, 12, 01, 00, 14, 01, 01, 05, 00, 0e, 01, 00, 0f, 00, 11, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/single_byte.rs
+Number of expressions: 0
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 18, 1) to (start + 0, 20)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 0, 15) to (start + 0, 17)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: single_byte::main
+Raw bytes (69): 0x[01, 01, 00, 0d, 01, 16, 01, 00, 0a, 01, 01, 05, 00, 12, 01, 01, 05, 00, 0f, 01, 00, 10, 00, 1f, 05, 02, 09, 00, 10, 05, 00, 14, 00, 18, 05, 01, 0a, 00, 0d, 05, 07, 0a, 00, 11, 09, 01, 09, 00, 0f, 05, 00, 13, 00, 1a, 09, 00, 1b, 02, 06, 09, 01, 09, 00, 0f, 0d, 02, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/single_byte.rs
+Number of expressions: 0
+Number of file 0 mappings: 13
+- Code(Counter(0)) at (prev + 22, 1) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 18)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 15)
+- Code(Counter(0)) at (prev + 0, 16) to (start + 0, 31)
+- Code(Counter(1)) at (prev + 2, 9) to (start + 0, 16)
+- Code(Counter(1)) at (prev + 0, 20) to (start + 0, 24)
+- Code(Counter(1)) at (prev + 1, 10) to (start + 0, 13)
+- Code(Counter(1)) at (prev + 7, 10) to (start + 0, 17)
+- Code(Counter(2)) at (prev + 1, 9) to (start + 0, 15)
+- Code(Counter(1)) at (prev + 0, 19) to (start + 0, 26)
+- Code(Counter(2)) at (prev + 0, 27) to (start + 2, 6)
+- Code(Counter(2)) at (prev + 1, 9) to (start + 0, 15)
+- Code(Counter(3)) at (prev + 2, 1) to (start + 0, 2)
+Highest counter ID seen: c3
+
+Function name: single_byte::main::{closure#0}
+Raw bytes (19): 0x[01, 01, 00, 03, 01, 1b, 12, 00, 13, 01, 01, 0d, 00, 1f, 01, 05, 09, 00, 0a]
+Number of files: 1
+- file 0 => $DIR/single_byte.rs
+Number of expressions: 0
+Number of file 0 mappings: 3
+- Code(Counter(0)) at (prev + 27, 18) to (start + 0, 19)
+- Code(Counter(0)) at (prev + 1, 13) to (start + 0, 31)
+- Code(Counter(0)) at (prev + 5, 9) to (start + 0, 10)
+Highest counter ID seen: c0
+
+Function name: single_byte::main::{closure#0}::{closure#0}
+Raw bytes (24): 0x[01, 01, 00, 04, 01, 1c, 23, 00, 24, 01, 01, 1a, 00, 20, 05, 01, 15, 00, 23, 09, 02, 0d, 00, 0e]
+Number of files: 1
+- file 0 => $DIR/single_byte.rs
+Number of expressions: 0
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 28, 35) to (start + 0, 36)
+- Code(Counter(0)) at (prev + 1, 26) to (start + 0, 32)
+- Code(Counter(1)) at (prev + 1, 21) to (start + 0, 35)
+- Code(Counter(2)) at (prev + 2, 13) to (start + 0, 14)
+Highest counter ID seen: c2
+
+Function name: single_byte::repeated_hits
+Raw bytes (29): 0x[01, 01, 00, 05, 01, 06, 01, 00, 13, 05, 01, 09, 00, 0e, 01, 00, 12, 00, 18, 05, 00, 19, 02, 06, 09, 03, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/single_byte.rs
+Number of expressions: 0
+Number of file 0 mappings: 5
+- Code(Counter(0)) at (prev + 6, 1) to (start + 0, 19)
+- Code(Counter(1)) at (prev + 1, 9) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 0, 18) to (start + 0, 24)
+- Code(Counter(1)) at (prev + 0, 25) to (start + 2, 6)
+- Code(Counter(2)) at (prev + 3, 1) to (start + 0, 2)
+Highest counter ID seen: c2
+
+Function name: single_byte::selected_branch
+Raw bytes (29): 0x[01, 01, 00, 05, 01, 0d, 01, 00, 2b, 01, 01, 08, 00, 11, 05, 00, 14, 00, 15, 0d, 00, 1f, 00, 20, 09, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/single_byte.rs
+Number of expressions: 0
+Number of file 0 mappings: 5
+- Code(Counter(0)) at (prev + 13, 1) to (start + 0, 43)
+- Code(Counter(0)) at (prev + 1, 8) to (start + 0, 17)
+- Code(Counter(1)) at (prev + 0, 20) to (start + 0, 21)
+- Code(Counter(3)) at (prev + 0, 31) to (start + 0, 32)
+- Code(Counter(2)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c3
+

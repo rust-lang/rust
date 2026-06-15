@@ -39,6 +39,13 @@ pub(crate) fn create_pgo_func_name_var<'ll>(
     }
 }
 
+/// Defines `__llvm_profile_raw_version` with LLVM's byte-coverage variant bit.
+/// This tells compiler-rt and llvm-profdata that the module's profile counters
+/// are one byte wide rather than the usual eight bytes.
+pub(crate) fn set_single_byte_profile_version(llmod: &llvm::Module) {
+    unsafe { llvm::LLVMRustCoverageSetSingleByteProfileVersion(llmod) }
+}
+
 pub(crate) fn write_filenames_to_buffer(filenames: &[impl AsRef<str>]) -> Vec<u8> {
     let (pointers, lengths) = filenames
         .into_iter()

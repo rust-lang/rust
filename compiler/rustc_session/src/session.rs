@@ -331,6 +331,10 @@ impl Session {
         self.opts.cg.instrument_coverage() != InstrumentCoverage::No
     }
 
+    pub fn instrument_coverage_single_byte(&self) -> bool {
+        self.opts.cg.instrument_coverage() == InstrumentCoverage::SingleByte
+    }
+
     pub fn instrument_coverage_branch(&self) -> bool {
         self.instrument_coverage()
             && self.opts.unstable_opts.coverage_options.level >= CoverageLevel::Branch
