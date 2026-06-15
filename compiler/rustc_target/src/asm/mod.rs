@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 use std::fmt;
 
-use rustc_abi::Size;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::Symbol;
@@ -11,11 +10,11 @@ use crate::spec::{Arch, RelocModel, Target};
 pub struct ModifierInfo {
     pub modifier: char,
     pub result: &'static str,
-    pub size: u16,
+    pub size: InlineAsmSize,
 }
 
-impl From<(char, &'static str, u16)> for ModifierInfo {
-    fn from((modifier, result, size): (char, &'static str, u16)) -> Self {
+impl From<(char, &'static str, InlineAsmSize)> for ModifierInfo {
+    fn from((modifier, result, size): (char, &'static str, InlineAsmSize)) -> Self {
         Self { modifier, result, size }
     }
 }
@@ -798,32 +797,39 @@ pub enum InlineAsmType {
     VecF128(u64),
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum InlineAsmSize {
+    FixedInBytes(u64),
+    Scalable,
+}
+
+impl InlineAsmSize {
+    pub fn fixed_size_in_bytes(self) -> Option<u64> {
+        match self {
+            Self::FixedInBytes(size) => Some(size),
+            Self::Scalable => None,
+        }
+    }
+}
+
 impl InlineAsmType {
     pub fn is_integer(self) -> bool {
         matches!(self, Self::I8 | Self::I16 | Self::I32 | Self::I64 | Self::I128)
     }
 
-    pub fn size(self) -> Size {
-        Size::from_bytes(match self {
-            Self::I8 => 1,
-            Self::I16 => 2,
-            Self::I32 => 4,
-            Self::I64 => 8,
-            Self::I128 => 16,
-            Self::F16 => 2,
-            Self::F32 => 4,
-            Self::F64 => 8,
-            Self::F128 => 16,
-            Self::VecI8(n) => n * 1,
-            Self::VecI16(n) => n * 2,
-            Self::VecI32(n) => n * 4,
-            Self::VecI64(n) => n * 8,
-            Self::VecI128(n) => n * 16,
-            Self::VecF16(n) => n * 2,
-            Self::VecF32(n) => n * 4,
-            Self::VecF64(n) => n * 8,
-            Self::VecF128(n) => n * 16,
-        })
+    pub fn size(self) -> InlineAsmSize {
+        match self {
+            Self::I8 => InlineAsmSize::FixedInBytes(1),
+            Self::I16 | Self::F16 => InlineAsmSize::FixedInBytes(2),
+            Self::I32 | Self::F32 => InlineAsmSize::FixedInBytes(4),
+            Self::I64 | Self::F64 => InlineAsmSize::FixedInBytes(8),
+            Self::I128 | Self::F128 => InlineAsmSize::FixedInBytes(16),
+            Self::VecI8(n) => InlineAsmSize::FixedInBytes(n),
+            Self::VecI16(n) | Self::VecF16(n) => InlineAsmSize::FixedInBytes(n * 2),
+            Self::VecI32(n) | Self::VecF32(n) => InlineAsmSize::FixedInBytes(n * 4),
+            Self::VecI64(n) | Self::VecF64(n) => InlineAsmSize::FixedInBytes(n * 8),
+            Self::VecI128(n) | Self::VecF128(n) => InlineAsmSize::FixedInBytes(n * 16),
+        }
     }
 }
 

@@ -1,9 +1,10 @@
+use core::convert::Into;
 use std::fmt;
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_span::{Symbol, sym};
 
-use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
+use super::{InlineAsmArch, InlineAsmSize, InlineAsmType, ModifierInfo};
 use crate::spec::{Env, Os, RelocModel, Target};
 
 def_reg_class! {
@@ -30,16 +31,17 @@ impl AArch64InlineAsmRegClass {
 
     pub fn suggest_modifier(self, _arch: InlineAsmArch, ty: InlineAsmType) -> Option<ModifierInfo> {
         match self {
-            Self::reg => match ty.size().bits() {
-                64 => None,
-                _ => Some(('w', "w0", 32).into()),
+            Self::reg => match ty.size() {
+                InlineAsmSize::FixedInBytes(8) => None,
+                _ => Some(('w', "w0", InlineAsmSize::FixedInBytes(4)).into()),
             },
-            Self::vreg | Self::vreg_low16 => match ty.size().bits() {
-                8 => Some(('b', "b0", 8).into()),
-                16 => Some(('h', "h0", 16).into()),
-                32 => Some(('s', "s0", 32).into()),
-                64 => Some(('d', "d0", 64).into()),
-                128 => Some(('q', "q0", 128).into()),
+            Self::vreg | Self::vreg_low16 => match ty.size() {
+                InlineAsmSize::FixedInBytes(1) => Some(('b', "b0", ty.size()).into()),
+                InlineAsmSize::FixedInBytes(2) => Some(('h', "h0", ty.size()).into()),
+                InlineAsmSize::FixedInBytes(4) => Some(('s', "s0", ty.size()).into()),
+                InlineAsmSize::FixedInBytes(8) => Some(('d', "d0", ty.size()).into()),
+                InlineAsmSize::FixedInBytes(16) => Some(('q', "q0", ty.size()).into()),
+                InlineAsmSize::Scalable => Some(('z', "z0", InlineAsmSize::Scalable).into()),
                 _ => None,
             },
             Self::preg => None,
@@ -48,9 +50,11 @@ impl AArch64InlineAsmRegClass {
 
     pub fn default_modifier(self, _arch: InlineAsmArch) -> Option<ModifierInfo> {
         match self {
-            Self::reg => Some(('x', "x0", 64).into()),
-            Self::vreg | Self::vreg_low16 => Some(('v', "v0", 128).into()),
             Self::preg => None,
+            Self::reg => Some(('x', "x0", InlineAsmSize::FixedInBytes(8)).into()),
+            Self::vreg | Self::vreg_low16 => {
+                Some(('v', "v0", InlineAsmSize::FixedInBytes(16)).into())
+            }
         }
     }
 

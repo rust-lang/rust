@@ -12,7 +12,8 @@ use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 use rustc_target::asm::{
-    InlineAsmReg, InlineAsmRegClass, InlineAsmRegOrRegClass, InlineAsmType, ModifierInfo,
+    InlineAsmReg, InlineAsmRegClass, InlineAsmRegOrRegClass, InlineAsmSize, InlineAsmType,
+    ModifierInfo,
 };
 use rustc_trait_selection::infer::InferCtxtExt;
 
@@ -176,10 +177,10 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             idx: usize,
             suggested_modifier: char,
             suggested_result: &'a str,
-            suggested_size: u16,
+            suggested_size: InlineAsmSize,
             default_modifier: char,
             default_result: &'a str,
-            default_size: u16,
+            default_size: InlineAsmSize,
         }
 
         impl<'a, 'b> Diagnostic<'a, ()> for FormattingSubRegisterArg<'b> {
@@ -194,13 +195,24 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     default_result,
                     default_size,
                 } = self;
+
+                fn format_size(size: InlineAsmSize) -> String {
+                    match size {
+                        InlineAsmSize::FixedInBytes(size) => format!("{size}-byte values"),
+                        InlineAsmSize::Scalable => "scalable values".to_string(),
+                    }
+                }
                 Diag::new(dcx, level, "formatting may not be suitable for sub-register argument")
                     .with_span_label(expr_span, "for this argument")
                     .with_help(format!(
-                        "use `{{{idx}:{suggested_modifier}}}` to have the register formatted as `{suggested_result}` (for {suggested_size}-bit values)",
+                        "use `{{{idx}:{suggested_modifier}}}` to have the register formatted as \
+                        `{suggested_result}` (for {})",
+                        format_size(suggested_size)
                     ))
                     .with_help(format!(
-                        "or use `{{{idx}:{default_modifier}}}` to keep the default formatting of `{default_result}` (for {default_size}-bit values)",
+                        "or use `{{{idx}:{default_modifier}}}` to keep the default formatting of \
+                        `{default_result}` (for {})",
+                        format_size(default_size)
                     ))
             }
         }

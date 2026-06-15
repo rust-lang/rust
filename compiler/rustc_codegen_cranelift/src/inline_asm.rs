@@ -383,11 +383,12 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
                 .supported_types(self.arch, true)
                 .iter()
                 .map(|(ty, _)| ty.size())
+                .filter_map(InlineAsmSize::fixed_size_in_bytes)
                 .max()
-                .unwrap();
-            let align = rustc_abi::Align::from_bytes(reg_size.bytes()).unwrap();
+                .expect("expected fixed-size type");
+            let align = rustc_abi::Align::from_bytes(reg_size).unwrap();
             let offset = slot_size.align_to(align);
-            *slot_size = offset + reg_size;
+            *slot_size = offset + rustc_abi::Size::from_bytes(reg_size);
             offset
         };
         let mut new_slot = |x| new_slot_fn(&mut slot_size, x);

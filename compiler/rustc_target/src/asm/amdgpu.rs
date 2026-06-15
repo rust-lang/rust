@@ -178,7 +178,7 @@ impl AmdgpuInlineAsmRegClass {
             return None;
         }
 
-        Some(Self::Vgpr(ty.size().bits().try_into().ok()?))
+        Some(Self::Vgpr(ty.size().fixed_size_in_bytes().map(|byte| byte * 8)?.try_into().ok()?))
     }
 
     pub fn suggest_modifier(
