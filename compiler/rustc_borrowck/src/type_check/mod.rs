@@ -20,7 +20,7 @@ use rustc_infer::infer::{
 };
 use rustc_infer::traits::{PredicateObligations, ScrubbedTraitError};
 use rustc_middle::bug;
-use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::PointerCoercion;
@@ -1881,6 +1881,44 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             // that if a value of some type could implement `Copy`, then
             // it must.
             self.prove_trait_ref(trait_ref, location.to_locations(), ConstraintCategory::CopyBound);
+        }
+
+        if tcx.features().move_trait() {
+            match context {
+                PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy)
+                | PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) => {
+                    let trait_ref = ty::TraitRef::new(
+                        tcx,
+                        tcx.require_lang_item(LangItem::Move, self.last_span),
+                        [place_ty.ty],
+                    );
+                    self.prove_fallible_predicate(
+                        trait_ref,
+                        location.to_locations(),
+                        ConstraintCategory::MoveBound,
+                    );
+                }
+                PlaceContext::NonUse(_)
+                | PlaceContext::NonMutatingUse(
+                    NonMutatingUseContext::FakeBorrow
+                    | NonMutatingUseContext::Inspect
+                    | NonMutatingUseContext::PlaceMention
+                    | NonMutatingUseContext::Projection
+                    | NonMutatingUseContext::RawBorrow
+                    | NonMutatingUseContext::SharedBorrow,
+                )
+                | PlaceContext::MutatingUse(
+                    MutatingUseContext::Store
+                    | MutatingUseContext::SetDiscriminant
+                    | MutatingUseContext::AsmOutput
+                    | MutatingUseContext::Call
+                    | MutatingUseContext::Yield
+                    | MutatingUseContext::Drop
+                    | MutatingUseContext::Borrow
+                    | MutatingUseContext::RawBorrow
+                    | MutatingUseContext::Projection,
+                ) => {}
+            }
         }
     }
 
