@@ -461,8 +461,8 @@ impl<'sess> AttributeParser<'sess> {
 
                         if self.sess.opts.actually_rustdoc
                             || self.tools.is_some_and(|t| t.iter().any(|i| i.name == parts[0]))
-                            // FIXME: this can be removed once #152369 has been merged.
-                            // https://github.com/rust-lang/rust/pull/152369
+                            // FIXME: this can be removed once #155691 has been merged.
+                            // https://github.com/rust-lang/rust/pull/155691
                             || [sym::allow, sym::deny, sym::expect, sym::forbid, sym::warn]
                                 .contains(&parts[0])
                         {
