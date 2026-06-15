@@ -1,3 +1,13 @@
+error[E0658]: #![feature(partial_init_locals)] might be able to enable the initialisation here
+  --> $DIR/partial-initialization-across-await.rs:13:5
+   |
+LL |     t.0 = 42;
+   |     ^^^^^^^^
+   |
+   = note: see issue #153699 <https://github.com/rust-lang/rust/issues/153699> for more information
+   = help: add `#![feature(partial_init_locals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
 error[E0381]: partially assigned binding `t` isn't fully initialized
   --> $DIR/partial-initialization-across-await.rs:13:5
    |
@@ -8,8 +18,18 @@ LL |     t.0 = 42;
    |
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
+error[E0658]: #![feature(partial_init_locals)] might be able to enable the initialisation here
+  --> $DIR/partial-initialization-across-await.rs:22:5
+   |
+LL |     t.0 = 42;
+   |     ^^^^^^^^
+   |
+   = note: see issue #153699 <https://github.com/rust-lang/rust/issues/153699> for more information
+   = help: add `#![feature(partial_init_locals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
 error[E0381]: partially assigned binding `t` isn't fully initialized
-  --> $DIR/partial-initialization-across-await.rs:21:5
+  --> $DIR/partial-initialization-across-await.rs:22:5
    |
 LL |     let mut t: T;
    |         ----- binding declared here but left uninitialized
@@ -18,8 +38,18 @@ LL |     t.0 = 42;
    |
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
+error[E0658]: #![feature(partial_init_locals)] might be able to enable the initialisation here
+  --> $DIR/partial-initialization-across-await.rs:31:5
+   |
+LL |     t.x = 42;
+   |     ^^^^^^^^
+   |
+   = note: see issue #153699 <https://github.com/rust-lang/rust/issues/153699> for more information
+   = help: add `#![feature(partial_init_locals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
 error[E0381]: partially assigned binding `t` isn't fully initialized
-  --> $DIR/partial-initialization-across-await.rs:29:5
+  --> $DIR/partial-initialization-across-await.rs:31:5
    |
 LL |     let mut t: S;
    |         ----- binding declared here but left uninitialized
@@ -28,6 +58,7 @@ LL |     t.x = 42;
    |
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
-error: aborting due to 3 previous errors
+error: aborting due to 6 previous errors
 
-For more information about this error, try `rustc --explain E0381`.
+Some errors have detailed explanations: E0381, E0658.
+For more information about an error, try `rustc --explain E0381`.

@@ -122,6 +122,16 @@ LL |     let _z = A { a: 4, .. x };
    |
    = note: move occurs because `x.b` has type `Box<isize>`, which does not implement the `Copy` trait
 
+error[E0658]: #![feature(partial_init_locals)] might be able to enable the initialisation here
+  --> $DIR/borrowck-field-sensitivity.rs:81:5
+   |
+LL |     x.a = 1;
+   |     ^^^^^^^
+   |
+   = note: see issue #153699 <https://github.com/rust-lang/rust/issues/153699> for more information
+   = help: add `#![feature(partial_init_locals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
 error[E0381]: partially assigned binding `x` isn't fully initialized
   --> $DIR/borrowck-field-sensitivity.rs:81:5
    |
@@ -132,8 +142,18 @@ LL |     x.a = 1;
    |
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
+error[E0658]: #![feature(partial_init_locals)] might be able to enable the initialisation here
+  --> $DIR/borrowck-field-sensitivity.rs:88:5
+   |
+LL |     x.a = 1;
+   |     ^^^^^^^
+   |
+   = note: see issue #153699 <https://github.com/rust-lang/rust/issues/153699> for more information
+   = help: add `#![feature(partial_init_locals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
 error[E0381]: partially assigned binding `x` isn't fully initialized
-  --> $DIR/borrowck-field-sensitivity.rs:87:5
+  --> $DIR/borrowck-field-sensitivity.rs:88:5
    |
 LL |     let mut x: A;
    |         ----- binding declared here but left uninitialized
@@ -142,8 +162,18 @@ LL |     x.a = 1;
    |
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
+error[E0658]: #![feature(partial_init_locals)] might be able to enable the initialisation here
+  --> $DIR/borrowck-field-sensitivity.rs:96:5
+   |
+LL |     x.b = Box::new(1);
+   |     ^^^
+   |
+   = note: see issue #153699 <https://github.com/rust-lang/rust/issues/153699> for more information
+   = help: add `#![feature(partial_init_locals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
 error[E0381]: partially assigned binding `x` isn't fully initialized
-  --> $DIR/borrowck-field-sensitivity.rs:94:5
+  --> $DIR/borrowck-field-sensitivity.rs:96:5
    |
 LL |     let mut x: A;
    |         ----- binding declared here but left uninitialized
@@ -152,7 +182,7 @@ LL |     x.b = Box::new(1);
    |
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
-error: aborting due to 14 previous errors
+error: aborting due to 17 previous errors
 
-Some errors have detailed explanations: E0381, E0382, E0499, E0505.
+Some errors have detailed explanations: E0381, E0382, E0499, E0505, E0658.
 For more information about an error, try `rustc --explain E0381`.

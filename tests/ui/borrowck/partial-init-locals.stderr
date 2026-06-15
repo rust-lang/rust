@@ -1,0 +1,27 @@
+error[E0381]: assigned binding `c` isn't fully initialized
+  --> $DIR/partial-init-locals.rs:25:5
+   |
+LL |     let c: C;
+   |         - binding declared here but left uninitialized
+LL |     c.0.0.0 = 1;
+   |     ^^^^^^^^^^^ `c` assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0381]: used binding `x.1` isn't initialized
+  --> $DIR/partial-init-locals.rs:30:17
+   |
+LL |     let x: (i32, i32);
+   |         - binding declared here but left uninitialized
+LL |     x.0 = 123;
+LL |     let weird = x.1;
+   |                 ^^^ `x.1` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let x: (i32, i32) = 42;
+   |                       ++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0381`.

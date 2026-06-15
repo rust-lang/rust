@@ -10,6 +10,7 @@ fn test_tuple() {
     let _ = #[coroutine] || {
         let mut t: (i32, i32);
         t.0 = 42; //~ ERROR E0381
+        //~^ ERROR E0658
         yield;
         t.1 = 88;
         let _ = t;
@@ -20,6 +21,7 @@ fn test_tuple_struct() {
     let _ = #[coroutine] || {
         let mut t: T;
         t.0 = 42; //~ ERROR E0381
+        //~^ ERROR E0658
         yield;
         t.1 = 88;
         let _ = t;
@@ -30,6 +32,7 @@ fn test_struct() {
     let _ = #[coroutine] || {
         let mut t: S;
         t.x = 42; //~ ERROR E0381
+        //~^ ERROR E0658
         yield;
         t.y = 88;
         let _ = t;
