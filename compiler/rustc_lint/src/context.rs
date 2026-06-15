@@ -485,7 +485,7 @@ pub struct LateContext<'tcx> {
     pub enclosing_body: Option<hir::BodyId>,
 
     /// Type-checking results for the current body.
-    pub typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
+    pub typeck_results: &'tcx ty::TypeckResults<'tcx>,
 
     /// Parameter environment for the item we are in.
     pub param_env: ty::ParamEnv<'tcx>,
@@ -660,13 +660,9 @@ impl<'tcx> LateContext<'tcx> {
         self.tcx.type_is_use_cloned_modulo_regions(self.typing_env(), ty)
     }
 
-    /// Gets the type-checking results for the current body.
-    /// As this will ICE if called outside bodies, only call when working with
-    /// `Expr` or `Pat` nodes (they are guaranteed to be found only in bodies).
     #[inline]
-    #[track_caller]
     pub fn typeck_results(&self) -> &'tcx ty::TypeckResults<'tcx> {
-        self.typeck_results.expect("`LateContext::typeck_results` called outside of body")
+        self.typeck_results
     }
 
     /// Returns the final resolution of a `QPath`, or `Res::Err` if unavailable.
@@ -675,9 +671,8 @@ impl<'tcx> LateContext<'tcx> {
     pub fn qpath_res(&self, qpath: &hir::QPath<'_>, id: hir::HirId) -> Res {
         match *qpath {
             hir::QPath::Resolved(_, path) => path.res,
-            hir::QPath::TypeRelative(..) => self
-                .typeck_results
-                .filter(|typeck_results| typeck_results.hir_owner == id.owner)
+            hir::QPath::TypeRelative(..) => Some(self.typeck_results)
+                .filter(|typeck_results| typeck_results.hir_owner == Some(id.owner))
                 .or_else(|| {
                     self.tcx
                         .has_typeck_results(id.owner.def_id)

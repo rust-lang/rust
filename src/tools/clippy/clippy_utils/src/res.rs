@@ -33,7 +33,7 @@ pub trait MaybeTypeckRes<'tcx> {
     /// With debug assertions enabled this will always return `Some`. `None` is
     /// only returned so logic errors can be handled by not emitting a lint on
     /// release builds.
-    fn typeck_res(&self) -> Option<&TypeckResults<'tcx>>;
+    fn typeck_res(&self) -> &TypeckResults<'tcx>;
 
     /// Gets the type-dependent resolution of the specified node.
     ///
@@ -46,7 +46,7 @@ pub trait MaybeTypeckRes<'tcx> {
         #[inline]
         #[cfg_attr(debug_assertions, track_caller)]
         fn f(typeck: &TypeckResults<'_>, id: HirId) -> Option<DefRes> {
-            if typeck.hir_owner == id.owner {
+            if typeck.hir_owner == Some(id.owner) {
                 let def = typeck.type_dependent_def(id);
                 debug_assert!(
                     def.is_some(),
@@ -65,28 +65,24 @@ pub trait MaybeTypeckRes<'tcx> {
                 None
             }
         }
-        self.typeck_res().and_then(|typeck| f(typeck, node.hir_id()))
+        f(self.typeck_res(), node.hir_id())
     }
 }
 impl<'tcx> MaybeTypeckRes<'tcx> for LateContext<'tcx> {
     #[inline]
     #[cfg_attr(debug_assertions, track_caller)]
-    fn typeck_res(&self) -> Option<&TypeckResults<'tcx>> {
-        if let Some(typeck) = self.typeck_results {
-            Some(typeck)
-        } else {
-            // It's possible to get the `TypeckResults` for any other body, but
-            // attempting to lookup the type of something across bodies like this
-            // is a good indication of a bug.
-            debug_assert!(false, "attempted type-dependent lookup in a non-body context");
-            None
-        }
+    fn typeck_res(&self) -> &TypeckResults<'tcx> {
+        // It's possible to get the `TypeckResults` for any other body, but
+        // attempting to lookup the type of something across bodies like this
+        // is a good indication of a bug.
+        debug_assert!(!self.typeck_results.is_dummy(), "attempted type-dependent lookup in a non-body context");
+        self.typeck_results
     }
 }
 impl<'tcx> MaybeTypeckRes<'tcx> for TypeckResults<'tcx> {
     #[inline]
-    fn typeck_res(&self) -> Option<&TypeckResults<'tcx>> {
-        Some(self)
+    fn typeck_res(&self) -> &TypeckResults<'tcx> {
+        self
     }
 }
 
@@ -112,7 +108,7 @@ pub trait MaybeQPath<'a>: Copy {
             }
         }
         match self.opt_qpath() {
-            Some((qpath, id)) if let Some(typeck) = typeck.typeck_res() => f(qpath, id, typeck),
+            Some((qpath, id))=> f(qpath, id, typeck.typeck_res()),
             _ => Res::Err,
         }
     }
@@ -141,7 +137,7 @@ pub trait MaybeQPath<'a>: Copy {
             }
         }
         match self.opt_qpath() {
-            Some((qpath, id)) if let Some(typeck) = typeck.typeck_res() => f(qpath, id, typeck, name),
+            Some((qpath, id)) => f(qpath, id, typeck.typeck_res(), name),
             _ => Res::Err,
         }
     }
@@ -161,7 +157,7 @@ pub trait MaybeQPath<'a>: Copy {
             }
         }
         match self.opt_qpath() {
-            Some((qpath, id)) if let Some(typeck) = typeck.typeck_res() => f(qpath, id, typeck),
+            Some((qpath, id)) => f(qpath, id, typeck.typeck_res()),
             _ => (Res::Err, None),
         }
     }
@@ -195,7 +191,7 @@ pub trait MaybeQPath<'a>: Copy {
             }
         }
         match self.opt_qpath() {
-            Some((qpath, id)) if let Some(typeck) = typeck.typeck_res() => f(qpath, id, typeck),
+            Some((qpath, id)) => f(qpath, id, typeck.typeck_res()),
             _ => Res::Err,
         }
     }
@@ -237,7 +233,7 @@ pub trait MaybeQPath<'a>: Copy {
             }
         }
         match self.opt_qpath() {
-            Some((qpath, id)) if let Some(typeck) = typeck.typeck_res() => f(qpath, id, typeck, name),
+            Some((qpath, id)) => f(qpath, id, typeck.typeck_res(), name),
             _ => Res::Err,
         }
     }

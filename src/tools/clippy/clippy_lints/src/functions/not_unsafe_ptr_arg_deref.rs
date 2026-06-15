@@ -1,11 +1,10 @@
 use clippy_utils::res::MaybeResPath;
 use rustc_hir::{self as hir, HirId, HirIdSet, intravisit};
 use rustc_lint::LateContext;
-use rustc_middle::ty;
+use rustc_middle::ty::{self, Ty};
 use rustc_span::def_id::LocalDefId;
 
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::iter_input_pats;
 use clippy_utils::ty::is_unsafe_fn;
 use clippy_utils::visitors::for_each_expr;
 
@@ -16,7 +15,7 @@ use super::NOT_UNSAFE_PTR_ARG_DEREF;
 pub(super) fn check_fn<'tcx>(
     cx: &LateContext<'tcx>,
     kind: intravisit::FnKind<'tcx>,
-    decl: &'tcx hir::FnDecl<'tcx>,
+    _decl: &'tcx hir::FnDecl<'tcx>,
     body: &'tcx hir::Body<'tcx>,
     def_id: LocalDefId,
 ) {
@@ -26,26 +25,26 @@ pub(super) fn check_fn<'tcx>(
         intravisit::FnKind::Closure => return,
     };
 
-    check_raw_ptr(cx, safety, decl, body, def_id);
+    check_raw_ptr(cx, safety, body, def_id);
 }
 
 pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
     if let hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(eid)) = item.kind {
         let body = cx.tcx.hir_body(eid);
-        check_raw_ptr(cx, sig.header.safety(), sig.decl, body, item.owner_id.def_id);
+        check_raw_ptr(cx, sig.header.safety(), body, item.owner_id.def_id);
     }
 }
 
 fn check_raw_ptr<'tcx>(
     cx: &LateContext<'tcx>,
     safety: hir::Safety,
-    decl: &'tcx hir::FnDecl<'tcx>,
     body: &'tcx hir::Body<'tcx>,
     def_id: LocalDefId,
 ) {
     if safety.is_safe() && cx.effective_visibilities.is_exported(def_id) {
-        let raw_ptrs = iter_input_pats(decl, body)
-            .filter_map(|arg| raw_ptr_arg(cx, arg))
+        let sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_binder();
+        let raw_ptrs = body.params.iter().zip(sig.inputs_and_output)
+            .filter_map(|(param, ty)| raw_ptr_arg(param, ty))
             .collect::<HirIdSet>();
 
         if !raw_ptrs.is_empty() {
@@ -75,11 +74,10 @@ fn check_raw_ptr<'tcx>(
     }
 }
 
-fn raw_ptr_arg(cx: &LateContext<'_>, arg: &hir::Param<'_>) -> Option<HirId> {
-    if let (&hir::PatKind::Binding(_, id, _, _), Some(&ty::RawPtr(_, _))) = (
-        &arg.pat.kind,
-        cx.typeck_results
-            .map(|typeck_results| typeck_results.pat_ty(arg.pat).kind()),
+fn raw_ptr_arg(param: &hir::Param<'_>, ty: Ty<'_>) -> Option<HirId> {
+    if let (&hir::PatKind::Binding(_, id, _, _), &ty::RawPtr(_, _)) = (
+        &param.pat.kind,
+        ty.kind(),
     ) {
         Some(id)
     } else {

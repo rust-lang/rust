@@ -4,6 +4,7 @@
 //! borrow checking, etc.). These lints have full type information available.
 
 use std::any::Any;
+use std::mem;
 
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::par_join;
@@ -42,26 +43,17 @@ struct LateContextAndPass<'tcx, T: LateLintPass<'tcx>, Typeck> {
 }
 
 trait TypeckBody {
-    fn typeck_body<'tcx>(
-        cx: &mut LateContext<'tcx>,
-        body: BodyId,
-    ) -> Option<&'tcx TypeckResults<'tcx>>;
+    fn typeck_body<'tcx>(cx: &mut LateContext<'tcx>, body: BodyId) -> &'tcx TypeckResults<'tcx>;
 }
 impl TypeckBody for () {
-    fn typeck_body<'tcx>(
-        cx: &mut LateContext<'tcx>,
-        body: BodyId,
-    ) -> Option<&'tcx TypeckResults<'tcx>> {
-        cx.typeck_results.replace(cx.tcx.typeck_body(body))
+    fn typeck_body<'tcx>(cx: &mut LateContext<'tcx>, body: BodyId) -> &'tcx TypeckResults<'tcx> {
+        mem::replace(&mut cx.typeck_results, cx.tcx.typeck_body(body))
     }
 }
 struct NoTypeckBody;
 impl TypeckBody for NoTypeckBody {
-    fn typeck_body<'tcx>(
-        _: &mut LateContext<'tcx>,
-        _: BodyId,
-    ) -> Option<&'tcx TypeckResults<'tcx>> {
-        None
+    fn typeck_body<'tcx>(cx: &mut LateContext<'tcx>, _: BodyId) -> &'tcx TypeckResults<'tcx> {
+        cx.typeck_results
     }
 }
 
@@ -146,7 +138,8 @@ impl<'tcx, T: LateLintPass<'tcx>, Typeck: TypeckBody> hir_visit::Visitor<'tcx>
     fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) {
         let generics = self.context.generics.take();
         self.context.generics = it.kind.generics();
-        let old_typeck_results = self.context.typeck_results.take();
+        let old_typeck_results = self.context.typeck_results;
+        self.context.typeck_results = self.context.tcx.dummy_typeck_results;
         let old_enclosing_body = self.context.enclosing_body.take();
         self.with_lint_attrs(it.hir_id(), |cx| {
             cx.with_param_env(it.owner_id, |cx| {
@@ -365,7 +358,7 @@ pub fn lint_missing_docs<'tcx>(tcx: TyCtxt<'tcx>, module_def_id: LocalModDefId) 
     let context = LateContext {
         tcx,
         enclosing_body: None,
-        typeck_results: None,
+        typeck_results: tcx.dummy_typeck_results,
         param_env: ty::ParamEnv::empty(),
         effective_visibilities: tcx.effective_visibilities(()),
         last_node_with_lint_attrs: tcx.local_def_id_to_hir_id(module_def_id),
@@ -389,7 +382,7 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     let context = LateContext {
         tcx,
         enclosing_body: None,
-        typeck_results: None,
+        typeck_results: tcx.dummy_typeck_results,
         param_env: ty::ParamEnv::empty(),
         effective_visibilities: tcx.effective_visibilities(()),
         last_node_with_lint_attrs: tcx.local_def_id_to_hir_id(module_def_id),
@@ -475,7 +468,7 @@ fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
     let context = LateContext {
         tcx,
         enclosing_body: None,
-        typeck_results: None,
+        typeck_results: tcx.dummy_typeck_results,
         param_env: ty::ParamEnv::empty(),
         effective_visibilities: tcx.effective_visibilities(()),
         last_node_with_lint_attrs: hir::CRATE_HIR_ID,

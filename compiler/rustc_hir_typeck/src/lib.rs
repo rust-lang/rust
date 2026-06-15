@@ -273,7 +273,7 @@ fn typeck_with_inspect<'tcx>(
 
     // Consistency check our TypeckResults instance can hold all ItemLocalIds
     // it will need to hold.
-    assert_eq!(typeck_results.hir_owner, id.owner);
+    assert_eq!(typeck_results.hir_owner, Some(id.owner));
 
     typeck_results
 }

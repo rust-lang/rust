@@ -16,7 +16,7 @@ use rustc_data_structures::unord::ExtendUnord;
 use rustc_errors::{E0720, ErrorGuaranteed};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, InferKind, Visitor};
-use rustc_hir::{self as hir, AmbigArg, HirId, find_attr};
+use rustc_hir::{self as hir, AmbigArg, HirId, ItemLocalId, find_attr};
 use rustc_infer::traits::solve::Goal;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
@@ -449,16 +449,16 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn visit_closures(&mut self) {
         let fcx_typeck_results = self.fcx.typeck_results.borrow();
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
-        let common_hir_owner = fcx_typeck_results.hir_owner;
 
         let fcx_closure_kind_origins =
             fcx_typeck_results.closure_kind_origins().items_in_stable_order();
 
         for (local_id, origin) in fcx_closure_kind_origins {
-            let hir_id = HirId { owner: common_hir_owner, local_id };
             let place_span = origin.0;
             let place = self.resolve(origin.1.clone(), &place_span);
-            self.typeck_results.closure_kind_origins_mut().insert(hir_id, (place_span, place));
+            self.typeck_results
+                .closure_kind_origins_mut()
+                .insert_local(local_id, (place_span, place));
         }
     }
 
@@ -476,9 +476,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn visit_user_provided_tys(&mut self) {
         let fcx_typeck_results = self.fcx.typeck_results.borrow();
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
-        let common_hir_owner = fcx_typeck_results.hir_owner;
 
         if self.rustc_dump_user_args {
+            let common_hir_owner = fcx_typeck_results.hir_owner.unwrap();
+
             let sorted_user_provided_types =
                 fcx_typeck_results.user_provided_types().items_in_stable_order();
 
@@ -505,11 +506,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             }
         }
 
-        self.typeck_results.user_provided_types_mut().extend(
-            fcx_typeck_results.user_provided_types().items().map(|(local_id, c_ty)| {
-                let hir_id = HirId { owner: common_hir_owner, local_id };
-                (hir_id, *c_ty)
-            }),
+        self.typeck_results.user_provided_types_mut().extend_local(
+            fcx_typeck_results.user_provided_types().items().map(|(id, &c_ty)| (id, c_ty)),
         );
     }
 
@@ -742,43 +740,37 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn visit_liberated_fn_sigs(&mut self) {
         let fcx_typeck_results = self.fcx.typeck_results.borrow();
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
-        let common_hir_owner = fcx_typeck_results.hir_owner;
 
         let fcx_liberated_fn_sigs = fcx_typeck_results.liberated_fn_sigs().items_in_stable_order();
 
         for (local_id, &fn_sig) in fcx_liberated_fn_sigs {
-            let hir_id = HirId { owner: common_hir_owner, local_id };
-            let fn_sig = self.resolve(fn_sig, &hir_id);
-            self.typeck_results.liberated_fn_sigs_mut().insert(hir_id, fn_sig);
+            let fn_sig = self.resolve(fn_sig, &local_id);
+            self.typeck_results.liberated_fn_sigs_mut().insert_local(local_id, fn_sig);
         }
     }
 
     fn visit_fru_field_types(&mut self) {
         let fcx_typeck_results = self.fcx.typeck_results.borrow();
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
-        let common_hir_owner = fcx_typeck_results.hir_owner;
 
         let fcx_fru_field_types = fcx_typeck_results.fru_field_types().items_in_stable_order();
 
         for (local_id, ftys) in fcx_fru_field_types {
-            let hir_id = HirId { owner: common_hir_owner, local_id };
-            let ftys = self.resolve(ftys.clone(), &hir_id);
-            self.typeck_results.fru_field_types_mut().insert(hir_id, ftys);
+            let ftys = self.resolve(ftys.clone(), &local_id);
+            self.typeck_results.fru_field_types_mut().insert_local(local_id, ftys);
         }
     }
 
     fn visit_offset_of_container_types(&mut self) {
         let fcx_typeck_results = self.fcx.typeck_results.borrow();
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
-        let common_hir_owner = fcx_typeck_results.hir_owner;
 
         for (local_id, indices) in fcx_typeck_results.offset_of_data().items_in_stable_order() {
-            let hir_id = HirId { owner: common_hir_owner, local_id };
             let indices = indices
                 .iter()
-                .map(|&(ty, variant, field)| (self.resolve(ty, &hir_id), variant, field))
+                .map(|&(ty, variant, field)| (self.resolve(ty, &local_id), variant, field))
                 .collect();
-            self.typeck_results.offset_of_data_mut().insert(hir_id, indices);
+            self.typeck_results.offset_of_data_mut().insert_local(local_id, indices);
         }
     }
 
@@ -835,7 +827,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     ))
                 })
                 // FIXME: throwing away the param-env :(
-                .map(|goal| (goal.predicate, self.fcx.misc(span.to_span(self.fcx.tcx)))),
+                .map(|goal| (goal.predicate, self.fcx.misc(span.to_span(self.fcx)))),
         );
         assert_eq!(unexpected_goals, vec![]);
 
@@ -876,18 +868,25 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 }
 
 pub(crate) trait Locatable {
-    fn to_span(&self, tcx: TyCtxt<'_>) -> Span;
+    fn to_span(&self, tcx: &FnCtxt<'_, '_>) -> Span;
 }
 
 impl Locatable for Span {
-    fn to_span(&self, _: TyCtxt<'_>) -> Span {
+    fn to_span(&self, _: &FnCtxt<'_, '_>) -> Span {
         *self
     }
 }
 
 impl Locatable for HirId {
-    fn to_span(&self, tcx: TyCtxt<'_>) -> Span {
-        tcx.hir_span(*self)
+    fn to_span(&self, fcx: &FnCtxt<'_, '_>) -> Span {
+        fcx.tcx.hir_span(*self)
+    }
+}
+
+impl Locatable for ItemLocalId {
+    fn to_span(&self, fcx: &FnCtxt<'_, '_>) -> Span {
+        fcx.tcx
+            .hir_span(HirId { owner: fcx.typeck_results.borrow().expect_owner(), local_id: *self })
     }
 }
 
@@ -920,7 +919,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                 .err_ctxt()
                 .emit_inference_failure_err(
                     self.fcx.tcx.hir_body_owner_def_id(self.body.id()),
-                    self.span.to_span(self.fcx.tcx),
+                    self.span.to_span(self.fcx),
                     p.into(),
                     TypeAnnotationNeeded::E0282,
                     false,
@@ -944,7 +943,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
         // that types that show up in the typeck are fully normalized.
         let mut value = if self.should_normalize && self.fcx.next_trait_solver() {
             let body_id = tcx.hir_body_owner_def_id(self.body.id());
-            let cause = ObligationCause::misc(self.span.to_span(tcx), body_id);
+            let cause = ObligationCause::misc(self.span.to_span(self.fcx), body_id);
             let at = self.fcx.at(&cause, self.fcx.param_env);
             let universes = vec![None; outer_exclusive_binder(&value).as_usize()];
             match solve::deeply_normalize_with_skipped_universes_and_ambiguous_coroutine_goals(
