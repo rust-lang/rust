@@ -458,8 +458,10 @@ fn fn_abi_sanity_check<'tcx>(
                 // omitted entirely in the calling convention.
                 assert!(arg.is_ignore());
             }
-            if let PassMode::Indirect { on_stack, .. } = arg.mode {
-                assert!(!on_stack, "rust abi shouldn't use on_stack");
+            if let PassMode::Indirect { on_stack, .. } = arg.mode
+                && spec_abi != ExternAbi::RustTail
+            {
+                assert!(!on_stack, "rustic abi {spec_abi:?} shouldn't use on_stack");
             }
         } else if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
             assert_matches!(
