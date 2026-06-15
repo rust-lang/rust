@@ -95,6 +95,10 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
             // zeroed vectors in Rust, which are inherently going to be different than the
             // undefined vectors returned by the C intrinsics.
             .filter(|i| !i.name.starts_with("svundef"))
+            // Skip `sveorv` intrinsics - the code produced by `intrinsic-test` for these
+            // miscompiles and the Rust intrinsic call gets replaced by a constant zero (see
+            // llvm/llvm-project#203921).
+            .filter(|i| !i.name.starts_with("sveorv"))
             // Skip pointers for now, we would probably need to look at the return
             // type to work out how many elements we need to point to.
             .filter(|i| !i.arguments.iter().any(|a| a.is_ptr()))
