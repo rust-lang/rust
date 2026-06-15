@@ -1,0 +1,20 @@
+if let ExprKind::Block(block, None) = expr.kind
+    && block.stmts.len() == 2
+    && let StmtKind::Let(local) = block.stmts[0].kind
+    && let Some(init) = local.init
+    && let ExprKind::Lit(ref lit) = init.kind
+    && let LitKind::Int(42, LitIntType::Signed(IntTy::I32)) = lit.node
+    && let PatKind::Binding(BindingMode::NONE, _, name, None) = local.pat.kind
+    && name.as_str() == "x"
+    && let StmtKind::Semi(e) = block.stmts[1].kind
+    && let ExprKind::Block(block1, None) = e.kind
+    && block1.stmts.len() == 1
+    && let StmtKind::Let(local1) = block1.stmts[0].kind
+    && let Some(init1) = local1.init
+    && let ExprKind::Unary(UnOp::Neg, inner) = init1.kind
+    && let PatKind::Wild = local1.pat.kind
+    && block1.expr.is_none()
+    && block.expr.is_none()
+{
+    // report your lint here
+}
