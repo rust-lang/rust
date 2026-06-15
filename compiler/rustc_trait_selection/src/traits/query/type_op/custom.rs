@@ -3,6 +3,7 @@ use std::fmt;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::region_constraints::RegionConstraintData;
+use rustc_infer::traits::{FromSolverError, ScrubbedTraitError};
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{TyCtxt, TypeFoldable};
 use rustc_span::Span;
@@ -10,8 +11,9 @@ use tracing::info;
 
 use crate::infer::InferCtxt;
 use crate::infer::canonical::query_response;
-use crate::traits::ObligationCtxt;
+use crate::solve::NextSolverError;
 use crate::traits::query::type_op::TypeOpOutput;
+use crate::traits::{FulfillmentError, ObligationCtxt, OldSolverError};
 
 pub struct CustomTypeOp<F> {
     closure: F,
@@ -50,7 +52,14 @@ where
             info!("fully_perform({:?})", self);
         }
 
-        Ok(scrape_region_constraints(infcx, root_def_id, self.description, span, self.closure)?.0)
+        Ok(scrape_region_constraints::<_, _, ScrubbedTraitError<'_>>(
+            infcx,
+            root_def_id,
+            self.description,
+            span,
+            self.closure,
+        )?
+        .0)
     }
 }
 
@@ -60,18 +69,71 @@ impl<F> fmt::Debug for CustomTypeOp<F> {
     }
 }
 
+pub struct FallibleCustomTypeOp<F> {
+    closure: F,
+    description: &'static str,
+}
+
+impl<F> FallibleCustomTypeOp<F> {
+    pub fn new<'tcx, R>(closure: F, description: &'static str) -> Self
+    where
+        F: FnOnce(&ObligationCtxt<'_, 'tcx, FulfillmentError<'tcx>>) -> Result<R, NoSolution>,
+    {
+        FallibleCustomTypeOp { closure, description }
+    }
+}
+
+impl<'tcx, F, R> super::TypeOp<'tcx> for FallibleCustomTypeOp<F>
+where
+    F: FnOnce(&ObligationCtxt<'_, 'tcx, FulfillmentError<'tcx>>) -> Result<R, NoSolution>,
+    R: fmt::Debug + TypeFoldable<TyCtxt<'tcx>>,
+{
+    type Output = R;
+    type ErrorInfo = !;
+
+    /// Processes the operation and all resulting obligations,
+    /// returning the final result along with any region constraints
+    /// (they will be given over to the NLL region solver).
+    fn fully_perform(
+        self,
+        infcx: &InferCtxt<'tcx>,
+        root_def_id: LocalDefId,
+        span: Span,
+    ) -> Result<TypeOpOutput<'tcx, Self>, ErrorGuaranteed> {
+        if cfg!(debug_assertions) {
+            info!("fully_perform({:?})", self);
+        }
+
+        Ok(scrape_region_constraints::<_, _, FulfillmentError<'tcx>>(
+            infcx,
+            root_def_id,
+            self.description,
+            span,
+            self.closure,
+        )?
+        .0)
+    }
+}
+
+impl<F> fmt::Debug for FallibleCustomTypeOp<F> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.description.fmt(f)
+    }
+}
+
 /// Executes `op` and then scrapes out all the "old style" region
 /// constraints that result, creating query-region-constraints.
-pub fn scrape_region_constraints<'tcx, Op, R>(
+pub fn scrape_region_constraints<'tcx, Op, R, E>(
     infcx: &InferCtxt<'tcx>,
     root_def_id: LocalDefId,
     name: &'static str,
     span: Span,
-    op: impl FnOnce(&ObligationCtxt<'_, 'tcx>) -> Result<R, NoSolution>,
+    op: impl FnOnce(&ObligationCtxt<'_, 'tcx, E>) -> Result<R, NoSolution>,
 ) -> Result<(TypeOpOutput<'tcx, Op>, RegionConstraintData<'tcx>), ErrorGuaranteed>
 where
     R: TypeFoldable<TyCtxt<'tcx>>,
     Op: super::TypeOp<'tcx, Output = R>,
+    E: FromSolverError<'tcx, NextSolverError<'tcx>> + FromSolverError<'tcx, OldSolverError<'tcx>>,
 {
     // During NLL, we expect that nobody will register region
     // obligations **except** as part of a custom type op (and, at the
@@ -90,9 +152,18 @@ where
     );
 
     let value = infcx.commit_if_ok(|_| {
-        let ocx = ObligationCtxt::new(infcx);
-        let value = op(&ocx).map_err(|_| {
-            infcx.tcx.check_potentially_region_dependent_goals(root_def_id).err().unwrap_or_else(
+        let ocx = ObligationCtxt::<E>::new_in(infcx);
+        op(&ocx)
+            .and_then(|v| {
+                let errors = ocx.evaluate_obligations_error_on_ambiguity();
+                if errors.is_empty() {
+                    Ok(v)
+                } else {
+                    E::try_report_errors(infcx, errors);
+                    Err(NoSolution)
+                }
+            })
+            .map_err(|_| {
                 // FIXME: In this region-dependent context, `type_op` should only fail due to
                 // region-dependent goals. Any other kind of failure indicates a bug and we
                 // should ICE.
@@ -120,23 +191,13 @@ where
                 //
                 // If we ICE here on any non-region-dependent failure, we would trigger ICEs
                 // too often for such cases. For now, we emit a delayed bug instead.
-                || {
-                    infcx
+                match infcx.tcx.check_potentially_region_dependent_goals(root_def_id) {
+                    Ok(_) => infcx
                         .dcx()
-                        .span_delayed_bug(span, format!("error performing operation: {name}"))
-                },
-            )
-        })?;
-        let errors = ocx.evaluate_obligations_error_on_ambiguity();
-        if errors.is_empty() {
-            Ok(value)
-        } else if let Err(guar) = infcx.tcx.check_potentially_region_dependent_goals(root_def_id) {
-            Err(guar)
-        } else {
-            Err(infcx.dcx().delayed_bug(format!(
-                "errors selecting obligation during MIR typeck: {name} {root_def_id:?} {errors:?}"
-            )))
-        }
+                        .span_delayed_bug(span, format!("error performing operation: {name}")),
+                    Err(e) => e,
+                }
+            })
     })?;
 
     // Next trait solver performs operations locally, and normalize goals should resolve vars.
