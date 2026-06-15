@@ -643,7 +643,7 @@ impl<'db> TypeFolder<DbInterner<'db>> for PlaceholderReplacer<'_, 'db> {
     }
 }
 
-pub fn sizedness_fast_path<'db>(
+pub fn implicit_fast_path<'db>(
     tcx: DbInterner<'db>,
     predicate: Predicate<'db>,
     param_env: ParamEnv<'db>,

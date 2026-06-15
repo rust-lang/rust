@@ -8,8 +8,9 @@ use rustc_middle::mir::{Body, ConstraintCategory};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, Unnormalized, Upcast};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
-use rustc_trait_selection::traits::ObligationCause;
+use rustc_trait_selection::traits::query::type_op::custom::FallibleCustomTypeOp;
 use rustc_trait_selection::traits::query::type_op::{self, TypeOpOutput};
+use rustc_trait_selection::traits::{Obligation, ObligationCause};
 use tracing::{debug, instrument};
 
 use super::{Locations, NormalizeLocation, TypeChecker};

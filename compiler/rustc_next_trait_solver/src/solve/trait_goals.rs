@@ -1323,7 +1323,9 @@ where
 
             // Backward compatibility for default auto traits.
             // Test: ui/traits/default_auto_traits/extern-types.rs
-            ty::Foreign(..) if self.cx().is_default_trait(goal.predicate.def_id()) => check_impls(),
+            ty::Foreign(..) if self.cx().is_implicit_trait(goal.predicate.def_id(), false) => {
+                check_impls()
+            }
 
             // These types cannot be structurally decomposed into constituent
             // types, and therefore have no built-in auto impl.
