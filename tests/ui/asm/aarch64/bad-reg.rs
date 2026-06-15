@@ -1,5 +1,5 @@
 //@ add-minicore
-//@ compile-flags: --target aarch64-unknown-linux-gnu -C target-feature=+neon
+//@ compile-flags: --target aarch64-unknown-linux-gnu -C target-feature=+neon,+sve
 //@ needs-llvm-components: aarch64
 //@ ignore-backends: gcc
 #![crate_type = "lib"]
@@ -39,14 +39,11 @@ fn main() {
         //~^ ERROR invalid register `x19`: x19 is used internally by LLVM and cannot be used as an operand for inline asm
 
         asm!("", in("p0") foo);
-        //~^ ERROR register class `preg` can only be used as a clobber, not as an input or output
-        //~| ERROR type `i32` cannot be used with this register class
+        //~^ ERROR type `i32` cannot be used with this register class
         asm!("", out("p0") _);
         asm!("{}", in(preg) foo);
-        //~^ ERROR register class `preg` can only be used as a clobber, not as an input or output
-        //~| ERROR type `i32` cannot be used with this register class
+        //~^ ERROR type `i32` cannot be used with this register class
         asm!("{}", out(preg) _);
-        //~^ ERROR register class `preg` can only be used as a clobber, not as an input or output
 
         // Explicit register conflicts
         // (except in/lateout which don't conflict)
