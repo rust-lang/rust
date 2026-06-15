@@ -31,7 +31,7 @@ use tracing::{debug, instrument};
 
 use crate::abi::FnAbiLlvmExt;
 use crate::attributes;
-use crate::common::Funclet;
+use crate::common::{type_name_for_ignore_list, Funclet};
 use crate::context::{CodegenCx, FullCx, GenericCx, SCx};
 use crate::llvm::{
     self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, FromGeneric, GEPNoWrapFlags, Metadata, TRUE,
@@ -1887,14 +1887,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
                 options.insert(cfi::TypeIdOptions::NORMALIZE_INTEGERS);
             }
 
-            let inputs: Vec<_> = fn_abi.args.iter().map(|arg| arg.layout.ty).collect();
-            let output = fn_abi.ret.layout.ty;
-            let mut fn_sig_kind = rustc_middle::ty::FnSigKind::default();
-            fn_sig_kind = fn_sig_kind.set_safety(rustc_hir::Safety::Safe);
-            fn_sig_kind = fn_sig_kind.set_c_variadic(fn_abi.c_variadic);
-            let fn_sig = self.tcx.mk_fn_sig(inputs, output, fn_sig_kind);
-            let fn_ptr = Ty::new_fn_ptr(self.tcx, rustc_middle::ty::Binder::dummy(fn_sig));
-            let type_name = rustc_middle::ty::print::with_no_trimmed_paths!(fn_ptr.to_string());
+            let type_name = type_name_for_ignore_list(self.tcx, fn_abi);
 
             let typeid = if let Some(instance) = instance {
                 cfi::typeid_for_instance(self.tcx, instance, options)
@@ -1967,14 +1960,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
                     options.insert(kcfi::TypeIdOptions::NORMALIZE_INTEGERS);
                 }
 
-                let inputs: Vec<_> = fn_abi.args.iter().map(|arg| arg.layout.ty).collect();
-                let output = fn_abi.ret.layout.ty;
-                let mut fn_sig_kind = rustc_middle::ty::FnSigKind::default();
-                fn_sig_kind = fn_sig_kind.set_safety(rustc_hir::Safety::Safe);
-                fn_sig_kind = fn_sig_kind.set_c_variadic(fn_abi.c_variadic);
-                let fn_sig = self.tcx.mk_fn_sig(inputs, output, fn_sig_kind);
-                let fn_ptr = Ty::new_fn_ptr(self.tcx, rustc_middle::ty::Binder::dummy(fn_sig));
-                let type_name = rustc_middle::ty::print::with_no_trimmed_paths!(fn_ptr.to_string());
+                let type_name = type_name_for_ignore_list(self.tcx, fn_abi);
 
                 if self.cx.sanitizer_ignorelist.as_ref().is_some_and(|ignorelist| {
                     ignorelist.contains_prefix(c"kcfi", c"type", &type_name)
