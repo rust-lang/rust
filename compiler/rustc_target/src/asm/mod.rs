@@ -795,6 +795,16 @@ pub enum InlineAsmType {
     VecF32(u64),
     VecF64(u64),
     VecF128(u64),
+    SveVecI8,
+    SveVecI16,
+    SveVecI32,
+    SveVecI64,
+    SveVecI128,
+    SveVecF16,
+    SveVecF32,
+    SveVecF64,
+    SveVecF128,
+    SveVecBool,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -829,6 +839,16 @@ impl InlineAsmType {
             Self::VecI32(n) | Self::VecF32(n) => InlineAsmSize::FixedInBytes(n * 4),
             Self::VecI64(n) | Self::VecF64(n) => InlineAsmSize::FixedInBytes(n * 8),
             Self::VecI128(n) | Self::VecF128(n) => InlineAsmSize::FixedInBytes(n * 16),
+            Self::SveVecI8
+            | Self::SveVecI16
+            | Self::SveVecI32
+            | Self::SveVecI64
+            | Self::SveVecI128
+            | Self::SveVecF16
+            | Self::SveVecF32
+            | Self::SveVecF64
+            | Self::SveVecF128
+            | Self::SveVecBool => InlineAsmSize::Scalable,
         }
     }
 }
@@ -854,6 +874,16 @@ impl fmt::Display for InlineAsmType {
             Self::VecF32(n) => write!(f, "f32x{n}"),
             Self::VecF64(n) => write!(f, "f64x{n}"),
             Self::VecF128(n) => write!(f, "f128x{n}"),
+            Self::SveVecI8 => f.write_str("svint8_t"),
+            Self::SveVecI16 => f.write_str("svint16_t"),
+            Self::SveVecI32 => f.write_str("svint32_t"),
+            Self::SveVecI64 => f.write_str("svint64_t"),
+            Self::SveVecI128 => f.write_str("svint128_t"),
+            Self::SveVecF16 => f.write_str("svfloat26_t"),
+            Self::SveVecF32 => f.write_str("svfloat32_t"),
+            Self::SveVecF64 => f.write_str("svfloat64_t"),
+            Self::SveVecF128 => f.write_str("svfloat128_t"),
+            Self::SveVecBool => f.write_str("svbool_t"),
         }
     }
 }

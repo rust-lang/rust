@@ -158,6 +158,28 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     _ => Err(NonAsmTypeReason::InvalidElement(field.did, ty)),
                 }
             }
+            ty::Adt(adt, _args) if adt.repr().scalable() => {
+                let (_element_count, elem_ty, _number_of_vectors) =
+                    ty.scalable_vector_parts(self.tcx()).unwrap();
+
+                match elem_ty.kind() {
+                    ty::Int(IntTy::I8) | ty::Uint(UintTy::U8) => Ok(InlineAsmType::SveVecI8),
+                    ty::Int(IntTy::I16) | ty::Uint(UintTy::U16) => Ok(InlineAsmType::SveVecI16),
+                    ty::Int(IntTy::I32) | ty::Uint(UintTy::U32) => Ok(InlineAsmType::SveVecI32),
+                    ty::Int(IntTy::I64) | ty::Uint(UintTy::U64) => Ok(InlineAsmType::SveVecI64),
+                    ty::Int(IntTy::I128) | ty::Uint(UintTy::U128) => Ok(InlineAsmType::SveVecI128),
+                    ty::Float(FloatTy::F16) => Ok(InlineAsmType::SveVecF16),
+                    ty::Float(FloatTy::F32) => Ok(InlineAsmType::SveVecF32),
+                    ty::Float(FloatTy::F64) => Ok(InlineAsmType::SveVecF64),
+                    ty::Float(FloatTy::F128) => Ok(InlineAsmType::SveVecF128),
+                    ty::Bool => Ok(InlineAsmType::SveVecBool),
+                    _ => {
+                        let fields = &adt.non_enum_variant().fields;
+                        let field = &fields[FieldIdx::ZERO];
+                        Err(NonAsmTypeReason::InvalidElement(field.did, ty))
+                    }
+                }
+            }
             ty::Infer(_) => bug!("unexpected infer ty in asm operand"),
             _ => Err(NonAsmTypeReason::Invalid(ty)),
         }
@@ -250,8 +272,8 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     NonAsmTypeReason::Invalid(ty) => {
                         let msg = format!("cannot use value of type `{ty}` for inline assembly");
                         self.fcx.dcx().struct_span_err(expr.span, msg).with_note(
-                            "only integers, floats, SIMD vectors, pointers and function pointers \
-                            can be used as arguments for inline assembly",
+                            "only integers, floats, SIMD vectors, scalable vectors, pointers and function \
+                            pointers can be used as arguments for inline assembly",
                         ).emit();
                     }
                     NonAsmTypeReason::NotSizedPtr(ty) => {
