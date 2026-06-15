@@ -2067,6 +2067,7 @@ symbols! {
         suggestion,
         super_let,
         supertrait_item_shadowing,
+        sve,
         sve_cast,
         sve_tuple_create2,
         sve_tuple_create3,
@@ -2406,6 +2407,7 @@ symbols! {
         zfh,
         zfhmin,
         zmm_reg,
+        zreg,
         ztso,
         // tidy-alphabetical-end
     }
