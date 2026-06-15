@@ -155,7 +155,11 @@ let __rust_nan = svcmpuo_{ty}{bl}({PREDICATE_LOCAL}, __rust_eq_return_value, __r
 let __c_nan = svcmpuo_{ty}{bl}({PREDICATE_LOCAL}, __c_eq_return_value, __c_eq_return_value);
 let __both_nan = svand_b_z({PREDICATE_LOCAL}, __rust_nan, __c_nan);
 let __eq = svorr_b_z({PREDICATE_LOCAL}, __eq_sans_nan, __both_nan);
-assert!(svptest_any(__pred, __eq), "{{}}-{i_plus_one}/{n}", id);
+if !svptest_any(__pred, __eq) {{
+  let __rust_pretty = debug_print_{ty}{bl}(__rust_eq_return_value);
+  let __c_pretty = debug_print_{ty}{bl}(__c_eq_return_value);
+  panic!("{{}}-{i_plus_one}/{n}\nRust: {{__rust_pretty}}\nC: {{__c_pretty}}", id);
+}}
 "#,
                             ty = self.rust_intrinsic_name_prefix(),
                             bl = self.inner_size(),
@@ -168,8 +172,14 @@ assert!(svptest_any(__pred, __eq), "{{}}-{i_plus_one}/{n}", id);
                         // Most types can just use `svcmpeq`
                         fmt(&format_args!(
                             r#"
-let __eq = svcmpeq_{ty}{bl}({PREDICATE_LOCAL}, {rust_return_value}, {c_return_value});
-assert!(svptest_any(__pred, __eq), "{{}}-{i_plus_one}/{n}", id);
+let __rust_eq_return_value = {rust_return_value};
+let __c_eq_return_value = {c_return_value};
+let __eq = svcmpeq_{ty}{bl}({PREDICATE_LOCAL}, __rust_eq_return_value, __c_eq_return_value);
+if !svptest_any(__pred, __eq) {{
+  let __rust_pretty = debug_print_{ty}{bl}(__rust_eq_return_value);
+  let __c_pretty = debug_print_{ty}{bl}(__c_eq_return_value);
+  panic!("{{}}-{i_plus_one}/{n}\nRust: {{__rust_pretty}}\nC: {{__c_pretty}}", id);
+}}
 "#,
                             ty = self.rust_intrinsic_name_prefix(),
                             bl = self.inner_size(),

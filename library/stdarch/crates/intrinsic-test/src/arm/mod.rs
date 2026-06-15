@@ -232,4 +232,73 @@ const fn svprfop_from_i32(value: i32) -> svprfop {
         _ => unreachable!(),
     }
 }
+
+macro_rules! debug_print_integral {
+    ($($name:ident => ($ty:ty, $svptrue_fn:ident, $svcnt_fn:ident, $svst_fn:ident)),*) => {
+        $(
+            #[inline]
+            #[target_feature(enable = "sve")]
+            #[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
+            pub fn $name(v: $ty) -> String {
+                unsafe {
+                    let __pred = $svptrue_fn();
+                    let __num_elems = $svcnt_fn() as usize;
+                    let mut __buf = std::vec::Vec::with_capacity(__num_elems);
+                    $svst_fn(__pred, __buf.as_mut_ptr(), v);
+                    __buf.set_len(__num_elems);
+                    format!(
+                        "[{}]",
+                        __buf.iter().map(|el| el.to_string()).collect::<Vec<_>>().join(", ")
+                    )
+                }
+            }
+        )*
+    }
+}
+
+debug_print_integral! {
+    debug_print_f32 => (svfloat32_t, svptrue_b32, svcntw, svst1_f32),
+    debug_print_f64 => (svfloat64_t, svptrue_b64, svcntd, svst1_f64),
+    debug_print_s8 => (svint8_t, svptrue_b8, svcntb, svst1_s8),
+    debug_print_s16 => (svint16_t, svptrue_b16, svcnth, svst1_s16),
+    debug_print_s32 => (svint32_t, svptrue_b32, svcntw, svst1_s32),
+    debug_print_s64 => (svint64_t, svptrue_b64, svcntd, svst1_s64),
+    debug_print_u8 => (svuint8_t, svptrue_b8, svcntb, svst1_u8),
+    debug_print_u16 => (svuint16_t, svptrue_b16, svcnth, svst1_u16),
+    debug_print_u32 => (svuint32_t, svptrue_b32, svcntw, svst1_u32),
+    debug_print_u64 => (svuint64_t, svptrue_b64, svcntd, svst1_u64)
+}
+
+macro_rules! debug_print_bool {
+    ($($name:ident => ($ty:ty, $svst_fn:ident, $svdup_fn:ident)),*) => {
+        $(
+            #[inline]
+            #[target_feature(enable = "sve")]
+            #[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
+            pub fn $name(v: $ty) -> String {
+                unsafe {
+                    let __num_elems = svcntb() as usize;
+                    let mut __buf = std::vec::Vec::with_capacity(__num_elems);
+                    $svst_fn(v, __buf.as_mut_ptr(), $svdup_fn(1));
+                    __buf.set_len(__num_elems);
+                    format!(
+                        "[{}]",
+                        __buf.iter()
+                            .map(|el| *el == 1)
+                            .map(|el| el.to_string())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    )
+                }
+            }
+        )*
+    }
+}
+
+debug_print_bool! {
+    debug_print_b8 => (svbool_t, svst1_u8, svdup_n_u8),
+    debug_print_b16 => (svbool_t, svst1_u16, svdup_n_u16),
+    debug_print_b32 => (svbool_t, svst1_u32, svdup_n_u32),
+    debug_print_b64 => (svbool_t, svst1_u64, svdup_n_u64)
+}
 "#;
