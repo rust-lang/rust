@@ -1013,6 +1013,10 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeVisitor<I>
         match t.kind() {
             TyKind::Placeholder(p) => self.max_universe = self.max_universe.max(p.universe),
             TyKind::Infer(InferTy::TyVar(inf)) => {
+                // Unlike `visit_region`, we don't resolve the variable first: callers
+                // computing assumptions bail on any non-region inference variable
+                // before reaching here, so a type infer var is always unresolved and
+                // has a universe.
                 let u = self.infcx.universe_of_ty(inf).unwrap();
                 debug!("var {inf:?} in universe {u:?}");
                 self.max_universe = self.max_universe.max(u);
@@ -1025,6 +1029,8 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeVisitor<I>
         match c.kind() {
             ConstKind::Placeholder(p) => self.max_universe = self.max_universe.max(p.universe),
             ConstKind::Infer(rustc_type_ir::InferConst::Var(inf)) => {
+                // See the comment in `visit_ty`: a const infer var is always
+                // unresolved here, so unlike a region it needs no resolving first.
                 let u = self.infcx.universe_of_ct(inf).unwrap();
                 debug!("var {inf:?} in universe {u:?}");
                 self.max_universe = self.max_universe.max(u);
@@ -1037,9 +1043,20 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeVisitor<I>
         match r.kind() {
             RegionKind::RePlaceholder(p) => self.max_universe = self.max_universe.max(p.universe),
             RegionKind::ReVar(var) => {
-                let u = self.infcx.universe_of_lt(var).unwrap();
-                debug!("var {var:?} in universe {u:?}");
-                self.max_universe = self.max_universe.max(u);
+                // The variable may already have been unified with another region.
+                // `universe_of_lt` returns `None` for a resolved variable, so resolve
+                // it first and inspect whatever it points at.
+                match self.infcx.opportunistic_resolve_lt_var(var).kind() {
+                    RegionKind::RePlaceholder(p) => {
+                        self.max_universe = self.max_universe.max(p.universe)
+                    }
+                    RegionKind::ReVar(var) => {
+                        let u = self.infcx.universe_of_lt(var).unwrap();
+                        debug!("var {var:?} in universe {u:?}");
+                        self.max_universe = self.max_universe.max(u);
+                    }
+                    _ => (),
+                }
             }
             _ => (),
         }
