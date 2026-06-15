@@ -99,6 +99,9 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
             // miscompiles and the Rust intrinsic call gets replaced by a constant zero (see
             // llvm/llvm-project#203921).
             .filter(|i| !i.name.starts_with("sveorv"))
+            // These load intrinsics expect each element in the scalable vector `bases` argument to
+            // be able to be cast to a pointer, which we don't support generating tests for yet.
+            .filter(|i| !(i.name.starts_with("svld") && i.name.contains("_gather_")))
             // Skip pointers for now, we would probably need to look at the return
             // type to work out how many elements we need to point to.
             .filter(|i| !i.arguments.iter().any(|a| a.is_ptr()))
