@@ -305,7 +305,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::Optimize(..) => (),
             AttributeKind::PanicRuntime => (),
             AttributeKind::PatchableFunctionEntry { .. } => (),
-            AttributeKind::Path(..) => (),
+            AttributeKind::Path(_, style) => self.check_path_attribute(*style, hir_id, span),
             AttributeKind::PatternComplexityLimit { .. } => (),
             AttributeKind::PinV2(..) => (),
             AttributeKind::PreludeImport => (),
@@ -942,7 +942,45 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
         }
     }
+    fn check_path_attribute(&self, style: AttrStyle, hir_id: HirId, span: Span) {
+        let mod_span = self.tcx.hir_span(hir_id);
+        if mod_span.from_expansion() {
+            return;
+        }
 
+        let hir::Node::Item(item) = self.tcx.hir_node(hir_id) else {
+            return;
+        };
+
+        let ItemKind::Mod(_, module) = &item.kind else {
+            return;
+        };
+
+        let is_outer_attr = matches!(style, ast::AttrStyle::Outer);
+        let is_inner_attr = matches!(style, ast::AttrStyle::Inner);
+
+        let is_inline = |item_span: Span, inner_span: Span| -> bool {
+            self.tcx.sess.source_map().lookup_char_pos(item_span.lo()).file.name
+                == self.tcx.sess.source_map().lookup_char_pos(inner_span.lo()).file.name
+        };
+
+        let is_inline_module = is_inline(span, module.spans.inner_span);
+
+        let has_nested_external_modules = module.item_ids.iter().any(|item_id| {
+            let nested_item = self.tcx.hir_item(*item_id);
+            if let ItemKind::Mod(_, nested_mod) = &nested_item.kind {
+                let nested_item_span = self.tcx.hir_span(nested_item.hir_id());
+                return !is_inline(nested_item_span, nested_mod.spans.inner_span);
+            }
+            false
+        });
+
+        if is_outer_attr && is_inline_module && !has_nested_external_modules {
+            self.dcx().emit_err(errors::UselessPathAttribute { span });
+        } else if is_inner_attr && !has_nested_external_modules {
+            self.dcx().emit_err(errors::UselessInnerPathAttribute { span });
+        }
+    }
     /// Checks `#[doc(inline)]`/`#[doc(no_inline)]` attributes.
     ///
     /// A doc inlining attribute is invalid if it is applied to a non-`use` item, or

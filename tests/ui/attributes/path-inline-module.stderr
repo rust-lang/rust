@@ -1,0 +1,41 @@
+error: attribute `#[path]` is useless on inline modules
+  --> $DIR/path-inline-module.rs:3:1
+   |
+LL | mod inline_module {}
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: attribute `#[path]` is useless on inline modules
+  --> $DIR/path-inline-module.rs:7:1
+   |
+LL | / mod inline_with_inline_sub {
+LL | |     mod inner {} // inline, not external
+LL | | }
+   | |_^
+
+error: attribute `#[path]` is useless here as there are no nested external modules
+  --> $DIR/path-inline-module.rs:12:1
+   |
+LL | / mod useless_inner {
+LL | |     #![path = "some_dir"]
+LL | |     // no external submodules
+LL | | }
+   | |_^
+
+error: attribute `#[path]` is useless here as there are no nested external modules
+  --> $DIR/path-inline-module.rs:18:1
+   |
+LL | / mod thread_inline_sub {
+LL | |     #![path = "thread_files"]
+LL | |     #[path = "tls.rs"]
+LL | |     mod local_data {}
+LL | | }
+   | |_^
+
+error: attribute `#[path]` is useless on inline modules
+  --> $DIR/path-inline-module.rs:21:5
+   |
+LL |     mod local_data {}
+   |     ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+

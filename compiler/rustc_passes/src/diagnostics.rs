@@ -14,6 +14,19 @@ use crate::check_attr::ProcMacroKind;
 use crate::lang_items::Duplicate;
 
 #[derive(Diagnostic)]
+#[diag("attribute `#[path]` is useless on inline modules")]
+pub(crate) struct UselessPathAttribute {
+    #[primary_span]
+    pub span: Span,
+}
+#[derive(Diagnostic)]
+#[diag("attribute `#[path]` is useless here as there are no nested external modules")]
+pub(crate) struct UselessInnerPathAttribute {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("`#[loop_match]` should be applied to a loop")]
 pub(crate) struct LoopMatchAttr {
     #[primary_span]

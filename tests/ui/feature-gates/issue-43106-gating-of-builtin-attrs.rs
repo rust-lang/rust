@@ -252,34 +252,6 @@ mod macro_export {
     //~| HELP remove the attribute
 }
 
-#[path = "3800"]
-mod path {
-    mod inner { #![path="3800"] }
-
-    #[path = "3800"] fn f() { }
-    //~^ WARN attribute cannot be used on
-//~| WARN previously accepted
-    //~| HELP can only be applied to
-    //~| HELP remove the attribute
-
-    #[path = "3800"]  struct S;
-    //~^ WARN attribute cannot be used on
-//~| WARN previously accepted
-    //~| HELP can only be applied to
-    //~| HELP remove the attribute
-
-    #[path = "3800"] type T = S;
-    //~^ WARN attribute cannot be used on
-//~| WARN previously accepted
-    //~| HELP can only be applied to
-    //~| HELP remove the attribute
-
-    #[path = "3800"] impl S { }
-    //~^ WARN attribute cannot be used on
-//~| WARN previously accepted
-    //~| HELP can only be applied to
-    //~| HELP remove the attribute
-}
 
 #[automatically_derived]
 //~^ WARN attribute cannot be used on

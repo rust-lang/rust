@@ -1210,7 +1210,7 @@ pub enum AttributeKind {
     },
 
     /// Represents `#[path]`
-    Path(Symbol),
+    Path(Symbol, AttrStyle),
 
     /// Represents `#[pattern_complexity_limit]`
     PatternComplexityLimit {
