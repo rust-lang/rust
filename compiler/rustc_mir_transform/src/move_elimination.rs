@@ -126,7 +126,7 @@ pub(super) struct MoveElimination;
 
 impl<'tcx> crate::MirPass<'tcx> for MoveElimination {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 2
+        sess.mir_opt_level() >= 2 && sess.opts.unstable_opts.mir_move_elimination
     }
 
     #[tracing::instrument(level = "trace", skip(self, tcx, body))]

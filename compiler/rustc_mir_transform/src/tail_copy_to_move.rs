@@ -40,7 +40,7 @@ pub(super) struct TailCopyToMove;
 
 impl<'tcx> crate::MirPass<'tcx> for TailCopyToMove {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 2
+        sess.mir_opt_level() >= 2 && sess.opts.unstable_opts.mir_move_elimination
     }
 
     #[tracing::instrument(level = "trace", skip(self, _tcx, body))]
