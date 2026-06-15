@@ -43,13 +43,63 @@ use crate::ptr;
 /// }
 /// ```
 ///
-/// # Interaction with `Box`
+/// # Safety hazards when storing `ManuallyDrop` in a struct or an enum.
 ///
-/// Currently, if you have a `ManuallyDrop<T>`, where the type `T` is a `Box` or
-/// contains a `Box` inside, then dropping the `T` followed by moving the
-/// `ManuallyDrop<T>` is [considered to be undefined
+/// Special care is needed when all of the conditions below are met:
+/// * A struct or enum contains a `ManuallyDrop`.
+/// * The `ManuallyDrop` is not inside a `union`.
+/// * The struct or enum is part of public API, or is stored in a struct or an
+///   enum that is part of public API.
+/// * There is a _safe_ function that drops the contents of the `ManuallyDrop`
+///   field, and it can be called outside the struct or enum's `Drop` implementation.
+///
+/// In particular, deriving `Debug`, `Clone`, `PartialEq`, `PartialOrd`, `Ord`,
+/// or `Hash` on the struct or enum could be unsound, since the derived
+/// implementations of these traits would access the `ManuallyDrop` field.
+///
+/// For example, in the following code, `derive(Debug)` is unsound in combination
+/// with the `ManuallyDrop::drop` call in `Foo::new`:
+///
+/// ```no_run
+/// # use std::mem::ManuallyDrop;
+/// #[derive(Debug)]
+/// pub struct Foo {
+///     /// Invariant: this value may have been dropped!
+///     value: ManuallyDrop<String>,
+/// }
+/// impl Foo {
+///     pub fn new() -> Self {
+///         let mut temp = Self {
+///             value: ManuallyDrop::new(String::from("Unsafe rust is hard."))
+///         };
+///         unsafe {
+///             // SAFETY: `value` hasn't been dropped yet.
+///             ManuallyDrop::drop(&mut temp.value);
+///         }
+///         temp
+///     }
+/// }
+/// ```
+///
+/// As one could use the `Debug` implementation to access an already dropped
+/// field:
+///
+/// ```rust,ignore (uses-type-from-separate-snippet)
+/// let foo = Foo::new();
+/// println!("{foo:?}"); // Undefined behavior!
+/// ```
+///
+/// Note that similar unsoundness can arise without `derive`. The cause of the
+/// unsoundness are public APIs which allow to access an already dropped value
+/// inside `ManuallyDrop`.
+///
+/// # Pre-`1.96` Interaction with `Box`
+///
+/// Before Rust `1.96.0`, if you had a `ManuallyDrop<T>`, where the type `T`
+/// was a `Box` or contained a `Box` inside, then dropping the `T` followed by
+/// moving the `ManuallyDrop<T>` was [considered to be undefined
 /// behavior](https://github.com/rust-lang/unsafe-code-guidelines/issues/245).
-/// That is, the following code causes undefined behavior:
+/// That is, the following code caused undefined behavior:
 ///
 /// ```no_run
 /// use std::mem::ManuallyDrop;
@@ -58,31 +108,12 @@ use crate::ptr;
 /// unsafe {
 ///     ManuallyDrop::drop(&mut x);
 /// }
-/// let y = x; // Undefined behavior!
+/// let y = x; // Undefined behavior! (pre 1.96.0)
 /// ```
 ///
-/// This is [likely to change in the
-/// future](https://rust-lang.github.io/rfcs/3336-maybe-dangling.html). In the
-/// meantime, consider using [`MaybeUninit`] instead.
-///
-/// # Safety hazards when storing `ManuallyDrop` in a struct or an enum.
-///
-/// Special care is needed when all of the conditions below are met:
-/// * A struct or enum contains a `ManuallyDrop`.
-/// * The `ManuallyDrop` is not inside a `union`.
-/// * The struct or enum is part of public API, or is stored in a struct or an
-///   enum that is part of public API.
-/// * There is code that drops the contents of the `ManuallyDrop` field, and
-///   this code is outside the struct or enum's `Drop` implementation.
-///
-/// In particular, the following hazards may occur:
-///
-/// #### Storing generic types
-///
-/// If the `ManuallyDrop` contains a client-supplied generic type, the client
-/// might provide a `Box` as that type. This would cause undefined behavior when
-/// the struct or enum is later moved, as mentioned in the previous section. For
-/// example, the following code causes undefined behavior:
+/// Note that this could also have happen with a generic type where the user of
+/// the library providing it could substitute the generic for a `Box<_>` and
+/// then move the library type:
 ///
 /// ```no_run
 /// use std::mem::ManuallyDrop;
@@ -101,7 +132,7 @@ use crate::ptr;
 ///             self.is_some = false;
 ///             unsafe {
 ///                 // SAFETY: `value` hasn't been dropped yet, as per the invariant
-///                 // (This is actually unsound!)
+///                 // (This is actually unsound pre rust 1.96.0!)
 ///                 ManuallyDrop::drop(&mut self.value);
 ///             }
 ///         }
@@ -112,41 +143,7 @@ use crate::ptr;
 ///
 /// let mut option = BadOption::new(Box::new(42));
 /// option.change_to_none();
-/// let option2 = option; // Undefined behavior!
-/// ```
-///
-/// #### Deriving traits
-///
-/// Deriving `Debug`, `Clone`, `PartialEq`, `PartialOrd`, `Ord`, or `Hash` on
-/// the struct or enum could be unsound, since the derived implementations of
-/// these traits would access the `ManuallyDrop` field. For example, the
-/// following code causes undefined behavior:
-///
-/// ```no_run
-/// use std::mem::ManuallyDrop;
-///
-/// // This derive is unsound in combination with the `ManuallyDrop::drop` call.
-/// #[derive(Debug)]
-/// pub struct Foo {
-///     value: ManuallyDrop<String>,
-/// }
-/// impl Foo {
-///     pub fn new() -> Self {
-///         let mut temp = Self {
-///             value: ManuallyDrop::new(String::from("Unsafe rust is hard."))
-///         };
-///         unsafe {
-///             // SAFETY: `value` hasn't been dropped yet.
-///             ManuallyDrop::drop(&mut temp.value);
-///         }
-///         temp
-///     }
-/// }
-///
-/// // In another crate:
-///
-/// let foo = Foo::new();
-/// println!("{:?}", foo); // Undefined behavior!
+/// let option2 = option; // Undefined behavior! (pre 1.96)
 /// ```
 ///
 /// [drop order]: https://doc.rust-lang.org/reference/destructors.html
