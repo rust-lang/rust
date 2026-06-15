@@ -1772,6 +1772,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 | ConstraintCategory::CallArgument(_)
                 | ConstraintCategory::CopyBound
                 | ConstraintCategory::SizedBound
+                | ConstraintCategory::MoveBound
                 | ConstraintCategory::Assignment
                 | ConstraintCategory::Usage
                 | ConstraintCategory::ClosureUpvar(_) => 2,

@@ -54,19 +54,13 @@ fn associated_type_bounds<'tcx>(
             | PredicateFilter::SelfTraitThatDefines(_)
             | PredicateFilter::SelfAndAssociatedTypeBounds => {
                 // Implicit bounds are added to associated types unless a `?Trait` bound is found.
-                icx.lowerer().add_implicit_sizedness_bounds(
+                icx.lowerer().add_implicit_bounds(
                     &mut bounds,
                     item_ty,
                     hir_bounds,
                     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     span,
-                );
-                icx.lowerer().add_default_traits(
-                    &mut bounds,
-                    item_ty,
-                    hir_bounds,
-                    ImpliedBoundsContext::AssociatedTypeOrImplTrait,
-                    span,
+                    true,
                 );
 
                 // Also collect `where Self::Assoc: Trait` from the parent trait's where clauses.
@@ -380,19 +374,13 @@ fn opaque_type_bounds<'tcx>(
             | PredicateFilter::SelfOnly
             | PredicateFilter::SelfTraitThatDefines(_)
             | PredicateFilter::SelfAndAssociatedTypeBounds => {
-                icx.lowerer().add_implicit_sizedness_bounds(
+                icx.lowerer().add_implicit_bounds(
                     &mut bounds,
                     item_ty,
                     hir_bounds,
                     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     span,
-                );
-                icx.lowerer().add_default_traits(
-                    &mut bounds,
-                    item_ty,
-                    hir_bounds,
-                    ImpliedBoundsContext::AssociatedTypeOrImplTrait,
-                    span,
+                    true,
                 );
             }
             //`ConstIfConst` is only interested in `[const]` bounds.

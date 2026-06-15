@@ -549,13 +549,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let constness = self.lower_constness(*constness);
                 let impl_restriction = self.lower_impl_restriction(impl_restriction);
                 let ident = self.lower_ident(*ident);
+                let policy = if self.tcx.features().move_trait() {
+                    RelaxedBoundPolicy::Allowed(&mut Default::default())
+                } else {
+                    RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::SuperTrait)
+                };
                 let (generics, (safety, items, bounds)) = self.lower_generics(
                     generics,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
                         let bounds = this.lower_param_bounds(
                             bounds,
-                            RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::SuperTrait),
+                            policy,
                             ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
                         );
                         let items = this.arena.alloc_from_iter(

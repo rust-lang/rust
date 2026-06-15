@@ -3918,6 +3918,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             ObligationCauseCode::SizedYieldType => {
                 err.note("the yield type of a coroutine must have a statically known size");
             }
+            ObligationCauseCode::MovingMove => {
+                err.note("moved values must be of a type that is `Move`");
+            }
             ObligationCauseCode::AssignmentLhsSized => {
                 err.note("the left-hand-side of an assignment must have a statically known size");
             }

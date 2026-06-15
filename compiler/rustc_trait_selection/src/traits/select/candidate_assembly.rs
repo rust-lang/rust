@@ -777,9 +777,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // still be provided by a manual implementation for
                     // this trait and type.
 
-                    // Backward compatibility for default auto traits.
+                    // Backward compatibility for default auto traits & `Move`.
                     // Test: ui/traits/default_auto_traits/extern-types.rs
-                    if self.tcx().is_default_trait(def_id) {
+                    if self.tcx().is_implicit_trait(def_id, false) {
                         check_impls()
                     }
                 }
