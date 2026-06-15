@@ -1889,12 +1889,6 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
 
             let type_name = type_name_for_ignore_list(self.tcx, fn_abi);
 
-            let typeid = if let Some(instance) = instance {
-                cfi::typeid_for_instance(self.tcx, instance, options)
-            } else {
-                cfi::typeid_for_fnabi(self.tcx, fn_abi, options)
-            };
-
             if self
                 .cx
                 .sanitizer_ignorelist
@@ -1903,6 +1897,12 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             {
                 return;
             }
+
+            let typeid = if let Some(instance) = instance {
+                cfi::typeid_for_instance(self.tcx, instance, options)
+            } else {
+                cfi::typeid_for_fnabi(self.tcx, fn_abi, options)
+            };
             let typeid_metadata = self.cx.create_metadata(typeid.as_bytes());
             let dbg_loc = self.get_dbg_loc();
 

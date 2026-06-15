@@ -194,41 +194,37 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             && !crate::llvm::HasStringAttribute(llfn, "no-sanitize-cfi")
         {
             let type_name = type_name_for_ignore_list(self.tcx, fn_abi);
+            let ignored = self.sanitizer_ignorelist.as_ref().is_some_and(|ignorelist| {
+                ignorelist.contains_prefix(c"cfi", c"type", &type_name)
+            });
 
-            if let Some(instance) = instance {
-                let mut typeids = FxIndexSet::default();
-                for options in [
-                    cfi::TypeIdOptions::GENERALIZE_POINTERS,
-                    cfi::TypeIdOptions::NORMALIZE_INTEGERS,
-                    cfi::TypeIdOptions::USE_CONCRETE_SELF,
-                ]
-                .into_iter()
-                .powerset()
-                .map(cfi::TypeIdOptions::from_iter)
-                {
-                    let typeid = cfi::typeid_for_instance(self.tcx, instance, options);
-                    let ignored = self.sanitizer_ignorelist.as_ref().is_some_and(|ignorelist| {
-                        ignorelist.contains_prefix(c"cfi", c"type", &type_name)
-                    });
-                    if !ignored && typeids.insert(typeid.clone()) {
-                        self.add_type_metadata(llfn, typeid.as_bytes());
+            if !ignored {
+                if let Some(instance) = instance {
+                    let mut typeids = FxIndexSet::default();
+                    for options in [
+                        cfi::TypeIdOptions::GENERALIZE_POINTERS,
+                        cfi::TypeIdOptions::NORMALIZE_INTEGERS,
+                        cfi::TypeIdOptions::USE_CONCRETE_SELF,
+                    ]
+                    .into_iter()
+                    .powerset()
+                    .map(cfi::TypeIdOptions::from_iter)
+                    {
+                        let typeid = cfi::typeid_for_instance(self.tcx, instance, options);
+                        if typeids.insert(typeid.clone()) {
+                            self.add_type_metadata(llfn, typeid.as_bytes());
+                        }
                     }
-                }
-            } else {
-                for options in [
-                    cfi::TypeIdOptions::GENERALIZE_POINTERS,
-                    cfi::TypeIdOptions::NORMALIZE_INTEGERS,
-                ]
-                .into_iter()
-                .powerset()
-                .map(cfi::TypeIdOptions::from_iter)
-                {
-                    let typeid = cfi::typeid_for_fnabi(self.tcx, fn_abi, options);
-                    let ignored = self
-                        .sanitizer_ignorelist
-                        .as_ref()
-                        .is_some_and(|l| l.contains_prefix(c"cfi", c"type", &type_name));
-                    if !ignored {
+                } else {
+                    for options in [
+                        cfi::TypeIdOptions::GENERALIZE_POINTERS,
+                        cfi::TypeIdOptions::NORMALIZE_INTEGERS,
+                    ]
+                    .into_iter()
+                    .powerset()
+                    .map(cfi::TypeIdOptions::from_iter)
+                    {
+                        let typeid = cfi::typeid_for_fnabi(self.tcx, fn_abi, options);
                         self.add_type_metadata(llfn, typeid.as_bytes());
                     }
                 }
