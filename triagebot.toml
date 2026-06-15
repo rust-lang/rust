@@ -1530,6 +1530,7 @@ libs = [
     "@LawnGnome",
     "@clarfonthey",
     "@aapoalas",
+    "@Darksonn",
 ]
 infra-ci = [
     "@Mark-Simulacrum",
