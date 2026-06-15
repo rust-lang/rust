@@ -11,7 +11,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::sym;
 
-use crate::errors::DebugVisualizerUnreadable;
+use crate::diagnostics::DebugVisualizerUnreadable;
 
 impl DebuggerVisualizerCollector<'_> {
     fn check_for_debugger_visualizer(&mut self, attrs: &[ast::Attribute]) {

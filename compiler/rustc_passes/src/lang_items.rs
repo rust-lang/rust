@@ -18,7 +18,7 @@ use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_session::cstore::ExternCrate;
 use rustc_span::{Span, Symbol, sym};
 
-use crate::errors::{
+use crate::diagnostics::{
     DuplicateLangItem, IncorrectCrateType, IncorrectTarget, LangItemOnIncorrectTarget,
 };
 use crate::weak_lang_items;
