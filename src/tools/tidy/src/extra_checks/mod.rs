@@ -244,7 +244,7 @@ fn check_js_lint(outdir: &Path, librustdoc_path: &Path, tools_path: &Path, tidy_
     }
 
     if let Err(e) = rustdoc_js::lint(outdir, librustdoc_path, tools_path, bless) {
-        show_bless_help("js:lint", "apply esplint suggestion", bless);
+        show_bless_help("js:lint", "apply Vite+ format and lint suggestions", bless);
         check.error(e);
         return;
     }
@@ -979,8 +979,8 @@ impl ExtraCheckArg {
             ExtraCheckLang::Js => {
                 match self.kind {
                     Some(ExtraCheckKind::Lint) => {
-                        // If Lint is enabled, check both eslint and es-check.
-                        rustdoc_js::has_tool(build_dir, "eslint")
+                        // If Lint is enabled, check both Vite+ lint and es-check.
+                        rustdoc_js::has_tool(build_dir, "vp")
                             && rustdoc_js::has_tool(build_dir, "es-check")
                     }
                     Some(ExtraCheckKind::Typecheck) => {
@@ -989,7 +989,7 @@ impl ExtraCheckArg {
                     }
                     None => {
                         // No kind means it will check both Lint and Typecheck.
-                        rustdoc_js::has_tool(build_dir, "eslint")
+                        rustdoc_js::has_tool(build_dir, "vp")
                             && rustdoc_js::has_tool(build_dir, "es-check")
                             && rustdoc_js::has_tool(build_dir, "tsc")
                     }

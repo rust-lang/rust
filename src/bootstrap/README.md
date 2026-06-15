@@ -69,7 +69,7 @@ build/
     bin/
     target/
 
-  # Directory where js dependencies like tsc and eslint are stored.
+  # Directory where js dependencies like tsc and Vite+ are stored.
   node_modules/
     .bin/
 

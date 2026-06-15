@@ -13,7 +13,7 @@ class RoaringBitmap {
     /**
      * @param {Uint8Array|null} u8array
      * @param {number} [startingOffset]
-    */
+     */
     constructor(u8array, startingOffset) {
         const start = startingOffset ? startingOffset : 0;
         let i = start;
@@ -35,8 +35,8 @@ class RoaringBitmap {
             let entry = (key << 16) | value;
             let container;
             container = new RoaringBitmapArray(1, new Uint8Array(4));
-            container.array[0] = value & 0xFF;
-            container.array[1] = (value >> 8) & 0xFF;
+            container.array[0] = value & 0xff;
+            container.array[1] = (value >> 8) & 0xff;
             this.containers.push(container);
             this.keysAndCardinalities[0] = key;
             this.keysAndCardinalities[1] = key >> 8;
@@ -47,8 +47,8 @@ class RoaringBitmap {
                 key = entry >> 16;
                 container = this.addToArrayAt(key);
                 const cardinalityOld = container.cardinality;
-                container.array[cardinalityOld * 2] = value & 0xFF;
-                container.array[(cardinalityOld * 2) + 1] = (value >> 8) & 0xFF;
+                container.array[cardinalityOld * 2] = value & 0xff;
+                container.array[cardinalityOld * 2 + 1] = (value >> 8) & 0xff;
                 container.cardinality = cardinalityOld + 1;
                 pspecial += 2;
             }
@@ -56,13 +56,13 @@ class RoaringBitmap {
             return this;
         } else if (u8array[i] > 0xe0) {
             // Special representation of a node with multiple runs
-            const run_count_m1 = (u8array[i] & 0x0f);
+            const run_count_m1 = u8array[i] & 0x0f;
             const run_count = run_count_m1 + 1;
             this.keysAndCardinalities = new Uint8Array(run_count * 4);
             // the run keys and values
             let pspecial = i + 1;
             // the run lengths
-            let pnspecial = pspecial + (run_count * 4);
+            let pnspecial = pspecial + run_count * 4;
             /** @type {number|null} */
             let previous_key = null;
             /** @type {RoaringBitmapRun|null} */
@@ -70,9 +70,8 @@ class RoaringBitmap {
             for (let j = 0; j < run_count; j += 1) {
                 const key = u8array[pspecial + 2] | (u8array[pspecial + 3] << 8);
                 const value = u8array[pspecial] | (u8array[pspecial + 1] << 8);
-                const run_length_m1 = j % 2 === 0 ?
-                    (u8array[pnspecial] >> 4) :
-                    (u8array[pnspecial] & 0x0f);
+                const run_length_m1 =
+                    j % 2 === 0 ? u8array[pnspecial] >> 4 : u8array[pnspecial] & 0x0f;
                 if (j % 2 !== 0) {
                     pnspecial += 1;
                 }
@@ -82,33 +81,29 @@ class RoaringBitmap {
                         (previous_container.runcount + 1) * 4,
                     );
                     new_container_array.set(previous_container.array);
-                    new_container_array[previous_container.runcount * 4] = value & 0xFF;
-                    new_container_array[(previous_container.runcount * 4) + 1] =
-                        (value >> 8) & 0xFF;
-                    new_container_array[(previous_container.runcount * 4) + 2] =
-                        run_length_m1;
+                    new_container_array[previous_container.runcount * 4] = value & 0xff;
+                    new_container_array[previous_container.runcount * 4 + 1] = (value >> 8) & 0xff;
+                    new_container_array[previous_container.runcount * 4 + 2] = run_length_m1;
                     previous_container.array = new_container_array;
                     previous_container.runcount += 1;
                     let cardinalitym1 =
-                        this.keysAndCardinalities[(this.containers.length * 4) - 2] |
-                        (this.keysAndCardinalities[(this.containers.length * 4) - 1] << 8);
+                        this.keysAndCardinalities[this.containers.length * 4 - 2] |
+                        (this.keysAndCardinalities[this.containers.length * 4 - 1] << 8);
                     cardinalitym1 += run_length_m1 + 1;
-                    this.keysAndCardinalities[(this.containers.length * 4) - 2] =
-                        cardinalitym1 & 0xFF;
-                    this.keysAndCardinalities[(this.containers.length * 4) - 1] =
-                        (cardinalitym1 >> 8) & 0xFF;
+                    this.keysAndCardinalities[this.containers.length * 4 - 2] =
+                        cardinalitym1 & 0xff;
+                    this.keysAndCardinalities[this.containers.length * 4 - 1] =
+                        (cardinalitym1 >> 8) & 0xff;
                 } else {
                     previous_key = key;
-                    previous_container = new RoaringBitmapRun(1, Uint8Array.of(
-                        value & 0xFF,
-                        (value >> 8) & 0xFF,
-                        run_length_m1,
-                        0,
-                    ));
+                    previous_container = new RoaringBitmapRun(
+                        1,
+                        Uint8Array.of(value & 0xff, (value >> 8) & 0xff, run_length_m1, 0),
+                    );
                     this.containers.push(previous_container);
-                    this.keysAndCardinalities[(this.containers.length * 4) - 4] = key & 0xFF;
-                    this.keysAndCardinalities[(this.containers.length * 4) - 3] = (key >> 8) & 0xFF;
-                    this.keysAndCardinalities[(this.containers.length * 4) - 2] = run_length_m1;
+                    this.keysAndCardinalities[this.containers.length * 4 - 4] = key & 0xff;
+                    this.keysAndCardinalities[this.containers.length * 4 - 3] = (key >> 8) & 0xff;
+                    this.keysAndCardinalities[this.containers.length * 4 - 2] = run_length_m1;
                 }
             }
             if (run_count % 2 !== 0) {
@@ -126,8 +121,8 @@ class RoaringBitmap {
             let entry = (key << 16) | value;
             let container;
             container = new RoaringBitmapArray(1, new Uint8Array(4));
-            container.array[0] = value & 0xFF;
-            container.array[1] = (value >> 8) & 0xFF;
+            container.array[0] = value & 0xff;
+            container.array[1] = (value >> 8) & 0xff;
             this.containers.push(container);
             this.keysAndCardinalities[0] = key;
             this.keysAndCardinalities[1] = key >> 8;
@@ -138,8 +133,8 @@ class RoaringBitmap {
                 key = entry >> 16;
                 container = this.addToArrayAt(key);
                 const cardinalityOld = container.cardinality;
-                container.array[cardinalityOld * 2] = value & 0xFF;
-                container.array[(cardinalityOld * 2) + 1] = (value >> 8) & 0xFF;
+                container.array[cardinalityOld * 2] = value & 0xff;
+                container.array[cardinalityOld * 2 + 1] = (value >> 8) & 0xff;
                 container.cardinality = cardinalityOld + 1;
                 pspecial += 1;
             }
@@ -154,14 +149,14 @@ class RoaringBitmap {
             const key = u8array[i + 2] | (u8array[i + 3] << 8);
             const value = u8array[i] | (u8array[i + 1] << 8);
             const container = new RoaringBitmapRun(1, new Uint8Array(4));
-            container.array[0] = value & 0xFF;
-            container.array[1] = (value >> 8) & 0xFF;
-            container.array[2] = lspecialm1 & 0xFF;
+            container.array[0] = value & 0xff;
+            container.array[1] = (value >> 8) & 0xff;
+            container.array[2] = lspecialm1 & 0xff;
             container.array[3] = lspecialm1 >> 8;
             this.containers.push(container);
-            this.keysAndCardinalities[0] = key & 0xFF;
-            this.keysAndCardinalities[1] = (key >> 8) & 0xFF;
-            this.keysAndCardinalities[2] = lspecialm1 & 0xFF;
+            this.keysAndCardinalities[0] = key & 0xff;
+            this.keysAndCardinalities[1] = (key >> 8) & 0xff;
+            this.keysAndCardinalities[2] = lspecialm1 & 0xff;
             this.keysAndCardinalities[3] = lspecialm1 >> 8;
             this.consumed_len_bytes = 5;
             return this;
@@ -175,8 +170,8 @@ class RoaringBitmap {
                 const value = u8array[pspecial] | (u8array[pspecial + 1] << 8);
                 const container = this.addToArrayAt(key);
                 const cardinalityOld = container.cardinality;
-                container.array[cardinalityOld * 2] = value & 0xFF;
-                container.array[(cardinalityOld * 2) + 1] = (value >> 8) & 0xFF;
+                container.array[cardinalityOld * 2] = value & 0xff;
+                container.array[cardinalityOld * 2 + 1] = (value >> 8) & 0xff;
                 container.cardinality = cardinalityOld + 1;
                 pspecial += 4;
             }
@@ -193,10 +188,12 @@ class RoaringBitmap {
         if (u8array[i] !== 0x3a && u8array[i] !== 0x3b) {
             throw new Error("not a roaring bitmap: " + u8array[i]);
         }
-        const size = has_runs ?
-            ((u8array[i + 2] | (u8array[i + 3] << 8)) + 1) :
-            ((u8array[i + 4] | (u8array[i + 5] << 8) |
-             (u8array[i + 6] << 16) | (u8array[i + 7] << 24)));
+        const size = has_runs
+            ? (u8array[i + 2] | (u8array[i + 3] << 8)) + 1
+            : u8array[i + 4] |
+              (u8array[i + 5] << 8) |
+              (u8array[i + 6] << 16) |
+              (u8array[i + 7] << 24);
         i += has_runs ? 4 : 8;
         let is_run;
         if (has_runs) {
@@ -206,14 +203,18 @@ class RoaringBitmap {
         } else {
             is_run = EMPTY_UINT8;
         }
-        this.keysAndCardinalities = u8array.subarray(i, i + (size * 4));
+        this.keysAndCardinalities = u8array.subarray(i, i + size * 4);
         i += size * 4;
         let offsets = null;
         if (!has_runs || size >= 4) {
             offsets = [];
             for (let j = 0; j < size; ++j) {
-                offsets.push(u8array[i] | (u8array[i + 1] << 8) | (u8array[i + 2] << 16) |
-                    (u8array[i + 3] << 24));
+                offsets.push(
+                    u8array[i] |
+                        (u8array[i + 1] << 8) |
+                        (u8array[i + 2] << 16) |
+                        (u8array[i + 3] << 24),
+                );
                 i += 4;
             }
         }
@@ -221,28 +222,35 @@ class RoaringBitmap {
             if (offsets && offsets[j] !== i - start) {
                 throw new Error(`corrupt bitmap ${j}: ${i - start} / ${offsets[j]}`);
             }
-            const cardinality = (this.keysAndCardinalities[(j * 4) + 2] |
-                (this.keysAndCardinalities[(j * 4) + 3] << 8)) + 1;
+            const cardinality =
+                (this.keysAndCardinalities[j * 4 + 2] |
+                    (this.keysAndCardinalities[j * 4 + 3] << 8)) +
+                1;
             if (is_run[j >> 3] & (1 << (j & 0x7))) {
-                const runcount = (u8array[i] | (u8array[i + 1] << 8));
+                const runcount = u8array[i] | (u8array[i + 1] << 8);
                 i += 2;
-                this.containers.push(new RoaringBitmapRun(
-                    runcount,
-                    new Uint8Array(u8array.buffer, i + u8array.byteOffset, runcount * 4),
-                ));
+                this.containers.push(
+                    new RoaringBitmapRun(
+                        runcount,
+                        new Uint8Array(u8array.buffer, i + u8array.byteOffset, runcount * 4),
+                    ),
+                );
                 i += runcount * 4;
             } else if (cardinality >= 4096) {
-                this.containers.push(new RoaringBitmapBits(new Uint8Array(
-                    u8array.buffer,
-                    i + u8array.byteOffset, 8192,
-                )));
+                this.containers.push(
+                    new RoaringBitmapBits(
+                        new Uint8Array(u8array.buffer, i + u8array.byteOffset, 8192),
+                    ),
+                );
                 i += 8192;
             } else {
                 const end = cardinality * 2;
-                this.containers.push(new RoaringBitmapArray(
-                    cardinality,
-                    new Uint8Array(u8array.buffer, i + u8array.byteOffset, end),
-                ));
+                this.containers.push(
+                    new RoaringBitmapArray(
+                        cardinality,
+                        new Uint8Array(u8array.buffer, i + u8array.byteOffset, end),
+                    ),
+                );
                 i += end;
             }
         }
@@ -255,13 +263,12 @@ class RoaringBitmap {
     static makeSingleton(number) {
         const result = new RoaringBitmap(null, 0);
         result.keysAndCardinalities = Uint8Array.of(
-            (number >> 16), (number >> 24),
-            0, 0, // keysAndCardinalities stores the true cardinality minus 1
+            number >> 16,
+            number >> 24,
+            0,
+            0, // keysAndCardinalities stores the true cardinality minus 1
         );
-        result.containers.push(new RoaringBitmapArray(
-            1,
-            Uint8Array.of(number, number >> 8),
-        ));
+        result.containers.push(new RoaringBitmapArray(1, Uint8Array.of(number, number >> 8)));
         return result;
     }
     /** @returns {RoaringBitmap} */
@@ -274,11 +281,11 @@ class RoaringBitmap {
             while (i < l) {
                 EVERYTHING_BITMAP.containers.push(everything_range);
                 // key
-                EVERYTHING_BITMAP.keysAndCardinalities[(i * 4) + 0] = i;
-                EVERYTHING_BITMAP.keysAndCardinalities[(i * 4) + 1] = i >> 8;
+                EVERYTHING_BITMAP.keysAndCardinalities[i * 4 + 0] = i;
+                EVERYTHING_BITMAP.keysAndCardinalities[i * 4 + 1] = i >> 8;
                 // cardinality (minus one)
-                EVERYTHING_BITMAP.keysAndCardinalities[(i * 4) + 2] = 0xff;
-                EVERYTHING_BITMAP.keysAndCardinalities[(i * 4) + 3] = 0xff;
+                EVERYTHING_BITMAP.keysAndCardinalities[i * 4 + 2] = 0xff;
+                EVERYTHING_BITMAP.keysAndCardinalities[i * 4 + 3] = 0xff;
                 i += 1;
             }
         }
@@ -312,16 +319,16 @@ class RoaringBitmap {
                 keysAndContainers.set(this.keysAndCardinalities);
                 this.keysAndCardinalities = keysAndContainers;
             }
-            this.keysAndCardinalities[(mid * 4) + 0] = key;
-            this.keysAndCardinalities[(mid * 4) + 1] = key >> 8;
+            this.keysAndCardinalities[mid * 4 + 0] = key;
+            this.keysAndCardinalities[mid * 4 + 1] = key >> 8;
         } else {
             container = this.containers[mid];
             const cardinalityOld =
-                this.keysAndCardinalities[(mid * 4) + 2] |
-                (this.keysAndCardinalities[(mid * 4) + 3] << 8);
+                this.keysAndCardinalities[mid * 4 + 2] |
+                (this.keysAndCardinalities[mid * 4 + 3] << 8);
             const cardinality = cardinalityOld + 1;
-            this.keysAndCardinalities[(mid * 4) + 2] = cardinality;
-            this.keysAndCardinalities[(mid * 4) + 3] = cardinality >> 8;
+            this.keysAndCardinalities[mid * 4 + 2] = cardinality;
+            this.keysAndCardinalities[mid * 4 + 3] = cardinality >> 8;
         }
         // the logic for handing this number is annoying, because keysAndCardinalities stores
         // the cardinality *minus one*, so that it can count up to 65536 with only two bytes
@@ -332,16 +339,16 @@ class RoaringBitmap {
         // If this is adding to an existing container, then the above `else` branch bumps it
         // by one, leaving us with a proper value of `cardinality - 1`.
         const cardinalityOld =
-            this.keysAndCardinalities[(mid * 4) + 2] |
-            (this.keysAndCardinalities[(mid * 4) + 3] << 8);
-        if (!(container instanceof RoaringBitmapArray) ||
-            container.array.byteLength < ((cardinalityOld + 1) * 2)
+            this.keysAndCardinalities[mid * 4 + 2] | (this.keysAndCardinalities[mid * 4 + 3] << 8);
+        if (
+            !(container instanceof RoaringBitmapArray) ||
+            container.array.byteLength < (cardinalityOld + 1) * 2
         ) {
             const newBuf = new Uint8Array((cardinalityOld + 1) * 4);
             let idx = 0;
             for (const cvalue of container.values()) {
-                newBuf[idx] = cvalue & 0xFF;
-                newBuf[idx + 1] = (cvalue >> 8) & 0xFF;
+                newBuf[idx] = cvalue & 0xff;
+                newBuf[idx + 1] = (cvalue >> 8) & 0xff;
                 idx += 2;
             }
             if (container instanceof RoaringBitmapArray) {
@@ -380,22 +387,26 @@ class RoaringBitmap {
             const ik = i * 4;
             const jk = j * 4;
             const k = result.containers.length * 4;
-            if (j >= jl || (i < il && (
-                (this.keysAndCardinalities[ik + 1] < that.keysAndCardinalities[jk + 1]) ||
-                (this.keysAndCardinalities[ik + 1] === that.keysAndCardinalities[jk + 1] &&
-                    this.keysAndCardinalities[ik] < that.keysAndCardinalities[jk])
-            ))) {
+            if (
+                j >= jl ||
+                (i < il &&
+                    (this.keysAndCardinalities[ik + 1] < that.keysAndCardinalities[jk + 1] ||
+                        (this.keysAndCardinalities[ik + 1] === that.keysAndCardinalities[jk + 1] &&
+                            this.keysAndCardinalities[ik] < that.keysAndCardinalities[jk])))
+            ) {
                 result.keysAndCardinalities[k + 0] = this.keysAndCardinalities[ik + 0];
                 result.keysAndCardinalities[k + 1] = this.keysAndCardinalities[ik + 1];
                 result.keysAndCardinalities[k + 2] = this.keysAndCardinalities[ik + 2];
                 result.keysAndCardinalities[k + 3] = this.keysAndCardinalities[ik + 3];
                 result.containers.push(this.containers[i]);
                 i += 1;
-            } else if (i >= il || (j < jl && (
-                (that.keysAndCardinalities[jk + 1] < this.keysAndCardinalities[ik + 1]) ||
-                (that.keysAndCardinalities[jk + 1] === this.keysAndCardinalities[ik + 1] &&
-                    that.keysAndCardinalities[jk] < this.keysAndCardinalities[ik])
-            ))) {
+            } else if (
+                i >= il ||
+                (j < jl &&
+                    (that.keysAndCardinalities[jk + 1] < this.keysAndCardinalities[ik + 1] ||
+                        (that.keysAndCardinalities[jk + 1] === this.keysAndCardinalities[ik + 1] &&
+                            that.keysAndCardinalities[jk] < this.keysAndCardinalities[ik])))
+            ) {
                 result.keysAndCardinalities[k + 0] = that.keysAndCardinalities[jk + 0];
                 result.keysAndCardinalities[k + 1] = that.keysAndCardinalities[jk + 1];
                 result.keysAndCardinalities[k + 2] = that.keysAndCardinalities[jk + 2];
@@ -409,13 +420,14 @@ class RoaringBitmap {
                 const thisContainer = this.containers[i];
                 const thatContainer = that.containers[j];
                 let card = 0;
-                if (thisContainer instanceof RoaringBitmapBits &&
+                if (
+                    thisContainer instanceof RoaringBitmapBits &&
                     thatContainer instanceof RoaringBitmapBits
                 ) {
                     const resultArray = new Uint8Array(
-                        thisContainer.array.length > thatContainer.array.length ?
-                            thisContainer.array.length :
-                            thatContainer.array.length,
+                        thisContainer.array.length > thatContainer.array.length
+                            ? thisContainer.array.length
+                            : thatContainer.array.length,
                     );
                     let k = 0;
                     const kl = resultArray.length;
@@ -458,14 +470,13 @@ class RoaringBitmap {
                     let k = 0;
                     for (const value of resultValues) {
                         // roaring bitmap is little endian
-                        resultArray[k] = value & 0xFF;
-                        resultArray[k + 1] = (value >> 8) & 0xFF;
+                        resultArray[k] = value & 0xff;
+                        resultArray[k + 1] = (value >> 8) & 0xff;
                         k += 2;
                     }
-                    result.containers.push(new RoaringBitmapArray(
-                        resultValues.length,
-                        resultArray,
-                    ));
+                    result.containers.push(
+                        new RoaringBitmapArray(resultValues.length, resultArray),
+                    );
                     card = resultValues.length;
                 }
                 result.keysAndCardinalities[k + 0] = this.keysAndCardinalities[ik + 0];
@@ -503,17 +514,21 @@ class RoaringBitmap {
             const ik = i * 4;
             const jk = j * 4;
             const k = result.containers.length * 4;
-            if (j >= jl || (i < il && (
-                (this.keysAndCardinalities[ik + 1] < that.keysAndCardinalities[jk + 1]) ||
-                (this.keysAndCardinalities[ik + 1] === that.keysAndCardinalities[jk + 1] &&
-                    this.keysAndCardinalities[ik] < that.keysAndCardinalities[jk])
-            ))) {
+            if (
+                j >= jl ||
+                (i < il &&
+                    (this.keysAndCardinalities[ik + 1] < that.keysAndCardinalities[jk + 1] ||
+                        (this.keysAndCardinalities[ik + 1] === that.keysAndCardinalities[jk + 1] &&
+                            this.keysAndCardinalities[ik] < that.keysAndCardinalities[jk])))
+            ) {
                 i += 1;
-            } else if (i >= il || (j < jl && (
-                (that.keysAndCardinalities[jk + 1] < this.keysAndCardinalities[ik + 1]) ||
-                (that.keysAndCardinalities[jk + 1] === this.keysAndCardinalities[ik + 1] &&
-                    that.keysAndCardinalities[jk] < this.keysAndCardinalities[ik])
-            ))) {
+            } else if (
+                i >= il ||
+                (j < jl &&
+                    (that.keysAndCardinalities[jk + 1] < this.keysAndCardinalities[ik + 1] ||
+                        (that.keysAndCardinalities[jk + 1] === this.keysAndCardinalities[ik + 1] &&
+                            that.keysAndCardinalities[jk] < this.keysAndCardinalities[ik])))
+            ) {
                 j += 1;
             } else {
                 // this key is not smaller than that key
@@ -522,13 +537,14 @@ class RoaringBitmap {
                 const thisContainer = this.containers[i];
                 const thatContainer = that.containers[j];
                 let card = 0;
-                if (thisContainer instanceof RoaringBitmapBits &&
+                if (
+                    thisContainer instanceof RoaringBitmapBits &&
                     thatContainer instanceof RoaringBitmapBits
                 ) {
                     const resultArray = new Uint8Array(
-                        thisContainer.array.length > thatContainer.array.length ?
-                            thisContainer.array.length :
-                            thatContainer.array.length,
+                        thisContainer.array.length > thatContainer.array.length
+                            ? thisContainer.array.length
+                            : thatContainer.array.length,
                     );
                     let k = 0;
                     const kl = resultArray.length;
@@ -567,14 +583,13 @@ class RoaringBitmap {
                         let k = 0;
                         for (const value of resultValues) {
                             // roaring bitmap is little endian
-                            resultArray[k] = value & 0xFF;
-                            resultArray[k + 1] = (value >> 8) & 0xFF;
+                            resultArray[k] = value & 0xff;
+                            resultArray[k + 1] = (value >> 8) & 0xff;
                             k += 2;
                         }
-                        result.containers.push(new RoaringBitmapArray(
-                            resultValues.length,
-                            resultArray,
-                        ));
+                        result.containers.push(
+                            new RoaringBitmapArray(resultValues.length, resultArray),
+                        );
                     }
                 }
                 if (card !== 0) {
@@ -593,7 +608,7 @@ class RoaringBitmap {
     /** @param {number} keyvalue */
     contains(keyvalue) {
         const key = keyvalue >> 16;
-        const value = keyvalue & 0xFFFF;
+        const value = keyvalue & 0xffff;
         const mid = this.getContainerId(key);
         return mid === -1 ? false : this.containers[mid].contains(value);
     }
@@ -603,7 +618,7 @@ class RoaringBitmap {
      */
     remove(keyvalue) {
         const key = keyvalue >> 16;
-        const value = keyvalue & 0xFFFF;
+        const value = keyvalue & 0xffff;
         const mid = this.getContainerId(key);
         if (mid === -1) {
             return this;
@@ -612,8 +627,8 @@ class RoaringBitmap {
         if (!container.contains(value)) {
             return this;
         }
-        const newCardinality = (this.keysAndCardinalities[(mid * 4) + 2] |
-            (this.keysAndCardinalities[(mid * 4) + 3] << 8));
+        const newCardinality =
+            this.keysAndCardinalities[mid * 4 + 2] | (this.keysAndCardinalities[mid * 4 + 3] << 8);
         const l = this.containers.length;
         const m = l - (newCardinality === 0 ? 1 : 0);
         const result = new RoaringBitmap(null, 0);
@@ -622,11 +637,11 @@ class RoaringBitmap {
         for (let i = 0; i < l; i += 1) {
             if (i === mid) {
                 if (newCardinality !== 0) {
-                    result.keysAndCardinalities[(j * 4) + 0] = key;
-                    result.keysAndCardinalities[(j * 4) + 1] = key >> 8;
+                    result.keysAndCardinalities[j * 4 + 0] = key;
+                    result.keysAndCardinalities[j * 4 + 1] = key >> 8;
                     const card = newCardinality - 1;
-                    result.keysAndCardinalities[(j * 4) + 2] = card;
-                    result.keysAndCardinalities[(j * 4) + 3] = card >> 8;
+                    result.keysAndCardinalities[j * 4 + 2] = card;
+                    result.keysAndCardinalities[j * 4 + 3] = card >> 8;
                     const newContainer = new RoaringBitmapArray(
                         newCardinality,
                         new Uint8Array(newCardinality * 2),
@@ -634,7 +649,7 @@ class RoaringBitmap {
                     let newContainerSlot = 0;
                     for (const containerValue of container.values()) {
                         if (containerValue !== value) {
-                            newContainer.array[newContainerSlot] = value & 0xFF;
+                            newContainer.array[newContainerSlot] = value & 0xff;
                             newContainerSlot += 1;
                             newContainer.array[newContainerSlot] = value >> 8;
                             newContainerSlot += 1;
@@ -644,10 +659,10 @@ class RoaringBitmap {
                     j += 1;
                 }
             } else {
-                result.keysAndCardinalities[(j * 4) + 0] = this.keysAndCardinalities[(i * 4) + 0];
-                result.keysAndCardinalities[(j * 4) + 1] = this.keysAndCardinalities[(i * 4) + 1];
-                result.keysAndCardinalities[(j * 4) + 2] = this.keysAndCardinalities[(i * 4) + 2];
-                result.keysAndCardinalities[(j * 4) + 3] = this.keysAndCardinalities[(i * 4) + 3];
+                result.keysAndCardinalities[j * 4 + 0] = this.keysAndCardinalities[i * 4 + 0];
+                result.keysAndCardinalities[j * 4 + 1] = this.keysAndCardinalities[i * 4 + 1];
+                result.keysAndCardinalities[j * 4 + 2] = this.keysAndCardinalities[i * 4 + 2];
+                result.keysAndCardinalities[j * 4 + 3] = this.keysAndCardinalities[i * 4 + 3];
                 result.containers.push(this.containers[i]);
                 j += 1;
             }
@@ -670,8 +685,8 @@ class RoaringBitmap {
         let right = this.containers.length - 1;
         while (left <= right) {
             const mid = Math.floor((left + right) / 2);
-            const x = this.keysAndCardinalities[(mid * 4)] |
-                (this.keysAndCardinalities[(mid * 4) + 1] << 8);
+            const x =
+                this.keysAndCardinalities[mid * 4] | (this.keysAndCardinalities[mid * 4 + 1] << 8);
             if (x < key) {
                 left = mid + 1;
             } else if (x > key) {
@@ -682,11 +697,11 @@ class RoaringBitmap {
         }
         return -1;
     }
-    * entries() {
+    *entries() {
         const l = this.containers.length;
         for (let i = 0; i < l; ++i) {
-            const key = this.keysAndCardinalities[i * 4] |
-                (this.keysAndCardinalities[(i * 4) + 1] << 8);
+            const key =
+                this.keysAndCardinalities[i * 4] | (this.keysAndCardinalities[i * 4 + 1] << 8);
             for (const value of this.containers[i].values()) {
                 yield (key << 16) | value;
             }
@@ -708,8 +723,8 @@ class RoaringBitmap {
         let result = 0;
         const l = this.containers.length;
         for (let i = 0; i < l; ++i) {
-            const card = this.keysAndCardinalities[(i * 4) + 2] |
-                (this.keysAndCardinalities[(i * 4) + 3] << 8);
+            const card =
+                this.keysAndCardinalities[i * 4 + 2] | (this.keysAndCardinalities[i * 4 + 3] << 8);
             result += card + 1;
         }
         return result;
@@ -739,7 +754,7 @@ class RoaringBitmapRun {
             const i = mid * 4;
             const start = this.array[i] | (this.array[i + 1] << 8);
             const lenm1 = this.array[i + 2] | (this.array[i + 3] << 8);
-            if ((start + lenm1) < value) {
+            if (start + lenm1 < value) {
                 left = mid + 1;
             } else if (start > value) {
                 right = mid - 1;
@@ -749,11 +764,11 @@ class RoaringBitmapRun {
         }
         return false;
     }
-    * values() {
+    *values() {
         let i = 0;
         while (i < this.runcount) {
-            const start = this.array[i * 4] | (this.array[(i * 4) + 1] << 8);
-            const lenm1 = this.array[(i * 4) + 2] | (this.array[(i * 4) + 3] << 8);
+            const start = this.array[i * 4] | (this.array[i * 4 + 1] << 8);
+            const lenm1 = this.array[i * 4 + 2] | (this.array[i * 4 + 3] << 8);
             let value = start;
             let j = 0;
             while (j <= lenm1) {
@@ -798,7 +813,7 @@ class RoaringBitmapArray {
         return false;
     }
     /** @returns {Generator<number>} */
-    * values() {
+    *values() {
         let i = 0;
         const l = this.cardinality * 2;
         while (i < l) {
@@ -818,7 +833,7 @@ class RoaringBitmapBits {
     contains(value) {
         return !!(this.array[value >> 3] & (1 << (value & 7)));
     }
-    * values() {
+    *values() {
         let i = 0;
         const l = this.array.length << 3;
         while (i < l) {
@@ -859,7 +874,7 @@ class HashTable {
     /**
      * @returns {Generator<[Uint8Array, T]>}
      */
-    * entries() {
+    *entries() {
         const keys = this.keys;
         const values = this.values;
         const l = this.values.length;
@@ -910,12 +925,12 @@ class HashTable {
         const l = 1 << this.capacityClass;
         // because we know that our values are already hashed,
         // just chop off the first byte
-        let slot = (
-            (key[start + 1] << 24) |
-            (key[start + 2] << 16) |
-            (key[start + 3] << 8) |
-            key[start + 4]
-        ) & mask;
+        let slot =
+            ((key[start + 1] << 24) |
+                (key[start + 2] << 16) |
+                (key[start + 3] << 8) |
+                key[start + 4]) &
+            mask;
         for (let distance = 0; distance < l; ) {
             const j = slot * 5;
             const otherValue = values[slot];
@@ -939,13 +954,13 @@ class HashTable {
                 values[slot] = value;
                 break;
             } else {
-                const otherPreferredSlot = (
-                    (keys[j + 1] << 24) | (keys[j + 2] << 16) |
-                    (keys[j + 3] << 8) | keys[j + 4]
-                ) & mask;
-                const otherDistance = otherPreferredSlot <= slot ?
-                    slot - otherPreferredSlot :
-                    (l - otherPreferredSlot) + slot;
+                const otherPreferredSlot =
+                    ((keys[j + 1] << 24) | (keys[j + 2] << 16) | (keys[j + 3] << 8) | keys[j + 4]) &
+                    mask;
+                const otherDistance =
+                    otherPreferredSlot <= slot
+                        ? slot - otherPreferredSlot
+                        : l - otherPreferredSlot + slot;
                 if (distance > otherDistance) {
                     // if the other key is closer to its preferred slot than this one,
                     // then insert our node in its place and swap
@@ -992,12 +1007,12 @@ class HashTable {
         const l = 1 << this.capacityClass;
         // because we know that our values are already hashed,
         // just chop off the lower four bytes
-        let slot = (
-            (key[start + 1] << 24) |
-            (key[start + 2] << 16) |
-            (key[start + 3] << 8) |
-            key[start + 4]
-        ) & mask;
+        let slot =
+            ((key[start + 1] << 24) |
+                (key[start + 2] << 16) |
+                (key[start + 3] << 8) |
+                key[start + 4]) &
+            mask;
         for (let distance = 0; distance < l; distance += 1) {
             const j = slot * 5;
             const value = values[slot];
@@ -1012,13 +1027,13 @@ class HashTable {
             ) {
                 return value;
             } else {
-                const otherPreferredSlot = (
-                    (keys[j + 1] << 24) | (keys[j + 2] << 16) |
-                    (keys[j + 3] << 8) | keys[j + 4]
-                ) & mask;
-                const otherDistance = otherPreferredSlot <= slot ?
-                    slot - otherPreferredSlot :
-                    (l - otherPreferredSlot) + slot;
+                const otherPreferredSlot =
+                    ((keys[j + 1] << 24) | (keys[j + 2] << 16) | (keys[j + 3] << 8) | keys[j + 4]) &
+                    mask;
+                const otherDistance =
+                    otherPreferredSlot <= slot
+                        ? slot - otherPreferredSlot
+                        : l - otherPreferredSlot + slot;
                 if (distance > otherDistance) {
                     break;
                 }
@@ -1029,18 +1044,16 @@ class HashTable {
     }
 }
 
-/*eslint-disable */
 // ignore-tidy-linelength
 /** <https://stackoverflow.com/questions/43122082/efficiently-count-the-number-of-bits-in-an-integer-in-javascript>
  * @param {number} n
  * @returns {number}
  */
 function bitCount(n) {
-    n = (~~n) - ((n >> 1) & 0x55555555);
+    n = ~~n - ((n >> 1) & 0x55555555);
     n = (n & 0x33333333) + ((n >> 2) & 0x33333333);
-    return ((n + (n >> 4) & 0xF0F0F0F) * 0x1010101) >> 24;
+    return (((n + (n >> 4)) & 0xf0f0f0f) * 0x1010101) >> 24;
 }
-/*eslint-enable */
 
 /**
  * https://en.wikipedia.org/wiki/Boyer%E2%80%93Moore%E2%80%93Horspool_algorithm
@@ -1072,7 +1085,7 @@ class Uint8ArraySearchPattern {
         search: while (n - skip >= m) {
             for (let i = m - 1; i >= 0; i -= 1) {
                 if (haystack[skip + i] !== needle[i]) {
-                    skip += skipTable[haystack[skip + m  - 1]];
+                    skip += skipTable[haystack[skip + m - 1]];
                     continue search;
                 }
             }
@@ -1089,7 +1102,7 @@ class Uint8ArraySearchPattern {
 function loadDatabase(hooks) {
     /** @type {stringdex.Callbacks} */
     const callbacks = {
-        rr_: function(data) {
+        rr_: function (data) {
             const dataObj = JSON.parse(data);
             for (const colName of Object.keys(dataObj)) {
                 if (Object.hasOwn(dataObj[colName], "N")) {
@@ -1100,24 +1113,28 @@ function loadDatabase(hooks) {
                     while (i < l) {
                         let n = 0;
                         let c = countsstring.charCodeAt(i);
-                        while (c < 96) { // 96 = "`"
-                            n = (n << 4) | (c & 0xF);
+                        while (c < 96) {
+                            // 96 = "`"
+                            n = (n << 4) | (c & 0xf);
                             i += 1;
                             c = countsstring.charCodeAt(i);
                         }
-                        n = (n << 4) | (c & 0xF);
+                        n = (n << 4) | (c & 0xf);
                         counts.push(n);
                         i += 1;
                     }
-                    registry.dataColumns.set(colName, new DataColumn(
-                        counts,
-                        makeUint8ArrayFromBase64(dataObj[colName]["H"]),
-                        new RoaringBitmap(makeUint8ArrayFromBase64(dataObj[colName]["E"]), 0),
+                    registry.dataColumns.set(
                         colName,
-                        Object.hasOwn(dataObj[colName], "I") ?
-                            makeSearchTreeFromBase64(dataObj[colName].I)[1] :
-                            null,
-                    ));
+                        new DataColumn(
+                            counts,
+                            makeUint8ArrayFromBase64(dataObj[colName]["H"]),
+                            new RoaringBitmap(makeUint8ArrayFromBase64(dataObj[colName]["E"]), 0),
+                            colName,
+                            Object.hasOwn(dataObj[colName], "I")
+                                ? makeSearchTreeFromBase64(dataObj[colName].I)[1]
+                                : null,
+                        ),
+                    );
                 }
             }
             const cb = registry.searchTreeRootCallback;
@@ -1125,13 +1142,13 @@ function loadDatabase(hooks) {
                 cb(null, new Database(registry.searchTreeRoots, registry.dataColumns));
             }
         },
-        err_rr_: function(err) {
+        err_rr_: function (err) {
             const cb = registry.searchTreeRootCallback;
             if (cb) {
                 cb(err, null);
             }
         },
-        rd_: function(dataString) {
+        rd_: function (dataString) {
             const l = dataString.length;
             const data = new Uint8Array(l);
             for (let i = 0; i < l; ++i) {
@@ -1139,24 +1156,24 @@ function loadDatabase(hooks) {
             }
             loadColumnFromBytes(data);
         },
-        err_rd_: function(filename, err) {
+        err_rd_: function (filename, err) {
             const nodeid = makeUint8ArrayFromHex(filename);
             const cb = registry.dataColumnLoadPromiseCallbacks.get(nodeid);
             if (cb) {
                 cb(err, null);
             }
         },
-        rb_: function(dataString64) {
+        rb_: function (dataString64) {
             loadColumnFromBytes(makeUint8ArrayFromBase64(dataString64));
         },
-        err_rb_: function(filename, err) {
+        err_rb_: function (filename, err) {
             const nodeid = makeUint8ArrayFromHex(filename);
             const cb = registry.dataColumnLoadPromiseCallbacks.get(nodeid);
             if (cb) {
                 cb(err, null);
             }
         },
-        rn_: function(inputBase64) {
+        rn_: function (inputBase64) {
             const [nodeid, tree] = makeSearchTreeFromBase64(inputBase64);
             const cb = registry.searchTreeLoadPromiseCallbacks.get(nodeid);
             if (cb) {
@@ -1164,7 +1181,7 @@ function loadDatabase(hooks) {
                 registry.searchTreeLoadPromiseCallbacks.set(nodeid, null);
             }
         },
-        err_rn_: function(filename, err) {
+        err_rn_: function (filename, err) {
             const nodeid = makeUint8ArrayFromHex(filename);
             const cb = registry.searchTreeLoadPromiseCallbacks.get(nodeid);
             if (cb) {
@@ -1193,26 +1210,23 @@ function loadDatabase(hooks) {
         dataColumnLoadPromiseCallbacks: new HashTable(),
         dataColumns: new Map(),
         dataColumnsBuckets: new HashTable(),
-        searchTreeLoadByNodeID: function(nodeid) {
+        searchTreeLoadByNodeID: function (nodeid) {
             /** @type {Promise<SearchTree>} */
             let newPromise;
             if ((nodeid[0] & 0x80) !== 0) {
                 const isSuffixOnly = (nodeid[0] & 0x40) !== 0;
                 const isRun = (nodeid[0] & 0x20) !== 0;
-                const lengthOrData = nodeid[0] & 0x1F;
+                const lengthOrData = nodeid[0] & 0x1f;
                 const id = (nodeid[1] << 24) | (nodeid[2] << 16) | (nodeid[3] << 8) | nodeid[4];
                 let bitmap;
                 if (isRun) {
                     bitmap = new RoaringBitmap(null);
-                    bitmap.containers.push(new RoaringBitmapRun(
-                        1,
-                        Uint8Array.of(
-                            id & 0xFF,
-                            (id >> 8) & 0xFF,
-                            lengthOrData,
-                            0,
+                    bitmap.containers.push(
+                        new RoaringBitmapRun(
+                            1,
+                            Uint8Array.of(id & 0xff, (id >> 8) & 0xff, lengthOrData, 0),
                         ),
-                    ));
+                    );
                     bitmap.keysAndCardinalities = Uint8Array.of(
                         (id >> 16) & 0xff,
                         (id >> 24) & 0xff,
@@ -1226,7 +1240,7 @@ function loadDatabase(hooks) {
                 if (isSuffixOnly) {
                     tree = new SuffixSearchTree(
                         EMPTY_SEARCH_TREE_BRANCHES,
-                        isRun ? 0 : (lengthOrData + 1),
+                        isRun ? 0 : lengthOrData + 1,
                         bitmap,
                     );
                 } else {
@@ -1271,7 +1285,7 @@ function loadDatabase(hooks) {
             }
             return newPromise;
         },
-        dataLoadByNameAndHash: function(name, hash) {
+        dataLoadByNameAndHash: function (name, hash) {
             const existingBucket = registry.dataColumnsBuckets.get(hash);
             if (existingBucket) {
                 return existingBucket;
@@ -1329,13 +1343,9 @@ function loadDatabase(hooks) {
         /**
          * @param {number} i
          * @returns {Uint8Array}
-        */
+         */
         getNodeID(i) {
-            return new Uint8Array(
-                this.nodeids.buffer,
-                this.nodeids.byteOffset + (i * 5),
-                5,
-            );
+            return new Uint8Array(this.nodeids.buffer, this.nodeids.byteOffset + i * 5, 5);
         }
         // https://github.com/microsoft/TypeScript/issues/17227
         /** @returns {Generator<[number, Promise<ST>|null]>} */
@@ -1392,7 +1402,7 @@ function loadDatabase(hooks) {
             }
         }
         /** @returns {Generator<[number, Promise<ST>|null]>} */
-        * entries() {
+        *entries() {
             let i = 0;
             const l = this.keys.length;
             while (i < l) {
@@ -1436,10 +1446,7 @@ function loadDatabase(hooks) {
         }
     }
 
-    const EMPTY_SEARCH_TREE_BRANCHES = new SearchTreeBranchesArray(
-        EMPTY_UINT8,
-        EMPTY_UINT8,
-    );
+    const EMPTY_SEARCH_TREE_BRANCHES = new SearchTreeBranchesArray(EMPTY_UINT8, EMPTY_UINT8);
 
     class Alphabet {
         constructor() {
@@ -1471,27 +1478,21 @@ function loadDatabase(hooks) {
     }
 
     /** @type {Alphabet} */
-    const VOWELONLY_ALPHABITMAP = Object.assign(
-        new Alphabet(),
-        {
-            chars: [0x61, 0x65, 0x69, 0x6f, 0x75],
-            len: 5,
-            bytes: 0,
-            flag: 0x80,
-        },
-    );
+    const VOWELONLY_ALPHABITMAP = Object.assign(new Alphabet(), {
+        chars: [0x61, 0x65, 0x69, 0x6f, 0x75],
+        len: 5,
+        bytes: 0,
+        flag: 0x80,
+    });
 
     /** @type {Alphabet} */
-    const CONSONANTSONLY_ALPHABET = Object.assign(
-        new Alphabet(),
-        {
-            chars: [],
-            len: 21,
-            bytes: 2,
-            flag: 0xc0,
-        },
-    );
-    for (let i = 0x61; i <= 0x7A; ++i) {
+    const CONSONANTSONLY_ALPHABET = Object.assign(new Alphabet(), {
+        chars: [],
+        len: 21,
+        bytes: 2,
+        flag: 0xc0,
+    });
+    for (let i = 0x61; i <= 0x7a; ++i) {
         if (i === 0x61 || i === 0x65 || i === 0x69 || i === 0x6f || i === 0x75) {
             // 21 bits, 26 letters, so skip aeiou
             continue;
@@ -1500,15 +1501,12 @@ function loadDatabase(hooks) {
     }
 
     /** @type {Alphabet} */
-    const HEX_ALPHABET = Object.assign(
-        new Alphabet(),
-        {
-            chars: [],
-            len: 16,
-            bytes: 2,
-            flag: 0xfc,
-        },
-    );
+    const HEX_ALPHABET = Object.assign(new Alphabet(), {
+        chars: [],
+        len: 16,
+        bytes: 2,
+        flag: 0xfc,
+    });
     for (let i = 0x30; i <= 0x39; ++i) {
         HEX_ALPHABET.chars.push(i);
     }
@@ -1517,16 +1515,13 @@ function loadDatabase(hooks) {
     }
 
     /** @type {Alphabet} */
-    const SHORT_ALPHABET = Object.assign(
-        new Alphabet(),
-        {
-            chars: [],
-            len: 24,
-            bytes: 3,
-            flag: 0xfd,
-        },
-    );
-    for (let i = 0x61; i <= 0x7A; ++i) {
+    const SHORT_ALPHABET = Object.assign(new Alphabet(), {
+        chars: [],
+        len: 24,
+        bytes: 3,
+        flag: 0xfd,
+    });
+    for (let i = 0x61; i <= 0x7a; ++i) {
         if (i === 0x76 || i === 0x71) {
             // 24 entries, 26 letters, so we skip q and v
             continue;
@@ -1535,71 +1530,62 @@ function loadDatabase(hooks) {
     }
 
     /** @type {Alphabet} */
-    const LONG_ALPHABET = Object.assign(
-        new Alphabet(),
-        {
-            chars: [0x31, 0x32, 0x33, 0x34, 0x35, 0x36],
-            len: 32,
-            bytes: 4,
-            flag: 0xfe,
-        },
-    );
-    for (let i = 0x61; i <= 0x7A; ++i) {
+    const LONG_ALPHABET = Object.assign(new Alphabet(), {
+        chars: [0x31, 0x32, 0x33, 0x34, 0x35, 0x36],
+        len: 32,
+        bytes: 4,
+        flag: 0xfe,
+    });
+    for (let i = 0x61; i <= 0x7a; ++i) {
         LONG_ALPHABET.chars.push(i);
     }
 
     /** @type {Alphabet} */
-    const ASCII_ALPHABET = Object.assign(
-        new Alphabet(),
-        {
-            chars: [],
-            len: 128,
-            bytes: 16,
-            flag: 0xf0,
-            /**
-             * @param {number} c
-             * @returns {boolean}
-             */
-            contains(c) {
-                return c <= 0x7f;
-            },
-            /**
-             * @param {number} c
-             * @returns {number}
-             */
-            index(c) {
-                return c;
-            },
+    const ASCII_ALPHABET = Object.assign(new Alphabet(), {
+        chars: [],
+        len: 128,
+        bytes: 16,
+        flag: 0xf0,
+        /**
+         * @param {number} c
+         * @returns {boolean}
+         */
+        contains(c) {
+            return c <= 0x7f;
         },
-    );
+        /**
+         * @param {number} c
+         * @returns {number}
+         */
+        index(c) {
+            return c;
+        },
+    });
     for (let i = 0x00; i <= 0x7f; ++i) {
         ASCII_ALPHABET.chars.push(i);
     }
 
     /** @type {Alphabet} */
-    const RAWBYTE_ALPHABET = Object.assign(
-        new Alphabet(),
-        {
-            chars: [],
-            len: 256,
-            bytes: 32,
-            flag: 0xff,
-            /**
-             * @param {number} _c
-             * @returns {boolean}
-             */
-            contains(_c) {
-                return true;
-            },
-            /**
-             * @param {number} c
-             * @returns {number}
-             */
-            index(c) {
-                return c;
-            },
+    const RAWBYTE_ALPHABET = Object.assign(new Alphabet(), {
+        chars: [],
+        len: 256,
+        bytes: 32,
+        flag: 0xff,
+        /**
+         * @param {number} _c
+         * @returns {boolean}
+         */
+        contains(_c) {
+            return true;
         },
-    );
+        /**
+         * @param {number} c
+         * @returns {number}
+         */
+        index(c) {
+            return c;
+        },
+    });
     for (let i = 0x00; i <= 0xff; ++i) {
         RAWBYTE_ALPHABET.chars.push(i);
     }
@@ -1610,7 +1596,7 @@ function loadDatabase(hooks) {
      * @param {Uint8Array} buf
      * @returns {{"alphabet": Alphabet, "consumed_len_bytes": number, "len": number}?}
      */
-    Alphabet.parse = function(start, buf) {
+    Alphabet.parse = function (start, buf) {
         const flag = buf[start];
         const parsed = Alphabet.parseFlag(flag, start + 1, buf);
         if (!parsed) {
@@ -1627,24 +1613,33 @@ function loadDatabase(hooks) {
      * @param {Uint8Array} buf
      * @returns {{"alphabet": Alphabet, "consumed_len_bytes": number, "len": number}?}
      */
-    Alphabet.parseFlag = function(flag, i, buf) {
+    Alphabet.parseFlag = function (flag, i, buf) {
         if (flag <= 0x80) {
             return null;
         }
-        const alphabet = flag === RAWBYTE_ALPHABET.flag ? RAWBYTE_ALPHABET : (
-            flag === ASCII_ALPHABET.flag ? ASCII_ALPHABET : (
-            flag === LONG_ALPHABET.flag ? LONG_ALPHABET : (
-            flag === SHORT_ALPHABET.flag ? SHORT_ALPHABET : (
-            flag === HEX_ALPHABET.flag ? HEX_ALPHABET : (
-            flag >= CONSONANTSONLY_ALPHABET.flag ? CONSONANTSONLY_ALPHABET : VOWELONLY_ALPHABITMAP
-        )))));
-        let len = alphabet === CONSONANTSONLY_ALPHABET || alphabet === VOWELONLY_ALPHABITMAP ?
-            bitCount(flag & 0x1f) : 0;
+        const alphabet =
+            flag === RAWBYTE_ALPHABET.flag
+                ? RAWBYTE_ALPHABET
+                : flag === ASCII_ALPHABET.flag
+                  ? ASCII_ALPHABET
+                  : flag === LONG_ALPHABET.flag
+                    ? LONG_ALPHABET
+                    : flag === SHORT_ALPHABET.flag
+                      ? SHORT_ALPHABET
+                      : flag === HEX_ALPHABET.flag
+                        ? HEX_ALPHABET
+                        : flag >= CONSONANTSONLY_ALPHABET.flag
+                          ? CONSONANTSONLY_ALPHABET
+                          : VOWELONLY_ALPHABITMAP;
+        let len =
+            alphabet === CONSONANTSONLY_ALPHABET || alphabet === VOWELONLY_ALPHABITMAP
+                ? bitCount(flag & 0x1f)
+                : 0;
         for (let ix = 0; ix < alphabet.bytes; ++ix) {
             len += bitCount(buf[i]);
             i += 1;
         }
-        return {alphabet, consumed_len_bytes: alphabet.bytes, len};
+        return { alphabet, consumed_len_bytes: alphabet.bytes, len };
     };
 
     /**
@@ -1682,7 +1677,7 @@ function loadDatabase(hooks) {
          * Yields [character, SearchTree] pairs.
          * @returns {Generator<[number, Promise<ST>|null]>}
          */
-        * entries() {
+        *entries() {
             let i = 0;
             let j = 0;
             while (i < this.alphabet.len) {
@@ -1707,7 +1702,7 @@ function loadDatabase(hooks) {
             const k = this.alphabet.index(c);
             if (this.bitmap[k >> 3] & (1 << (k & 0x07))) {
                 let result = bitCount(~(0xff << (k & 0x07)) & this.bitmap[k >> 3]);
-                for (let ix = 0; ix < (k >> 3); ++ix) {
+                for (let ix = 0; ix < k >> 3; ++ix) {
                     result += bitCount(this.bitmap[ix]);
                 }
                 return result;
@@ -1793,13 +1788,7 @@ function loadDatabase(hooks) {
          * @param {RoaringBitmap} leaves_whole
          * @param {RoaringBitmap} leaves_suffix
          */
-        constructor(
-            branches,
-            might_have_prefix_branches,
-            data,
-            leaves_whole,
-            leaves_suffix,
-        ) {
+        constructor(branches, might_have_prefix_branches, data, leaves_whole, leaves_suffix) {
             this.might_have_prefix_branches = might_have_prefix_branches;
             this.branches = branches;
             this.data = data;
@@ -1852,7 +1841,7 @@ function loadDatabase(hooks) {
          * @param {DataColumn} dataColumn
          * @returns {AsyncGenerator<Trie>}
          */
-        async* searchLev(name, dataColumn) {
+        async *searchLev(name, dataColumn) {
             if (typeof name === "string") {
                 const utf8encoder = new TextEncoder();
                 name = utf8encoder.encode(name);
@@ -1866,9 +1855,8 @@ function loadDatabase(hooks) {
                 return;
             }
             const searchPattern = new Uint8ArraySearchPattern(name);
-            const levParams = w >= 6 ?
-                new Lev2TParametricDescription(w) :
-                new Lev1TParametricDescription(w);
+            const levParams =
+                w >= 6 ? new Lev2TParametricDescription(w) : new Lev1TParametricDescription(w);
             /** @type {Array<[Promise<Trie>, number]>} */
             const stack = [[Promise.resolve(this.trie(dataColumn, searchPattern)), 0]];
             const n = levParams.n;
@@ -1884,13 +1872,9 @@ function loadDatabase(hooks) {
                         name,
                         byte,
                         levPos,
-                        Math.min(w, levPos + (2 * n) + 1),
+                        Math.min(w, levPos + 2 * n + 1),
                     );
-                    const newLevState = levParams.transition(
-                        levState,
-                        levPos,
-                        vector,
-                    );
+                    const newLevState = levParams.transition(levState, levPos, vector);
                     if (newLevState >= 0) {
                         const child = trie.child(byte);
                         if (child) {
@@ -1944,7 +1928,7 @@ function loadDatabase(hooks) {
          * All matches for strings that contain the string represented by this node.
          * @returns {AsyncGenerator<RoaringBitmap>}
          */
-        async* substringMatches() {
+        async *substringMatches() {
             /** @type {Promise<SearchTree>[]} */
             let layer = [Promise.resolve(this.tree)];
             while (layer.length) {
@@ -1977,9 +1961,10 @@ function loadDatabase(hooks) {
                 /** @type {HashTable<[number, PrefixSearchTree|SuffixSearchTree][]>} */
                 const subnodes = new HashTable();
                 for await (const nodeEncoded of current_layer) {
-                    const node = nodeEncoded instanceof InlineNeighborsTree ?
-                        nodeEncoded.decode() :
-                        nodeEncoded;
+                    const node =
+                        nodeEncoded instanceof InlineNeighborsTree
+                            ? nodeEncoded.decode()
+                            : nodeEncoded;
                     const branches = node.branches;
                     const l = branches.subtrees.length;
                     for (let i = 0; i < l; ++i) {
@@ -2028,9 +2013,9 @@ function loadDatabase(hooks) {
          * All matches for strings that start with the string represented by this node.
          * @returns {AsyncGenerator<RoaringBitmap>}
          */
-        async* prefixMatches() {
+        async *prefixMatches() {
             /** @type {{node: Promise<SearchTree>, len: number}[]} */
-            let layer = [{node: Promise.resolve(this.tree), len: 0}];
+            let layer = [{ node: Promise.resolve(this.tree), len: 0 }];
             // https://en.wikipedia.org/wiki/Heap_(data_structure)#Implementation_using_arrays
             /** @type {{bitmap: RoaringBitmap, length: number}[]} */
             const backlog = [];
@@ -2042,11 +2027,12 @@ function loadDatabase(hooks) {
                 // a min-heap of result entries
                 // we then yield the smallest ones (can't yield bigger ones
                 // if we want to do them in order)
-                for (const {node, len} of current_layer) {
+                for (const { node, len } of current_layer) {
                     const treeEncoded = await node;
-                    const tree = treeEncoded instanceof InlineNeighborsTree ?
-                        treeEncoded.decode() :
-                        treeEncoded;
+                    const tree =
+                        treeEncoded instanceof InlineNeighborsTree
+                            ? treeEncoded.decode()
+                            : treeEncoded;
                     if (!(tree instanceof PrefixSearchTree)) {
                         continue;
                     }
@@ -2055,8 +2041,9 @@ function loadDatabase(hooks) {
                         minLength = length;
                     }
                     let backlogSlot = backlog.length;
-                    backlog.push({bitmap: tree.leaves_whole, length});
-                    while (backlogSlot > 0 &&
+                    backlog.push({ bitmap: tree.leaves_whole, length });
+                    while (
+                        backlogSlot > 0 &&
                         backlog[backlogSlot].length < backlog[(backlogSlot - 1) >> 1].length
                     ) {
                         const parentSlot = (backlogSlot - 1) >> 1;
@@ -2085,12 +2072,14 @@ function loadDatabase(hooks) {
                         const leftSlot = (backlogSlot << 1) + 1;
                         const rightSlot = (backlogSlot << 1) + 2;
                         let smallest = backlogSlot;
-                        if (leftSlot < backlogLength &&
+                        if (
+                            leftSlot < backlogLength &&
                             backlog[leftSlot].length < backlog[smallest].length
                         ) {
                             smallest = leftSlot;
                         }
-                        if (rightSlot < backlogLength &&
+                        if (
+                            rightSlot < backlogLength &&
                             backlog[rightSlot].length < backlog[smallest].length
                         ) {
                             smallest = rightSlot;
@@ -2108,11 +2097,12 @@ function loadDatabase(hooks) {
                 // if we still have more subtrees to walk, then keep going
                 /** @type {HashTable<{byte: number, tree: PrefixSearchTree, len: number}[]>} */
                 const subnodes = new HashTable();
-                for await (const {node, len} of current_layer) {
+                for await (const { node, len } of current_layer) {
                     const treeEncoded = await node;
-                    const tree = treeEncoded instanceof InlineNeighborsTree ?
-                        treeEncoded.decode() :
-                        treeEncoded;
+                    const tree =
+                        treeEncoded instanceof InlineNeighborsTree
+                            ? treeEncoded.decode()
+                            : treeEncoded;
                     if (!(tree instanceof PrefixSearchTree)) {
                         continue;
                     }
@@ -2123,7 +2113,7 @@ function loadDatabase(hooks) {
                         const len = length + 1;
                         const subtree = mhp_branches.subtrees[i];
                         if (subtree) {
-                            layer.push({node: subtree, len});
+                            layer.push({ node: subtree, len });
                         } else if (subtree === null) {
                             const byte = mhp_branches.getKey(i);
                             const newnode = mhp_branches.getNodeID(i);
@@ -2132,10 +2122,10 @@ function loadDatabase(hooks) {
                             } else {
                                 let subnode_list = subnodes.get(newnode);
                                 if (!subnode_list) {
-                                    subnode_list = [{byte, tree, len}];
+                                    subnode_list = [{ byte, tree, len }];
                                     subnodes.set(newnode, subnode_list);
                                 } else {
-                                    subnode_list.push({byte, tree, len});
+                                    subnode_list.push({ byte, tree, len });
                                 }
                             }
                         }
@@ -2144,7 +2134,7 @@ function loadDatabase(hooks) {
                 for (const [newnode, subnode_list] of subnodes.entries()) {
                     const res = registry.searchTreeLoadByNodeID(newnode);
                     let len = Number.MAX_SAFE_INTEGER;
-                    for (const {byte, tree, len: subtreelen} of subnode_list) {
+                    for (const { byte, tree, len: subtreelen } of subnode_list) {
                         if (subtreelen < len) {
                             len = subtreelen;
                         }
@@ -2155,7 +2145,7 @@ function loadDatabase(hooks) {
                         const bi = branches.getIndex(byte);
                         branches.subtrees[bi] = res;
                     }
-                    layer.push({node: res, len});
+                    layer.push({ node: res, len });
                 }
             }
         }
@@ -2201,9 +2191,12 @@ function loadDatabase(hooks) {
                             this.tree.might_have_prefix_branches.subtrees[mhpI] = node;
                         }
                     }
-                    nodes.push([k, node.then(node => {
-                        return node.trie(this.dataColumn, this.searchPattern);
-                    })]);
+                    nodes.push([
+                        k,
+                        node.then(node => {
+                            return node.trie(this.dataColumn, this.searchPattern);
+                        }),
+                    ]);
                     i += 1;
                 }
                 return nodes;
@@ -2257,9 +2250,12 @@ function loadDatabase(hooks) {
                         this.tree.might_have_prefix_branches.subtrees[i] = node;
                         this.tree.branches.subtrees[this.tree.branches.getIndex(k)] = node;
                     }
-                    nodes.push([k, node.then(node => {
-                        return node.trie(this.dataColumn, this.searchPattern);
-                    })]);
+                    nodes.push([
+                        k,
+                        node.then(node => {
+                            return node.trie(this.dataColumn, this.searchPattern);
+                        }),
+                    ]);
                     i += 1;
                 }
                 return nodes;
@@ -2301,12 +2297,9 @@ function loadDatabase(hooks) {
                     return branch.then(branch => branch.trie(this.dataColumn, this.searchPattern));
                 }
             } else if (this.tree.data[this.offset] === byte) {
-                return Promise.resolve(new PrefixTrie(
-                    this.tree,
-                    this.offset + 1,
-                    this.dataColumn,
-                    this.searchPattern,
-                ));
+                return Promise.resolve(
+                    new PrefixTrie(this.tree, this.offset + 1, this.dataColumn, this.searchPattern),
+                );
             }
             return null;
         }
@@ -2347,11 +2340,7 @@ function loadDatabase(hooks) {
          * @param {number} dataLen
          * @param {RoaringBitmap} leaves_suffix
          */
-        constructor(
-            branches,
-            dataLen,
-            leaves_suffix,
-        ) {
+        constructor(branches, dataLen, leaves_suffix) {
             this.branches = branches;
             this.dataLen = dataLen;
             this.leaves_suffix = leaves_suffix;
@@ -2400,7 +2389,7 @@ function loadDatabase(hooks) {
          * @param {DataColumn} _dataColumn
          * @returns {AsyncGenerator<Trie>}
          */
-        async* searchLev(_name, _dataColumn) {
+        async *searchLev(_name, _dataColumn) {
             // this function only returns whole-string matches,
             // which pure-suffix nodes don't have, so is
             // intentionally blank
@@ -2444,7 +2433,7 @@ function loadDatabase(hooks) {
          * All matches for strings that contain the string represented by this node.
          * @returns {AsyncGenerator<RoaringBitmap>}
          */
-        async* substringMatches() {
+        async *substringMatches() {
             /** @type {Promise<SearchTree>[]} */
             let layer = [Promise.resolve(this.tree)];
             while (layer.length) {
@@ -2477,9 +2466,10 @@ function loadDatabase(hooks) {
                 /** @type {HashTable<[number, PrefixSearchTree|SuffixSearchTree][]>} */
                 const subnodes = new HashTable();
                 for await (const nodeEncoded of current_layer) {
-                    const node = nodeEncoded instanceof InlineNeighborsTree ?
-                        nodeEncoded.decode() :
-                        nodeEncoded;
+                    const node =
+                        nodeEncoded instanceof InlineNeighborsTree
+                            ? nodeEncoded.decode()
+                            : nodeEncoded;
                     const branches = node.branches;
                     const l = branches.subtrees.length;
                     for (let i = 0; i < l; ++i) {
@@ -2520,7 +2510,7 @@ function loadDatabase(hooks) {
          * Since this is a pure-suffix node, there aren't any.
          * @returns {AsyncGenerator<RoaringBitmap>}
          */
-        async* prefixMatches() {
+        async *prefixMatches() {
             // this function only returns prefix matches,
             // which pure-suffix nodes don't have, so is
             // intentionally blank
@@ -2564,12 +2554,9 @@ function loadDatabase(hooks) {
                     return branch.then(branch => branch.trie(this.dataColumn, this.searchPattern));
                 }
             } else {
-                return Promise.resolve(new SuffixTrie(
-                    this.tree,
-                    this.offset + 1,
-                    this.dataColumn,
-                    this.searchPattern,
-                ));
+                return Promise.resolve(
+                    new SuffixTrie(this.tree, this.offset + 1, this.dataColumn, this.searchPattern),
+                );
             }
             return null;
         }
@@ -2584,10 +2571,7 @@ function loadDatabase(hooks) {
          * @param {Uint8Array} encoded
          * @param {number} start
          */
-        constructor(
-            encoded,
-            start,
-        ) {
+        constructor(encoded, start) {
             this.encoded = encoded;
             this.start = start;
         }
@@ -2601,7 +2585,7 @@ function loadDatabase(hooks) {
             /** @type {boolean} */
             const is_suffixes_only = (encoded[i] & 0x01) !== 0;
             const leaves_count = (encoded[i] >> 4) & 0x07;
-            const leaves_is_run = (encoded[i] >> 7) !== 0;
+            const leaves_is_run = encoded[i] >> 7 !== 0;
             i += 1;
             let branch_flag = 0;
             if (has_branches) {
@@ -2635,7 +2619,7 @@ function loadDatabase(hooks) {
             for (let j = 0; j < branch_count; j += 1) {
                 const branch_dlen = encoded[i] & 0x0f;
                 const branch_leaves_count = (encoded[i] >> 4) & 0x07;
-                const branch_leaves_is_run = (encoded[i] >> 7) !== 0;
+                const branch_leaves_is_run = encoded[i] >> 7 !== 0;
                 i += 1;
                 /** @type {Uint8Array} */
                 let branch_data = EMPTY_UINT8;
@@ -2654,12 +2638,7 @@ function loadDatabase(hooks) {
                     branch_leaves.containers = [
                         new RoaringBitmapRun(
                             1,
-                            Uint8Array.of(
-                                encoded[i],
-                                encoded[i + 1],
-                                branch_leaves_count - 1,
-                                0,
-                            ),
+                            Uint8Array.of(encoded[i], encoded[i + 1], branch_leaves_count - 1, 0),
                         ),
                     ];
                     i += 2;
@@ -2667,40 +2646,43 @@ function loadDatabase(hooks) {
                     branch_leaves.containers = [
                         new RoaringBitmapArray(
                             branch_leaves_count,
-                            encoded.subarray(i, i + (branch_leaves_count * 2)),
+                            encoded.subarray(i, i + branch_leaves_count * 2),
                         ),
                     ];
                     i += branch_leaves_count * 2;
                 }
-                branch_nodes.push(Promise.resolve(
-                    is_suffixes_only ?
-                        new SuffixSearchTree(
-                            EMPTY_SEARCH_TREE_BRANCHES,
-                            branch_dlen,
-                            branch_leaves,
-                        ) :
-                        new PrefixSearchTree(
-                            EMPTY_SEARCH_TREE_BRANCHES,
-                            EMPTY_SEARCH_TREE_BRANCHES,
-                            branch_data,
-                            branch_leaves,
-                            EMPTY_BITMAP,
-                        ),
-                ));
+                branch_nodes.push(
+                    Promise.resolve(
+                        is_suffixes_only
+                            ? new SuffixSearchTree(
+                                  EMPTY_SEARCH_TREE_BRANCHES,
+                                  branch_dlen,
+                                  branch_leaves,
+                              )
+                            : new PrefixSearchTree(
+                                  EMPTY_SEARCH_TREE_BRANCHES,
+                                  EMPTY_SEARCH_TREE_BRANCHES,
+                                  branch_data,
+                                  branch_leaves,
+                                  EMPTY_BITMAP,
+                              ),
+                    ),
+                );
             }
             /** @type {SearchTreeBranches<SearchTree>} */
-            const branches = branch_count === 0 ?
-                EMPTY_SEARCH_TREE_BRANCHES :
-                branch_flag_alphabet ?
-                    new SearchTreeBranchesAlphaBitmap(
-                        branch_flag_alphabet.alphabet,
-                        branch_alphabitmap,
-                        EMPTY_UINT8,
-                    ) :
-                    new SearchTreeBranchesArray(
-                        encoded.subarray(i, i + branch_count),
-                        EMPTY_UINT8,
-                    );
+            const branches =
+                branch_count === 0
+                    ? EMPTY_SEARCH_TREE_BRANCHES
+                    : branch_flag_alphabet
+                      ? new SearchTreeBranchesAlphaBitmap(
+                            branch_flag_alphabet.alphabet,
+                            branch_alphabitmap,
+                            EMPTY_UINT8,
+                        )
+                      : new SearchTreeBranchesArray(
+                            encoded.subarray(i, i + branch_count),
+                            EMPTY_UINT8,
+                        );
             if (!branch_flag_alphabet) {
                 i += branch_count;
             }
@@ -2718,12 +2700,7 @@ function loadDatabase(hooks) {
                     leaves.containers = [
                         new RoaringBitmapRun(
                             1,
-                            Uint8Array.of(
-                                encoded[i],
-                                encoded[i + 1],
-                                leaves_count - 1,
-                                0,
-                            ),
+                            Uint8Array.of(encoded[i], encoded[i + 1], leaves_count - 1, 0),
                         ),
                     ];
                     i += 2;
@@ -2731,25 +2708,15 @@ function loadDatabase(hooks) {
                     leaves.containers = [
                         new RoaringBitmapArray(
                             leaves_count,
-                            encoded.subarray(i, i + (leaves_count * 2)),
+                            encoded.subarray(i, i + leaves_count * 2),
                         ),
                     ];
                     i += leaves_count * 2;
                 }
             }
-            return is_suffixes_only ?
-                new SuffixSearchTree(
-                    branches,
-                    dlen,
-                    leaves,
-                ) :
-                new PrefixSearchTree(
-                    branches,
-                    branches,
-                    data,
-                    leaves,
-                    EMPTY_BITMAP,
-                );
+            return is_suffixes_only
+                ? new SuffixSearchTree(branches, dlen, leaves)
+                : new PrefixSearchTree(branches, branches, data, leaves, EMPTY_BITMAP);
         }
 
         /**
@@ -2764,9 +2731,9 @@ function loadDatabase(hooks) {
          */
         trie(dataColumn, searchPattern) {
             const tree = this.decode();
-            return tree instanceof SuffixSearchTree ?
-                new SuffixTrie(tree, 0, dataColumn, searchPattern) :
-                new PrefixTrie(tree, 0, dataColumn, searchPattern);
+            return tree instanceof SuffixSearchTree
+                ? new SuffixTrie(tree, 0, dataColumn, searchPattern)
+                : new PrefixTrie(tree, 0, dataColumn, searchPattern);
         }
 
         /**
@@ -2825,7 +2792,12 @@ function loadDatabase(hooks) {
                     k += 1;
                 }
                 const end = k;
-                const bucket = {hash: hashes.subarray(i * 5, (i + 1) * 5), data: null, end, count};
+                const bucket = {
+                    hash: hashes.subarray(i * 5, (i + 1) * 5),
+                    data: null,
+                    end,
+                    count,
+                };
                 this.buckets.push(bucket);
                 this.bucket_keys.push(start);
             }
@@ -2874,11 +2846,8 @@ function loadDatabase(hooks) {
          * @returns {Promise<Uint8Array>}
          */
         async atAsyncFetch(id, start, bucket) {
-            const {hash, end} = bucket;
-            const dataSansEmptysetOrig = await registry.dataLoadByNameAndHash(
-                this.name,
-                hash,
-            );
+            const { hash, end } = bucket;
+            const dataSansEmptysetOrig = await registry.dataLoadByNameAndHash(this.name, hash);
             // After the `await` resolves, another task might fill
             // in the data. If so, we should use that.
             let data = bucket.data;
@@ -2895,9 +2864,7 @@ function loadDatabase(hooks) {
                     if (dataWithEmptyset === null) {
                         dataWithEmptyset = dataSansEmptyset.splice(0, insertCount);
                     } else if (insertCount !== 0) {
-                        dataWithEmptyset.push(
-                            ...dataSansEmptyset.splice(0, insertCount),
-                        );
+                        dataWithEmptyset.push(...dataSansEmptyset.splice(0, insertCount));
                     }
                     insertCount = 0;
                     dataWithEmptyset.push(EMPTY_UINT8);
@@ -2906,9 +2873,10 @@ function loadDatabase(hooks) {
                 }
                 pos += 1;
             }
-            data = dataWithEmptyset === null ?
-                dataSansEmptyset :
-                dataWithEmptyset.concat(dataSansEmptyset);
+            data =
+                dataWithEmptyset === null
+                    ? dataSansEmptyset
+                    : dataWithEmptyset.concat(dataSansEmptyset);
             bucket.data = data;
             return data[id - start];
         }
@@ -2977,17 +2945,19 @@ function loadDatabase(hooks) {
             const l = data.length;
             while (i < l) {
                 let c = data[i];
-                if (c >= 48 && c <= 63) { // 48 = "0", 63 = "?"
+                if (c >= 48 && c <= 63) {
+                    // 48 = "0", 63 = "?"
                     dataSansEmptyset.push(backrefs[c - 48]);
                     i += 1;
                 } else {
                     let n = 0;
-                    while (c < 96) { // 96 = "`"
-                        n = (n << 4) | (c & 0xF);
+                    while (c < 96) {
+                        // 96 = "`"
+                        n = (n << 4) | (c & 0xf);
                         i += 1;
                         c = data[i];
                     }
-                    n = (n << 4) | (c & 0xF);
+                    n = (n << 4) | (c & 0xf);
                     i += 1;
                     const item = data.subarray(i, i + n);
                     dataSansEmptyset.push(item);
@@ -3042,18 +3012,14 @@ function loadDatabase(hooks) {
          *     "consumed_len_bytes": number,
          * }}
          */
-        function makeBranchesFromBinaryData(
-            input,
-            i,
-            compression_tag,
-        ) {
+        function makeBranchesFromBinaryData(input, i, compression_tag) {
             const is_pure_suffixes_only_node = (compression_tag & 0x01) !== 0x00;
             const is_stack_compressed = (compression_tag & 0x02) !== 0;
             const is_long_compressed = (compression_tag & 0x04) !== 0;
             const all_children_are_compressed =
-                (compression_tag & 0xF0) === 0xF0 && !is_long_compressed;
+                (compression_tag & 0xf0) === 0xf0 && !is_long_compressed;
             const any_children_are_compressed =
-                (compression_tag & 0xF0) !== 0x00 || is_long_compressed;
+                (compression_tag & 0xf0) !== 0x00 || is_long_compressed;
             const start_point = i;
             /**
              * @type {Alphabet|null}
@@ -3113,8 +3079,8 @@ function loadDatabase(hooks) {
             if (any_children_are_compressed) {
                 cpnodes = cplen === 0 ? EMPTY_UINT8 : new Uint8Array(cplen * 5);
                 while (j < cplen) {
-                    const is_compressed = all_children_are_compressed ||
-                        ((0x10 << j) & compression_tag) !== 0;
+                    const is_compressed =
+                        all_children_are_compressed || ((0x10 << j) & compression_tag) !== 0;
                     if (is_compressed) {
                         let slot = hash_history.length - 1;
                         if (is_stack_compressed) {
@@ -3126,10 +3092,7 @@ function loadDatabase(hooks) {
                             i += 1;
                         }
                         hash_history[slot].used = true;
-                        cpnodes.set(
-                            hash_history[slot].hash,
-                            j * 5,
-                        );
+                        cpnodes.set(hash_history[slot].hash, j * 5);
                     } else {
                         const joff = j * 5;
                         cpnodes[joff + 0] = input[i + 0];
@@ -3142,7 +3105,7 @@ function loadDatabase(hooks) {
                     j += 1;
                 }
             } else {
-                cpnodes = cplen === 0 ? EMPTY_UINT8 : input.subarray(i, i + (cplen * 5));
+                cpnodes = cplen === 0 ? EMPTY_UINT8 : input.subarray(i, i + cplen * 5);
                 i += cplen * 5;
             }
             j = 0;
@@ -3151,7 +3114,8 @@ function loadDatabase(hooks) {
             if (any_children_are_compressed) {
                 csnodes = cslen === 0 ? EMPTY_UINT8 : new Uint8Array(cslen * 5);
                 while (j < cslen) {
-                    const is_compressed = all_children_are_compressed ||
+                    const is_compressed =
+                        all_children_are_compressed ||
                         ((0x10 << (cplen + j)) & compression_tag) !== 0;
                     if (is_compressed) {
                         let slot = hash_history.length - 1;
@@ -3164,10 +3128,7 @@ function loadDatabase(hooks) {
                             i += 1;
                         }
                         hash_history[slot].used = true;
-                        csnodes.set(
-                            hash_history[slot].hash,
-                            j * 5,
-                        );
+                        csnodes.set(hash_history[slot].hash, j * 5);
                     } else {
                         const joff = j * 5;
                         csnodes[joff + 0] = input[i + 0];
@@ -3180,7 +3141,7 @@ function loadDatabase(hooks) {
                     j += 1;
                 }
             } else {
-                csnodes = cslen === 0 ? EMPTY_UINT8 : input.subarray(i, i + (cslen * 5));
+                csnodes = cslen === 0 ? EMPTY_UINT8 : input.subarray(i, i + cslen * 5);
                 i += cslen * 5;
             }
             const start_point_keys = i;
@@ -3290,10 +3251,7 @@ function loadDatabase(hooks) {
                             }
                             j += 1;
                         }
-                        branches = new SearchTreeBranchesArray(
-                            merged_keys,
-                            hashes,
-                        );
+                        branches = new SearchTreeBranchesArray(merged_keys, hashes);
                     }
                 }
             }
@@ -3334,7 +3292,7 @@ function loadDatabase(hooks) {
                 no_leaves_flag = 0x80;
                 no_branches_flag = 0;
             } else {
-                dlen = input[i] & 0x3F;
+                dlen = input[i] & 0x3f;
                 no_leaves_flag = input[i] & 0x80;
                 no_branches_flag = input[i] & 0x40;
                 i += 1;
@@ -3343,18 +3301,17 @@ function loadDatabase(hooks) {
                 // node with packed leaves and common 16bit prefix
                 const leaves_count = (compression_tag >> 4) & 0x07;
                 const leaves_is_run = ((compression_tag >> 4) & 0x08) !== 0;
-                const branch_flag = is_long_compressed ?
-                    (compression_tag >> 8) & 0xff :
-                    0;
+                const branch_flag = is_long_compressed ? (compression_tag >> 8) & 0xff : 0;
                 if (is_data_compressed) {
                     data = data_history[data_history.length - dlen - 1];
                     dlen = data.length;
                 } else if (is_pure_suffixes_only_node) {
                     data = EMPTY_UINT8;
                 } else {
-                    data = dlen === 0 ?
-                        EMPTY_UINT8 :
-                        new Uint8Array(input.buffer, i + input.byteOffset, dlen);
+                    data =
+                        dlen === 0
+                            ? EMPTY_UINT8
+                            : new Uint8Array(input.buffer, i + input.byteOffset, dlen);
                     i += dlen;
                 }
                 const branches_start = i;
@@ -3369,7 +3326,7 @@ function loadDatabase(hooks) {
                 for (let j = 0; j < branch_count; j += 1) {
                     const branch_dlen = input[i] & 0x0f;
                     const branch_leaves_count = (input[i] >> 4) & 0x0f;
-                    const branch_leaves_is_run = (input[i] >> 7) !== 0;
+                    const branch_leaves_is_run = input[i] >> 7 !== 0;
                     i += 1;
                     if (!is_pure_suffixes_only_node) {
                         i += branch_dlen;
@@ -3391,13 +3348,12 @@ function loadDatabase(hooks) {
                     i += leaves_count * 2;
                 }
                 if (is_data_compressed) {
-                    const clen = (
+                    const clen =
                         1 + // first compression header byte
                         (is_long_compressed ? 1 : 0) + // branch flag
                         1 + // data length and other flags
                         dlen + // data
-                        (i - branches_start) // branches and leaves
-                    );
+                        (i - branches_start); // branches and leaves
                     const canonical = new Uint8Array(clen);
                     let ci = 0;
                     canonical[ci] = input[start] ^ 0x08;
@@ -3420,11 +3376,14 @@ function loadDatabase(hooks) {
                     siphashOfBytes(canonical, 0, 0, 0, 0, hash);
                 } else {
                     tree = new InlineNeighborsTree(input, start);
-                    siphashOfBytes(new Uint8Array(
-                        input.buffer,
-                        start + input.byteOffset,
-                        i - start,
-                    ), 0, 0, 0, 0, hash);
+                    siphashOfBytes(
+                        new Uint8Array(input.buffer, start + input.byteOffset, i - start),
+                        0,
+                        0,
+                        0,
+                        0,
+                        hash,
+                    );
                 }
             } else if (compression_tag > 1) {
                 // compressed node
@@ -3434,9 +3393,10 @@ function loadDatabase(hooks) {
                     data = data_history[data_history.length - dlen - 1];
                     dlen = data.length;
                 } else {
-                    data = dlen === 0 ?
-                        EMPTY_UINT8 :
-                        new Uint8Array(input.buffer, i + input.byteOffset, dlen);
+                    data =
+                        dlen === 0
+                            ? EMPTY_UINT8
+                            : new Uint8Array(input.buffer, i + input.byteOffset, dlen);
                     i += dlen;
                 }
                 const {
@@ -3447,17 +3407,17 @@ function loadDatabase(hooks) {
                     might_have_prefix_branches,
                     branches_header,
                     branches_keys,
-                } = no_branches_flag !== 0 ?
-                    {
-                        cpnodes: EMPTY_UINT8,
-                        csnodes: EMPTY_UINT8,
-                        consumed_len_bytes: 0,
-                        branches: EMPTY_SEARCH_TREE_BRANCHES,
-                        might_have_prefix_branches: EMPTY_SEARCH_TREE_BRANCHES,
-                        branches_header: EMPTY_UINT8,
-                        branches_keys: EMPTY_UINT8,
-                    } :
-                    makeBranchesFromBinaryData(input, i, compression_tag);
+                } = no_branches_flag !== 0
+                    ? {
+                          cpnodes: EMPTY_UINT8,
+                          csnodes: EMPTY_UINT8,
+                          consumed_len_bytes: 0,
+                          branches: EMPTY_SEARCH_TREE_BRANCHES,
+                          might_have_prefix_branches: EMPTY_SEARCH_TREE_BRANCHES,
+                          branches_header: EMPTY_UINT8,
+                          branches_keys: EMPTY_UINT8,
+                      }
+                    : makeBranchesFromBinaryData(input, i, compression_tag);
                 i += branches_consumed_len_bytes;
                 let whole;
                 let suffix;
@@ -3466,17 +3426,11 @@ function loadDatabase(hooks) {
                         whole = EMPTY_BITMAP;
                         suffix = EMPTY_BITMAP;
                     } else {
-                        suffix = input[i] === 0 ?
-                            EMPTY_BITMAP1 :
-                            new RoaringBitmap(input, i);
+                        suffix = input[i] === 0 ? EMPTY_BITMAP1 : new RoaringBitmap(input, i);
                         i += suffix.consumed_len_bytes;
                     }
-                    tree = new SuffixSearchTree(
-                        branches,
-                        dlen,
-                        suffix,
-                    );
-                    const clen = (
+                    tree = new SuffixSearchTree(branches, dlen, suffix);
+                    const clen =
                         // lengths of children and data
                         (is_data_compressed ? 1 : 2) +
                         // branches
@@ -3484,8 +3438,7 @@ function loadDatabase(hooks) {
                         csnodes.length +
                         branches_keys.length +
                         // leaves
-                        suffix.consumed_len_bytes
-                    );
+                        suffix.consumed_len_bytes;
                     if (canonical.length < clen) {
                         canonical = new Uint8Array(clen);
                     }
@@ -3515,13 +3468,9 @@ function loadDatabase(hooks) {
                         whole = EMPTY_BITMAP;
                         suffix = EMPTY_BITMAP;
                     } else {
-                        whole = input[i] === 0 ?
-                            EMPTY_BITMAP1 :
-                            new RoaringBitmap(input, i);
+                        whole = input[i] === 0 ? EMPTY_BITMAP1 : new RoaringBitmap(input, i);
                         i += whole.consumed_len_bytes;
-                        suffix = input[i] === 0 ?
-                            EMPTY_BITMAP1 :
-                            new RoaringBitmap(input, i);
+                        suffix = input[i] === 0 ? EMPTY_BITMAP1 : new RoaringBitmap(input, i);
                         i += suffix.consumed_len_bytes;
                     }
                     tree = new PrefixSearchTree(
@@ -3531,15 +3480,15 @@ function loadDatabase(hooks) {
                         whole,
                         suffix,
                     );
-                    const clen = (
+                    const clen =
                         2 + // lengths of children and data
                         dlen +
                         branches_header.length +
-                        cpnodes.length + csnodes.length +
+                        cpnodes.length +
+                        csnodes.length +
                         branches_keys.length +
                         whole.consumed_len_bytes +
-                        suffix.consumed_len_bytes
-                    );
+                        suffix.consumed_len_bytes;
                     if (canonical.length < clen) {
                         canonical = new Uint8Array(clen);
                     }
@@ -3576,13 +3525,13 @@ function loadDatabase(hooks) {
                     consumed_len_bytes: branches_consumed_len_bytes,
                     branches,
                     might_have_prefix_branches,
-                } = no_branches_flag !== 0 ?
-                    {
-                        consumed_len_bytes: 0,
-                        branches: EMPTY_SEARCH_TREE_BRANCHES,
-                        might_have_prefix_branches: EMPTY_SEARCH_TREE_BRANCHES,
-                    } :
-                    makeBranchesFromBinaryData(input, i, compression_tag);
+                } = no_branches_flag !== 0
+                    ? {
+                          consumed_len_bytes: 0,
+                          branches: EMPTY_SEARCH_TREE_BRANCHES,
+                          might_have_prefix_branches: EMPTY_SEARCH_TREE_BRANCHES,
+                      }
+                    : makeBranchesFromBinaryData(input, i, compression_tag);
                 i += branches_consumed_len_bytes;
                 let whole;
                 let suffix;
@@ -3591,41 +3540,34 @@ function loadDatabase(hooks) {
                     suffix = EMPTY_BITMAP;
                 } else if (is_pure_suffixes_only_node) {
                     whole = EMPTY_BITMAP;
-                    suffix = input[i] === 0 ?
-                        EMPTY_BITMAP1 :
-                        new RoaringBitmap(input, i);
+                    suffix = input[i] === 0 ? EMPTY_BITMAP1 : new RoaringBitmap(input, i);
                     i += suffix.consumed_len_bytes;
                 } else {
-                    whole = input[i] === 0 ?
-                        EMPTY_BITMAP1 :
-                        new RoaringBitmap(input, i);
+                    whole = input[i] === 0 ? EMPTY_BITMAP1 : new RoaringBitmap(input, i);
                     i += whole.consumed_len_bytes;
-                    suffix = input[i] === 0 ?
-                        EMPTY_BITMAP1 :
-                        new RoaringBitmap(input, i);
+                    suffix = input[i] === 0 ? EMPTY_BITMAP1 : new RoaringBitmap(input, i);
                     i += suffix.consumed_len_bytes;
                 }
-                siphashOfBytes(new Uint8Array(
-                    input.buffer,
-                    start + input.byteOffset,
-                    i - start,
-                ), 0, 0, 0, 0, hash);
-                tree = is_pure_suffixes_only_node ?
-                    new SuffixSearchTree(
-                        branches,
-                        dlen,
-                        suffix,
-                    ) :
-                    new PrefixSearchTree(
-                        branches,
-                        might_have_prefix_branches,
-                        data,
-                        whole,
-                        suffix,
-                    );
+                siphashOfBytes(
+                    new Uint8Array(input.buffer, start + input.byteOffset, i - start),
+                    0,
+                    0,
+                    0,
+                    0,
+                    hash,
+                );
+                tree = is_pure_suffixes_only_node
+                    ? new SuffixSearchTree(branches, dlen, suffix)
+                    : new PrefixSearchTree(
+                          branches,
+                          might_have_prefix_branches,
+                          data,
+                          whole,
+                          suffix,
+                      );
             }
             hash[3] &= 0x7f;
-            hash_history.push({hash: truncatedHash.slice(), used: false});
+            hash_history.push({ hash: truncatedHash.slice(), used: false });
             if (data.length !== 0) {
                 data_history.push(data);
             }
@@ -3692,83 +3634,108 @@ if (typeof window !== "undefined") {
     }
 } else {
     /** @type {stringdex.Stringdex} */
-    // eslint-disable-next-line no-undef
     module.exports.Stringdex = {
         loadDatabase,
     };
     /** @type {stringdex.RoaringBitmap} */
-    // eslint-disable-next-line no-undef
     module.exports.RoaringBitmap = RoaringBitmap;
 }
 
-// eslint-disable-next-line max-len
 // polyfill https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array/fromBase64
 /**
  * @type {function(string): Uint8Array} base64
  */
 //@ts-expect-error
-const makeUint8ArrayFromBase64 = Uint8Array.fromBase64 ? Uint8Array.fromBase64 : (string => {
-    const bytes_as_string = atob(string);
-    const l = bytes_as_string.length;
-    const bytes = new Uint8Array(l);
-    for (let i = 0; i < l; ++i) {
-        bytes[i] = bytes_as_string.charCodeAt(i);
-    }
-    return bytes;
-});
+const makeUint8ArrayFromBase64 = Uint8Array.fromBase64
+    ? // @ts-expect-error
+      Uint8Array.fromBase64
+    : string => {
+          const bytes_as_string = atob(string);
+          const l = bytes_as_string.length;
+          const bytes = new Uint8Array(l);
+          for (let i = 0; i < l; ++i) {
+              bytes[i] = bytes_as_string.charCodeAt(i);
+          }
+          return bytes;
+      };
 /**
  * @type {function(string): Uint8Array} base64
  */
 //@ts-expect-error
-const makeUint8ArrayFromHex = Uint8Array.fromHex ? Uint8Array.fromHex : (string => {
-    /** @type {Object<string, number>} */
-    const alpha = {
-        "0": 0, "1": 1,
-        "2": 2, "3": 3,
-        "4": 4, "5": 5,
-        "6": 6, "7": 7,
-        "8": 8, "9": 9,
-        "a": 10, "b": 11,
-        "A": 10, "B": 11,
-        "c": 12, "d": 13,
-        "C": 12, "D": 13,
-        "e": 14, "f": 15,
-        "E": 14, "F": 15,
-    };
-    const l = string.length >> 1;
-    const bytes = new Uint8Array(l);
-    for (let i = 0; i < l; i += 1) {
-        const top = string[i << 1];
-        const bottom = string[(i << 1) + 1];
-        bytes[i] = (alpha[top] << 4) | alpha[bottom];
-    }
-    return bytes;
-});
+const makeUint8ArrayFromHex = Uint8Array.fromHex
+    ? // @ts-expect-error
+      Uint8Array.fromHex
+    : string => {
+          /** @type {Object<string, number>} */
+          const alpha = {
+              0: 0,
+              1: 1,
+              2: 2,
+              3: 3,
+              4: 4,
+              5: 5,
+              6: 6,
+              7: 7,
+              8: 8,
+              9: 9,
+              a: 10,
+              b: 11,
+              A: 10,
+              B: 11,
+              c: 12,
+              d: 13,
+              C: 12,
+              D: 13,
+              e: 14,
+              f: 15,
+              E: 14,
+              F: 15,
+          };
+          const l = string.length >> 1;
+          const bytes = new Uint8Array(l);
+          for (let i = 0; i < l; i += 1) {
+              const top = string[i << 1];
+              const bottom = string[(i << 1) + 1];
+              bytes[i] = (alpha[top] << 4) | alpha[bottom];
+          }
+          return bytes;
+      };
 
 /**
  * @type {function(Uint8Array): string} base64
  */
 //@ts-expect-error
-const makeHexFromUint8Array = Uint8Array.prototype.toHex ? (array => array.toHex()) : (array => {
-    /** @type {string[]} */
-    const alpha = [
-        "0", "1",
-        "2", "3",
-        "4", "5",
-        "6", "7",
-        "8", "9",
-        "a", "b",
-        "c", "d",
-        "e", "f",
-    ];
-    const l = array.length;
-    const v = [];
-    for (let i = 0; i < l; ++i) {
-        v.push(alpha[array[i] >> 4]);
-        v.push(alpha[array[i] & 0xf]);
-    }
-    return v.join("");
-});
+const makeHexFromUint8Array = Uint8Array.prototype.toHex
+    ? // @ts-expect-error
+      array => array.toHex()
+    : array => {
+          /** @type {string[]} */
+          const alpha = [
+              "0",
+              "1",
+              "2",
+              "3",
+              "4",
+              "5",
+              "6",
+              "7",
+              "8",
+              "9",
+              "a",
+              "b",
+              "c",
+              "d",
+              "e",
+              "f",
+          ];
+          const l = array.length;
+          const v = [];
+          for (let i = 0; i < l; ++i) {
+              v.push(alpha[array[i] >> 4]);
+              v.push(alpha[array[i] & 0xf]);
+          }
+          return v.join("");
+      };
 
 //////////////
 
@@ -3849,7 +3816,7 @@ function siphashOfBytes(input, k0lo, k0hi, k1lo, k1hi, output) {
     }
     function siphashCompress() {
         // v0 += v1;
-        v0hi = (v0hi + v1hi + (((v0lo >>> 0) + (v1lo >>> 0) > 0xffffffff) ? 1 : 0)) | 0;
+        v0hi = (v0hi + v1hi + ((v0lo >>> 0) + (v1lo >>> 0) > 0xffffffff ? 1 : 0)) | 0;
         v0lo = (v0lo + v1lo) | 0;
         // rotl(v1, 13)
         let v1lo_ = v1lo;
@@ -3865,7 +3832,7 @@ function siphashOfBytes(input, k0lo, k0hi, k1lo, k1hi, output) {
         v0lo = v0hi_;
         v0hi = v0lo_;
         // v2 += v3
-        v2hi = (v2hi + v3hi + (((v2lo >>> 0) + (v3lo >>> 0) > 0xffffffff) ? 1 : 0)) | 0;
+        v2hi = (v2hi + v3hi + ((v2lo >>> 0) + (v3lo >>> 0) > 0xffffffff ? 1 : 0)) | 0;
         v2lo = (v2lo + v3lo) | 0;
         // rotl(v3, 16)
         let v3lo_ = v3lo;
@@ -3876,7 +3843,7 @@ function siphashOfBytes(input, k0lo, k0hi, k1lo, k1hi, output) {
         v3lo ^= v2lo;
         v3hi ^= v2hi;
         // v0 += v3
-        v0hi = (v0hi + v3hi + (((v0lo >>> 0) + (v3lo >>> 0) > 0xffffffff) ? 1 : 0)) | 0;
+        v0hi = (v0hi + v3hi + ((v0lo >>> 0) + (v3lo >>> 0) > 0xffffffff ? 1 : 0)) | 0;
         v0lo = (v0lo + v3lo) | 0;
         // rotl(v3, 21)
         v3lo_ = v3lo;
@@ -3887,7 +3854,7 @@ function siphashOfBytes(input, k0lo, k0hi, k1lo, k1hi, output) {
         v3lo ^= v0lo;
         v3hi ^= v0hi;
         // v2 += v1
-        v2hi = (v2hi + v1hi + (((v2lo >>> 0) + (v1lo >>> 0) > 0xffffffff) ? 1 : 0)) | 0;
+        v2hi = (v2hi + v1hi + ((v2lo >>> 0) + (v1lo >>> 0) > 0xffffffff ? 1 : 0)) | 0;
         v2lo = (v2lo + v1lo) | 0;
         // rotl(v1, 17)
         v1lo_ = v1lo;
@@ -3906,7 +3873,6 @@ function siphashOfBytes(input, k0lo, k0hi, k1lo, k1hi, output) {
 }
 
 //////////////
-
 
 // Parts of this code are based on Lucene, which is licensed under the
 // Apache/2.0 license.
@@ -3964,29 +3930,26 @@ class ParametricDescription {
      * @returns {number}
      */
     unpack(data, index, bitsPerValue) {
-        const bitLoc = (bitsPerValue * index);
+        const bitLoc = bitsPerValue * index;
         const dataLoc = bitLoc >> 5;
         const bitStart = bitLoc & 31;
         if (bitStart + bitsPerValue <= 32) {
             // not split
-            return ((data[dataLoc] >> bitStart) & this.MASKS[bitsPerValue - 1]);
+            return (data[dataLoc] >> bitStart) & this.MASKS[bitsPerValue - 1];
         } else {
             // split
             const part = 32 - bitStart;
-            return ~~(((data[dataLoc] >> bitStart) & this.MASKS[part - 1]) +
-                ((data[1 + dataLoc] & this.MASKS[bitsPerValue - part - 1]) << part));
+            return ~~(
+                ((data[dataLoc] >> bitStart) & this.MASKS[part - 1]) +
+                ((data[1 + dataLoc] & this.MASKS[bitsPerValue - part - 1]) << part)
+            );
         }
     }
 }
 ParametricDescription.prototype.MASKS = new Int32Array([
-    0x1, 0x3, 0x7, 0xF,
-    0x1F, 0x3F, 0x7F, 0xFF,
-    0x1FF, 0x3F, 0x7FF, 0xFFF,
-    0x1FFF, 0x3FFF, 0x7FFF, 0xFFFF,
-    0x1FFFF, 0x3FFFF, 0x7FFFF, 0xFFFFF,
-    0x1FFFFF, 0x3FFFFF, 0x7FFFFF, 0xFFFFFF,
-    0x1FFFFFF, 0x3FFFFFF, 0x7FFFFFF, 0xFFFFFFF,
-    0x1FFFFFFF, 0x3FFFFFFF, 0x7FFFFFFF, 0xFFFFFFFF,
+    0x1, 0x3, 0x7, 0xf, 0x1f, 0x3f, 0x7f, 0xff, 0x1ff, 0x3f, 0x7ff, 0xfff, 0x1fff, 0x3fff, 0x7fff,
+    0xffff, 0x1ffff, 0x3ffff, 0x7ffff, 0xfffff, 0x1fffff, 0x3fffff, 0x7fffff, 0xffffff, 0x1ffffff,
+    0x3ffffff, 0x7ffffff, 0xfffffff, 0x1fffffff, 0x3fffffff, 0x7fffffff, 0xffffffff,
 ]);
 
 // The following code was generated with the moman/finenight pkg
@@ -4006,7 +3969,7 @@ class Lev2TParametricDescription extends ParametricDescription {
      * @param {number} position
      * @param {number} vector
      * @returns {number}
-    */
+     */
     transition(absState, position, vector) {
         let state = Math.floor(absState / (this.w + 1));
         let offset = absState % (this.w + 1);
@@ -4042,7 +4005,6 @@ class Lev2TParametricDescription extends ParametricDescription {
                 state = this.unpack(this.toStates4, loc, 6) - 1;
             }
         } else {
-            // eslint-disable-next-line no-lonely-if
             if (state < 45) {
                 const loc = Math.imul(vector, 45) + state;
                 offset += this.unpack(this.offsetIncrs5, loc, 3);
@@ -4106,218 +4068,135 @@ class Lev2TParametricDescription extends ParametricDescription {
     //   43 -> [t(0, 2), (0, 2), (1, 2), (2, 2), (4, 2)]
     //   44 -> [t(0, 2), (0, 2), (1, 2), (2, 2), t(2, 2), (3, 2), (4, 2)]
 
-
     /** @param {number} w - length of word being checked */
     constructor(w) {
-        super(w, 2, new Int32Array([
-            0,1,2,0,1,-1,0,-1,0,-1,0,-1,0,-1,-1,-1,-1,-1,-2,-1,-1,-2,-1,-2,
-            -1,-1,-1,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,
-        ]));
+        super(
+            w,
+            2,
+            new Int32Array([
+                0, 1, 2, 0, 1, -1, 0, -1, 0, -1, 0, -1, 0, -1, -1, -1, -1, -1, -2, -1, -1, -2, -1,
+                -2, -1, -1, -1, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2,
+                -2,
+            ]),
+        );
     }
 }
 
-Lev2TParametricDescription.prototype.toStates0 = /*2 bits per value */ new Int32Array([
-    0xe,
-]);
-Lev2TParametricDescription.prototype.offsetIncrs0 = /*1 bits per value */ new Int32Array([
-    0x0,
-]);
+Lev2TParametricDescription.prototype.toStates0 = /*2 bits per value */ new Int32Array([0xe]);
+Lev2TParametricDescription.prototype.offsetIncrs0 = /*1 bits per value */ new Int32Array([0x0]);
 
-Lev2TParametricDescription.prototype.toStates1 = /*3 bits per value */ new Int32Array([
-    0x1a688a2c,
-]);
-Lev2TParametricDescription.prototype.offsetIncrs1 = /*1 bits per value */ new Int32Array([
-    0x3e0,
-]);
+Lev2TParametricDescription.prototype.toStates1 = /*3 bits per value */ new Int32Array([0x1a688a2c]);
+Lev2TParametricDescription.prototype.offsetIncrs1 = /*1 bits per value */ new Int32Array([0x3e0]);
 
 Lev2TParametricDescription.prototype.toStates2 = /*4 bits per value */ new Int32Array([
-    0x70707054,0xdc07035,0x3dd3a3a,0x2323213a,
-    0x15435223,0x22545432,0x5435,
+    0x70707054, 0xdc07035, 0x3dd3a3a, 0x2323213a, 0x15435223, 0x22545432, 0x5435,
 ]);
-Lev2TParametricDescription.prototype.offsetIncrs2 = /*2 bits per value */ new Int32Array([
-    0x80000,0x55582088,0x55555555,0x55,
-]);
+Lev2TParametricDescription.prototype.offsetIncrs2 =
+    /*2 bits per value */ new Int32Array([0x80000, 0x55582088, 0x55555555, 0x55]);
 
 Lev2TParametricDescription.prototype.toStates3 = /*5 bits per value */ new Int32Array([
-    0x1c0380a4,0x700a570,0xca529c0,0x180a00,
-    0xa80af180,0xc5498e60,0x5a546398,0x8c4300e8,
-    0xac18c601,0xd8d43501,0x863500ad,0x51976d6a,
-    0x8ca0180a,0xc3501ac2,0xb0c5be16,0x76dda8a5,
-    0x18c4519,0xc41294a,0xe248d231,0x1086520c,
-    0xce31ac42,0x13946358,0x2d0348c4,0x6732d494,
-    0x1ad224a5,0xd635ad4b,0x520c4139,0xce24948,
-    0x22110a52,0x58ce729d,0xc41394e3,0x941cc520,
-    0x90e732d4,0x4729d224,0x39ce35ad,
+    0x1c0380a4, 0x700a570, 0xca529c0, 0x180a00, 0xa80af180, 0xc5498e60, 0x5a546398, 0x8c4300e8,
+    0xac18c601, 0xd8d43501, 0x863500ad, 0x51976d6a, 0x8ca0180a, 0xc3501ac2, 0xb0c5be16, 0x76dda8a5,
+    0x18c4519, 0xc41294a, 0xe248d231, 0x1086520c, 0xce31ac42, 0x13946358, 0x2d0348c4, 0x6732d494,
+    0x1ad224a5, 0xd635ad4b, 0x520c4139, 0xce24948, 0x22110a52, 0x58ce729d, 0xc41394e3, 0x941cc520,
+    0x90e732d4, 0x4729d224, 0x39ce35ad,
 ]);
-Lev2TParametricDescription.prototype.offsetIncrs3 = /*2 bits per value */ new Int32Array([
-    0x80000,0xc0c830,0x300f3c30,0x2200fcff,
-    0xcaa00a08,0x3c2200a8,0xa8fea00a,0x55555555,
-    0x55555555,0x55555555,0x55555555,0x55555555,
-    0x55555555,0x55555555,
-]);
+Lev2TParametricDescription.prototype.offsetIncrs3 =
+    /*2 bits per value */ new Int32Array([
+        0x80000, 0xc0c830, 0x300f3c30, 0x2200fcff, 0xcaa00a08, 0x3c2200a8, 0xa8fea00a, 0x55555555,
+        0x55555555, 0x55555555, 0x55555555, 0x55555555, 0x55555555, 0x55555555,
+    ]);
 
 Lev2TParametricDescription.prototype.toStates4 = /*6 bits per value */ new Int32Array([
-    0x801c0144,0x1453803,0x14700038,0xc0005145,
-    0x1401,0x14,0x140000,0x0,
-    0x510000,0x6301f007,0x301f00d1,0xa186178,
-    0xc20ca0c3,0xc20c30,0xc30030c,0xc00c00cd,
-    0xf0c00c30,0x4c054014,0xc30944c3,0x55150c34,
-    0x8300550,0x430c0143,0x50c31,0xc30850c,
-    0xc3143000,0x50053c50,0x5130d301,0x850d30c2,
-    0x30a08608,0xc214414,0x43142145,0x21450031,
-    0x1400c314,0x4c143145,0x32832803,0x28014d6c,
-    0xcd34a0c3,0x1c50c76,0x1c314014,0x430c30c3,
-    0x1431,0xc300500,0xca00d303,0xd36d0e40,
-    0x90b0e400,0xcb2abb2c,0x70c20ca1,0x2c32ca2c,
-    0xcd2c70cb,0x31c00c00,0x34c2c32c,0x5583280,
-    0x558309b7,0x6cd6ca14,0x430850c7,0x51c51401,
-    0x1430c714,0xc3087,0x71451450,0xca00d30,
-    0xc26dc156,0xb9071560,0x1cb2abb2,0xc70c2144,
-    0xb1c51ca1,0x1421c70c,0xc51c00c3,0x30811c51,
-    0x24324308,0xc51031c2,0x70820820,0x5c33830d,
-    0xc33850c3,0x30c30c30,0xc30c31c,0x451450c3,
-    0x20c20c20,0xda0920d,0x5145914f,0x36596114,
-    0x51965865,0xd9643653,0x365a6590,0x51964364,
-    0x43081505,0x920b2032,0x2c718b28,0xd7242249,
-    0x35cb28b0,0x2cb3872c,0x972c30d7,0xb0c32cb2,
-    0x4e1c75c,0xc80c90c2,0x62ca2482,0x4504171c,
-    0xd65d9610,0x33976585,0xd95cb5d,0x4b5ca5d7,
-    0x73975c36,0x10308138,0xc2245105,0x41451031,
-    0x14e24208,0xc35c3387,0x51453851,0x1c51c514,
-    0xc70c30c3,0x20451450,0x14f1440c,0x4f0da092,
-    0x4513d41,0x6533944d,0x1350e658,0xe1545055,
-    0x64365a50,0x5519383,0x51030815,0x28920718,
-    0x441c718b,0x714e2422,0x1c35cb28,0x4e1c7387,
-    0xb28e1c51,0x5c70c32c,0xc204e1c7,0x81c61440,
-    0x1c62ca24,0xd04503ce,0x85d63944,0x39338e65,
-    0x8e154387,0x364b5ca3,0x38739738,
+    0x801c0144, 0x1453803, 0x14700038, 0xc0005145, 0x1401, 0x14, 0x140000, 0x0, 0x510000,
+    0x6301f007, 0x301f00d1, 0xa186178, 0xc20ca0c3, 0xc20c30, 0xc30030c, 0xc00c00cd, 0xf0c00c30,
+    0x4c054014, 0xc30944c3, 0x55150c34, 0x8300550, 0x430c0143, 0x50c31, 0xc30850c, 0xc3143000,
+    0x50053c50, 0x5130d301, 0x850d30c2, 0x30a08608, 0xc214414, 0x43142145, 0x21450031, 0x1400c314,
+    0x4c143145, 0x32832803, 0x28014d6c, 0xcd34a0c3, 0x1c50c76, 0x1c314014, 0x430c30c3, 0x1431,
+    0xc300500, 0xca00d303, 0xd36d0e40, 0x90b0e400, 0xcb2abb2c, 0x70c20ca1, 0x2c32ca2c, 0xcd2c70cb,
+    0x31c00c00, 0x34c2c32c, 0x5583280, 0x558309b7, 0x6cd6ca14, 0x430850c7, 0x51c51401, 0x1430c714,
+    0xc3087, 0x71451450, 0xca00d30, 0xc26dc156, 0xb9071560, 0x1cb2abb2, 0xc70c2144, 0xb1c51ca1,
+    0x1421c70c, 0xc51c00c3, 0x30811c51, 0x24324308, 0xc51031c2, 0x70820820, 0x5c33830d, 0xc33850c3,
+    0x30c30c30, 0xc30c31c, 0x451450c3, 0x20c20c20, 0xda0920d, 0x5145914f, 0x36596114, 0x51965865,
+    0xd9643653, 0x365a6590, 0x51964364, 0x43081505, 0x920b2032, 0x2c718b28, 0xd7242249, 0x35cb28b0,
+    0x2cb3872c, 0x972c30d7, 0xb0c32cb2, 0x4e1c75c, 0xc80c90c2, 0x62ca2482, 0x4504171c, 0xd65d9610,
+    0x33976585, 0xd95cb5d, 0x4b5ca5d7, 0x73975c36, 0x10308138, 0xc2245105, 0x41451031, 0x14e24208,
+    0xc35c3387, 0x51453851, 0x1c51c514, 0xc70c30c3, 0x20451450, 0x14f1440c, 0x4f0da092, 0x4513d41,
+    0x6533944d, 0x1350e658, 0xe1545055, 0x64365a50, 0x5519383, 0x51030815, 0x28920718, 0x441c718b,
+    0x714e2422, 0x1c35cb28, 0x4e1c7387, 0xb28e1c51, 0x5c70c32c, 0xc204e1c7, 0x81c61440, 0x1c62ca24,
+    0xd04503ce, 0x85d63944, 0x39338e65, 0x8e154387, 0x364b5ca3, 0x38739738,
 ]);
-Lev2TParametricDescription.prototype.offsetIncrs4 = /*3 bits per value */ new Int32Array([
-    0x10000000,0xc00000,0x60061,0x400,
-    0x0,0x80010008,0x249248a4,0x8229048,
-    0x2092,0x6c3603,0xb61b6c30,0x6db6036d,
-    0xdb6c0,0x361b0180,0x91b72000,0xdb11b71b,
-    0x6db6236,0x1008200,0x12480012,0x24924906,
-    0x48200049,0x80410002,0x24000900,0x4924a489,
-    0x10822492,0x20800125,0x48360,0x9241b692,
-    0x6da4924,0x40009268,0x241b010,0x291b4900,
-    0x6d249249,0x49493423,0x92492492,0x24924924,
-    0x49249249,0x92492492,0x24924924,0x49249249,
-    0x92492492,0x24924924,0x49249249,0x92492492,
-    0x24924924,0x49249249,0x92492492,0x24924924,
-    0x49249249,0x92492492,0x24924924,0x49249249,
-    0x92492492,0x24924924,0x49249249,0x92492492,
-    0x24924924,0x49249249,0x92492492,0x24924924,
-    0x49249249,0x92492492,0x24924924,0x49249249,
-    0x92492492,0x24924924,0x49249249,0x2492,
-]);
+Lev2TParametricDescription.prototype.offsetIncrs4 =
+    /*3 bits per value */ new Int32Array([
+        0x10000000, 0xc00000, 0x60061, 0x400, 0x0, 0x80010008, 0x249248a4, 0x8229048, 0x2092,
+        0x6c3603, 0xb61b6c30, 0x6db6036d, 0xdb6c0, 0x361b0180, 0x91b72000, 0xdb11b71b, 0x6db6236,
+        0x1008200, 0x12480012, 0x24924906, 0x48200049, 0x80410002, 0x24000900, 0x4924a489,
+        0x10822492, 0x20800125, 0x48360, 0x9241b692, 0x6da4924, 0x40009268, 0x241b010, 0x291b4900,
+        0x6d249249, 0x49493423, 0x92492492, 0x24924924, 0x49249249, 0x92492492, 0x24924924,
+        0x49249249, 0x92492492, 0x24924924, 0x49249249, 0x92492492, 0x24924924, 0x49249249,
+        0x92492492, 0x24924924, 0x49249249, 0x92492492, 0x24924924, 0x49249249, 0x92492492,
+        0x24924924, 0x49249249, 0x92492492, 0x24924924, 0x49249249, 0x92492492, 0x24924924,
+        0x49249249, 0x92492492, 0x24924924, 0x49249249, 0x92492492, 0x24924924, 0x49249249, 0x2492,
+    ]);
 
 Lev2TParametricDescription.prototype.toStates5 = /*6 bits per value */ new Int32Array([
-    0x801c0144,0x1453803,0x14700038,0xc0005145,
-    0x1401,0x14,0x140000,0x0,
-    0x510000,0x4e00e007,0xe0051,0x3451451c,
-    0xd015000,0x30cd0000,0xc30c30c,0xc30c30d4,
-    0x40c30c30,0x7c01c014,0xc03458c0,0x185e0c07,
-    0x2830c286,0x830c3083,0xc30030,0x33430c,
-    0x30c3003,0x70051030,0x16301f00,0x8301f00d,
-    0x30a18617,0xc20ca0c,0x431420c3,0xb1450c51,
-    0x14314315,0x4f143145,0x34c05401,0x4c30944c,
-    0x55150c3,0x30830055,0x1430c014,0xc00050c3,
-    0xc30850,0xc314300,0x150053c5,0x25130d30,
-    0x5430d30c,0xc0354154,0x300d0c90,0x1cb2cd0c,
-    0xc91cb0c3,0x72c30cb2,0x14f1cb2c,0xc34c0540,
-    0x34c30944,0x82182214,0x851050c2,0x50851430,
-    0x1400c50c,0x30c5085,0x50c51450,0x150053c,
-    0xc25130d3,0x8850d30,0x1430a086,0x450c2144,
-    0x51cb1c21,0x1c91c70c,0xc71c314b,0x34c1cb1,
-    0x6c328328,0xc328014d,0x76cd34a0,0x1401c50c,
-    0xc31c3140,0x31430c30,0x14,0x30c3005,
-    0xa0ca00d3,0x535b0c,0x4d2830ca,0x514369b3,
-    0xc500d01,0x5965965a,0x30d46546,0x6435030c,
-    0x8034c659,0xdb439032,0x2c390034,0xcaaecb24,
-    0x30832872,0xcb28b1c,0x4b1c32cb,0x70030033,
-    0x30b0cb0c,0xe40ca00d,0x400d36d0,0xb2c90b0e,
-    0xca1cb2ab,0xa2c70c20,0x6575d95c,0x4315b5ce,
-    0x95c53831,0x28034c5d,0x9b705583,0xa1455830,
-    0xc76cd6c,0x40143085,0x71451c51,0x871430c,
-    0x450000c3,0xd3071451,0x1560ca00,0x560c26dc,
-    0xb35b2851,0xc914369,0x1a14500d,0x46593945,
-    0xcb2c939,0x94507503,0x328034c3,0x9b70558,
-    0xe41c5583,0x72caaeca,0x1c308510,0xc7147287,
-    0x50871c32,0x1470030c,0xd307147,0xc1560ca0,
-    0x1560c26d,0xabb2b907,0x21441cb2,0x38a1c70c,
-    0x8e657394,0x314b1c93,0x39438738,0x43083081,
-    0x31c22432,0x820c510,0x830d7082,0x50c35c33,
-    0xc30c338,0xc31c30c3,0x50c30c30,0xc204514,
-    0x890c90c2,0x31440c70,0xa8208208,0xea0df0c3,
-    0x8a231430,0xa28a28a2,0x28a28a1e,0x1861868a,
-    0x48308308,0xc3682483,0x14516453,0x4d965845,
-    0xd4659619,0x36590d94,0xd969964,0x546590d9,
-    0x20c20541,0x920d20c,0x5914f0da,0x96114514,
-    0x65865365,0xe89d3519,0x99e7a279,0x9e89e89e,
-    0x81821827,0xb2032430,0x18b28920,0x422492c7,
-    0xb28b0d72,0x3872c35c,0xc30d72cb,0x32cb2972,
-    0x1c75cb0c,0xc90c204e,0xa2482c80,0x24b1c62c,
-    0xc3a89089,0xb0ea2e42,0x9669a31c,0xa4966a28,
-    0x59a8a269,0x8175e7a,0xb203243,0x718b2892,
-    0x4114105c,0x17597658,0x74ce5d96,0x5c36572d,
-    0xd92d7297,0xe1ce5d70,0xc90c204,0xca2482c8,
-    0x4171c62,0x5d961045,0x976585d6,0x79669533,
-    0x964965a2,0x659689e6,0x308175e7,0x24510510,
-    0x451031c2,0xe2420841,0x5c338714,0x453851c3,
-    0x51c51451,0xc30c31c,0x451450c7,0x41440c20,
-    0xc708914,0x82105144,0xf1c58c90,0x1470ea0d,
-    0x61861863,0x8a1e85e8,0x8687a8a2,0x3081861,
-    0x24853c51,0x5053c368,0x1341144f,0x96194ce5,
-    0x1544d439,0x94385514,0xe0d90d96,0x5415464,
-    0x4f1440c2,0xf0da0921,0x4513d414,0x533944d0,
-    0x350e6586,0x86082181,0xe89e981d,0x18277689,
-    0x10308182,0x89207185,0x41c718b2,0x14e24224,
-    0xc35cb287,0xe1c73871,0x28e1c514,0xc70c32cb,
-    0x204e1c75,0x1c61440c,0xc62ca248,0x90891071,
-    0x2e41c58c,0xa31c70ea,0xe86175e7,0xa269a475,
-    0x5e7a57a8,0x51030817,0x28920718,0xf38718b,
-    0xe5134114,0x39961758,0xe1ce4ce,0x728e3855,
-    0x5ce0d92d,0xc204e1ce,0x81c61440,0x1c62ca24,
-    0xd04503ce,0x85d63944,0x75338e65,0x5d86075e,
-    0x89e69647,0x75e76576,
+    0x801c0144, 0x1453803, 0x14700038, 0xc0005145, 0x1401, 0x14, 0x140000, 0x0, 0x510000,
+    0x4e00e007, 0xe0051, 0x3451451c, 0xd015000, 0x30cd0000, 0xc30c30c, 0xc30c30d4, 0x40c30c30,
+    0x7c01c014, 0xc03458c0, 0x185e0c07, 0x2830c286, 0x830c3083, 0xc30030, 0x33430c, 0x30c3003,
+    0x70051030, 0x16301f00, 0x8301f00d, 0x30a18617, 0xc20ca0c, 0x431420c3, 0xb1450c51, 0x14314315,
+    0x4f143145, 0x34c05401, 0x4c30944c, 0x55150c3, 0x30830055, 0x1430c014, 0xc00050c3, 0xc30850,
+    0xc314300, 0x150053c5, 0x25130d30, 0x5430d30c, 0xc0354154, 0x300d0c90, 0x1cb2cd0c, 0xc91cb0c3,
+    0x72c30cb2, 0x14f1cb2c, 0xc34c0540, 0x34c30944, 0x82182214, 0x851050c2, 0x50851430, 0x1400c50c,
+    0x30c5085, 0x50c51450, 0x150053c, 0xc25130d3, 0x8850d30, 0x1430a086, 0x450c2144, 0x51cb1c21,
+    0x1c91c70c, 0xc71c314b, 0x34c1cb1, 0x6c328328, 0xc328014d, 0x76cd34a0, 0x1401c50c, 0xc31c3140,
+    0x31430c30, 0x14, 0x30c3005, 0xa0ca00d3, 0x535b0c, 0x4d2830ca, 0x514369b3, 0xc500d01,
+    0x5965965a, 0x30d46546, 0x6435030c, 0x8034c659, 0xdb439032, 0x2c390034, 0xcaaecb24, 0x30832872,
+    0xcb28b1c, 0x4b1c32cb, 0x70030033, 0x30b0cb0c, 0xe40ca00d, 0x400d36d0, 0xb2c90b0e, 0xca1cb2ab,
+    0xa2c70c20, 0x6575d95c, 0x4315b5ce, 0x95c53831, 0x28034c5d, 0x9b705583, 0xa1455830, 0xc76cd6c,
+    0x40143085, 0x71451c51, 0x871430c, 0x450000c3, 0xd3071451, 0x1560ca00, 0x560c26dc, 0xb35b2851,
+    0xc914369, 0x1a14500d, 0x46593945, 0xcb2c939, 0x94507503, 0x328034c3, 0x9b70558, 0xe41c5583,
+    0x72caaeca, 0x1c308510, 0xc7147287, 0x50871c32, 0x1470030c, 0xd307147, 0xc1560ca0, 0x1560c26d,
+    0xabb2b907, 0x21441cb2, 0x38a1c70c, 0x8e657394, 0x314b1c93, 0x39438738, 0x43083081, 0x31c22432,
+    0x820c510, 0x830d7082, 0x50c35c33, 0xc30c338, 0xc31c30c3, 0x50c30c30, 0xc204514, 0x890c90c2,
+    0x31440c70, 0xa8208208, 0xea0df0c3, 0x8a231430, 0xa28a28a2, 0x28a28a1e, 0x1861868a, 0x48308308,
+    0xc3682483, 0x14516453, 0x4d965845, 0xd4659619, 0x36590d94, 0xd969964, 0x546590d9, 0x20c20541,
+    0x920d20c, 0x5914f0da, 0x96114514, 0x65865365, 0xe89d3519, 0x99e7a279, 0x9e89e89e, 0x81821827,
+    0xb2032430, 0x18b28920, 0x422492c7, 0xb28b0d72, 0x3872c35c, 0xc30d72cb, 0x32cb2972, 0x1c75cb0c,
+    0xc90c204e, 0xa2482c80, 0x24b1c62c, 0xc3a89089, 0xb0ea2e42, 0x9669a31c, 0xa4966a28, 0x59a8a269,
+    0x8175e7a, 0xb203243, 0x718b2892, 0x4114105c, 0x17597658, 0x74ce5d96, 0x5c36572d, 0xd92d7297,
+    0xe1ce5d70, 0xc90c204, 0xca2482c8, 0x4171c62, 0x5d961045, 0x976585d6, 0x79669533, 0x964965a2,
+    0x659689e6, 0x308175e7, 0x24510510, 0x451031c2, 0xe2420841, 0x5c338714, 0x453851c3, 0x51c51451,
+    0xc30c31c, 0x451450c7, 0x41440c20, 0xc708914, 0x82105144, 0xf1c58c90, 0x1470ea0d, 0x61861863,
+    0x8a1e85e8, 0x8687a8a2, 0x3081861, 0x24853c51, 0x5053c368, 0x1341144f, 0x96194ce5, 0x1544d439,
+    0x94385514, 0xe0d90d96, 0x5415464, 0x4f1440c2, 0xf0da0921, 0x4513d414, 0x533944d0, 0x350e6586,
+    0x86082181, 0xe89e981d, 0x18277689, 0x10308182, 0x89207185, 0x41c718b2, 0x14e24224, 0xc35cb287,
+    0xe1c73871, 0x28e1c514, 0xc70c32cb, 0x204e1c75, 0x1c61440c, 0xc62ca248, 0x90891071, 0x2e41c58c,
+    0xa31c70ea, 0xe86175e7, 0xa269a475, 0x5e7a57a8, 0x51030817, 0x28920718, 0xf38718b, 0xe5134114,
+    0x39961758, 0xe1ce4ce, 0x728e3855, 0x5ce0d92d, 0xc204e1ce, 0x81c61440, 0x1c62ca24, 0xd04503ce,
+    0x85d63944, 0x75338e65, 0x5d86075e, 0x89e69647, 0x75e76576,
 ]);
-Lev2TParametricDescription.prototype.offsetIncrs5 = /*3 bits per value */ new Int32Array([
-    0x10000000,0xc00000,0x60061,0x400,
-    0x0,0x60000008,0x6b003080,0xdb6ab6db,
-    0x2db6,0x800400,0x49245240,0x11482412,
-    0x104904,0x40020000,0x92292000,0xa4b25924,
-    0x9649658,0xd80c000,0xdb0c001b,0x80db6d86,
-    0x6db01b6d,0xc0600003,0x86000d86,0x6db6c36d,
-    0xddadb6ed,0x300001b6,0x6c360,0xe37236e4,
-    0x46db6236,0xdb6c,0x361b018,0xb91b7200,
-    0x6dbb1b71,0x6db763,0x20100820,0x61248001,
-    0x92492490,0x24820004,0x8041000,0x92400090,
-    0x24924830,0x555b6a49,0x2080012,0x20004804,
-    0x49252449,0x84112492,0x4000928,0x240201,
-    0x92922490,0x58924924,0x49456,0x120d8082,
-    0x6da4800,0x69249249,0x249a01b,0x6c04100,
-    0x6d240009,0x92492483,0x24d5adb4,0x60208001,
-    0x92000483,0x24925236,0x6846da49,0x10400092,
-    0x241b0,0x49291b49,0x636d2492,0x92494935,
-    0x24924924,0x49249249,0x92492492,0x24924924,
-    0x49249249,0x92492492,0x24924924,0x49249249,
-    0x92492492,0x24924924,0x49249249,0x92492492,
-    0x24924924,0x49249249,0x92492492,0x24924924,
-    0x49249249,0x92492492,0x24924924,0x49249249,
-    0x92492492,0x24924924,0x49249249,0x92492492,
-    0x24924924,0x49249249,0x92492492,0x24924924,
-    0x49249249,0x92492492,0x24924924,0x49249249,
-    0x92492492,0x24924924,0x49249249,0x92492492,
-    0x24924924,0x49249249,0x92492492,0x24924924,
-    0x49249249,0x92492492,0x24924924,0x49249249,
-    0x92492492,0x24924924,0x49249249,0x92492492,
-    0x24924924,0x49249249,0x92492492,0x24924924,
-    0x49249249,0x92492492,0x24924924,0x49249249,
-    0x92492492,0x24924924,0x49249249,0x92492492,
-    0x24924924,0x49249249,0x92492492,0x24924924,
-    0x49249249,0x92492492,0x24924924,
-]);
+Lev2TParametricDescription.prototype.offsetIncrs5 =
+    /*3 bits per value */ new Int32Array([
+        0x10000000, 0xc00000, 0x60061, 0x400, 0x0, 0x60000008, 0x6b003080, 0xdb6ab6db, 0x2db6,
+        0x800400, 0x49245240, 0x11482412, 0x104904, 0x40020000, 0x92292000, 0xa4b25924, 0x9649658,
+        0xd80c000, 0xdb0c001b, 0x80db6d86, 0x6db01b6d, 0xc0600003, 0x86000d86, 0x6db6c36d,
+        0xddadb6ed, 0x300001b6, 0x6c360, 0xe37236e4, 0x46db6236, 0xdb6c, 0x361b018, 0xb91b7200,
+        0x6dbb1b71, 0x6db763, 0x20100820, 0x61248001, 0x92492490, 0x24820004, 0x8041000, 0x92400090,
+        0x24924830, 0x555b6a49, 0x2080012, 0x20004804, 0x49252449, 0x84112492, 0x4000928, 0x240201,
+        0x92922490, 0x58924924, 0x49456, 0x120d8082, 0x6da4800, 0x69249249, 0x249a01b, 0x6c04100,
+        0x6d240009, 0x92492483, 0x24d5adb4, 0x60208001, 0x92000483, 0x24925236, 0x6846da49,
+        0x10400092, 0x241b0, 0x49291b49, 0x636d2492, 0x92494935, 0x24924924, 0x49249249, 0x92492492,
+        0x24924924, 0x49249249, 0x92492492, 0x24924924, 0x49249249, 0x92492492, 0x24924924,
+        0x49249249, 0x92492492, 0x24924924, 0x49249249, 0x92492492, 0x24924924, 0x49249249,
+        0x92492492, 0x24924924, 0x49249249, 0x92492492, 0x24924924, 0x49249249, 0x92492492,
+        0x24924924, 0x49249249, 0x92492492, 0x24924924, 0x49249249, 0x92492492, 0x24924924,
+        0x49249249, 0x92492492, 0x24924924, 0x49249249, 0x92492492, 0x24924924, 0x49249249,
+        0x92492492, 0x24924924, 0x49249249, 0x92492492, 0x24924924, 0x49249249, 0x92492492,
+        0x24924924, 0x49249249, 0x92492492, 0x24924924, 0x49249249, 0x92492492, 0x24924924,
+        0x49249249, 0x92492492, 0x24924924, 0x49249249, 0x92492492, 0x24924924, 0x49249249,
+        0x92492492, 0x24924924, 0x49249249, 0x92492492, 0x24924924, 0x49249249, 0x92492492,
+        0x24924924,
+    ]);
 
 class Lev1TParametricDescription extends ParametricDescription {
     /**
@@ -4325,7 +4204,7 @@ class Lev1TParametricDescription extends ParametricDescription {
      * @param {number} position
      * @param {number} vector
      * @returns {number}
-    */
+     */
     transition(absState, position, vector) {
         let state = Math.floor(absState / (this.w + 1));
         let offset = absState % (this.w + 1);
@@ -4349,7 +4228,6 @@ class Lev1TParametricDescription extends ParametricDescription {
                 state = this.unpack(this.toStates2, loc, 3) - 1;
             }
         } else {
-            // eslint-disable-next-line no-lonely-if
             if (state < 6) {
                 const loc = Math.imul(vector, 6) + state;
                 offset += this.unpack(this.offsetIncrs3, loc, 2);
@@ -4374,38 +4252,26 @@ class Lev1TParametricDescription extends ParametricDescription {
     //   4 -> [(0, 1), (2, 1)]
     //   5 -> [t(0, 1), (0, 1), (1, 1), (2, 1)]
 
-
     /** @param {number} w - length of word being checked */
     constructor(w) {
-        super(w, 1, new Int32Array([0,1,0,-1,-1,-1]));
+        super(w, 1, new Int32Array([0, 1, 0, -1, -1, -1]));
     }
 }
 
-Lev1TParametricDescription.prototype.toStates0 = /*2 bits per value */ new Int32Array([
-    0x2,
-]);
-Lev1TParametricDescription.prototype.offsetIncrs0 = /*1 bits per value */ new Int32Array([
-    0x0,
-]);
+Lev1TParametricDescription.prototype.toStates0 = /*2 bits per value */ new Int32Array([0x2]);
+Lev1TParametricDescription.prototype.offsetIncrs0 = /*1 bits per value */ new Int32Array([0x0]);
 
-Lev1TParametricDescription.prototype.toStates1 = /*2 bits per value */ new Int32Array([
-    0xa43,
-]);
-Lev1TParametricDescription.prototype.offsetIncrs1 = /*1 bits per value */ new Int32Array([
-    0x38,
-]);
+Lev1TParametricDescription.prototype.toStates1 = /*2 bits per value */ new Int32Array([0xa43]);
+Lev1TParametricDescription.prototype.offsetIncrs1 = /*1 bits per value */ new Int32Array([0x38]);
 
 Lev1TParametricDescription.prototype.toStates2 = /*3 bits per value */ new Int32Array([
-    0x12180003,0xb45a4914,0x69,
+    0x12180003, 0xb45a4914, 0x69,
 ]);
-Lev1TParametricDescription.prototype.offsetIncrs2 = /*2 bits per value */ new Int32Array([
-    0x558a0000,0x5555,
-]);
+Lev1TParametricDescription.prototype.offsetIncrs2 =
+    /*2 bits per value */ new Int32Array([0x558a0000, 0x5555]);
 
 Lev1TParametricDescription.prototype.toStates3 = /*3 bits per value */ new Int32Array([
-    0x900c0003,0xa1904864,0x45a49169,0x5a6d196a,
-    0x9634,
+    0x900c0003, 0xa1904864, 0x45a49169, 0x5a6d196a, 0x9634,
 ]);
-Lev1TParametricDescription.prototype.offsetIncrs3 = /*2 bits per value */ new Int32Array([
-    0xa0fc0000,0x5555ba08,0x55555555,
-]);
+Lev1TParametricDescription.prototype.offsetIncrs3 =
+    /*2 bits per value */ new Int32Array([0xa0fc0000, 0x5555ba08, 0x55555555]);

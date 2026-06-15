@@ -196,7 +196,7 @@ function preLoadCss(cssUrl) {
     document.getElementsByTagName("head")[0].appendChild(link);
 }
 
-(function() {
+(function () {
     const isHelpPage = window.location.pathname.endsWith("/help.html");
 
     /**
@@ -320,8 +320,9 @@ function preLoadCss(cssUrl) {
             if (!container) {
                 return false;
             }
-            return !!container.parentElement && container.parentElement.id ===
-                ALTERNATIVE_DISPLAY_ID;
+            return (
+                !!container.parentElement && container.parentElement.id === ALTERNATIVE_DISPLAY_ID
+            );
         },
         // Sets the focus on the search bar at the top of the page
         focus: () => {
@@ -353,7 +354,9 @@ function preLoadCss(cssUrl) {
             const search = window.searchState.containerElement();
             switchDisplayedElement(search);
             const btn = document.querySelector("#search-button a");
-            if (browserSupportsHistoryApi() && btn instanceof HTMLAnchorElement &&
+            if (
+                browserSupportsHistoryApi() &&
+                btn instanceof HTMLAnchorElement &&
                 window.searchState.getQueryStringParams().search === undefined
             ) {
                 history.pushState(null, "", btn.href);
@@ -382,8 +385,10 @@ function preLoadCss(cssUrl) {
         getQueryStringParams: () => {
             /** @type {Object.<any, string>} */
             const params = {};
-            window.location.search.substring(1).split("&").
-                map(s => {
+            window.location.search
+                .substring(1)
+                .split("&")
+                .map(s => {
                     // https://github.com/rust-lang/rust/issues/119219
                     const pair = s.split("=").map(x => x.replace(/\+/g, " "));
                     params[decodeURIComponent(pair[0])] =
@@ -507,12 +512,12 @@ function preLoadCss(cssUrl) {
         },
         setLoadingSearch: () => {
             const search = window.searchState.outputElement();
-            nonnull(search).innerHTML = "<h3 class=\"search-loading\">" +
-                window.searchState.loadingText + "</h3>";
+            nonnull(search).innerHTML =
+                '<h3 class="search-loading">' + window.searchState.loadingText + "</h3>";
             window.searchState.showResults();
         },
         descShards: new Map(),
-        loadDesc: async function({descShard, descIndex}) {
+        loadDesc: async function ({ descShard, descIndex }) {
             if (descShard.promise === null) {
                 descShard.promise = new Promise((resolve, reject) => {
                     // The `resolve` callback is stored in the `descShard`
@@ -522,17 +527,14 @@ function preLoadCss(cssUrl) {
                     descShard.resolve = resolve;
                     const ds = descShard;
                     const fname = `${ds.crate}-desc-${ds.shard}-`;
-                    const url = resourcePath(
-                        `search.desc/${descShard.crate}/${fname}`,
-                        ".js",
-                    );
+                    const url = resourcePath(`search.desc/${descShard.crate}/${fname}`, ".js");
                     loadScript(url, reject);
                 });
             }
             const list = await descShard.promise;
             return list[descIndex];
         },
-        loadedDescShard: function(crate, shard, data) {
+        loadedDescShard: function (crate, shard, data) {
             // If loadedDescShard gets called, then the library must have been declared.
             // @ts-expect-error
             this.descShards.get(crate)[shard].resolve(data.split("\n"));
@@ -553,8 +555,7 @@ function preLoadCss(cssUrl) {
             const hash = ev.newURL.slice(ev.newURL.indexOf("#") + 1);
             if (browserSupportsHistoryApi()) {
                 // `window.location.search`` contains all the query parameters, not just `search`.
-                history.replaceState(null, "",
-                    getNakedUrl() + window.location.search + "#" + hash);
+                history.replaceState(null, "", getNakedUrl() + window.location.search + "#" + hash);
             }
             const elem = document.getElementById(hash);
             if (elem) {
@@ -585,8 +586,8 @@ function preLoadCss(cssUrl) {
                     if (implElem.id !== implId && (!numbered || numbered[1] !== implId)) {
                         return false;
                     }
-                    return onEachLazy(implElem.parentElement.parentElement.querySelectorAll(
-                        `[id^="${assocId}"]`),
+                    return onEachLazy(
+                        implElem.parentElement.parentElement.querySelectorAll(`[id^="${assocId}"]`),
                         item => {
                             const numbered = /^(.+?)-([0-9]+)$/.exec(item.id);
                             if (item.id === assocId || (numbered && numbered[1] === assocId)) {
@@ -654,48 +655,50 @@ function preLoadCss(cssUrl) {
             return;
         }
 
-        if (document.activeElement &&
+        if (
+            document.activeElement &&
             document.activeElement instanceof HTMLInputElement &&
             document.activeElement.type !== "checkbox" &&
-            document.activeElement.type !== "radio") {
+            document.activeElement.type !== "radio"
+        ) {
             switch (getVirtualKey(ev)) {
-            case "Escape":
-                handleEscape(ev);
-                break;
+                case "Escape":
+                    handleEscape(ev);
+                    break;
             }
         } else {
             switch (getVirtualKey(ev)) {
-            case "Escape":
-                handleEscape(ev);
-                break;
+                case "Escape":
+                    handleEscape(ev);
+                    break;
 
-            case "s":
-            case "S":
-            case "/":
-                ev.preventDefault();
-                window.searchState.focus();
-                break;
+                case "s":
+                case "S":
+                case "/":
+                    ev.preventDefault();
+                    window.searchState.focus();
+                    break;
 
-            case "+":
-            case "=":
-                ev.preventDefault();
-                expandAllDocs();
-                break;
-            case "-":
-                ev.preventDefault();
-                collapseAllDocs(false);
-                break;
-            case "_":
-                ev.preventDefault();
-                collapseAllDocs(true);
-                break;
+                case "+":
+                case "=":
+                    ev.preventDefault();
+                    expandAllDocs();
+                    break;
+                case "-":
+                    ev.preventDefault();
+                    collapseAllDocs(false);
+                    break;
+                case "_":
+                    ev.preventDefault();
+                    collapseAllDocs(true);
+                    break;
 
-            case "?":
-                showHelp();
-                break;
+                case "?":
+                    showHelp();
+                    break;
 
-            default:
-                break;
+                default:
+                    break;
             }
         }
     }
@@ -845,8 +848,7 @@ function preLoadCss(cssUrl) {
         // We don't want to include impls from this JS file, when the HTML already has them.
         // The current crate should always be ignored. Other crates that should also be
         // ignored are included in the attribute `data-ignore-extern-crates`.
-        const script = document
-            .querySelector("script[data-ignore-extern-crates]");
+        const script = document.querySelector("script[data-ignore-extern-crates]");
         const ignoreExternCrates = new Set(
             // @ts-expect-error
             (script ? script.getAttribute("data-ignore-extern-crates") : "").split(","),
@@ -857,8 +859,7 @@ function preLoadCss(cssUrl) {
             }
             const structs = imp[lib];
 
-            struct_loop:
-            for (const struct of structs) {
+            struct_loop: for (const struct of structs) {
                 const list = struct[SYNTHETIC_IDX] ? syntheticImplementors : implementors;
 
                 // The types list is only used for synthetic impls.
@@ -985,9 +986,9 @@ function preLoadCss(cssUrl) {
             let outputList = isTrait ? trait_implementations : implementations;
             if (outputList === null) {
                 const outputListName = isTrait ? "Trait Implementations" : "Implementations";
-                const outputListId = isTrait ?
-                    "trait-implementations-list" :
-                    "implementations-list";
+                const outputListId = isTrait
+                    ? "trait-implementations-list"
+                    : "implementations-list";
                 const outputListHeaderId = isTrait ? "trait-implementations" : "implementations";
                 const outputListHeader = document.createElement("h2");
                 outputListHeader.id = outputListHeaderId;
@@ -1054,8 +1055,10 @@ function preLoadCss(cssUrl) {
                 }
                 idMap.set(el.id, i + 1);
             });
-            const templateAssocItems = template.content.querySelectorAll("section.tymethod, " +
-                "section.method, section.associatedtype, section.associatedconstant");
+            const templateAssocItems = template.content.querySelectorAll(
+                "section.tymethod, " +
+                    "section.method, section.associatedtype, section.associatedconstant",
+            );
             if (isTrait) {
                 const li = document.createElement("li");
                 const a = document.createElement("a");
@@ -1066,16 +1069,22 @@ function preLoadCss(cssUrl) {
                 sidebarTraitList.append(li);
             } else {
                 onEachLazy(templateAssocItems, item => {
-                    let block = hasClass(item, "associatedtype") ? associatedTypes : (
-                        hasClass(item, "associatedconstant") ? associatedConstants : (
-                        methods));
+                    let block = hasClass(item, "associatedtype")
+                        ? associatedTypes
+                        : hasClass(item, "associatedconstant")
+                          ? associatedConstants
+                          : methods;
                     if (!block) {
-                        const blockTitle = hasClass(item, "associatedtype") ? "Associated Types" : (
-                            hasClass(item, "associatedconstant") ? "Associated Constants" : (
-                            "Methods"));
-                        const blockClass = hasClass(item, "associatedtype") ? "associatedtype" : (
-                            hasClass(item, "associatedconstant") ? "associatedconstant" : (
-                            "method"));
+                        const blockTitle = hasClass(item, "associatedtype")
+                            ? "Associated Types"
+                            : hasClass(item, "associatedconstant")
+                              ? "Associated Constants"
+                              : "Methods";
+                        const blockClass = hasClass(item, "associatedtype")
+                            ? "associatedtype"
+                            : hasClass(item, "associatedconstant")
+                              ? "associatedconstant"
+                              : "method";
                         const blockHeader = document.createElement("h3");
                         const blockLink = document.createElement("a");
                         blockLink.href = "#implementations";
@@ -1119,9 +1128,7 @@ function preLoadCss(cssUrl) {
             newChildren.sort((a, b) => {
                 const aI = a.innerText;
                 const bI = b.innerText;
-                return aI < bI ? -1 :
-                    aI > bI ? 1 :
-                    0;
+                return aI < bI ? -1 : aI > bI ? 1 : 0;
             });
             list.replaceChildren(...newChildren);
         }
@@ -1181,9 +1188,10 @@ function preLoadCss(cssUrl) {
         const innerToggle = document.getElementById(toggleAllDocsId);
         addClass(innerToggle, "will-expand");
         onEachLazy(document.getElementsByClassName("toggle"), e => {
-            if ((collapseImpls || e.parentNode.id !== "implementations-list") ||
-                (!hasClass(e, "implementors-toggle") &&
-                 !hasClass(e, "type-contents-toggle"))
+            if (
+                collapseImpls ||
+                e.parentNode.id !== "implementations-list" ||
+                (!hasClass(e, "implementors-toggle") && !hasClass(e, "type-contents-toggle"))
             ) {
                 e.open = false;
             }
@@ -1207,7 +1215,7 @@ function preLoadCss(cssUrl) {
         }
     }
 
-    (function() {
+    (function () {
         const toggles = document.getElementById(toggleAllDocsId);
         if (toggles) {
             toggles.onclick = toggleAllDocs;
@@ -1239,9 +1247,8 @@ function preLoadCss(cssUrl) {
             if (hideMethodDocs && hasClass(e, "method-toggle")) {
                 e.open = false;
             }
-
         });
-    }());
+    })();
 
     window.rustdoc_add_line_numbers_to_examples = () => {
         // @ts-expect-error
@@ -1249,19 +1256,24 @@ function preLoadCss(cssUrl) {
             return `<span data-nosnippet>${nb}</span>`;
         }
 
-        onEachLazy(document.querySelectorAll(
-            ".rustdoc:not(.src) :not(.scraped-example) > .example-wrap > pre > code",
-        ), code => {
-            if (hasClass(code.parentElement.parentElement, "hide-lines")) {
-                removeClass(code.parentElement.parentElement, "hide-lines");
-                return;
-            }
-            const lines = code.innerHTML.split("\n");
-            const digits = (lines.length + "").length;
-            // @ts-expect-error
-            code.innerHTML = lines.map((line, index) => generateLine(index + 1) + line).join("\n");
-            addClass(code.parentElement.parentElement, `digits-${digits}`);
-        });
+        onEachLazy(
+            document.querySelectorAll(
+                ".rustdoc:not(.src) :not(.scraped-example) > .example-wrap > pre > code",
+            ),
+            code => {
+                if (hasClass(code.parentElement.parentElement, "hide-lines")) {
+                    removeClass(code.parentElement.parentElement, "hide-lines");
+                    return;
+                }
+                const lines = code.innerHTML.split("\n");
+                const digits = (lines.length + "").length;
+                code.innerHTML = lines
+                    // @ts-expect-error
+                    .map((line, index) => generateLine(index + 1) + line)
+                    .join("\n");
+                addClass(code.parentElement.parentElement, `digits-${digits}`);
+            },
+        );
     };
 
     window.rustdoc_remove_line_numbers_from_examples = () => {
@@ -1355,11 +1367,15 @@ function preLoadCss(cssUrl) {
         // use Object.assign to make sure the object has the correct type
         // with all of the correct fields before it is assigned to a variable,
         // as typescript has no way to change the type of a variable once it is initialized.
-        const wrapper = Object.assign(document.createElement("div"), {TOOLTIP_BASE: e});
+        const wrapper = Object.assign(document.createElement("div"), {
+            TOOLTIP_BASE: e,
+        });
         if (notable_ty) {
-            wrapper.innerHTML = "<div class=\"content\">" +
+            wrapper.innerHTML =
+                '<div class="content">' +
                 // @ts-expect-error
-                window.NOTABLE_TRAITS[notable_ty] + "</div>";
+                window.NOTABLE_TRAITS[notable_ty] +
+                "</div>";
         } else {
             // Replace any `title` attribute with `data-title` to avoid double tooltips.
             const ttl = e.getAttribute("title");
@@ -1383,7 +1399,7 @@ function preLoadCss(cssUrl) {
         wrapper.appendChild(focusCatcher);
         const pos = e.getBoundingClientRect();
         // 5px overlap so that the mouse can easily travel from place to place
-        wrapper.style.top = (pos.top + window.scrollY + pos.height) + "px";
+        wrapper.style.top = pos.top + window.scrollY + pos.height + "px";
         // @ts-expect-error
         wrapper.style.left = 0;
         wrapper.style.right = "auto";
@@ -1397,7 +1413,7 @@ function preLoadCss(cssUrl) {
         } else {
             wrapper.style.setProperty(
                 "--popover-arrow-offset",
-                (wrapperPos.right - pos.right + 4) + "px",
+                wrapperPos.right - pos.right + 4 + "px",
             );
         }
         wrapper.style.visibility = "";
@@ -1444,18 +1460,23 @@ function preLoadCss(cssUrl) {
             // To "show" an already visible element, just cancel its timeout.
             return;
         }
-        if (window.CURRENT_TOOLTIP_ELEMENT &&
-            window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE !== element) {
+        if (
+            window.CURRENT_TOOLTIP_ELEMENT &&
+            window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE !== element
+        ) {
             // Don't do anything if another tooltip is already visible.
             return;
         }
-        element.TOOLTIP_HOVER_TIMEOUT = setTimeout(() => {
-            if (show) {
-                showTooltip(element);
-            } else if (!element.TOOLTIP_FORCE_VISIBLE) {
-                hideTooltip(false);
-            }
-        }, show ? window.RUSTDOC_TOOLTIP_HOVER_MS : window.RUSTDOC_TOOLTIP_HOVER_EXIT_MS);
+        element.TOOLTIP_HOVER_TIMEOUT = setTimeout(
+            () => {
+                if (show) {
+                    showTooltip(element);
+                } else if (!element.TOOLTIP_FORCE_VISIBLE) {
+                    hideTooltip(false);
+                }
+            },
+            show ? window.RUSTDOC_TOOLTIP_HOVER_MS : window.RUSTDOC_TOOLTIP_HOVER_EXIT_MS,
+        );
     }
 
     /**
@@ -1477,7 +1498,8 @@ function preLoadCss(cssUrl) {
      * @param {Event & { relatedTarget: Node }} event
      */
     function tooltipBlurHandler(event) {
-        if (window.CURRENT_TOOLTIP_ELEMENT &&
+        if (
+            window.CURRENT_TOOLTIP_ELEMENT &&
             !window.CURRENT_TOOLTIP_ELEMENT.contains(document.activeElement) &&
             !window.CURRENT_TOOLTIP_ELEMENT.contains(event.relatedTarget) &&
             !window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.contains(document.activeElement) &&
@@ -1553,8 +1575,11 @@ function preLoadCss(cssUrl) {
             if (ev.pointerType !== "mouse") {
                 return;
             }
-            if (!e.TOOLTIP_FORCE_VISIBLE && window.CURRENT_TOOLTIP_ELEMENT &&
-                !window.CURRENT_TOOLTIP_ELEMENT.contains(ev.relatedTarget)) {
+            if (
+                !e.TOOLTIP_FORCE_VISIBLE &&
+                window.CURRENT_TOOLTIP_ELEMENT &&
+                !window.CURRENT_TOOLTIP_ELEMENT.contains(ev.relatedTarget)
+            ) {
                 // Tooltip pointer leave gesture:
                 //
                 // Designing a good hover microinteraction is a matter of guessing user
@@ -1637,10 +1662,21 @@ function preLoadCss(cssUrl) {
             // although that would be more correct,
             // since trait impl blocks are collapsed by -
             ["_", "Collapse all sections, including impl blocks"],
-        ].map(x => "<dt>" +
-            x[0].split(" ")
-                .map((y, index) => ((index & 1) === 0 ? "<kbd>" + y + "</kbd>" : " " + y + " "))
-                .join("") + "</dt><dd>" + x[1] + "</dd>").join("");
+        ]
+            .map(
+                x =>
+                    "<dt>" +
+                    x[0]
+                        .split(" ")
+                        .map((y, index) =>
+                            (index & 1) === 0 ? "<kbd>" + y + "</kbd>" : " " + y + " ",
+                        )
+                        .join("") +
+                    "</dt><dd>" +
+                    x[1] +
+                    "</dd>",
+            )
+            .join("");
         const div_shortcuts = document.createElement("div");
         addClass(div_shortcuts, "shortcuts");
         div_shortcuts.innerHTML = "<h2>Keyboard Shortcuts</h2><dl>" + shortcuts + "</dl></div>";
@@ -1655,14 +1691,16 @@ function preLoadCss(cssUrl) {
              and <code>constant</code>.",
             "Search functions by type signature (e.g., <code>vec -&gt; usize</code> or \
              <code>-&gt; vec</code> or <code>String, enum:Cow -&gt; bool</code>)",
-            "You can look for items with an exact name by putting double quotes around \
-             your request: <code>\"string\"</code>",
-             `Look for functions that accept or return \
+            'You can look for items with an exact name by putting double quotes around \
+             your request: <code>"string"</code>',
+            `Look for functions that accept or return \
               <a href="${drloChannel}/std/primitive.slice.html">slices</a> and \
               <a href="${drloChannel}/std/primitive.array.html">arrays</a> by writing square \
               brackets (e.g., <code>-&gt; [u8]</code> or <code>[] -&gt; Option</code>)`,
             "Look for items inside another one by searching for a path: <code>vec::Vec</code>",
-        ].map(x => "<p>" + x + "</p>").join("");
+        ]
+            .map(x => "<p>" + x + "</p>")
+            .join("");
         const div_infos = document.createElement("div");
         addClass(div_infos, "infos");
         div_infos.innerHTML = "<h2>Search Tricks</h2>" + infos;
@@ -1762,9 +1800,7 @@ function preLoadCss(cssUrl) {
                     // By default, have help button open docs in a popover.
                     // If user clicks with a moderator, though, use default browser behavior,
                     // probably opening in a new window or tab.
-                    if (event.ctrlKey ||
-                        event.altKey ||
-                        event.metaKey) {
+                    if (event.ctrlKey || event.altKey || event.metaKey) {
                         return;
                     }
                     event.preventDefault();
@@ -1783,7 +1819,7 @@ function preLoadCss(cssUrl) {
     onHashChange(null);
     window.addEventListener("hashchange", onHashChange);
     window.searchState.setup();
-}());
+})();
 
 // Hide, show, and resize the sidebar
 //
@@ -1797,7 +1833,7 @@ function preLoadCss(cssUrl) {
 //     the size of the sidebar
 //
 // [fine precision pointer]: https://developer.mozilla.org/en-US/docs/Web/CSS/@media/pointer
-(function() {
+(function () {
     // 100 is the size of the logo
     // don't let the sidebar get smaller than that, or it'll get squished
     const SIDEBAR_MIN = 100;
@@ -1901,7 +1937,7 @@ function preLoadCss(cssUrl) {
     // from settings.js, which uses a separate function. It's done here because
     // the minimum sidebar size is rather uncomfortable, and it must pass
     // through that size when using the shrink-to-nothing gesture.
-    const hideSidebar = function() {
+    const hideSidebar = function () {
         if (isSrcPage) {
             window.rustdocCloseSourceSidebar();
             updateLocalStorage("src-sidebar-width", null);
@@ -1934,7 +1970,7 @@ function preLoadCss(cssUrl) {
     // the visible range without releasing it. You can, however, grab the
     // resize handle on a source page with the sidebar closed, because it
     // remains visible all the time on there.
-    const showSidebar = function() {
+    const showSidebar = function () {
         if (isSrcPage) {
             window.rustdocShowSourceSidebar();
         } else {
@@ -1949,7 +1985,7 @@ function preLoadCss(cssUrl) {
      *
      * @param {number} size - CSS px width of the sidebar.
      */
-    const changeSidebarSize = function(size) {
+    const changeSidebarSize = function (size) {
         if (isSrcPage) {
             updateLocalStorage("src-sidebar-width", size.toString());
             // [RUSTDOCIMPL] CSS variable fast path
@@ -1969,10 +2005,10 @@ function preLoadCss(cssUrl) {
 
     // Check if the sidebar is hidden. Since src pages and doc pages have
     // different settings, this function has to check that.
-    const isSidebarHidden = function() {
-        return isSrcPage ?
-            !hasClass(document.documentElement, "src-sidebar-expanded") :
-            hasClass(document.documentElement, "hide-sidebar");
+    const isSidebarHidden = function () {
+        return isSrcPage
+            ? !hasClass(document.documentElement, "src-sidebar-expanded")
+            : hasClass(document.documentElement, "hide-sidebar");
     };
 
     /**
@@ -1982,7 +2018,7 @@ function preLoadCss(cssUrl) {
      *
      * @param {PointerEvent} e
      */
-    const resize = function(e) {
+    const resize = function (e) {
         if (currentPointerId === null || currentPointerId !== e.pointerId) {
             return;
         }
@@ -2020,7 +2056,7 @@ function preLoadCss(cssUrl) {
             return;
         }
         stopResize();
-        if (desiredSidebarSize !== null && desiredSidebarSize >= (window.innerWidth - BODY_MIN)) {
+        if (desiredSidebarSize !== null && desiredSidebarSize >= window.innerWidth - BODY_MIN) {
             changeSidebarSize(window.innerWidth - BODY_MIN);
         } else if (desiredSidebarSize !== null && desiredSidebarSize > SIDEBAR_MIN) {
             changeSidebarSize(desiredSidebarSize);
@@ -2030,7 +2066,7 @@ function preLoadCss(cssUrl) {
     /**
      * @param {PointerEvent=} e
      */
-    const stopResize = function(e) {
+    const stopResize = function (e) {
         if (currentPointerId === null) {
             return;
         }
@@ -2042,7 +2078,7 @@ function preLoadCss(cssUrl) {
         window.removeEventListener("pointermove", resize, false);
         window.removeEventListener("pointerup", stopResize, false);
         removeClass(document.documentElement, "sidebar-resizing");
-        document.documentElement.style.removeProperty( "--resizing-sidebar-width");
+        document.documentElement.style.removeProperty("--resizing-sidebar-width");
         if (resizer.releasePointerCapture) {
             resizer.releasePointerCapture(currentPointerId);
             currentPointerId = null;
@@ -2052,7 +2088,7 @@ function preLoadCss(cssUrl) {
     /**
      * @param {PointerEvent} e
      */
-    const initResize = function(e) {
+    const initResize = function (e) {
         if (currentPointerId !== null || e.altKey || e.ctrlKey || e.metaKey || e.button !== 0) {
             return;
         }
@@ -2074,15 +2110,15 @@ function preLoadCss(cssUrl) {
         addClass(resizer, "active");
         addClass(document.documentElement, "sidebar-resizing");
         const pos = e.clientX - sidebar.offsetLeft - 3;
-        document.documentElement.style.setProperty( "--resizing-sidebar-width", pos + "px");
+        document.documentElement.style.setProperty("--resizing-sidebar-width", pos + "px");
         desiredSidebarSize = null;
     };
     resizer.addEventListener("pointerdown", initResize, false);
-}());
+})();
 
 // This section handles the copy button that appears next to the path breadcrumbs
 // and the copy buttons on the code examples.
-(function() {
+(function () {
     // Common functions to copy buttons.
     /**
      * @param {string|null} content
@@ -2179,7 +2215,8 @@ function preLoadCss(cssUrl) {
             /** @type {HTMLElement|null} */
             let elem = target;
             while (elem !== null && !hasClass(elem, "example-wrap")) {
-                if (elem === document.body ||
+                if (
+                    elem === document.body ||
                     elem.tagName === "A" ||
                     elem.tagName === "BUTTON" ||
                     hasClass(elem, "docblock")
@@ -2223,8 +2260,11 @@ function preLoadCss(cssUrl) {
         });
         parent.appendChild(copyButton);
 
-        if (!elem.parentElement || !elem.parentElement.classList.contains("scraped-example") ||
-            !window.updateScrapedExample) {
+        if (
+            !elem.parentElement ||
+            !elem.parentElement.classList.contains("scraped-example") ||
+            !window.updateScrapedExample
+        ) {
             return;
         }
         const scrapedWrapped = elem.parentElement;
@@ -2256,8 +2296,7 @@ function preLoadCss(cssUrl) {
         elem.addEventListener("mouseover", addCopyButton);
         elem.addEventListener("click", showHideCodeExampleButtons);
     });
-}());
-
+})();
 
 // Workaround for browser-specific bugs when copying code snippets.
 //
@@ -2270,7 +2309,7 @@ function preLoadCss(cssUrl) {
 //   with `user-select: none`, causing unwanted line numbers to be copied.
 //   - Chromium issue: https://issues.chromium.org/issues/446539520
 //   - Rust issue: https://github.com/rust-lang/rust/issues/146816
-(function() {
+(function () {
     document.body.addEventListener("copy", event => {
         let target = nonnull(event.target);
         let isInsideCode = false;
@@ -2295,4 +2334,4 @@ function preLoadCss(cssUrl) {
         nonnull(event.clipboardData).setData("text/plain", text);
         event.preventDefault();
     });
-}());
+})();

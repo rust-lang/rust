@@ -5,7 +5,7 @@
 
 "use strict";
 
-(function() {
+(function () {
     const isSettingsPage = window.location.pathname.endsWith("/settings.html");
 
     /**
@@ -81,7 +81,7 @@
      */
     function setEvents(settingsElement) {
         updateLightAndDark();
-        onEachLazy(settingsElement.querySelectorAll("input[type=\"checkbox\"]"), toggle => {
+        onEachLazy(settingsElement.querySelectorAll('input[type="checkbox"]'), toggle => {
             const settingId = toggle.id;
             const settingValue = getSettingValue(settingId);
             if (settingValue !== null) {
@@ -92,7 +92,7 @@
             };
         });
         onEachLazy(
-            settingsElement.querySelectorAll("input[type=\"radio\"]"),
+            settingsElement.querySelectorAll('input[type="radio"]'),
             /** @param {HTMLInputElement} elem */
             elem => {
                 const settingId = elem.name;
@@ -138,7 +138,7 @@
     <div class="setting-radio-choices">`;
                 onEach(setting["options"], option => {
                     const checked = option === setting["default"] ? " checked" : "";
-                    const full = `${js_data_name}-${option.replace(/ /g,"-")}`;
+                    const full = `${js_data_name}-${option.replace(/ /g, "-")}`;
 
                     output += `\
         <label for="${full}" class="setting-radio">
@@ -172,88 +172,87 @@
      */
     function buildSettingsPage() {
         const theme_list = getVar("themes");
-        const theme_names = (theme_list === null ? "" : theme_list)
-              .split(",").filter(t => t);
+        const theme_names = (theme_list === null ? "" : theme_list).split(",").filter(t => t);
         theme_names.push("light", "dark", "ayu");
 
         const settings = [
             {
-                "name": "Theme",
-                "js_name": "theme",
-                "default": "system preference",
-                "options": theme_names.concat("system preference"),
+                name: "Theme",
+                js_name: "theme",
+                default: "system preference",
+                options: theme_names.concat("system preference"),
             },
             {
-                "name": "Preferred light theme",
-                "js_name": "preferred-light-theme",
-                "default": "light",
-                "options": theme_names,
+                name: "Preferred light theme",
+                js_name: "preferred-light-theme",
+                default: "light",
+                options: theme_names,
             },
             {
-                "name": "Preferred dark theme",
-                "js_name": "preferred-dark-theme",
-                "default": "dark",
-                "options": theme_names,
+                name: "Preferred dark theme",
+                js_name: "preferred-dark-theme",
+                default: "dark",
+                options: theme_names,
             },
             {
-                "name": "Auto-hide item contents for large items",
-                "js_name": "auto-hide-large-items",
-                "default": true,
+                name: "Auto-hide item contents for large items",
+                js_name: "auto-hide-large-items",
+                default: true,
             },
             {
-                "name": "Auto-hide item methods' documentation",
-                "js_name": "auto-hide-method-docs",
-                "default": false,
+                name: "Auto-hide item methods' documentation",
+                js_name: "auto-hide-method-docs",
+                default: false,
             },
             {
-                "name": "Auto-hide trait implementation documentation",
-                "js_name": "auto-hide-trait-implementations",
-                "default": false,
+                name: "Auto-hide trait implementation documentation",
+                js_name: "auto-hide-trait-implementations",
+                default: false,
             },
             {
-                "name": "Directly go to item in search if there is only one result",
-                "js_name": "go-to-only-result",
-                "default": false,
+                name: "Directly go to item in search if there is only one result",
+                js_name: "go-to-only-result",
+                default: false,
             },
             {
-                "name": "Show line numbers on code examples",
-                "js_name": "line-numbers",
-                "default": false,
+                name: "Show line numbers on code examples",
+                js_name: "line-numbers",
+                default: false,
             },
             {
-                "name": "Hide persistent navigation bar",
-                "js_name": "hide-sidebar",
-                "default": false,
+                name: "Hide persistent navigation bar",
+                js_name: "hide-sidebar",
+                default: false,
             },
             {
-                "name": "Hide table of contents",
-                "js_name": "hide-toc",
-                "default": false,
+                name: "Hide table of contents",
+                js_name: "hide-toc",
+                default: false,
             },
             {
-                "name": "Hide module navigation",
-                "js_name": "hide-modnav",
-                "default": false,
+                name: "Hide module navigation",
+                js_name: "hide-modnav",
+                default: false,
             },
             {
-                "name": "Disable keyboard shortcuts",
-                "js_name": "disable-shortcuts",
-                "default": false,
+                name: "Disable keyboard shortcuts",
+                js_name: "disable-shortcuts",
+                default: false,
             },
             {
-                "name": "Use sans serif fonts",
-                "js_name": "sans-serif-fonts",
-                "default": false,
+                name: "Use sans serif fonts",
+                js_name: "sans-serif-fonts",
+                default: false,
             },
             {
-                "name": "Word wrap source code",
-                "js_name": "word-wrap-source-code",
-                "default": false,
+                name: "Word wrap source code",
+                js_name: "word-wrap-source-code",
+                default: false,
             },
             {
-                "name": "Hide deprecated items",
-                "js_name": "hide-deprecated-items",
-                "default": false,
+                name: "Hide deprecated items",
+                js_name: "hide-deprecated-items",
+                default: false,
             },
         ];
 

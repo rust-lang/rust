@@ -44,26 +44,56 @@ fn rustdoc_js_files(librustdoc_path: &Path) -> Vec<PathBuf> {
     return files;
 }
 
-fn run_eslint(
+fn run_vite_plus_lint(
     outdir: &Path,
     args: &[PathBuf],
     config_folder: PathBuf,
     bless: bool,
 ) -> Result<(), super::Error> {
-    let mut cmd = Command::new(node_module_bin(outdir, "eslint"));
+    let mut cmd = Command::new(node_module_bin(outdir, "vp"));
+    cmd.arg("lint")
+        .arg("--report-unused-disable-directives")
+        .arg("--deny-warnings")
+        .current_dir(config_folder);
     if bless {
         cmd.arg("--fix");
     }
-    cmd.arg("-c").arg(config_folder.join(".eslintrc.js")).args(args);
+    cmd.args(args);
     let mut child = spawn_cmd(&mut cmd)?;
     match child.wait() {
         Ok(exit_status) => {
             if exit_status.success() {
                 return Ok(());
             }
-            Err(super::Error::FailedCheck("eslint"))
+            Err(super::Error::FailedCheck("vp lint"))
         }
-        Err(error) => Err(super::Error::Generic(format!("eslint command failed: {error:?}"))),
+        Err(error) => Err(super::Error::Generic(format!("vp lint command failed: {error:?}"))),
+    }
+}
+
+fn run_vite_plus_fmt(
+    outdir: &Path,
+    args: &[PathBuf],
+    config_folder: PathBuf,
+    bless: bool,
+) -> Result<(), super::Error> {
+    let mut cmd = Command::new(node_module_bin(outdir, "vp"));
+    cmd.arg("fmt").current_dir(config_folder);
+    cmd.args(args);
+    if bless {
+        cmd.arg("--write");
+    } else {
+        cmd.arg("--check");
+    }
+    let mut child = spawn_cmd(&mut cmd)?;
+    match child.wait() {
+        Ok(exit_status) => {
+            if exit_status.success() {
+                return Ok(());
+            }
+            Err(super::Error::FailedCheck("vp fmt"))
+        }
+        Err(error) => Err(super::Error::Generic(format!("vp fmt command failed: {error:?}"))),
     }
 }
 
@@ -74,10 +104,20 @@ pub(super) fn lint(
     bless: bool,
 ) -> Result<(), super::Error> {
     let files_to_check = rustdoc_js_files(librustdoc_path);
-    println!("Running eslint on rustdoc JS files");
-    run_eslint(outdir, &files_to_check, librustdoc_path.join("html/static"), bless)?;
+    println!("Running Vite+ format on rustdoc JS files");
+    run_vite_plus_fmt(outdir, &files_to_check, librustdoc_path.join("html/static"), bless)?;
 
-    run_eslint(
+    run_vite_plus_fmt(
+        outdir,
+        &[tools_path.join("rustdoc-js/tester.js")],
+        tools_path.join("rustdoc-js"),
+        bless,
+    )?;
+
+    println!("Running Vite+ lint on rustdoc JS files");
+    run_vite_plus_lint(outdir, &files_to_check, librustdoc_path.join("html/static"), bless)?;
+
+    run_vite_plus_lint(
         outdir,
         &[tools_path.join("rustdoc-js/tester.js")],
         tools_path.join("rustdoc-js"),

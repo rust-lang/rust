@@ -96,7 +96,6 @@ window.rustdocToggleSrcSidebar = () => {
 };
 
 // This function is called from "src-files.js", generated in `html/render/write_shared.rs`.
-// eslint-disable-next-line no-unused-vars
 /**
  * @param {string} srcIndexStr - strinified json map from crate name to dir structure
  */

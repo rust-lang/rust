@@ -12,12 +12,12 @@
 
 const builtinThemes = ["light", "dark", "ayu"];
 const darkThemes = ["dark", "ayu"];
-window.currentTheme = (function() {
+window.currentTheme = (function () {
     const currentTheme = document.getElementById("themeStyle");
     return currentTheme instanceof HTMLLinkElement ? currentTheme : null;
 })();
 
-const settingsDataset = (function() {
+const settingsDataset = (function () {
     const settingsElement = document.getElementById("default-settings");
     return settingsElement && settingsElement.dataset ? settingsElement.dataset : null;
 })();
@@ -35,10 +35,10 @@ const settingsDataset = (function() {
  * @returns T
  */
 // used in other files, not yet used in this one.
-// eslint-disable-next-line no-unused-vars
+// oxlint-disable-next-line no-unused-vars
 function nonnull(x, msg) {
     if (x === null) {
-        throw (msg || "unexpected null value!");
+        throw msg || "unexpected null value!";
     } else {
         return x;
     }
@@ -57,10 +57,10 @@ function nonnull(x, msg) {
  * @returns T
  */
 // used in other files, not yet used in this one.
-// eslint-disable-next-line no-unused-vars
+// oxlint-disable-next-line no-unused-vars
 function nonundef(x, msg) {
     if (x === undefined) {
-        throw (msg || "unexpected null value!");
+        throw msg || "unexpected null value!";
     } else {
         return x;
     }
@@ -77,7 +77,7 @@ function getSettingValue(settingName) {
     if (current === null && settingsDataset !== null) {
         // See the comment for `default_settings.into_iter()` etc. in
         // `Options::from_matches` in `librustdoc/config.rs`.
-        const def = settingsDataset[settingName.replace(/-/g,"_")];
+        const def = settingsDataset[settingName.replace(/-/g, "_")];
         if (def !== undefined) {
             return def;
         }
@@ -95,7 +95,7 @@ const localStoredTheme = getSettingValue("theme");
  * @param {string} className
  * @returns {boolean}
  */
-// eslint-disable-next-line no-unused-vars
+// oxlint-disable-next-line no-unused-vars
 function hasClass(elem, className) {
     return !!elem && !!elem.classList && elem.classList.contains(className);
 }
@@ -120,7 +120,7 @@ function addClass(elem, className) {
  * @param {Element|null|undefined} elem
  * @param {string} className
  */
-// eslint-disable-next-line no-unused-vars
+// oxlint-disable-next-line no-unused-vars
 function removeClass(elem, className) {
     if (elem && elem.classList) {
         elem.classList.remove(className);
@@ -150,11 +150,9 @@ function onEach(arr, func) {
  * @param {NodeList|HTMLCollection} lazyArray  - An array to iterate over
  * @param {function(?): boolean|void}    func       - The callback
  */
-// eslint-disable-next-line no-unused-vars
+// oxlint-disable-next-line no-unused-vars
 function onEachLazy(lazyArray, func) {
-    return onEach(
-        Array.prototype.slice.call(lazyArray),
-        func);
+    return onEach(Array.prototype.slice.call(lazyArray), func);
 }
 
 /**
@@ -239,14 +237,17 @@ function switchTheme(newThemeName, saveTheme) {
             window.currentTheme = null;
         }
     } else {
-        const newHref = getVar("root-path") + encodeURIComponent(newThemeName) +
-            getVar("resource-suffix") + ".css";
+        const newHref =
+            getVar("root-path") +
+            encodeURIComponent(newThemeName) +
+            getVar("resource-suffix") +
+            ".css";
         if (!window.currentTheme) {
             // If we're in the middle of loading, document.write blocks
             // rendering, but if we are done, it would blank the page.
             if (document.readyState === "loading") {
                 document.write(`<link rel="stylesheet" id="themeStyle" href="${newHref}">`);
-                window.currentTheme = (function() {
+                window.currentTheme = (function () {
                     const currentTheme = document.getElementById("themeStyle");
                     return currentTheme instanceof HTMLLinkElement ? currentTheme : null;
                 })();
@@ -263,7 +264,7 @@ function switchTheme(newThemeName, saveTheme) {
     }
 }
 
-const updateTheme = (function() {
+const updateTheme = (function () {
     // only listen to (prefers-color-scheme: dark) because light is the default
     const mql = window.matchMedia("(prefers-color-scheme: dark)");
 
@@ -304,10 +305,12 @@ const updateTheme = (function() {
 if (getSettingValue("use-system-theme") !== "false" && window.matchMedia) {
     // update the preferred dark theme if the user is already using a dark theme
     // See https://github.com/rust-lang/rust/pull/77809#issuecomment-707875732
-    if (getSettingValue("use-system-theme") === null
-        && getSettingValue("preferred-dark-theme") === null
-        && localStoredTheme !== null
-        && darkThemes.indexOf(localStoredTheme) >= 0) {
+    if (
+        getSettingValue("use-system-theme") === null &&
+        getSettingValue("preferred-dark-theme") === null &&
+        localStoredTheme !== null &&
+        darkThemes.indexOf(localStoredTheme) >= 0
+    ) {
         updateLocalStorage("preferred-dark-theme", localStoredTheme);
     }
 }
@@ -325,7 +328,7 @@ updateTheme();
 if (getSettingValue("source-sidebar-show") === "true") {
     addClass(document.documentElement, "src-sidebar-expanded");
 }
-(function() {
+(function () {
     const settings = [
         "hide-sidebar",
         "hide-toc",
@@ -351,10 +354,7 @@ function updateSidebarWidth() {
     }
     const srcSidebarWidth = getSettingValue("src-sidebar-width");
     if (srcSidebarWidth && srcSidebarWidth !== "null") {
-        document.documentElement.style.setProperty(
-            "--src-sidebar-width",
-            srcSidebarWidth + "px",
-        );
+        document.documentElement.style.setProperty("--src-sidebar-width", srcSidebarWidth + "px");
     }
 }
 updateSidebarWidth();

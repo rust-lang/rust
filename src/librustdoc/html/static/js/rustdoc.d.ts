@@ -4,7 +4,7 @@
 
 import { RoaringBitmap } from "./stringdex";
 
-/* eslint-disable */
+/* oxlint-disable */
 declare global {
     /** Search engine data used by main.js and search.js */
     declare var searchState: rustdoc.SearchState;

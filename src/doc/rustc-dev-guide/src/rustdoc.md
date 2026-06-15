@@ -54,12 +54,12 @@ Note that literally all that does is call the `main()` that's in this crate's `l
   * For frontend debugging, disable the `rust.docs-minification` option in [`bootstrap.toml`].
 * Use `./x test tests/rustdoc*` to run the tests using a stage1 rustdoc.
   * See [Rustdoc internals] for more information about tests.
-* Use `./x test tidy --extra-checks=js` to run rustdoc’s JavaScript checks (`eslint`, `es-check`, and `tsc`).
+* Use `./x test tidy --extra-checks=js` to run rustdoc’s JavaScript checks (`vp fmt`, `vp lint`, `es-check`, and `tsc`).
 > **Note:** `./x test tidy` already runs these checks automatically when JS/TS sources changed; `--extra-checks=js` forces them explicitly.
 
 ### JavaScript CI checks
 
-Rustdoc’s JavaScript and TypeScript are checked during CI by `eslint`, `es-check`, and `tsc` (not by compiletest).
+Rustdoc’s JavaScript and TypeScript are checked during CI by `vp fmt`, `vp lint`, `es-check`, and `tsc` (not by compiletest).
 These run as part of the `tidy` job.
 
 ```console

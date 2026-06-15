@@ -5526,7 +5526,6 @@ function updateCrate(ev) {
     search(true);
 }
 
-// eslint-disable-next-line max-len
 // polyfill https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array/fromBase64
 /**
  * @type {function(string): Uint8Array} base64
@@ -5602,6 +5601,5 @@ if (typeof window !== "undefined") {
         },
     });
 } else if (typeof exports !== "undefined") {
-    // eslint-disable-next-line no-undef
     exports.initSearch = initSearch;
 }

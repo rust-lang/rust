@@ -2,7 +2,7 @@
   "dependencies": {
     "browser-ui-test": "^0.24.0",
     "es-check": "^9.4.4",
-    "eslint": "^8.57.1",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vite-plus": "^0.1.24"
   }
 }

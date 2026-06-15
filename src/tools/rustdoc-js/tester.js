@@ -7,22 +7,24 @@ const { isGeneratorObject } = require("util/types");
 const CHANNEL_REGEX = new RegExp("/nightly/|/beta/|/stable/|/1\\.[0-9]+\\.[0-9]+/");
 
 function arrayToCode(array) {
-    return array.map((value, index) => {
-        value = value.split("&nbsp;").join(" ");
-        return (index % 2 === 1) ? ("`" + value + "`") : value;
-    }).join("");
+    return array
+        .map((value, index) => {
+            value = value.split("&nbsp;").join(" ");
+            return index % 2 === 1 ? "`" + value + "`" : value;
+        })
+        .join("");
 }
 
 function loadContent(content) {
     const Module = module.constructor;
     const m = new Module();
     m._compile(content, "tmp.js");
-    m.exports.ignore_order = content.indexOf("\n// ignore-order\n") !== -1 ||
-        content.startsWith("// ignore-order\n");
-    m.exports.exact_check = content.indexOf("\n// exact-check\n") !== -1 ||
-        content.startsWith("// exact-check\n");
-    m.exports.should_fail = content.indexOf("\n// should-fail\n") !== -1 ||
-        content.startsWith("// should-fail\n");
+    m.exports.ignore_order =
+        content.indexOf("\n// ignore-order\n") !== -1 || content.startsWith("// ignore-order\n");
+    m.exports.exact_check =
+        content.indexOf("\n// exact-check\n") !== -1 || content.startsWith("// exact-check\n");
+    m.exports.should_fail =
+        content.indexOf("\n// should-fail\n") !== -1 || content.startsWith("// should-fail\n");
     return m.exports;
 }
 
@@ -42,9 +44,12 @@ function contentToDiffLine(key, value) {
 }
 
 function shouldIgnoreField(fieldName) {
-    return fieldName === "query" || fieldName === "correction" ||
+    return (
+        fieldName === "query" ||
+        fieldName === "correction" ||
         fieldName === "proposeCorrectionFrom" ||
-        fieldName === "proposeCorrectionTo";
+        fieldName === "proposeCorrectionTo"
+    );
 }
 
 function valueMapper(key, testOutput) {
@@ -114,28 +119,11 @@ function lookForEntry(expected, testOutput) {
 function checkNeededFields(fullPath, expected, error_text, queryName, position) {
     let fieldsToCheck;
     if (fullPath.length === 0) {
-        fieldsToCheck = [
-            "foundElems",
-            "returned",
-            "userQuery",
-            "error",
-        ];
+        fieldsToCheck = ["foundElems", "returned", "userQuery", "error"];
     } else if (fullPath.endsWith("elems") || fullPath.endsWith("returned")) {
-        fieldsToCheck = [
-            "name",
-            "fullPath",
-            "pathWithoutLast",
-            "pathLast",
-            "generics",
-        ];
+        fieldsToCheck = ["name", "fullPath", "pathWithoutLast", "pathLast", "generics"];
     } else if (fullPath.endsWith("generics")) {
-        fieldsToCheck = [
-            "name",
-            "fullPath",
-            "pathWithoutLast",
-            "pathLast",
-            "generics",
-        ];
+        fieldsToCheck = ["name", "fullPath", "pathWithoutLast", "pathLast", "generics"];
     } else {
         fieldsToCheck = [];
     }
@@ -168,14 +156,18 @@ function valueCheck(fullPath, expected, result, error_text, queryName) {
                     queryName,
                 );
             } else {
-                error_text.push(`${queryName}==> EXPECTED has extra key in map from field ` +
-                    `\`${fullPath}\` (key ${key}): \`${JSON.stringify(expected_value)}\``);
+                error_text.push(
+                    `${queryName}==> EXPECTED has extra key in map from field ` +
+                        `\`${fullPath}\` (key ${key}): \`${JSON.stringify(expected_value)}\``,
+                );
             }
         }
         for (const [key, result_value] of result.entries()) {
             if (!expected_set.has(key)) {
-                error_text.push(`${queryName}==> EXPECTED missing key in map from field ` +
-                    `\`${fullPath}\` (key ${key}): \`${JSON.stringify(result_value)}\``);
+                error_text.push(
+                    `${queryName}==> EXPECTED missing key in map from field ` +
+                        `\`${fullPath}\` (key ${key}): \`${JSON.stringify(result_value)}\``,
+                );
             }
         }
     } else if (Array.isArray(expected)) {
@@ -183,19 +175,27 @@ function valueCheck(fullPath, expected, result, error_text, queryName) {
         for (i = 0; i < expected.length; ++i) {
             checkNeededFields(fullPath, expected[i], error_text, queryName, i);
             if (i >= result.length) {
-                error_text.push(`${queryName}==> EXPECTED has extra value in array from field ` +
-                    `\`${fullPath}\` (position ${i}): \`${JSON.stringify(expected[i])}\``);
+                error_text.push(
+                    `${queryName}==> EXPECTED has extra value in array from field ` +
+                        `\`${fullPath}\` (position ${i}): \`${JSON.stringify(expected[i])}\``,
+                );
             } else {
                 valueCheck(fullPath + "[" + i + "]", expected[i], result[i], error_text, queryName);
             }
         }
         for (; i < result.length; ++i) {
-            error_text.push(`${queryName}==> RESULT has extra value in array from field ` +
-                `\`${fullPath}\` (position ${i}): \`${JSON.stringify(result[i])}\` ` +
-                "compared to EXPECTED");
+            error_text.push(
+                `${queryName}==> RESULT has extra value in array from field ` +
+                    `\`${fullPath}\` (position ${i}): \`${JSON.stringify(result[i])}\` ` +
+                    "compared to EXPECTED",
+            );
         }
-    } else if (expected !== null && typeof expected !== "undefined" &&
-               expected.constructor == Object) { // eslint-disable-line eqeqeq
+    } else if (
+        expected !== null &&
+        typeof expected !== "undefined" &&
+        // oxlint-disable-next-line eqeqeq
+        expected.constructor == Object
+    ) {
         for (const key in expected) {
             if (shouldIgnoreField(key)) {
                 continue;
@@ -204,7 +204,7 @@ function valueCheck(fullPath, expected, result, error_text, queryName) {
                 continue;
             }
             if (!Object.prototype.hasOwnProperty.call(result, key)) {
-                error_text.push("==> Unknown key \"" + key + "\"");
+                error_text.push('==> Unknown key "' + key + '"');
                 break;
             }
             let result_v = result[key];
@@ -221,8 +221,10 @@ function valueCheck(fullPath, expected, result, error_text, queryName) {
         const expectedValue = JSON.stringify(expected);
         const resultValue = JSON.stringify(result);
         if (expectedValue !== resultValue) {
-            error_text.push(`${queryName}==> Different values for field \`${fullPath}\`:\n` +
-                `EXPECTED: \`${expectedValue}\`\nRESULT:   \`${resultValue}\``);
+            error_text.push(
+                `${queryName}==> Different values for field \`${fullPath}\`:\n` +
+                    `EXPECTED: \`${expectedValue}\`\nRESULT:   \`${resultValue}\``,
+            );
         }
     }
 }
@@ -251,37 +253,65 @@ async function runSearch(query, expected, doSearch, loadedFile, queryName) {
             continue;
         }
         if (!Object.prototype.hasOwnProperty.call(resultsTable, key)) {
-            error_text.push("==> Unknown key \"" + key + "\"");
+            error_text.push('==> Unknown key "' + key + '"');
             break;
         }
         const entry = expected[key];
 
         if (exact_check && entry.length !== resultsTable[key].length) {
-            error_text.push(queryName + "==> Expected exactly " + entry.length +
-                            " results but found " + resultsTable[key].length + " in '" + key + "'");
+            error_text.push(
+                queryName +
+                    "==> Expected exactly " +
+                    entry.length +
+                    " results but found " +
+                    resultsTable[key].length +
+                    " in '" +
+                    key +
+                    "'",
+            );
         }
 
         let prev_pos = -1;
         for (const [index, elem] of entry.entries()) {
             const entry_pos = lookForEntry(elem, resultsTable[key]);
             if (entry_pos === -1) {
-                error_text.push(queryName + "==> Result not found in '" + key + "': '" +
-                                JSON.stringify(elem) + "'");
+                error_text.push(
+                    queryName +
+                        "==> Result not found in '" +
+                        key +
+                        "': '" +
+                        JSON.stringify(elem) +
+                        "'",
+                );
                 // By default, we just compare the two first items.
                 let item_to_diff = 0;
                 if ((!ignore_order || exact_check) && index < resultsTable[key].length) {
                     item_to_diff = index;
                 }
-                error_text.push("Diff of first error:\n" +
-                    betterLookingDiff(elem, resultsTable[key][item_to_diff]));
+                error_text.push(
+                    "Diff of first error:\n" +
+                        betterLookingDiff(elem, resultsTable[key][item_to_diff]),
+                );
             } else if (exact_check === true && prev_pos + 1 !== entry_pos) {
-                error_text.push(queryName + "==> Exact check failed at position " + (prev_pos + 1) +
-                                ": expected '" + JSON.stringify(elem) + "' but found '" +
-                                JSON.stringify(resultsTable[key][index]) + "'");
+                error_text.push(
+                    queryName +
+                        "==> Exact check failed at position " +
+                        (prev_pos + 1) +
+                        ": expected '" +
+                        JSON.stringify(elem) +
+                        "' but found '" +
+                        JSON.stringify(resultsTable[key][index]) +
+                        "'",
+                );
             } else if (ignore_order === false && entry_pos < prev_pos) {
-                error_text.push(queryName + "==> '" +
-                                JSON.stringify(elem) + "' was supposed to be before '" +
-                                JSON.stringify(resultsTable[key][prev_pos]) + "'");
+                error_text.push(
+                    queryName +
+                        "==> '" +
+                        JSON.stringify(elem) +
+                        "' was supposed to be before '" +
+                        JSON.stringify(resultsTable[key][prev_pos]) +
+                        "'",
+                );
             } else {
                 prev_pos = entry_pos;
             }
@@ -340,12 +370,7 @@ async function runCheckInner(callback, loadedFile, entry, extra, doSearch) {
         return false;
     }
     if (entry.correction !== undefined) {
-        error_text = await runCorrections(
-            entry.query,
-            entry.correction,
-            doSearch,
-            loadedFile,
-        );
+        error_text = await runCorrections(entry.query, entry.correction, doSearch, loadedFile);
         if (checkResult(error_text, loadedFile, false) !== 0) {
             return false;
         }
@@ -358,11 +383,11 @@ async function runCheck(loadedFile, key, doSearch, callback) {
 
     if (Array.isArray(expected)) {
         for (const entry of expected) {
-            if (!await runCheckInner(callback, loadedFile, entry, true, doSearch)) {
+            if (!(await runCheckInner(callback, loadedFile, entry, true, doSearch))) {
                 return 1;
             }
         }
-    } else if (!await runCheckInner(callback, loadedFile, expected, false, doSearch)) {
+    } else if (!(await runCheckInner(callback, loadedFile, expected, false, doSearch))) {
         return 1;
     }
     console.log("OK");
@@ -415,7 +440,8 @@ async function runChecks(testFile, doSearch, parseQuery, revision) {
 }
 
 function mostRecentMatch(staticFiles, regex) {
-    const matchingEntries = fs.readdirSync(staticFiles)
+    const matchingEntries = fs
+        .readdirSync(staticFiles)
         .filter(f => f.match(regex))
         .map(f => {
             const stats = fs.statSync(path.join(staticFiles, f));
@@ -450,7 +476,7 @@ async function loadSearchJS(doc_folder, resource_suffix) {
     const searchModule = require(path.join(staticFiles, searchJs));
     globalThis.nonnull = (x, msg) => {
         if (x === null) {
-            throw (msg || "unexpected null value!");
+            throw msg || "unexpected null value!";
         } else {
             return x;
         }
@@ -465,8 +491,9 @@ async function loadSearchJS(doc_folder, resource_suffix) {
                         globalThis[key] = callbacks[key];
                     }
                 }
-                const rootJs = readFile(path.join(doc_folder, "search.index/root" +
-                    resource_suffix + ".js"));
+                const rootJs = readFile(
+                    path.join(doc_folder, "search.index/root" + resource_suffix + ".js"),
+                );
                 eval(rootJs);
             },
             loadTreeByHash: hashHex => {
@@ -474,14 +501,15 @@ async function loadSearchJS(doc_folder, resource_suffix) {
                 eval(shardJs);
             },
             loadDataByNameAndHash: (name, hashHex) => {
-                const shardJs = readFile(path.join(doc_folder, "search.index/" + name + "/" +
-                    hashHex + ".js"));
+                const shardJs = readFile(
+                    path.join(doc_folder, "search.index/" + name + "/" + hashHex + ".js"),
+                );
                 eval(shardJs);
             },
         },
     );
     return {
-        doSearch: async function(queryStr, filterCrate, currentCrate) {
+        doSearch: async function (queryStr, filterCrate, currentCrate) {
             const parsedQuery = DocSearch.parseQuery(queryStr);
             const result = await docSearch.execQuery(parsedQuery, filterCrate, currentCrate);
             const resultsTable = {};
@@ -494,40 +522,43 @@ async function loadSearchJS(doc_folder, resource_suffix) {
                 }
                 resultsTable[tab] = [];
                 for await (const entry of result[tab]) {
-                    const flatEntry = Object.assign({
-                        crate: entry.item.crate,
-                        name: entry.item.name,
-                        path: entry.item.modulePath,
-                        exactPath: entry.item.exactModulePath,
-                        ty: entry.item.ty,
-                    }, entry);
+                    const flatEntry = Object.assign(
+                        {
+                            crate: entry.item.crate,
+                            name: entry.item.name,
+                            path: entry.item.modulePath,
+                            exactPath: entry.item.exactModulePath,
+                            ty: entry.item.ty,
+                        },
+                        entry,
+                    );
                     for (const key in entry) {
                         if (!Object.prototype.hasOwnProperty.call(entry, key)) {
                             continue;
                         }
                         if (key === "desc" && entry.desc !== null) {
                             flatEntry.desc = await entry.desc;
-                        } else if (key === "displayTypeSignature" &&
+                        } else if (
+                            key === "displayTypeSignature" &&
                             entry.displayTypeSignature !== null
                         ) {
                             flatEntry.displayTypeSignature = await entry.displayTypeSignature;
-                            const {
-                                type,
-                                mappedNames,
-                                whereClause,
-                            } = flatEntry.displayTypeSignature;
+                            const { type, mappedNames, whereClause } =
+                                flatEntry.displayTypeSignature;
                             flatEntry.displayType = arrayToCode(type);
                             flatEntry.displayMappedNames = [...mappedNames.entries()]
                                 .map(([name, qname]) => {
                                     return `${name} = ${qname}`;
-                                }).join(", ");
+                                })
+                                .join(", ");
                             flatEntry.displayWhereClause = [...whereClause.entries()]
                                 .flatMap(([name, value]) => {
                                     if (value.length === 0) {
                                         return [];
                                     }
                                     return [`${name}: ${arrayToCode(value)}`];
-                                }).join(", ");
+                                })
+                                .join(", ");
                         }
                     }
                     resultsTable[tab].push(flatEntry);
@@ -544,20 +575,22 @@ function showHelp() {
     console.log("  --doc-folder [PATH]        : location of the generated doc folder");
     console.log("  --help                     : show this message then quit");
     console.log("  --crate-name [STRING]      : crate name to be used");
-    console.log("  --test-file [PATHs]        : location of the JS test files (can be called " +
-                "multiple times)");
+    console.log(
+        "  --test-file [PATHs]        : location of the JS test files (can be called " +
+            "multiple times)",
+    );
     console.log("  --test-folder [PATH]       : location of the JS tests folder");
     console.log("  --resource-suffix [STRING] : suffix to refer to the correct files");
 }
 
 function parseOptions(args) {
     const opts = {
-        "crate_name": "",
-        "resource_suffix": "",
-        "doc_folder": "",
-        "test_folder": "",
-        "test_file": [],
-        "revision": "",
+        crate_name: "",
+        resource_suffix: "",
+        doc_folder: "",
+        test_folder: "",
+        test_file: [],
+        revision: "",
     };
     const correspondences = {
         "--resource-suffix": "resource_suffix",
@@ -609,13 +642,10 @@ async function main(argv) {
         return 1;
     }
 
-    const parseAndSearch = await loadSearchJS(
-        opts["doc_folder"],
-        opts["resource_suffix"],
-    );
+    const parseAndSearch = await loadSearchJS(opts["doc_folder"], opts["resource_suffix"]);
     let errors = 0;
 
-    const doSearch = function(queryStr, filterCrate) {
+    const doSearch = function (queryStr, filterCrate) {
         return parseAndSearch.doSearch(queryStr, filterCrate, opts["crate_name"]);
     };
 
@@ -630,17 +660,22 @@ async function main(argv) {
                 continue;
             }
             process.stdout.write(`Testing ${file} ... `);
-            errors += await runChecks(path.join(opts["test_folder"], file, ""), doSearch,
-                    parseAndSearch.parseQuery);
+            errors += await runChecks(
+                path.join(opts["test_folder"], file, ""),
+                doSearch,
+                parseAndSearch.parseQuery,
+            );
         }
     }
     return errors > 0 ? 1 : 0;
 }
 
-main(process.argv).catch(e => {
-    console.log(e);
-    process.exit(1);
-}).then(x => process.exit(x));
+main(process.argv)
+    .catch(e => {
+        console.log(e);
+        process.exit(1);
+    })
+    .then(x => process.exit(x));
 
 process.on("beforeExit", () => {
     console.log("process did not complete");

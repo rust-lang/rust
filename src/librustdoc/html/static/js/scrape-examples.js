@@ -1,8 +1,8 @@
- /* global addClass, hasClass, removeClass, onEachLazy, nonnull */
+/* global addClass, hasClass, removeClass, onEachLazy, nonnull */
 
 "use strict";
 
-(function() {
+(function () {
     // Number of lines shown when code viewer is not expanded.
     // DEFAULT is the first example shown by default, while HIDDEN is
     // the examples hidden beneath the "More examples" toggle.
@@ -128,8 +128,7 @@
      */
     function setupLoc(example, isHidden) {
         const locs_str = nonnull(example.attributes.getNamedItem("data-locs")).textContent;
-        const locs =
-              JSON.parse(nonnull(nonnull(locs_str)));
+        const locs = JSON.parse(nonnull(nonnull(locs_str)));
         example.locs = locs;
         // Start with the first example in view
         scrollToLoc(example, locs[0][0], isHidden);
@@ -147,14 +146,18 @@
         });
 
         const moreExamples = toggle.querySelectorAll(".scraped-example");
-        toggle.querySelector("summary").addEventListener("click", () => {
-            // Wrapping in setTimeout ensures the update happens after the elements are actually
-            // visible. This is necessary since setupLoc calls scrollToLoc which
-            // depends on offsetHeight, a property that requires an element to be visible to
-            // compute correctly.
-            setTimeout(() => {
-                onEachLazy(moreExamples, el => setupLoc(el, true));
-            });
-        }, {once: true});
+        toggle.querySelector("summary").addEventListener(
+            "click",
+            () => {
+                // Wrapping in setTimeout ensures the update happens after the elements are actually
+                // visible. This is necessary since setupLoc calls scrollToLoc which
+                // depends on offsetHeight, a property that requires an element to be visible to
+                // compute correctly.
+                setTimeout(() => {
+                    onEachLazy(moreExamples, el => setupLoc(el, true));
+                });
+            },
+            { once: true },
+        );
     });
 })();
