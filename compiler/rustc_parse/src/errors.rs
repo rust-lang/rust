@@ -689,7 +689,7 @@ pub(crate) struct MissingInInForLoop {
     #[primary_span]
     pub span: Span,
     #[subdiagnostic]
-    pub sub: MissingInInForLoopSub,
+    pub sub: Option<MissingInInForLoopSub>,
 }
 
 #[derive(Subdiagnostic)]
