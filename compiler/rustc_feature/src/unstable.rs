@@ -173,7 +173,8 @@ macro_rules! declare_features {
             pub fn incomplete(&self, feature: Symbol) -> bool {
                 match feature {
                     $(
-                        sym::$feature => status_to_enum!($status) == FeatureStatus::Incomplete,
+                        // Match guard to avoid duplicating `cannot find $feature in module sym` error.
+                        f if f == sym::$feature => status_to_enum!($status) == FeatureStatus::Incomplete,
                     )*
                     _ if self.enabled_features.contains(&feature) => {
                         // Accepted/removed features and library features aren't in this file but
@@ -189,7 +190,8 @@ macro_rules! declare_features {
             pub fn internal(&self, feature: Symbol) -> bool {
                 match feature {
                     $(
-                        sym::$feature => status_to_enum!($status) == FeatureStatus::Internal,
+                       // Match guard to avoid duplicating `cannot find $feature in module sym` error.
+                       f if f == sym::$feature => status_to_enum!($status) == FeatureStatus::Internal,
                     )*
                     _ if self.enabled_features.contains(&feature) => {
                         // This could be accepted/removed, or a libs feature.
