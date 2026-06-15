@@ -92,7 +92,7 @@ pub struct CustomDiagnostic {
 }
 
 impl CustomDiagnostic {
-    fn update(&mut self, di: &Directive, args: &FormatArgs) {
+    pub fn update(&mut self, di: &Directive, args: &FormatArgs) {
         if self.message.is_none() {
             self.message = di.message.as_ref().map(|m| m.1.format(args));
         }

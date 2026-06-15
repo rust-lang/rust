@@ -15,10 +15,10 @@ use rustc_ast::{
 };
 use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::{ResolverExpand, SyntaxExtension, SyntaxExtensionKind};
-use rustc_hir::Attribute;
 use rustc_hir::attrs::{AttributeKind, MacroUseArgs};
 use rustc_hir::def::{self, *};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
+use rustc_hir::{Attribute, find_attr};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_metadata::creader::LoadedMacro;
 use rustc_middle::metadata::{ModChild, Reexport};
@@ -164,6 +164,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     // Query `expn_that_defined` is not used because
                     // hashing spans in its result is expensive.
                     let expn_id = self.cstore().expn_that_defined_untracked(self.tcx, def_id);
+                    let on_unknown_attr = if matches!(def_kind, DefKind::Mod)
+                        && let Some(Some(d)) =
+                            find_attr!(self.tcx, def_id, OnUnknown{directive} => directive)
+                    {
+                        Some(OnUnknownData { directive: d.clone() })
+                    } else {
+                        None
+                    };
+
                     let module = self.new_extern_module(
                         parent,
                         ModuleKind::Def(
@@ -176,6 +185,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         self.def_span(def_id),
                         // FIXME: Account for `#[no_implicit_prelude]` attributes.
                         parent.is_some_and(|module| module.no_implicit_prelude),
+                        on_unknown_attr,
                     );
                     return Some(module.to_module());
                 }
@@ -548,7 +558,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             root_id,
             vis,
             vis_span: item.vis.span,
-            on_unknown_attr: OnUnknownData::from_attrs(self.r.tcx, item),
+            on_unknown_attr: OnUnknownData::from_attrs(self.r.tcx, &item.attrs),
         });
 
         self.r.indeterminate_imports.push(import);
@@ -861,6 +871,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     item.span,
                     parent.no_implicit_prelude
                         || ast::attr::contains_name(&item.attrs, sym::no_implicit_prelude),
+                    OnUnknownData::from_attrs(self.r.tcx, &item.attrs),
                 );
                 self.parent_scope.module = module.to_module();
             }
@@ -894,6 +905,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     expansion.to_expn_id(),
                     item.span,
                     parent.no_implicit_prelude,
+                    None,
                 );
                 self.parent_scope.module = module.to_module();
             }
@@ -1037,7 +1049,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             module_path: Vec::new(),
             vis,
             vis_span: item.vis.span,
-            on_unknown_attr: OnUnknownData::from_attrs(self.r.tcx, item),
+            on_unknown_attr: OnUnknownData::from_attrs(self.r.tcx, &item.attrs),
         });
         if used {
             self.r.import_use_map.insert(import, Used::Other);
@@ -1113,6 +1125,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 expansion.to_expn_id(),
                 block.span,
                 parent.no_implicit_prelude,
+                None,
             );
             self.r.block_map.insert(block.id, module);
             self.parent_scope.module = module.to_module(); // Descend into the block.
@@ -1169,7 +1182,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 module_path: Vec::new(),
                 vis: Visibility::Restricted(CRATE_DEF_ID),
                 vis_span: item.vis.span,
-                on_unknown_attr: OnUnknownData::from_attrs(this.r.tcx, item),
+                on_unknown_attr: OnUnknownData::from_attrs(this.r.tcx, &item.attrs),
             })
         };
 
@@ -1350,7 +1363,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     module_path: Vec::new(),
                     vis,
                     vis_span: item.vis.span,
-                    on_unknown_attr: OnUnknownData::from_attrs(self.r.tcx, item),
+                    on_unknown_attr: OnUnknownData::from_attrs(self.r.tcx, &item.attrs),
                 });
                 self.r.import_use_map.insert(import, Used::Other);
                 let import_decl = self.r.new_import_decl(decl, import);

@@ -1,0 +1,13 @@
+warning: `#[diagnostic::on_unknown]` can only be applied to `use` statements and module declarations
+  --> $DIR/incorrect_unstable_positions.rs:8:5
+   |
+LL |     #[diagnostic::on_unknown(message = "anonymous block")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     {}
+   |     -- not an import or module
+   |
+   = note: `#[warn(misplaced_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
+
+warning: 1 warning emitted
+

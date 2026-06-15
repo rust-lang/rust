@@ -4,7 +4,7 @@ use std::cmp::Ordering;
 use std::mem;
 
 use itertools::Itertools;
-use rustc_ast::{Item, NodeId};
+use rustc_ast::{NodeId, ast};
 use rustc_attr_parsing::AttributeParser;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::intern::Interned;
@@ -43,9 +43,9 @@ use crate::error_helper::{DiagMode, Suggestion, import_candidates};
 use crate::ref_mut::CmCell;
 use crate::{
     AmbiguityError, BindingKey, CmResolver, Decl, DeclData, DeclKind, Determinacy, Finalize,
-    IdentKey, ImportSuggestion, ImportSummary, LocalModule, ModuleOrUniformRoot, ParentScope,
-    PathResult, PerNS, Res, ResolutionError, Resolver, ScopeSet, Segment, Used, module_to_string,
-    names_to_string,
+    IdentKey, ImportSuggestion, ImportSummary, LocalModule, ModuleKind, ModuleOrUniformRoot,
+    ParentScope, PathResult, PerNS, Res, ResolutionError, Resolver, ScopeSet, Segment, Used,
+    module_to_string, names_to_string,
 };
 
 /// A potential import declaration in the process of being planted into a module.
@@ -166,18 +166,17 @@ impl<'ra> std::fmt::Debug for ImportKind<'ra> {
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct OnUnknownData {
-    directive: Box<Directive>,
+    pub(crate) directive: Box<Directive>,
 }
 
 impl OnUnknownData {
-    pub(crate) fn from_attrs<'tcx>(tcx: TyCtxt<'tcx>, item: &Item) -> Option<OnUnknownData> {
+    pub(crate) fn from_attrs<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        attrs: &[ast::Attribute],
+    ) -> Option<OnUnknownData> {
         if tcx.features().diagnostic_on_unknown()
             && let Some(Attribute::Parsed(AttributeKind::OnUnknown { directive, .. })) =
-                AttributeParser::parse_limited(
-                    tcx.sess,
-                    &item.attrs,
-                    &[sym::diagnostic, sym::on_unknown],
-                )
+                AttributeParser::parse_limited(tcx.sess, attrs, &[sym::diagnostic, sym::on_unknown])
         {
             Some(Self { directive: directive? })
         } else {
@@ -1112,25 +1111,56 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .collect::<Vec<_>>();
         let default_message =
             format!("unresolved import{} {}", pluralize!(paths.len()), paths.join(", "),);
-        let (message, label, notes) =
-            // Feature gating for `on_unknown_attr` happens initialization of the field
-            if let Some(directive) = errors[0].1.on_unknown_attr.as_ref().map(|a| &a.directive) {
-                let this = errors.iter().map(|(_import, err)| {
 
-                    // Is this unwrap_or reachable?
-                    err.segment.map(|s|s.name).unwrap_or(kw::Underscore)
-                }).join(", ");
+        // Process `#[diagnostic::on_unknown]` attributes.
+        //
+        // We don't need to check feature gates here; that happens on initialization of the
+        // `on_unknown_attr` fields.
+        let (message, label, notes) = {
+            let (import, import_error) = &errors[0];
 
-                let args = FormatArgs {
-                    this,
-                    ..
-                };
-                let CustomDiagnostic { message, label, notes, .. } = directive.eval(None, &args);
+            let mut custom_diagnostic = CustomDiagnostic::default();
 
-                (message, label, notes)
-            } else {
-                (None, None, Vec::new())
-            };
+            // `import` use of the attribute. We assume that someone who put the attribute on the
+            // import has moren information than the person who put it on the module, so we choose
+            // to prioritize the import attribute. We still display all the notes, though.
+            if let Some(directive) = import_error.on_unknown_attr.as_ref().map(|a| &a.directive) {
+                let this = errors
+                    .iter()
+                    .map(|(_import, err)| {
+                        // Is this unwrap_or reachable?
+                        err.segment.map(|s| s.name).unwrap_or(kw::Underscore)
+                    })
+                    .join(", ");
+                let args = FormatArgs { this, .. };
+                custom_diagnostic.update(directive, &args);
+            }
+
+            // `mod` use of the attribute.
+            if let Some(ModuleOrUniformRoot::Module(module_data)) = import.imported_module.get()
+                && let Some(on_unknown_attr) = &module_data.on_unknown_attr
+            {
+                if let ModuleKind::Def(DefKind::Mod, _, _, name) = module_data.kind {
+                    let this = if let Some(name) = name {
+                        name.to_string()
+                    } else if let Some(crate_name) = &self.tcx.sess.opts.crate_name {
+                        crate_name.to_string()
+                    } else {
+                        "<unnamed crate>".to_string()
+                    };
+
+                    let args = FormatArgs { this, .. };
+
+                    custom_diagnostic.update(&on_unknown_attr.directive, &args);
+                } else {
+                    // We messed up somewhere? This might be reachable though,
+                    // we don't do target checking when doing early parsing.
+                }
+            }
+
+            let CustomDiagnostic { message, label, notes, parent_label: _dead } = custom_diagnostic;
+            (message, label, notes)
+        };
         let has_custom_message = message.is_some();
         let message = message.as_deref().unwrap_or(default_message.as_str());
 

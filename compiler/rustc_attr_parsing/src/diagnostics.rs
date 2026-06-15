@@ -295,9 +295,11 @@ pub(crate) struct DiagnosticOnMoveOnlyForAdt;
 pub(crate) struct DiagnosticOnUnimplementedOnlyForTraits;
 
 #[derive(Diagnostic)]
-#[diag("`#[diagnostic::on_unknown]` can only be applied to `use` statements")]
-pub(crate) struct DiagnosticOnUnknownOnlyForImports {
-    #[label("not an import")]
+#[diag(
+    "`#[diagnostic::on_unknown]` can only be applied to `use` statements and module declarations"
+)]
+pub(crate) struct DiagnosticOnUnknownInvalidTarget {
+    #[label("not an import or module")]
     pub target_span: Span,
 }
 
