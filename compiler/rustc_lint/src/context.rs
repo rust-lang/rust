@@ -46,20 +46,38 @@ type LateLintPassFactory =
     Box<dyn for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx> + sync::DynSend + sync::DynSync>;
 
 /// Information about the registered lints.
+//
+// About the pass factories: these should only be called once, but since we
+// want to avoid locks or interior mutability, we don't enforce this. Lints
+// should, in theory, be compatible with being constructed more than once,
+// though not necessarily in a sane manner. This is safe though.
 pub struct LintStore {
     /// Registered lints.
     lints: Vec<&'static Lint>,
 
-    /// Constructor functions for each variety of lint pass.
+    /// This lint pass kind is softly deprecated. It misses expanded code and has caused a few
+    /// errors in the past. Currently, it is only used in Clippy. New implementations
+    /// should avoid using this interface, as it might be removed in the future.
     ///
-    /// These should only be called once, but since we want to avoid locks or
-    /// interior mutability, we don't enforce this (and lints should, in theory,
-    /// be compatible with being constructed more than once, though not
-    /// necessarily in a sane manner. This is safe though.)
+    /// * See [rust#69838](https://github.com/rust-lang/rust/pull/69838)
+    /// * See [rust-clippy#5518](https://github.com/rust-lang/rust-clippy/pull/5518)
     pub pre_expansion_passes: Vec<EarlyLintPassFactory>,
+
+    /// These lint passes run on AST nodes.
     pub early_passes: Vec<EarlyLintPassFactory>,
+
+    /// These lint passes run on HIR nodes. Each one processes an entire crate. They don't benefit
+    /// from incremental compilation. `late_module_passes` should be used in preference where
+    /// possible; only use `late_passes` for lints that implement `check_crate` and/or
+    /// `check_crate_post` and accumulate cross-module state.
+    ///
+    /// The exception is Clippy, which uses `late_passes` for all late lint passes. It needs
+    /// `check_crate`/`check_crate_post` for some of its lints and uses late lint passes throughout
+    /// for consistency. This is ok because Clippy isn't wired for incremental compilation.
     pub late_passes: Vec<LateLintPassFactory>,
-    /// This is unique in that we construct them per-module, so not once.
+
+    /// These lint passes run on HIR nodes, and are constructed per-module (i.e. multiple times).
+    /// They benefit from incremental compilation.
     pub late_module_passes: Vec<LateLintPassFactory>,
 
     /// Lints indexed by name.
@@ -166,24 +184,22 @@ impl LintStore {
         self.lint_groups.keys().copied()
     }
 
-    pub fn register_early_pass(&mut self, pass: EarlyLintPassFactory) {
-        self.early_passes.push(pass);
-    }
-
-    /// This lint pass is softly deprecated. It misses expanded code and has caused a few
-    /// errors in the past. Currently, it is only used in Clippy. New implementations
-    /// should avoid using this interface, as it might be removed in the future.
-    ///
-    /// * See [rust#69838](https://github.com/rust-lang/rust/pull/69838)
-    /// * See [rust-clippy#5518](https://github.com/rust-lang/rust-clippy/pull/5518)
+    /// See the comment on `LintStore::pre_expansion_passes`.
     pub fn register_pre_expansion_pass(&mut self, pass: EarlyLintPassFactory) {
         self.pre_expansion_passes.push(pass);
     }
 
+    /// See the comment on `LintStore::early_passes`.
+    pub fn register_early_pass(&mut self, pass: EarlyLintPassFactory) {
+        self.early_passes.push(pass);
+    }
+
+    /// See the comment on `LintStore::late_passes`.
     pub fn register_late_pass(&mut self, pass: LateLintPassFactory) {
         self.late_passes.push(pass);
     }
 
+    /// See the comment on `LintStore::late_module_passes`.
     pub fn register_late_mod_pass(&mut self, pass: LateLintPassFactory) {
         self.late_module_passes.push(pass);
     }
