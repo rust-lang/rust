@@ -16,7 +16,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
 
-use crate::errors::DuplicateDiagnosticItemInCrate;
+use crate::diagnostics::DuplicateDiagnosticItemInCrate;
 
 fn observe_item<'tcx>(tcx: TyCtxt<'tcx>, diagnostic_items: &mut DiagnosticItems, owner: OwnerId) {
     let attrs = tcx.hir_attrs(owner.into());
