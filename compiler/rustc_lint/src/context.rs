@@ -660,15 +660,10 @@ impl<'tcx> LateContext<'tcx> {
         self.tcx.type_is_use_cloned_modulo_regions(self.typing_env(), ty)
     }
 
-    /// Gets the type-checking results for the current body,
-    /// or `None` if outside a body.
-    pub fn maybe_typeck_results(&self) -> Option<&'tcx ty::TypeckResults<'tcx>> {
-        self.typeck_results
-    }
-
     /// Gets the type-checking results for the current body.
     /// As this will ICE if called outside bodies, only call when working with
     /// `Expr` or `Pat` nodes (they are guaranteed to be found only in bodies).
+    #[inline]
     #[track_caller]
     pub fn typeck_results(&self) -> &'tcx ty::TypeckResults<'tcx> {
         self.typeck_results.expect("`LateContext::typeck_results` called outside of body")
@@ -681,7 +676,7 @@ impl<'tcx> LateContext<'tcx> {
         match *qpath {
             hir::QPath::Resolved(_, path) => path.res,
             hir::QPath::TypeRelative(..) => self
-                .maybe_typeck_results()
+                .typeck_results
                 .filter(|typeck_results| typeck_results.hir_owner == id.owner)
                 .or_else(|| {
                     self.tcx
