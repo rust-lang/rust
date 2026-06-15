@@ -1,18 +1,18 @@
 //@no-rustfix: only some diagnostics have suggestions
 
 #![warn(
-    clippy::cast_precision_loss,
     clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::cast_possible_wrap
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss
 )]
-#![allow(
+#![expect(
     clippy::cast_abs_to_unsigned,
+    clippy::identity_op,
     clippy::no_effect,
-    clippy::unnecessary_min_or_max,
-    clippy::unnecessary_operation,
     clippy::unnecessary_literal_unwrap,
-    clippy::identity_op
+    clippy::unnecessary_min_or_max,
+    clippy::unnecessary_operation
 )]
 
 // FIXME(f16_f128): add tests once const casting is available for these types

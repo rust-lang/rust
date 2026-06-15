@@ -925,7 +925,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 }
                 interp_ok(true)
             }
-            ty::RawPtr(..) => {
+            ty::RawPtr(pointee, ..) => {
                 let ptr = self.read_immediate(value, ExpectedKind::RawPtr)?;
                 if self.reset_provenance_and_padding {
                     self.reset_pointer_provenance(value, &ptr)?;
@@ -933,8 +933,12 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                     self.add_data_range_place(value);
                 }
 
-                let place = self.ecx.imm_ptr_to_mplace(&ptr)?;
-                if place.layout.is_unsized() {
+                if !pointee.is_sized(*self.ecx.tcx, self.ecx.typing_env) {
+                    // Raw pointers to unsized types need to have their metadata checked.
+                    // We avoid creating this place for sized types to match codegen: those types
+                    // might actually be invalid (i.e., too big)!
+                    let place = self.ecx.imm_ptr_to_mplace(&ptr)?;
+                    assert!(place.layout.is_unsized());
                     self.check_wide_ptr_meta(place.meta(), place.layout)?;
                 }
                 interp_ok(true)
@@ -1354,6 +1358,16 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
     }
 
     #[inline]
+    fn visit_variantless(&mut self, val: &PlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx> {
+        let ty = val.layout.ty;
+        assert!(ty.is_enum(), "encountered non-enum variantless type `{ty}`");
+        throw_validation_failure!(
+            self.path,
+            format!("encountered a value of zero-variant enum `{ty}`")
+        );
+    }
+
+    #[inline]
     fn visit_value(&mut self, val: &PlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx> {
         trace!("visit_value: {:?}, {:?}", *val, val.layout);
 
@@ -1557,23 +1571,14 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
             }
         }
 
-        // *After* all of this, check further information stored in the layout.
-        // On leaf types like `!` or empty enums, this will raise the error.
-        // This means that for types wrapping such a type, we won't ever get here, but it's
-        // just the simplest way to check for this case.
-        //
-        // FIXME: We could avoid some redundant checks here. For newtypes wrapping
-        // scalars, we do the same check on every "level" (e.g., first we check
-        // the fields of MyNewtype, and then we check MyNewType again).
-        if val.layout.is_uninhabited() {
-            let ty = val.layout.ty;
-            throw_validation_failure!(
-                self.path,
-                format!("encountered a value of uninhabited type `{ty}`")
-            );
-        }
+        // Assert that we checked everything there is to check about this type.
+        assert!(
+            !val.layout.is_uninhabited(),
+            "a value of type `{}` passed validation but that type is uninhabited",
+            val.layout.ty
+        );
         if cfg!(debug_assertions) {
-            // Check that we don't miss any new changes to layout computation in our checks above.
+            // Only run expensive checks when debug assertions are enabled.
             match val.layout.backend_repr {
                 BackendRepr::Scalar(scalar_layout) => {
                     if !scalar_layout.is_uninit_valid() {

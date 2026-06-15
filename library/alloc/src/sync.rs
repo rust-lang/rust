@@ -12,7 +12,7 @@ use core::any::Any;
 use core::cell::CloneFromCell;
 #[cfg(not(no_global_oom_handling))]
 use core::clone::TrivialClone;
-use core::clone::{CloneToUninit, UseCloned};
+use core::clone::{CloneToUninit, Share, UseCloned};
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
@@ -389,8 +389,12 @@ struct ArcInner<T: ?Sized> {
     strong: Atomic<usize>,
 
     // the value usize::MAX acts as a sentinel for temporarily "locking" the
-    // ability to upgrade weak pointers or downgrade strong ones; this is used
-    // to avoid races in `make_mut` and `get_mut`.
+    // weak count, preventing `Arc::downgrade` from racing to create new
+    // `Weak` references. `Arc::is_unique` (which backs `Arc::get_mut`)
+    // needs to observe both the strong and weak counts as indicating
+    // uniqueness in one logical atomic step; since they live in separate
+    // atomic words, it locks the weak count while reading the strong
+    // count to keep the two reads consistent.
     weak: Atomic<usize>,
 
     data: T,
@@ -1306,10 +1310,7 @@ impl<T> Arc<[T]> {
             Arc::from_ptr(Arc::allocate_for_layout(
                 Layout::array::<T>(len).unwrap(),
                 |layout| Global.allocate_zeroed(layout),
-                |mem| {
-                    ptr::slice_from_raw_parts_mut(mem as *mut T, len)
-                        as *mut ArcInner<[mem::MaybeUninit<T>]>
-                },
+                |mem| mem.cast::<T>().cast_slice(len) as *mut ArcInner<[mem::MaybeUninit<T>]>,
             ))
         }
     }
@@ -1378,10 +1379,7 @@ impl<T, A: Allocator> Arc<[T], A> {
                 Arc::allocate_for_layout(
                     Layout::array::<T>(len).unwrap(),
                     |layout| alloc.allocate_zeroed(layout),
-                    |mem| {
-                        ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len)
-                            as *mut ArcInner<[mem::MaybeUninit<T>]>
-                    },
+                    |mem| mem.cast::<T>().cast_slice(len) as *mut ArcInner<[mem::MaybeUninit<T>]>,
                 ),
                 alloc,
             )
@@ -1392,7 +1390,9 @@ impl<T, A: Allocator> Arc<[T], A> {
     ///
     /// This operation does not reallocate; the underlying array of the slice is simply reinterpreted as an array type.
     ///
-    /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
+    /// # Errors
+    ///
+    /// Returns the original `Arc<[T]>` in the `Err` variant if `self.len()` does not equal `N`.
     ///
     /// # Examples
     ///
@@ -1407,16 +1407,16 @@ impl<T, A: Allocator> Arc<[T], A> {
     #[unstable(feature = "alloc_slice_into_array", issue = "148082")]
     #[inline]
     #[must_use]
-    pub fn into_array<const N: usize>(self) -> Option<Arc<[T; N], A>> {
+    pub fn into_array<const N: usize>(self) -> Result<Arc<[T; N], A>, Self> {
         if self.len() == N {
             let (ptr, alloc) = Self::into_raw_with_allocator(self);
             let ptr = ptr as *const [T; N];
 
             // SAFETY: The underlying array of a slice has the exact same layout as an actual array `[T; N]` if `N` is equal to the slice's length.
             let me = unsafe { Arc::from_raw_in(ptr, alloc) };
-            Some(me)
+            Ok(me)
         } else {
-            None
+            Err(self)
         }
     }
 }
@@ -2270,7 +2270,7 @@ impl<T> Arc<[T]> {
             Self::allocate_for_layout(
                 Layout::array::<T>(len).unwrap(),
                 |layout| Global.allocate(layout),
-                |mem| ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len) as *mut ArcInner<[T]>,
+                |mem| mem.cast::<T>().cast_slice(len) as *mut ArcInner<[T]>,
             )
         }
     }
@@ -2349,7 +2349,7 @@ impl<T, A: Allocator> Arc<[T], A> {
             Arc::allocate_for_layout(
                 Layout::array::<T>(len).unwrap(),
                 |layout| alloc.allocate(layout),
-                |mem| ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len) as *mut ArcInner<[T]>,
+                |mem| mem.cast::<T>().cast_slice(len) as *mut ArcInner<[T]>,
             )
         }
     }
@@ -2435,6 +2435,9 @@ impl<T: ?Sized, A: Allocator + Clone> Clone for Arc<T, A> {
 
 #[unstable(feature = "ergonomic_clones", issue = "132290")]
 impl<T: ?Sized, A: Allocator + Clone> UseCloned for Arc<T, A> {}
+
+#[unstable(feature = "share_trait", issue = "156756")]
+impl<T: ?Sized, A: Allocator + Clone> Share for Arc<T, A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized, A: Allocator> Deref for Arc<T, A> {

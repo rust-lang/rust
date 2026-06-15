@@ -290,6 +290,107 @@ pub macro Clone($item:item) {
     /* compiler built-in */
 }
 
+/// A trait for types whose [`Clone`] operation creates another alias to the same
+/// logical resource or shared state.
+///
+/// `Share` refines the meaning of [`Clone`] for types where cloning a value
+/// creates another handle, reference, or alias to the same logical resource or
+/// shared state, rather than an independent owned value. The distinction is
+/// semantic, not operational: `Share` does not mean merely that cloning is
+/// cheap, constant-time, allocation-free, or convenient.
+///
+/// `Share` is a third way to think about creating another usable value:
+///
+/// * [`Copy`] may duplicate a value implicitly.
+/// * [`Clone`] explicitly creates another value.
+/// * `Share` explicitly creates another value that aliases the same underlying
+///   logical resource or shared state.
+///
+/// `Share` is not a replacement for either [`Copy`] or [`Clone`], and neither
+/// trait implies it. For example, integers are [`Copy`] but not `Share`, because
+/// copying an integer creates an independent value. Likewise, not every cheap
+/// [`Clone`] implementation is `Share`.
+///
+/// Shared references, `Rc<T>`, `Arc<T>`, `Sender<T>`, and `SyncSender<T>` are
+/// examples of types that can be shared this way. Types such as `Vec<T>`,
+/// `String`, `Box<T>`, owned collections, and similar owned values are not
+/// `Share`, even though they implement [`Clone`], because cloning them creates
+/// independent owned storage or value ownership. Mutable references (`&mut T`)
+/// are neither `Clone` nor `Share`, because you cannot have two active at once.
+///
+/// Calling [`share`](Share::share) is equivalent to calling [`clone`](Clone::clone)
+/// for implementors, but communicates that the resulting value aliases the same
+/// underlying resource. The `share` method is final, so implementors should
+/// define the operation through [`Clone::clone`] and implement `Share` only when
+/// those cloning semantics are clone-as-alias semantics.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(share_trait)]
+///
+/// use std::cell::Cell;
+/// use std::clone::Share;
+/// use std::rc::Rc;
+/// use std::sync::{
+///     Arc,
+///     atomic::{AtomicUsize, Ordering},
+/// };
+///
+/// let value = 1;
+/// let reference = &value;
+/// assert!(std::ptr::eq(reference, reference.share()));
+///
+/// let rc = Rc::new(Cell::new(2));
+/// let shared_rc = rc.share();
+/// assert!(Rc::ptr_eq(&rc, &shared_rc));
+/// shared_rc.set(3);
+/// assert_eq!(rc.get(), 3);
+///
+/// let arc = Arc::new(AtomicUsize::new(4));
+/// let shared_arc = arc.share();
+/// assert!(Arc::ptr_eq(&arc, &shared_arc));
+/// shared_arc.store(5, Ordering::Relaxed);
+/// assert_eq!(arc.load(Ordering::Relaxed), 5);
+/// ```
+///
+/// ```
+/// #![feature(share_trait)]
+///
+/// use std::clone::Share;
+/// use std::sync::mpsc::{channel, sync_channel};
+///
+/// let (sender, receiver) = channel();
+/// let shared_sender = sender.share();
+/// sender.send(1).unwrap();
+/// shared_sender.send(2).unwrap();
+///
+/// let mut received = [receiver.recv().unwrap(), receiver.recv().unwrap()];
+/// received.sort();
+/// assert_eq!(received, [1, 2]);
+///
+/// let (sync_sender, sync_receiver) = sync_channel(2);
+/// let shared_sync_sender = sync_sender.share();
+/// sync_sender.send(3).unwrap();
+/// shared_sync_sender.send(4).unwrap();
+///
+/// let mut received = [sync_receiver.recv().unwrap(), sync_receiver.recv().unwrap()];
+/// received.sort();
+/// assert_eq!(received, [3, 4]);
+/// ```
+#[unstable(feature = "share_trait", issue = "156756")]
+pub trait Share: Clone {
+    /// Creates another alias to the same underlying resource or shared state.
+    ///
+    /// This is equivalent to calling [`Clone::clone`]. Use `share` at call
+    /// sites to make aliasing intent explicit; implementors define this
+    /// operation through [`Clone::clone`], not by overriding this method.
+    #[unstable(feature = "share_trait", issue = "156756")]
+    final fn share(&self) -> Self {
+        Clone::clone(self)
+    }
+}
+
 /// Trait for objects whose [`Clone`] impl is lightweight (e.g. reference-counted)
 ///
 /// Cloning an object implementing this trait should in general:
@@ -601,7 +702,7 @@ unsafe impl CloneToUninit for crate::bstr::ByteStr {
 /// are implemented in `traits::SelectionContext::copy_clone_conditions()`
 /// in `rustc_trait_selection`.
 mod impls {
-    use super::TrivialClone;
+    use super::{Share, TrivialClone};
     use crate::marker::PointeeSized;
 
     macro_rules! impl_clone {
@@ -633,7 +734,7 @@ mod impls {
 
     #[unstable(feature = "never_type", issue = "35121")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-    impl const Clone for ! {
+    const impl Clone for ! {
         #[inline]
         fn clone(&self) -> Self {
             *self
@@ -643,11 +744,11 @@ mod impls {
     #[doc(hidden)]
     #[unstable(feature = "trivial_clone", issue = "none")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-    unsafe impl const TrivialClone for ! {}
+    const unsafe impl TrivialClone for ! {}
 
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-    impl<T: PointeeSized> const Clone for *const T {
+    const impl<T: PointeeSized> Clone for *const T {
         #[inline(always)]
         fn clone(&self) -> Self {
             *self
@@ -657,11 +758,11 @@ mod impls {
     #[doc(hidden)]
     #[unstable(feature = "trivial_clone", issue = "none")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-    unsafe impl<T: PointeeSized> const TrivialClone for *const T {}
+    const unsafe impl<T: PointeeSized> TrivialClone for *const T {}
 
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-    impl<T: PointeeSized> const Clone for *mut T {
+    const impl<T: PointeeSized> Clone for *mut T {
         #[inline(always)]
         fn clone(&self) -> Self {
             *self
@@ -671,12 +772,12 @@ mod impls {
     #[doc(hidden)]
     #[unstable(feature = "trivial_clone", issue = "none")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-    unsafe impl<T: PointeeSized> const TrivialClone for *mut T {}
+    const unsafe impl<T: PointeeSized> TrivialClone for *mut T {}
 
     /// Shared references can be cloned, but mutable references *cannot*!
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-    impl<T: PointeeSized> const Clone for &T {
+    const impl<T: PointeeSized> Clone for &T {
         #[inline(always)]
         #[rustc_diagnostic_item = "noop_method_clone"]
         fn clone(&self) -> Self {
@@ -687,7 +788,10 @@ mod impls {
     #[doc(hidden)]
     #[unstable(feature = "trivial_clone", issue = "none")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-    unsafe impl<T: PointeeSized> const TrivialClone for &T {}
+    const unsafe impl<T: PointeeSized> TrivialClone for &T {}
+
+    #[unstable(feature = "share_trait", issue = "156756")]
+    impl<T: PointeeSized> Share for &T {}
 
     /// Shared references can be cloned, but mutable references *cannot*!
     #[stable(feature = "rust1", since = "1.0.0")]

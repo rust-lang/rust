@@ -25,13 +25,13 @@ where
         // Check where clauses
         self.add_goals(
             GoalSource::Misc,
-            cx.predicates_of(free_alias.def_id())
+            cx.predicates_of(free_alias.expect_free_def_id().into())
                 .iter_instantiated(cx, free_alias.args)
                 .map(Unnormalized::skip_norm_wip)
                 .map(|pred| goal.with(cx, pred)),
         );
 
-        let actual = match free_alias.kind(cx) {
+        let actual = match free_alias.kind {
             ty::AliasTermKind::FreeTy { def_id } => {
                 cx.type_of(def_id.into()).instantiate(cx, free_alias.args).skip_norm_wip().into()
             }
@@ -43,7 +43,7 @@ where
             ty::AliasTermKind::FreeConst { .. } => {
                 return self.evaluate_const_and_instantiate_normalizes_to_term(
                     goal,
-                    free_alias.expect_ct(cx),
+                    free_alias.expect_ct(),
                 );
             }
             kind => panic!("expected free alias, found {kind:?}"),

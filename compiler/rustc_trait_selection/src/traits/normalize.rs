@@ -2,7 +2,6 @@
 
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::msg;
-use rustc_hir::def::DefKind;
 use rustc_infer::infer::at::At;
 use rustc_infer::infer::{InferCtxt, InferOk};
 use rustc_infer::traits::{
@@ -141,10 +140,10 @@ pub(super) fn needs_normalization<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
     match infcx.typing_mode_raw().assert_not_erased() {
         // FIXME(#132279): We likely want to reveal opaques during post borrowck analysis
         TypingMode::Coherence
-        | TypingMode::Analysis { .. }
-        | TypingMode::Borrowck { .. }
-        | TypingMode::PostBorrowckAnalysis { .. } => flags.remove(ty::TypeFlags::HAS_TY_OPAQUE),
-        TypingMode::PostAnalysis => {}
+        | TypingMode::Typeck { .. }
+        | TypingMode::PostTypeckUntilBorrowck { .. }
+        | TypingMode::PostBorrowck { .. } => flags.remove(ty::TypeFlags::HAS_TY_OPAQUE),
+        TypingMode::PostAnalysis | TypingMode::Codegen => {}
     }
 
     value.has_type_flags(flags)
@@ -296,7 +295,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         let recursion_limit = self.cx().recursion_limit();
         if !recursion_limit.value_within_limit(self.depth) {
             self.selcx.infcx.err_ctxt().report_overflow_error(
-                OverflowCause::DeeplyNormalize(free.into()),
+                OverflowCause::DeeplyNormalize(free),
                 self.cause.span,
                 false,
                 |diag| {
@@ -304,6 +303,8 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
                 },
             );
         }
+
+        let def_id = free.expect_free_def_id();
 
         // We don't replace bound vars in the generic arguments of the free alias with
         // placeholders. This doesn't cause any issues as instantiating parameters with
@@ -322,7 +323,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         self.obligations.extend(
             infcx
                 .tcx
-                .predicates_of(free.def_id())
+                .predicates_of(def_id)
                 .instantiate_own(infcx.tcx, free.args)
                 .map(|(pred, span)| (pred.skip_norm_wip(), span))
                 .map(|(mut predicate, span)| {
@@ -334,16 +335,15 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
                         );
                     }
                     let mut cause = self.cause.clone();
-                    cause
-                        .map_code(|code| ObligationCauseCode::TypeAlias(code, span, free.def_id()));
+                    cause.map_code(|code| ObligationCauseCode::TypeAlias(code, span, def_id));
                     Obligation::new(infcx.tcx, cause, self.param_env, predicate)
                 }),
         );
         self.depth += 1;
-        let res = if free.kind(infcx.tcx).is_type() {
+        let res: ty::Term<'tcx> = if free.kind.is_type() {
             infcx
                 .tcx
-                .type_of(free.def_id())
+                .type_of(def_id)
                 .instantiate(infcx.tcx, free.args)
                 .skip_norm_wip()
                 .fold_with(self)
@@ -351,12 +351,25 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         } else {
             infcx
                 .tcx
-                .const_of_item(free.def_id())
+                .const_of_item(def_id)
                 .instantiate(infcx.tcx, free.args)
                 .skip_norm_wip()
                 .fold_with(self)
                 .into()
         };
+        // When normalizing a free const alias, register a `ConstArgHasType`
+        // obligation to ensure the const value's type matches the declared type.
+        if let Some(ct) = res.as_const() {
+            let expected_ty =
+                infcx.tcx.type_of(def_id).instantiate(infcx.tcx, free.args).skip_norm_wip();
+            self.obligations.push(Obligation::with_depth(
+                infcx.tcx,
+                self.cause.clone(),
+                self.depth,
+                self.param_env,
+                ty::ClauseKind::ConstArgHasType(ct, expected_ty),
+            ));
+        }
         self.depth -= 1;
         res
     }
@@ -413,10 +426,10 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                 match self.selcx.typing_mode() {
                     // FIXME(#132279): We likely want to reveal opaques during post borrowck analysis
                     TypingMode::Coherence
-                    | TypingMode::Analysis { .. }
-                    | TypingMode::Borrowck { .. }
-                    | TypingMode::PostBorrowckAnalysis { .. } => ty.super_fold_with(self),
-                    TypingMode::PostAnalysis => {
+                    | TypingMode::Typeck { .. }
+                    | TypingMode::PostTypeckUntilBorrowck { .. }
+                    | TypingMode::PostBorrowck { .. } => ty.super_fold_with(self),
+                    TypingMode::PostAnalysis | TypingMode::Codegen => {
                         let recursion_limit = self.cx().recursion_limit();
                         if !recursion_limit.value_within_limit(self.depth) {
                             self.selcx.infcx.err_ctxt().report_overflow_error(
@@ -450,7 +463,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
 
         if tcx.features().generic_const_exprs()
             // Normalize type_const items even with feature `generic_const_exprs`.
-            && !matches!(ct.kind(), ty::ConstKind::Unevaluated(uv) if tcx.is_type_const(uv.def))
+            && !matches!(ct.kind(), ty::ConstKind::Unevaluated(uv) if uv.kind.is_type_const(tcx))
             || !needs_normalization(self.selcx.infcx, &ct)
         {
             return ct;
@@ -461,30 +474,24 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
             _ => return ct.super_fold_with(self),
         };
 
-        // Note that the AssocConst and Const cases are unreachable on stable,
+        // Note that the Projection/Inherent/Free cases are unreachable on stable,
         // unless a `min_generic_const_args` feature gate error has already
         // been emitted earlier in compilation.
         //
         // That's because we can only end up with an Unevaluated ty::Const for a const item
         // if it was marked with `type const`. Using this attribute without the mgca
         // feature gate causes a parse error.
-        let ct = match tcx.def_kind(uv.def) {
-            DefKind::AssocConst { .. } => match tcx.def_kind(tcx.parent(uv.def)) {
-                DefKind::Trait => self
-                    .normalize_trait_projection(ty::AliasTerm::from_unevaluated_const(tcx, uv))
-                    .expect_const(),
-                DefKind::Impl { of_trait: false } => self
-                    .normalize_inherent_projection(ty::AliasTerm::from_unevaluated_const(tcx, uv))
-                    .expect_const(),
-                kind => unreachable!(
-                    "unexpected `DefKind` for const alias' resolution's parent def: {:?}",
-                    kind
-                ),
-            },
-            DefKind::Const { .. } => self
-                .normalize_free_alias(ty::AliasTerm::from_unevaluated_const(tcx, uv))
-                .expect_const(),
-            DefKind::AnonConst => {
+        let ct = match uv.kind {
+            ty::UnevaluatedConstKind::Projection { .. } => {
+                self.normalize_trait_projection(uv.into()).expect_const()
+            }
+            ty::UnevaluatedConstKind::Inherent { .. } => {
+                self.normalize_inherent_projection(uv.into()).expect_const()
+            }
+            ty::UnevaluatedConstKind::Free { .. } => {
+                self.normalize_free_alias(uv.into()).expect_const()
+            }
+            ty::UnevaluatedConstKind::Anon { .. } => {
                 let ct = ct.super_fold_with(self);
                 super::with_replaced_escaping_bound_vars(
                     self.selcx.infcx,
@@ -492,9 +499,6 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                     ct,
                     |ct| super::evaluate_const(self.selcx.infcx, ct, self.param_env),
                 )
-            }
-            kind => {
-                unreachable!("unexpected `DefKind` for const alias to resolve to: {:?}", kind)
             }
         };
 

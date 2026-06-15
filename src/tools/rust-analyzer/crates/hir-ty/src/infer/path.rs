@@ -11,7 +11,7 @@ use rustc_type_ir::inherent::{SliceLike, Ty as _};
 use stdx::never;
 
 use crate::{
-    InferenceDiagnostic, Span, ValueTyDefId,
+    ExplicitDropMethodUseKind, InferenceDiagnostic, Span, ValueTyDefId,
     infer::{
         InferenceTyLoweringVarsCtx, diagnostics::InferenceTyLoweringContext as TyLoweringContext,
     },
@@ -32,6 +32,14 @@ impl<'db> InferenceContext<'_, 'db> {
         id: ExprOrPatId,
     ) -> Option<(ValueNs, Ty<'db>)> {
         let (value, self_subst) = self.resolve_value_path_inner(path, id, false)?;
+
+        if let ValueNs::FunctionId(f) = value
+            && self.lang_items.Drop_drop.is_some_and(|drop_fn| drop_fn == f)
+        {
+            self.push_diagnostic(InferenceDiagnostic::ExplicitDropMethodUse {
+                kind: ExplicitDropMethodUseKind::Path(id),
+            });
+        }
 
         let (value_def, generic_def, substs) =
             match self.resolve_value_path(path, id, value, self_subst)? {
@@ -183,7 +191,30 @@ impl<'db> InferenceContext<'_, 'db> {
             match value_or_partial {
                 ResolveValueResult::ValueNs(it) => {
                     drop_ctx(ctx, no_diagnostics);
-                    (it, None)
+
+                    let args = if let Path::LangItem(..) = path {
+                        let def_and_container = match it {
+                            ValueNs::ConstId(it) => Some((it.into(), it.loc(self.db).container)),
+                            ValueNs::FunctionId(it) => Some((it.into(), it.loc(self.db).container)),
+                            _ => None,
+                        };
+                        let def_and_container =
+                            def_and_container.and_then(|(def, container)| match container {
+                                ItemContainerId::ImplId(it) => Some((def, it.into())),
+                                ItemContainerId::TraitId(it) => Some((def, it.into())),
+                                ItemContainerId::ExternBlockId(_)
+                                | ItemContainerId::ModuleId(_) => None,
+                            });
+                        def_and_container.map(|(def, container)| {
+                            let args = self.infcx().fresh_args_for_item(id.into(), container);
+                            self.write_assoc_resolution(id, def, args);
+                            args
+                        })
+                    } else {
+                        None
+                    };
+
+                    (it, args)
                 }
                 ResolveValueResult::Partial(def, remaining_index) => {
                     // there may be more intermediate segments between the resolved one and

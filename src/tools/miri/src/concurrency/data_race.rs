@@ -44,6 +44,7 @@ use std::cell::{Cell, Ref, RefCell, RefMut};
 use std::fmt::Debug;
 use std::mem;
 
+use rand::RngExt;
 use rustc_abi::{Align, HasDataLayout, Size};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -888,7 +889,6 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         fail: AtomicReadOrd,
         can_fail_spuriously: bool,
     ) -> InterpResult<'tcx, Immediate<Provenance>> {
-        use rand::Rng as _;
         let this = self.eval_context_mut();
         this.atomic_access_check(place, AtomicAccessType::Rmw)?;
 

@@ -292,6 +292,7 @@ pub mod consts {
     pub const TAU: f32 = 6.28318530717958647692528676655900577_f32;
 
     /// The golden ratio (φ)
+    #[doc(alias = "phi")]
     #[stable(feature = "euler_gamma_golden_ratio", since = "1.94.0")]
     pub const GOLDEN_RATIO: f32 = 1.618033988749894848204586834365638118_f32;
 
@@ -1164,10 +1165,10 @@ impl f32 {
                 target_arch = "wasm32",
                 target_arch = "wasm64",
             ) => {
-                ((self as f64 + other as f64) / 2.0) as f32
+                ((self as f64 + other as f64) * 0.5) as f32
             }
             _ => {
-                const HI: f32 = f32::MAX / 2.;
+                const HI: f32 = f32::MAX * 0.5;
 
                 let (a, b) = (self, other);
                 let abs_a = a.abs();
@@ -1175,9 +1176,9 @@ impl f32 {
 
                 if abs_a <= HI && abs_b <= HI {
                     // Overflow is impossible
-                    (a + b) / 2.
+                    (a + b) * 0.5
                 } else {
-                    (a / 2.) + (b / 2.)
+                    (a * 0.5) + (b * 0.5)
                 }
             }
         }

@@ -7,7 +7,6 @@
 use crate::ffi::OsStr;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::path::Path;
-use crate::sealed::Sealed;
 use crate::sys::process::ChildPipe;
 use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner};
 use crate::{io, process, sys};
@@ -31,11 +30,8 @@ cfg_select! {
 }
 
 /// Unix-specific extensions to the [`process::Command`] builder.
-///
-/// This trait is sealed: it cannot be implemented outside the standard library.
-/// This is so that future additional methods are not breaking changes.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait CommandExt: Sealed {
+pub impl(self) trait CommandExt {
     /// Sets the child process's user ID. This translates to a
     /// `setuid` call in the child process. Failure in the `setuid`
     /// call will cause the spawn to fail.
@@ -287,11 +283,8 @@ impl CommandExt for process::Command {
 ///
 /// A Unix wait status (a Rust `ExitStatus`) can represent a Unix exit status, but can also
 /// represent other kinds of process event.
-///
-/// This trait is sealed: it cannot be implemented outside the standard library.
-/// This is so that future additional methods are not breaking changes.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait ExitStatusExt: Sealed {
+pub impl(self) trait ExitStatusExt {
     /// Creates a new `ExitStatus` or `ExitStatusError` from the raw underlying integer status
     /// value from `wait`
     ///
@@ -393,7 +386,7 @@ impl ExitStatusExt for process::ExitStatusError {
 }
 
 #[unstable(feature = "unix_send_signal", issue = "141975")]
-pub trait ChildExt: Sealed {
+pub impl(self) trait ChildExt {
     /// Sends a signal to a child process.
     ///
     /// # Errors
@@ -420,12 +413,91 @@ pub trait ChildExt: Sealed {
     /// }
     /// ```
     fn send_signal(&self, signal: i32) -> io::Result<()>;
+
+    /// Sends a signal to a child process's process group.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the signal is invalid or if the
+    /// child process does not have a process group. The integer values
+    /// associated with signals are implementation-specific, so it's encouraged
+    /// to use a crate that provides posix bindings.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(unix_send_signal)]
+    ///
+    /// use std::{io, os::unix::process::{ChildExt, CommandExt}, process::{Command, Stdio}};
+    ///
+    /// use libc::SIGTERM;
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     # if cfg!(not(all(target_vendor = "apple", not(target_os = "macos")))) {
+    ///     let child = Command::new("cat")
+    ///         .stdin(Stdio::piped())
+    ///         .process_group(0)
+    ///         .spawn()?;
+    ///     child.send_process_group_signal(SIGTERM)?;
+    ///     # }
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    fn send_process_group_signal(&self, signal: i32) -> io::Result<()>;
+
+    /// Forces the child process's process group to exit.
+    ///
+    /// This is analogous to [`Child::kill`] but applies to every process in
+    /// the child process's process group.
+    ///
+    /// Use [`CommandExt::process_group`] to assign a child process to an
+    /// existing process group, or to make it the leader of a new process group.
+    /// By default spawned processes are in the parent's process group.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(unix_kill_process_group)]
+    ///
+    /// use std::{os::unix::process::{ChildExt, CommandExt}, process::{Command, Stdio}};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let mut child = Command::new("cat")
+    ///         .stdin(Stdio::piped())
+    ///         .process_group(0)
+    ///         .spawn()?;
+    ///     child.kill_process_group()?;
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
+    /// [`Child::kill`]: process::Child::kill
+    #[unstable(feature = "unix_kill_process_group", issue = "156537")]
+    fn kill_process_group(&mut self) -> io::Result<()>;
 }
 
 #[unstable(feature = "unix_send_signal", issue = "141975")]
 impl ChildExt for process::Child {
     fn send_signal(&self, signal: i32) -> io::Result<()> {
         self.handle.send_signal(signal)
+    }
+
+    fn send_process_group_signal(&self, signal: i32) -> io::Result<()> {
+        self.handle.send_process_group_signal(signal)
+    }
+
+    #[cfg(not(target_os = "espidf"))]
+    fn kill_process_group(&mut self) -> io::Result<()> {
+        self.handle.send_process_group_signal(libc::SIGKILL)
+    }
+
+    #[cfg(target_os = "espidf")]
+    fn kill_process_group(&mut self) -> io::Result<()> {
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "process groups are not supported on espidf",
+        ))
     }
 }
 

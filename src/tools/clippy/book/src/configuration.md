@@ -89,7 +89,7 @@ cargo clippy -- -A clippy::all -W clippy::useless_format -W clippy::...
 #### Lints Section in `Cargo.toml`
 
 Finally, lints can be allowed/denied using [the lints
-section](https://doc.rust-lang.org/nightly/cargo/reference/manifest.html#the-lints-section)) in the `Cargo.toml` file:
+section](https://doc.rust-lang.org/nightly/cargo/reference/manifest.html#the-lints-section) in the `Cargo.toml` file:
 
 To deny `clippy::enum_glob_use`, put the following in the `Cargo.toml`:
 
@@ -123,7 +123,13 @@ fn main() {
 You can also omit the patch version when specifying the MSRV, so `msrv = 1.30`
 is equivalent to `msrv = 1.30.0`.
 
-Note: `custom_inner_attributes` is an unstable feature, so it has to be enabled explicitly.
+> **Note:** Some lints change their behavior depending on the configured MSRV.
+> In some cases, Clippy may suppress a lint entirely to avoid suggesting APIs or
+> syntax unavailable for the configured MSRV.
+> In other cases, Clippy may emit the lint but choose an older compatible suggestion.
+
+> **Note:** `custom_inner_attributes` is an unstable feature, so it has to be
+> enabled explicitly.
 
 Lints that recognize this configuration option can be
 found [here](https://rust-lang.github.io/rust-clippy/master/index.html#msrv)

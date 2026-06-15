@@ -22,7 +22,7 @@ pub(crate) fn opaque_hidden_types(tcx: TyCtxt<'_>) {
 
         let ty = tcx.type_of(id).instantiate_identity().skip_norm_wip();
         let span = tcx.def_span(id);
-        tcx.dcx().emit_err(crate::errors::TypeOf { span, ty });
+        tcx.dcx().emit_err(crate::diagnostics::TypeOf { span, ty });
     }
 }
 
@@ -155,7 +155,7 @@ pub(crate) fn vtables<'tcx>(tcx: TyCtxt<'tcx>) {
             }
             hir::ItemKind::TyAlias(..) => {
                 let ty = tcx.type_of(def_id).instantiate_identity();
-                if ty.skip_normalization().has_non_region_param() {
+                if ty.has_non_region_param() {
                     tcx.dcx().span_err(
                         attr_span,
                         "`rustc_dump_vtable` must be applied to non-generic type",

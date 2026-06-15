@@ -396,16 +396,16 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
         stmt: &Statement<'tcx>,
     ) -> Option<(Place<'tcx>, Option<TrackElem>)> {
         match stmt.kind {
-            StatementKind::Assign(box (place, _)) => Some((place, None)),
-            StatementKind::SetDiscriminant { box place, variant_index: _ } => {
-                Some((place, Some(TrackElem::Discriminant)))
+            StatementKind::Assign((place, _)) => Some((place, None)),
+            StatementKind::SetDiscriminant { ref place, variant_index: _ } => {
+                Some((**place, Some(TrackElem::Discriminant)))
             }
             StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
                 Some((Place::from(local), None))
             }
-            | StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(..))
+            | StatementKind::Intrinsic(NonDivergingIntrinsic::Assume(..))
             // copy_nonoverlapping takes pointers and mutated the pointed-to value.
-            | StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(..))
+            | StatementKind::Intrinsic(NonDivergingIntrinsic::CopyNonOverlapping(..))
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
             | StatementKind::FakeRead(..)
@@ -518,7 +518,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
                 self.process_copy(lhs, rhs, state)
             }
             // If we expect `lhs ?= A`, we have an opportunity if we assume `constant == A`.
-            Rvalue::Aggregate(box kind, operands) => {
+            Rvalue::Aggregate(kind, operands) => {
                 let agg_ty = lhs_place.ty(self.body, self.tcx).ty;
                 let lhs = match kind {
                     // Do not support unions.
@@ -573,8 +573,8 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
             // Create a condition on `rhs ?= B`.
             Rvalue::BinaryOp(
                 op,
-                box (Operand::Move(operand) | Operand::Copy(operand), Operand::Constant(value))
-                | box (Operand::Constant(value), Operand::Move(operand) | Operand::Copy(operand)),
+                (Operand::Move(operand) | Operand::Copy(operand), Operand::Constant(value))
+                | (Operand::Constant(value), Operand::Move(operand) | Operand::Copy(operand)),
             ) => {
                 let equals = match op {
                     BinOp::Eq => ScalarInt::TRUE,
@@ -617,8 +617,8 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
         match &stmt.kind {
             // If we expect `discriminant(place) ?= A`,
             // we have an opportunity if `variant_index ?= A`.
-            StatementKind::SetDiscriminant { box place, variant_index } => {
-                let Some(discr_target) = self.place(*place, Some(TrackElem::Discriminant)) else {
+            StatementKind::SetDiscriminant { place, variant_index } => {
+                let Some(discr_target) = self.place(**place, Some(TrackElem::Discriminant)) else {
                     return;
                 };
                 let enum_ty = place.ty(self.body, self.tcx).ty;
@@ -633,15 +633,13 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
                 self.process_immediate(discr_target, discr, state)
             }
             // If we expect `lhs ?= true`, we have an opportunity if we assume `lhs == true`.
-            StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(
+            StatementKind::Intrinsic(NonDivergingIntrinsic::Assume(
                 Operand::Copy(place) | Operand::Move(place),
             )) => {
                 let Some(place) = self.place_value(*place, None) else { return };
                 state.fulfill_matches(place, ScalarInt::TRUE);
             }
-            StatementKind::Assign(box (lhs_place, rhs)) => {
-                self.process_assign(lhs_place, rhs, state)
-            }
+            StatementKind::Assign((lhs_place, rhs)) => self.process_assign(lhs_place, rhs, state),
             _ => {}
         }
     }

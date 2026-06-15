@@ -1,14 +1,15 @@
-use std::env;
-use std::ffi::OsString;
+#![allow(clippy::let_and_return)]
 use std::num::NonZero;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::OnceLock;
+use std::{env, fmt};
 
 use colored::*;
 use regex::bytes::Regex;
 use ui_test::build_manager::BuildManager;
 use ui_test::color_eyre::eyre::{Context, Result};
+use ui_test::custom_flags::Flag;
 use ui_test::custom_flags::edition::Edition;
 use ui_test::dependencies::DependencyBuilder;
 use ui_test::per_test_config::TestConfig;
@@ -18,12 +19,35 @@ use ui_test::{CommandBuilder, Config, Match, ignore_output_conflict};
 
 #[derive(Copy, Clone, Debug)]
 enum Mode {
-    Pass,
+    Pass {
+        native: bool,
+    },
     /// Requires annotations
     Fail,
     /// Not used for tests, but for `miri run --dep`
-    RunDep,
+    RunDep {
+        native: bool,
+    },
+    /// Test must panic.
     Panic,
+}
+
+impl Mode {
+    fn native(self) -> bool {
+        matches!(self, Mode::Pass { native: true } | Mode::RunDep { native: true })
+    }
+}
+
+impl fmt::Display for Mode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Mode::Pass { native: false } => write!(f, "pass"),
+            Mode::Pass { native: true } => write!(f, "pass-native"),
+            Mode::Fail => write!(f, "fail"),
+            Mode::Panic => write!(f, "panic"),
+            Mode::RunDep { .. } => unreachable!(),
+        }
+    }
 }
 
 fn miri_path() -> PathBuf {
@@ -80,7 +104,7 @@ struct WithDependencies {
     bless: bool,
 }
 
-/// Does *not* set any args or env vars, since it is shared between the test runner and
+/// Does *not* set args or (most) env vars, since it is shared between the test runner and
 /// run_dep_mode.
 fn miri_config(
     target: &str,
@@ -91,6 +115,15 @@ fn miri_config(
     // Miri is rustc-like, so we create a default builder for rustc and modify it
     let mut program = CommandBuilder::rustc();
     program.program = miri_path();
+    if mode.native() {
+        // This means we build the program instead of running Miri.
+        program.envs.push(("MIRI_BE_RUSTC".into(), Some("host".into())));
+        // Use the right linker, if necessary. We use the `CC_*` variable as that is set by CI and
+        // unlike `CARGO_TARGET_*_LINKER` it does not require upper-casing the target.
+        if let Ok(linker) = env::var(format!("CC_{target}")) {
+            program.args.push(format!("-Clinker={linker}").into());
+        }
+    }
 
     let mut config = Config {
         target: Some(target.to_owned()),
@@ -104,10 +137,17 @@ fn miri_config(
         ..Config::rustc(path)
     };
 
+    // Register custom comments.
+    config.custom_comments.insert("run-native", |parser, _args, span| {
+        // Just remember that this is present.
+        parser.set_custom_once("run-native", (), span);
+    });
+
+    // Adjust comment defaults.
     config.comment_defaults.base().exit_status = match mode {
-        Mode::Pass => Some(0),
+        Mode::Pass { .. } => Some(0),
         Mode::Fail => Some(1),
-        Mode::RunDep => None,
+        Mode::RunDep { .. } => None,
         Mode::Panic => Some(101),
     }
     .map(Spanned::dummy)
@@ -124,9 +164,12 @@ fn miri_config(
     // keep in sync with `./miri run`
     config.comment_defaults.base().add_custom("edition", Edition("2021".into()));
 
+    // Building dependencies is also a "comment default".
     if let Some(WithDependencies { bless }) = with_dependencies {
-        config.comment_defaults.base().set_custom(
-            "dependencies",
+        let crate_manifest_path = Path::new("tests/deps").join("Cargo.toml");
+        let dep_builder = if mode.native() {
+            DependencyBuilder { crate_manifest_path, ..Default::default() }
+        } else {
             DependencyBuilder {
                 program: CommandBuilder {
                     // Set the `cargo-miri` binary, which we expect to be in the same folder as the `miri` binary.
@@ -148,12 +191,65 @@ fn miri_config(
                     ],
                     ..CommandBuilder::cargo()
                 },
-                crate_manifest_path: Path::new("tests/deps").join("Cargo.toml"),
+                crate_manifest_path,
                 build_std: None,
                 bless_lockfile: bless,
-            },
-        );
+            }
+        };
+        config.comment_defaults.base().set_custom("dependencies", dep_builder);
     }
+
+    // We only want this for actual test runs, not native run-dep mode.
+    if matches!(mode, Mode::Pass { native: true }) {
+        // Overwrite "compile-flags" so that it does nothing.
+        // FIXME: make it just skip `-Zmiri` flags.
+        config.custom_comments.insert("compile-flags", |_parser, _args, _span| {});
+
+        // Add a default comment that interprets our custom `run-native` comment.
+        #[derive(Debug)]
+        struct NativeRunner;
+        config.comment_defaults.base().set_custom("native-runner", NativeRunner);
+
+        impl Flag for NativeRunner {
+            fn clone_inner(&self) -> Box<dyn Flag> {
+                Box::new(NativeRunner)
+            }
+            fn must_be_unique(&self) -> bool {
+                true
+            }
+
+            fn test_condition(
+                &self,
+                _config: &Config,
+                comments: &ui_test::Comments,
+                revision: &str,
+            ) -> bool {
+                let should_run = comments
+                    .for_revision(revision)
+                    .any(|r| r.custom.iter().any(|(k, _v)| *k == "run-native"));
+                // We return `true` when the test should be ignored.
+                let ignore = !should_run;
+                ignore
+            }
+
+            fn post_test_action(
+                &self,
+                config: &TestConfig,
+                output: &std::process::Output,
+                build_manager: &BuildManager,
+            ) -> Result<(), ui_test::Errored> {
+                // Delegate to the native run support.
+                use ui_test::custom_flags::run::Run;
+                Run::post_test_action(
+                    &Run { exit_code: 0, output_conflict_handling: None },
+                    config,
+                    output,
+                    build_manager,
+                )
+            }
+        }
+    }
+
     config
 }
 
@@ -178,6 +274,9 @@ fn run_tests(
         assert!(!args.bless, "cannot use RUSTC_BLESS and MIRI_SKIP_UI_CHECKS at the same time");
         config.output_conflict_handling = ignore_output_conflict;
     }
+    if mode.native() {
+        config.output_conflict_handling = ignore_output_conflict;
+    }
 
     // Add a test env var to do environment communication tests.
     config.program.envs.push(("MIRI_ENV_VAR_TEST".into(), Some("0".into())));
@@ -186,23 +285,26 @@ fn run_tests(
     // If a test ICEs, we want to see a backtrace.
     config.program.envs.push(("RUST_BACKTRACE".into(), Some("1".into())));
 
-    // Add some flags we always want.
-    config.program.args.push(
-        format!(
-            "--sysroot={}",
-            env::var("MIRI_SYSROOT").expect("MIRI_SYSROOT must be set to run the ui test suite")
-        )
-        .into(),
-    );
+    // Add rustc/Miri flags.
     config.program.args.push("-Dwarnings".into());
     config.program.args.push("-Dunused".into());
     config.program.args.push("-Ainternal_features".into());
-    if let Ok(extra_flags) = env::var("MIRIFLAGS") {
-        for flag in extra_flags.split_whitespace() {
-            config.program.args.push(flag.into());
+    config.program.args.push("-Zui-testing".into());
+    if !mode.native() {
+        config.program.args.push(
+            format!(
+                "--sysroot={}",
+                env::var("MIRI_SYSROOT")
+                    .expect("MIRI_SYSROOT must be set to run the ui test suite")
+            )
+            .into(),
+        );
+        if let Ok(extra_flags) = env::var("MIRIFLAGS") {
+            for flag in extra_flags.split_whitespace() {
+                config.program.args.push(flag.into());
+            }
         }
     }
-    config.program.args.push("-Zui-testing".into());
 
     // If we're testing the native-lib functionality, then build the shared object file for testing
     // external C function calls and push the relevant compiler flag.
@@ -219,7 +321,7 @@ fn run_tests(
         config.program.args.push("-Zmiri-disable-stacked-borrows".into());
     }
 
-    eprintln!("   Compiler: {}", config.program.display());
+    println!("   Compiler: {}", config.program.display());
     ui_test::run_tests_generic(
         // Only run one test suite. In the future we can add all test suites to one `Vec` and run
         // them all at once, making best use of systems with high parallelism.
@@ -289,8 +391,8 @@ regexes! {
 }
 
 enum Dependencies {
-    WithDependencies,
-    WithoutDependencies,
+    WithDeps,
+    WithoutDeps,
 }
 
 use Dependencies::*;
@@ -302,12 +404,12 @@ fn ui(
     with_dependencies: Dependencies,
     tmpdir: &Path,
 ) -> Result<()> {
-    let msg = format!("## Running ui tests in {path} for {target}");
-    eprintln!("{}", msg.green().bold());
+    let msg = format!("## Running {mode} ui tests in {path} for {target}");
+    println!("{}", msg.green().bold());
 
     let with_dependencies = match with_dependencies {
-        WithDependencies => true,
-        WithoutDependencies => false,
+        WithDeps => true,
+        WithoutDeps => false,
     };
     run_tests(mode, path, target, with_dependencies, tmpdir)
         .with_context(|| format!("ui tests in {path} for {target} failed"))
@@ -330,23 +432,29 @@ fn main() -> Result<()> {
     let target = get_target(&host);
     let tmpdir = tempfile::Builder::new().prefix("miri-uitest-").tempdir()?;
 
-    let mut args = std::env::args_os();
-
-    // Skip the program name and check whether this is a `./miri run-dep` invocation
-    if let Some(first) = args.nth(1)
-        && first == "--miri-run-dep-mode"
-    {
-        return run_dep_mode(target, args);
+    // Check whether this is a `./miri run` invocation
+    if let Ok(mode) = env::var("MIRI_RUN_MODE") {
+        return run_with_deps(target, mode);
     }
 
-    ui(Mode::Pass, "tests/pass", &target, WithoutDependencies, tmpdir.path())?;
-    ui(Mode::Pass, "tests/pass-dep", &target, WithDependencies, tmpdir.path())?;
-    ui(Mode::Panic, "tests/panic", &target, WithDependencies, tmpdir.path())?;
-    ui(Mode::Fail, "tests/fail", &target, WithoutDependencies, tmpdir.path())?;
-    ui(Mode::Fail, "tests/fail-dep", &target, WithDependencies, tmpdir.path())?;
+    ui(Mode::Pass { native: false }, "tests/pass", &target, WithoutDeps, tmpdir.path())?;
+    ui(Mode::Pass { native: false }, "tests/pass-dep", &target, WithDeps, tmpdir.path())?;
+    if target == host {
+        ui(Mode::Pass { native: true }, "tests/pass", &target, WithoutDeps, tmpdir.path())?;
+        ui(Mode::Pass { native: true }, "tests/pass-dep", &target, WithDeps, tmpdir.path())?;
+    }
+    ui(Mode::Panic, "tests/panic", &target, WithDeps, tmpdir.path())?;
+    ui(Mode::Fail, "tests/fail", &target, WithoutDeps, tmpdir.path())?;
+    ui(Mode::Fail, "tests/fail-dep", &target, WithDeps, tmpdir.path())?;
     if cfg!(all(unix, feature = "native-lib")) && target == host {
-        ui(Mode::Pass, "tests/native-lib/pass", &target, WithoutDependencies, tmpdir.path())?;
-        ui(Mode::Fail, "tests/native-lib/fail", &target, WithoutDependencies, tmpdir.path())?;
+        ui(
+            Mode::Pass { native: false },
+            "tests/native-lib/pass",
+            &target,
+            WithoutDeps,
+            tmpdir.path(),
+        )?;
+        ui(Mode::Fail, "tests/native-lib/fail", &target, WithoutDeps, tmpdir.path())?;
     }
 
     // We only enable GenMC tests when the `genmc` feature is enabled, but also only on platforms we support:
@@ -359,28 +467,64 @@ fn main() -> Result<()> {
         target_endian = "little"
     )) && host == target
     {
-        ui(Mode::Pass, "tests/genmc/pass", &target, WithDependencies, tmpdir.path())?;
-        ui(Mode::Fail, "tests/genmc/fail", &target, WithDependencies, tmpdir.path())?;
+        ui(Mode::Pass { native: false }, "tests/genmc/pass", &target, WithDeps, tmpdir.path())?;
+        ui(Mode::Fail, "tests/genmc/fail", &target, WithDeps, tmpdir.path())?;
     }
 
     Ok(())
 }
 
-fn run_dep_mode(target: String, args: impl Iterator<Item = OsString>) -> Result<()> {
+fn run_with_deps(target: String, mode: String) -> Result<()> {
+    let native = mode == "native";
+
     let mut config =
-        miri_config(&target, "", Mode::RunDep, Some(WithDependencies { bless: false }));
+        miri_config(&target, "", Mode::RunDep { native }, Some(WithDependencies { bless: false }));
     config.comment_defaults.base().custom.remove("edition"); // `./miri` adds an `--edition` in `args`, so don't set it twice
     config.fill_host_and_target()?;
-    let dep_builder = BuildManager::one_off(config.clone());
-    // Only set these for the actual run, not the dep builder, so invalid flags do not fail
-    // the dependency build.
-    config.program.args = args.collect();
-    let test_config = TestConfig::one_off_runner(config, PathBuf::new());
+    // Reset `args` (otherwise we'll get JSON output).
+    config.program.args = vec![];
 
+    // Compute the actual Miri invocation command.
+    let test_config = TestConfig::one_off_runner(config.clone(), PathBuf::new());
     let mut cmd = test_config.config.program.build(&test_config.config.out_dir);
-    cmd.arg("--target").arg(test_config.config.target.as_ref().unwrap());
-    // Build dependencies
-    test_config.apply_custom(&mut cmd, &dep_builder).expect("failed to build dependencies");
+    // We are not using `test_config.build_command` (as that would require us to know the filename
+    // we are invoking), so we need to set the target ourselves.
+    cmd.arg("--target").arg(&target);
+    // Also forward arguments to the program (skipping the binary name).
+    // We don't put this in the `config` since we don't want it to affect the dependency build.
+    cmd.args({
+        let mut args = env::args_os();
+        args.next().unwrap();
+        args
+    });
 
-    if cmd.spawn()?.wait()?.success() { Ok(()) } else { std::process::exit(1) }
+    // Build dependencies (which will mutate that command)
+    test_config
+        .apply_custom(&mut cmd, &BuildManager::one_off(config.clone()))
+        .expect("failed to build dependencies");
+    // Finally, actually run Miri.
+    let exit_status = cmd.spawn()?.wait()?;
+    if !exit_status.success() {
+        std::process::exit(1)
+    }
+
+    if native {
+        // We just built the program, we still have to run it. We can't use the ui_test `Run` flag
+        // as (a) that always captures the output, and (b) that needs an actual BuildManager, not
+        // just the one-off stub we have here. So we implement the core logic ourselves.
+
+        // First, figure out the output binary by re-running the compiler with `--print`.
+        cmd.arg("--print").arg("file-names");
+        let output = cmd.output()?;
+        let exe = std::str::from_utf8(&output.stdout).unwrap().trim();
+        let exe = config.out_dir.join(exe);
+        // Then run that binary.
+        let mut cmd = Command::new(exe);
+        let exit_status = cmd.spawn()?.wait()?;
+        if !exit_status.success() {
+            std::process::exit(1)
+        }
+    }
+
+    Ok(())
 }

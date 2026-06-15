@@ -15,6 +15,9 @@ fn main() {
     foo(1e5);
     //~^ WARN falling back to `f32`
     //~| WARN this was previously accepted
+    foo(0.);
+    //~^ WARN falling back to `f32`
+    //~| WARN this was previously accepted
     foo(4f32); // no warning
     let x = -4.0;
     //~^ WARN falling back to `f32`

@@ -12,6 +12,7 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust::{path_to_string, where_bound_predicate_to_string};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::unord::UnordItems;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, Diagnostic, ErrorGuaranteed, MultiSpan, SuggestionStyle, pluralize,
@@ -148,10 +149,8 @@ pub(super) struct ElisionFnParameter {
 /// This is used to suggest introducing an explicit lifetime.
 #[derive(Clone, Copy, Debug)]
 pub(super) enum LifetimeElisionCandidate {
-    /// This is not a real lifetime.
+    /// This is not a real lifetime, or it is a named lifetime, in which case we won't suggest anything.
     Ignore,
-    /// There is a named lifetime, we won't suggest anything.
-    Named,
     Missing(MissingLifetime),
 }
 
@@ -322,9 +321,9 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             && let Some(assoc) = self.diag_metadata.current_impl_item
         {
             let generics = match &assoc.kind {
-                AssocItemKind::Const(box ast::ConstItem { generics, .. })
-                | AssocItemKind::Fn(box ast::Fn { generics, .. })
-                | AssocItemKind::Type(box ast::TyAlias { generics, .. }) => Some(generics),
+                AssocItemKind::Const(ast::ConstItem { generics, .. })
+                | AssocItemKind::Fn(ast::Fn { generics, .. })
+                | AssocItemKind::Type(ast::TyAlias { generics, .. }) => Some(generics),
                 AssocItemKind::Delegation(..)
                 | AssocItemKind::MacCall(..)
                 | AssocItemKind::DelegationMac(..) => None,
@@ -2073,9 +2072,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
             let (lhs_span, rhs_span) = match &expr.kind {
                 ExprKind::Field(base, ident) => (base.span, ident.span),
-                ExprKind::MethodCall(box MethodCall { receiver, span, .. }) => {
-                    (receiver.span, *span)
-                }
+                ExprKind::MethodCall(MethodCall { receiver, span, .. }) => (receiver.span, *span),
                 _ => return false,
             };
 
@@ -2672,7 +2669,11 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             .extern_crate_map
             .items()
             // FIXME: This doesn't include impls like `impl Default for String`.
-            .flat_map(|(_, crate_)| self.r.tcx.implementations_of_trait((*crate_, default_trait)))
+            .flat_map(|(_, crate_)| {
+                UnordItems::new(
+                    self.r.tcx.implementations_of_trait((*crate_, default_trait)).into_iter(),
+                )
+            })
             .filter_map(|(_, simplified_self_ty)| *simplified_self_ty)
             .filter_map(|simplified_self_ty| match simplified_self_ty {
                 SimplifiedType::Adt(did) => Some(did),
@@ -2748,8 +2749,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         }
         // Fields are generally expected in the same contexts as locals.
         if filter_fn(Res::Local(ast::DUMMY_NODE_ID)) {
-            if let Some(node_id) =
-                self.diag_metadata.current_self_type.as_ref().and_then(extract_node_id)
+            if let Some(node_id) = self.diag_metadata.current_self_type.and_then(extract_node_id)
                 && let Some(resolution) = self.r.partial_res_map.get(&node_id)
                 && let Some(Res::Def(DefKind::Struct | DefKind::Union, did)) = resolution.full_res()
                 && let Some(fields) = self.r.field_idents(did)
@@ -2767,7 +2767,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 {
                     return Some(match &assoc_item.kind {
                         ast::AssocItemKind::Const(..) => AssocSuggestion::AssocConst,
-                        ast::AssocItemKind::Fn(box ast::Fn { sig, .. }) if sig.decl.has_self() => {
+                        ast::AssocItemKind::Fn(ast::Fn { sig, .. }) if sig.decl.has_self() => {
                             AssocSuggestion::MethodWithSelf { called }
                         }
                         ast::AssocItemKind::Fn(..) => AssocSuggestion::AssocFn { called },
@@ -2775,8 +2775,9 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         ast::AssocItemKind::Delegation(..)
                             if self
                                 .r
-                                .delegation_fn_sigs
-                                .get(&self.r.local_def_id(assoc_item.id))
+                                .owners
+                                .get(&assoc_item.id)
+                                .and_then(|o| self.r.delegation_fn_sigs.get(&o.def_id))
                                 .is_some_and(|sig| sig.has_self) =>
                         {
                             AssocSuggestion::MethodWithSelf { called }
@@ -3103,7 +3104,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 ExprKind::Call(..) => (None, true),
                 // `Type.Foo(a, b)`, suggest replacing `.` -> `::` if variant `Foo` exists and is a tuple variant,
                 // otherwise suggest adding a variant after `Type`.
-                ExprKind::MethodCall(box MethodCall {
+                ExprKind::MethodCall(MethodCall {
                     receiver,
                     span,
                     seg: PathSegment { ident, .. },
@@ -3470,7 +3471,11 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         if !self.diag_metadata.currently_processing_generic_args && !single_uppercase_char {
             return (None, None);
         }
-        match (self.diag_metadata.current_item, single_uppercase_char, self.diag_metadata.currently_processing_generic_args) {
+        match (
+            self.diag_metadata.current_item,
+            single_uppercase_char,
+            self.diag_metadata.currently_processing_generic_args,
+        ) {
             (Some(Item { kind: ItemKind::Fn(fn_), .. }), _, _) if fn_.ident.name == sym::main => {
                 // Ignore `fn main()` as we don't want to suggest `fn main<T>()`
             }
@@ -3483,7 +3488,8 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         | kind @ ItemKind::Union(..),
                     ..
                 }),
-                true, _
+                true,
+                _,
             )
             // Without the 2nd `true`, we'd suggest `impl <T>` for `impl T` when a type `T` isn't found
             | (Some(Item { kind: kind @ ItemKind::Impl(..), .. }), true, true)
@@ -3503,7 +3509,9 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
                     let (msg, sugg) = match source {
                         PathSource::Type | PathSource::PreciseCapturingArg(TypeNS) => {
-                            if let Some(err) = self.detect_and_suggest_const_parameter_error(path, source) {
+                            if let Some(err) =
+                                self.detect_and_suggest_const_parameter_error(path, source)
+                            {
                                 return (None, Some(err));
                             }
                             ("you might be missing a type parameter", ident)
@@ -3518,8 +3526,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         let span = if let [.., bound] = &param.bounds[..] {
                             bound.span()
                         } else if let GenericParam {
-                            kind: GenericParamKind::Const { ty, span: _, default  }, ..
-                        } = param {
+                            kind: GenericParamKind::Const { ty, span: _, default },
+                            ..
+                        } = param
+                        {
                             default.as_ref().map(|def| def.value.span).unwrap_or(ty.span)
                         } else {
                             param.ident.span
@@ -3530,12 +3540,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     };
                     // Do not suggest if this is coming from macro expansion.
                     if span.can_be_used_for_suggestions() {
-                        return (Some((
-                            span.shrink_to_hi(),
-                            msg,
-                            sugg,
-                            Applicability::MaybeIncorrect,
-                        )), None);
+                        return (
+                            Some((span.shrink_to_hi(), msg, sugg, Applicability::MaybeIncorrect)),
+                            None,
+                        );
                     }
                 }
             }
@@ -3619,6 +3627,9 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             };
             match use_set {
                 Some(LifetimeUseSet::Many) => {}
+                // A lifetime bound is a real use of that lifetime parameter, even
+                // though visiting a bound like `'b: 'a` only records a use of `'a`.
+                Some(LifetimeUseSet::One { .. }) if !param.bounds.is_empty() => {}
                 Some(LifetimeUseSet::One { use_span, use_ctxt }) => {
                     let param_ident = param.ident;
                     let deletion_span =

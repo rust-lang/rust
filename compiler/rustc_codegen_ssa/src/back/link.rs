@@ -53,14 +53,14 @@ use rustc_target::spec::{
 };
 use tracing::{debug, info, warn};
 
-use super::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
+use super::archive::{AddArchiveKind, ArchiveBuilder, ArchiveBuilderBuilder, ArchiveEntryKind};
 use super::command::Command;
 use super::linker::{self, Linker};
 use super::metadata::{MetadataPosition, create_wrapper_file};
 use super::rpath::{self, RPathConfig};
 use super::{apple, rmeta_link, versioned_llvm_target};
 use crate::base::needs_allocator_shim_for_linking;
-use crate::{CodegenLintLevels, CompiledModule, CompiledModules, CrateInfo, NativeLib, errors};
+use crate::{CodegenLintLevelSpecs, CompiledModule, CompiledModules, CrateInfo, NativeLib, errors};
 
 pub fn ensure_removed(dcx: DiagCtxtHandle<'_>, path: &Path) {
     if let Err(e) = fs::remove_file(path) {
@@ -98,8 +98,13 @@ pub fn link_binary(
         }
 
         sess.time("link_binary_check_files_are_writeable", || {
-            for obj in compiled_modules.modules.iter().filter_map(|m| m.object.as_ref()) {
-                check_file_is_writeable(obj, sess);
+            for m in &compiled_modules.modules {
+                if let Some(obj) = &m.object {
+                    check_file_is_writeable(obj, sess);
+                }
+                if let Some(obj) = &m.global_asm_object {
+                    check_file_is_writeable(obj, sess);
+                }
             }
         });
 
@@ -126,7 +131,7 @@ pub fn link_binary(
                         RlibFlavor::Normal,
                         &path,
                     )
-                    .build(&out_filename);
+                    .build(&out_filename, None);
                 }
                 CrateType::StaticLib => {
                     link_staticlib(
@@ -199,6 +204,10 @@ pub fn link_binary(
         let maybe_remove_temps_from_module =
             |preserve_objects: bool, preserve_dwarf_objects: bool, module: &CompiledModule| {
                 if !preserve_objects && let Some(ref obj) = module.object {
+                    ensure_removed(sess.dcx(), obj);
+                }
+
+                if !preserve_objects && let Some(ref obj) = module.global_asm_object {
                     ensure_removed(sess.dcx(), obj);
                 }
 
@@ -307,6 +316,7 @@ fn link_rlib<'a>(
         .modules
         .iter()
         .filter_map(|m| m.object.as_ref())
+        .chain(compiled_modules.modules.iter().filter_map(|m| m.global_asm_object.as_ref()))
         .map(|obj| obj.file_name().unwrap().to_str().unwrap().to_string())
         .collect();
 
@@ -332,11 +342,11 @@ fn link_rlib<'a>(
                     // normal linkers for the platform. Sometimes this is not possible however.
                     // If it is possible however, placing the metadata object first improves
                     // performance of getting metadata from rlibs.
-                    ab.add_file(&metadata);
+                    ab.add_file(&metadata, ArchiveEntryKind::Other);
                     // Place the rmeta-link member immediately after metadata so consumers
                     // can find it without iterating the whole archive.
                     if let Some(file) = &metadata_link_file {
-                        ab.add_file(file);
+                        ab.add_file(file, ArchiveEntryKind::Other);
                     }
                     None
                 }
@@ -349,20 +359,28 @@ fn link_rlib<'a>(
 
     for m in &compiled_modules.modules {
         if let Some(obj) = m.object.as_ref() {
-            ab.add_file(obj);
+            ab.add_file(obj, ArchiveEntryKind::RustObj);
+        }
+
+        if let Some(obj) = m.global_asm_object.as_ref() {
+            ab.add_file(obj, ArchiveEntryKind::RustObj);
         }
 
         if let Some(dwarf_obj) = m.dwarf_object.as_ref() {
-            ab.add_file(dwarf_obj);
+            ab.add_file(dwarf_obj, ArchiveEntryKind::Other);
         }
     }
 
     match flavor {
         RlibFlavor::Normal => {}
         RlibFlavor::StaticlibBase => {
-            let obj = compiled_modules.allocator_module.as_ref().and_then(|m| m.object.as_ref());
-            if let Some(obj) = obj {
-                ab.add_file(obj);
+            if let Some(m) = &compiled_modules.allocator_module {
+                if let Some(obj) = &m.object {
+                    ab.add_file(obj, ArchiveEntryKind::RustObj);
+                }
+                if let Some(obj) = &m.global_asm_object {
+                    ab.add_file(obj, ArchiveEntryKind::RustObj);
+                }
             }
         }
     }
@@ -401,7 +419,7 @@ fn link_rlib<'a>(
             packed_bundled_libs.push(wrapper_file);
         } else {
             let path = find_native_static_library(lib.name.as_str(), lib.verbatim, sess);
-            ab.add_archive(&path, None).unwrap_or_else(|error| {
+            ab.add_archive(&path, AddArchiveKind::Other).unwrap_or_else(|error| {
                 sess.dcx().emit_fatal(errors::AddNativeLibrary { library_path: path, error })
             });
         }
@@ -418,7 +436,7 @@ fn link_rlib<'a>(
             tmpdir.as_ref(),
             true,
         ) {
-            ab.add_archive(&output_path, None).unwrap_or_else(|error| {
+            ab.add_archive(&output_path, AddArchiveKind::Other).unwrap_or_else(|error| {
                 sess.dcx()
                     .emit_fatal(errors::AddNativeLibrary { library_path: output_path, error });
             });
@@ -451,18 +469,18 @@ fn link_rlib<'a>(
         //
         // Basically, all this means is that this code should not move above the
         // code above.
-        ab.add_file(&trailing_metadata);
+        ab.add_file(&trailing_metadata, ArchiveEntryKind::Other);
         // Place the rmeta-link member immediately after metadata so consumers can
         // find it without iterating the whole archive.
         if let Some(file) = &metadata_link_file {
-            ab.add_file(file);
+            ab.add_file(file, ArchiveEntryKind::Other);
         }
     }
 
     // Add all bundled static native library dependencies.
     // Archives added to the end of .rlib archive, see comment above for the reason.
     for lib in packed_bundled_libs {
-        ab.add_file(&lib)
+        ab.add_file(&lib, ArchiveEntryKind::Other)
     }
 
     ab
@@ -511,16 +529,14 @@ fn link_staticlib(
         let bundled_libs: FxIndexSet<_> = native_libs.filter_map(|lib| lib.filename).collect();
         ab.add_archive(
             path,
-            Some(Box::new(move |fname: &str, metadata_link| {
+            AddArchiveKind::Rlib(&|fname: &str, entry_kind| {
                 // Ignore metadata and rmeta-link files.
                 if fname == METADATA_FILENAME || fname == rmeta_link::FILENAME {
                     return true;
                 }
 
                 // Don't include Rust objects if LTO is enabled.
-                if lto
-                    && metadata_link.is_some_and(|m| m.rust_object_files.iter().any(|f| f == fname))
-                {
+                if lto && entry_kind == ArchiveEntryKind::RustObj {
                     return true;
                 }
 
@@ -530,7 +546,7 @@ fn link_staticlib(
                 }
 
                 false
-            })),
+            }),
         )
         .unwrap();
 
@@ -541,7 +557,7 @@ fn link_staticlib(
         for filename in relevant_libs.iter() {
             let joined = tempdir.as_ref().join(filename.as_str());
             let path = joined.as_path();
-            ab.add_archive(path, None).unwrap();
+            ab.add_archive(path, AddArchiveKind::Other).unwrap();
         }
 
         all_native_libs.extend(crate_info.native_libraries[&cnum].iter().cloned());
@@ -550,7 +566,22 @@ fn link_staticlib(
         sess.dcx().emit_fatal(e);
     }
 
-    ab.build(out_filename);
+    let exported_symbols = if sess.opts.unstable_opts.staticlib_hide_internal_symbols {
+        if !matches!(sess.target.binary_format, BinaryFormat::Elf | BinaryFormat::MachO) {
+            sess.dcx().emit_warn(errors::StaticlibHideInternalSymbolsUnsupported {
+                binary_format: sess.target.archive_format.to_string(),
+            });
+            None
+        } else {
+            crate_info
+                .exported_symbols
+                .get(&CrateType::StaticLib)
+                .map(|symbols| symbols.iter().map(|(s, _)| s.clone()).collect())
+        }
+    } else {
+        None
+    };
+    ab.build(out_filename, exported_symbols);
 
     let crates = crate_info.used_crates.iter();
 
@@ -632,8 +663,13 @@ fn link_dwarf_object(
         // Input objs contain .o/.dwo files from the current crate.
         match sess.opts.unstable_opts.split_dwarf_kind {
             SplitDwarfKind::Single => {
-                for input_obj in compiled_modules.modules.iter().filter_map(|m| m.object.as_ref()) {
-                    package.add_input_object(input_obj)?;
+                for m in &compiled_modules.modules {
+                    if let Some(input_obj) = &m.object {
+                        package.add_input_object(input_obj)?;
+                    }
+                    if let Some(input_obj) = &m.global_asm_object {
+                        package.add_input_object(input_obj)?;
+                    }
                 }
             }
             SplitDwarfKind::Split => {
@@ -728,7 +764,12 @@ fn is_windows_gnu_clang(sess: &Session) -> bool {
         && sess.target.options.cfg_abi == CfgAbi::Llvm
 }
 
-fn report_linker_output(sess: &Session, levels: CodegenLintLevels, stdout: &[u8], stderr: &[u8]) {
+fn report_linker_output(
+    sess: &Session,
+    levels: CodegenLintLevelSpecs,
+    stdout: &[u8],
+    stderr: &[u8],
+) {
     let mut escaped_stderr = escape_string(&stderr);
     let mut escaped_stdout = escape_string(&stdout);
     let mut linker_info = String::new();
@@ -776,9 +817,15 @@ fn report_linker_output(sess: &Session, levels: CodegenLintLevels, stdout: &[u8]
 
         // FIXME: Tracked by https://github.com/rust-lang/rust/issues/136113
         let deployment_mismatch = |line: &str| {
-            line.starts_with("ld: warning: object file (")
-                && line.contains("was built for newer 'macOS' version")
-                && line.contains("than being linked")
+            // ld64 (object files + dylibs) and ld_prime (object files only):
+            (line.starts_with("ld: ")
+                && line.contains("was built for newer")
+                && line.contains("than being linked"))
+            // ld_prime (Xcode 15+, dylibs only):
+            || (line.starts_with("ld: ")
+                && line.contains("building for")
+                && line.contains("but linking with")
+                && line.contains("which was built for newer version"))
         };
         // FIXME: This is a real warning we would like to show, but it hits too many crates
         // to want to turn it on immediately.
@@ -1106,7 +1153,7 @@ fn link_natively(
             }
 
             info!("reporting linker output: flavor={flavor:?}");
-            report_linker_output(sess, crate_info.lint_levels, &prog.stdout, &prog.stderr);
+            report_linker_output(sess, crate_info.lint_level_specs, &prog.stdout, &prog.stderr);
         }
         Err(e) => {
             let linker_not_found = e.kind() == io::ErrorKind::NotFound;
@@ -1232,8 +1279,8 @@ fn link_natively(
 
     if should_archive {
         let mut ab = archive_builder_builder.new_archive_builder(sess);
-        ab.add_file(temp_filename);
-        ab.build(out_filename);
+        ab.add_file(temp_filename, ArchiveEntryKind::Other);
+        ab.build(out_filename, None);
     }
 }
 
@@ -1519,7 +1566,6 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                     }
                     LinkerFlavor::Bpf => "bpf-linker",
                     LinkerFlavor::Llbc => "llvm-bitcode-linker",
-                    LinkerFlavor::Ptx => "rust-ptx-linker",
                 }),
                 flavor,
             )),
@@ -1560,7 +1606,6 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
     let linker_flavor = match sess.opts.cg.linker_flavor {
         // The linker flavors that are non-target specific can be directly translated to LinkerFlavor
         Some(LinkerFlavorCli::Llbc) => Some(LinkerFlavor::Llbc),
-        Some(LinkerFlavorCli::Ptx) => Some(LinkerFlavor::Ptx),
         // The linker flavors that corresponds to targets needs logic that keeps the base LinkerFlavor
         linker_flavor => {
             linker_flavor.map(|flavor| sess.target.linker_flavor.with_cli_hints(flavor))
@@ -2232,8 +2277,13 @@ fn add_linked_symbol_object(
 
 /// Add object files containing code from the current crate.
 fn add_local_crate_regular_objects(cmd: &mut dyn Linker, compiled_modules: &CompiledModules) {
-    for obj in compiled_modules.modules.iter().filter_map(|m| m.object.as_ref()) {
-        cmd.add_object(obj);
+    for m in &compiled_modules.modules {
+        if let Some(obj) = &m.object {
+            cmd.add_object(obj);
+        }
+        if let Some(obj) = &m.global_asm_object {
+            cmd.add_object(obj);
+        }
     }
 }
 
@@ -2244,10 +2294,13 @@ fn add_local_crate_allocator_objects(
     crate_info: &CrateInfo,
     crate_type: CrateType,
 ) {
-    if needs_allocator_shim_for_linking(&crate_info.dependency_formats, crate_type) {
-        if let Some(obj) =
-            compiled_modules.allocator_module.as_ref().and_then(|m| m.object.as_ref())
-        {
+    if needs_allocator_shim_for_linking(&crate_info.dependency_formats, crate_type)
+        && let Some(m) = &compiled_modules.allocator_module
+    {
+        if let Some(obj) = &m.object {
+            cmd.add_object(obj);
+        }
+        if let Some(obj) = &m.global_asm_object {
             cmd.add_object(obj);
         }
     }
@@ -2734,13 +2787,7 @@ fn add_order_independent_options(
     }
 
     if sess.target.os == Os::Emscripten {
-        cmd.cc_arg(if sess.opts.unstable_opts.emscripten_wasm_eh {
-            "-fwasm-exceptions"
-        } else if sess.panic_strategy().unwinds() {
-            "-sDISABLE_EXCEPTION_CATCHING=0"
-        } else {
-            "-sDISABLE_EXCEPTION_CATCHING=1"
-        });
+        cmd.cc_arg("-fwasm-exceptions");
     }
 
     if flavor == LinkerFlavor::Llbc {
@@ -2753,8 +2800,6 @@ fn add_order_independent_options(
         if crate_info.target_features.len() > 0 {
             cmd.link_arg(&format!("--target-feature={}", &crate_info.target_features.join(",")));
         }
-    } else if flavor == LinkerFlavor::Ptx {
-        cmd.link_args(&["--fallback-arch", &crate_info.target_cpu]);
     } else if flavor == LinkerFlavor::Bpf {
         cmd.link_args(&["--cpu", &crate_info.target_cpu]);
         if let Some(feat) = [sess.opts.cg.target_feature.as_str(), &sess.target.options.features]
@@ -3204,19 +3249,19 @@ fn add_static_crate(
         let mut archive = archive_builder_builder.new_archive_builder(sess);
         if let Err(error) = archive.add_archive(
             cratepath,
-            Some(Box::new(move |f, metadata_link| {
+            AddArchiveKind::Rlib(&|f, entry_kind| {
                 if f == METADATA_FILENAME || f == rmeta_link::FILENAME {
                     return true;
                 }
-
-                let is_rust_object =
-                    metadata_link.is_some_and(|m| m.rust_object_files.iter().any(|rf| rf == f));
 
                 // If we're performing LTO and this is a rust-generated object
                 // file, then we don't need the object file as it's part of the
                 // LTO module. Note that `#![no_builtins]` is excluded from LTO,
                 // though, so we let that object file slide.
-                if upstream_rust_objects_already_included && is_rust_object && is_builtins {
+                if upstream_rust_objects_already_included
+                    && entry_kind == ArchiveEntryKind::RustObj
+                    && is_builtins
+                {
                     return true;
                 }
 
@@ -3230,12 +3275,12 @@ fn add_static_crate(
                 }
 
                 false
-            })),
+            }),
         ) {
             sess.dcx()
                 .emit_fatal(errors::RlibArchiveBuildFailure { path: cratepath.clone(), error });
         }
-        if archive.build(&dst) {
+        if archive.build(&dst, None) {
             link_upstream(&dst);
         }
     });

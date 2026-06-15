@@ -235,6 +235,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.GetCurrentProcessId()?;
                 this.write_scalar(result, dest)?;
             }
+            "GetTempPathW" => {
+                // FIXME: This does not have a direct test (#3179).
+                let [bufferlength, buffer] = this.check_shim_sig(
+                    shim_sig!(extern "system" fn(u32, *mut _) -> u32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let result = this.GetTempPathW(bufferlength, buffer)?;
+                this.write_scalar(result, dest)?;
+            }
 
             // File related shims
             "NtWriteFile" => {
@@ -627,6 +638,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Thread-local storage
             "TlsAlloc" => {
+                // FIXME: This does not have a direct test (#3179).
                 // This just creates a key; Windows does not natively support TLS destructors.
 
                 // Create key and return it.
@@ -640,6 +652,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(Scalar::from_uint(key, dest.layout.size), dest)?;
             }
             "TlsGetValue" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [key] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32) -> *mut _),
                     link_name,
@@ -652,6 +665,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(ptr, dest)?;
             }
             "TlsSetValue" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [key, new_ptr] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32, *mut _) -> winapi::BOOL),
                     link_name,
@@ -667,6 +681,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_int(1, dest)?;
             }
             "TlsFree" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [key] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32) -> winapi::BOOL),
                     link_name,
@@ -678,6 +693,94 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 // Return success (`1`).
                 this.write_int(1, dest)?;
+            }
+
+            // Fiber-local storage - similar to TLS but supports destructors.
+            "FlsAlloc" => {
+                // FIXME: This does not have a direct test (#3179).
+                // Create key and return it.
+                let [dtor] = this.check_shim_sig(
+                    shim_sig!(extern "system" fn(winapi::PFLS_CALLBACK_FUNCTION) -> u32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let dtor = this.read_pointer(dtor)?;
+
+                // Extract the function type out of the signature (that seems easier than constructing it ourselves).
+                let dtor = if !this.ptr_is_null(dtor)? {
+                    Some((
+                        this.get_ptr_fn(dtor)?.as_instance()?,
+                        this.machine.current_user_relevant_span(),
+                    ))
+                } else {
+                    None
+                };
+
+                let key = this.machine.tls.create_tls_key(dtor, dest.layout.size)?;
+                this.write_scalar(Scalar::from_uint(key, dest.layout.size), dest)?;
+            }
+            "FlsGetValue" => {
+                // FIXME: This does not have a direct test (#3179).
+                let [key] = this.check_shim_sig(
+                    shim_sig!(extern "system" fn(u32) -> *mut _),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let key = u128::from(this.read_scalar(key)?.to_u32()?);
+                let active_thread = this.active_thread();
+                let ptr = this.machine.tls.load_tls(key, active_thread, this)?;
+                this.write_scalar(ptr, dest)?;
+            }
+            "FlsSetValue" => {
+                // FIXME: This does not have a direct test (#3179).
+                let [key, new_ptr] = this.check_shim_sig(
+                    shim_sig!(extern "system" fn(u32, *mut _) -> winapi::BOOL),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let key = u128::from(this.read_scalar(key)?.to_u32()?);
+                let active_thread = this.active_thread();
+                let new_data = this.read_scalar(new_ptr)?;
+                this.machine.tls.store_tls(key, active_thread, new_data, &*this.tcx)?;
+
+                // Return success (`1`).
+                this.write_int(1, dest)?;
+            }
+            "FlsFree" => {
+                // FIXME: This does not have a direct test (#3179).
+                let [key] = this.check_shim_sig(
+                    shim_sig!(extern "system" fn(u32) -> winapi::BOOL),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let key = u128::from(this.read_scalar(key)?.to_u32()?);
+                let tls_entry = this.machine.tls.delete_tls_key(key)?;
+
+                // FIXME: We should run the destructor here *for all threads*. But that's non-trivial and std doesn't need it so we bail out with an "unsupported" error.
+                if !tls_entry.data.is_empty() && tls_entry.dtor.is_some() {
+                    throw_unsup_format!(
+                        "calling `FlsFree` on a key with an associated dtor is not supported"
+                    );
+                }
+
+                // Return success (`1`).
+                this.write_int(1, dest)?;
+            }
+            "IsThreadAFiber" => {
+                // FIXME: This does not have a direct test (#3179).
+                let [] = this.check_shim_sig(
+                    shim_sig!(extern "system" fn() -> winapi::BOOL),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+
+                // Return FALSE, as Miri does not support fibers.
+                this.write_int(0, dest)?;
             }
 
             // Access to command-line arguments

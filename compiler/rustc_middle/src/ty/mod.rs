@@ -27,22 +27,21 @@ pub use intrinsic::IntrinsicDef;
 use rustc_abi::{
     Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, ScalableElt, VariantIdx,
 };
-use rustc_ast as ast;
 use rustc_ast::expand::typetree::{FncTree, Kind, Type, TypeTree};
 use rustc_ast::node_id::NodeMap;
+use rustc_ast::{self as ast};
 pub use rustc_ast_ir::{Movability, Mutability, try_visit};
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{Diag, ErrorGuaranteed, LintBuffer};
-use rustc_hir as hir;
 use rustc_hir::attrs::StrippedCfgItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::PerParentDisambiguatorState;
-use rustc_hir::{LangItem, attrs as attr, find_attr};
+use rustc_hir::{self as hir, LangItem, MissingLifetimeKind, attrs as attr, find_attr};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitMatrix;
 use rustc_macros::{
@@ -79,8 +78,8 @@ pub use self::closure::{
 };
 pub use self::consts::{
     AtomicOrdering, Const, ConstInt, ConstKind, ConstToValTreeResult, Expr, ExprKind,
-    LitToConstInput, ScalarInt, SimdAlign, UnevaluatedConst, ValTree, ValTreeKindExt, Value,
-    const_lit_matches_ty,
+    LitToConstInput, ScalarInt, SimdAlign, UnevaluatedConst, UnevaluatedConstKind, ValTree,
+    ValTreeKindExt, Value, const_lit_matches_ty,
 };
 pub use self::context::{
     CtxtInterners, CurrentGcx, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt, TyCtxtFeed, tls,
@@ -179,6 +178,12 @@ pub struct ResolverGlobalCtxt {
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
     pub expn_that_defined: UnordMap<LocalDefId, ExpnId>,
     pub effective_visibilities: EffectiveVisibilities,
+    // FIXME: This table contains ADTs reachable from macro 2.0.
+    // Currently, reachability of a definition from a macro is determined by nominal visibility
+    // (see `compute_effective_visibilities`). This is incorrect and leads to the necessity
+    // of traversing ADT fields in `rustc_privacy`. Remove this workaround once the
+    // correct reachability logic is implemented for macros.
+    pub macro_reachable_adts: FxIndexMap<LocalDefId, FxIndexSet<LocalDefId>>,
     pub extern_crate_map: UnordMap<LocalDefId, CrateNum>,
     pub maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
     pub module_children: LocalDefIdMap<Vec<ModChild>>,
@@ -196,6 +201,47 @@ pub struct ResolverGlobalCtxt {
     pub doc_link_traits_in_scope: FxIndexMap<LocalDefId, Vec<DefId>>,
     pub all_macro_rules: UnordSet<Symbol>,
     pub stripped_cfg_items: Vec<StrippedCfgItem>,
+    // Information about delegations which is used when handling recursive delegations
+    // and ensures easy access to delegation-only `LocalDefId`s.
+    pub delegation_infos: FxIndexMap<LocalDefId, DelegationInfo>,
+}
+
+#[derive(Debug)]
+pub struct PerOwnerResolverData<'tcx> {
+    pub node_id_to_def_id: NodeMap<LocalDefId> = Default::default(),
+    /// Whether lifetime elision was successful.
+    pub lifetime_elision_allowed: bool = false,
+    /// Resolutions for labels.
+    /// Maps from NodeId of the break/continue expression to the NodeId of their corresponding blocks or loops.
+    pub label_res_map: NodeMap<ast::NodeId> = Default::default(),
+    /// Resolutions for lifetimes.
+    pub lifetimes_res_map: NodeMap<LifetimeRes> = Default::default(),
+
+    pub trait_map: NodeMap<&'tcx [hir::TraitCandidate<'tcx>]> = Default::default(),
+
+    /// Resolution for import nodes, which have multiple resolutions in different namespaces.
+    pub import_res: hir::def::PerNS<Option<Res<ast::NodeId>>> = Default::default(),
+
+    /// The id of the owner
+    pub id: ast::NodeId,
+    /// The `DefId` of the owner, can't be found in `node_id_to_def_id`.
+    pub def_id: LocalDefId,
+}
+
+impl<'tcx> PerOwnerResolverData<'tcx> {
+    pub fn new(id: ast::NodeId, def_id: LocalDefId) -> PerOwnerResolverData<'tcx> {
+        PerOwnerResolverData { id, def_id, .. }
+    }
+
+    /// Obtains resolution for a label with the given `NodeId`.
+    pub fn get_label_res(&self, id: ast::NodeId) -> Option<ast::NodeId> {
+        self.label_res_map.get(&id).copied()
+    }
+
+    /// Obtains resolution for a lifetime with the given `NodeId`.
+    pub fn get_lifetime_res(&self, id: ast::NodeId) -> Option<LifetimeRes> {
+        self.lifetimes_res_map.get(&id).copied()
+    }
 }
 
 /// Resolutions that should only be used for lowering.
@@ -204,37 +250,27 @@ pub struct ResolverGlobalCtxt {
 pub struct ResolverAstLowering<'tcx> {
     /// Resolutions for nodes that have a single resolution.
     pub partial_res_map: NodeMap<hir::def::PartialRes>,
-    /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
-    pub import_res_map: NodeMap<hir::def::PerNS<Option<Res<ast::NodeId>>>>,
-    /// Resolutions for labels (node IDs of their corresponding blocks or loops).
-    pub label_res_map: NodeMap<ast::NodeId>,
-    /// Resolutions for lifetimes.
-    pub lifetimes_res_map: NodeMap<LifetimeRes>,
     /// Lifetime parameters that lowering will have to introduce.
-    pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, LifetimeRes)>>,
+    pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, MissingLifetimeKind)>>,
 
     pub next_node_id: ast::NodeId,
 
-    pub node_id_to_def_id: NodeMap<LocalDefId>,
-
-    pub trait_map: NodeMap<&'tcx [hir::TraitCandidate<'tcx>]>,
-    /// List functions and methods for which lifetime elision was successful.
-    pub lifetime_elision_allowed: FxHashSet<ast::NodeId>,
+    pub owners: NodeMap<PerOwnerResolverData<'tcx>>,
 
     /// Lints that were emitted by the resolver and early lints.
     pub lint_buffer: Steal<LintBuffer>,
 
-    // Information about delegations which is used when handling recursive delegations
-    pub delegation_infos: LocalDefIdMap<DelegationInfo>,
-
     pub disambiguators: LocalDefIdMap<Steal<PerParentDisambiguatorState>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, StableHash)]
 pub struct DelegationInfo {
-    // NodeId (either delegation.id or item_id in case of a trait impl) for signature resolution,
+    // `DefId` (either the resolution at delegation.id or item_id in case of a trait impl) for signature resolution,
     // for details see https://github.com/rust-lang/rust/issues/118212#issuecomment-2160686914
-    pub resolution_node: ast::NodeId,
+    /// Refers to the next element in a delegation resolution chain.
+    /// Usually points to the final resolution, as most "chains" are just
+    /// one step to a trait or an impl.
+    pub resolution_id: Result<DefId, ErrorGuaranteed>,
 }
 
 #[derive(Clone, Copy, Debug, StableHash)]
@@ -648,14 +684,14 @@ impl<'tcx> Term<'tcx> {
         }
     }
 
-    pub fn to_alias_term(self, tcx: TyCtxt<'tcx>) -> Option<AliasTerm<'tcx>> {
+    pub fn to_alias_term(self) -> Option<AliasTerm<'tcx>> {
         match self.kind() {
             TermKind::Ty(ty) => match *ty.kind() {
                 ty::Alias(alias_ty) => Some(alias_ty.into()),
                 _ => None,
             },
             TermKind::Const(ct) => match ct.kind() {
-                ConstKind::Unevaluated(uv) => Some(AliasTerm::from_unevaluated_const(tcx, uv)),
+                ConstKind::Unevaluated(uv) => Some(uv.into()),
                 _ => None,
             },
         }
@@ -1005,6 +1041,17 @@ impl<'tcx> ParamEnv<'tcx> {
     pub fn and<T: TypeVisitable<TyCtxt<'tcx>>>(self, value: T) -> ParamEnvAnd<'tcx, T> {
         ParamEnvAnd { param_env: self, value }
     }
+
+    /// Eagerly reveal all opaque types in the `param_env`.
+    pub fn with_normalized(self, tcx: TyCtxt<'tcx>) -> ParamEnv<'tcx> {
+        // No need to reveal opaques with the new solver enabled,
+        // since we have lazy norm.
+        if tcx.next_trait_solver_globally() {
+            self
+        } else {
+            ParamEnv::new(tcx.reveal_opaque_types_in_bounds(self.caller_bounds))
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeFoldable, TypeVisitable)]
@@ -1050,7 +1097,7 @@ impl<'tcx> TypingEnv<'tcx> {
     /// use `TypingMode::PostAnalysis`, they may still have where-clauses
     /// in scope.
     pub fn fully_monomorphized() -> TypingEnv<'tcx> {
-        Self::new(ParamEnv::empty(), TypingMode::PostAnalysis)
+        Self::new(ParamEnv::empty(), TypingMode::Codegen)
     }
 
     /// Create a typing environment for use during analysis outside of a body.
@@ -1063,35 +1110,48 @@ impl<'tcx> TypingEnv<'tcx> {
         def_id: impl IntoQueryKey<DefId>,
     ) -> TypingEnv<'tcx> {
         let def_id = def_id.into_query_key();
-        Self::new(tcx.param_env(def_id), TypingMode::non_body_analysis().into())
+        Self::new(tcx.param_env(def_id), TypingMode::non_body_analysis())
     }
 
     pub fn post_analysis(tcx: TyCtxt<'tcx>, def_id: impl IntoQueryKey<DefId>) -> TypingEnv<'tcx> {
-        let def_id = def_id.into_query_key();
-        tcx.typing_env_normalized_for_post_analysis(def_id)
+        TypingEnv::new(tcx.param_env_normalized_for_post_analysis(def_id), TypingMode::PostAnalysis)
     }
 
-    /// Modify the `typing_mode` to `PostAnalysis` and eagerly reveal all
-    /// opaque types in the `param_env`.
+    pub fn codegen(tcx: TyCtxt<'tcx>, def_id: impl IntoQueryKey<DefId>) -> TypingEnv<'tcx> {
+        TypingEnv::new(tcx.param_env_normalized_for_post_analysis(def_id), TypingMode::Codegen)
+    }
+
+    /// Modify the `typing_mode` to `PostAnalysis` or `Codegen` and eagerly reveal all opaque types
+    /// in the `param_env`.
     pub fn with_post_analysis_normalized(self, tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
         let TypingEnv { typing_mode, param_env } = self;
+        match typing_mode.0.assert_not_erased() {
+            TypingMode::Coherence
+            | TypingMode::Typeck { .. }
+            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::PostBorrowck { .. } => {}
+            TypingMode::PostAnalysis | TypingMode::Codegen => return self,
+        }
 
-        // No need to reveal opaques with the new solver enabled,
-        // since we have lazy norm.
-        let param_env = if tcx.next_trait_solver_globally() {
-            param_env
-        } else {
-            match typing_mode.0.assert_not_erased() {
-                TypingMode::Coherence
-                | TypingMode::Analysis { .. }
-                | TypingMode::Borrowck { .. }
-                | TypingMode::PostBorrowckAnalysis { .. } => {}
-                TypingMode::PostAnalysis => return self,
-            }
+        let param_env = param_env.with_normalized(tcx);
+        TypingEnv::new(param_env, TypingMode::PostAnalysis)
+    }
 
-            ParamEnv::new(tcx.reveal_opaque_types_in_bounds(param_env.caller_bounds()))
-        };
-        TypingEnv { typing_mode: TypingModeEqWrapper(TypingMode::PostAnalysis), param_env }
+    /// Modify the `typing_mode` to `PostAnalysis` or `Codegen` and eagerly reveal all opaque types
+    /// in the `param_env`.
+    pub fn with_codegen_normalized(self, tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
+        let TypingEnv { typing_mode, param_env } = self;
+        match typing_mode.0.assert_not_erased() {
+            TypingMode::Coherence
+            | TypingMode::Typeck { .. }
+            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::PostBorrowck { .. }
+            | TypingMode::PostAnalysis => {}
+            TypingMode::Codegen => return self,
+        }
+
+        let param_env = param_env.with_normalized(tcx);
+        TypingEnv::new(param_env, TypingMode::Codegen)
     }
 
     /// Combine this typing environment with the given `value` to be used by
@@ -1423,10 +1483,14 @@ impl Hash for FieldDef {
 }
 
 impl<'tcx> FieldDef {
-    /// Returns the type of this field. The resulting type is not normalized. The `arg` is
-    /// typically obtained via the second field of [`TyKind::Adt`].
-    pub fn ty(&self, tcx: TyCtxt<'tcx>, args: GenericArgsRef<'tcx>) -> Ty<'tcx> {
-        tcx.type_of(self.did).instantiate(tcx, args).skip_norm_wip()
+    /// Returns the type of this field. The `args` are typically obtained via
+    /// the second field of [`TyKind::Adt`].
+    pub fn ty(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        args: GenericArgsRef<'tcx>,
+    ) -> Unnormalized<'tcx, Ty<'tcx>> {
+        tcx.type_of(self.did).instantiate(tcx, args)
     }
 
     /// Computes the `Ident` of this variant by looking up the `Span`
@@ -1725,6 +1789,14 @@ impl<'tcx> TyCtxt<'tcx> {
                     | DefKind::Ctor(..)
                     | DefKind::AnonConst
                     | DefKind::InlineConst => self.mir_for_ctfe(def),
+                    DefKind::Fn | DefKind::AssocFn
+                        if matches!(
+                            self.constness(def),
+                            hir::Constness::Const { always: true }
+                        ) =>
+                    {
+                        self.mir_for_ctfe(def)
+                    }
                     // If the caller wants `mir_for_ctfe` of a function they should not be using
                     // `instance_mir`, so we'll assume const fn also wants the optimized version.
                     _ => self.optimized_mir(def),
@@ -1890,7 +1962,6 @@ impl<'tcx> TyCtxt<'tcx> {
                     iter::repeat(source_info).take(CoroutineArgs::RESERVED_VARIANTS).collect();
                 let proxy_layout = CoroutineLayout {
                     field_tys: [].into(),
-                    field_names: [].into(),
                     variant_fields,
                     variant_source_info,
                     storage_conflicts: BitMatrix::new(0, 0),
@@ -2078,7 +2149,7 @@ impl<'tcx> TyCtxt<'tcx> {
         matches!(
             self.def_kind(def_id),
             DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::Closure
-        ) && self.constness(def_id) == hir::Constness::Const
+        ) && matches!(self.constness(def_id), hir::Constness::Const { .. })
     }
 
     /// Whether this item is conditionally constant for the purposes of the
@@ -2092,12 +2163,14 @@ impl<'tcx> TyCtxt<'tcx> {
         match self.def_kind(def_id) {
             DefKind::Impl { of_trait: true } => {
                 let header = self.impl_trait_header(def_id);
-                header.constness == hir::Constness::Const
+                matches!(header.constness, hir::Constness::Const { always: false })
                     && self.is_const_trait(header.trait_ref.skip_binder().def_id)
             }
-            DefKind::Impl { of_trait: false } => self.constness(def_id) == hir::Constness::Const,
+            DefKind::Impl { of_trait: false } => {
+                matches!(self.constness(def_id), hir::Constness::Const { always: false })
+            }
             DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn) => {
-                self.constness(def_id) == hir::Constness::Const
+                matches!(self.constness(def_id), hir::Constness::Const { always: false })
             }
             DefKind::TraitAlias | DefKind::Trait => self.is_const_trait(def_id),
             DefKind::AssocTy => {
@@ -2114,17 +2187,19 @@ impl<'tcx> TyCtxt<'tcx> {
                 let parent_def_id = self.parent(def_id);
                 match self.def_kind(parent_def_id) {
                     DefKind::Impl { of_trait: false } => {
-                        self.constness(def_id) == hir::Constness::Const
+                        matches!(self.constness(def_id), hir::Constness::Const { always: false })
                     }
                     DefKind::Impl { of_trait: true } => {
                         let Some(trait_method_did) = self.trait_item_of(def_id) else {
                             return false;
                         };
-                        self.constness(trait_method_did) == hir::Constness::Const
-                            && self.is_conditionally_const(parent_def_id)
+                        matches!(
+                            self.constness(trait_method_did),
+                            hir::Constness::Const { always: false }
+                        ) && self.is_conditionally_const(parent_def_id)
                     }
                     DefKind::Trait => {
-                        self.constness(def_id) == hir::Constness::Const
+                        matches!(self.constness(def_id), hir::Constness::Const { always: false })
                             && self.is_conditionally_const(parent_def_id)
                     }
                     _ => bug!("unexpected parent item of associated fn: {parent_def_id:?}"),
@@ -2136,7 +2211,9 @@ impl<'tcx> TyCtxt<'tcx> {
                 // FIXME(const_trait_impl): ATPITs could be conditionally const?
                 hir::OpaqueTyOrigin::TyAlias { .. } => false,
             },
-            DefKind::Closure => self.constness(def_id) == hir::Constness::Const,
+            DefKind::Closure => {
+                matches!(self.constness(def_id), hir::Constness::Const { always: false })
+            }
             DefKind::Ctor(_, CtorKind::Const)
             | DefKind::Mod
             | DefKind::Struct
@@ -2165,7 +2242,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn is_const_trait(self, def_id: DefId) -> bool {
-        self.trait_def(def_id).constness == hir::Constness::Const
+        matches!(self.trait_def(def_id).constness, hir::Constness::Const { .. })
     }
 
     pub fn impl_method_has_trait_impl_trait_tys(self, def_id: DefId) -> bool {
@@ -2496,8 +2573,13 @@ fn typetree_from_ty_impl_inner<'tcx>(
 
                 for (field_idx, field_def) in adt_def.all_fields().enumerate() {
                     let field_ty = field_def.ty(tcx, args);
-                    let field_tree =
-                        typetree_from_ty_impl_inner(tcx, field_ty, depth + 1, visited, false);
+                    let field_tree = typetree_from_ty_impl_inner(
+                        tcx,
+                        field_ty.skip_norm_wip(),
+                        depth + 1,
+                        visited,
+                        false,
+                    );
 
                     let field_offset = layout.fields.offset(field_idx).bytes_usize();
 

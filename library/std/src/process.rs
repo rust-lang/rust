@@ -256,10 +256,6 @@ pub struct Child {
     pub stderr: Option<ChildStderr>,
 }
 
-/// Allows extension traits within `std`.
-#[unstable(feature = "sealed", issue = "none")]
-impl crate::sealed::Sealed for Child {}
-
 impl AsInner<imp::Process> for Child {
     #[inline]
     fn as_inner(&self) -> &imp::Process {
@@ -417,7 +413,7 @@ impl Read for ChildStdout {
         self.inner.read(buf)
     }
 
-    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.inner.read_buf(buf)
     }
 
@@ -487,7 +483,7 @@ impl Read for ChildStderr {
         self.inner.read(buf)
     }
 
-    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.inner.read_buf(buf)
     }
 
@@ -596,10 +592,6 @@ impl fmt::Debug for ChildStderr {
 pub struct Command {
     inner: imp::Command,
 }
-
-/// Allows extension traits within `std`.
-#[unstable(feature = "sealed", issue = "none")]
-impl crate::sealed::Sealed for Command {}
 
 impl Command {
     /// Constructs a new `Command` for launching the program at
@@ -1070,6 +1062,26 @@ impl Command {
     ///
     /// By default, stdin, stdout and stderr are inherited from the parent.
     ///
+    /// # Errors
+    ///
+    /// This method returns an [`io::Error`] if the child process could not be
+    /// spawned. Common reasons include:
+    ///
+    /// * the program could not be found (for example, it does not exist, or,
+    ///   when given a bare name, it is not present in the `PATH`);
+    /// * the current process does not have permission to execute the program
+    ///   (for example, the file is not marked executable, or execution is
+    ///   denied by a security policy such as `seccomp`);
+    /// * the operating system could not create the new process because of
+    ///   resource exhaustion (for example, a limit on the number of processes
+    ///   was reached).
+    ///
+    /// An error is only returned for failures that occur while the child is
+    /// being spawned. Once the child has started successfully, anything that
+    /// happens to it afterwards — including being terminated by a signal — is
+    /// reported through its [`ExitStatus`] rather than as an error from the
+    /// spawning method.
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -1091,6 +1103,20 @@ impl Command {
     /// resulting output). Stdin is not inherited from the parent and any
     /// attempt by the child process to read from the stdin stream will result
     /// in the stream immediately closing.
+    ///
+    /// # Errors
+    ///
+    /// Like [`spawn`], this method returns an [`io::Error`] if the child
+    /// process could not be spawned; see [`spawn`] for the common reasons. It
+    /// may also return an error if reading the child's output or waiting on the
+    /// child fails.
+    ///
+    /// Note that this method does **not** return an error if the child runs and
+    /// then exits unsuccessfully, or is terminated by a signal. In those cases
+    /// it still returns [`Ok`], and the outcome is reflected in the
+    /// [`ExitStatus`] stored in the returned [`Output`].
+    ///
+    /// [`spawn`]: Command::spawn
     ///
     /// # Examples
     ///
@@ -1118,6 +1144,19 @@ impl Command {
     /// collecting its status.
     ///
     /// By default, stdin, stdout and stderr are inherited from the parent.
+    ///
+    /// # Errors
+    ///
+    /// Like [`spawn`], this method returns an [`io::Error`] if the child
+    /// process could not be spawned; see [`spawn`] for the common reasons. It
+    /// may also return an error if waiting on the child fails.
+    ///
+    /// Note that this method does **not** return an error if the child runs and
+    /// then exits unsuccessfully, or is terminated by a signal. In those cases
+    /// it still returns [`Ok`], and the outcome is reflected in the returned
+    /// [`ExitStatus`].
+    ///
+    /// [`spawn`]: Command::spawn
     ///
     /// # Examples
     ///
@@ -1361,6 +1400,12 @@ impl<'a> ExactSizeIterator for CommandArgs<'a> {
         self.inner.is_empty()
     }
 }
+
+const fn assert_send<T: core::marker::Send>() {}
+const fn assert_sync<T: core::marker::Sync>() {}
+
+const _: () = assert_send::<CommandArgs<'static>>();
+const _: () = assert_sync::<CommandArgs<'static>>();
 
 /// An iterator over the command environment variables.
 ///
@@ -1893,10 +1938,6 @@ impl Default for ExitStatus {
     }
 }
 
-/// Allows extension traits within `std`.
-#[unstable(feature = "sealed", issue = "none")]
-impl crate::sealed::Sealed for ExitStatus {}
-
 impl ExitStatus {
     /// Was termination successful?  Returns a `Result`.
     ///
@@ -1998,10 +2039,6 @@ impl fmt::Display for ExitStatus {
         self.0.fmt(f)
     }
 }
-
-/// Allows extension traits within `std`.
-#[unstable(feature = "sealed", issue = "none")]
-impl crate::sealed::Sealed for ExitStatusError {}
 
 /// Describes the result of a process after it has failed
 ///
@@ -2170,10 +2207,6 @@ impl crate::error::Error for ExitStatusError {}
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[stable(feature = "process_exitcode", since = "1.61.0")]
 pub struct ExitCode(imp::ExitCode);
-
-/// Allows extension traits within `std`.
-#[unstable(feature = "sealed", issue = "none")]
-impl crate::sealed::Sealed for ExitCode {}
 
 #[stable(feature = "process_exitcode", since = "1.61.0")]
 impl ExitCode {

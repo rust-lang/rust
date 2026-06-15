@@ -78,7 +78,7 @@ See [Controlling pass/fail expectations](ui.md#controlling-passfail-expectations
 | `run-fail`                  | Program must exit with code `1..=127`       | `ui`                                      | N/A             |
 | `run-crash`                 | Program must crash                          | `ui`                                      | N/A             |
 | `run-fail-or-crash`         | Program must `run-fail` or `run-crash`      | `ui`                                      | N/A             |
-| `ignore-pass`               | Ignore `--pass` flag                        | `ui`                                      | N/A             |
+| `no-pass-override`          | Ignore `--pass` flag                        | `ui`                                      | N/A             |
 | `dont-check-failure-status` | Don't check exact failure status (i.e. `1`) | `ui`, `incremental`                       | N/A             |
 | `failure-status`            | On failure, the compiler must exit with this status code. To expect an ICE, use `//@ failure-status: 101`. | `ui`, `incremental` | Any `u16` |
 | `should-fail`               | Compiletest self-test                       | All                                       | N/A             |
@@ -133,7 +133,7 @@ means the test won't be compiled or run.
 Some examples of `X` in `ignore-X` or `only-X`:
 
 - A full target triple: `aarch64-apple-ios`
-- Architecture: `aarch64`, `arm`, `mips`, `wasm32`, `x86_64`, `x86`,
+- Architecture: `aarch64`, `arm`, `csky`, `mips`, `mips64`, `wasm32`, `x86_64`, `x86`,
   ...
 - OS: `android`, `emscripten`, `freebsd`, `ios`, `linux`, `macos`, `windows`,
   ...
@@ -164,9 +164,10 @@ The following directives will check rustc build settings and target settings:
   For tests that cross-compile to explicit targets
   via `--target`, use `needs-llvm-components` instead to ensure the appropriate
   backend is available.
-- `needs-asm-mnemonic: <MNEMONIC>` — ignores if the target backend does not
-  support the specified assembly mnemonic (e.g., `RET`, `NOP`).
-  Only supported with the LLVM backend.
+- `needs-asm-ret` - ignores if the target does not have a `ret` instruction
+  in its assembly syntax. Most target architectures have this instruction,
+  making it handy for portable inline-assembly tests, but some architectures
+  (e.g. 32-bit ARM) do not have it.
 - `needs-profiler-runtime` — ignores the test if the profiler runtime was not
   enabled for the target (`build.profiler = true` in `bootstrap.toml`)
 - `needs-sanitizer-support` — ignores if the sanitizer support was not enabled

@@ -6,7 +6,7 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_the
 use clippy_utils::{is_entrypoint_fn, is_trait_impl_item};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::{Attribute, ImplItemKind, ItemKind, Node, Safety, TraitItemKind};
+use rustc_hir::{Attribute, FieldDef, ImplItemKind, ItemKind, Node, Safety, TraitItemKind};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_resolve::rustdoc::pulldown_cmark::Event::{
     Code, DisplayMath, End, FootnoteReference, HardBreak, Html, InlineHtml, InlineMath, Rule, SoftBreak, Start,
@@ -754,6 +754,23 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
         };
 
         match cx.tcx.hir_node(cx.last_node_with_lint_attrs) {
+            Node::Field(FieldDef { span, safety, .. }) => match (headers.safety, safety) {
+                (false, Safety::Unsafe) => span_lint(
+                    cx,
+                    MISSING_SAFETY_DOC,
+                    *span,
+                    "docs for unsafe field missing `# Safety` section",
+                ),
+                (true, Safety::Safe) if cx.tcx.features().unsafe_fields() => span_lint_and_help(
+                    cx,
+                    UNNECESSARY_SAFETY_DOC,
+                    *span,
+                    "field with `# Safety` documentation is not marked unsafe",
+                    None,
+                    "if the field has safety invariants, mark it `unsafe`",
+                ),
+                _ => (),
+            },
             Node::Item(item) => {
                 too_long_first_doc_paragraph::check(
                     cx,
@@ -889,29 +906,35 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         return Some(DocHeaders::default());
     }
 
-    check_for_code_clusters(
-        cx,
-        pulldown_cmark::Parser::new_with_broken_link_callback(
+    // Only emits the allow-by-default `DOC_LINK_CODE`; skip its extra markdown reparse when it's off.
+    if !clippy_utils::is_lint_allowed(cx, DOC_LINK_CODE, cx.last_node_with_lint_attrs) {
+        check_for_code_clusters(
+            cx,
+            pulldown_cmark::Parser::new_with_broken_link_callback(
+                &doc,
+                main_body_opts() - Options::ENABLE_SMART_PUNCTUATION,
+                Some(&mut fake_broken_link_callback),
+            )
+            .into_offset_iter(),
             &doc,
-            main_body_opts() - Options::ENABLE_SMART_PUNCTUATION,
-            Some(&mut fake_broken_link_callback),
-        )
-        .into_offset_iter(),
-        &doc,
-        Fragments {
-            doc: &doc,
-            fragments: &fragments,
-        },
-    );
+            Fragments {
+                doc: &doc,
+                fragments: &fragments,
+            },
+        );
+    }
 
-    doc_paragraphs_missing_punctuation::check(
-        cx,
-        &doc,
-        Fragments {
-            doc: &doc,
-            fragments: &fragments,
-        },
-    );
+    // Same for the allow-by-default `DOC_PARAGRAPHS_MISSING_PUNCTUATION`, which also reparses.
+    if !clippy_utils::is_lint_allowed(cx, DOC_PARAGRAPHS_MISSING_PUNCTUATION, cx.last_node_with_lint_attrs) {
+        doc_paragraphs_missing_punctuation::check(
+            cx,
+            &doc,
+            Fragments {
+                doc: &doc,
+                fragments: &fragments,
+            },
+        );
+    }
 
     // NOTE: check_doc uses it own cb function,
     // to avoid causing duplicated diagnostics for the broken link checker.

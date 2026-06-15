@@ -28,6 +28,7 @@ pub(crate) fn target() -> Target {
         crt_static_respected: true,
         crt_static_default: true,
         crt_static_allows_dylibs: true,
+        main_needs_argc_argv: true,
         panic_strategy: PanicStrategy::Unwind,
         no_default_libraries: false,
         families: cvs!["unix", "wasm"],

@@ -96,7 +96,7 @@ will check for output files:
 - `dont-check-compiler-stdout` — Ignores stdout from the compiler.
 - `compare-output-by-lines` — Some tests have non-deterministic orders of output, so we need to compare by lines.
 
-UI tests run with `-Zdeduplicate-diagnostics=no` flag which disables rustc's
+UI tests run with `-Zdeduplicate-diagnostics=no` flag, which disables rustc's
 built-in diagnostic deduplication mechanism.
 This means you may see some duplicate messages in the output.
 This helps illuminate situations where duplicate diagnostics are being generated.
@@ -394,8 +394,8 @@ E.g. use `//@ dont-require-annotations: NOTE` to annotate notes selectively.
 Avoid using this directive for `ERROR`s and `WARN`ings, unless there's a serious reason, like
 target-dependent compiler output.
 
-Some diagnostics are never required to be line-annotated, regardless of their kind or directives,
-for example secondary lines of multiline diagnostics,
+Some diagnostics are never required to be line-annotated, regardless of their kind or directives.
+Examples are secondary lines of multiline diagnostics,
 or ubiquitous diagnostics like `aborting due to N previous errors`.
 
 UI tests use the `-A unused` flag by default to ignore all unused warnings, as
@@ -492,7 +492,7 @@ Using `--pass check` can run the UI
 test suite much faster (roughly twice as fast on my system), though obviously
 not exercising as much.
 
-The `ignore-pass` directive can be used to ignore the `--pass` CLI flag if the
+The `no-pass-override` directive can be used to ignore the `--pass` CLI flag if the
 test won't work properly with that override.
 
 

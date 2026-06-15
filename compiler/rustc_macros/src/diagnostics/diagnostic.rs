@@ -26,7 +26,7 @@ impl<'a> DiagnosticDerive<'a> {
             let Some(message) = builder.primary_message() else {
                 return DiagnosticDeriveError::ErrorHandled.to_compile_error();
             };
-            let message = message.diag_message(Some(variant));
+            let message = message.diag_message();
 
             let init = quote! {
                 let mut diag = rustc_errors::Diag::new(

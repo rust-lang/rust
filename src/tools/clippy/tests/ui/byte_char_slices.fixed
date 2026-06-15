@@ -1,5 +1,5 @@
 #![warn(clippy::byte_char_slices)]
-#![allow(clippy::useless_vec)]
+#![expect(clippy::useless_vec)]
 
 fn main() {
     let bad = b"abc";

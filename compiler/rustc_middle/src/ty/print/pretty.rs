@@ -1344,17 +1344,18 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
     fn pretty_print_inherent_projection(
         &mut self,
-        alias_ty: ty::AliasTerm<'tcx>,
+        alias_term: ty::AliasTerm<'tcx>,
     ) -> Result<(), PrintError> {
-        let def_key = self.tcx().def_key(alias_ty.def_id());
+        let alias_def_id = alias_term.expect_inherent_def_id();
+        let def_key = self.tcx().def_key(alias_def_id);
         self.print_path_with_generic_args(
             |p| {
                 p.print_path_with_simple(
-                    |p| p.print_path_with_qualified(alias_ty.self_ty(), None),
+                    |p| p.print_path_with_qualified(alias_term.self_ty(), None),
                     &def_key.disambiguated_data,
                 )
             },
-            &alias_ty.args[1..],
+            &alias_term.args[1..],
         )
     }
 
@@ -1561,14 +1562,16 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         }
 
         match ct.kind() {
-            ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args }) => {
-                match self.tcx().def_kind(def) {
-                    DefKind::Const { .. } | DefKind::AssocConst { .. } => {
-                        self.pretty_print_value_path(def, args)?;
+            ty::ConstKind::Unevaluated(ty::UnevaluatedConst { kind, args, .. }) => {
+                match kind {
+                    ty::UnevaluatedConstKind::Projection { def_id }
+                    | ty::UnevaluatedConstKind::Inherent { def_id }
+                    | ty::UnevaluatedConstKind::Free { def_id } => {
+                        self.pretty_print_value_path(def_id, args)?;
                     }
-                    DefKind::AnonConst => {
-                        if def.is_local()
-                            && let span = self.tcx().def_span(def)
+                    ty::UnevaluatedConstKind::Anon { def_id } => {
+                        if def_id.is_local()
+                            && let span = self.tcx().def_span(def_id)
                             && let Ok(snip) = self.tcx().sess.source_map().span_to_snippet(span)
                         {
                             write!(self, "{snip}")?;
@@ -1583,12 +1586,11 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                             write!(
                                 self,
                                 "{}::{}",
-                                self.tcx().crate_name(def.krate),
-                                self.tcx().def_path(def).to_string_no_crate_verbose()
+                                self.tcx().crate_name(def_id.krate),
+                                self.tcx().def_path(def_id).to_string_no_crate_verbose()
                             )?;
                         }
                     }
-                    defkind => bug!("`{:?}` has unexpected defkind {:?}", ct, defkind),
                 }
             }
             ty::ConstKind::Infer(infer_ct) => match infer_ct {
@@ -3155,8 +3157,10 @@ define_print! {
     }
 
     ty::AliasTerm<'tcx> {
-        match self.kind(p.tcx()) {
-            ty::AliasTermKind::InherentTy {..} | ty::AliasTermKind::InherentConst {..} => p.pretty_print_inherent_projection(*self)?,
+        match self.kind {
+            ty::AliasTermKind::InherentTy { .. } | ty::AliasTermKind::InherentConst { .. } => {
+                p.pretty_print_inherent_projection(*self)?;
+            }
             ty::AliasTermKind::ProjectionTy { def_id } => {
                 if !(p.should_print_verbose() || with_reduced_queries())
                     && p.tcx().is_impl_trait_in_trait(def_id)
@@ -3169,7 +3173,7 @@ define_print! {
             ty::AliasTermKind::FreeTy { def_id }
             | ty::AliasTermKind::FreeConst { def_id }
             | ty::AliasTermKind::OpaqueTy { def_id }
-            | ty::AliasTermKind::UnevaluatedConst { def_id }
+            | ty::AliasTermKind::AnonConst { def_id }
             | ty::AliasTermKind::ProjectionConst { def_id } => {
                 p.print_def_path(def_id, self.args)?;
             }
@@ -3265,9 +3269,9 @@ define_print! {
     }
 
     ty::ExistentialTraitRef<'tcx> {
-        // Use a type that can't appear in defaults of type parameters.
-        let dummy_self = Ty::new_fresh(p.tcx(), 0);
-        let trait_ref = self.with_self_ty(p.tcx(), dummy_self);
+        // Dummy Self is safe to use as it can't appear in generic param defaults which is important
+        // later on for correctly eliding generic args that coincide with their default.
+        let trait_ref = self.with_self_ty(p.tcx(), p.tcx().types.trait_object_dummy_self);
         trait_ref.print_only_trait_path().print(p)?;
     }
 

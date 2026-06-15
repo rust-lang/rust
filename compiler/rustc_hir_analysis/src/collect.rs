@@ -15,7 +15,6 @@
 //! crate as a kind of pass. This should eventually be factored away.
 
 use std::cell::Cell;
-use std::ops::ControlFlow;
 use std::{assert_matches, iter};
 
 use rustc_abi::{ExternAbi, Size};
@@ -24,13 +23,12 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, Diagnostic, E0228, ErrorGuaranteed, Level, StashKey,
 };
-use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::{self, InferKind, Visitor, VisitorExt};
+use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt};
 use rustc_hir::{self as hir, GenericParamKind, HirId, Node, PreciseCapturingArgKind, find_attr};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{DynCompatibilityViolation, ObligationCause};
-use rustc_middle::hir::nested_filter;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{
@@ -46,7 +44,7 @@ use rustc_trait_selection::traits::{
 };
 use tracing::{debug, instrument};
 
-use crate::errors;
+use crate::diagnostics::{self, ElidedLifetimesAreNotAllowedInDelegations};
 use crate::hir_ty_lowering::{HirTyLowerer, InherentAssocCandidate, RegionInferReason};
 
 pub(crate) mod dump;
@@ -131,6 +129,7 @@ pub(crate) struct ItemCtxt<'tcx> {
     tcx: TyCtxt<'tcx>,
     item_def_id: LocalDefId,
     tainted_by_errors: Cell<Option<ErrorGuaranteed>>,
+    lowering_delegation_segment: bool,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -236,12 +235,29 @@ fn bad_placeholder<'cx, 'tcx>(
     let kind = if kind.ends_with('s') { format!("{kind}es") } else { format!("{kind}s") };
 
     spans.sort();
-    cx.dcx().create_err(errors::PlaceholderNotAllowedItemSignatures { spans, kind })
+    cx.dcx().create_err(diagnostics::PlaceholderNotAllowedItemSignatures { spans, kind })
 }
 
 impl<'tcx> ItemCtxt<'tcx> {
     pub(crate) fn new(tcx: TyCtxt<'tcx>, item_def_id: LocalDefId) -> ItemCtxt<'tcx> {
-        ItemCtxt { tcx, item_def_id, tainted_by_errors: Cell::new(None) }
+        ItemCtxt::new_internal(tcx, item_def_id, false)
+    }
+
+    fn new_internal(
+        tcx: TyCtxt<'tcx>,
+        item_def_id: LocalDefId,
+        delegation: bool,
+    ) -> ItemCtxt<'tcx> {
+        ItemCtxt {
+            tcx,
+            item_def_id,
+            tainted_by_errors: Cell::new(None),
+            lowering_delegation_segment: delegation,
+        }
+    }
+
+    pub(crate) fn new_for_delegation(tcx: TyCtxt<'tcx>, item_def_id: LocalDefId) -> ItemCtxt<'tcx> {
+        ItemCtxt::new_internal(tcx, item_def_id, true)
     }
 
     pub(crate) fn lower_ty(&self, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
@@ -335,8 +351,15 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
                 .emit();
             ty::Region::new_error(self.tcx(), guar)
         } else {
+            // If we found elided lifetime during lowering of delegation parent or child
+            // segment then emit an error, as we need a named lifetime for proper signature
+            // inheritance (#156848).
+            if self.lowering_delegation_segment {
+                self.tcx.dcx().emit_err(ElidedLifetimesAreNotAllowedInDelegations { span });
+            }
+
             // This indicates an illegal lifetime in a non-assoc-trait position
-            ty::Region::new_error_with_message(self.tcx(), span, "unelided lifetime in signature")
+            ty::Region::new_error_with_message(self.tcx(), span, "inferred lifetime in signature")
         }
     }
 
@@ -456,7 +479,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
                                 [] => (generics.span, format!("<{lt_name}>")),
                                 [bound, ..] => (bound.span.shrink_to_lo(), format!("{lt_name}, ")),
                             };
-                            mpart_sugg = Some(errors::AssociatedItemTraitUninferredGenericParamsMultipartSuggestion {
+                            mpart_sugg = Some(diagnostics::AssociatedItemTraitUninferredGenericParamsMultipartSuggestion {
                                 fspan: lt_sp,
                                 first: sugg,
                                 sspan: span.with_hi(item_segment.ident.span.lo()),
@@ -497,13 +520,15 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
                 _ => {}
             }
 
-            Err(self.tcx().dcx().emit_err(errors::AssociatedItemTraitUninferredGenericParams {
-                span,
-                inferred_sugg,
-                bound,
-                mpart_sugg,
-                what: self.tcx.def_descr(item_def_id),
-            }))
+            Err(self.tcx().dcx().emit_err(
+                diagnostics::AssociatedItemTraitUninferredGenericParams {
+                    span,
+                    inferred_sugg,
+                    bound,
+                    mpart_sugg,
+                    what: self.tcx.def_descr(item_def_id),
+                },
+            ))
         }
     }
 
@@ -605,13 +630,13 @@ fn get_new_lifetime_name<'tcx>(
     (1..).flat_map(a_to_z_repeat_n).find(|lt| !existing_lifetimes.contains(lt.as_str())).unwrap()
 }
 
-pub(super) fn lower_variant_ctor(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+pub(super) fn check_ctor(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     tcx.ensure_ok().generics_of(def_id);
     tcx.ensure_ok().type_of(def_id);
     tcx.ensure_ok().predicates_of(def_id);
 }
 
-pub(super) fn lower_enum_variant_types(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+pub(super) fn check_enum_variant_types(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     struct ReprCIssue {
         msg: &'static str,
     }
@@ -643,7 +668,7 @@ pub(super) fn lower_enum_variant_types(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             Some(discr)
         } else {
             let span = tcx.def_span(variant.def_id);
-            tcx.dcx().emit_err(errors::EnumDiscriminantOverflowed {
+            tcx.dcx().emit_err(diagnostics::EnumDiscriminantOverflowed {
                 span,
                 discr: prev_discr.unwrap().to_string(),
                 item_name: tcx.item_ident(variant.def_id),
@@ -693,7 +718,7 @@ pub(super) fn lower_enum_variant_types(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
         // Lower the ctor, if any. This also registers the variant as an item.
         if let Some(ctor_def_id) = variant.ctor_def_id() {
-            lower_variant_ctor(tcx, ctor_def_id.expect_local());
+            check_ctor(tcx, ctor_def_id.expect_local());
         }
     }
 }
@@ -705,8 +730,8 @@ struct NestedSpan {
 }
 
 impl NestedSpan {
-    fn to_field_already_declared_nested_help(&self) -> errors::FieldAlreadyDeclaredNestedHelp {
-        errors::FieldAlreadyDeclaredNestedHelp { span: self.span }
+    fn to_field_already_declared_nested_help(&self) -> diagnostics::FieldAlreadyDeclaredNestedHelp {
+        diagnostics::FieldAlreadyDeclaredNestedHelp { span: self.span }
     }
 }
 
@@ -744,14 +769,14 @@ impl<'tcx> FieldUniquenessCheckContext<'tcx> {
         let field_name = field_name.normalize_to_macros_2_0();
         match (field_decl, self.seen_fields.get(&field_name).copied()) {
             (NotNested(span), Some(NotNested(prev_span))) => {
-                self.tcx.dcx().emit_err(errors::FieldAlreadyDeclared::NotNested {
+                self.tcx.dcx().emit_err(diagnostics::FieldAlreadyDeclared::NotNested {
                     field_name,
                     span,
                     prev_span,
                 });
             }
             (NotNested(span), Some(Nested(prev))) => {
-                self.tcx.dcx().emit_err(errors::FieldAlreadyDeclared::PreviousNested {
+                self.tcx.dcx().emit_err(diagnostics::FieldAlreadyDeclared::PreviousNested {
                     field_name,
                     span,
                     prev_span: prev.span,
@@ -763,7 +788,7 @@ impl<'tcx> FieldUniquenessCheckContext<'tcx> {
                 Nested(current @ NestedSpan { span, nested_field_span, .. }),
                 Some(NotNested(prev_span)),
             ) => {
-                self.tcx.dcx().emit_err(errors::FieldAlreadyDeclared::CurrentNested {
+                self.tcx.dcx().emit_err(diagnostics::FieldAlreadyDeclared::CurrentNested {
                     field_name,
                     span,
                     nested_field_span,
@@ -772,7 +797,7 @@ impl<'tcx> FieldUniquenessCheckContext<'tcx> {
                 });
             }
             (Nested(current @ NestedSpan { span, nested_field_span }), Some(Nested(prev))) => {
-                self.tcx.dcx().emit_err(errors::FieldAlreadyDeclared::BothNested {
+                self.tcx.dcx().emit_err(diagnostics::FieldAlreadyDeclared::BothNested {
                     field_name,
                     span,
                     nested_field_span,
@@ -922,7 +947,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
 
     let paren_sugar = find_attr!(attrs, RustcParenSugar);
     if paren_sugar && !tcx.features().unboxed_closures() {
-        tcx.dcx().emit_err(errors::ParenSugarAttribute { span: item.span });
+        tcx.dcx().emit_err(diagnostics::ParenSugarAttribute { span: item.span });
     }
 
     // Only regular traits can be marker.
@@ -1419,7 +1444,7 @@ fn check_impl_constness(
         }
         (None, _) | (_, false) => (None, ""),
     };
-    tcx.dcx().emit_err(errors::ConstImplForNonConstTrait {
+    tcx.dcx().emit_err(diagnostics::ConstImplForNonConstTrait {
         trait_ref_span: hir_trait_ref.path.span,
         trait_name,
         suggestion,
@@ -1488,7 +1513,8 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
                     .source_map()
                     .span_to_snippet(hir_ty.span)
                     .map_or_else(|_| String::new(), |s| format!(" `{s}`"));
-                tcx.dcx().emit_err(errors::SIMDFFIHighlyExperimental { span: hir_ty.span, snip });
+                tcx.dcx()
+                    .emit_err(diagnostics::SIMDFFIHighlyExperimental { span: hir_ty.span, snip });
             }
         };
         for (input, ty) in iter::zip(decl.inputs, fty.inputs().skip_binder()) {
@@ -1611,20 +1637,6 @@ fn anon_const_kind<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ty::AnonConstKin
             let parent_hir_node = tcx.hir_node(tcx.parent_hir_id(const_arg_id));
             if tcx.features().generic_const_exprs() {
                 ty::AnonConstKind::GCE
-            } else if tcx.features().generic_const_args() {
-                // Only anon consts that are the RHS of a const item can be GCA.
-                // Note: We can't just check tcx.parent because it needs to be EXACTLY
-                // the RHS, not just part of the RHS.
-                if !is_anon_const_rhs_of_const_item(tcx, def) {
-                    return ty::AnonConstKind::MCG;
-                }
-
-                let body = tcx.hir_body_owned_by(def);
-                let mut visitor = GCAParamVisitor(tcx);
-                match visitor.visit_body(body) {
-                    ControlFlow::Break(UsesParam) => ty::AnonConstKind::GCA,
-                    ControlFlow::Continue(()) => ty::AnonConstKind::MCG,
-                }
             } else if tcx.features().min_generic_const_args() {
                 ty::AnonConstKind::MCG
             } else if let hir::Node::Expr(hir::Expr {
@@ -1642,50 +1654,6 @@ fn anon_const_kind<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ty::AnonConstKin
     }
 }
 
-fn is_anon_const_rhs_of_const_item<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
-    let hir_id = tcx.local_def_id_to_hir_id(def_id);
-    let Some((_, grandparent_node)) = tcx.hir_parent_iter(hir_id).nth(1) else { return false };
-    let (Node::Item(hir::Item { kind: hir::ItemKind::Const(_, _, _, ct_rhs), .. })
-    | Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(_, ct_rhs), .. })
-    | Node::TraitItem(hir::TraitItem {
-        kind: hir::TraitItemKind::Const(_, Some(ct_rhs), _),
-        ..
-    })) = grandparent_node
-    else {
-        return false;
-    };
-    let hir::ConstItemRhs::TypeConst(hir::ConstArg {
-        kind: hir::ConstArgKind::Anon(rhs_anon), ..
-    }) = ct_rhs
-    else {
-        return false;
-    };
-    def_id == rhs_anon.def_id
-}
-
-struct GCAParamVisitor<'tcx>(TyCtxt<'tcx>);
-
-struct UsesParam;
-
-impl<'tcx> Visitor<'tcx> for GCAParamVisitor<'tcx> {
-    type NestedFilter = nested_filter::OnlyBodies;
-    type Result = ControlFlow<UsesParam>;
-
-    fn maybe_tcx(&mut self) -> TyCtxt<'tcx> {
-        self.0
-    }
-
-    fn visit_path(&mut self, path: &hir::Path<'tcx>, _id: HirId) -> ControlFlow<UsesParam> {
-        if let Res::Def(DefKind::TyParam | DefKind::ConstParam | DefKind::LifetimeParam, _) =
-            path.res
-        {
-            return ControlFlow::Break(UsesParam);
-        }
-
-        intravisit::walk_path(self, path)
-    }
-}
-
 #[instrument(level = "debug", skip(tcx), ret)]
 fn const_of_item<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -1693,9 +1661,9 @@ fn const_of_item<'tcx>(
 ) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
     let ct_rhs = match tcx.hir_node_by_def_id(def_id) {
         hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(.., ct), .. }) => *ct,
-        hir::Node::TraitItem(hir::TraitItem {
-            kind: hir::TraitItemKind::Const(_, ct, _), ..
-        }) => ct.expect("no default value for trait assoc const"),
+        hir::Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Const(_, ct), .. }) => {
+            ct.expect("no default value for trait assoc const")
+        }
         hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(.., ct), .. }) => *ct,
         _ => {
             span_bug!(tcx.def_span(def_id), "`const_of_item` expected a const or assoc const item")

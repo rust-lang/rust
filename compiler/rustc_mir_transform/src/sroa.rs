@@ -337,7 +337,7 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
             // a_1 = y
             // ...
             // ```
-            StatementKind::Assign(box (place, Rvalue::Aggregate(_, ref mut operands))) => {
+            StatementKind::Assign((place, Rvalue::Aggregate(_, ref mut operands))) => {
                 if let Some(local) = place.as_local()
                     && let Some(final_locals) = &self.replacements.fragments[local]
                 {
@@ -368,7 +368,7 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
             // ...
             // ```
             // ConstProp will pick up the pieces and replace them by actual constants.
-            StatementKind::Assign(box (place, Rvalue::Use(Operand::Constant(_), retag))) => {
+            StatementKind::Assign((place, Rvalue::Use(Operand::Constant(_), retag))) => {
                 if let Some(final_locals) = self.replacements.place_fragments(place) {
                     // Put the deaggregated statements *after* the original one.
                     let location = location.successor_within_block();
@@ -392,7 +392,7 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
             // a_1 = move? place.1
             // ...
             // ```
-            StatementKind::Assign(box (
+            StatementKind::Assign((
                 lhs,
                 Rvalue::Use(ref op @ (Operand::Copy(rplace) | Operand::Move(rplace)), retag),
             )) => {

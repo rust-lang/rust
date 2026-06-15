@@ -232,7 +232,7 @@ impl FromClean<clean::GenericArg> for GenericArg {
         match arg {
             Lifetime(l) => GenericArg::Lifetime(l.into_json(renderer)),
             Type(t) => GenericArg::Type(t.into_json(renderer)),
-            Const(box c) => GenericArg::Const(c.into_json(renderer)),
+            Const(c) => GenericArg::Const(c.into_json(renderer)),
             Infer => GenericArg::Infer,
         }
     }
@@ -309,7 +309,7 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
             type_: ci.type_.into_json(renderer),
             const_: ci.kind.into_json(renderer),
         },
-        MacroItem(m) => ItemEnum::Macro(m.source.clone()),
+        MacroItem(m, _) => ItemEnum::Macro(m.source.clone()),
         ProcMacroItem(m) => ItemEnum::ProcMacro(m.into_json(renderer)),
         PrimitiveItem(p) => {
             ItemEnum::Primitive(Primitive {
@@ -336,7 +336,8 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
             bounds: b.into_json(renderer),
             type_: Some(t.item_type.as_ref().unwrap_or(&t.type_).into_json(renderer)),
         },
-        // `convert_item` early returns `None` for stripped items, keywords and attributes.
+        // `convert_item` early returns `None` for stripped items, keywords, attributes and
+        // "special" macro rules.
         KeywordItem | AttributeItem => unreachable!(),
         StrippedItem(inner) => {
             match inner.as_ref() {
@@ -409,7 +410,7 @@ impl FromClean<rustc_hir::FnHeader> for FunctionHeader {
         };
         FunctionHeader {
             is_async: header.is_async(),
-            is_const: header.is_const(),
+            is_const: matches!(header.constness, rustc_hir::Constness::Const { .. }),
             is_unsafe,
             abi: header.abi.into_json(renderer),
         }
@@ -496,7 +497,7 @@ impl FromClean<clean::WherePredicate> for WherePredicate {
                     })
                     .collect(),
             },
-            EqPredicate { lhs, rhs } => WherePredicate::EqPredicate {
+            ProjectionPredicate { lhs, rhs } => WherePredicate::EqPredicate {
                 // The LHS currently has type `Type` but it should be a `QualifiedPath` since it may
                 // refer to an associated const. However, `EqPredicate` shouldn't exist in the first
                 // place: <https://github.com/rust-lang/rust/141368>.
@@ -898,8 +899,8 @@ impl FromClean<ItemType> for ItemKind {
             Keyword => ItemKind::Keyword,
             Attribute => ItemKind::Attribute,
             TraitAlias => ItemKind::TraitAlias,
-            ProcAttribute => ItemKind::ProcAttribute,
-            ProcDerive => ItemKind::ProcDerive,
+            ProcAttribute | DeclMacroAttribute => ItemKind::ProcAttribute,
+            ProcDerive | DeclMacroDerive => ItemKind::ProcDerive,
         }
     }
 }

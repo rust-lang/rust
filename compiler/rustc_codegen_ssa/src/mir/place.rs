@@ -111,7 +111,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         bx: &mut Bx,
         layout: TyAndLayout<'tcx>,
     ) -> Self {
-        if layout.deref().is_scalable_vector() {
+        if layout.peel_transparent_wrappers(bx).deref().is_scalable_vector() {
             Self::alloca_scalable(bx, layout)
         } else {
             Self::alloca_size(bx, layout.size, layout)
@@ -157,7 +157,11 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         bx: &mut Bx,
         layout: TyAndLayout<'tcx>,
     ) -> Self {
-        PlaceValue::new_sized(bx.alloca_with_ty(layout), layout.align.abi).with_type(layout)
+        PlaceValue::new_sized(
+            bx.alloca_with_ty(layout.peel_transparent_wrappers(bx)),
+            layout.align.abi,
+        )
+        .with_type(layout)
     }
 }
 
@@ -500,7 +504,7 @@ pub(super) fn codegen_tag_value<'tcx, V>(
                 // around the `niche`'s type.
                 // The easiest way to do that is to do wrapping arithmetic on `u128` and then
                 // masking off any extra bits that occur because we did the arithmetic with too many bits.
-                let niche_value = variant_index.as_u32() - niche_variants.start().as_u32();
+                let niche_value = variant_index.as_u32() - niche_variants.start.as_u32();
                 let niche_value = (niche_value as u128).wrapping_add(niche_start);
                 let niche_value = niche_value & niche_layout.size.unsigned_int_max();
 

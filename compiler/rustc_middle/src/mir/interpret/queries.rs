@@ -103,17 +103,23 @@ impl<'tcx> TyCtxt<'tcx> {
             bug!("did not expect inference variables here");
         }
 
-        let cid = match ty::Instance::try_resolve(self, typing_env, ct.def, ct.args) {
+        let def_id = match ct.kind {
+            ty::UnevaluatedConstKind::Projection { def_id }
+            | ty::UnevaluatedConstKind::Inherent { def_id }
+            | ty::UnevaluatedConstKind::Free { def_id }
+            | ty::UnevaluatedConstKind::Anon { def_id } => def_id,
+        };
+
+        let cid = match ty::Instance::try_resolve(self, typing_env, def_id, ct.args) {
             Ok(Some(instance)) => GlobalId { instance, promoted: None },
             // For errors during resolution, we deliberately do not point at the usage site of the constant,
             // since for these errors the place the constant is used shouldn't matter.
-            Ok(None) => return Err(ErrorHandled::TooGeneric(DUMMY_SP).into()),
+            Ok(None) => return Err(ErrorHandled::TooGeneric(DUMMY_SP)),
             Err(err) => {
                 return Err(ErrorHandled::Reported(
                     ReportedErrorInfo::non_const_eval_error(err),
                     DUMMY_SP,
-                )
-                .into());
+                ));
             }
         };
 
@@ -125,6 +131,7 @@ impl<'tcx> TyCtxt<'tcx> {
             // @lcnr believes that successfully evaluating even though there are
             // used generic parameters is a bug of evaluation, so checking for it
             // here does feel somewhat sensible.
+            let def_id = cid.instance.def_id();
             if !self.features().generic_const_exprs()
                 && ct.args.has_non_region_param()
                 // We only FCW for anon consts as repeat expr counts with anon consts are the only place
@@ -133,16 +140,16 @@ impl<'tcx> TyCtxt<'tcx> {
                 //
                 // If we don't *only* FCW anon consts we can wind up incorrectly FCW'ing uses of assoc
                 // consts in pattern positions. #140447
-                && self.def_kind(cid.instance.def_id()) == DefKind::AnonConst
-                && !self.is_trivial_const(cid.instance.def_id())
+                && self.def_kind(def_id) == DefKind::AnonConst
+                && !self.is_trivial_const(def_id)
+                && let Some(local_def_id) = def_id.as_local()
             {
-                let mir_body = self.mir_for_ctfe(cid.instance.def_id());
+                let mir_body = self.mir_for_ctfe(def_id);
                 if mir_body.is_polymorphic {
-                    let Some(local_def_id) = ct.def.as_local() else { return };
                     self.emit_node_span_lint(
                         lint::builtin::CONST_EVALUATABLE_UNCHECKED,
                         self.local_def_id_to_hir_id(local_def_id),
-                        self.def_span(ct.def),
+                        self.def_span(def_id),
                         rustc_errors::DiagDecorator(|lint| {
                             lint.primary_message(
                                 "cannot use constants which depend on generic parameters in types",

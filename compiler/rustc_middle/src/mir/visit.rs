@@ -351,7 +351,7 @@ macro_rules! make_mir_visitor {
                         | ty::InstanceKind::ReifyShim(_def_id, _)
                         | ty::InstanceKind::Virtual(_def_id, _)
                         | ty::InstanceKind::ThreadLocalShim(_def_id)
-                        | ty::InstanceKind::ClosureOnceShim { call_once: _def_id, track_caller: _ }
+                        | ty::InstanceKind::ClosureOnceShim { call_once: _def_id, closure: _, track_caller: _ }
                         | ty::InstanceKind::ConstructCoroutineInClosureShim {
                             coroutine_closure_def_id: _def_id,
                             receiver_by_ref: _,
@@ -419,10 +419,10 @@ macro_rules! make_mir_visitor {
                     self.visit_statement_debuginfo(debuginfo, location);
                 }
                 match kind {
-                    StatementKind::Assign(box (place, rvalue)) => {
+                    StatementKind::Assign((place, rvalue)) => {
                         self.visit_assign(place, rvalue, location);
                     }
-                    StatementKind::FakeRead(box (_, place)) => {
+                    StatementKind::FakeRead((_, place)) => {
                         self.visit_place(
                             place,
                             PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect),
@@ -457,7 +457,7 @@ macro_rules! make_mir_visitor {
                             location
                         );
                     }
-                    StatementKind::AscribeUserType(box (place, user_ty), variance) => {
+                    StatementKind::AscribeUserType((place, user_ty), variance) => {
                         self.visit_ascribe_user_ty(
                             place,
                             $(& $mutability)? *variance,
@@ -471,7 +471,7 @@ macro_rules! make_mir_visitor {
                             location
                         )
                     }
-                    StatementKind::Intrinsic(box intrinsic) => {
+                    StatementKind::Intrinsic(intrinsic) => {
                         match intrinsic {
                             NonDivergingIntrinsic::Assume(op) => self.visit_operand(op, location),
                             NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping {
@@ -555,20 +555,12 @@ macro_rules! make_mir_visitor {
                         unwind: _,
                         replace: _,
                         drop: _,
-                        async_fut,
                     } => {
                         self.visit_place(
                             place,
                             PlaceContext::MutatingUse(MutatingUseContext::Drop),
                             location
                         );
-                        if let Some(async_fut) = async_fut {
-                            self.visit_local(
-                                $(&$mutability)? *async_fut,
-                                PlaceContext::MutatingUse(MutatingUseContext::Borrow),
-                                location
-                            );
-                        }
                     }
 
                     TerminatorKind::Call {
@@ -758,7 +750,7 @@ macro_rules! make_mir_visitor {
                         self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                     }
 
-                    Rvalue::BinaryOp(_bin_op, box(lhs, rhs)) => {
+                    Rvalue::BinaryOp(_bin_op, (lhs, rhs)) => {
                         self.visit_operand(lhs, location);
                         self.visit_operand(rhs, location);
                     }
@@ -918,7 +910,7 @@ macro_rules! make_mir_visitor {
 
                 self.visit_source_info(source_info);
                 let location = Location::START;
-                if let Some(box VarDebugInfoFragment {
+                if let Some(VarDebugInfoFragment {
                     ty,
                     projection
                 }) = composite {

@@ -43,6 +43,7 @@ pub enum TokenExpander<'db> {
     BuiltInAttr(BuiltinAttrExpander),
     /// `derive(Copy)` and such.
     BuiltInDerive(BuiltinDeriveExpander),
+    UnimplementedBuiltIn,
     /// The thing we love the most here in rust-analyzer -- procedural macros.
     ProcMacro(CustomProcMacroExpander),
 }
@@ -149,8 +150,8 @@ fn syntax_context(db: &dyn ExpandDatabase, file: HirFileId, edition: Edition) ->
     match file {
         HirFileId::FileId(_) => SyntaxContext::root(edition),
         HirFileId::MacroFile(m) => {
-            let kind = m.loc(db).kind;
-            db.macro_arg_considering_derives(m, &kind).2.ctx
+            let kind = &m.loc(db).kind;
+            db.macro_arg_considering_derives(m, kind).2.ctx
         }
     }
 }
@@ -311,6 +312,7 @@ pub fn expand_speculative(
             it.expand(db, actual_macro_call, &tt, span).map_err(Into::into)
         }
         MacroDefKind::BuiltInAttr(_, it) => it.expand(db, actual_macro_call, &tt, span),
+        MacroDefKind::UnimplementedBuiltIn(_) => expand_unimplemented_builtin_macro(span),
     };
 
     let expand_to = loc.expand_to();
@@ -333,6 +335,13 @@ pub fn expand_speculative(
         })
         .collect();
     Some((node.syntax_node(), token))
+}
+
+fn expand_unimplemented_builtin_macro(span: Span) -> ExpandResult<tt::TopSubtree> {
+    ExpandResult::new(
+        tt::TopSubtree::empty(tt::DelimSpan::from_single(span)),
+        ExpandError::other(span, "this built-in macro is not implemented"),
+    )
 }
 
 #[salsa::tracked(lru = 1024, returns(ref))]
@@ -396,7 +405,7 @@ pub(crate) fn parse_with_map(
 /// This resolves the [MacroCallId] to check if it is a derive macro if so get the [macro_arg] for the derive.
 /// Other wise return the [macro_arg] for the macro_call_id.
 ///
-/// This is not connected to the database so it does not cached the result. However, the inner [macro_arg] query is
+/// This is not connected to the database so it does not cache the result. However, the inner [macro_arg] query is
 #[allow(deprecated)] // we are macro_arg_considering_derives
 fn macro_arg_considering_derives<'db>(
     db: &'db dyn ExpandDatabase,
@@ -538,15 +547,16 @@ impl<'db> TokenExpander<'db> {
             MacroDefKind::BuiltInDerive(_, expander) => TokenExpander::BuiltInDerive(expander),
             MacroDefKind::BuiltInEager(_, expander) => TokenExpander::BuiltInEager(expander),
             MacroDefKind::ProcMacro(_, expander, _) => TokenExpander::ProcMacro(expander),
+            MacroDefKind::UnimplementedBuiltIn(_) => TokenExpander::UnimplementedBuiltIn,
         }
     }
 }
 
-fn macro_expand(
-    db: &dyn ExpandDatabase,
+fn macro_expand<'db>(
+    db: &'db dyn ExpandDatabase,
     macro_call_id: MacroCallId,
-    loc: MacroCallLoc,
-) -> ExpandResult<(Cow<'_, tt::TopSubtree>, MatchedArmIndex)> {
+    loc: &MacroCallLoc,
+) -> ExpandResult<(Cow<'db, tt::TopSubtree>, MatchedArmIndex)> {
     let _p = tracing::info_span!("macro_expand").entered();
 
     let (ExpandResult { value: (tt, matched_arm), err }, span) = match loc.def.kind {
@@ -571,6 +581,9 @@ fn macro_expand(
                 }
                 MacroDefKind::BuiltInDerive(_, it) => {
                     it.expand(db, macro_call_id, arg, span).map_err(Into::into).zip_val(None)
+                }
+                MacroDefKind::UnimplementedBuiltIn(_) => {
+                    expand_unimplemented_builtin_macro(span).zip_val(None)
                 }
                 MacroDefKind::BuiltInEager(_, it) => {
                     // This might look a bit odd, but we do not expand the inputs to eager macros here.

@@ -389,12 +389,11 @@ impl<'tcx> SizeSkeleton<'tcx> {
             ty::Ref(_, pointee, _) | ty::RawPtr(pointee, _) => {
                 let non_zero = !ty.is_raw_ptr();
 
+                tcx.assert_fully_normalized(typing_env, pointee);
                 let tail = tcx.struct_tail_raw(
                     pointee,
                     &ObligationCause::dummy(),
-                    |ty| match tcx
-                        .try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty))
-                    {
+                    |ty| match tcx.try_normalize_erasing_regions(typing_env, ty) {
                         Ok(ty) => ty,
                         Err(e) => Ty::new_error_with_message(
                             tcx,
@@ -455,17 +454,46 @@ impl<'tcx> SizeSkeleton<'tcx> {
             }
 
             ty::Adt(def, args) => {
-                // Only newtypes and enums w/ nullable pointer optimization.
+                // Only newtypes and enums w/ nullable pointer optimization (NPO).
                 if def.is_union() || def.variants().is_empty() || def.variants().len() > 2 {
                     return Err(err);
                 }
+                // Only default repr types.
+                {
+                    // We can ignore the seed and some particular flags that can never affect the
+                    // layout of newtypes / NPO types, but we have to check everything else.
+                    // If you are adding a new field to `ReprOptions`, make sure to extend the check
+                    // below so that we bail out if it is not at its default value!
+                    let ReprOptions { int, align, pack, flags, scalable, field_shuffle_seed: _ } =
+                        def.repr();
+                    let mut ignored_flags = ReprFlags::IS_TRANSPARENT
+                        | ReprFlags::IS_LINEAR
+                        | ReprFlags::RANDOMIZE_LAYOUT;
+                    if def.is_struct() {
+                        // `repr(C)` is only okay for structs, not for enums.
+                        // Below, the *only* thing we do for structs is propagating
+                        // `SizeSkeleton::Pointer`. We do *not* assume that `repr(C)` preserved
+                        // ZST-ness (which might stop being true eventually).
+                        ignored_flags |= ReprFlags::IS_C;
+                    }
+                    if int.is_some()
+                        || align.is_some()
+                        || pack.is_some()
+                        || flags.difference(ignored_flags) != ReprFlags::default()
+                        || scalable.is_some()
+                    {
+                        return Err(err);
+                    }
+                }
 
                 // Get a zero-sized variant or a pointer newtype.
-                let zero_or_ptr_variant = |i| {
+                // Returns `Ok(None)` for 1-ZST types, `Ok(Some)` if (ignoring all 1-ZST fields)
+                // there's just a single pointer, and `Err` otherwise.
+                let zero_or_ptr_variant = |i| -> Result<Option<SizeSkeleton<'tcx>>, _> {
                     let i = VariantIdx::from_usize(i);
                     let fields = def.variant(i).fields.iter().map(|field| {
                         SizeSkeleton::compute_inner(
-                            field.ty(tcx, args),
+                            field.ty(tcx, args).skip_norm_wip(),
                             tcx,
                             typing_env,
                             span,
@@ -495,7 +523,8 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 };
 
                 let v0 = zero_or_ptr_variant(0)?;
-                // Newtype.
+                // Single-variant case: Check if this is a newtype around a pointer.
+                // Such types are themselves pointer-sized.
                 if def.variants().len() == 1 {
                     if let Some(SizeSkeleton::Pointer { non_zero, tail }) = v0 {
                         return Ok(SizeSkeleton::Pointer { non_zero, tail });
@@ -505,7 +534,9 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 }
 
                 let v1 = zero_or_ptr_variant(1)?;
-                // Nullable pointer enum optimization.
+                // 2-variant case: Check if one variant is a *non-zero* pointer and the other a
+                // 1-ZST. Such types are eligible to for the nullable pointer enum optimization, so
+                // they are themselves pointer-sized.
                 match (v0, v1) {
                     (Some(SizeSkeleton::Pointer { non_zero: true, tail }), None)
                     | (None, Some(SizeSkeleton::Pointer { non_zero: true, tail })) => {
@@ -782,8 +813,8 @@ where
                 tcx.mk_layout(LayoutData::uninhabited_variant(cx, variant_index, fields))
             }
 
-            Variants::Multiple { ref variants, .. } => {
-                cx.tcx().mk_layout(variants[variant_index].clone())
+            Variants::Multiple { .. } => {
+                cx.tcx().mk_layout(LayoutData::for_variant(&this, variant_index))
             }
         };
 
@@ -952,7 +983,7 @@ where
                     match this.variants {
                         Variants::Single { index } => {
                             let field = &def.variant(index).fields[FieldIdx::from_usize(i)];
-                            TyMaybeWithLayout::Ty(field.ty(tcx, args))
+                            TyMaybeWithLayout::Ty(field.ty(tcx, args).skip_norm_wip())
                         }
                         Variants::Empty => panic!("there is no field in Variants::Empty types"),
 
@@ -1007,33 +1038,19 @@ where
             }
             ty::Ref(_, ty, mt) if offset.bytes() == 0 => {
                 tcx.layout_of(typing_env.as_query_input(ty)).ok().map(|layout| {
-                    let (size, kind);
-                    match mt {
+                    let kind = match mt {
                         hir::Mutability::Not => {
                             let frozen = optimize && ty.is_freeze(tcx, typing_env);
-
-                            // Non-frozen shared references are not necessarily dereferenceable for the entire duration of the function
-                            // (see <https://github.com/rust-lang/rust/pull/98017>)
-                            // (if we had "dereferenceable on entry", we could support this)
-                            size = if frozen { layout.size } else { Size::ZERO };
-
-                            kind = PointerKind::SharedRef { frozen };
+                            PointerKind::SharedRef { frozen }
                         }
                         hir::Mutability::Mut => {
                             let unpin = optimize
                                 && ty.is_unpin(tcx, typing_env)
                                 && ty.is_unsafe_unpin(tcx, typing_env);
-
-                            // Mutable references to potentially self-referential types are not
-                            // necessarily dereferenceable for the entire duration of the function
-                            // (see <https://github.com/rust-lang/unsafe-code-guidelines/issues/381>)
-                            // (if we had "dereferenceable on entry", we could support this)
-                            size = if unpin { layout.size } else { Size::ZERO };
-
-                            kind = PointerKind::MutableRef { unpin };
+                            PointerKind::MutableRef { unpin }
                         }
                     };
-                    PointeeInfo { safe: Some(kind), size, align: layout.align.abi }
+                    PointeeInfo { safe: Some(kind), size: layout.size, align: layout.align.abi }
                 })
             }
 
@@ -1049,12 +1066,7 @@ where
                             && pointee.is_unsafe_unpin(tcx, typing_env),
                         global: this.ty.is_box_global(tcx),
                     }),
-
-                    // `Box` are not necessarily dereferenceable for the entire duration of the function as
-                    // they can be deallocated at any time.
-                    // (if we had "dereferenceable on entry", we could support this)
-                    size: Size::ZERO,
-
+                    size: layout.size,
                     align: layout.align.abi,
                 })
             }
@@ -1098,7 +1110,7 @@ where
                         } else {
                             VariantIdx::from_u32(0)
                         };
-                        assert_eq!(tagged_variant, *niche_variants.start());
+                        assert_eq!(tagged_variant, niche_variants.start);
                         if *niche_start == 0 {
                             // The other variant is encoded as "null", so we can recurse searching for
                             // a pointer here. This relies on the fact that the codegen backend
@@ -1291,8 +1303,11 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: ExternAbi) 
         | RiscvInterruptM
         | RiscvInterruptS
         | RustInvalid
+        | Swift
         | Unadjusted => false,
-        Rust | RustCall | RustCold | RustPreserveNone => tcx.sess.panic_strategy().unwinds(),
+        Rust | RustCall | RustCold | RustPreserveNone | RustTail => {
+            tcx.sess.panic_strategy().unwinds()
+        }
     }
 }
 

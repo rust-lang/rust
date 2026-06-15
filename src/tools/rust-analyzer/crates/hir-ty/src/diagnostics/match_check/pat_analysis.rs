@@ -49,8 +49,7 @@ pub(crate) struct EnumVariantContiguousIndex(usize);
 impl EnumVariantContiguousIndex {
     fn from_enum_variant_id(db: &dyn HirDatabase, target_evid: EnumVariantId) -> Self {
         // Find the index of this variant in the list of variants.
-        use hir_def::Lookup;
-        let i = target_evid.lookup(db).index as usize;
+        let i = target_evid.index(db);
         EnumVariantContiguousIndex(i)
     }
 
@@ -149,7 +148,7 @@ impl<'a, 'db> MatchCheckCtx<'a, 'db> {
         let fields_len = variant.fields(self.db).fields().len() as u32;
 
         (0..fields_len).map(|idx| LocalFieldId::from_raw(idx.into())).map(move |fid| {
-            let ty = field_tys[fid].get().instantiate(self.infcx.interner, substs).skip_norm_wip();
+            let ty = field_tys[fid].ty().instantiate(self.infcx.interner, substs).skip_norm_wip();
             let ty = self
                 .infcx
                 .at(&ObligationCause::dummy(), self.env)
@@ -438,7 +437,7 @@ impl<'a, 'db> PatCx for MatchCheckCtx<'a, 'db> {
                             ConstructorSet::NoConstructors
                         } else {
                             let mut variants = IndexVec::with_capacity(enum_data.variants.len());
-                            for &(variant, _, _) in enum_data.variants.iter() {
+                            for &(variant, _) in enum_data.variants.values() {
                                 let is_uninhabited = is_enum_variant_uninhabited_from(
                                     cx.infcx, variant, subst, cx.module, self.env,
                                 );

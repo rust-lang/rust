@@ -1107,9 +1107,7 @@ impl<'a> Parser<'a> {
 
         match &*components {
             // 1e2
-            [IdentLike(i)] => {
-                DestructuredFloat::Single(Symbol::intern(i), span)
-            }
+            [IdentLike(i)] => DestructuredFloat::Single(Symbol::intern(i), span),
             // 1.
             [IdentLike(left), Punct('.')] => {
                 let (left_span, dot_span) = if can_take_span_apart() {
@@ -1126,7 +1124,8 @@ impl<'a> Parser<'a> {
             [IdentLike(left), Punct('.'), IdentLike(right)] => {
                 let (left_span, dot_span, right_span) = if can_take_span_apart() {
                     let left_span = span.with_hi(span.lo() + BytePos::from_usize(left.len()));
-                    let dot_span = span.with_lo(left_span.hi()).with_hi(left_span.hi() + BytePos(1));
+                    let dot_span =
+                        span.with_lo(left_span.hi()).with_hi(left_span.hi() + BytePos(1));
                     let right_span = span.with_lo(dot_span.hi());
                     (left_span, dot_span, right_span)
                 } else {
@@ -1279,14 +1278,40 @@ impl<'a> Parser<'a> {
             None
         };
         let open_paren = self.token.span;
+        let call_depth = self.token_cursor.stack.len();
 
-        let seq = self
-            .parse_expr_paren_seq()
-            .map(|args| self.mk_expr(lo.to(self.prev_token.span), self.mk_call(fun, args)));
+        let seq = match self.parse_expr_paren_seq() {
+            Ok(args) => Ok(self.mk_expr(lo.to(self.prev_token.span), self.mk_call(fun, args))),
+            Err(err)
+                if self.is_expected_raw_ref_mut()
+                    && self.token_cursor.stack.len() == call_depth =>
+            {
+                let guar = err.emit();
+                // Preserve the call expression so later passes can still diagnose the callee,
+                // while treating the malformed `&raw <expr>` argument as an error expression.
+                let args = self.recover_raw_ref_call_args(guar);
+                return self.mk_expr(lo.to(self.prev_token.span), self.mk_call(fun, args));
+            }
+            Err(err) => Err(err),
+        };
         match self.maybe_recover_struct_lit_bad_delims(lo, open_paren, seq, snapshot) {
             Ok(expr) => expr,
             Err(err) => self.recover_seq_parse_error(exp!(OpenParen), exp!(CloseParen), lo, err),
         }
+    }
+
+    fn recover_raw_ref_call_args(&mut self, guar: ErrorGuaranteed) -> ThinVec<Box<Expr>> {
+        let err_span = self.prev_token.span.to(self.token.span);
+        let mut args = thin_vec![self.mk_expr_err(err_span, guar)];
+        while !self.token.kind.is_close_delim_or_eof() {
+            if self.eat(exp!(Comma)) && !self.token.kind.is_close_delim_or_eof() {
+                args.push(self.mk_expr_err(self.prev_token.span.shrink_to_hi(), guar));
+            } else {
+                self.parse_token_tree();
+            }
+        }
+        let _ = self.eat(exp!(CloseParen));
+        args
     }
 
     /// If we encounter a parser state that looks like the user has written a `struct` literal with

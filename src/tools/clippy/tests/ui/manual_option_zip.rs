@@ -1,5 +1,5 @@
 #![warn(clippy::manual_option_zip)]
-#![allow(clippy::bind_instead_of_map)]
+#![expect(clippy::bind_instead_of_map)]
 
 fn main() {}
 
@@ -115,4 +115,11 @@ impl NotOption {
     fn and_then<U>(self, f: impl FnOnce(i32) -> Option<U>) -> Option<U> {
         self.0.and_then(f)
     }
+}
+
+fn issue16968() {
+    let a = Some(1);
+
+    let opts = [1, 2];
+    let _ = a.and_then(|a| opts.into_iter().find(|b| *b == a).map(|b| (a, b)));
 }

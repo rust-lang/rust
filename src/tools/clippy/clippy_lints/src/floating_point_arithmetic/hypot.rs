@@ -19,6 +19,7 @@ pub(super) fn detect(cx: &LateContext<'_>, receiver: &Expr<'_>, app: &mut Applic
         add_rhs,
     ) = receiver.kind
     {
+        let ctxt = receiver.span.ctxt();
         // check if expression of the form x * x + y * y
         if let ExprKind::Binary(
             Spanned {
@@ -34,8 +35,8 @@ pub(super) fn detect(cx: &LateContext<'_>, receiver: &Expr<'_>, app: &mut Applic
                 rmul_lhs,
                 rmul_rhs,
             ) = add_rhs.kind
-            && eq_expr_value(cx, lmul_lhs, lmul_rhs)
-            && eq_expr_value(cx, rmul_lhs, rmul_rhs)
+            && eq_expr_value(cx, ctxt, lmul_lhs, lmul_rhs)
+            && eq_expr_value(cx, ctxt, rmul_lhs, rmul_rhs)
         {
             return Some(format!(
                 "{}.hypot({})",

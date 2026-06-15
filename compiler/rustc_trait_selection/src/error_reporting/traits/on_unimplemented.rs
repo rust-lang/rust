@@ -217,7 +217,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }));
 
         let this = self.tcx.def_path_str(trait_pred.trait_ref.def_id);
-        let this_sugared = trait_pred.trait_ref.print_trait_sugared().to_string();
+        let this_resolved = trait_pred.trait_ref.print_trait_sugared().to_string();
+        let this_path =
+            ty::TraitRef::identity(self.tcx, def_id).print_only_trait_path().to_string();
 
         let filter_options =
             FilterOptions { self_types, from_desugaring, cause, crate_local, direct, generic_args };
@@ -249,7 +251,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             })
             .collect();
 
-        let format_args = FormatArgs { this, this_sugared, generic_args, item_context };
+        let format_args =
+            FormatArgs { this, this_path, this_resolved, generic_args, item_context, .. };
         (filter_options, format_args)
     }
 }

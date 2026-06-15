@@ -1,0 +1,83 @@
+- // MIR for `includes_never::{closure#0}::{closure#1}` before StateTransform
++ // MIR for `includes_never::{closure#0}::{closure#1}` after StateTransform
+  
+- fn includes_never::{closure#0}::{closure#1}(_1: {async block@$DIR/async_fn.rs:67:15: 67:20}, _2: std::future::ResumeTy) -> u32
+- yields ()
+-  {
+-     debug _task_context => _2;
+-     debug x => (*(_1.0: &u32));
+-     let mut _0: u32;
++ fn includes_never::{closure#0}::{closure#1}(_1: Pin<&mut {async block@$DIR/async_fn.rs:67:15: 67:20}>, _2: &mut Context<'_>) -> Poll<u32> {
++     coroutine layout {
++         variant_fields = {
++             Unresumed(0): [],
++             Returned (1): [],
++             Panicked (2): [],
++         }
++         storage_conflicts = BitMatrix(0x0) {}
++     }
++     debug _task_context => _10;
++     debug x => (*((*_9).0: &u32));
++     let mut _0: std::task::Poll<u32>;
+      let mut _3: u32;
+      let mut _4: u32;
+      let mut _5: &u32;
+      let mut _6: &u32;
++     let mut _7: u32;
++     let mut _8: u32;
++     let mut _9: &mut {async block@$DIR/async_fn.rs:67:15: 67:20};
++     let mut _10: std::future::ResumeTy;
++     let mut _11: std::ptr::NonNull<std::task::Context<'_>>;
+  
+      bb0: {
+-         StorageLive(_3);
+-         _5 = no_retag copy (_1.0: &u32);
+-         _3 = copy (*_5);
+-         StorageLive(_4);
+-         _6 = no_retag copy (_1.0: &u32);
+-         _4 = copy (*_6);
+-         _0 = Add(move _3, move _4);
+-         StorageDead(_4);
+-         StorageDead(_3);
+-         drop(_1) -> [return: bb1, unwind: bb2];
++         _11 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
++         _10 = std::future::ResumeTy(move _11);
++         _9 = copy (_1.0: &mut {async block@$DIR/async_fn.rs:67:15: 67:20});
++         _8 = discriminant((*_9));
++         switchInt(move _8) -> [0: bb5, 1: bb3, otherwise: bb4];
+      }
+  
+      bb1: {
++         _0 = Poll::<u32>::Ready(move _7);
++         discriminant((*_9)) = 1;
+          return;
+      }
+  
+-     bb2 (cleanup): {
+-         resume;
++     bb2: {
++         goto -> bb1;
++     }
++ 
++     bb3: {
++         assert(const false, "`async fn` resumed after completion") -> [success: bb3, unwind continue];
++     }
++ 
++     bb4: {
++         unreachable;
++     }
++ 
++     bb5: {
++         StorageLive(_3);
++         _5 = no_retag copy ((*_9).0: &u32);
++         _3 = copy (*_5);
++         StorageLive(_4);
++         _6 = no_retag copy ((*_9).0: &u32);
++         _4 = copy (*_6);
++         _7 = Add(move _3, move _4);
++         StorageDead(_4);
++         StorageDead(_3);
++         goto -> bb2;
+      }
+  }
+  

@@ -579,7 +579,7 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
             | StatementKind::Nop
             | StatementKind::StorageLive(..)
             | StatementKind::StorageDead(..) => {}
-            StatementKind::Assign(box (ref place, ref rvalue)) => {
+            StatementKind::Assign((ref place, ref rvalue)) => {
                 if rvalue.is_safe_to_remove() {
                     self.visit_lhs(place, location);
                     self.visit_rvalue(rvalue, location);
@@ -626,9 +626,9 @@ fn remove_unused_definitions_helper(used_locals: &mut UsedLocals, body: &mut Bod
                     StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
                         used_locals.is_used(*local)
                     }
-                    StatementKind::Assign(box (place, _))
-                    | StatementKind::SetDiscriminant { box place, .. }
-                    | StatementKind::BackwardIncompatibleDropHint { box place, .. } => {
+                    StatementKind::Assign((place, _)) => used_locals.is_used(place.local),
+                    StatementKind::SetDiscriminant { place, .. }
+                    | StatementKind::BackwardIncompatibleDropHint { place, .. } => {
                         used_locals.is_used(place.local)
                     }
                     _ => continue,

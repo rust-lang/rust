@@ -27,3 +27,9 @@ impl Trait for S {
     fn f() {}
     fn g() {}
 }
+
+// Regression test for https://github.com/rust-lang/rust/issues/151454.
+//@ has foo/fn.hidden_projection.html
+//@ has - '//pre[@class="rust item-decl"]' 'T::Foo'
+//@ count - '//pre[@class="rust item-decl"]//a' 'Foo' 0
+pub fn hidden_projection<T: Trait>(_: T::Foo) {}

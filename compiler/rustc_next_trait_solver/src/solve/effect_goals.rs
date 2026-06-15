@@ -191,6 +191,7 @@ where
 
     fn consider_error_guaranteed_candidate(
         ecx: &mut EvalCtxt<'_, D>,
+        _goal: Goal<I, Self>,
         _guar: I::ErrorGuaranteed,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
@@ -374,7 +375,7 @@ where
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
-        todo!("Iterator is not yet const")
+        Err(NoSolutionOrRerunNonErased::NoSolution(NoSolution))
     }
 
     fn consider_builtin_fused_iterator_candidate(

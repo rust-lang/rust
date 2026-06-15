@@ -14,7 +14,7 @@ use rustc_target::spec::{Arch, SanitizerSet};
 use rustc_target::target_features::{RUSTC_SPECIFIC_FEATURES, Stability};
 use smallvec::SmallVec;
 
-use crate::errors::{FeatureNotValid, FeatureNotValidHint};
+use crate::errors::{CrossArchFeatureNote, FeatureNotValid, FeatureNotValidHint};
 use crate::{errors, target_features};
 
 /// Compute the enabled target features from the `#[target_feature]` function attribute.
@@ -50,7 +50,22 @@ pub(crate) fn from_target_feature_attr(
                     and_more: rust_target_features.len().saturating_sub(5),
                 }
             };
-            tcx.dcx().emit_err(FeatureNotValid { feature: feature_str, span: feature_span, hint });
+            tcx.dcx().emit_err(FeatureNotValid {
+                feature: feature_str,
+                span: feature_span,
+                hint,
+                cross_arch: {
+                    let arches = rustc_target::target_features::feature_to_arch_names(feature_str);
+                    match arches {
+                        [] => None,
+                        [arch] => Some(CrossArchFeatureNote::Single { feature: feature_str, arch }),
+                        [..] => Some(CrossArchFeatureNote::Multiple {
+                            feature: feature_str,
+                            arches: arches.into(),
+                        }),
+                    }
+                },
+            });
             continue;
         };
 
@@ -308,12 +323,19 @@ pub fn cfg_target_feature<'a, const N: usize>(
                     sess.dcx().emit_warn(unknown_feature);
                 }
                 Some((_, stability, _)) => {
-                    if let Err(reason) = stability.toggle_allowed() {
-                        sess.dcx().emit_warn(errors::ForbiddenCTargetFeature {
+                    if let Stability::Forbidden { reason, hard_error } = stability {
+                        let diag = errors::ForbiddenCTargetFeature {
                             feature: base_feature,
                             enabled: if enable { "enabled" } else { "disabled" },
                             reason,
-                        });
+                            future_compat_note: !hard_error,
+                        };
+
+                        if *hard_error {
+                            sess.dcx().emit_err(diag);
+                        } else {
+                            sess.dcx().emit_warn(diag);
+                        }
                     } else if stability.requires_nightly(/* in_cfg */ false).is_some() {
                         // An unstable feature. Warn about using it. It makes little sense
                         // to hard-error here since we just warn about fully unknown

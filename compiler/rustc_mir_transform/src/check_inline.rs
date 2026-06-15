@@ -26,7 +26,7 @@ impl<'tcx> MirLint<'tcx> for CheckForceInline {
         if let Err(reason) =
             is_inline_valid_on_fn(tcx, def_id).and_then(|_| is_inline_valid_on_body(tcx, body))
         {
-            tcx.dcx().emit_err(crate::errors::InvalidForceInline {
+            tcx.dcx().emit_err(crate::diagnostics::InvalidForceInline {
                 attr_span,
                 callee_span: tcx.def_span(def_id),
                 callee: tcx.def_path_str(def_id),
@@ -59,12 +59,12 @@ pub(super) fn is_inline_valid_on_fn<'tcx>(
         return Err("cold");
     }
 
-    // Intrinsic fallback bodies are automatically made cross-crate inlineable,
-    // but at this stage we don't know whether codegen knows the intrinsic,
-    // so just conservatively don't inline it. This also ensures that we do not
-    // accidentally inline the body of an intrinsic that *must* be overridden.
-    if find_attr!(tcx, def_id, RustcIntrinsic) {
-        return Err("callee is an intrinsic");
+    // Intrinsics without fallback body cannot be inlined. The logic for which intrinsics *with*
+    // body can be inlined is in the inlining pass.
+    if let Some(intrinsic) = tcx.intrinsic(def_id)
+        && intrinsic.must_be_overridden
+    {
+        return Err("callee is an intrinsic without fallback body");
     }
 
     Ok(())

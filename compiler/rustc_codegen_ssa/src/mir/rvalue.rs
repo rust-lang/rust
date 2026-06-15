@@ -2,7 +2,7 @@ use itertools::Itertools as _;
 use rustc_abi::{self as abi, BackendRepr, FIRST_VARIANT};
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, Instance, Mutability, Ty, TyCtxt};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_session::config::OptLevel;
 use tracing::{debug, instrument};
@@ -23,7 +23,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         rvalue: &mir::Rvalue<'tcx>,
     ) {
         match *rvalue {
-            mir::Rvalue::Use(ref operand, _) => {
+            mir::Rvalue::Use(ref operand, with_retag) => {
                 if let mir::Operand::Constant(const_op) = operand {
                     let val = self.eval_mir_constant(&const_op);
                     if val.all_bytes_uninit(self.cx.tcx()) {
@@ -40,9 +40,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 ) {
                     debug_assert!(!matches!(cg_operand.val, OperandValue::Ref(..)));
                 }
+                // If this is storing a &Freeze reference with a retag, record that it's not
+                // possible to perform writes through the stored pointer.
+                let flags = if let ty::Ref(_, pointee_ty, Mutability::Not) =
+                    operand.ty(self.mir, self.cx.tcx()).kind()
+                    && with_retag.yes()
+                    && pointee_ty.is_freeze(self.cx.tcx(), self.cx.typing_env())
+                {
+                    MemFlags::CAPTURES_READ_ONLY
+                } else {
+                    MemFlags::empty()
+                };
                 // FIXME: consider not copying constants through stack. (Fixable by codegen'ing
                 // constants into `OperandValue::Ref`; why don’t we do that yet if we don’t?)
-                cg_operand.store_with_annotation(bx, dest);
+                cg_operand.store_with_annotation_and_flags(bx, dest, flags);
             }
 
             mir::Rvalue::Cast(
@@ -454,13 +465,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         OperandValue::Pair(lldata, llextra)
                     }
                     mir::CastKind::PointerCoercion(
-                        PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer, _
+                        PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer,
+                        _,
                     ) => {
                         bug!("{kind:?} is for borrowck, and should never appear in codegen");
                     }
-                    mir::CastKind::PtrToPtr
-                        if bx.cx().is_backend_scalar_pair(operand.layout) =>
-                    {
+                    mir::CastKind::PtrToPtr if bx.cx().is_backend_scalar_pair(operand.layout) => {
                         if let OperandValue::Pair(data_ptr, meta) = operand.val {
                             if bx.cx().is_backend_scalar_pair(cast) {
                                 OperandValue::Pair(data_ptr, meta)
@@ -483,7 +493,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // path as the other integer-to-X casts.
                     | mir::CastKind::PointerWithExposedProvenance => {
                         let imm = operand.immediate();
-                        let abi::BackendRepr::Scalar(from_scalar) = operand.layout.backend_repr else {
+                        let abi::BackendRepr::Scalar(from_scalar) = operand.layout.backend_repr
+                        else {
                             bug!("Found non-scalar for operand {operand:?}");
                         };
                         let from_backend_ty = bx.cx().immediate_backend_type(operand.layout);
@@ -498,11 +509,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             bug!("Found non-scalar for cast {cast:?}");
                         };
 
-                        self.cast_immediate(bx, imm, from_scalar, from_backend_ty, to_scalar, to_backend_ty)
-                            .map(OperandValue::Immediate)
-                            .unwrap_or_else(|| {
-                                bug!("Unsupported cast of {operand:?} to {cast:?}");
-                            })
+                        self.cast_immediate(
+                            bx,
+                            imm,
+                            from_scalar,
+                            from_backend_ty,
+                            to_scalar,
+                            to_backend_ty,
+                        )
+                        .map(OperandValue::Immediate)
+                        .unwrap_or_else(|| {
+                            bug!("Unsupported cast of {operand:?} to {cast:?}");
+                        })
                     }
                     mir::CastKind::Transmute | mir::CastKind::Subtype => {
                         self.codegen_transmute_operand(bx, operand, cast)
@@ -515,7 +533,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let mk_ref = move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| {
                     Ty::new_ref(tcx, tcx.lifetimes.re_erased, ty, bk.to_mutbl_lossy())
                 };
-                self.codegen_place_to_pointer(bx, place, mk_ref)
+                let op = self.codegen_place_to_pointer(bx, place, mk_ref);
+                if self.cx.tcx().sess.opts.unstable_opts.codegen_emit_retag.is_some() {
+                    self.codegen_retag_operand(bx, op, false)
+                } else {
+                    op
+                }
             }
 
             // Note: Exclusive reborrowing is always equal to a memcpy, as the types do not change.
@@ -533,7 +556,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.codegen_place_to_pointer(bx, place, mk_ptr)
             }
 
-            mir::Rvalue::BinaryOp(op_with_overflow, box (ref lhs, ref rhs))
+            mir::Rvalue::BinaryOp(op_with_overflow, (ref lhs, ref rhs))
                 if let Some(op) = op_with_overflow.overflowing_to_wrapping() =>
             {
                 let lhs = self.codegen_operand(bx, lhs);
@@ -553,7 +576,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     move_annotation: None,
                 }
             }
-            mir::Rvalue::BinaryOp(op, box (ref lhs, ref rhs)) => {
+
+            mir::Rvalue::BinaryOp(op, (ref lhs, ref rhs)) => {
                 let lhs = self.codegen_operand(bx, lhs);
                 let rhs = self.codegen_operand(bx, rhs);
                 let llresult = match (lhs.val, rhs.val) {
@@ -666,7 +690,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 };
                 OperandRef { val: OperandValue::Immediate(static_), layout, move_annotation: None }
             }
+
             mir::Rvalue::Use(ref operand, _) => self.codegen_operand(bx, operand),
+
             mir::Rvalue::Repeat(ref elem, len_const) => {
                 // All arrays have `BackendRepr::Memory`, so only the ZST cases
                 // end up here. Anything else forces the destination local to be
@@ -682,6 +708,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     move_annotation: None,
                 }
             }
+
             mir::Rvalue::Aggregate(ref kind, ref fields) => {
                 let (variant_index, active_field_index) = match **kind {
                     mir::AggregateKind::Adt(_, variant_index, _, _, active_field_index) => {
@@ -719,12 +746,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 }
             }
+
             mir::Rvalue::WrapUnsafeBinder(ref operand, binder_ty) => {
                 let operand = self.codegen_operand(bx, operand);
                 let binder_ty = self.monomorphize(binder_ty);
                 let layout = bx.cx().layout_of(binder_ty);
                 OperandRef { val: operand.val, layout, move_annotation: None }
             }
+
             mir::Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in codegen"),
         }
     }

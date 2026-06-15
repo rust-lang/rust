@@ -11,8 +11,8 @@ use rustc_hir::{Closure, Expr, ExprKind, PatKind, PathSegment, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty::TypeckResults;
 use rustc_middle::ty::adjustment::Adjust;
-use rustc_span::Span;
 use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::{Span, SyntaxContext};
 
 use super::{MANUAL_FILTER_MAP, MANUAL_FIND_MAP, OPTION_FILTER_MAP, RESULT_FILTER_MAP};
 
@@ -109,6 +109,7 @@ impl<'tcx> OffendingFilterExpr<'tcx> {
     pub fn check_map_call(
         &self,
         cx: &LateContext<'tcx>,
+        ctxt: SyntaxContext,
         map_body: &'tcx Body<'tcx>,
         map_param_id: HirId,
         filter_param_id: HirId,
@@ -150,7 +151,7 @@ impl<'tcx> OffendingFilterExpr<'tcx> {
                             && a_typeck_results.expr_ty_adjusted(a) == b_typeck_results.expr_ty_adjusted(b)
                     })
                     && (simple_equal
-                        || SpanlessEq::new(cx).expr_fallback(eq_fallback).eq_expr(receiver, map_arg_peeled))
+                        || SpanlessEq::new(cx).expr_fallback(eq_fallback).eq_expr(ctxt, receiver, map_arg_peeled))
                 {
                     Some(CheckResult::Method {
                         map_arg,
@@ -323,7 +324,9 @@ pub(super) fn check(
         return;
     }
 
-    if let Some((map_param_ident, check_result)) = is_find_or_filter(cx, map_recv, filter_arg, map_arg) {
+    if let Some((map_param_ident, check_result)) =
+        is_find_or_filter(cx, expr.span.ctxt(), map_recv, filter_arg, map_arg)
+    {
         let span = filter_span.with_hi(expr.span.hi());
         let (filter_name, lint) = if is_find {
             ("find", MANUAL_FIND_MAP)
@@ -397,6 +400,7 @@ pub(super) fn check(
 
 fn is_find_or_filter<'a>(
     cx: &LateContext<'a>,
+    ctxt: SyntaxContext,
     map_recv: &Expr<'_>,
     filter_arg: &Expr<'_>,
     map_arg: &Expr<'_>,
@@ -422,7 +426,7 @@ fn is_find_or_filter<'a>(
         && let PatKind::Binding(_, map_param_id, map_param_ident, None) = map_param.pat.kind
 
         && let Some(check_result) =
-            offending_expr.check_map_call(cx, map_body, map_param_id, filter_param_id, is_filter_param_ref)
+            offending_expr.check_map_call(cx, ctxt, map_body, map_param_id, filter_param_id, is_filter_param_ref)
     {
         return Some((map_param_ident, check_result));
     }

@@ -11,8 +11,7 @@ use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::thir::{self, Pat, PatKind, PatRange, PatRangeBoundary};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
-    self, FieldDef, OpaqueTypeKey, ScalarInt, Ty, TyCtxt, TypeVisitableExt, Unnormalized,
-    VariantDef,
+    self, FieldDef, OpaqueTypeKey, ScalarInt, Ty, TyCtxt, TypeVisitableExt, VariantDef,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
@@ -196,7 +195,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             let ty = field.ty(self.tcx, args);
             // `field.ty()` doesn't normalize after instantiating.
             let ty =
-                self.tcx.try_normalize_erasing_regions(self.typing_env, Unnormalized::new_wip(ty)).unwrap_or_else(|e| {
+                self.tcx.try_normalize_erasing_regions(self.typing_env, ty).unwrap_or_else(|e| {
                     self.tcx.dcx().span_delayed_bug(
                         self.scrut_span,
                         format!(
@@ -205,7 +204,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                             self.typing_env,
                         ),
                     );
-                    ty
+                    ty.skip_norm_wip()
                 });
             let ty = self.reveal_opaque_ty(ty);
             (field, ty)

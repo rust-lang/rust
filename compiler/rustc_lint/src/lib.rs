@@ -21,7 +21,7 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 #![feature(iter_order_by)]
 #![feature(rustc_attrs)]
 #![feature(titlecase)]
@@ -36,15 +36,16 @@ mod context;
 mod dangling;
 mod default_could_be_derived;
 mod deref_into_dyn_supertrait;
+mod diagnostics;
 mod disallowed_pass_by_ref;
 mod drop_forget_useless;
 mod early;
 mod enum_intrinsics_non_enums;
-mod errors;
 mod expect;
 mod for_loops_over_fallibles;
 mod foreign_modules;
 mod function_cast_as_integer;
+mod fuzzy_provenance_casts;
 mod gpukernel_abi;
 mod if_let_rescope;
 mod impl_trait_overcaptures;
@@ -56,6 +57,7 @@ mod let_underscore;
 mod levels;
 pub mod lifetime_syntax;
 mod lints;
+mod lossy_provenance_casts;
 mod macro_expr_fragment_specifier_2024_migration;
 mod map_unit_fn;
 mod multiple_supertrait_upcastable;
@@ -92,6 +94,7 @@ use drop_forget_useless::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
 use for_loops_over_fallibles::*;
 use function_cast_as_integer::*;
+use fuzzy_provenance_casts::FuzzyProvenanceCasts;
 use gpukernel_abi::*;
 use if_let_rescope::IfLetRescope;
 use impl_trait_overcaptures::ImplTraitOvercaptures;
@@ -100,6 +103,7 @@ use internal::*;
 use invalid_from_utf8::*;
 use let_underscore::*;
 use lifetime_syntax::*;
+use lossy_provenance_casts::LossyProvenanceCasts;
 use macro_expr_fragment_specifier_2024_migration::*;
 use map_unit_fn::*;
 use multiple_supertrait_upcastable::*;
@@ -250,6 +254,8 @@ late_lint_methods!(
             CheckTransmutes: CheckTransmutes,
             LifetimeSyntax: LifetimeSyntax,
             InternalEqTraitMethodImpls: InternalEqTraitMethodImpls,
+            FuzzyProvenanceCasts: FuzzyProvenanceCasts,
+            LossyProvenanceCasts: LossyProvenanceCasts,
         ]
     ]
 );
@@ -370,10 +376,6 @@ fn register_builtins(store: &mut LintStore) {
     store.register_renamed("static_mut_ref", "static_mut_refs");
     store.register_renamed("temporary_cstring_as_ptr", "dangling_pointers_from_temporaries");
     store.register_renamed("elided_named_lifetimes", "mismatched_lifetime_syntaxes");
-    store.register_renamed(
-        "repr_transparent_external_private_fields",
-        "repr_transparent_non_zst_fields",
-    );
 
     // These were moved to tool lints, but rustc still sees them when compiling normally, before
     // tool lints are registered, so `check_tool_name_for_backwards_compat` doesn't work. Use
@@ -644,6 +646,20 @@ fn register_builtins(store: &mut LintStore) {
     );
     store.register_removed("wasm_c_abi", "the wasm C ABI has been fixed");
     store.register_removed("soft_unstable", "the general soft-unstable mechanism has been removed");
+    store.register_removed(
+        "inline_always_mismatching_target_features",
+        "replaced by a hard error for `#[inline(always)]` with `#[target_feature]`",
+    );
+    store.register_removed(
+        "repr_transparent_external_private_fields",
+        "converted into hard error, \
+         see <https://github.com/rust-lang/rust/issues/78586> for more information",
+    );
+    store.register_removed(
+        "repr_transparent_non_zst_fields",
+        "converted into hard error, \
+         see <https://github.com/rust-lang/rust/issues/78586> for more information",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {

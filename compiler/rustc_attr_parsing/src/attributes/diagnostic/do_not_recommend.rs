@@ -1,4 +1,4 @@
-use rustc_feature::{AttributeTemplate, template};
+use rustc_feature::AttributeStability;
 use rustc_hir::Target;
 use rustc_hir::attrs::AttributeKind;
 use rustc_session::lint::builtin::{
@@ -8,9 +8,10 @@ use rustc_span::{Symbol, sym};
 
 use crate::attributes::{OnDuplicate, SingleAttributeParser};
 use crate::context::AcceptContext;
-use crate::errors::IncorrectDoNotRecommendLocation;
+use crate::diagnostics::IncorrectDoNotRecommendLocation;
 use crate::parser::ArgParser;
 use crate::target_checking::{ALL_TARGETS, AllowedTargets};
+use crate::{AttributeTemplate, template};
 
 pub(crate) struct DoNotRecommendParser;
 impl SingleAttributeParser for DoNotRecommendParser {
@@ -19,13 +20,14 @@ impl SingleAttributeParser for DoNotRecommendParser {
     // "Allowed" on any target, noop on all but trait impls
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
     const TEMPLATE: AttributeTemplate = template!(Word /*doesn't matter */);
+    const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let attr_span = cx.attr_span;
         if !matches!(args, ArgParser::NoArgs) {
             cx.emit_lint(
                 MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                crate::errors::DoNotRecommendDoesNotExpectArgs,
+                crate::diagnostics::DoNotRecommendDoesNotExpectArgs,
                 attr_span,
             );
         }

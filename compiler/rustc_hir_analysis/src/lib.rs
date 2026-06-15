@@ -73,15 +73,15 @@ mod check_unused;
 mod coherence;
 mod collect;
 mod constrained_generic_params;
-mod delegation;
-pub mod errors;
+pub mod delegation;
+pub mod diagnostics;
 pub mod hir_ty_lowering;
 pub mod hir_wf_check;
 mod impl_wf_check;
 mod outlives;
 mod variance;
 
-pub use errors::NoVariantNamed;
+pub use diagnostics::NoVariantNamed;
 use rustc_abi::{CVariadicStatus, ExternAbi};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -106,7 +106,7 @@ fn check_c_variadic_abi(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: ExternAbi,
         CVariadicStatus::Stable => {}
         CVariadicStatus::NotSupported => {
             tcx.dcx()
-                .create_err(errors::VariadicFunctionCompatibleConvention {
+                .create_err(diagnostics::VariadicFunctionCompatibleConvention {
                     span,
                     convention: &format!("{abi}"),
                 })
@@ -137,6 +137,7 @@ pub fn provide(providers: &mut Providers) {
         inferred_outlives_crate: outlives::inferred_outlives_crate,
         inferred_outlives_of: outlives::inferred_outlives_of,
         inherit_sig_for_delegation_item: delegation::inherit_sig_for_delegation_item,
+        delegation_user_specified_args: delegation::delegation_user_specified_args,
         enforce_impl_non_lifetime_params_are_constrained:
             impl_wf_check::enforce_impl_non_lifetime_params_are_constrained,
         crate_variances: variance::crate_variances,

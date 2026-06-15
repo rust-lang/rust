@@ -5,7 +5,7 @@
 )]
 #![feature(ascii_char)]
 #![feature(ascii_char_variants)]
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 #![feature(file_buffered)]
 #![feature(formatting_options)]
 #![feature(iter_intersperse)]
@@ -458,6 +458,14 @@ fn opts() -> Vec<RustcOptGroup> {
                 By default, it is at `forbid` level.",
             "LEVEL",
         ),
+        opt(
+            Stable,
+            Multi,
+            "",
+            "remap-path-prefix",
+            "Remap source names in compiler messages",
+            "FROM=TO",
+        ),
         opt(Unstable, Opt, "", "index-page", "Markdown file to be used as index page", "PATH"),
         opt(
             Unstable,
@@ -534,7 +542,7 @@ fn opts() -> Vec<RustcOptGroup> {
             "",
         ),
         opt(
-            Unstable,
+            Stable,
             Multi,
             "",
             "emit",
@@ -549,14 +557,6 @@ fn opts() -> Vec<RustcOptGroup> {
             "merge-doctests",
             "Force all doctests to be compiled as a single binary, instead of one binary per test. If merging fails, rustdoc will emit a hard error.",
             "yes|no|auto",
-        ),
-        opt(
-            Unstable,
-            Multi,
-            "",
-            "remap-path-prefix",
-            "Remap source names in compiler messages",
-            "FROM=TO",
         ),
         opt(
             Unstable,

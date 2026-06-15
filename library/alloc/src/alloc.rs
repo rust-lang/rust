@@ -204,12 +204,12 @@ impl Global {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     fn alloc_impl_runtime(layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError> {
         match layout.size() {
-            0 => Ok(NonNull::slice_from_raw_parts(layout.dangling_ptr(), 0)),
+            0 => Ok(layout.dangling_ptr().cast_slice(0)),
             // SAFETY: `layout` is non-zero in size,
             size => unsafe {
                 let raw_ptr = if zeroed { alloc_zeroed(layout) } else { alloc(layout) };
                 let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;
-                Ok(NonNull::slice_from_raw_parts(ptr, size))
+                Ok(ptr.cast_slice(size))
             },
         }
     }
@@ -261,7 +261,7 @@ impl Global {
                 if zeroed {
                     raw_ptr.add(old_size).write_bytes(0, new_size - old_size);
                 }
-                Ok(NonNull::slice_from_raw_parts(ptr, new_size))
+                Ok(ptr.cast_slice(new_size))
             },
 
             // SAFETY: because `new_layout.size()` must be greater than or equal to `old_size`,
@@ -297,7 +297,7 @@ impl Global {
             // SAFETY: conditions must be upheld by the caller
             0 => unsafe {
                 self.deallocate(ptr, old_layout);
-                Ok(NonNull::slice_from_raw_parts(new_layout.dangling_ptr(), 0))
+                Ok(new_layout.dangling_ptr().cast_slice(0))
             },
 
             // SAFETY: `new_size` is non-zero. Other conditions must be upheld by the caller
@@ -307,7 +307,7 @@ impl Global {
 
                 let raw_ptr = realloc_nonnull(ptr, old_layout, new_size);
                 let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;
-                Ok(NonNull::slice_from_raw_parts(ptr, new_size))
+                Ok(ptr.cast_slice(new_size))
             },
 
             // SAFETY: because `new_size` must be smaller than or equal to `old_layout.size()`,
@@ -388,7 +388,7 @@ impl Global {
     #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     const fn alloc_impl_const(layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError> {
         match layout.size() {
-            0 => Ok(NonNull::slice_from_raw_parts(layout.dangling_ptr(), 0)),
+            0 => Ok(layout.dangling_ptr().cast_slice(0)),
             // SAFETY: `layout` is non-zero in size,
             size => unsafe {
                 let raw_ptr = core::intrinsics::const_allocate(layout.size(), layout.align());
@@ -397,7 +397,7 @@ impl Global {
                     // SAFETY: the pointer returned by `const_allocate` is valid to write to.
                     ptr.write_bytes(0, size);
                 }
-                Ok(NonNull::slice_from_raw_parts(ptr, size))
+                Ok(ptr.cast_slice(size))
             },
         }
     }
@@ -442,7 +442,7 @@ impl Global {
 
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
-unsafe impl const Allocator for Global {
+const unsafe impl Allocator for Global {
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {

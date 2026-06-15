@@ -31,10 +31,10 @@ use rustc_trait_selection::traits;
 use tracing::debug;
 
 use super::{MethodCallee, probe};
-use crate::errors::{SupertraitItemShadowee, SupertraitItemShadower, SupertraitItemShadowing};
+use crate::diagnostics::{SupertraitItemShadowee, SupertraitItemShadower, SupertraitItemShadowing};
 use crate::{FnCtxt, callee};
 
-struct ConfirmContext<'a, 'tcx> {
+pub(crate) struct ConfirmContext<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
     span: Span,
     self_expr: &'tcx hir::Expr<'tcx>,
@@ -90,7 +90,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
-    fn new(
+    pub(crate) fn new(
         fcx: &'a FnCtxt<'a, 'tcx>,
         span: Span,
         self_expr: &'tcx hir::Expr<'tcx>,
@@ -178,14 +178,32 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     ) -> Ty<'tcx> {
         // Commit the autoderefs by calling `autoderef` again, but this
         // time writing the results into the various typeck results.
+        let (target, adjustments) = self.create_ty_adjustments_from_pick(unadjusted_self_ty, pick);
+
+        // Write out the final adjustments.
+        if !self.skip_record_for_diagnostics {
+            self.apply_adjustments(self.self_expr, adjustments);
+        }
+
+        target
+    }
+
+    pub(crate) fn create_ty_adjustments_from_pick(
+        &mut self,
+        unadjusted_self_ty: Ty<'tcx>,
+        pick: &probe::Pick<'tcx>,
+    ) -> (Ty<'tcx>, Vec<Adjustment<'tcx>>) {
         let mut autoderef = self.autoderef(self.call_expr.span, unadjusted_self_ty);
         let Some((mut target, n)) = autoderef.nth(pick.autoderefs) else {
-            return Ty::new_error_with_message(
+            let error_ty = Ty::new_error_with_message(
                 self.tcx,
                 DUMMY_SP,
                 format!("failed autoderef {}", pick.autoderefs),
             );
+
+            return (error_ty, vec![]);
         };
+
         assert_eq!(n, pick.autoderefs);
 
         let mut adjustments = self.adjust_steps(&autoderef);
@@ -260,12 +278,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
         self.register_predicates(autoderef.into_obligations());
 
-        // Write out the final adjustments.
-        if !self.skip_record_for_diagnostics {
-            self.apply_adjustments(self.self_expr, adjustments);
-        }
-
-        target
+        (target, adjustments)
     }
 
     /// Returns a set of generic parameters for the method *receiver* where all type and region

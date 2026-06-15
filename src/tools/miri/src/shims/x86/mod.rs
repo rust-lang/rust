@@ -1118,6 +1118,7 @@ fn permute<'tcx>(
 /// `src = if indices[i] & N == 0 { left } else { right }`.
 ///
 /// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_permutex2var_epi64>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_permutex2var_epi8>
 fn permute2<'tcx>(
     ecx: &mut crate::MiriInterpCx<'tcx>,
     left: &OpTy<'tcx>,

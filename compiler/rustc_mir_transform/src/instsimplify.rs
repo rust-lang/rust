@@ -41,7 +41,7 @@ impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
         };
         for block in body.basic_blocks.as_mut() {
             for statement in block.statements.iter_mut() {
-                let StatementKind::Assign(box (.., rvalue)) = &mut statement.kind else {
+                let StatementKind::Assign((.., rvalue)) = &mut statement.kind else {
                     continue;
                 };
 
@@ -79,7 +79,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
     /// GVN can also do this optimization, but GVN is only run at mir-opt-level 2 so having this in
     /// InstSimplify helps unoptimized builds.
     fn simplify_repeated_aggregate(&self, rvalue: &mut Rvalue<'tcx>) {
-        let Rvalue::Aggregate(box AggregateKind::Array(_), fields) = &*rvalue else {
+        let Rvalue::Aggregate(AggregateKind::Array(_), fields) = &*rvalue else {
             return;
         };
         if fields.len() < 5 {
@@ -106,7 +106,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
 
     /// Transform boolean comparisons into logical operations.
     fn simplify_bool_cmp(&self, rvalue: &mut Rvalue<'tcx>) {
-        let Rvalue::BinaryOp(op @ (BinOp::Eq | BinOp::Ne), box (a, b)) = &*rvalue else { return };
+        let Rvalue::BinaryOp(op @ (BinOp::Eq | BinOp::Ne), (a, b)) = &*rvalue else { return };
         *rvalue = match (op, self.try_eval_bool(a), self.try_eval_bool(b)) {
             // Transform "Eq(a, true)" ==> "a"
             (BinOp::Eq, _, Some(true)) => Rvalue::Use(a.clone(), WithRetag::Yes),
@@ -170,7 +170,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
 
     /// Transform `Aggregate(RawPtr, [p, ()])` ==> `Cast(PtrToPtr, p)`.
     fn simplify_ptr_aggregate(&self, rvalue: &mut Rvalue<'tcx>) {
-        if let Rvalue::Aggregate(box AggregateKind::RawPtr(pointee_ty, mutability), fields) = rvalue
+        if let Rvalue::Aggregate(AggregateKind::RawPtr(pointee_ty, mutability), fields) = rvalue
             && let meta_ty = fields.raw[1].ty(self.local_decls, self.tcx)
             && meta_ty.is_unit()
         {

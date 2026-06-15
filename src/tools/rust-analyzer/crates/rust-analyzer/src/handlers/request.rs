@@ -1662,7 +1662,10 @@ pub(crate) fn handle_code_lens(
                 .map(|spec| {
                     matches!(
                         spec.target_kind(),
-                        TargetKind::Bin | TargetKind::Example | TargetKind::Test
+                        TargetKind::Bin
+                            | TargetKind::Example
+                            | TargetKind::Test
+                            | TargetKind::Bench
                     )
                 })
                 .unwrap_or(false),
@@ -2345,7 +2348,7 @@ fn should_skip_target(runnable: &Runnable, cargo_spec: Option<&TargetSpec>) -> b
             match &cargo_spec {
                 Some(spec) => !matches!(
                     spec.target_kind(),
-                    TargetKind::Bin | TargetKind::Example | TargetKind::Test
+                    TargetKind::Bin | TargetKind::Example | TargetKind::Test | TargetKind::Bench
                 ),
                 None => true,
             }
@@ -2593,6 +2596,28 @@ pub(crate) fn internal_testing_fetch_config(
             )
         }
     }))
+}
+
+pub(crate) fn handle_evaluate_predicate(
+    snap: GlobalStateSnapshot,
+    params: lsp_ext::EvaluatePredicateParams,
+) -> anyhow::Result<lsp_ext::EvaluatePredicateResult> {
+    let _p = tracing::info_span!("handle_evaluate_predicate").entered();
+    let file_id = try_default!(from_proto::file_id(&snap, &params.text_document.uri)?);
+    let line_index = snap.file_line_index(file_id)?;
+    let offset = from_proto::offset(&line_index, params.position)?;
+
+    let result = snap.analysis.evaluate_predicate(params.text, FilePosition { file_id, offset })?;
+    let status = match result.status {
+        ide::PredicateEvaluationStatus::Holds => lsp_ext::PredicateEvaluationStatus::Holds,
+        ide::PredicateEvaluationStatus::NotProven => lsp_ext::PredicateEvaluationStatus::NotProven,
+        ide::PredicateEvaluationStatus::Invalid => lsp_ext::PredicateEvaluationStatus::Invalid,
+        ide::PredicateEvaluationStatus::Unsupported => {
+            lsp_ext::PredicateEvaluationStatus::Unsupported
+        }
+    };
+
+    Ok(lsp_ext::EvaluatePredicateResult { status, message: result.message })
 }
 
 pub(crate) fn get_failed_obligations(

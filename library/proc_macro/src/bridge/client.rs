@@ -1,19 +1,14 @@
 //! Client-side types.
 
 use std::cell::RefCell;
-use std::marker::PhantomData;
-use std::sync::atomic::AtomicU32;
+use std::ops::{Bound, Range};
+use std::sync::Once;
+use std::{fmt, mem, panic};
 
-use super::*;
-
-#[repr(C)]
-pub(super) struct HandleCounters {
-    pub(super) token_stream: AtomicU32,
-    pub(super) span: AtomicU32,
-}
-
-static COUNTERS: HandleCounters =
-    HandleCounters { token_stream: AtomicU32::new(1), span: AtomicU32::new(1) };
+use crate::bridge::{
+    ApiTags, BridgeConfig, Buffer, Decode, Diagnostic, Encode, ExpnGlobals, Literal, PanicMessage,
+    TokenTree, closure, handle,
+};
 
 pub(crate) struct TokenStream {
     handle: handle::Handle,
@@ -30,20 +25,37 @@ impl Drop for TokenStream {
 }
 
 impl<S> Encode<S> for TokenStream {
+    #[inline]
     fn encode(self, w: &mut Buffer, s: &mut S) {
         mem::ManuallyDrop::new(self).handle.encode(w, s);
     }
 }
 
 impl<S> Encode<S> for &TokenStream {
+    #[inline]
     fn encode(self, w: &mut Buffer, s: &mut S) {
         self.handle.encode(w, s);
     }
 }
 
 impl<S> Decode<'_, '_, S> for TokenStream {
+    #[inline]
     fn decode(r: &mut &[u8], s: &mut S) -> Self {
         TokenStream { handle: handle::Handle::decode(r, s) }
+    }
+}
+
+impl Encode<()> for crate::TokenStream {
+    #[inline]
+    fn encode(self, w: &mut Buffer, s: &mut ()) {
+        self.0.encode(w, s)
+    }
+}
+
+impl Decode<'_, '_, ()> for crate::TokenStream {
+    #[inline]
+    fn decode(r: &mut &[u8], s: &mut ()) -> Self {
+        crate::TokenStream(Some(Decode::decode(r, s)))
     }
 }
 
@@ -56,12 +68,14 @@ impl !Send for Span {}
 impl !Sync for Span {}
 
 impl<S> Encode<S> for Span {
+    #[inline]
     fn encode(self, w: &mut Buffer, s: &mut S) {
         self.handle.encode(w, s);
     }
 }
 
 impl<S> Decode<'_, '_, S> for Span {
+    #[inline]
     fn decode(r: &mut &[u8], s: &mut S) -> Self {
         Span { handle: handle::Handle::decode(r, s) }
     }
@@ -199,28 +213,13 @@ pub(crate) fn is_available() -> bool {
 /// A client-side RPC entry-point, which may be using a different `proc_macro`
 /// from the one used by the server, but can be invoked compatibly.
 ///
-/// Note that the (phantom) `I` ("input") and `O` ("output") type parameters
-/// decorate the `Client<I, O>` with the RPC "interface" of the entry-point, but
-/// do not themselves participate in ABI, at all, only facilitate type-checking.
-///
-/// E.g. `Client<TokenStream, TokenStream>` is the common proc macro interface,
-/// used for `#[proc_macro] fn foo(input: TokenStream) -> TokenStream`,
-/// indicating that the RPC input and output will be serialized token streams,
-/// and forcing the use of APIs that take/return `S::TokenStream`, server-side.
+/// Note that the input and output type parameters are erased. They do not
+/// participate in the ABI, so while using the wrong runN method will likely
+/// result in a panic, it will not result in UB.
 #[repr(C)]
-pub struct Client<I, O> {
-    pub(super) handle_counters: &'static HandleCounters,
-
+#[derive(Copy, Clone)]
+pub struct Client {
     pub(super) run: extern "C" fn(BridgeConfig<'_>) -> Buffer,
-
-    pub(super) _marker: PhantomData<fn(I) -> O>,
-}
-
-impl<I, O> Copy for Client<I, O> {}
-impl<I, O> Clone for Client<I, O> {
-    fn clone(&self) -> Self {
-        *self
-    }
 }
 
 fn maybe_install_panic_hook(force_show_panics: bool) {
@@ -243,14 +242,13 @@ fn maybe_install_panic_hook(force_show_panics: bool) {
 
 /// Client-side helper for handling client panics, entering the bridge,
 /// deserializing input and serializing output.
-// FIXME(eddyb) maybe replace `Bridge::enter` with this?
-fn run_client<A: for<'a, 's> Decode<'a, 's, ()>, R: Encode<()>>(
+fn run_client<A: for<'a, 's> Decode<'a, 's, ()>>(
     config: BridgeConfig<'_>,
-    f: impl FnOnce(A) -> R,
+    f: impl FnOnce(A) -> crate::TokenStream,
 ) -> Buffer {
     let BridgeConfig { input: mut buf, dispatch, force_show_panics, .. } = config;
 
-    panic::catch_unwind(panic::AssertUnwindSafe(|| {
+    let res = panic::catch_unwind(panic::AssertUnwindSafe(|| {
         maybe_install_panic_hook(force_show_panics);
 
         // Make sure the symbol store is empty before decoding inputs.
@@ -267,23 +265,12 @@ fn run_client<A: for<'a, 's> Decode<'a, 's, ()>, R: Encode<()>>(
         // Take the `cached_buffer` back out, for the output value.
         buf = RefCell::into_inner(state).cached_buffer;
 
-        // HACK(eddyb) Separate encoding a success value (`Ok(output)`)
-        // from encoding a panic (`Err(e: PanicMessage)`) to avoid
-        // having handles outside the `bridge.enter(|| ...)` scope, and
-        // to catch panics that could happen while encoding the success.
-        //
-        // Note that panics should be impossible beyond this point, but
-        // this is defensively trying to avoid any accidental panicking
-        // reaching the `extern "C"` (which should `abort` but might not
-        // at the moment, so this is also potentially preventing UB).
-        buf.clear();
-        Ok::<_, ()>(output).encode(&mut buf, &mut ());
-    }))
-    .map_err(PanicMessage::from)
-    .unwrap_or_else(|e| {
-        buf.clear();
-        Err::<(), _>(e).encode(&mut buf, &mut ());
-    });
+        output
+    }));
+
+    // Serialize response of type `Result<R, PanicMessage>`.
+    buf.clear();
+    res.map_err(PanicMessage::from).encode(&mut buf, &mut ());
 
     // Now that a response has been serialized, invalidate all symbols
     // registered with the interner.
@@ -291,82 +278,22 @@ fn run_client<A: for<'a, 's> Decode<'a, 's, ()>, R: Encode<()>>(
     buf
 }
 
-impl Client<crate::TokenStream, crate::TokenStream> {
+impl Client {
     pub const fn expand1(f: impl Fn(crate::TokenStream) -> crate::TokenStream + Copy) -> Self {
         Client {
-            handle_counters: &COUNTERS,
             run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
-                run_client(bridge, |input| f(crate::TokenStream(Some(input))).0)
+                run_client(bridge, |input| f(input))
             }),
-            _marker: PhantomData,
         }
     }
-}
 
-impl Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream> {
     pub const fn expand2(
         f: impl Fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream + Copy,
     ) -> Self {
         Client {
-            handle_counters: &COUNTERS,
             run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
-                run_client(bridge, |(input, input2)| {
-                    f(crate::TokenStream(Some(input)), crate::TokenStream(Some(input2))).0
-                })
+                run_client(bridge, |(input, input2)| f(input, input2))
             }),
-            _marker: PhantomData,
         }
-    }
-}
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub enum ProcMacro {
-    CustomDerive {
-        trait_name: &'static str,
-        attributes: &'static [&'static str],
-        client: Client<crate::TokenStream, crate::TokenStream>,
-    },
-
-    Attr {
-        name: &'static str,
-        client: Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream>,
-    },
-
-    Bang {
-        name: &'static str,
-        client: Client<crate::TokenStream, crate::TokenStream>,
-    },
-}
-
-impl ProcMacro {
-    pub fn name(&self) -> &'static str {
-        match self {
-            ProcMacro::CustomDerive { trait_name, .. } => trait_name,
-            ProcMacro::Attr { name, .. } => name,
-            ProcMacro::Bang { name, .. } => name,
-        }
-    }
-
-    pub const fn custom_derive(
-        trait_name: &'static str,
-        attributes: &'static [&'static str],
-        expand: impl Fn(crate::TokenStream) -> crate::TokenStream + Copy,
-    ) -> Self {
-        ProcMacro::CustomDerive { trait_name, attributes, client: Client::expand1(expand) }
-    }
-
-    pub const fn attr(
-        name: &'static str,
-        expand: impl Fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream + Copy,
-    ) -> Self {
-        ProcMacro::Attr { name, client: Client::expand2(expand) }
-    }
-
-    pub const fn bang(
-        name: &'static str,
-        expand: impl Fn(crate::TokenStream) -> crate::TokenStream + Copy,
-    ) -> Self {
-        ProcMacro::Bang { name, client: Client::expand1(expand) }
     }
 }

@@ -63,7 +63,7 @@ fn test_buffered_reader_read_buf() {
     let mut reader = BufReader::with_capacity(2, inner);
 
     let buf: &mut [_] = &mut [MaybeUninit::uninit(); 3];
-    let mut buf: BorrowedBuf<'_> = buf.into();
+    let mut buf: BorrowedBuf<'_, u8> = buf.into();
 
     reader.read_buf(buf.unfilled()).unwrap();
 
@@ -71,7 +71,7 @@ fn test_buffered_reader_read_buf() {
     assert_eq!(reader.buffer(), []);
 
     let buf: &mut [_] = &mut [MaybeUninit::uninit(); 2];
-    let mut buf: BorrowedBuf<'_> = buf.into();
+    let mut buf: BorrowedBuf<'_, u8> = buf.into();
 
     reader.read_buf(buf.unfilled()).unwrap();
 
@@ -79,7 +79,7 @@ fn test_buffered_reader_read_buf() {
     assert_eq!(reader.buffer(), []);
 
     let buf: &mut [_] = &mut [MaybeUninit::uninit(); 1];
-    let mut buf: BorrowedBuf<'_> = buf.into();
+    let mut buf: BorrowedBuf<'_, u8> = buf.into();
 
     reader.read_buf(buf.unfilled()).unwrap();
 
@@ -87,7 +87,7 @@ fn test_buffered_reader_read_buf() {
     assert_eq!(reader.buffer(), [3]);
 
     let buf: &mut [_] = &mut [MaybeUninit::uninit(); 3];
-    let mut buf: BorrowedBuf<'_> = buf.into();
+    let mut buf: BorrowedBuf<'_, u8> = buf.into();
 
     reader.read_buf(buf.unfilled()).unwrap();
 
@@ -750,6 +750,133 @@ fn line_vectored_partial_and_errors() {
     fn err() -> io::Error {
         io::Error::new(io::ErrorKind::Other, "x")
     }
+}
+
+/// Regression test for the quadratic scan in `LineWriterShim::write_vectored`.
+///
+/// When given a long list of newline-free buffers and a sink that only
+/// retires a few slices per call, the previous implementation rescanned all
+/// remaining buffers on every iteration of `write_all_vectored`, producing
+/// O(N^2) work. The fix caps the scan to a constant prefix; this test
+/// verifies that bytes still come out in order when the only newline lives
+/// past that cap.
+#[test]
+fn line_vectored_long_input_past_scan_cap() {
+    /// Vectored sink that retires at most one non-empty slice per call,
+    /// mimicking a writev() bounded by IOV_MAX.
+    #[derive(Default)]
+    struct OneSliceSink {
+        buffer: Vec<u8>,
+    }
+
+    impl Write for OneSliceSink {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.buffer.extend_from_slice(buf);
+            Ok(buf.len())
+        }
+        fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+            for b in bufs {
+                if !b.is_empty() {
+                    self.buffer.extend_from_slice(b);
+                    return Ok(b.len());
+                }
+            }
+            Ok(0)
+        }
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+        fn is_write_vectored(&self) -> bool {
+            true
+        }
+    }
+
+    // Place the only newline well past the 1024-slice scan cap.
+    const N: usize = 1500;
+    const NEWLINE_AT: usize = 1400;
+    let bytes: Vec<u8> = (0..N).map(|i| if i == NEWLINE_AT { b'\n' } else { b'a' }).collect();
+    let mut io_slices: Vec<IoSlice<'_>> = bytes.chunks(1).map(IoSlice::new).collect();
+
+    let mut writer = LineWriter::new(OneSliceSink::default());
+    writer.write_all_vectored(&mut io_slices).unwrap();
+
+    // The newline past the scan cap must still trigger a flush through
+    // the inner writer; only the tail after the newline may remain buffered.
+    assert_eq!(writer.get_ref().buffer, bytes[..=NEWLINE_AT]);
+
+    writer.flush().unwrap();
+    assert_eq!(writer.get_ref().buffer, bytes);
+}
+
+/// Regression test for newlines buried past the `write_vectored` scan cap.
+///
+/// `LineWriterShim::write_vectored` only scans a bounded prefix of the slice
+/// list for newlines. An earlier version computed the head/tail split against
+/// the *full* list, so when more than the cap's worth of slices were passed in
+/// a single call and one of the unscanned slices held a newline, that newline
+/// was silently copied into the inner `BufWriter` instead of being flushed --
+/// leaving a completed line stuck in the buffer.
+///
+/// The invariant this checks is the core line-buffering guarantee: once all
+/// input has been written, everything up to and including the *last* newline
+/// must have reached the inner writer, and only the trailing partial line may
+/// remain buffered. It holds regardless of the exact scan-cap value, and it is
+/// driven through the public `write_all_vectored` entry point so the cap
+/// boundary is crossed naturally.
+#[test]
+fn line_vectored_flushes_newline_past_scan_cap() {
+    /// Vectored sink that accepts every slice in full, so any data that fails
+    /// to reach it must have been (incorrectly) left in the LineWriter buffer.
+    #[derive(Default)]
+    struct FullSink {
+        buffer: Vec<u8>,
+    }
+
+    impl Write for FullSink {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.buffer.extend_from_slice(buf);
+            Ok(buf.len())
+        }
+        fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+            let mut written = 0;
+            for b in bufs {
+                self.buffer.extend_from_slice(b);
+                written += b.len();
+            }
+            Ok(written)
+        }
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+        fn is_write_vectored(&self) -> bool {
+            true
+        }
+    }
+
+    // Two newlines: one comfortably inside the scan cap and one well past it,
+    // so a single `write_vectored` call sees the first but not the second.
+    const N: usize = 1100;
+    const FIRST_NEWLINE: usize = 5;
+    const LAST_NEWLINE: usize = 1050;
+    let bytes: Vec<u8> = (0..N)
+        .map(|i| if i == FIRST_NEWLINE || i == LAST_NEWLINE { b'\n' } else { b'a' })
+        .collect();
+    let mut io_slices: Vec<IoSlice<'_>> = bytes.chunks(1).map(IoSlice::new).collect();
+
+    // The buffer has to be large enough to hold the whole tail past the first
+    // newline; otherwise it fills up before the buggy split would even reach
+    // the second newline, masking the bug.
+    let mut writer = LineWriter::with_capacity(4096, FullSink::default());
+    writer.write_all_vectored(&mut io_slices).unwrap();
+
+    // Everything up to and including the last newline must have been flushed;
+    // only the trailing partial line is allowed to remain buffered. The buggy
+    // version left the last newline buried in the buffer, so the sink only saw
+    // up to the first newline.
+    assert_eq!(writer.get_ref().buffer, bytes[..=LAST_NEWLINE]);
+
+    writer.flush().unwrap();
+    assert_eq!(writer.get_ref().buffer, bytes);
 }
 
 /// Test that, in cases where vectored writing is not enabled, the

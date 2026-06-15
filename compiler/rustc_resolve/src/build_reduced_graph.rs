@@ -9,9 +9,9 @@ use std::sync::Arc;
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor, WalkItemKind};
 use rustc_ast::{
-    self as ast, AssocItem, AssocItemKind, Block, ConstItem, DUMMY_NODE_ID, Delegation, Fn,
-    ForeignItem, ForeignItemKind, Inline, Item, ItemKind, NodeId, StaticItem, StmtKind, TraitAlias,
-    TyAlias,
+    self as ast, AssocItem, AssocItemKind, Block, ConstItem, DUMMY_NODE_ID, Delegation,
+    DelegationSource, Fn, ForeignItem, ForeignItemKind, Inline, Item, ItemKind, NodeId, StaticItem,
+    StmtKind, TraitAlias, TyAlias,
 };
 use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::{ResolverExpand, SyntaxExtension, SyntaxExtensionKind};
@@ -52,7 +52,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         decl: Decl<'ra>,
     ) {
         if let Err(old_decl) =
-            self.try_plant_decl_into_local_module(ident, orig_ident_span, ns, decl, false)
+            self.try_plant_decl_into_local_module(ident, orig_ident_span, ns, decl)
         {
             self.report_conflict(ident, ns, old_decl, decl);
         }
@@ -87,13 +87,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         vis: Visibility<DefId>,
         span: Span,
         expansion: LocalExpnId,
-        ambiguity: Option<Decl<'ra>>,
+        ambiguity: Option<(Decl<'ra>, bool)>,
     ) {
         let decl = self.arenas.alloc_decl(DeclData {
             kind: DeclKind::Def(res),
             ambiguity: CmCell::new(ambiguity),
-            // External ambiguities always report the `AMBIGUOUS_GLOB_IMPORTS` lint at the moment.
-            warn_ambiguity: CmCell::new(true),
             initial_vis: vis,
             ambiguity_vis_max: CmCell::new(None),
             ambiguity_vis_min: CmCell::new(None),
@@ -334,15 +332,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     PathResult::NonModule(partial_res) => {
                         expected_found_error(partial_res.expect_full_res())
                     }
-                    PathResult::Failed {
-                        span, label, suggestion, message, segment_name, ..
-                    } => Err(VisResolutionError::FailedToResolve(
-                        span,
-                        segment_name,
-                        label,
-                        suggestion,
-                        message,
-                    )),
+                    PathResult::Failed { label, suggestion, message, segment, .. } => {
+                        Err(VisResolutionError::FailedToResolve(
+                            segment.span,
+                            segment.name,
+                            label,
+                            suggestion,
+                            message,
+                        ))
+                    }
                     PathResult::Indeterminate => Err(VisResolutionError::Indeterminate(path.span)),
                 }
             }
@@ -392,7 +390,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let ModChild { ident: _, res, vis, ref reexport_chain } = *ambig_child;
             let span = child_span(self, reexport_chain, res);
             let res = res.expect_non_local();
-            self.arenas.new_def_decl(res, vis, span, expansion, Some(parent.to_module()))
+            // External ambiguities always report the `AMBIGUOUS_GLOB_IMPORTS` lint at the moment.
+            (self.arenas.new_def_decl(res, vis, span, expansion, Some(parent.to_module())), true)
         });
 
         // Record primary definitions.
@@ -743,12 +742,13 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             }
             ast::UseTreeKind::Nested { ref items, .. } => {
                 for &(ref tree, id) in items {
-                    let feed = self.create_def(id, None, DefKind::Use, use_tree.span());
-                    self.build_reduced_graph_for_use_tree(
-                        // This particular use tree
-                        tree, id, &prefix, true, false, // The whole `use` item
-                        item, vis, root_span, feed,
-                    );
+                    self.with_owner(id, None, DefKind::Use, use_tree.span(), |this, feed| {
+                        this.build_reduced_graph_for_use_tree(
+                            // This particular use tree
+                            tree, id, &prefix, true, false, // The whole `use` item
+                            item, vis, root_span, feed,
+                        )
+                    });
                 }
 
                 // Empty groups `a::b::{}` are turned into synthetic `self` imports
@@ -866,12 +866,12 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             }
 
             // These items live in the value namespace.
-            ItemKind::Const(box ConstItem { ident, .. })
-            | ItemKind::Delegation(box Delegation { ident, .. })
-            | ItemKind::Static(box StaticItem { ident, .. }) => {
+            ItemKind::Const(ConstItem { ident, .. })
+            | ItemKind::Delegation(Delegation { ident, .. })
+            | ItemKind::Static(StaticItem { ident, .. }) => {
                 self.r.define_local(parent, ident, ValueNS, res, vis, sp, expansion);
             }
-            ItemKind::Fn(box Fn { ident, .. }) => {
+            ItemKind::Fn(Fn { ident, .. }) => {
                 self.r.define_local(parent, ident, ValueNS, res, vis, sp, expansion);
 
                 // Functions introducing procedural macros reserve a slot
@@ -880,12 +880,12 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             }
 
             // These items live in the type namespace.
-            ItemKind::TyAlias(box TyAlias { ident, .. })
-            | ItemKind::TraitAlias(box TraitAlias { ident, .. }) => {
+            ItemKind::TyAlias(TyAlias { ident, .. })
+            | ItemKind::TraitAlias(TraitAlias { ident, .. }) => {
                 self.r.define_local(parent, ident, TypeNS, res, vis, sp, expansion);
             }
 
-            ItemKind::Enum(ident, _, _) | ItemKind::Trait(box ast::Trait { ident, .. }) => {
+            ItemKind::Enum(ident, _, _) | ItemKind::Trait(ast::Trait { ident, .. }) => {
                 self.r.define_local(parent, ident, TypeNS, res, vis, sp, expansion);
 
                 let module = self.r.new_local_module(
@@ -1296,7 +1296,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             ItemKind::MacroDef(ident, def) => {
                 (self.res(def_id), *ident, item.span, def.macro_rules)
             }
-            ItemKind::Fn(box ast::Fn { ident: fn_ident, .. }) => {
+            ItemKind::Fn(ast::Fn { ident: fn_ident, .. }) => {
                 match self.proc_macro_stub(item, *fn_ident) {
                     Some((macro_kind, ident, span)) => {
                         let macro_kinds = macro_kind.into();
@@ -1461,7 +1461,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             let parent = self.parent_scope.module.expect_local();
             let expansion = self.parent_scope.expansion;
             self.r.define_local(parent, ident, ns, self.res(def_id), vis, item.span, expansion);
-        } else if !matches!(&item.kind, AssocItemKind::Delegation(deleg) if deleg.from_glob)
+        } else if !matches!(&item.kind, AssocItemKind::Delegation(d) if d.source == DelegationSource::Glob)
             && ident.name != kw::Underscore
         {
             // Don't add underscore names, they cannot be looked up anyway.

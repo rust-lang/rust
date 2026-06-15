@@ -14,7 +14,7 @@ use rustc_trait_selection::traits;
 use tracing::debug;
 use traits::translate_args;
 
-use crate::errors::UnexpectedFnPtrAssociatedItem;
+use crate::diagnostics::UnexpectedFnPtrAssociatedItem;
 
 fn resolve_instance_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -157,10 +157,12 @@ fn resolve_associated_item<'tcx>(
                 // get a result which isn't correct for all monomorphizations.
                 match typing_env.typing_mode().assert_not_erased() {
                     ty::TypingMode::Coherence
-                    | ty::TypingMode::Analysis { .. }
-                    | ty::TypingMode::Borrowck { .. }
-                    | ty::TypingMode::PostBorrowckAnalysis { .. } => false,
-                    ty::TypingMode::PostAnalysis => !trait_ref.still_further_specializable(),
+                    | ty::TypingMode::Typeck { .. }
+                    | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+                    | ty::TypingMode::PostBorrowck { .. } => false,
+                    ty::TypingMode::PostAnalysis | ty::TypingMode::Codegen => {
+                        !trait_ref.still_further_specializable()
+                    }
                 }
             };
             if !eligible {

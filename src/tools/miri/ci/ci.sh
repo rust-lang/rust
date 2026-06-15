@@ -63,10 +63,9 @@ function run_tests {
 
   ## ui test suite
   if [ -n "${GC_STRESS-}" ]; then
-    time MIRIFLAGS="${MIRIFLAGS-} -Zmiri-provenance-gc=1" ./miri test $TARGET_FLAG
-  else
-    time ./miri test $FEATURES $TARGET_FLAG
+    MIRIFLAGS_EXTRA="-Zmiri-provenance-gc=1"
   fi
+  time MIRIFLAGS="${MIRIFLAGS-} ${MIRIFLAGS_EXTRA-}" ./miri test $FEATURES $TARGET_FLAG
 
   ## advanced tests
   if [ -n "${MIR_OPT-}" ]; then
@@ -151,11 +150,10 @@ case $HOST_TARGET in
   i686-unknown-linux-gnu)
     # Host
     MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
-    # Fully, but not officially, supported tier 2
+    # Not officially supported tier 2
     MANY_SEEDS=16 TEST_TARGET=aarch64-linux-android run_tests
-    # Partially supported targets (tier 2)
-    BASIC="empty_main integer heap_alloc libc-mem vec string btreemap" # ensures we have the basics: pre-main code, system allocator
-    UNIX="hello panic/panic panic/unwind concurrency/simple atomic libc-mem libc-misc libc-random env num_cpus" # the things that are very similar across all Unixes, and hence easily supported there
+    MANY_SEEDS=16 TEST_TARGET=loongarch64-unknown-linux-gnu run_tests
+    # Partially supported targets (no_std, tier 2)
     TEST_TARGET=wasm32-unknown-unknown run_tests_minimal no_std empty_main wasm # this target doesn't really have std
     TEST_TARGET=thumbv7em-none-eabihf  run_tests_minimal no_std
     ;;
@@ -169,6 +167,7 @@ case $HOST_TARGET in
     # Not officially supported tier 2
     MANY_SEEDS=16 TEST_TARGET=x86_64-unknown-freebsd run_tests
     MANY_SEEDS=16 TEST_TARGET=i686-unknown-freebsd run_tests
+    MANY_SEEDS=16 TEST_TARGET=x86_64-unknown-illumos run_tests
     ;;
   armv7-unknown-linux-gnueabihf)
     # Host
@@ -177,6 +176,7 @@ case $HOST_TARGET in
     TEST_TARGET=tests/x86_64-unknown-kernel.json MIRI_NO_STD=1 MIRIFLAGS="-Zunstable-options" run_tests_minimal no_std
     # Not officially supported tier 2
     MANY_SEEDS=16 TEST_TARGET=x86_64-pc-solaris run_tests
+    MANY_SEEDS=16 TEST_TARGET=mips-unknown-linux-gnu run_tests # a 32bit big-endian target, and also a target without 64bit atomics
     ;;
   aarch64-apple-darwin)
     # Host
@@ -184,9 +184,6 @@ case $HOST_TARGET in
     # Extra tier 1
     MANY_SEEDS=64 TEST_TARGET=i686-pc-windows-gnu run_tests
     MANY_SEEDS=64 TEST_TARGET=x86_64-pc-windows-msvc CARGO_MIRI_ENV=1 run_tests
-    # Not officially supported tier 2
-    MANY_SEEDS=16 TEST_TARGET=mips-unknown-linux-gnu run_tests # a 32bit big-endian target, and also a target without 64bit atomics
-    MANY_SEEDS=16 TEST_TARGET=x86_64-unknown-illumos run_tests
     ;;
   i686-pc-windows-msvc)
     # Host

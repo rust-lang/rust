@@ -28,7 +28,6 @@
 //! expression, `e as U2` is not necessarily so (in fact it will only be valid if
 //! `U1` coerces to `U2`).
 
-use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
@@ -50,7 +49,7 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, instrument};
 
 use super::FnCtxt;
-use crate::{errors, type_error_struct};
+use crate::{diagnostics, type_error_struct};
 
 /// Reifies a cast check to be checked once we have full type information for
 /// a function context.
@@ -176,6 +175,7 @@ enum CastError<'tcx> {
     NonScalar,
     UnknownExprPtrKind,
     UnknownCastPtrKind,
+    CastEnumDrop,
     /// Cast of int to (possibly) wide raw pointer.
     ///
     /// Argument is the specific name of the metadata in plain words, such as "a vtable"
@@ -389,13 +389,17 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             CastError::CastToBool => {
                 let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
                 let help = if self.expr_ty.is_numeric() {
-                    errors::CannotCastToBoolHelp::Numeric(
+                    diagnostics::CannotCastToBoolHelp::Numeric(
                         self.expr_span.shrink_to_hi().with_hi(self.span.hi()),
                     )
                 } else {
-                    errors::CannotCastToBoolHelp::Unsupported(self.span)
+                    diagnostics::CannotCastToBoolHelp::Unsupported(self.span)
                 };
-                fcx.dcx().emit_err(errors::CannotCastToBool { span: self.span, expr_ty, help });
+                fcx.dcx().emit_err(diagnostics::CannotCastToBool {
+                    span: self.span,
+                    expr_ty,
+                    help,
+                });
             }
             CastError::CastToChar => {
                 let mut err = type_error_struct!(
@@ -588,7 +592,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             CastError::SizedUnsizedCast => {
                 let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
                 let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
-                fcx.dcx().emit_err(errors::CastThinPointerToWidePointer {
+                fcx.dcx().emit_err(diagnostics::CastThinPointerToWidePointer {
                     span: self.span,
                     expr_ty,
                     cast_ty,
@@ -606,14 +610,14 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     .then(|| match cast_ty.kind() {
                         ty::RawPtr(pointee, _) => match pointee.kind() {
                             ty::Param(param) => {
-                                Some(errors::IntToWideParamNote { param: param.name })
+                                Some(diagnostics::IntToWideParamNote { param: param.name })
                             }
                             _ => None,
                         },
                         _ => None,
                     })
                     .flatten();
-                fcx.dcx().emit_err(errors::IntToWide {
+                fcx.dcx().emit_err(diagnostics::IntToWide {
                     span,
                     metadata,
                     expr_ty,
@@ -630,11 +634,21 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     e => unreachable!("control flow means we should never encounter a {e:?}"),
                 };
                 let (span, sub) = if unknown_cast_to {
-                    (self.cast_span, errors::CastUnknownPointerSub::To(self.cast_span))
+                    (self.cast_span, diagnostics::CastUnknownPointerSub::To(self.cast_span))
                 } else {
-                    (self.cast_span, errors::CastUnknownPointerSub::From(self.span))
+                    (self.cast_span, diagnostics::CastUnknownPointerSub::From(self.span))
                 };
-                fcx.dcx().emit_err(errors::CastUnknownPointer { span, to: unknown_cast_to, sub });
+                fcx.dcx().emit_err(diagnostics::CastUnknownPointer {
+                    span,
+                    to: unknown_cast_to,
+                    sub,
+                });
+            }
+            CastError::CastEnumDrop => {
+                let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
+                let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
+
+                fcx.dcx().emit_err(diagnostics::CastEnumDrop { span: self.span, expr_ty, cast_ty });
             }
             CastError::ForeignNonExhaustiveAdt => {
                 make_invalid_casting_error(
@@ -647,7 +661,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 .emit();
             }
             CastError::PtrPtrAddingAutoTrait(added) => {
-                fcx.dcx().emit_err(errors::PtrCastAddAutoToObject {
+                fcx.dcx().emit_err(diagnostics::PtrCastAddAutoToObject {
                     span: self.span,
                     traits_len: added.len(),
                     traits: {
@@ -721,7 +735,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             lint,
             self.expr.hir_id,
             self.span,
-            errors::TrivialCast { numeric, expr_ty, cast_ty },
+            diagnostics::TrivialCast { numeric, expr_ty, cast_ty },
         );
     }
 
@@ -860,27 +874,21 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             (Ptr(m_e), Ptr(m_c)) => self.check_ptr_ptr_cast(fcx, m_e, m_c), // ptr-ptr-cast
 
             // ptr-addr-cast
-            (Ptr(m_expr), Int(t_c)) => {
-                self.lossy_provenance_ptr2int_lint(fcx, t_c);
-                self.check_ptr_addr_cast(fcx, m_expr)
-            }
+            (Ptr(m_expr), Int(_)) => self.check_ptr_addr_cast(fcx, m_expr),
+
             (FnPtr, Int(_)) => {
                 // FIXME(#95489): there should eventually be a lint for these casts
                 Ok(CastKind::FnPtrAddrCast)
             }
             // addr-ptr-cast
-            (Int(_), Ptr(mt)) => {
-                self.fuzzy_provenance_int2ptr_lint(fcx);
-                self.check_addr_ptr_cast(fcx, mt)
-            }
+            (Int(_), Ptr(mt)) => self.check_addr_ptr_cast(fcx, mt),
             // fn-ptr-cast
             (FnPtr, Ptr(mt)) => self.check_fptr_ptr_cast(fcx, mt),
 
+            // enum -> int
+            (Int(CEnum), Int(_)) => self.check_enum_cast(fcx),
+
             // prim -> prim
-            (Int(CEnum), Int(_)) => {
-                self.err_if_cenum_impl_drop(fcx);
-                Ok(CastKind::EnumCast)
-            }
             (Int(Char) | Int(Bool), Int(_)) => Ok(CastKind::PrimIntCast),
 
             (Int(_) | Float, Int(_) | Float) => Ok(CastKind::NumericCast),
@@ -1115,71 +1123,21 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         }
     }
 
+    fn check_enum_cast(&self, fcx: &FnCtxt<'a, 'tcx>) -> Result<CastKind, CastError<'tcx>> {
+        if let ty::Adt(d, _) = self.expr_ty.kind()
+            && d.has_dtor(fcx.tcx)
+        {
+            Err(CastError::CastEnumDrop)
+        } else {
+            Ok(CastKind::EnumCast)
+        }
+    }
+
     fn try_coercion_cast(&self, fcx: &FnCtxt<'a, 'tcx>) -> Result<(), ty::error::TypeError<'tcx>> {
         match fcx.coerce(self.expr, self.expr_ty, self.cast_ty, AllowTwoPhase::No, None) {
             Ok(_) => Ok(()),
             Err(err) => Err(err),
         }
-    }
-
-    fn err_if_cenum_impl_drop(&self, fcx: &FnCtxt<'a, 'tcx>) {
-        if let ty::Adt(d, _) = self.expr_ty.kind()
-            && d.has_dtor(fcx.tcx)
-        {
-            let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
-            let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
-
-            fcx.dcx().emit_err(errors::CastEnumDrop { span: self.span, expr_ty, cast_ty });
-        }
-    }
-
-    fn lossy_provenance_ptr2int_lint(&self, fcx: &FnCtxt<'a, 'tcx>, t_c: ty::cast::IntTy) {
-        let expr_prec = fcx.precedence(self.expr);
-        let needs_parens = expr_prec < ExprPrecedence::Unambiguous;
-
-        let needs_cast = !matches!(t_c, ty::cast::IntTy::U(ty::UintTy::Usize));
-        let cast_span = self.expr_span.shrink_to_hi().to(self.cast_span);
-        let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
-        let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
-        let expr_span = self.expr_span.shrink_to_lo();
-        let sugg = match (needs_parens, needs_cast) {
-            (true, true) => errors::LossyProvenancePtr2IntSuggestion::NeedsParensCast {
-                expr_span,
-                cast_span,
-                cast_ty,
-            },
-            (true, false) => {
-                errors::LossyProvenancePtr2IntSuggestion::NeedsParens { expr_span, cast_span }
-            }
-            (false, true) => {
-                errors::LossyProvenancePtr2IntSuggestion::NeedsCast { cast_span, cast_ty }
-            }
-            (false, false) => errors::LossyProvenancePtr2IntSuggestion::Other { cast_span },
-        };
-
-        let lint = errors::LossyProvenancePtr2Int { expr_ty, cast_ty, sugg };
-        fcx.tcx.emit_node_span_lint(
-            lint::builtin::LOSSY_PROVENANCE_CASTS,
-            self.expr.hir_id,
-            self.span,
-            lint,
-        );
-    }
-
-    fn fuzzy_provenance_int2ptr_lint(&self, fcx: &FnCtxt<'a, 'tcx>) {
-        let sugg = errors::LossyProvenanceInt2PtrSuggestion {
-            lo: self.expr_span.shrink_to_lo(),
-            hi: self.expr_span.shrink_to_hi().to(self.cast_span),
-        };
-        let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
-        let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
-        let lint = errors::LossyProvenanceInt2Ptr { expr_ty, cast_ty, sugg };
-        fcx.tcx.emit_node_span_lint(
-            lint::builtin::FUZZY_PROVENANCE_CASTS,
-            self.expr.hir_id,
-            self.span,
-            lint,
-        );
     }
 
     /// Attempt to suggest using `.is_empty` when trying to cast from a
@@ -1194,12 +1152,15 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             if let Some((deref_ty, _)) = derefed {
                 // Give a note about what the expr derefs to.
                 if deref_ty != self.expr_ty.peel_refs() {
-                    err.subdiagnostic(errors::DerefImplsIsEmpty { span: self.expr_span, deref_ty });
+                    err.subdiagnostic(diagnostics::DerefImplsIsEmpty {
+                        span: self.expr_span,
+                        deref_ty,
+                    });
                 }
 
                 // Create a multipart suggestion: add `!` and `.is_empty()` in
                 // place of the cast.
-                err.subdiagnostic(errors::UseIsEmpty {
+                err.subdiagnostic(diagnostics::UseIsEmpty {
                     lo: self.expr_span.shrink_to_lo(),
                     hi: self.span.with_lo(self.expr_span.hi()),
                     expr_ty: self.expr_ty,

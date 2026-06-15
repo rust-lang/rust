@@ -417,6 +417,7 @@ fn check_pat_variant_nested_or_literal_with_depth(
         | ast::Pat::PathPat(_)
         | ast::Pat::BoxPat(_)
         | ast::Pat::DerefPat(_)
+        | ast::Pat::NotNull(_)
         | ast::Pat::ConstBlockPat(_) => true,
 
         ast::Pat::IdentPat(ident_pat) => ident_pat.pat().is_some_and(|pat| {
@@ -841,8 +842,8 @@ pub(crate) fn convert_reference_type<'db>(
 }
 
 fn could_deref_to_target(ty: &hir::Type<'_>, target: &hir::Type<'_>, db: &dyn HirDatabase) -> bool {
-    let ty_ref = ty.add_reference(hir::Mutability::Shared);
-    let target_ref = target.add_reference(hir::Mutability::Shared);
+    let ty_ref = ty.add_reference(db, hir::Mutability::Shared);
+    let target_ref = target.add_reference(db, hir::Mutability::Shared);
     ty_ref.could_coerce_to(db, &target_ref)
 }
 
@@ -870,7 +871,7 @@ fn handle_as_ref_slice(
     famous_defs: &FamousDefs<'_, '_>,
 ) -> Option<(ReferenceConversionType, bool)> {
     let type_argument = ty.type_arguments().next()?;
-    let slice_type = hir::Type::new_slice(type_argument);
+    let slice_type = hir::Type::new_slice(db, type_argument);
 
     ty.impls_trait(db, famous_defs.core_convert_AsRef()?, slice::from_ref(&slice_type)).then_some((
         ReferenceConversionType::AsRefSlice,
@@ -1181,13 +1182,5 @@ pub(crate) fn is_never_block(
     sema: &Semantics<'_, RootDatabase>,
     block_expr: &ast::BlockExpr,
 ) -> bool {
-    if let Some(tail_expr) = block_expr.tail_expr() {
-        sema.type_of_expr(&tail_expr).is_some_and(|ty| ty.original.is_never())
-    } else if let Some(ast::Stmt::ExprStmt(expr_stmt)) = block_expr.statements().last()
-        && let Some(expr) = expr_stmt.expr()
-    {
-        sema.type_of_expr(&expr).is_some_and(|ty| ty.original.is_never())
-    } else {
-        false
-    }
+    sema.expr_is_diverging(&block_expr.clone().into())
 }

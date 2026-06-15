@@ -669,7 +669,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
             }
 
-            Rvalue::BinaryOp(op, box (lhs, rhs)) => {
+            Rvalue::BinaryOp(op, (lhs, rhs)) => {
                 let lhs_ty = lhs.ty(self.body, self.tcx);
                 let rhs_ty = rhs.ty(self.body, self.tcx);
 
@@ -779,7 +779,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // to do different checks than usual.
 
                     trace!("attempting to call a trait method");
-                    let is_const = tcx.constness(callee) == hir::Constness::Const;
+                    let is_const =
+                        matches!(tcx.constness(callee), hir::Constness::Const { always: false });
 
                     // Only consider a trait to be const if the const conditions hold.
                     // Otherwise, it's really misleading to call something "conditionally"

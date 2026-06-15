@@ -130,11 +130,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                     return;
                 }
 
-                let proj_ty = Ty::new_projection_from_args(
-                    cx.tcx,
-                    proj.projection_term.def_id(),
-                    proj.projection_term.args,
-                );
+                let proj_ty = proj.projection_term.expect_ty().to_ty(cx.tcx);
                 // For every instance of the projection type in the bounds,
                 // replace them with the term we're assigning to the associated
                 // type in our opaque type.
@@ -149,7 +145,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                 // with `impl Send: OtherTrait`.
                 for (assoc_pred, assoc_pred_span) in cx
                     .tcx
-                    .explicit_item_bounds(proj.projection_term.def_id())
+                    .explicit_item_bounds(proj.def_id())
                     .iter_instantiated_copied(cx.tcx, proj.projection_term.args)
                     .map(Unnormalized::skip_norm_wip)
                 {
@@ -232,6 +228,5 @@ struct OpaqueHiddenInferredBoundLint<'tcx> {
 struct AddBound<'tcx> {
     #[primary_span]
     suggest_span: Span,
-    #[skip_arg]
     trait_ref: TraitPredPrintModifiersAndPath<'tcx>,
 }

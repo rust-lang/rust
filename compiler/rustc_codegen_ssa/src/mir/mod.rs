@@ -7,6 +7,7 @@ use rustc_middle::mir::{Body, Local, UnwindTerminateReason, traversal};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_middle::{bug, mir, span_bug};
+use rustc_span::ErrorGuaranteed;
 use rustc_target::callconv::{FnAbi, PassMode};
 use tracing::{debug, instrument};
 
@@ -23,6 +24,7 @@ mod locals;
 pub mod naked_asm;
 pub mod operand;
 pub mod place;
+mod retag;
 mod rvalue;
 mod statement;
 
@@ -157,6 +159,29 @@ enum LocalRef<'tcx, V> {
     PendingOperand,
 }
 
+pub enum IntrinsicResult<'tcx, V> {
+    /// This intrinsic created an operand without using the `result_place` argument.
+    ///
+    /// `codegen_call_terminator` will handle writing the result into the place,
+    /// if doing so is needed.
+    ///
+    /// The vast majority of intrinsics can do this, see MCP#970
+    Operand(OperandValue<V>),
+
+    /// The intrinsic wrote its result into the `result_place` argument.
+    ///
+    /// Most things don't need to do this, but there are some: `volatile_load`
+    /// of a non-scalar type, for example, has to.
+    WroteIntoPlace,
+
+    /// Another instance should be called instead. This is used to invoke intrinsic
+    /// default bodies in case an intrinsic is not implemented by the backend.
+    Fallback(ty::Instance<'tcx>),
+
+    /// Arguably this shouldn't exist, per MCP#620, but a bunch do it.
+    Err(ErrorGuaranteed),
+}
+
 impl<'tcx, V: CodegenObject> LocalRef<'tcx, V> {
     fn new_operand(layout: TyAndLayout<'tcx>) -> LocalRef<'tcx, V> {
         if layout.is_zst() {
@@ -199,8 +224,6 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         mir = tcx.arena.alloc(optimize_use_clone::<Bx>(cx, monomorphized_mir));
     }
 
-    let debug_context = cx.create_function_debug_context(instance, fn_abi, llfn, &mir);
-
     let start_llbb = Bx::append_block(cx, llfn, "start");
     let mut start_bx = Bx::build(cx, start_llbb);
 
@@ -236,7 +259,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         funclets: IndexVec::from_fn_n(|_| None, mir.basic_blocks.len()),
         cold_blocks: find_cold_blocks(tcx, mir),
         locals: locals::Locals::empty(),
-        debug_context,
+        debug_context: None,
         per_local_var_debug_info: None,
         caller_location: None,
     };
@@ -245,6 +268,8 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // evaluate; however, the `MirUsedCollector` already did that during the collection phase of
     // monomorphization, and if there is an error during collection then codegen never starts -- so
     // we don't have to do it again.
+
+    fx.fill_function_debug_context();
 
     let (per_local_var_debug_info, consts_debug_info) =
         fx.compute_per_local_var_debug_info(&mut start_bx).unzip();
@@ -401,7 +426,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         return vec![];
     }
 
-    let args = mir
+    let mut args = mir
         .args_iter()
         .enumerate()
         .map(|(arg_index, local)| {
@@ -475,9 +500,12 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                     PassMode::Direct(_) => {
                         let llarg = bx.get_param(llarg_idx);
                         llarg_idx += 1;
-                        return local(OperandRef::from_immediate_or_packed_pair(
-                            bx, llarg, arg.layout,
-                        ));
+                        debug_assert!(bx.is_backend_immediate(arg.layout));
+                        return local(OperandRef {
+                            val: OperandValue::Immediate(llarg),
+                            layout: arg.layout,
+                            move_annotation: None,
+                        });
                     }
                     PassMode::Pair(..) => {
                         let (a, b) = (bx.get_param(llarg_idx), bx.get_param(llarg_idx + 1));
@@ -535,6 +563,32 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             }
         })
         .collect::<Vec<_>>();
+    if bx.tcx().sess.opts.unstable_opts.codegen_emit_retag.is_some() {
+        args = args
+            .iter()
+            .map(|arg| match arg {
+                &LocalRef::Place(place_ref) => {
+                    fx.codegen_retag_place(bx, place_ref, true);
+                    LocalRef::Place(place_ref)
+                }
+                &LocalRef::UnsizedPlace(place_ref) => {
+                    let operand = bx.load_operand(place_ref);
+                    let retagged = fx.codegen_retag_operand(bx, operand, true);
+                    assert!(matches!(retagged.val, OperandValue::Pair(_, _)));
+                    retagged.val.store(bx, place_ref);
+                    LocalRef::UnsizedPlace(place_ref)
+                }
+                &LocalRef::Operand(operand_ref) => {
+                    let retagged = fx.codegen_retag_operand(bx, operand_ref, true);
+                    LocalRef::Operand(retagged)
+                }
+                LocalRef::PendingOperand => LocalRef::PendingOperand,
+            })
+            .collect::<Vec<_>>();
+        // If we branched during retagging, then we need to update the
+        // start block to the new location.
+        fx.cached_llbbs[mir::START_BLOCK] = CachedLlbb::Some(bx.llbb());
+    }
 
     if fx.instance.def.requires_caller_location(bx.tcx()) {
         let mir_args = if let Some(num_untupled) = num_untupled {

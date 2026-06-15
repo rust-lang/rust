@@ -35,7 +35,7 @@ use ty::adjustment::{PatAdjust, PatAdjustment};
 use super::report_unexpected_variant_res;
 use crate::expectation::Expectation;
 use crate::gather_locals::DeclOrigin;
-use crate::{FnCtxt, errors};
+use crate::{FnCtxt, diagnostics};
 
 const CANNOT_IMPLICITLY_DEREF_POINTER_TRAIT_OBJ: &str = "\
 This error indicates that a pointer to a trait type cannot be implicitly dereferenced by a \
@@ -544,21 +544,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             {
                 debug!("scrutinee ty {expected:?} is a pinned reference, inserting pin deref");
 
-                // if the inner_ty is an ADT, make sure that it can be structurally pinned
-                // (i.e., it is `#[pin_v2]`).
-                if let Some(adt) = inner_ty.ty_adt_def()
-                    && !adt.is_pin_project()
-                    && !adt.is_pin()
-                {
-                    let def_span: Option<Span> = self.tcx.hir_span_if_local(adt.did());
-                    let sugg_span = def_span.map(|span| span.shrink_to_lo());
-                    self.dcx().emit_err(crate::errors::ProjectOnNonPinProjectType {
-                        span: pat.span,
-                        def_span,
-                        sugg_span,
-                    });
-                }
-
                 // Use the old pat info to keep `current_depth` to its old value.
                 let new_pat_info =
                     self.adjust_pat_info(Pinnedness::Pinned, inner_mutability, old_pat_info);
@@ -1007,7 +992,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // then that's equivalent to there existing a LUB.
         let cause = self.pattern_cause(ti, span);
-        if let Err(err) = self.demand_suptype_with_origin(&cause, expected, pat_ty) {
+        if let Err(mut err) = self.demand_suptype_with_origin(&cause, expected, pat_ty) {
+            // If scrutinee is String and pattern is &str, suggest .as_str()
+            let expected = self.resolve_vars_with_obligations(expected);
+            if let ty::Adt(adt, _) = expected.kind()
+                && self.tcx.is_lang_item(adt.did(), LangItem::String)
+                && pat_ty.is_ref()
+                && pat_ty.peel_refs().is_str()
+                && let Some(origin_expr) = ti.origin_expr
+            {
+                err.span_suggestion_verbose(
+                    origin_expr.span.shrink_to_hi(),
+                    "consider converting the `String` to a `&str` using `.as_str()`",
+                    ".as_str()",
+                    Applicability::MachineApplicable,
+                );
+            }
             err.emit();
         }
 
@@ -1508,6 +1508,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         Ok(ResolvedPat { ty: pat_ty, kind: ResolvedPatKind::Struct { variant } })
     }
 
+    /// Reject pin-projection through a type that isn't structurally pinnable.
+    ///
+    /// Destructuring an ADT underneath a `&pin` reference projects its fields as pinned references.
+    /// This is only sound if the type opted into structural pinning with `#[pin_v2]`; otherwise it
+    /// would let safe code form a `Pin<&mut Field>` for a type that should never be pinned, breaking
+    /// the `Pin` guarantee (see #157634).
+    ///
+    /// This covers both explicit (`&pin mut`/`&pin const`) and implicit (match-ergonomics)
+    /// projection. `max_pinnedness` is only set for `&pin mut`, so the implicit shared (`&pin
+    /// const`) case is instead recognized through its pinned binding mode, hence both are checked.
+    fn check_pin_projection(
+        &self,
+        pat: &'tcx Pat<'tcx>,
+        pat_ty: Ty<'tcx>,
+        pat_info: PatInfo<'tcx>,
+    ) {
+        let through_pin = pat_info.max_pinnedness == PinnednessCap::Pinned
+            || matches!(pat_info.binding_mode, ByRef::Yes(Pinnedness::Pinned, _));
+        if through_pin
+            && let Some(adt) = pat_ty.ty_adt_def()
+            && !adt.is_pin_project()
+            && !adt.is_pin()
+        {
+            let def_span: Option<Span> = self.tcx.hir_span_if_local(adt.did());
+            let sugg_span = def_span.map(|span| span.shrink_to_lo());
+            self.dcx().emit_err(crate::diagnostics::ProjectOnNonPinProjectType {
+                span: pat.span,
+                def_span,
+                sugg_span,
+            });
+        }
+    }
+
     fn check_pat_struct(
         &self,
         pat: &'tcx Pat<'tcx>,
@@ -1518,6 +1551,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         pat_info: PatInfo<'tcx>,
     ) -> Ty<'tcx> {
+        self.check_pin_projection(pat, pat_ty, pat_info);
+
         // Type-check the path.
         let had_err = self.demand_eqtype_pat(pat.span, expected, pat_ty, &pat_info.top_info);
 
@@ -1776,6 +1811,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         pat_info: PatInfo<'tcx>,
     ) -> Ty<'tcx> {
+        self.check_pin_projection(pat, pat_ty, pat_info);
+
         let tcx = self.tcx;
         let on_error = |e| {
             for pat in subpats {
@@ -2110,10 +2147,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Report an error if an incorrect number of fields was specified.
         if adt.is_union() {
             if fields.len() != 1 {
-                self.dcx().emit_err(errors::UnionPatMultipleFields { span: pat.span });
+                self.dcx().emit_err(diagnostics::UnionPatMultipleFields { span: pat.span });
             }
             if has_rest_pat {
-                self.dcx().emit_err(errors::UnionPatDotDot { span: pat.span });
+                self.dcx().emit_err(diagnostics::UnionPatDotDot { span: pat.span });
             }
         } else if !unmentioned_fields.is_empty() {
             let accessible_unmentioned_fields: Vec<_> = unmentioned_fields
@@ -3238,17 +3275,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         || self.tcx.is_diagnostic_item(sym::Result, adt_def.did()) =>
                 {
                     // Slicing won't work here, but `.as_deref()` might (issue #91328).
-                    as_deref = Some(errors::AsDerefSuggestion { span: span.shrink_to_hi() });
+                    as_deref = Some(diagnostics::AsDerefSuggestion { span: span.shrink_to_hi() });
                 }
                 _ => (),
             }
 
             let is_top_level = current_depth <= 1;
             if is_slice_or_array_or_vector && is_top_level {
-                slicing = Some(errors::SlicingSuggestion { span: span.shrink_to_hi() });
+                slicing = Some(diagnostics::SlicingSuggestion { span: span.shrink_to_hi() });
             }
         }
-        self.dcx().emit_err(errors::ExpectedArrayOrSlice {
+        self.dcx().emit_err(diagnostics::ExpectedArrayOrSlice {
             span,
             ty: expected_ty,
             slice_pat_semantics,

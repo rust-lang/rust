@@ -845,6 +845,19 @@ impl ImplTraitType {
     #[inline]
     pub fn impl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![impl]) }
 }
+pub struct IncludeBytesExpr {
+    pub(crate) syntax: SyntaxNode,
+}
+impl IncludeBytesExpr {
+    #[inline]
+    pub fn pound_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![#]) }
+    #[inline]
+    pub fn builtin_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![builtin]) }
+    #[inline]
+    pub fn include_bytes_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![include_bytes])
+    }
+}
 pub struct IndexExpr {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1186,6 +1199,15 @@ impl NeverType {
     #[inline]
     pub fn excl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![!]) }
 }
+pub struct NotNull {
+    pub(crate) syntax: SyntaxNode,
+}
+impl NotNull {
+    #[inline]
+    pub fn excl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![!]) }
+    #[inline]
+    pub fn null_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![null]) }
+}
 pub struct OffsetOfExpr {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1356,6 +1378,29 @@ pub struct PathType {
 impl PathType {
     #[inline]
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
+}
+pub struct PatternType {
+    pub(crate) syntax: SyntaxNode,
+}
+impl PatternType {
+    #[inline]
+    pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
+    #[inline]
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
+    #[inline]
+    pub fn pound_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![#]) }
+    #[inline]
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
+    #[inline]
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
+    #[inline]
+    pub fn builtin_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![builtin]) }
+    #[inline]
+    pub fn is_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![is]) }
+    #[inline]
+    pub fn pattern_type_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![pattern_type])
+    }
 }
 pub struct PrefixExpr {
     pub(crate) syntax: SyntaxNode,
@@ -2027,6 +2072,8 @@ impl Variant {
     pub fn field_list(&self) -> Option<FieldList> { support::child(&self.syntax) }
     #[inline]
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
+    #[inline]
+    pub fn underscore_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![_]) }
 }
 pub struct VariantList {
     pub(crate) syntax: SyntaxNode,
@@ -2180,6 +2227,7 @@ pub enum Expr {
     ForExpr(ForExpr),
     FormatArgsExpr(FormatArgsExpr),
     IfExpr(IfExpr),
+    IncludeBytesExpr(IncludeBytesExpr),
     IndexExpr(IndexExpr),
     LetExpr(LetExpr),
     Literal(Literal),
@@ -2275,6 +2323,7 @@ pub enum Pat {
     IdentPat(IdentPat),
     LiteralPat(LiteralPat),
     MacroPat(MacroPat),
+    NotNull(NotNull),
     OrPat(OrPat),
     ParenPat(ParenPat),
     PathPat(PathPat),
@@ -2307,6 +2356,7 @@ pub enum Type {
     NeverType(NeverType),
     ParenType(ParenType),
     PathType(PathType),
+    PatternType(PatternType),
     PtrType(PtrType),
     RefType(RefType),
     SliceType(SliceType),
@@ -4339,6 +4389,38 @@ impl fmt::Debug for ImplTraitType {
         f.debug_struct("ImplTraitType").field("syntax", &self.syntax).finish()
     }
 }
+impl AstNode for IncludeBytesExpr {
+    #[inline]
+    fn kind() -> SyntaxKind
+    where
+        Self: Sized,
+    {
+        INCLUDE_BYTES_EXPR
+    }
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == INCLUDE_BYTES_EXPR }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl hash::Hash for IncludeBytesExpr {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for IncludeBytesExpr {}
+impl PartialEq for IncludeBytesExpr {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+impl Clone for IncludeBytesExpr {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl fmt::Debug for IncludeBytesExpr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("IncludeBytesExpr").field("syntax", &self.syntax).finish()
+    }
+}
 impl AstNode for IndexExpr {
     #[inline]
     fn kind() -> SyntaxKind
@@ -5363,6 +5445,38 @@ impl fmt::Debug for NeverType {
         f.debug_struct("NeverType").field("syntax", &self.syntax).finish()
     }
 }
+impl AstNode for NotNull {
+    #[inline]
+    fn kind() -> SyntaxKind
+    where
+        Self: Sized,
+    {
+        NOT_NULL
+    }
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == NOT_NULL }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl hash::Hash for NotNull {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for NotNull {}
+impl PartialEq for NotNull {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+impl Clone for NotNull {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl fmt::Debug for NotNull {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("NotNull").field("syntax", &self.syntax).finish()
+    }
+}
 impl AstNode for OffsetOfExpr {
     #[inline]
     fn kind() -> SyntaxKind
@@ -5809,6 +5923,38 @@ impl Clone for PathType {
 impl fmt::Debug for PathType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("PathType").field("syntax", &self.syntax).finish()
+    }
+}
+impl AstNode for PatternType {
+    #[inline]
+    fn kind() -> SyntaxKind
+    where
+        Self: Sized,
+    {
+        PATTERN_TYPE
+    }
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == PATTERN_TYPE }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl hash::Hash for PatternType {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for PatternType {}
+impl PartialEq for PatternType {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+impl Clone for PatternType {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl fmt::Debug for PatternType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PatternType").field("syntax", &self.syntax).finish()
     }
 }
 impl AstNode for PrefixExpr {
@@ -8003,6 +8149,10 @@ impl From<IfExpr> for Expr {
     #[inline]
     fn from(node: IfExpr) -> Expr { Expr::IfExpr(node) }
 }
+impl From<IncludeBytesExpr> for Expr {
+    #[inline]
+    fn from(node: IncludeBytesExpr) -> Expr { Expr::IncludeBytesExpr(node) }
+}
 impl From<IndexExpr> for Expr {
     #[inline]
     fn from(node: IndexExpr) -> Expr { Expr::IndexExpr(node) }
@@ -8107,6 +8257,7 @@ impl AstNode for Expr {
                 | FOR_EXPR
                 | FORMAT_ARGS_EXPR
                 | IF_EXPR
+                | INCLUDE_BYTES_EXPR
                 | INDEX_EXPR
                 | LET_EXPR
                 | LITERAL
@@ -8148,6 +8299,7 @@ impl AstNode for Expr {
             FOR_EXPR => Expr::ForExpr(ForExpr { syntax }),
             FORMAT_ARGS_EXPR => Expr::FormatArgsExpr(FormatArgsExpr { syntax }),
             IF_EXPR => Expr::IfExpr(IfExpr { syntax }),
+            INCLUDE_BYTES_EXPR => Expr::IncludeBytesExpr(IncludeBytesExpr { syntax }),
             INDEX_EXPR => Expr::IndexExpr(IndexExpr { syntax }),
             LET_EXPR => Expr::LetExpr(LetExpr { syntax }),
             LITERAL => Expr::Literal(Literal { syntax }),
@@ -8191,6 +8343,7 @@ impl AstNode for Expr {
             Expr::ForExpr(it) => &it.syntax,
             Expr::FormatArgsExpr(it) => &it.syntax,
             Expr::IfExpr(it) => &it.syntax,
+            Expr::IncludeBytesExpr(it) => &it.syntax,
             Expr::IndexExpr(it) => &it.syntax,
             Expr::LetExpr(it) => &it.syntax,
             Expr::Literal(it) => &it.syntax,
@@ -8581,6 +8734,10 @@ impl From<MacroPat> for Pat {
     #[inline]
     fn from(node: MacroPat) -> Pat { Pat::MacroPat(node) }
 }
+impl From<NotNull> for Pat {
+    #[inline]
+    fn from(node: NotNull) -> Pat { Pat::NotNull(node) }
+}
 impl From<OrPat> for Pat {
     #[inline]
     fn from(node: OrPat) -> Pat { Pat::OrPat(node) }
@@ -8636,6 +8793,7 @@ impl AstNode for Pat {
                 | IDENT_PAT
                 | LITERAL_PAT
                 | MACRO_PAT
+                | NOT_NULL
                 | OR_PAT
                 | PAREN_PAT
                 | PATH_PAT
@@ -8658,6 +8816,7 @@ impl AstNode for Pat {
             IDENT_PAT => Pat::IdentPat(IdentPat { syntax }),
             LITERAL_PAT => Pat::LiteralPat(LiteralPat { syntax }),
             MACRO_PAT => Pat::MacroPat(MacroPat { syntax }),
+            NOT_NULL => Pat::NotNull(NotNull { syntax }),
             OR_PAT => Pat::OrPat(OrPat { syntax }),
             PAREN_PAT => Pat::ParenPat(ParenPat { syntax }),
             PATH_PAT => Pat::PathPat(PathPat { syntax }),
@@ -8682,6 +8841,7 @@ impl AstNode for Pat {
             Pat::IdentPat(it) => &it.syntax,
             Pat::LiteralPat(it) => &it.syntax,
             Pat::MacroPat(it) => &it.syntax,
+            Pat::NotNull(it) => &it.syntax,
             Pat::OrPat(it) => &it.syntax,
             Pat::ParenPat(it) => &it.syntax,
             Pat::PathPat(it) => &it.syntax,
@@ -8748,6 +8908,10 @@ impl From<PathType> for Type {
     #[inline]
     fn from(node: PathType) -> Type { Type::PathType(node) }
 }
+impl From<PatternType> for Type {
+    #[inline]
+    fn from(node: PatternType) -> Type { Type::PatternType(node) }
+}
 impl From<PtrType> for Type {
     #[inline]
     fn from(node: PtrType) -> Type { Type::PtrType(node) }
@@ -8779,6 +8943,7 @@ impl AstNode for Type {
                 | NEVER_TYPE
                 | PAREN_TYPE
                 | PATH_TYPE
+                | PATTERN_TYPE
                 | PTR_TYPE
                 | REF_TYPE
                 | SLICE_TYPE
@@ -8798,6 +8963,7 @@ impl AstNode for Type {
             NEVER_TYPE => Type::NeverType(NeverType { syntax }),
             PAREN_TYPE => Type::ParenType(ParenType { syntax }),
             PATH_TYPE => Type::PathType(PathType { syntax }),
+            PATTERN_TYPE => Type::PatternType(PatternType { syntax }),
             PTR_TYPE => Type::PtrType(PtrType { syntax }),
             REF_TYPE => Type::RefType(RefType { syntax }),
             SLICE_TYPE => Type::SliceType(SliceType { syntax }),
@@ -8819,6 +8985,7 @@ impl AstNode for Type {
             Type::NeverType(it) => &it.syntax,
             Type::ParenType(it) => &it.syntax,
             Type::PathType(it) => &it.syntax,
+            Type::PatternType(it) => &it.syntax,
             Type::PtrType(it) => &it.syntax,
             Type::RefType(it) => &it.syntax,
             Type::SliceType(it) => &it.syntax,
@@ -10293,6 +10460,11 @@ impl std::fmt::Display for ImplTraitType {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
+impl std::fmt::Display for IncludeBytesExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
 impl std::fmt::Display for IndexExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -10453,6 +10625,11 @@ impl std::fmt::Display for NeverType {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
+impl std::fmt::Display for NotNull {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
 impl std::fmt::Display for OffsetOfExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -10519,6 +10696,11 @@ impl std::fmt::Display for PathSegment {
     }
 }
 impl std::fmt::Display for PathType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for PatternType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

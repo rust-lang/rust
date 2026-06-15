@@ -134,6 +134,11 @@ pub enum DefKind {
     },
     /// Refers to the struct or enum variant's constructor.
     ///
+    /// ```
+    /// struct S;
+    /// let x = S; // S in the value namespace is a Ctor
+    /// ```
+    ///
     /// The reason `Ctor` exists in addition to [`DefKind::Struct`] and
     /// [`DefKind::Variant`] is because structs and enum variants exist
     /// in the *type* namespace, whereas struct and enum variant *constructors*
@@ -712,7 +717,8 @@ impl IntoDiagArg for Namespace {
 }
 
 /// Just a helper ‒ separate structure for each namespace.
-#[derive(Copy, Clone, Default, Debug, StableHash)]
+#[derive(Copy, Clone, Debug, StableHash)]
+#[derive_const(Default)]
 pub struct PerNS<T> {
     pub value_ns: T,
     pub type_ns: T,
@@ -986,8 +992,6 @@ pub enum LifetimeRes {
         ///
         /// Creating the associated `LocalDefId` is the responsibility of lowering.
         param: NodeId,
-        /// Id of the introducing place. See `Param`.
-        binder: NodeId,
         /// Kind of elided lifetime
         kind: hir::MissingLifetimeKind,
     },

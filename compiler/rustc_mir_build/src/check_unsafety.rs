@@ -12,12 +12,11 @@ use rustc_middle::thir::visit::Visitor;
 use rustc_middle::thir::*;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_session::lint::Level;
 use rustc_session::lint::builtin::{DEPRECATED_SAFE_2024, UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{Span, Symbol};
 
-use crate::errors::*;
+use crate::diagnostics::*;
 
 struct UnsafetyVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -175,7 +174,7 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
 
     /// Whether the `unsafe_op_in_unsafe_fn` lint is `allow`ed at the current HIR node.
     fn unsafe_op_in_unsafe_fn_allowed(&self) -> bool {
-        self.tcx.lint_level_at_node(UNSAFE_OP_IN_UNSAFE_FN, self.hir_context).level == Level::Allow
+        self.tcx.lint_level_spec_at_node(UNSAFE_OP_IN_UNSAFE_FN, self.hir_context).is_allow()
     }
 
     /// Handle closures/coroutines/inline-consts, which is unsafecked with their parent body.
@@ -233,10 +232,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 });
             }
             BlockSafety::ExplicitUnsafe(hir_id) => {
-                let used = matches!(
-                    self.tcx.lint_level_at_node(UNUSED_UNSAFE, hir_id).level,
-                    Level::Allow
-                );
+                let used = self.tcx.lint_level_spec_at_node(UNUSED_UNSAFE, hir_id).is_allow();
                 self.in_safety_context(
                     SafetyContext::UnsafeBlock {
                         span: block.span,
@@ -510,7 +506,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     self.requires_unsafe(expr.span, DerefOfRawPointer);
                 }
             }
-            ExprKind::InlineAsm(box InlineAsmExpr {
+            ExprKind::InlineAsm(InlineAsmExpr {
                 asm_macro: asm_macro @ (AsmMacro::Asm | AsmMacro::NakedAsm),
                 ref operands,
                 template: _,
@@ -554,7 +550,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 }
                 return;
             }
-            ExprKind::Adt(box AdtExpr {
+            ExprKind::Adt(AdtExpr {
                 adt_def,
                 variant_index,
                 args: _,
@@ -566,7 +562,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     self.requires_unsafe(expr.span, InitializingTypeWithUnsafeField)
                 }
             }
-            ExprKind::Closure(box ClosureExpr {
+            ExprKind::Closure(ClosureExpr {
                 closure_id,
                 args: _,
                 upvars: _,

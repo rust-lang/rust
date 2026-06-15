@@ -30,40 +30,6 @@ pub(super) fn provide(providers: &mut Providers) {
     providers.mir_shims = make_shim;
 }
 
-// Replace Pin<&mut ImplCoroutine> accesses (_1.0) into Pin<&mut ProxyCoroutine> accesses
-struct FixProxyFutureDropVisitor<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    replace_to: Local,
-}
-
-impl<'tcx> MutVisitor<'tcx> for FixProxyFutureDropVisitor<'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
-
-    fn visit_place(
-        &mut self,
-        place: &mut Place<'tcx>,
-        _context: PlaceContext,
-        _location: Location,
-    ) {
-        if place.local == Local::from_u32(1) {
-            if place.projection.len() == 1 {
-                assert!(matches!(
-                    place.projection.first(),
-                    Some(ProjectionElem::Field(FieldIdx::ZERO, _))
-                ));
-                *place = Place::from(self.replace_to);
-            } else if place.projection.len() == 2 {
-                assert!(matches!(place.projection[0], ProjectionElem::Field(FieldIdx::ZERO, _)));
-                assert!(matches!(place.projection[1], ProjectionElem::Deref));
-                *place =
-                    Place::from(self.replace_to).project_deeper(&[ProjectionElem::Deref], self.tcx);
-            }
-        }
-    }
-}
-
 fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<'tcx> {
     debug!("make_shim({:?})", instance);
 
@@ -96,7 +62,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
         ty::InstanceKind::ReifyShim(def_id, _) => {
             build_call_shim(tcx, instance, None, CallKind::Direct(def_id))
         }
-        ty::InstanceKind::ClosureOnceShim { call_once: _, track_caller: _ } => {
+        ty::InstanceKind::ClosureOnceShim { call_once: _, closure: _, track_caller: _ } => {
             let fn_mut = tcx.require_lang_item(LangItem::FnMut, DUMMY_SP);
             let call_mut = tcx
                 .associated_items(fn_mut)
@@ -160,7 +126,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
                 return body;
             }
 
-            build_drop_shim(tcx, def_id, ty)
+            build_drop_shim(tcx, def_id, ty, ty::TypingEnv::post_analysis(tcx, def_id))
         }
         ty::InstanceKind::ThreadLocalShim(..) => build_thread_local_shim(tcx, instance),
         ty::InstanceKind::CloneShim(def_id, ty) => build_clone_shim(tcx, def_id, ty),
@@ -190,7 +156,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
             // Main pass required here is StateTransform to convert sync drop ladder
             // into coroutine.
             // Others are minimal passes as for sync drop glue shim
-            pm::run_passes(
+            pm::run_passes_no_validate(
                 tcx,
                 &mut body,
                 &[
@@ -201,7 +167,6 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
                     &crate::coroutine::StateTransform,
                 ],
                 Some(MirPhase::Runtime(RuntimePhase::PostCleanup)),
-                pm::Optimizations::Allowed,
             );
             run_optimization_passes(tcx, &mut body);
             debug!("make_shim({:?}) = {:?}", instance, body);
@@ -296,7 +261,16 @@ fn local_decls_for_sig<'tcx>(
         .collect()
 }
 
-fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>) -> Body<'tcx> {
+/// Builds the drop glue for the provided type. The `def_id` is that of `core::ptr::drop_glue`.
+///
+/// Inside rustc this is only called on a monomorphic type, but we expose the function for
+/// rustc_driver writers to be able to generate drop glue for a polymorphic type.
+pub fn build_drop_shim<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    ty: Option<Ty<'tcx>>,
+    typing_env: ty::TypingEnv<'tcx>,
+) -> Body<'tcx> {
     debug!("build_drop_shim(def_id={:?}, ty={:?})", def_id, ty);
 
     assert!(!matches!(ty, Some(ty) if ty.is_coroutine()));
@@ -368,7 +342,6 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
         });
     } else {
         let patch = {
-            let typing_env = ty::TypingEnv::post_analysis(tcx, def_id);
             let mut elaborator = DropShimElaborator {
                 body: &body,
                 patch: MirPatch::new(&body),
@@ -463,9 +436,6 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
         self.typing_env
     }
 
-    fn terminator_loc(&self, bb: BasicBlock) -> Location {
-        self.patch.terminator_loc(self.body, bb)
-    }
     fn allow_async_drops(&self) -> bool {
         self.produce_async_drops
     }
@@ -727,7 +697,6 @@ impl<'tcx> CloneShimBuilder<'tcx> {
                     unwind: UnwindAction::Terminate(UnwindTerminateReason::InCleanup),
                     replace: false,
                     drop: None,
-                    async_fut: None,
                 },
                 /* is_cleanup */ true,
             );
@@ -994,7 +963,6 @@ fn build_call_shim<'tcx>(
                 unwind: UnwindAction::Continue,
                 replace: false,
                 drop: None,
-                async_fut: None,
             },
             false,
         );
@@ -1013,7 +981,6 @@ fn build_call_shim<'tcx>(
                 unwind: UnwindAction::Terminate(UnwindTerminateReason::InCleanup),
                 replace: false,
                 drop: None,
-                async_fut: None,
             },
             /* is_cleanup */ true,
         );

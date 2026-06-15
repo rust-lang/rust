@@ -5,15 +5,16 @@
 use std::debug_assert_matches;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::PathSegment;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{DelegationGenerics, HirId, PathSegment};
 use rustc_middle::ty::{
     self, EarlyBinder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 use rustc_span::{ErrorGuaranteed, Span, kw};
 
 use crate::collect::ItemCtxt;
+use crate::diagnostics::DelegationSelfTypeNotSpecified;
 use crate::hir_ty_lowering::HirTyLowerer;
 
 type RemapTable = FxHashMap<u32, u32>;
@@ -70,15 +71,6 @@ enum SelfPositionKind {
     None,
 }
 
-fn get_delegation_generics(tcx: TyCtxt<'_>, delegation_id: LocalDefId) -> &DelegationGenerics {
-    tcx.hir_node(tcx.local_def_id_to_hir_id(delegation_id))
-        .fn_sig()
-        .expect("processing delegation")
-        .decl
-        .opt_delegation_generics()
-        .expect("processing delegation")
-}
-
 fn create_self_position_kind(
     tcx: TyCtxt<'_>,
     delegation_id: LocalDefId,
@@ -91,7 +83,7 @@ fn create_self_position_kind(
         | (FnKind::AssocTrait, FnKind::Free) => SelfPositionKind::Zero,
 
         (FnKind::Free, FnKind::AssocTrait) => {
-            let propagate_self_ty = get_delegation_generics(tcx, delegation_id).propagate_self_ty;
+            let propagate_self_ty = tcx.hir_delegation_info(delegation_id).propagate_self_ty;
             SelfPositionKind::AfterLifetimes(propagate_self_ty)
         }
 
@@ -277,13 +269,19 @@ fn get_parent_and_inheritance_kind<'tcx>(
 }
 
 fn get_delegation_self_ty_or_err(tcx: TyCtxt<'_>, delegation_id: LocalDefId) -> Ty<'_> {
-    get_delegation_generics(tcx, delegation_id)
+    tcx.hir_delegation_info(delegation_id)
         .self_ty_id
         .map(|id| {
             let ctx = ItemCtxt::new(tcx, delegation_id);
             ctx.lower_ty(tcx.hir_node(id).expect_ty())
         })
         .unwrap_or_else(|| {
+            // It is possible to attempt to get self type when it is used in signature
+            // (i.e., `fn default() -> Self`), so emit error here in addition to possible
+            // `mismatched types` error (see #156388).
+            let err = DelegationSelfTypeNotSpecified { span: tcx.def_span(delegation_id) };
+            tcx.dcx().emit_err(err);
+
             Ty::new_error_with_message(
                 tcx,
                 tcx.def_span(delegation_id),
@@ -540,7 +538,7 @@ pub(crate) fn inherit_predicates_for_delegation_item<'tcx>(
         }
     }
 
-    let (parent_args, child_args) = get_delegation_user_specified_args(tcx, def_id);
+    let (parent_args, child_args) = tcx.delegation_user_specified_args(def_id);
     let (folder, args) = create_folder_and_args(tcx, def_id, sig_id, parent_args, child_args);
     let self_pos_kind = create_self_position_kind(tcx, def_id, sig_id);
     let filter_self_preds = matches!(self_pos_kind, SelfPositionKind::AfterLifetimes(true));
@@ -588,7 +586,7 @@ fn check_constraints<'tcx>(
     let mut ret = Ok(());
 
     let mut emit = |descr| {
-        ret = Err(tcx.dcx().emit_err(crate::errors::UnsupportedDelegation {
+        ret = Err(tcx.dcx().emit_err(crate::diagnostics::UnsupportedDelegation {
             span: tcx.def_span(def_id),
             descr,
             callee_span: tcx.def_span(sig_id),
@@ -616,7 +614,7 @@ pub(crate) fn inherit_sig_for_delegation_item<'tcx>(
         return tcx.arena.alloc_from_iter((0..sig_len).map(|_| err_type));
     }
 
-    let (parent_args, child_args) = get_delegation_user_specified_args(tcx, def_id);
+    let (parent_args, child_args) = tcx.delegation_user_specified_args(def_id);
     let (mut folder, args) = create_folder_and_args(tcx, def_id, sig_id, parent_args, child_args);
     let caller_sig = EarlyBinder::bind(caller_sig.skip_binder().fold_with(&mut folder));
 
@@ -629,18 +627,18 @@ pub(crate) fn inherit_sig_for_delegation_item<'tcx>(
 // they will be used during delegation signature and predicates inheritance.
 // Example: reuse Trait::<'static, i32, 1>::foo::<A, B>
 // we want to extract [Self, 'static, i32, 1] for parent and [A, B] for child.
-fn get_delegation_user_specified_args<'tcx>(
+pub(crate) fn delegation_user_specified_args<'tcx>(
     tcx: TyCtxt<'tcx>,
     delegation_id: LocalDefId,
 ) -> (&'tcx [ty::GenericArg<'tcx>], &'tcx [ty::GenericArg<'tcx>]) {
-    let info = get_delegation_generics(tcx, delegation_id);
+    let info = tcx.hir_delegation_info(delegation_id);
 
-    let get_segment = |hir_id: HirId| -> Option<(&'tcx PathSegment<'tcx>, DefId)> {
+    let get_segment = |hir_id| -> Option<(&'tcx PathSegment<'tcx>, DefId)> {
         let segment = tcx.hir_node(hir_id).expect_path_segment();
         segment.res.opt_def_id().map(|def_id| (segment, def_id))
     };
 
-    let ctx = ItemCtxt::new(tcx, delegation_id);
+    let ctx = ItemCtxt::new_for_delegation(tcx, delegation_id);
     let lowerer = ctx.lowerer();
 
     let parent_args = info.parent_args_segment_id.and_then(get_segment).map(|(segment, def_id)| {

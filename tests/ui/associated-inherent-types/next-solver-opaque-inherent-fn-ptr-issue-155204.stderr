@@ -27,7 +27,10 @@ error[E0207]: the type parameter `T` is not constrained by the impl trait, self 
   --> $DIR/next-solver-opaque-inherent-fn-ptr-issue-155204.rs:7:6
    |
 LL | impl<T> Windows<fn(&())> {
-   |      ^ unconstrained type parameter
+   |     -^-
+   |     ||
+   |     |unconstrained type parameter
+   |     help: remove the unused type parameter `T`
 
 error[E0282]: type annotations needed
   --> $DIR/next-solver-opaque-inherent-fn-ptr-issue-155204.rs:12:22

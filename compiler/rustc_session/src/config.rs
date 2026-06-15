@@ -200,6 +200,15 @@ pub enum Offload {
     Test,
 }
 
+/// The different settings that the `-Z codegen-emit-retag` flag can have.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Hash, Encodable, Decodable)]
+pub struct CodegenRetagOptions {
+    /// Track interior mutable data on the level of references, instead of on the byte level.
+    pub no_precise_im: bool,
+    /// Track `UnsafePinned` data on the level of references, instead of on the byte level.
+    pub no_precise_pin: bool,
+}
+
 /// The different settings that the `-Z autodiff` flag can have.
 #[derive(Clone, PartialEq, Hash, Debug, Encodable, Decodable)]
 pub enum AutoDiff {
@@ -1375,9 +1384,21 @@ pub fn host_tuple() -> &'static str {
 
 fn file_path_mapping(
     remap_path_prefix: Vec<(PathBuf, PathBuf)>,
+    remap_cwd_prefix: Option<&Path>,
     remap_path_scope: RemapPathScopeComponents,
 ) -> FilePathMapping {
-    FilePathMapping::new(remap_path_prefix.clone(), remap_path_scope)
+    // Apply `-Zremap-cwd-prefix` here rather than in `parse_remap_path_prefix`, so the
+    // absolute cwd is never stored in the tracked `remap_path_prefix` option (#132132).
+    let cwd_remap = if let Some(to) = remap_cwd_prefix
+        && let Ok(cwd) = std::env::current_dir()
+    {
+        Some((cwd, to.to_path_buf()))
+    } else {
+        None
+    };
+    // The cwd remapping is appended last: `map_prefix` tries entries in reverse order, so this
+    // keeps `-Zremap-cwd-prefix` taking precedence over `--remap-path-prefix`, as documented.
+    FilePathMapping::new(remap_path_prefix.into_iter().chain(cwd_remap).collect(), remap_path_scope)
 }
 
 impl Default for Options {
@@ -1389,7 +1410,8 @@ impl Default for Options {
         // to create a default working directory.
         let working_dir = {
             let working_dir = std::env::current_dir().unwrap();
-            let file_mapping = file_path_mapping(Vec::new(), RemapPathScopeComponents::empty());
+            let file_mapping =
+                file_path_mapping(Vec::new(), None, RemapPathScopeComponents::empty());
             file_mapping.to_real_filename(&RealFileName::empty(), &working_dir)
         };
 
@@ -1450,7 +1472,11 @@ impl Options {
     }
 
     pub fn file_path_mapping(&self) -> FilePathMapping {
-        file_path_mapping(self.remap_path_prefix.clone(), self.remap_path_scope)
+        file_path_mapping(
+            self.remap_path_prefix.clone(),
+            self.unstable_opts.remap_cwd_prefix.as_deref(),
+            self.remap_path_scope,
+        )
     }
 
     /// Returns `true` if there will be an output file generated.
@@ -2384,9 +2410,8 @@ pub fn parse_externs(
 fn parse_remap_path_prefix(
     early_dcx: &EarlyDiagCtxt,
     matches: &getopts::Matches,
-    unstable_opts: &UnstableOptions,
 ) -> Vec<(PathBuf, PathBuf)> {
-    let mut mapping: Vec<(PathBuf, PathBuf)> = matches
+    matches
         .opt_strs("remap-path-prefix")
         .into_iter()
         .map(|remap| match remap.rsplit_once('=') {
@@ -2395,15 +2420,7 @@ fn parse_remap_path_prefix(
             }
             Some((from, to)) => (PathBuf::from(from), PathBuf::from(to)),
         })
-        .collect();
-    match &unstable_opts.remap_cwd_prefix {
-        Some(to) => match std::env::current_dir() {
-            Ok(cwd) => mapping.push((cwd, to.clone())),
-            Err(_) => (),
-        },
-        None => (),
-    };
-    mapping
+        .collect()
 }
 
 fn parse_logical_env(
@@ -2456,6 +2473,14 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let mut collected_options = Default::default();
 
     let mut unstable_opts = UnstableOptions::build(early_dcx, matches, &mut collected_options);
+
+    if unstable_opts.staticlib_hide_internal_symbols && !crate_types.contains(&CrateType::StaticLib)
+    {
+        early_dcx.early_warn(
+            "-Zstaticlib-hide-internal-symbols has no effect without `--crate-type staticlib`",
+        );
+    }
+
     let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(early_dcx, matches);
 
     if !unstable_opts.unstable_options && json_timings {
@@ -2661,7 +2686,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     let externs = parse_externs(early_dcx, matches, &unstable_opts);
 
-    let remap_path_prefix = parse_remap_path_prefix(early_dcx, matches, &unstable_opts);
+    let remap_path_prefix = parse_remap_path_prefix(early_dcx, matches);
     let remap_path_scope = parse_remap_path_scope(early_dcx, matches, &unstable_opts);
 
     let pretty = parse_pretty(early_dcx, &unstable_opts);
@@ -2729,7 +2754,11 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
             early_dcx.early_fatal(format!("Current directory is invalid: {e}"));
         });
 
-        let file_mapping = file_path_mapping(remap_path_prefix.clone(), remap_path_scope);
+        let file_mapping = file_path_mapping(
+            remap_path_prefix.clone(),
+            unstable_opts.remap_cwd_prefix.as_deref(),
+            remap_path_scope,
+        );
         file_mapping.to_real_filename(&RealFileName::empty(), &working_dir)
     };
 
@@ -2787,7 +2816,6 @@ fn parse_pretty(early_dcx: &EarlyDiagCtxt, unstable_opts: &UnstableOptions) -> O
 
     let first = match unstable_opts.unpretty.as_deref()? {
         "normal" => Source(PpSourceMode::Normal),
-        "identified" => Source(PpSourceMode::Identified),
         "expanded" => Source(PpSourceMode::Expanded),
         "expanded,identified" => Source(PpSourceMode::ExpandedIdentified),
         "expanded,hygiene" => Source(PpSourceMode::ExpandedHygiene),
@@ -2803,7 +2831,7 @@ fn parse_pretty(early_dcx: &EarlyDiagCtxt, unstable_opts: &UnstableOptions) -> O
         "stable-mir" => StableMir,
         "mir-cfg" => MirCFG,
         name => early_dcx.early_fatal(format!(
-            "argument to `unpretty` must be one of `normal`, `identified`, \
+            "argument to `unpretty` must be one of `normal`, \
                             `expanded`, `expanded,identified`, `expanded,hygiene`, \
                             `ast-tree`, `ast-tree,expanded`, `hir`, `hir,identified`, \
                             `hir,typed`, `hir-tree`, `thir-tree`, `thir-flat`, `mir`, `stable-mir`, or \
@@ -2933,8 +2961,6 @@ pub enum PpSourceMode {
     Normal,
     /// `-Zunpretty=expanded`
     Expanded,
-    /// `-Zunpretty=identified`
-    Identified,
     /// `-Zunpretty=expanded,identified`
     ExpandedIdentified,
     /// `-Zunpretty=expanded,hygiene`
@@ -2982,7 +3008,7 @@ impl PpMode {
         use PpMode::*;
         use PpSourceMode::*;
         match *self {
-            Source(Normal | Identified) | AstTree => false,
+            Source(Normal) | AstTree => false,
 
             Source(Expanded | ExpandedIdentified | ExpandedHygiene)
             | AstTreeExpanded
@@ -3048,12 +3074,13 @@ pub(crate) mod dep_tracking {
     };
 
     use super::{
-        AnnotateMoves, AutoDiff, BranchProtection, CFGuard, CFProtection, CoverageOptions,
-        CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug, FunctionReturn,
-        InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
-        LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OptLevel, OutFileName, OutputType,
-        OutputTypes, PatchableFunctionEntry, Polonius, ResolveDocLinks, SourceFileHashAlgorithm,
-        SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
+        AnnotateMoves, AutoDiff, BranchProtection, CFGuard, CFProtection, CodegenRetagOptions,
+        CoverageOptions, CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug,
+        FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto,
+        LocationDetail, LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OptLevel,
+        OutFileName, OutputType, OutputTypes, PatchableFunctionEntry, Polonius, ResolveDocLinks,
+        SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
+        WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;
@@ -3157,6 +3184,7 @@ pub(crate) mod dep_tracking {
         InliningThreshold,
         FunctionReturn,
         Align,
+        CodegenRetagOptions
     );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)

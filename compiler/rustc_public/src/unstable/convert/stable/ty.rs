@@ -47,10 +47,18 @@ impl<'tcx> Stable<'tcx> for ty::AliasTerm<'tcx> {
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         let ty::AliasTerm { args, kind, .. } = self;
-        crate::ty::AliasTerm {
-            def_id: tables.alias_def(kind.def_id()),
-            args: args.stable(tables, cx),
-        }
+        // rustc_public must change its API once we introduce a variant without a def_id.
+        let def_id = match *kind {
+            ty::AliasTermKind::ProjectionTy { def_id }
+            | ty::AliasTermKind::InherentTy { def_id }
+            | ty::AliasTermKind::OpaqueTy { def_id }
+            | ty::AliasTermKind::FreeTy { def_id }
+            | ty::AliasTermKind::AnonConst { def_id }
+            | ty::AliasTermKind::ProjectionConst { def_id }
+            | ty::AliasTermKind::FreeConst { def_id }
+            | ty::AliasTermKind::InherentConst { def_id } => def_id,
+        };
+        crate::ty::AliasTerm { def_id: tables.alias_def(def_id), args: args.stable(tables, cx) }
     }
 }
 
@@ -475,8 +483,8 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
             ty::Tuple(fields) => TyKind::RigidTy(RigidTy::Tuple(
                 fields.iter().map(|ty| ty.stable(tables, cx)).collect(),
             )),
-            ty::Alias(_alias_ty) => {
-                todo!()
+            ty::Alias(alias_ty) => {
+                TyKind::Alias(alias_ty.kind.stable(tables, cx), alias_ty.stable(tables, cx))
             }
             ty::Param(param_ty) => TyKind::Param(param_ty.stable(tables, cx)),
             ty::Bound(ty::BoundVarIndexKind::Canonical, _) => {
@@ -540,10 +548,18 @@ impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
                 }
             }
             ty::ConstKind::Param(param) => crate::ty::TyConstKind::Param(param.stable(tables, cx)),
-            ty::ConstKind::Unevaluated(uv) => crate::ty::TyConstKind::Unevaluated(
-                tables.const_def(uv.def),
-                uv.args.stable(tables, cx),
-            ),
+            ty::ConstKind::Unevaluated(uv) => {
+                let Some(def_id) = uv.kind.opt_def_id() else {
+                    // FIXME: implement (both AliasTy and UnevaluatedConst will be needing this soon)
+                    panic!(
+                        "non-defid unevaluated constants are not supported by rustc_public at the moment"
+                    )
+                };
+                crate::ty::TyConstKind::Unevaluated(
+                    tables.const_def(def_id),
+                    uv.args.stable(tables, cx),
+                )
+            }
             ty::ConstKind::Error(_) => unreachable!(),
             ty::ConstKind::Infer(_) => unreachable!(),
             ty::ConstKind::Bound(_, _) => unimplemented!(),
@@ -1046,10 +1062,12 @@ impl<'tcx> Stable<'tcx> for rustc_abi::ExternAbi {
             ExternAbi::Unadjusted => Abi::Unadjusted,
             ExternAbi::RustCold => Abi::RustCold,
             ExternAbi::RustPreserveNone => Abi::RustPreserveNone,
+            ExternAbi::RustTail => Abi::RustTail,
             ExternAbi::RustInvalid => Abi::RustInvalid,
             ExternAbi::RiscvInterruptM => Abi::RiscvInterruptM,
             ExternAbi::RiscvInterruptS => Abi::RiscvInterruptS,
             ExternAbi::Custom => Abi::Custom,
+            ExternAbi::Swift => Abi::Swift,
         }
     }
 }

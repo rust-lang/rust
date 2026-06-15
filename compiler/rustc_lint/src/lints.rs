@@ -21,7 +21,7 @@ use rustc_span::{Ident, Span, Symbol, sym};
 
 use crate::LateContext;
 use crate::builtin::{InitError, ShorthandAssocTyCollector, TypeAliasBounds};
-use crate::errors::{OverruledAttributeSub, RequestedLevel};
+use crate::diagnostics::{OverruledAttributeSub, RequestedLevel};
 use crate::lifetime_syntax::LifetimeSyntaxCategories;
 
 // array_into_iter.rs
@@ -160,46 +160,6 @@ pub(crate) enum BuiltinUnsafe {
     UnsafeTrait,
     #[diag("implementation of an `unsafe` trait")]
     UnsafeImpl,
-    #[diag("declaration of a `no_mangle` function")]
-    #[note(
-        "the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them"
-    )]
-    NoMangleFn,
-    #[diag("declaration of a function with `export_name`")]
-    #[note(
-        "the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them"
-    )]
-    ExportNameFn,
-    #[diag("declaration of a function with `link_section`")]
-    #[note(
-        "the program's behavior with overridden link sections on items is unpredictable and Rust cannot provide guarantees when you manually override them"
-    )]
-    LinkSectionFn,
-    #[diag("declaration of a `no_mangle` static")]
-    #[note(
-        "the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them"
-    )]
-    NoMangleStatic,
-    #[diag("declaration of a static with `export_name`")]
-    #[note(
-        "the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them"
-    )]
-    ExportNameStatic,
-    #[diag("declaration of a static with `link_section`")]
-    #[note(
-        "the program's behavior with overridden link sections on items is unpredictable and Rust cannot provide guarantees when you manually override them"
-    )]
-    LinkSectionStatic,
-    #[diag("declaration of a `no_mangle` method")]
-    #[note(
-        "the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them"
-    )]
-    NoMangleMethod,
-    #[diag("declaration of a method with `export_name`")]
-    #[note(
-        "the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them"
-    )]
-    ExportNameMethod,
     #[diag("declaration of an `unsafe` function")]
     DeclUnsafeFn,
     #[diag("declaration of an `unsafe` method")]
@@ -1562,17 +1522,16 @@ pub(crate) enum NonCamelCaseTypeSub {
 pub(crate) struct NonSnakeCaseDiag<'a> {
     pub sort: &'a str,
     pub name: &'a str,
-    pub sc: String,
     #[subdiagnostic]
     pub sub: NonSnakeCaseDiagSub,
 }
 
 pub(crate) enum NonSnakeCaseDiagSub {
     Label { span: Span },
-    Help,
+    Help { sc: String },
     RenameOrConvertSuggestion { span: Span, suggestion: Ident },
     ConvertSuggestion { span: Span, suggestion: String },
-    SuggestionAndNote { span: Span },
+    SuggestionAndNote { sc: String, span: Span },
 }
 
 impl Subdiagnostic for NonSnakeCaseDiagSub {
@@ -1581,7 +1540,8 @@ impl Subdiagnostic for NonSnakeCaseDiagSub {
             NonSnakeCaseDiagSub::Label { span } => {
                 diag.span_label(span, msg!("should have a snake_case name"));
             }
-            NonSnakeCaseDiagSub::Help => {
+            NonSnakeCaseDiagSub::Help { sc } => {
+                diag.arg("sc", sc);
                 diag.help(msg!("convert the identifier to snake case: `{$sc}`"));
             }
             NonSnakeCaseDiagSub::ConvertSuggestion { span, suggestion } => {
@@ -1600,7 +1560,8 @@ impl Subdiagnostic for NonSnakeCaseDiagSub {
                     Applicability::MaybeIncorrect,
                 );
             }
-            NonSnakeCaseDiagSub::SuggestionAndNote { span } => {
+            NonSnakeCaseDiagSub::SuggestionAndNote { sc, span } => {
+                diag.arg("sc", sc);
                 diag.note(msg!("`{$sc}` cannot be used as a raw identifier"));
                 diag.span_suggestion(
                     span,
@@ -2669,6 +2630,12 @@ pub(crate) struct RefOfMutStatic<'a> {
         "mutable references to mutable statics are dangerous; it's undefined behavior if any other pointer to the static is used or if any other reference is created for the static while the mutable reference lives"
     )]
     pub mut_note: bool,
+    #[help(
+        "use a type that relies on \"interior mutability\" instead; to read more on this, visit <https://doc.rust-lang.org/reference/interior-mutability.html>"
+    )]
+    pub interior_mutability_help: bool,
+    #[subdiagnostic]
+    pub interior_mutability_sugg: Option<StaticMutRefsInteriorMutabilitySugg>,
 }
 
 #[derive(Subdiagnostic)]
@@ -2691,6 +2658,18 @@ pub(crate) enum MutRefSugg {
         #[suggestion_part(code = "&raw mut ")]
         span: Span,
     },
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "this type already provides \"interior mutability\", so its binding doesn't need to be declared as mutable",
+    style = "verbose",
+    applicability = "maybe-incorrect",
+    code = ""
+)]
+pub(crate) struct StaticMutRefsInteriorMutabilitySugg {
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -2914,3 +2893,85 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
 #[diag("`Eq::assert_receiver_is_total_eq` should never be implemented by hand")]
 #[note("this method was used to add checks to the `Eq` derive macro")]
 pub(crate) struct EqInternalMethodImplemented;
+
+#[derive(Diagnostic)]
+#[diag("strict provenance disallows casting integer `{$expr_ty}` to pointer `{$cast_ty}`")]
+#[help(
+    "if you can't comply with strict provenance and don't have a pointer with the correct provenance you can use `std::ptr::with_exposed_provenance()` instead"
+)]
+pub(crate) struct LossyProvenanceInt2Ptr<'tcx> {
+    pub expr_ty: Ty<'tcx>,
+    pub cast_ty: Ty<'tcx>,
+    #[subdiagnostic]
+    pub sugg: Option<LossyProvenanceInt2PtrSuggestion>,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    "use `.with_addr()` to adjust a valid pointer in the same allocation, to this address",
+    applicability = "has-placeholders"
+)]
+pub(crate) struct LossyProvenanceInt2PtrSuggestion {
+    #[suggestion_part(code = "(...).with_addr(")]
+    pub lo: Span,
+    #[suggestion_part(code = ")")]
+    pub hi: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "under strict provenance it is considered bad style to cast pointer `{$cast_from_ty}` to integer `{$cast_to_ty}`"
+)]
+#[help(
+    "if you can't comply with strict provenance and need to expose the pointer provenance you can use `.expose_provenance()` instead"
+)]
+pub(crate) struct LossyProvenancePtr2Int<'tcx> {
+    pub cast_from_ty: Ty<'tcx>,
+    pub cast_to_ty: Ty<'tcx>,
+    #[subdiagnostic]
+    pub sugg: Option<LossyProvenancePtr2IntSuggestion<'tcx>>,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum LossyProvenancePtr2IntSuggestion<'tcx> {
+    #[multipart_suggestion(
+        "use `.addr()` to obtain the address of a pointer",
+        applicability = "maybe-incorrect"
+    )]
+    NeedsParensCast {
+        #[suggestion_part(code = "(")]
+        expr_span: Span,
+        #[suggestion_part(code = ").addr() as {cast_to_ty}")]
+        cast_span: Span,
+        cast_to_ty: Ty<'tcx>,
+    },
+    #[multipart_suggestion(
+        "use `.addr()` to obtain the address of a pointer",
+        applicability = "maybe-incorrect"
+    )]
+    NeedsParens {
+        #[suggestion_part(code = "(")]
+        expr_span: Span,
+        #[suggestion_part(code = ").addr()")]
+        cast_span: Span,
+    },
+    #[suggestion(
+        "use `.addr()` to obtain the address of a pointer",
+        code = ".addr() as {cast_to_ty}",
+        applicability = "maybe-incorrect"
+    )]
+    NeedsCast {
+        #[primary_span]
+        cast_span: Span,
+        cast_to_ty: Ty<'tcx>,
+    },
+    #[suggestion(
+        "use `.addr()` to obtain the address of a pointer",
+        code = ".addr()",
+        applicability = "maybe-incorrect"
+    )]
+    Other {
+        #[primary_span]
+        cast_span: Span,
+    },
+}

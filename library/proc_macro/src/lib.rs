@@ -28,6 +28,7 @@
 #![feature(rustc_attrs)]
 #![feature(extend_one)]
 #![feature(mem_conjure_zst)]
+#![feature(f16)]
 #![recursion_limit = "256"]
 #![allow(internal_features)]
 #![deny(ffi_unwind_calls)]
@@ -44,7 +45,9 @@ mod diagnostic;
 mod escape;
 mod to_tokens;
 
+use core::convert::From;
 use core::ops::BitOr;
+use std::borrow::Cow;
 use std::ffi::CStr;
 use std::ops::{Range, RangeBounds};
 use std::path::PathBuf;
@@ -53,8 +56,6 @@ use std::{error, fmt};
 
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 pub use diagnostic::{Diagnostic, Level, MultiSpan};
-#[unstable(feature = "proc_macro_value", issue = "136652")]
-pub use rustc_literal_escaper::EscapeError;
 use rustc_literal_escaper::{
     MixedUnit, unescape_byte, unescape_byte_str, unescape_c_str, unescape_char, unescape_str,
 };
@@ -63,6 +64,135 @@ pub use to_tokens::ToTokens;
 
 use crate::bridge::client::Methods as BridgeMethods;
 use crate::escape::{EscapeOptions, escape_bytes};
+
+/// Mostly relating to malformed escape sequences, but also a few other problems.
+#[unstable(feature = "proc_macro_value", issue = "136652")]
+#[derive(Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum EscapeError {
+    /// Expected 1 char, but 0 were found.
+    ZeroChars,
+    /// Expected 1 char, but more than 1 were found.
+    MoreThanOneChar,
+
+    /// Escaped '\' character without continuation.
+    LoneSlash,
+    /// Invalid escape character (e.g. '\z').
+    InvalidEscape,
+    /// Raw '\r' encountered.
+    BareCarriageReturn,
+    /// Raw '\r' encountered in raw string.
+    BareCarriageReturnInRawString,
+    /// Unescaped character that was expected to be escaped (e.g. raw '\t').
+    EscapeOnlyChar,
+
+    /// Numeric character escape is too short (e.g. '\x1').
+    TooShortHexEscape,
+    /// Invalid character in numeric escape (e.g. '\xz')
+    InvalidCharInHexEscape,
+    /// Character code in numeric escape is non-ascii (e.g. '\xFF').
+    OutOfRangeHexEscape,
+
+    /// '\u' not followed by '{'.
+    NoBraceInUnicodeEscape,
+    /// Non-hexadecimal value in '\u{..}'.
+    InvalidCharInUnicodeEscape,
+    /// '\u{}'
+    EmptyUnicodeEscape,
+    /// No closing brace in '\u{..}', e.g. '\u{12'.
+    UnclosedUnicodeEscape,
+    /// '\u{_12}'
+    LeadingUnderscoreUnicodeEscape,
+    /// More than 6 characters in '\u{..}', e.g. '\u{10FFFF_FF}'
+    OverlongUnicodeEscape,
+    /// Invalid in-bound unicode character code, e.g. '\u{DFFF}'.
+    LoneSurrogateUnicodeEscape,
+    /// Out of bounds unicode character code, e.g. '\u{FFFFFF}'.
+    OutOfRangeUnicodeEscape,
+
+    /// Unicode escape code in byte literal.
+    UnicodeEscapeInByte,
+    /// Non-ascii character in byte literal, byte string literal, or raw byte string literal.
+    NonAsciiCharInByte,
+
+    /// `\0` in a C string literal.
+    NulInCStr,
+
+    /// After a line ending with '\', the next line contains whitespace
+    /// characters that are not skipped.
+    UnskippedWhitespaceWarning,
+
+    /// After a line ending with '\', multiple lines are skipped.
+    MultipleSkippedLinesWarning,
+}
+
+#[unstable(feature = "proc_macro_value", issue = "136652")]
+#[doc(hidden)]
+impl From<rustc_literal_escaper::EscapeError> for EscapeError {
+    fn from(value: rustc_literal_escaper::EscapeError) -> Self {
+        use rustc_literal_escaper::EscapeError as EE;
+
+        match value {
+            EE::ZeroChars => Self::ZeroChars,
+            EE::MoreThanOneChar => Self::MoreThanOneChar,
+            EE::LoneSlash => Self::LoneSlash,
+            EE::InvalidEscape => Self::InvalidEscape,
+            EE::BareCarriageReturn => Self::BareCarriageReturn,
+            EE::BareCarriageReturnInRawString => Self::BareCarriageReturnInRawString,
+            EE::EscapeOnlyChar => Self::EscapeOnlyChar,
+            EE::TooShortHexEscape => Self::TooShortHexEscape,
+            EE::InvalidCharInHexEscape => Self::InvalidCharInHexEscape,
+            EE::OutOfRangeHexEscape => Self::OutOfRangeHexEscape,
+            EE::NoBraceInUnicodeEscape => Self::NoBraceInUnicodeEscape,
+            EE::InvalidCharInUnicodeEscape => Self::InvalidCharInUnicodeEscape,
+            EE::EmptyUnicodeEscape => Self::EmptyUnicodeEscape,
+            EE::UnclosedUnicodeEscape => Self::UnclosedUnicodeEscape,
+            EE::LeadingUnderscoreUnicodeEscape => Self::LeadingUnderscoreUnicodeEscape,
+            EE::OverlongUnicodeEscape => Self::OverlongUnicodeEscape,
+            EE::LoneSurrogateUnicodeEscape => Self::LoneSurrogateUnicodeEscape,
+            EE::OutOfRangeUnicodeEscape => Self::OutOfRangeUnicodeEscape,
+            EE::UnicodeEscapeInByte => Self::UnicodeEscapeInByte,
+            EE::NonAsciiCharInByte => Self::NonAsciiCharInByte,
+            EE::NulInCStr => Self::NulInCStr,
+            EE::UnskippedWhitespaceWarning => Self::UnskippedWhitespaceWarning,
+            EE::MultipleSkippedLinesWarning => Self::MultipleSkippedLinesWarning,
+        }
+    }
+}
+
+#[unstable(feature = "proc_macro_value", issue = "136652")]
+impl error::Error for EscapeError {}
+
+#[unstable(feature = "proc_macro_value", issue = "136652")]
+impl fmt::Display for EscapeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::ZeroChars => "zero chars",
+            Self::MoreThanOneChar => "more than one char",
+            Self::LoneSlash => "lone slash",
+            Self::InvalidEscape => "invalid escape",
+            Self::BareCarriageReturn => "bare carriage return",
+            Self::BareCarriageReturnInRawString => "bare carriage return in raw string",
+            Self::EscapeOnlyChar => "escape only char",
+            Self::TooShortHexEscape => "too short hex escape",
+            Self::InvalidCharInHexEscape => "invalid char in hex escape",
+            Self::OutOfRangeHexEscape => "out of range hex escape",
+            Self::NoBraceInUnicodeEscape => "no brace in unicode escape",
+            Self::InvalidCharInUnicodeEscape => "invalid char in unicode escape",
+            Self::EmptyUnicodeEscape => "empty unicode escape",
+            Self::UnclosedUnicodeEscape => "unclosed unicode escape",
+            Self::LeadingUnderscoreUnicodeEscape => "leading underscore unicode escape",
+            Self::OverlongUnicodeEscape => "overlong unicode escape",
+            Self::LoneSurrogateUnicodeEscape => "lone surrogate unicode escape",
+            Self::OutOfRangeUnicodeEscape => "out of range unicode escape",
+            Self::UnicodeEscapeInByte => "unicode escape in byte",
+            Self::NonAsciiCharInByte => "non ascii char in byte",
+            Self::NulInCStr => "nul in CStr",
+            Self::UnskippedWhitespaceWarning => "unskipped whitespace warning",
+            Self::MultipleSkippedLinesWarning => "multiple skipped lines warning",
+        })
+    }
+}
 
 /// Errors returned when trying to retrieve a literal unescaped value.
 #[unstable(feature = "proc_macro_value", issue = "136652")]
@@ -1183,6 +1313,63 @@ macro_rules! unsuffixed_int_literals {
     )*)
 }
 
+macro_rules! integer_values {
+    ($($nb:ident => $fn_name:ident,)+) => {
+        $(
+            #[doc = concat!(
+                "Returns the unescaped `",
+                stringify!($nb),
+                "` value if the literal is a `",
+                stringify!($nb),
+                "` or if it's an \"unmarked\" integer which doesn't overflow.")]
+            #[unstable(feature = "proc_macro_value", issue = "136652")]
+            pub fn $fn_name(&self) -> Result<$nb, ConversionErrorKind> {
+                if self.0.kind != bridge::LitKind::Integer {
+                    return Err(ConversionErrorKind::InvalidLiteralKind);
+                }
+                self.with_symbol_and_suffix(|symbol, suffix| {
+                    match suffix {
+                        stringify!($nb) | "" => {
+                            let symbol = strip_underscores(symbol);
+                            let (number, base) = parse_number(&symbol);
+                            $nb::from_str_radix(&number, base as u32).map_err(|_| ConversionErrorKind::InvalidLiteralKind)
+                        }
+                        _ => Err(ConversionErrorKind::InvalidLiteralKind),
+                    }
+                })
+            }
+        )+
+    }
+}
+
+macro_rules! float_values {
+    ($($nb:ident => $fn_name:ident,)+) => {
+        $(
+            #[doc = concat!(
+                "Returns the unescaped `",
+                stringify!($nb),
+                "` value if the literal is a `",
+                stringify!($nb),
+                "` or if it's an \"unmarked\" float which doesn't overflow.")]
+            #[unstable(feature = "proc_macro_value", issue = "136652")]
+            pub fn $fn_name(&self) -> Result<$nb, ConversionErrorKind> {
+                if self.0.kind != bridge::LitKind::Float {
+                    return Err(ConversionErrorKind::InvalidLiteralKind);
+                }
+                self.with_symbol_and_suffix(|symbol, suffix| {
+                    match suffix {
+                        stringify!($nb) | "" => {
+                            let number = strip_underscores(symbol);
+                            $nb::from_str(&number).map_err(|_| ConversionErrorKind::InvalidLiteralKind)
+                        }
+                        _ => Err(ConversionErrorKind::InvalidLiteralKind),
+                    }
+                })
+            }
+        )+
+    }
+}
+
 impl Literal {
     fn new(kind: bridge::LitKind, value: &str, suffix: Option<&str>) -> Self {
         Literal(bridge::Literal {
@@ -1461,9 +1648,8 @@ impl Literal {
     #[unstable(feature = "proc_macro_value", issue = "136652")]
     pub fn byte_character_value(&self) -> Result<u8, ConversionErrorKind> {
         self.0.symbol.with(|symbol| match self.0.kind {
-            bridge::LitKind::Char => {
-                unescape_byte(symbol).map_err(ConversionErrorKind::FailedToUnescape)
-            }
+            bridge::LitKind::Byte => unescape_byte(symbol)
+                .map_err(|err| ConversionErrorKind::FailedToUnescape(err.into())),
             _ => Err(ConversionErrorKind::InvalidLiteralKind),
         })
     }
@@ -1472,9 +1658,8 @@ impl Literal {
     #[unstable(feature = "proc_macro_value", issue = "136652")]
     pub fn character_value(&self) -> Result<char, ConversionErrorKind> {
         self.0.symbol.with(|symbol| match self.0.kind {
-            bridge::LitKind::Char => {
-                unescape_char(symbol).map_err(ConversionErrorKind::FailedToUnescape)
-            }
+            bridge::LitKind::Char => unescape_char(symbol)
+                .map_err(|err| ConversionErrorKind::FailedToUnescape(err.into())),
             _ => Err(ConversionErrorKind::InvalidLiteralKind),
         })
     }
@@ -1497,7 +1682,7 @@ impl Literal {
                             Ok(c) => buf.push(c),
                             Err(err) => {
                                 if err.is_fatal() {
-                                    error = Some(ConversionErrorKind::FailedToUnescape(err));
+                                    error = Some(ConversionErrorKind::FailedToUnescape(err.into()));
                                 }
                             }
                         },
@@ -1528,7 +1713,7 @@ impl Literal {
                     Ok(MixedUnit::HighByte(b)) => buf.push(b.get()),
                     Err(err) => {
                         if err.is_fatal() {
-                            error = Some(ConversionErrorKind::FailedToUnescape(err));
+                            error = Some(ConversionErrorKind::FailedToUnescape(err.into()));
                         }
                     }
                 });
@@ -1564,7 +1749,7 @@ impl Literal {
                     Ok(b) => buf.push(b),
                     Err(err) => {
                         if err.is_fatal() {
-                            error = Some(ConversionErrorKind::FailedToUnescape(err));
+                            error = Some(ConversionErrorKind::FailedToUnescape(err.into()));
                         }
                     }
                 });
@@ -1578,6 +1763,82 @@ impl Literal {
             _ => Err(ConversionErrorKind::InvalidLiteralKind),
         })
     }
+
+    integer_values! {
+        u8 => u8_value,
+        u16 => u16_value,
+        u32 => u32_value,
+        u64 => u64_value,
+        u128 => u128_value,
+        i8 => i8_value,
+        i16 => i16_value,
+        i32 => i32_value,
+        i64 => i64_value,
+        i128 => i128_value,
+    }
+
+    float_values! {
+        f16 => f16_value,
+        f32 => f32_value,
+        f64 => f64_value,
+        // FIXME: `f128` doesn't implement `FromStr` for the moment so we cannot obtain it from
+        // a `&str`. To be uncommented when it's added.
+        // f128 => f128_value,
+    }
+}
+
+#[repr(u32)]
+#[derive(PartialEq, Eq)]
+enum Base {
+    Decimal = 10,
+    Binary = 2,
+    Octal = 8,
+    Hexadecimal = 16,
+}
+
+fn parse_number(value: &str) -> (&str, Base) {
+    let mut iter = value.as_bytes().iter().copied();
+    let Some(first_digit) = iter.next() else {
+        return ("0", Base::Decimal);
+    };
+    let Some(second_digit) = iter.next() else {
+        return (value, Base::Decimal);
+    };
+
+    let mut base = Base::Decimal;
+    if first_digit == b'0' {
+        // Attempt to parse encoding base.
+        match second_digit {
+            b'b' => {
+                base = Base::Binary;
+            }
+            b'o' => {
+                base = Base::Octal;
+            }
+            b'x' => {
+                base = Base::Hexadecimal;
+            }
+            _ => {}
+        }
+    }
+
+    let offset = if base == Base::Decimal { 0 } else { 2 };
+
+    (&value[offset..], base)
+}
+
+fn strip_underscores(value_s: &str) -> Cow<'_, str> {
+    let value = value_s.as_bytes();
+    if value.iter().copied().all(|c| c != b'_' && c != b'f') {
+        return Cow::Borrowed(value_s);
+    }
+    let mut output = String::with_capacity(value.len());
+    for c in value.iter().copied() {
+        if c != b'_' {
+            output.push(c as char);
+        }
+    }
+    Cow::Owned(output)
 }
 
 /// Parse a single literal from its stringified representation.

@@ -33,38 +33,14 @@ error[E0391]: cycle detected when evaluating type-level constant
 LL | fn foo<'a, T: 'a>(_: [(); std::mem::offset_of!((T,), 0)]) {}
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: ...which requires const-evaluating + checking `foo::{constant#0}`...
-  --> $DIR/inside-array-length.rs:9:27
-   |
-LL | fn foo<'a, T: 'a>(_: [(); std::mem::offset_of!((T,), 0)]) {}
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires caching mir of `foo::{constant#0}` for CTFE...
-  --> $DIR/inside-array-length.rs:9:27
-   |
-LL | fn foo<'a, T: 'a>(_: [(); std::mem::offset_of!((T,), 0)]) {}
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires elaborating drops for `foo::{constant#0}`...
-  --> $DIR/inside-array-length.rs:9:27
-   |
-LL | fn foo<'a, T: 'a>(_: [(); std::mem::offset_of!((T,), 0)]) {}
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires borrow-checking `foo::{constant#0}`...
-  --> $DIR/inside-array-length.rs:9:27
-   |
-LL | fn foo<'a, T: 'a>(_: [(); std::mem::offset_of!((T,), 0)]) {}
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires normalizing `Binder { value: ConstEvaluatable(UnevaluatedConst { def: DefId(0:7 ~ inside_array_length[07d6]::foo::{constant#0}), args: ['^c_1, T/#1] }), bound_vars: [] }`...
-  --> $DIR/inside-array-length.rs:9:27
-   |
-LL | fn foo<'a, T: 'a>(_: [(); std::mem::offset_of!((T,), 0)]) {}
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which requires const-evaluating + checking `foo::{constant#0}`...
+   = note: ...which requires caching mir of `foo::{constant#0}` for CTFE...
+   = note: ...which requires elaborating drops for `foo::{constant#0}`...
+   = note: ...which requires borrow-checking `foo::{constant#0}`...
+   = note: ...which requires normalizing `Binder { value: ConstEvaluatable(UnevaluatedConst { kind: Anon { def_id: DefId(0:7 ~ inside_array_length[07d6]::foo::{constant#0}) }, args: ['^c_1, T/#1], .. }), bound_vars: [] }`...
    = note: ...which again requires evaluating type-level constant, completing the cycle
-note: cycle used when normalizing `inside_array_length::::foo::{constant#0}`
-  --> $DIR/inside-array-length.rs:9:27
-   |
-LL | fn foo<'a, T: 'a>(_: [(); std::mem::offset_of!((T,), 0)]) {}
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: cycle used when normalizing `inside_array_length::::foo::{constant#0}`
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
    = note: this error originates in the macro `std::mem::offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the size for values of type `dyn Trait` cannot be known at compilation time

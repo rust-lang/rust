@@ -7,7 +7,7 @@ use hir::{
     sym,
 };
 use ide_db::{
-    EditionedFileId, FileId, FxHashMap, RootDatabase,
+    EditionedFileId, FxHashMap, RootDatabase,
     base_db::Crate,
     defs::Definition,
     imports::insert_use::remove_use_tree_if_simple,
@@ -21,7 +21,7 @@ use syntax::{
     ast::{
         self, HasArgList, HasGenericArgs, Pat, PathExpr,
         edit::{AstNodeEdit, IndentLevel},
-        make,
+        syntax_factory::SyntaxFactory,
     },
     syntax_editor::SyntaxEditor,
 };
@@ -79,7 +79,11 @@ pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext<'_, '_>
 
     let function = ctx.sema.to_def(&ast_func)?;
 
-    let params = get_fn_params(ctx.sema.db, function, &param_list)?;
+    let def_file_editor = SyntaxEditor::new(ast_func.syntax().ancestors().last().unwrap()).0;
+    let params = get_fn_params(ctx.sema.db, function, &param_list, def_file_editor.make())?;
+
+    let mut file_editors = FxHashMap::default();
+    file_editors.insert(vfs_def_file, def_file_editor);
 
     let usages = Definition::Function(function).usages(&ctx.sema);
     if !usages.at_least_one() {
@@ -106,7 +110,6 @@ pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext<'_, '_>
             let mut usages = usages.all();
             let current_file_usage = usages.references.remove(&def_file);
 
-            let mut file_editors: FxHashMap<FileId, SyntaxEditor> = FxHashMap::default();
             let mut remove_def = true;
             let mut inline_refs_for_file = |file_id: EditionedFileId, refs: Vec<FileReference>| {
                 let file_id = file_id.file_id(ctx.db());
@@ -170,10 +173,10 @@ pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext<'_, '_>
                 None => builder.edit_file(vfs_def_file),
             }
             if remove_def {
-                let editor = file_editors
+                file_editors
                     .entry(vfs_def_file)
-                    .or_insert_with(|| builder.make_editor(ast_func.syntax()));
-                editor.delete(ast_func.syntax());
+                    .or_insert_with(|| builder.make_editor(ast_func.syntax()))
+                    .delete(ast_func.syntax());
             }
             for (file_id, editor) in file_editors {
                 builder.add_file_edits(file_id, editor);
@@ -251,7 +254,9 @@ pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Opt
         cov_mark::hit!(inline_call_recursive);
         return None;
     }
-    let params = get_fn_params(ctx.sema.db, function, &param_list)?;
+    let syntax = call_info.node.syntax().clone();
+    let editor = SyntaxEditor::new(syntax.ancestors().last().unwrap()).0;
+    let params = get_fn_params(ctx.sema.db, function, &param_list, editor.make())?;
 
     if call_info.arguments.len() != params.len() {
         // Can't inline the function because they've passed the wrong number of
@@ -260,9 +265,7 @@ pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Opt
         return None;
     }
 
-    let syntax = call_info.node.syntax().clone();
     acc.add(AssistId::refactor_inline("inline_call"), label, syntax.text_range(), |builder| {
-        let editor = builder.make_editor(call_info.node.syntax());
         let replacement =
             inline(&ctx.sema, file_id, function, &fn_body, &params, &call_info, &editor);
         editor.replace(call_info.node.syntax(), replacement.syntax());
@@ -311,6 +314,7 @@ fn get_fn_params<'db>(
     db: &'db dyn HirDatabase,
     function: hir::Function,
     param_list: &ast::ParamList,
+    make: &SyntaxFactory,
 ) -> Option<Vec<(ast::Pat, Option<ast::Type>, hir::Param<'db>)>> {
     let mut assoc_fn_params = function.assoc_fn_params(db).into_iter();
 
@@ -318,10 +322,10 @@ fn get_fn_params<'db>(
     if let Some(self_param) = param_list.self_param() {
         // Keep `ref` and `mut` and transform them into `&` and `mut` later
         params.push((
-            make::ident_pat(
+            make.ident_pat(
                 self_param.amp_token().is_some(),
                 self_param.mut_token().is_some(),
-                make::name("this"),
+                make.name("this"),
             )
             .into(),
             None,

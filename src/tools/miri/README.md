@@ -1,5 +1,9 @@
 # Miri
 
+<img src="miri-sticker.png" align="right" width="200px"
+ alt="Corro, the Unsafe Rusturchin, drinking from a juice bottle labeled 'Miri - 100% safe'"
+ title="Art by Paige Losare-Lusby, Creative Commons Attribute-ShareAlike">
+
 Miri is an [Undefined Behavior][reference-ub] detection tool for Rust. It can run binaries and test
 suites of cargo projects and detect unsafe code that fails to uphold its safety requirements. For
 instance:
@@ -32,12 +36,13 @@ Miri has already discovered many [real-world bugs](#bugs-found-by-miri). If you
 found a bug with Miri, we'd appreciate if you tell us and we'll add it to the
 list!
 
-By default, Miri ensures a fully deterministic execution and isolates the
+By default, Miri ensures a fully deterministic execution by isolating the
 program from the host system. Some APIs that would usually access the host, such
 as gathering entropy for random number generators, environment variables, and
 clocks, are replaced by deterministic "fake" implementations. Set
 `MIRIFLAGS="-Zmiri-disable-isolation"` to access the real system APIs instead.
-(In particular, the "fake" system RNG APIs make Miri **not suited for
+(Note that this isolation is *not* a proper sandbox, and gaps in the isolation are considered
+normal bugs, not security bugs. Also, the "fake" system RNG APIs make Miri **not suited for
 cryptographic use**! Do not generate keys using Miri.)
 
 All that said, be aware that Miri does **not catch every violation of the Rust specification** in
@@ -516,6 +521,10 @@ to Miri failing to detect cases of undefined behavior in a program.
   track interior mutable data on the level of references instead of on the
   byte-level as is done by default.  Therefore, with this flag, Tree
   Borrows will be more permissive.
+* `-Zmiri-tree-borrows-relax-custom-allocator-uniqueness` disables uniqueness assumptions for
+  `Box<T, A>` where `A` is not `Global`. The exact aliasing rules for such custom allocators are
+  still up in the air, and by default Miri is conservative and rejects some allocator
+  implementations that incur relevant aliasing between the allocation and the allocator.
 * `-Zmiri-force-page-size=<num>` overrides the default page size for an architecture, in multiples of 1k.
   `4` is default for most targets. This value should always be a power of 2 and nonzero.
 

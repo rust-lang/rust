@@ -1,15 +1,15 @@
 use rustc_abi::Size;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::limit::Limit;
 use rustc_middle::mir::visit::Visitor as MirVisitor;
 use rustc_middle::mir::{self, Location, traversal};
-use rustc_middle::ty::{self, AssocTag, Instance, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_session::lint::builtin::LARGE_ASSIGNMENTS;
-use rustc_span::{Ident, Span, Spanned, sym};
+use rustc_span::{Span, Spanned, sym};
 use tracing::{debug, trace};
 
-use crate::errors::LargeAssignmentsLint;
+use crate::diagnostics::LargeAssignmentsLint;
 
 struct MoveCheckVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -98,7 +98,7 @@ impl<'tcx> MoveCheckVisitor<'tcx> {
         let ty::FnDef(def_id, _) = *callee_ty.kind() else {
             return;
         };
-        if self.tcx.skip_move_check_fns(()).contains(&def_id) {
+        if should_skip_fn(self.tcx, def_id) {
             return;
         }
 
@@ -188,29 +188,18 @@ impl<'tcx> MoveCheckVisitor<'tcx> {
     }
 }
 
-fn assoc_fn_of_type<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, fn_ident: Ident) -> Option<DefId> {
-    for &impl_def_id in tcx.inherent_impls(def_id) {
-        if let Some(new) = tcx.associated_items(impl_def_id).find_by_ident_and_kind(
-            tcx,
-            fn_ident,
-            AssocTag::Fn,
-            def_id,
-        ) {
-            return Some(new.def_id);
-        }
+/// Return `true` if `def_id` is `Box::new`, `Rc::new` or `Arc::new`.
+fn should_skip_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    if let DefKind::AssocFn = tcx.def_kind(def_id)
+        && tcx.item_name(def_id) == sym::new
+        && let parent = tcx.parent(def_id)
+        && let DefKind::Impl { of_trait: false } = tcx.def_kind(parent)
+        && let ty::Adt(adt_def, ..) =
+            tcx.type_of(parent).instantiate_identity().skip_normalization().kind()
+    {
+        return Some(adt_def.did()) == tcx.lang_items().owned_box()
+            || Some(adt_def.did()) == tcx.get_diagnostic_item(sym::Rc)
+            || Some(adt_def.did()) == tcx.get_diagnostic_item(sym::Arc);
     }
-    None
-}
-
-pub(crate) fn skip_move_check_fns(tcx: TyCtxt<'_>, _: ()) -> FxIndexSet<DefId> {
-    let fns = [
-        (tcx.lang_items().owned_box(), "new"),
-        (tcx.get_diagnostic_item(sym::Rc), "new"),
-        (tcx.get_diagnostic_item(sym::Arc), "new"),
-    ];
-    fns.into_iter()
-        .filter_map(|(def_id, fn_name)| {
-            def_id.and_then(|def_id| assoc_fn_of_type(tcx, def_id, Ident::from_str(fn_name)))
-        })
-        .collect()
+    false
 }

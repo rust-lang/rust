@@ -224,6 +224,7 @@ where
     /// but prevents incorrect normalization while hiding any trait errors.
     fn consider_error_guaranteed_candidate(
         ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
         guar: I::ErrorGuaranteed,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased>;
 
@@ -480,10 +481,11 @@ where
                 // See trait-system-refactor-initiative#226 for some ideas here.
                 let assemble_impls = match self.typing_mode() {
                     TypingMode::Coherence => true,
-                    TypingMode::Analysis { .. }
-                    | TypingMode::Borrowck { .. }
-                    | TypingMode::PostBorrowckAnalysis { .. }
+                    TypingMode::Typeck { .. }
+                    | TypingMode::PostTypeckUntilBorrowck { .. }
+                    | TypingMode::PostBorrowck { .. }
                     | TypingMode::PostAnalysis
+                    | TypingMode::Codegen
                     | TypingMode::ErasedNotCoherence(MayBeErased) => !candidates.iter().any(|c| {
                         matches!(
                             c.source,
@@ -577,8 +579,8 @@ where
         // Instead of adding the logic here, it's a better idea to add it in
         // `EvalCtxt::disqualify_auto_trait_candidate_due_to_possible_impl` in
         // `solve::trait_goals` instead.
-        let result = if let Err(guar) = goal.predicate.error_reported() {
-            G::consider_error_guaranteed_candidate(self, guar)
+        let result = if let ty::Error(guar) = goal.predicate.self_ty().kind() {
+            G::consider_error_guaranteed_candidate(self, goal, guar)
         } else if cx.trait_is_auto(trait_def_id) {
             G::consider_auto_trait_candidate(self, goal)
         } else if cx.trait_is_alias(trait_def_id) {
@@ -1052,11 +1054,12 @@ where
         let self_ty = goal.predicate.self_ty();
         // We only use this hack during HIR typeck.
         let opaque_types = match self.typing_mode() {
-            TypingMode::Analysis { .. } => self.opaques_with_sub_unified_hidden_type(self_ty),
+            TypingMode::Typeck { .. } => self.opaques_with_sub_unified_hidden_type(self_ty),
             TypingMode::Coherence
-            | TypingMode::Borrowck { .. }
-            | TypingMode::PostBorrowckAnalysis { .. }
-            | TypingMode::PostAnalysis => vec![],
+            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::PostBorrowck { .. }
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen => vec![],
             TypingMode::ErasedNotCoherence(MayBeErased) => {
                 self.opaque_accesses
                     .rerun_if_any_opaque_has_infer_as_hidden_type(RerunReason::SelfTyInfer)?;

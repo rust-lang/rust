@@ -248,7 +248,7 @@ impl DocFolder for CacheBuilder<'_, '_> {
         // If this is a stripped module,
         // we don't want it or its children in the search index.
         let orig_stripped_mod = match item.kind {
-            clean::StrippedItem(box clean::ModuleItem(..)) => {
+            clean::StrippedItem(clean::ModuleItem(..)) => {
                 mem::replace(&mut self.cache.stripped_mod, true)
             }
             _ => self.cache.stripped_mod,
@@ -409,69 +409,69 @@ impl DocFolder for CacheBuilder<'_, '_> {
 
         // Once we've recursively found all the generics, hoard off all the
         // implementations elsewhere.
-        let ret = if let clean::Item {
-            inner: box clean::ItemInner { kind: clean::ImplItem(ref i), .. },
-        } = item
-        {
-            // Figure out the id of this impl. This may map to a
-            // primitive rather than always to a struct/enum.
-            // Note: matching twice to restrict the lifetime of the `i` borrow.
-            let mut dids = FxIndexSet::default();
-            match i.for_ {
-                clean::Type::Path { ref path }
-                | clean::BorrowedRef { type_: box clean::Type::Path { ref path }, .. } => {
-                    dids.insert(path.def_id());
-                    if let Some(generics) = path.generics()
-                        && let ty::Adt(adt, _) = self
-                            .tcx
-                            .type_of(path.def_id())
-                            .instantiate_identity()
-                            .skip_norm_wip()
-                            .kind()
-                        && adt.is_fundamental()
-                    {
-                        for ty in generics {
-                            dids.extend(ty.def_id(self.cache));
+        let ret =
+            if let clean::Item { inner: clean::ItemInner { kind: clean::ImplItem(ref i), .. } } =
+                item
+            {
+                // Figure out the id of this impl. This may map to a
+                // primitive rather than always to a struct/enum.
+                // Note: matching twice to restrict the lifetime of the `i` borrow.
+                let mut dids = FxIndexSet::default();
+                match i.for_ {
+                    clean::Type::Path { ref path }
+                    | clean::BorrowedRef { type_: clean::Type::Path { ref path }, .. } => {
+                        dids.insert(path.def_id());
+                        if let Some(generics) = path.generics()
+                            && let ty::Adt(adt, _) = self
+                                .tcx
+                                .type_of(path.def_id())
+                                .instantiate_identity()
+                                .skip_norm_wip()
+                                .kind()
+                            && adt.is_fundamental()
+                        {
+                            for ty in generics {
+                                dids.extend(ty.def_id(self.cache));
+                            }
                         }
                     }
-                }
-                clean::DynTrait(ref bounds, _)
-                | clean::BorrowedRef { type_: box clean::DynTrait(ref bounds, _), .. } => {
-                    dids.insert(bounds[0].trait_.def_id());
-                }
-                ref t => {
-                    let did = t
-                        .primitive_type()
-                        .and_then(|t| self.cache.primitive_locations.get(&t).cloned());
+                    clean::DynTrait(ref bounds, _)
+                    | clean::BorrowedRef { type_: clean::DynTrait(ref bounds, _), .. } => {
+                        dids.insert(bounds[0].trait_.def_id());
+                    }
+                    ref t => {
+                        let did = t
+                            .primitive_type()
+                            .and_then(|t| self.cache.primitive_locations.get(&t).cloned());
 
-                    dids.extend(did);
-                }
-            }
-
-            if let Some(trait_) = &i.trait_
-                && let Some(generics) = trait_.generics()
-            {
-                for bound in generics {
-                    dids.extend(bound.def_id(self.cache));
-                }
-            }
-            let impl_item = Impl { impl_item: item };
-            let impl_did = impl_item.def_id();
-            let trait_did = impl_item.trait_did();
-            if trait_did.is_none_or(|d| self.cache.traits.contains_key(&d)) {
-                for did in dids {
-                    if self.impl_ids.entry(did).or_default().insert(impl_did) {
-                        self.cache.impls.entry(did).or_default().push(impl_item.clone());
+                        dids.extend(did);
                     }
                 }
+
+                if let Some(trait_) = &i.trait_
+                    && let Some(generics) = trait_.generics()
+                {
+                    for bound in generics {
+                        dids.extend(bound.def_id(self.cache));
+                    }
+                }
+                let impl_item = Impl { impl_item: item };
+                let impl_did = impl_item.def_id();
+                let trait_did = impl_item.trait_did();
+                if trait_did.is_none_or(|d| self.cache.traits.contains_key(&d)) {
+                    for did in dids {
+                        if self.impl_ids.entry(did).or_default().insert(impl_did) {
+                            self.cache.impls.entry(did).or_default().push(impl_item.clone());
+                        }
+                    }
+                } else {
+                    let trait_did = trait_did.expect("no trait did");
+                    self.cache.orphan_trait_impls.push((trait_did, dids, impl_item));
+                }
+                None
             } else {
-                let trait_did = trait_did.expect("no trait did");
-                self.cache.orphan_trait_impls.push((trait_did, dids, impl_item));
-            }
-            None
-        } else {
-            Some(item)
-        };
+                Some(item)
+            };
 
         if pushed {
             self.cache.stack.pop().expect("stack already empty");
@@ -588,12 +588,14 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
         _ => item_def_id,
     };
     let (impl_id, trait_parent) = cache.parent_stack_last_impl_and_trait_id();
+    let mut types = item.types();
     let info = IndexItemInfo::new(
         tcx,
         cache,
         item,
         parent_did,
         clean_impl_generics(cache.parent_stack.last()).as_ref(),
+        types.next().unwrap(),
     );
     let index_item = IndexItem {
         defid: Some(defid),
@@ -607,7 +609,11 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
         impl_id,
         info,
     };
-
+    for type_ in types {
+        let mut index_item_copy = index_item.clone();
+        index_item_copy.info.ty = type_;
+        cache.search_index.push(index_item_copy);
+    }
     cache.search_index.push(index_item);
 }
 
@@ -655,7 +661,7 @@ enum ParentStackItem {
 impl ParentStackItem {
     fn new(item: &clean::Item) -> Self {
         match &item.kind {
-            clean::ItemKind::ImplItem(box clean::Impl { for_, trait_, generics, kind, .. }) => {
+            clean::ItemKind::ImplItem(clean::Impl { for_, trait_, generics, kind, .. }) => {
                 ParentStackItem::Impl {
                     for_: for_.clone(),
                     trait_: trait_.clone(),

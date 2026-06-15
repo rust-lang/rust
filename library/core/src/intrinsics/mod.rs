@@ -2232,7 +2232,7 @@ pub const fn discriminant_value<T>(v: &T) -> <T as DiscriminantKind>::Discrimina
 
 /// Rust's "try catch" construct for unwinding. Invokes the function pointer `try_fn` with the
 /// data pointer `data`, and calls `catch_fn` if unwinding occurs while `try_fn` runs.
-/// Returns `1` if unwinding occurred and `catch_fn` was called; returns `0` otherwise.
+/// Returns `true` if unwinding occurred and `catch_fn` was called; returns `false` otherwise.
 ///
 /// `catch_fn` must not unwind.
 ///
@@ -2249,11 +2249,11 @@ pub const fn discriminant_value<T>(v: &T) -> <T as DiscriminantKind>::Discrimina
 /// version of this intrinsic, `std::panic::catch_unwind`.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn catch_unwind(
-    _try_fn: fn(*mut u8),
-    _data: *mut u8,
-    _catch_fn: fn(*mut u8, *mut u8),
-) -> i32;
+pub unsafe fn catch_unwind<Data: ptr::Thin>(
+    _try_fn: unsafe fn(*mut Data),
+    _data: *mut Data,
+    _catch_fn: unsafe fn(*mut Data, *mut u8),
+) -> bool;
 
 /// Emits a `nontemporal` store, which gives a hint to the CPU that the data should not be held
 /// in cache. Except for performance, this is fully equivalent to `ptr.write(val)`.
@@ -2874,11 +2874,12 @@ pub const unsafe fn size_of_val<T: ?Sized>(ptr: *const T) -> usize;
 pub const unsafe fn align_of_val<T: ?Sized>(ptr: *const T) -> usize;
 
 #[rustc_intrinsic]
+#[rustc_comptime]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 /// Check if a type represented by a `TypeId` implements a trait represented by a `TypeId`.
 /// It can only be called at compile time, the backends do
 /// not implement it. If it implements the trait the dyn metadata gets returned for vtable access.
-pub const fn type_id_vtable(
+pub fn type_id_vtable(
     _id: crate::any::TypeId,
     _trait: crate::any::TypeId,
 ) -> Option<ptr::DynMetadata<*const ()>> {
@@ -2922,7 +2923,8 @@ pub const fn type_name<T: ?Sized>() -> &'static str;
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
-pub const fn type_id<T: ?Sized>() -> crate::any::TypeId;
+#[rustc_comptime]
+pub fn type_id<T: ?Sized>() -> crate::any::TypeId;
 
 /// Tests (at compile-time) if two [`crate::any::TypeId`] instances identify the
 /// same type. This is necessary because at const-eval time the actual discriminating
@@ -2934,16 +2936,69 @@ pub const fn type_id<T: ?Sized>() -> crate::any::TypeId;
 #[rustc_intrinsic]
 #[rustc_do_not_const_check]
 pub const fn type_id_eq(a: crate::any::TypeId, b: crate::any::TypeId) -> bool {
-    a.data == b.data
+    // SAFETY: we know `TypeId` is 16 bytes of initialized data.
+    // This is runtime-only code so we do not have to worry about provenance.
+    unsafe { crate::mem::transmute::<_, u128>(a) == crate::mem::transmute::<_, u128>(b) }
 }
 
 /// Gets the size of the type represented by this `TypeId`.
 ///
-/// The stabilized version of this intrinsic is [`core::any::TypeId::size`].
+/// The more user-friendly version of this intrinsic is [`core::any::TypeId::size`].
 #[rustc_intrinsic]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-pub const fn size_of_type_id(_id: crate::any::TypeId) -> Option<usize> {
-    panic!("`Type::size` can only be called at compile-time")
+#[rustc_comptime]
+pub fn size_of_type_id(_id: crate::any::TypeId) -> Option<usize> {
+    panic!("`TypeId::size` can only be called at compile-time")
+}
+
+/// Gets the number of variants of the type represented by this `TypeId`.
+///
+/// The more user-friendly version of this intrinsic is [`core::any::TypeId::variants`].
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn type_id_variants(_id: crate::any::TypeId) -> usize {
+    panic!("`TypeId::variants` can only be called at compile-time")
+}
+
+/// Gets the number of fields at the given `variant_index` represented by this `TypeId`.
+///
+/// The more user-friendly version of this intrinsic is [`core::any::TypeId::fields`].
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn type_id_fields(_id: crate::any::TypeId, _variant_index: usize) -> usize {
+    panic!("`TypeId::fields` can only be called at compile-time")
+}
+
+/// Gets the [`FieldRepresentingType`]'s `TypeId` at the given index of the type represented by this `TypeId`.
+///
+/// The more user-friendly version of this intrinsic is [`core::any::TypeId::field`].
+///
+/// [`FieldRepresentingType`]: crate::field::FieldRepresentingType
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn type_id_field_representing_type(
+    _id: crate::any::TypeId,
+    _variant_index: usize,
+    _field_index: usize,
+) -> crate::any::TypeId {
+    panic!("`TypeId::field` can only be called at compile-time")
+}
+
+/// Gets the actual field `TypeId` of the [`FieldRepresentingType`]'s `TypeId`.
+///
+/// The more user-friendly version of this intrinsic is [`core::mem::type_info::FieldId::type_id`].
+///
+/// [`FieldRepresentingType`]: crate::field::FieldRepresentingType
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn field_representing_type_actual_type_id(
+    _frt_type_id: crate::any::TypeId,
+) -> crate::any::TypeId {
+    panic!("`FieldId::type_id` can only be called at compile-time")
 }
 
 /// Lowers in MIR to `Rvalue::Aggregate` with `AggregateKind::RawPtr`.
@@ -3521,6 +3576,7 @@ pub const fn offload<F, T: crate::marker::Tuple, R>(
     f: F,
     workgroup_dim: [u32; 3],
     thread_dim: [u32; 3],
+    dyn_cache: u32,
     args: T,
 ) -> R;
 

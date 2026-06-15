@@ -14,14 +14,15 @@ mod useless_attribute;
 mod utils;
 
 use clippy_config::Conf;
+use clippy_utils::check_clippy_attr;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::msrvs::{self, Msrv, MsrvStack};
 use rustc_ast::{self as ast, AttrArgs, AttrItemKind, AttrKind, Attribute, MetaItemInner, MetaItemKind};
-use rustc_hir::{ImplItem, Item, ItemKind, TraitItem};
-use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
+use rustc_hir::{ImplItem, ImplItemKind, Item, ItemKind, TraitFn, TraitItem, TraitItemKind};
+use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
 use rustc_span::sym;
-use utils::{is_lint_level, is_relevant_impl, is_relevant_item, is_relevant_trait};
+use utils::is_lint_level;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -512,23 +513,31 @@ impl Attributes {
 impl<'tcx> LateLintPass<'tcx> for Attributes {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         let attrs = cx.tcx.hir_attrs(item.hir_id());
-        if let ItemKind::Fn { ident, .. } = item.kind
-            && is_relevant_item(cx, item)
-        {
-            inline_always::check(cx, item.span, ident.name, attrs);
+        if let ItemKind::Fn { ident, body, .. } = item.kind {
+            inline_always::check(cx, item.span, ident.name, attrs, Some(body));
         }
         repr_attributes::check(cx, item.span, attrs, self.msrv);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
-        if is_relevant_impl(cx, item) {
-            inline_always::check(cx, item.span, item.ident.name, cx.tcx.hir_attrs(item.hir_id()));
+        if let ImplItemKind::Fn(_, body) = item.kind {
+            inline_always::check(
+                cx,
+                item.span,
+                item.ident.name,
+                cx.tcx.hir_attrs(item.hir_id()),
+                Some(body),
+            );
         }
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
-        if is_relevant_trait(cx, item) {
-            inline_always::check(cx, item.span, item.ident.name, cx.tcx.hir_attrs(item.hir_id()));
+        if let TraitItemKind::Fn(_, kind) = item.kind {
+            let body = match kind {
+                TraitFn::Required(_) => None,
+                TraitFn::Provided(body) => Some(body),
+            };
+            inline_always::check(cx, item.span, item.ident.name, cx.tcx.hir_attrs(item.hir_id()), body);
         }
     }
 }
@@ -574,6 +583,7 @@ impl EarlyLintPass for PostExpansionEarlyAttributes {
     }
 
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &Attribute) {
+        check_clippy_attr(cx.sess(), attr);
         if let Some(items) = &attr.meta_item_list()
             && let Some(name) = attr.name()
         {
@@ -583,7 +593,7 @@ impl EarlyLintPass for PostExpansionEarlyAttributes {
             if matches!(name, sym::allow | sym::expect) && self.msrv.meets(msrvs::LINT_REASONS_STABILIZATION) {
                 allow_attributes_without_reason::check(cx, name, items, attr);
             }
-            if is_lint_level(name, attr.id) {
+            if is_lint_level(name) {
                 blanket_clippy_restriction_lints::check(cx, name, items);
             }
             if items.is_empty() || !attr.has_name(sym::deprecated) {

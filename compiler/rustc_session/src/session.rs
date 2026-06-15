@@ -164,6 +164,9 @@ pub struct Session {
     /// The names of intrinsics that the current codegen backend replaces
     /// with its own implementations.
     pub replaced_intrinsics: FxHashSet<Symbol>,
+    /// The names of intrinsics that the current codegen backend does *not* replace
+    /// with its own implementations.
+    pub fallback_intrinsics: FxHashSet<Symbol>,
 
     /// Does the codegen backend support ThinLTO?
     pub thin_lto_supported: bool,
@@ -178,6 +181,10 @@ pub struct Session {
     ///
     /// The value is the `DepNodeIndex` of the node encodes the used feature.
     pub used_features: Lock<FxHashMap<Symbol, u32>>,
+
+    /// Whether the test harness removed a user-written `#[rustc_main]` attribute
+    /// while generating the synthetic test entry point.
+    pub removed_rustc_main_attr: AtomicBool,
 }
 
 #[derive(Clone, Copy)]
@@ -550,6 +557,8 @@ impl Session {
         // HWAddressSanitizer and KernelHWAddressSanitizer will use lifetimes to detect use after
         // scope bugs in the future.
         || self.sanitizers().intersects(SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS | SanitizerSet::MEMORY | SanitizerSet::HWADDRESS | SanitizerSet::KERNELHWADDRESS)
+        // Lifetimes are necessary for retagging semantics.
+        || self.opts.unstable_opts.codegen_emit_retag.is_some()
     }
 
     pub fn diagnostic_width(&self) -> usize {
@@ -597,6 +606,10 @@ impl Session {
 
     pub fn print_llvm_stats(&self) -> bool {
         self.opts.unstable_opts.print_codegen_stats
+    }
+
+    pub fn print_llvm_stats_json(&self) -> Option<&String> {
+        self.opts.unstable_opts.print_codegen_stats_json.as_ref()
     }
 
     pub fn verify_llvm_ir(&self) -> bool {
@@ -1120,9 +1133,11 @@ pub fn build_session(
         target_filesearch,
         host_filesearch,
         replaced_intrinsics: FxHashSet::default(), // filled by `run_compiler`
+        fallback_intrinsics: FxHashSet::default(), // filled by `run_compiler`
         thin_lto_supported: true,                  // filled by `run_compiler`
         mir_opt_bisect_eval_count: AtomicUsize::new(0),
         used_features: Lock::default(),
+        removed_rustc_main_attr: AtomicBool::new(false),
     };
 
     validate_commandline_args_with_session_available(&sess);

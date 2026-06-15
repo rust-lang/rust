@@ -229,7 +229,8 @@ impl<'tcx> AdtDef<'tcx> {
             ty::Adt(base_def, base_args) => {
                 let variant = base_def.variant(variant_idx);
                 let field = &variant.fields[field_idx];
-                (field.ty(tcx, base_args), base_def.is_enum().then_some(variant.name), field.name)
+                let ty = field.ty(tcx, base_args).skip_norm_wip();
+                (ty, base_def.is_enum().then_some(variant.name), field.name)
             }
             ty::Tuple(tys) => {
                 if variant_idx != FIRST_VARIANT {
@@ -310,7 +311,8 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
 
     fn destructor(self, tcx: TyCtxt<'tcx>) -> Option<AdtDestructorKind> {
         Some(match tcx.constness(self.destructor(tcx)?.did) {
-            hir::Constness::Const => AdtDestructorKind::Const,
+            hir::Constness::Const { always: true } => todo!("FIXME(comptime)"),
+            hir::Constness::Const { always: false } => AdtDestructorKind::Const,
             hir::Constness::NotConst => AdtDestructorKind::NotConst,
         })
     }

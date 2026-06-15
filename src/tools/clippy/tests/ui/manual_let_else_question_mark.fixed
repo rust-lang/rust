@@ -1,11 +1,3 @@
-#![allow(unused_braces, unused_variables, dead_code)]
-#![allow(
-    clippy::collapsible_else_if,
-    clippy::unused_unit,
-    clippy::let_unit_value,
-    clippy::match_single_binding,
-    clippy::never_loop
-)]
 #![warn(clippy::manual_let_else, clippy::question_mark)]
 
 enum Variant {

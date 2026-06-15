@@ -17,13 +17,13 @@ use rustc_middle::ty::{
 use rustc_span::{Span, sym};
 use tracing::debug;
 
-use crate::error_reporting::TypeErrCtxt;
-use crate::error_reporting::infer::hir::Path;
-use crate::errors::{
+use crate::diagnostics::{
     ConsiderAddingAwait, FnConsiderCasting, FnConsiderCastingBoth, FnItemsAreDistinct, FnUniqTypes,
     FunctionPointerSuggestion, SuggestAccessingField, SuggestRemoveSemiOrReturnBinding,
     SuggestTuplePatternMany, SuggestTuplePatternOne, TypeErrorAdditionalDiags,
 };
+use crate::error_reporting::TypeErrCtxt;
+use crate::error_reporting::infer::hir::Path;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 enum StatementAsExpression {
@@ -104,7 +104,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 })
                 .filter_map(|variant| {
                     let sole_field = &variant.single_field();
-                    let sole_field_ty = sole_field.ty(self.tcx, args);
+                    let sole_field_ty = sole_field.ty(self.tcx, args).skip_norm_wip();
                     if self.same_type_modulo_infer(sole_field_ty, exp_found.found) {
                         let variant_path =
                             with_no_trimmed_paths!(self.tcx.def_path_str(variant.def_id));
@@ -209,7 +209,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         second: exp_span.shrink_to_hi(),
                     })
                 }
-                ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
+                ObligationCauseCode::MatchExpressionArm(MatchExpressionArmCause {
                     prior_non_diverging_arms,
                     ..
                 }) => {
@@ -248,7 +248,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     let then_span = self.find_block_span_from_hir_id(then_expr.hir_id);
                     Some(ConsiderAddingAwait::FutureSugg { span: then_span.shrink_to_hi() })
                 }
-                ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
+                ObligationCauseCode::MatchExpressionArm(MatchExpressionArmCause {
                     prior_non_diverging_arms,
                     ..
                 }) => Some({
@@ -288,7 +288,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 .fields
                 .iter()
                 .filter(|field| field.vis.is_accessible_from(field.did, self.tcx))
-                .map(|field| (field.name, field.ty(self.tcx, expected_args)))
+                .map(|field| (field.name, field.ty(self.tcx, expected_args).skip_norm_wip()))
                 .find(|(_, ty)| self.same_type_modulo_infer(*ty, exp_found.found))
                 && let ObligationCauseCode::Pattern { span: Some(span), .. } = *cause.code()
                 && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
@@ -412,13 +412,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         match (expected_inner.kind(), found_inner.kind()) {
             (ty::FnPtr(sig_tys, hdr), ty::FnDef(did, args)) => {
                 let sig = sig_tys.with(*hdr);
-                let expected_sig = &(self.normalize_fn_sig)(Unnormalized::new_wip(sig));
+                let expected_sig = self.normalize_fn_sig(Unnormalized::new_wip(sig));
                 let found_sig =
-                    &(self.normalize_fn_sig)(self.tcx.fn_sig(*did).instantiate(self.tcx, args));
+                    self.normalize_fn_sig(self.tcx.fn_sig(*did).instantiate(self.tcx, args));
 
                 let fn_name = self.tcx.def_path_str_with_args(*did, args);
 
-                if !self.same_type_modulo_infer(*found_sig, *expected_sig)
+                if !self.same_type_modulo_infer(found_sig, expected_sig)
                     || !sig.is_suggestable(self.tcx, true)
                     || self.tcx.intrinsic(*did).is_some()
                 {
@@ -450,15 +450,15 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
             (ty::FnDef(did1, args1), ty::FnDef(did2, args2)) => {
                 let expected_sig =
-                    &(self.normalize_fn_sig)(self.tcx.fn_sig(*did1).instantiate(self.tcx, args1));
+                    self.normalize_fn_sig(self.tcx.fn_sig(*did1).instantiate(self.tcx, args1));
                 let found_sig =
-                    &(self.normalize_fn_sig)(self.tcx.fn_sig(*did2).instantiate(self.tcx, args2));
+                    self.normalize_fn_sig(self.tcx.fn_sig(*did2).instantiate(self.tcx, args2));
 
-                if self.same_type_modulo_infer(*expected_sig, *found_sig) {
+                if self.same_type_modulo_infer(expected_sig, found_sig) {
                     diag.subdiagnostic(FnUniqTypes);
                 }
 
-                if !self.same_type_modulo_infer(*found_sig, *expected_sig)
+                if !self.same_type_modulo_infer(found_sig, expected_sig)
                     || !found_sig.is_suggestable(self.tcx, true)
                     || !expected_sig.is_suggestable(self.tcx, true)
                     || self.tcx.intrinsic(*did1).is_some()
@@ -470,7 +470,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let fn_name = self.tcx.def_path_str_with_args(*did2, args2);
 
                 let Some(span) = span else {
-                    diag.subdiagnostic(FnConsiderCastingBoth { sig: *expected_sig });
+                    diag.subdiagnostic(FnConsiderCastingBoth { sig: expected_sig });
                     return;
                 };
 
@@ -478,14 +478,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     FunctionPointerSuggestion::CastBothRef {
                         span,
                         fn_name,
-                        found_sig: *found_sig,
-                        expected_sig: *expected_sig,
+                        found_sig,
+                        expected_sig,
                     }
                 } else {
                     FunctionPointerSuggestion::CastBoth {
                         span: span.shrink_to_hi(),
-                        found_sig: *found_sig,
-                        expected_sig: *expected_sig,
+                        found_sig,
+                        expected_sig,
                     }
                 };
 
@@ -493,10 +493,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
             (ty::FnDef(did, args), ty::FnPtr(sig_tys, hdr)) => {
                 let expected_sig =
-                    &(self.normalize_fn_sig)(self.tcx.fn_sig(*did).instantiate(self.tcx, args));
-                let found_sig = &(self.normalize_fn_sig)(Unnormalized::new_wip(sig_tys.with(*hdr)));
+                    self.normalize_fn_sig(self.tcx.fn_sig(*did).instantiate(self.tcx, args));
+                let found_sig = self.normalize_fn_sig(Unnormalized::new_wip(sig_tys.with(*hdr)));
 
-                if !self.same_type_modulo_infer(*found_sig, *expected_sig) {
+                if !self.same_type_modulo_infer(found_sig, expected_sig) {
                     return;
                 }
 

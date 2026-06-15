@@ -2,10 +2,12 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeDef;
 use rustc_errors::Diag;
 use rustc_hir as hir;
+use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::def_id::DefIdSet;
 use rustc_span::{Span, sym};
+use rustc_trait_selection::error_reporting::InferCtxtErrorExt as _;
 
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_then};
 use clippy_utils::ty::{AdtVariantInfo, approx_ty_size};
@@ -23,17 +25,31 @@ fn result_err_ty<'tcx>(
 ) -> Option<(&'tcx hir::Ty<'tcx>, Ty<'tcx>)> {
     if !item_span.in_external_macro(cx.sess().source_map())
         && let hir::FnRetTy::Return(hir_ty) = decl.output
-        && let ty = cx
-            .tcx
-            .instantiate_bound_regions_with_erased(cx.tcx.fn_sig(id).instantiate_identity().skip_norm_wip().output())
-        && ty.is_diag_item(cx, sym::Result)
-        && let ty::Adt(_, args) = ty.kind()
     {
-        let err_ty = args.type_at(1);
-        Some((hir_ty, err_ty))
-    } else {
-        None
+        let mut ty = cx
+            .tcx
+            .instantiate_bound_regions_with_erased(cx.tcx.fn_sig(id).instantiate_identity().skip_norm_wip().output());
+
+        // for async functions, peel through `impl Future<Output = T>` to get `T`
+        if cx.tcx.ty_is_opaque_future(ty)
+            && let Some(future_output_ty) = cx
+                .tcx
+                .infer_ctxt()
+                .build(cx.typing_mode())
+                .err_ctxt()
+                .get_impl_future_output_ty(ty)
+        {
+            ty = future_output_ty;
+        }
+
+        if let ty::Adt(adt_def, args) = ty.kind()
+            && cx.tcx.is_diagnostic_item(sym::Result, adt_def.did())
+        {
+            let err_ty = args.type_at(1);
+            return Some((hir_ty, err_ty));
+        }
     }
+    None
 }
 
 pub(super) fn check_item<'tcx>(

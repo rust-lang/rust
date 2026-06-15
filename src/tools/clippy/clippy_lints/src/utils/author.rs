@@ -9,7 +9,7 @@ use rustc_hir::{
     self as hir, BindingMode, CaptureBy, Closure, ClosureKind, ConstArg, ConstArgKind, CoroutineKind, ExprKind,
     FnRetTy, HirId, Lit, PatExprKind, PatKind, QPath, StmtKind, StructTailExpr,
 };
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{FloatTy, IntTy, UintTy};
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::{Ident, Symbol};
@@ -863,5 +863,5 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
 
 fn has_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
     let attrs = cx.tcx.hir_attrs(hir_id);
-    get_builtin_attr(cx.sess(), attrs, sym::author).count() > 0
+    get_builtin_attr(attrs, sym::author).count() > 0
 }

@@ -172,13 +172,14 @@ where
         infcx: &InferCtxt<'tcx>,
     ) -> PredicateObligations<'tcx> {
         let stalled_coroutines = match infcx.typing_mode_raw().assert_not_erased() {
-            TypingMode::Analysis { defining_opaque_types_and_generators } => {
+            TypingMode::Typeck { defining_opaque_types_and_generators } => {
                 defining_opaque_types_and_generators
             }
             TypingMode::Coherence
-            | TypingMode::Borrowck { defining_opaque_types: _ }
-            | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ }
-            | TypingMode::PostAnalysis => return Default::default(),
+            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _ }
+            | TypingMode::PostBorrowck { defined_opaque_types: _ }
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen => return Default::default(),
         };
 
         if stalled_coroutines.is_empty() {
@@ -464,7 +465,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     bug!("AliasRelate is only used by the new solver")
                 }
                 ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_)) => {
-                   unreachable!("unexpected higher ranked `UnstableFeature` goal")
+                    unreachable!("unexpected higher ranked `UnstableFeature` goal")
                 }
             },
             Some(pred) => match pred {
@@ -558,11 +559,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                             return ProcessResult::Changed(PendingPredicateObligations::new());
                         }
                         ty::ConstKind::Value(cv) => cv.ty,
-                        ty::ConstKind::Unevaluated(uv) => infcx
-                            .tcx
-                            .type_of(uv.def)
-                            .instantiate(infcx.tcx, uv.args)
-                            .skip_norm_wip(),
+                        ty::ConstKind::Unevaluated(uv) => uv.type_of(infcx.tcx).skip_norm_wip(),
                         // FIXME(generic_const_exprs): we should construct an alias like
                         // `<lhs_ty as Add<rhs_ty>>::Output` when this is an `Expr` representing
                         // `lhs + rhs`.
@@ -719,13 +716,13 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         let c2 = tcx.expand_abstract_consts(c2);
                         debug!("equating consts:\nc1= {:?}\nc2= {:?}", c1, c2);
 
-                        use rustc_hir::def::DefKind;
                         match (c1.kind(), c2.kind()) {
                             (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b))
-                                if a.def == b.def
+                                if a.kind == b.kind
                                     && matches!(
-                                        tcx.def_kind(a.def),
-                                        DefKind::AssocConst { .. }
+                                        a.kind,
+                                        ty::UnevaluatedConstKind::Projection { .. }
+                                            | ty::UnevaluatedConstKind::Inherent { .. }
                                     ) =>
                             {
                                 if let Ok(new_obligations) = infcx
@@ -734,8 +731,8 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                     // `generic_const_exprs`
                                     .eq(
                                         DefineOpaqueTypes::Yes,
-                                        ty::AliasTerm::from_unevaluated_const(tcx, a),
-                                        ty::AliasTerm::from_unevaluated_const(tcx, b),
+                                        ty::AliasTerm::from(a),
+                                        ty::AliasTerm::from(b),
                                     )
                                 {
                                     return ProcessResult::Changed(mk_pending(

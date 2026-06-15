@@ -9,11 +9,11 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![feature(arbitrary_self_types)]
-#![feature(box_patterns)]
 #![feature(const_default)]
 #![feature(const_trait_impl)]
 #![feature(control_flow_into_value)]
 #![feature(default_field_values)]
+#![feature(deref_patterns)]
 #![feature(iter_intersperse)]
 #![feature(rustc_attrs)]
 #![feature(trim_prefix_suffix)]
@@ -22,9 +22,9 @@
 
 use std::cell::Ref;
 use std::collections::BTreeSet;
-use std::fmt;
 use std::ops::ControlFlow;
 use std::sync::Arc;
+use std::{fmt, mem};
 
 use diagnostics::{ImportSuggestion, LabelSuggestion, StructCtor, Suggestion};
 use effective_visibilities::EffectiveVisibilitiesVisitor;
@@ -39,34 +39,33 @@ use macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{
-    self as ast, AngleBracketedArg, CRATE_NODE_ID, Crate, Expr, ExprKind, GenericArg, GenericArgs,
-    Generics, NodeId, Path, attr,
+    self as ast, AngleBracketedArg, CRATE_NODE_ID, Crate, DUMMY_NODE_ID, Expr, ExprKind,
+    GenericArg, GenericArgs, Generics, NodeId, Path, attr,
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, default};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{FreezeReadGuard, FreezeWriteGuard};
-use rustc_data_structures::unord::{UnordMap, UnordSet};
+use rustc_data_structures::unord::{UnordItems, UnordMap, UnordSet};
 use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed, LintBuffer};
 use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::attrs::StrippedCfgItem;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{
-    self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, MacroKinds, NonMacroAttrKind, PartialRes,
-    PerNS,
+    self, CtorOf, DefKind, DocLinkResMap, MacroKinds, NonMacroAttrKind, PartialRes, PerNS,
 };
 use rustc_hir::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::{PerParentDisambiguatorState, PerParentDisambiguatorsMap};
-use rustc_hir::{PrimTy, TraitCandidate, find_attr};
+use rustc_hir::{MissingLifetimeKind, PrimTy, TraitCandidate, find_attr};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_metadata::creader::CStore;
 use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
-    self, DelegationInfo, MainDefinition, RegisteredTools, ResolverAstLowering, ResolverGlobalCtxt,
-    TyCtxt, TyCtxtFeed, Visibility,
+    self, DelegationInfo, MainDefinition, PerOwnerResolverData, RegisteredTools,
+    ResolverAstLowering, ResolverGlobalCtxt, TyCtxt, TyCtxtFeed, Visibility,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
@@ -74,7 +73,7 @@ use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
-use tracing::debug;
+use tracing::{debug, instrument};
 
 type Res = def::Res<NodeId>;
 
@@ -188,6 +187,7 @@ struct InvocationParent {
     impl_trait_context: ImplTraitContext,
     in_attr: bool,
     const_arg_context: ConstArgContext,
+    owner: NodeId,
 }
 
 impl InvocationParent {
@@ -196,6 +196,7 @@ impl InvocationParent {
         impl_trait_context: ImplTraitContext::Existential,
         in_attr: false,
         const_arg_context: ConstArgContext::NonDirect,
+        owner: CRATE_NODE_ID,
     };
 }
 
@@ -476,8 +477,8 @@ enum PathResult<'ra> {
         ///
         /// In this case, `module` will point to `a`.
         module: Option<ModuleOrUniformRoot<'ra>>,
-        /// The segment name of target
-        segment_name: Symbol,
+        /// The segment of target
+        segment: Ident,
         error_implied_by_parse_error: bool,
         message: String,
         note: Option<String>,
@@ -506,7 +507,7 @@ impl<'ra> PathResult<'ra> {
         };
         PathResult::Failed {
             span: ident.span,
-            segment_name: ident.name,
+            segment: ident,
             label,
             suggestion,
             is_error_from_last_segment,
@@ -820,7 +821,7 @@ impl<'ra> Module<'ra> {
     }
 
     /// This modifies `self` in place. The traits will be stored in `self.traits`.
-    fn ensure_traits<'tcx>(self, resolver: &impl AsRef<Resolver<'ra, 'tcx>>) {
+    fn ensure_traits<'tcx>(self, resolver: &Resolver<'ra, 'tcx>) {
         let mut traits = self.traits.borrow_mut(resolver.as_ref());
         if traits.is_none() {
             let mut collected_traits = Vec::new();
@@ -994,10 +995,7 @@ impl<'ra> fmt::Debug for LocalModule<'ra> {
 #[derive(Clone, Debug)]
 struct DeclData<'ra> {
     kind: DeclKind<'ra>,
-    ambiguity: CmCell<Option<Decl<'ra>>>,
-    /// Produce a warning instead of an error when reporting ambiguities inside this binding.
-    /// May apply to indirect ambiguities under imports, so `ambiguity.is_some()` is not required.
-    warn_ambiguity: CmCell<bool>,
+    ambiguity: CmCell<Option<(Decl<'ra>, bool /*warning*/)>>,
     expansion: LocalExpnId,
     span: Span,
     initial_vis: Visibility<DefId>,
@@ -1158,7 +1156,7 @@ impl<'ra> DeclData<'ra> {
 
     fn descent_to_ambiguity(self: Decl<'ra>) -> Option<(Decl<'ra>, Decl<'ra>)> {
         match self.ambiguity.get() {
-            Some(ambig_binding) => Some((self, ambig_binding)),
+            Some((ambig_binding, _)) => Some((self, ambig_binding)),
             None => match self.kind {
                 DeclKind::Import { source_decl, .. } => source_decl.descent_to_ambiguity(),
                 _ => None,
@@ -1170,14 +1168,6 @@ impl<'ra> DeclData<'ra> {
         self.ambiguity.get().is_some()
             || match self.kind {
                 DeclKind::Import { source_decl, .. } => source_decl.is_ambiguity_recursive(),
-                _ => false,
-            }
-    }
-
-    fn warn_ambiguity_recursive(&self) -> bool {
-        self.warn_ambiguity.get()
-            || match self.kind {
-                DeclKind::Import { source_decl, .. } => source_decl.warn_ambiguity_recursive(),
                 _ => false,
             }
     }
@@ -1321,7 +1311,10 @@ impl ExternPreludeEntry<'_> {
 struct DeriveData {
     resolutions: Vec<DeriveResolution>,
     helper_attrs: Vec<(usize, IdentKey, Span)>,
+    // if this list keeps getting extended, we could use `bitflags`,
+    // something like what [`rustc_type_ir::flags::TypeFlags`] is doing.
     has_derive_copy: bool,
+    has_derive_ord: bool,
 }
 
 pub struct ResolverOutputs<'tcx> {
@@ -1371,22 +1364,15 @@ pub struct Resolver<'ra, 'tcx> {
 
     /// Resolutions for nodes that have a single resolution.
     partial_res_map: NodeMap<PartialRes> = Default::default(),
-    /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
-    import_res_map: NodeMap<PerNS<Option<Res>>> = Default::default(),
     /// An import will be inserted into this map if it has been used.
     import_use_map: FxHashMap<Import<'ra>, Used> = default::fx_hash_map(),
-    /// Resolutions for labels (node IDs of their corresponding blocks or loops).
-    label_res_map: NodeMap<NodeId> = Default::default(),
-    /// Resolutions for lifetimes.
-    lifetimes_res_map: NodeMap<LifetimeRes> = Default::default(),
     /// Lifetime parameters that lowering will have to introduce.
-    extra_lifetime_params_map: NodeMap<Vec<(Ident, NodeId, LifetimeRes)>> = Default::default(),
+    extra_lifetime_params_map: NodeMap<Vec<(Ident, NodeId, MissingLifetimeKind)>> = Default::default(),
 
     /// `CrateNum` resolutions of `extern crate` items.
     extern_crate_map: UnordMap<LocalDefId, CrateNum> = Default::default(),
     module_children: LocalDefIdMap<Vec<ModChild>> = Default::default(),
     ambig_module_children: LocalDefIdMap<Vec<AmbigModChild>> = Default::default(),
-    trait_map: NodeMap<&'tcx [TraitCandidate<'tcx>]> = Default::default(),
 
     /// A map from nodes to anonymous modules.
     /// Anonymous modules are pseudo-modules that are implicitly created around items
@@ -1465,6 +1451,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// Derive macros cannot modify the item themselves and have to store the markers in the global
     /// context, so they attach the markers to derive container IDs using this resolver table.
     containers_deriving_copy: FxHashSet<LocalExpnId> = default::fx_hash_set(),
+    containers_deriving_ord: FxHashSet<LocalExpnId> = default::fx_hash_set(),
     /// Parent scopes in which the macros were invoked.
     /// FIXME: `derives` are missing in these parent scopes and need to be taken from elsewhere.
     invocation_parent_scopes: FxHashMap<LocalExpnId, ParentScope<'ra>> = default::fx_hash_map(),
@@ -1499,7 +1486,11 @@ pub struct Resolver<'ra, 'tcx> {
 
     next_node_id: NodeId = CRATE_NODE_ID,
 
-    node_id_to_def_id: NodeMap<LocalDefId>,
+    /// Preserves per owner data once the owner is finished resolving.
+    owners: NodeMap<PerOwnerResolverData<'tcx>>,
+
+    /// An entry of `owners` that gets taken out and reinserted whenever an owner is handled.
+    current_owner: PerOwnerResolverData<'tcx>,
 
     disambiguators: LocalDefIdMap<PerParentDisambiguatorState>,
 
@@ -1515,7 +1506,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// Generic args to suggest for required params (e.g. `<'_>`, `<_, _>`), if any.
     item_required_generic_args_suggestions: FxHashMap<LocalDefId, String> = default::fx_hash_map(),
     delegation_fn_sigs: LocalDefIdMap<DelegationFnSig> = Default::default(),
-    delegation_infos: LocalDefIdMap<DelegationInfo> = Default::default(),
+    delegation_infos: FxIndexMap<LocalDefId, DelegationInfo>,
 
     main_def: Option<MainDefinition> = None,
     trait_impls: FxIndexMap<DefId, Vec<LocalDefId>>,
@@ -1523,13 +1514,13 @@ pub struct Resolver<'ra, 'tcx> {
     /// they are declared in the static array generated by proc_macro_harness.
     proc_macros: Vec<LocalDefId> = Vec::new(),
     confused_type_with_std_module: FxIndexMap<Span, Span>,
-    /// Whether lifetime elision was successful.
-    lifetime_elision_allowed: FxHashSet<NodeId> = default::fx_hash_set(),
 
     /// Names of items that were stripped out via cfg with their corresponding cfg meta item.
     stripped_cfg_items: Vec<StrippedCfgItem<NodeId>> = Vec::new(),
 
     effective_visibilities: EffectiveVisibilities,
+    macro_reachable_adts: FxIndexMap<LocalDefId, FxIndexSet<LocalDefId>>,
+
     doc_link_resolutions: FxIndexMap<LocalDefId, DocLinkResMap>,
     doc_link_traits_in_scope: FxIndexMap<LocalDefId, Vec<DefId>>,
     all_macro_rules: UnordSet<Symbol> = Default::default(),
@@ -1583,7 +1574,6 @@ impl<'ra> ResolverArenas<'ra> {
         self.alloc_decl(DeclData {
             kind: DeclKind::Def(res),
             ambiguity: CmCell::new(None),
-            warn_ambiguity: CmCell::new(false),
             initial_vis: vis,
             ambiguity_vis_max: CmCell::new(None),
             ambiguity_vis_min: CmCell::new(None),
@@ -1639,16 +1629,28 @@ impl<'ra, 'tcx> AsRef<Resolver<'ra, 'tcx>> for Resolver<'ra, 'tcx> {
 }
 
 impl<'tcx> Resolver<'_, 'tcx> {
-    fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
-        self.node_id_to_def_id.get(&node).copied()
+    /// Only call this in analyses after the resolver has finished.
+    /// Panics if the node id is currently not in the owner storage,
+    /// e.g. because it's further up in the current visitor stack.
+    fn owner_def_id(&self, owner: NodeId) -> LocalDefId {
+        self.owners[&owner].def_id
     }
 
+    /// Only call this in analyses after the resolver has finished.
+    /// Panics if the node id is currently not in the owner storage,
+    /// e.g. because it's further up in the current visitor stack.
+    fn child_def_id(&self, owner: NodeId, id: NodeId) -> LocalDefId {
+        self.owners[&owner].node_id_to_def_id[&id]
+    }
+
+    /// Get the `DefId` of a child of the current owner
+    fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
+        self.current_owner.node_id_to_def_id.get(&node).copied()
+    }
+
+    /// Get the `DefId` of a child of the current owner
     fn local_def_id(&self, node: NodeId) -> LocalDefId {
         self.opt_local_def_id(node).unwrap_or_else(|| panic!("no entry for node id: `{node:?}`"))
-    }
-
-    fn local_def_kind(&self, node: NodeId) -> DefKind {
-        self.tcx.def_kind(self.local_def_id(node))
     }
 
     /// Adds a definition with a parent definition.
@@ -1660,14 +1662,17 @@ impl<'tcx> Resolver<'_, 'tcx> {
         def_kind: DefKind,
         expn_id: ExpnId,
         span: Span,
+        is_owner: bool,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
         assert!(
-            !self.node_id_to_def_id.contains_key(&node_id),
+            !self.current_owner.node_id_to_def_id.contains_key(&node_id),
             "adding a def for node-id {:?}, name {:?}, data {:?} but a previous def exists: {:?}",
             node_id,
             name,
             def_kind,
-            self.tcx.definitions_untracked().def_key(self.node_id_to_def_id[&node_id]),
+            self.tcx
+                .definitions_untracked()
+                .def_key(self.current_owner.node_id_to_def_id[&node_id]),
         );
 
         let disambiguator = self.disambiguators.get_or_create(parent);
@@ -1689,9 +1694,9 @@ impl<'tcx> Resolver<'_, 'tcx> {
         // Some things for which we allocate `LocalDefId`s don't correspond to
         // anything in the AST, so they don't have a `NodeId`. For these cases
         // we don't need a mapping from `NodeId` to `LocalDefId`.
-        if node_id != ast::DUMMY_NODE_ID {
+        if node_id != ast::DUMMY_NODE_ID && !is_owner {
             debug!("create_def: def_id_to_node_id[{:?}] <-> {:?}", def_id, node_id);
-            self.node_id_to_def_id.insert(node_id, def_id);
+            self.current_owner.node_id_to_def_id.insert(node_id, def_id);
         }
 
         feed
@@ -1736,12 +1741,19 @@ impl<'tcx> Resolver<'_, 'tcx> {
     }
 
     /// This function is very slow, as it iterates over the entire
-    /// [Resolver::node_id_to_def_id] map just to find the [NodeId]
+    /// [PerOwnerResolverData::node_id_to_def_id] map for all [Resolver::owners]
+    /// just to find the [NodeId]
     /// that corresponds to the given [LocalDefId]. Only use this in
-    /// diagnostics code paths.
+    /// diagnostics code paths. Do not use this during macro expansion,
+    /// as it will not find any node ids within your current expansion's stack.
     fn def_id_to_node_id(&self, def_id: LocalDefId) -> NodeId {
-        self.node_id_to_def_id
+        self.owners
             .items()
+            .flat_map(|(_, data)| {
+                data.node_id_to_def_id
+                    .items()
+                    .chain(UnordItems::new([(&data.id, &data.def_id)].into_iter()))
+            })
             .filter(|(_, v)| **v == def_id)
             .map(|(k, _)| *k)
             .get_only()
@@ -1779,11 +1791,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             arenas,
         );
 
-        let mut node_id_to_def_id = NodeMap::default();
+        let owner_data = PerOwnerResolverData::new(CRATE_NODE_ID, CRATE_DEF_ID);
         let crate_feed = tcx.create_local_crate_def_id(crate_span);
 
         crate_feed.def_kind(DefKind::Mod);
-        node_id_to_def_id.insert(CRATE_NODE_ID, CRATE_DEF_ID);
+        let mut owners = NodeMap::default();
+        owners.insert(CRATE_NODE_ID, owner_data);
 
         let mut invocation_parents = FxHashMap::default();
         invocation_parents.insert(LocalExpnId::ROOT, InvocationParent::ROOT);
@@ -1822,9 +1835,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             builtin_attr_decls: BUILTIN_ATTRIBUTES
                 .iter()
                 .map(|builtin_attr| {
-                    let res = Res::NonMacroAttr(NonMacroAttrKind::Builtin(builtin_attr.name));
+                    let res = Res::NonMacroAttr(NonMacroAttrKind::Builtin(*builtin_attr));
                     let decl = arenas.new_pub_def_decl(res, DUMMY_SP, LocalExpnId::ROOT);
-                    (builtin_attr.name, decl)
+                    (*builtin_attr, decl)
                 })
                 .collect(),
             registered_tool_decls: registered_tools
@@ -1846,16 +1859,19 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             single_segment_macro_resolutions: Default::default(),
             multi_segment_macro_resolutions: Default::default(),
             lint_buffer: LintBuffer::default(),
-            node_id_to_def_id,
+            owners,
+            current_owner: PerOwnerResolverData::new(DUMMY_NODE_ID, CRATE_DEF_ID),
             invocation_parents,
             trait_impls: Default::default(),
             confused_type_with_std_module: Default::default(),
             stripped_cfg_items: Default::default(),
             effective_visibilities: Default::default(),
+            macro_reachable_adts: Default::default(),
             doc_link_resolutions: Default::default(),
             doc_link_traits_in_scope: Default::default(),
             current_crate_outer_attr_insert_span,
             disambiguators: Default::default(),
+            delegation_infos: Default::default(),
             ..
         };
 
@@ -1948,7 +1964,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .stripped_cfg_items
             .into_iter()
             .filter_map(|item| {
-                let parent_scope = self.node_id_to_def_id.get(&item.parent_scope)?.to_def_id();
+                let parent_scope = self.owners.get(&item.parent_scope)?.def_id.to_def_id();
                 Some(StrippedCfgItem { parent_scope, ident: item.ident, cfg: item.cfg })
             })
             .collect();
@@ -1962,6 +1978,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             expn_that_defined,
             visibilities_for_hashing: self.visibilities_for_hashing,
             effective_visibilities,
+            macro_reachable_adts: self.macro_reachable_adts,
             extern_crate_map,
             module_children: self.module_children,
             ambig_module_children: self.ambig_module_children,
@@ -1975,19 +1992,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             doc_link_traits_in_scope: self.doc_link_traits_in_scope,
             all_macro_rules: self.all_macro_rules,
             stripped_cfg_items,
+            delegation_infos: self.delegation_infos,
         };
         let ast_lowering = ty::ResolverAstLowering {
             partial_res_map: self.partial_res_map,
-            import_res_map: self.import_res_map,
-            label_res_map: self.label_res_map,
-            lifetimes_res_map: self.lifetimes_res_map,
             extra_lifetime_params_map: self.extra_lifetime_params_map,
             next_node_id: self.next_node_id,
-            node_id_to_def_id: self.node_id_to_def_id,
-            trait_map: self.trait_map,
-            lifetime_elision_allowed: self.lifetime_elision_allowed,
+            owners: self.owners,
             lint_buffer: Steal::new(self.lint_buffer),
-            delegation_infos: self.delegation_infos,
             disambiguators,
         };
         ResolverOutputs { global_ctxt, ast_lowering }
@@ -2223,17 +2235,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn record_use(&mut self, ident: Ident, used_decl: Decl<'ra>, used: Used) {
-        self.record_use_inner(ident, used_decl, used, used_decl.warn_ambiguity.get());
-    }
-
-    fn record_use_inner(
-        &mut self,
-        ident: Ident,
-        used_decl: Decl<'ra>,
-        used: Used,
-        warn_ambiguity: bool,
-    ) {
-        if let Some(b2) = used_decl.ambiguity.get() {
+        if let Some((b2, warning)) = used_decl.ambiguity.get() {
             let ambiguity_error = AmbiguityError {
                 kind: AmbiguityKind::GlobVsGlob,
                 ambig_vis: None,
@@ -2242,7 +2244,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 b2,
                 scope1: Scope::ModuleGlobs(used_decl.parent_module.unwrap(), None),
                 scope2: Scope::ModuleGlobs(b2.parent_module.unwrap(), None),
-                warning: if warn_ambiguity { Some(AmbiguityWarning::GlobImport) } else { None },
+                warning: if warning { Some(AmbiguityWarning::GlobImport) } else { None },
             };
             if !self.matches_previous_ambiguity_error(&ambiguity_error) {
                 // avoid duplicated span information to be emit out
@@ -2292,12 +2294,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 self.used_imports.insert(id);
             }
             self.add_to_glob_map(import, ident.name);
-            self.record_use_inner(
-                ident,
-                source_decl,
-                Used::Other,
-                warn_ambiguity || source_decl.warn_ambiguity.get(),
-            );
+            self.record_use(ident, source_decl, Used::Other);
         }
     }
 
@@ -2644,6 +2641,33 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 }
 
+fn with_owner<'ra, 'tcx, R: AsMut<Resolver<'ra, 'tcx>>, T>(
+    this: &mut R,
+    owner: NodeId,
+    work: impl FnOnce(&mut R) -> T,
+) -> T {
+    let tables = this.as_mut().owners.remove(&owner).unwrap();
+    with_owner_tables(this, owner, tables, work)
+}
+
+#[instrument(level = "debug", skip(this, work))]
+fn with_owner_tables<'ra, 'tcx, R: AsMut<Resolver<'ra, 'tcx>>, T>(
+    this: &mut R,
+    owner: NodeId,
+    tables: PerOwnerResolverData<'tcx>,
+    work: impl FnOnce(&mut R) -> T,
+) -> T {
+    debug_assert!(!this.as_mut().owners.contains_key(&owner));
+    let resolver = this.as_mut();
+    let old_owner = mem::replace(&mut resolver.current_owner, tables);
+    let ret = work(this);
+    let resolver = this.as_mut();
+    let overwritten =
+        resolver.owners.insert(owner, mem::replace(&mut resolver.current_owner, old_owner));
+    assert!(overwritten.is_none());
+    ret
+}
+
 fn build_extern_prelude<'tcx, 'ra>(
     tcx: TyCtxt<'tcx>,
     attrs: &[ast::Attribute],
@@ -2845,15 +2869,9 @@ mod ref_mut {
         #[track_caller]
         pub(crate) fn get_mut(&mut self) -> &mut T {
             match self.mutable {
-                false => panic!("Can't mutably borrow speculative resolver"),
+                false => panic!("can't mutably borrow speculative resolver"),
                 true => self.p,
             }
-        }
-
-        /// Returns a mutable reference to the inner value without checking if
-        /// it's in a mutable state.
-        pub(crate) fn get_mut_unchecked(&mut self) -> &mut T {
-            self.p
         }
     }
 
@@ -2878,12 +2896,12 @@ mod ref_mut {
             self.0.get()
         }
 
-        pub(crate) fn update_unchecked(&self, f: impl FnOnce(T) -> T)
+        pub(crate) fn update<'ra, 'tcx>(&self, r: &Resolver<'ra, 'tcx>, f: impl FnOnce(T) -> T)
         where
             T: Copy,
         {
             let old = self.get();
-            self.set_unchecked(f(old));
+            self.set(f(old), r);
         }
     }
 
@@ -2892,7 +2910,10 @@ mod ref_mut {
             CmCell(Cell::new(value))
         }
 
-        pub(crate) fn set_unchecked(&self, val: T) {
+        pub(crate) fn set<'ra, 'tcx>(&self, val: T, r: &Resolver<'ra, 'tcx>) {
+            if r.assert_speculative {
+                panic!("not allowed to mutate a `CmCell` during speculative resolution")
+            }
             self.0.set(val);
         }
 
@@ -2918,13 +2939,23 @@ mod ref_mut {
         #[track_caller]
         pub(crate) fn borrow_mut<'ra, 'tcx>(&self, r: &Resolver<'ra, 'tcx>) -> RefMut<'_, T> {
             if r.assert_speculative {
-                panic!("Not allowed to mutably borrow a CmRefCell during speculative resolution");
+                panic!("not allowed to mutably borrow a `CmRefCell` during speculative resolution");
             }
-            self.borrow_mut_unchecked()
+            self.0.borrow_mut()
+        }
+
+        pub(crate) fn try_borrow_mut_unchecked(&self) -> Result<RefMut<'_, T>, BorrowMutError> {
+            self.0.try_borrow_mut()
         }
 
         #[track_caller]
-        pub(crate) fn try_borrow_mut_unchecked(&self) -> Result<RefMut<'_, T>, BorrowMutError> {
+        pub(crate) fn try_borrow_mut<'ra, 'tcx>(
+            &self,
+            r: &Resolver<'ra, 'tcx>,
+        ) -> Result<RefMut<'_, T>, BorrowMutError> {
+            if r.assert_speculative {
+                panic!("not allowed to mutably borrow a `CmRefCell` during speculative resolution");
+            }
             self.0.try_borrow_mut()
         }
 
@@ -2937,7 +2968,7 @@ mod ref_mut {
     impl<T: Default> CmRefCell<T> {
         pub(crate) fn take<'ra, 'tcx>(&self, r: &Resolver<'ra, 'tcx>) -> T {
             if r.assert_speculative {
-                panic!("Not allowed to mutate a CmRefCell during speculative resolution");
+                panic!("not allowed to mutate a CmRefCell during speculative resolution");
             }
             self.0.take()
         }

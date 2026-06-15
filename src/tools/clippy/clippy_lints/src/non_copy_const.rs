@@ -297,14 +297,14 @@ impl<'tcx> NonCopyConst<'tcx> {
                         IsFreeze::from_fields(
                             v.fields
                                 .iter()
-                                .map(|f| self.is_ty_freeze(tcx, typing_env, f.ty(tcx, args))),
+                                .map(|f| self.is_ty_freeze(tcx, typing_env, f.ty(tcx, args).skip_norm_wip())),
                         )
                     })),
                     // Workaround for `ManuallyDrop`-like unions.
                     ty::Adt(adt, args)
                         if adt.is_union()
                             && adt.non_enum_variant().fields.iter().any(|f| {
-                                tcx.layout_of(typing_env.as_query_input(f.ty(tcx, args)))
+                                tcx.layout_of(typing_env.as_query_input(f.ty(tcx, args).skip_norm_wip()))
                                     .is_ok_and(|l| l.layout.size().bytes() == 0)
                             }) =>
                     {
@@ -316,7 +316,7 @@ impl<'tcx> NonCopyConst<'tcx> {
                         adt.non_enum_variant()
                             .fields
                             .iter()
-                            .map(|f| self.is_ty_freeze(tcx, typing_env, f.ty(tcx, args))),
+                            .map(|f| self.is_ty_freeze(tcx, typing_env, f.ty(tcx, args).skip_norm_wip())),
                     ),
                     ty::Array(ty, _) | ty::Pat(ty, _) => self.is_ty_freeze(tcx, typing_env, ty),
                     ty::Tuple(tys) => {
@@ -757,7 +757,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
-        if let TraitItemKind::Const(_, ct_rhs_opt, _) = item.kind
+        if let TraitItemKind::Const(_, ct_rhs_opt) = item.kind
             && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip()
             && match self.is_ty_freeze(cx.tcx, cx.typing_env(), ty) {
                 IsFreeze::No => true,
@@ -958,7 +958,7 @@ fn get_const_hir_value<'tcx>(
         {
             match tcx.hir_node(tcx.local_def_id_to_hir_id(did)) {
                 Node::ImplItem(item) if let ImplItemKind::Const(.., ct_rhs) = item.kind => (did, ct_rhs),
-                Node::TraitItem(item) if let TraitItemKind::Const(_, Some(ct_rhs), _) = item.kind => (did, ct_rhs),
+                Node::TraitItem(item) if let TraitItemKind::Const(_, Some(ct_rhs)) = item.kind => (did, ct_rhs),
                 _ => return None,
             }
         },

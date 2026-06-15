@@ -783,6 +783,8 @@ mod desc {
     pub(crate) const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
     pub(crate) const parse_instrument_coverage: &str = parse_bool;
     pub(crate) const parse_coverage_options: &str = "`block` | `branch` | `condition`";
+    pub(crate) const parse_codegen_retag_options: &str =
+        "either no value or a comma-separated list of settings: `no-precise-im`, `no-precise-pin`";
     pub(crate) const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
     pub(crate) const parse_unpretty: &str = "`string` or `string=string`";
     pub(crate) const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
@@ -1523,6 +1525,29 @@ pub mod parse {
         true
     }
 
+    pub(crate) fn parse_codegen_retag_options(
+        slot: &mut Option<CodegenRetagOptions>,
+        v: Option<&str>,
+    ) -> bool {
+        let mut no_precise_im = false;
+        let mut no_precise_pin = false;
+        if let Some(opt_list) = v.map(|s| s.split(',')) {
+            for opt in opt_list {
+                match opt {
+                    "no-precise-im" => {
+                        no_precise_im = true;
+                    }
+                    "no-precise-pin" => {
+                        no_precise_pin = true;
+                    }
+                    _ => return false,
+                }
+            }
+        }
+        *slot = Some(CodegenRetagOptions { no_precise_im, no_precise_pin });
+        true
+    }
+
     pub(crate) fn parse_coverage_options(slot: &mut CoverageOptions, v: Option<&str>) -> bool {
         let Some(v) = v else { return true };
 
@@ -2242,6 +2267,8 @@ options! {
         "hash algorithm of source files used to check freshness in cargo (`blake3` or `sha256`)"),
     codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED],
         "the backend to use"),
+    codegen_emit_retag: Option<CodegenRetagOptions> = (None, parse_codegen_retag_options, [TRACKED],
+        "emit retag function calls in generated code"),
     codegen_source_order: bool = (false, parse_bool, [UNTRACKED],
         "emit mono items in the order of spans in source files (default: no)"),
     contract_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -2252,12 +2279,12 @@ options! {
         "inject the given attribute in the crate"),
     cross_crate_inline_threshold: InliningThreshold = (InliningThreshold::Sometimes(100), parse_inlining_threshold, [TRACKED],
         "threshold to allow cross crate inlining of functions"),
-    debug_info_for_profiling: bool = (false, parse_bool, [TRACKED],
-        "emit discriminators and other data necessary for AutoFDO"),
     debug_info_type_line_numbers: bool = (false, parse_bool, [TRACKED],
         "emit type and line information for additional data types (default: no)"),
     debuginfo_compression: DebugInfoCompression = (DebugInfoCompression::None, parse_debuginfo_compression, [TRACKED],
         "compress debug info sections (none, zlib, zstd, default: none)"),
+    debuginfo_for_profiling: bool = (false, parse_bool, [TRACKED],
+        "emit discriminators and other data necessary for AutoFDO"),
     deduplicate_diagnostics: bool = (true, parse_bool, [UNTRACKED],
         "deduplicate identical diagnostics (default: yes)"),
     default_visibility: Option<SymbolVisibility> = (None, parse_opt_symbol_visibility, [TRACKED],
@@ -2271,6 +2298,8 @@ options! {
         "Direct or use GOT indirect to reference external data symbols"),
     disable_fast_paths: bool = (false, parse_bool, [TRACKED],
         "disable various performance optimizations in trait solving"),
+    disable_incr_comp_backend_caching: bool = (false, parse_bool, [TRACKED],
+        "disable caching of compiled objects by the codegen backend during incremental compilation"),
     dual_proc_macros: bool = (false, parse_bool, [TRACKED],
         "load proc macros for both target and host, but only link to the target (default: no)"),
     dump_dep_graph: bool = (false, parse_bool, [UNTRACKED],
@@ -2315,8 +2344,6 @@ options! {
         "embed source text in DWARF debug sections (default: no)"),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
         "emit a section containing stack size metadata (default: no)"),
-    emscripten_wasm_eh: bool = (true, parse_bool, [TRACKED],
-        "Use WebAssembly error handling for wasm32-unknown-emscripten"),
     enforce_type_length_limit: bool = (false, parse_bool, [TRACKED],
         "enforce the type length limit when monomorphizing instances in codegen"),
     experimental_default_bounds: bool = (false, parse_bool, [TRACKED],
@@ -2404,6 +2431,14 @@ options! {
          `=skip-entry`
          `=skip-exit`
          Multiple options can be combined with commas."),
+    // The only purpose of this flag is to act as a deterrent:
+    // Marking a feature that's only meant for testing as internal might not preclude somebody from
+    // trying to use it in `core` or `std` as both enable various internal features and utilize them
+    // throughout. This is intentionally a flag not another internal feature as having to modify the
+    // build cfg in `bootstrap` is arguably scarier than just needing to add `#![feature]`. It also
+    // stands out a lot more during code review making it easier to get caught.
+    internal_testing_features: bool = (false, parse_bool, [TRACKED],
+        "allow certain internal language features to be enabled that help exercise & test the compiler"),
     large_data_threshold: Option<u64> = (None, parse_opt_number, [TRACKED],
         "set the threshold for objects to be stored in a \"large data\" section \
          (only effective with -Ccode-model=medium, default: 65536)"),
@@ -2546,6 +2581,9 @@ options! {
     #[rustc_lint_opt_deny_field_access("use `Session::print_codegen_stats` instead of this field")]
     print_codegen_stats: bool = (false, parse_bool, [UNTRACKED],
         "print codegen statistics (default: no)"),
+    #[rustc_lint_opt_deny_field_access("use `Session::print_llvm_stats_json` instead of this field")]
+    print_codegen_stats_json: Option<String> = (None, parse_opt_string, [UNTRACKED],
+        "print codegen statistics in JSON to a file (default: no)"),
     print_llvm_passes: bool = (false, parse_bool, [UNTRACKED],
         "print the LLVM optimization passes being run (default: no)"),
     print_mono_items: bool = (false, parse_bool, [UNTRACKED],
@@ -2658,6 +2696,8 @@ written to standard error output)"),
         "control stack smash protection strategy (`rustc --print stack-protector-strategies` for details)"),
     staticlib_allow_rdylib_deps: bool = (false, parse_bool, [TRACKED],
         "allow staticlibs to have rust dylib dependencies"),
+    staticlib_hide_internal_symbols: bool = (false, parse_bool, [TRACKED],
+        "hide non-exported symbols in ELF static libraries by setting STV_HIDDEN"),
     staticlib_prefer_dynamic: bool = (false, parse_bool, [TRACKED],
         "prefer dynamic linking to static linking for staticlibs (default: no)"),
     strict_init_checks: bool = (false, parse_bool, [TRACKED],
@@ -2705,9 +2745,9 @@ written to standard error output)"),
         "in diagnostics, use heuristics to shorten paths referring to items"),
     tune_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
         "select processor to schedule for (`rustc --print target-cpus` for details)"),
-    #[rustc_lint_opt_deny_field_access("use `TyCtxt::use_typing_mode_borrowck` instead of this field")]
-    typing_mode_borrowck: bool = (false, parse_bool, [TRACKED],
-        "enable `TypingMode::Borrowck`, changing the way opaque types are handled during MIR borrowck"),
+    #[rustc_lint_opt_deny_field_access("use `TyCtxt::use_typing_mode_post_typeck` instead of this field")]
+    typing_mode_post_typeck_until_borrowck: bool = (false, parse_bool, [TRACKED],
+        "enable `TypingMode::PostTypeckUntilBorrowck`, changing the way opaque types are handled during MIR borrowck"),
     #[rustc_lint_opt_deny_field_access("use `Session::ub_checks` instead of this field")]
     ub_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "emit runtime checks for Undefined Behavior (default: -Cdebug-assertions)"),
@@ -2720,7 +2760,7 @@ written to standard error output)"),
         "take the brakes off const evaluation. NOTE: this is unsound (default: no)"),
     unpretty: Option<String> = (None, parse_unpretty, [UNTRACKED],
         "present the input source, unstable (and less-pretty) variants;
-        `normal`, `identified`,
+        `normal`,
         `expanded`, `expanded,identified`,
         `expanded,hygiene` (with internal representations),
         `ast-tree` (raw AST before expansion),

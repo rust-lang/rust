@@ -1,9 +1,10 @@
+use rustc_feature::AttributeStability;
 use rustc_hir::attrs::diagnostic::Directive;
 use rustc_session::lint::builtin::MISPLACED_DIAGNOSTIC_ATTRIBUTES;
 
 use crate::attributes::diagnostic::*;
 use crate::attributes::prelude::*;
-use crate::errors::DiagnosticOnUnimplementedOnlyForTraits;
+use crate::diagnostics::DiagnosticOnUnimplementedOnlyForTraits;
 
 #[derive(Default)]
 pub(crate) struct OnUnimplementedParser {
@@ -38,6 +39,7 @@ impl AttributeParser for OnUnimplementedParser {
         (
             &[sym::diagnostic, sym::on_unimplemented],
             template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
+            AttributeStability::Stable,
             |this, cx, args| {
                 this.parse(cx, args, Mode::DiagnosticOnUnimplemented);
             },
@@ -45,6 +47,10 @@ impl AttributeParser for OnUnimplementedParser {
         (
             &[sym::rustc_on_unimplemented],
             template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
+            unstable!(
+                rustc_attrs,
+                "see `#[diagnostic::on_unimplemented]` for the stable equivalent of this attribute"
+            ),
             |this, cx, args| {
                 this.parse(cx, args, Mode::RustcOnUnimplemented);
             },

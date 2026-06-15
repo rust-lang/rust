@@ -29,7 +29,7 @@ use rustc_trait_selection::traits::{
 use tracing::{debug, instrument};
 
 use super::potentially_plural_count;
-use crate::errors::{LifetimesOrBoundsMismatchOnTrait, MethodShouldReturnFuture};
+use crate::diagnostics::{LifetimesOrBoundsMismatchOnTrait, MethodShouldReturnFuture};
 
 pub(super) mod refine;
 
@@ -1202,7 +1202,6 @@ pub(super) fn check_number_of_early_bound_regions<'tcx>(
                         }
                     }
                 }
-                _ => {}
             }
         }
         if let Some(impl_node) = tcx.hir_get_if_local(impl_def_id.into())
@@ -1225,7 +1224,6 @@ pub(super) fn check_number_of_early_bound_regions<'tcx>(
                             }
                         }
                     }
-                    _ => {}
                 }
             }
             if impl_bounds == bounds_span.len() {

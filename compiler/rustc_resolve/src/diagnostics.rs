@@ -1188,7 +1188,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         .emit()
     }
 
-    fn def_path_str(&self, mut def_id: DefId) -> String {
+    pub(crate) fn def_path_str(&self, mut def_id: DefId) -> String {
         // We can't use `def_path_str` in resolve.
         let mut path = vec![def_id];
         while let Some(parent) = self.tcx.opt_parent(def_id) {
@@ -1282,9 +1282,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 // These trace attributes are compiler-generated and have
                                 // deliberately invalid names.
                                 .filter(|attr| {
-                                    !matches!(attr.name, sym::cfg_trace | sym::cfg_attr_trace)
+                                    !matches!(**attr, sym::cfg_trace | sym::cfg_attr_trace)
                                 })
-                                .map(|attr| TypoSuggestion::typo_from_name(attr.name, res)),
+                                .map(|attr| TypoSuggestion::typo_from_name(*attr, res)),
                         );
                     }
                 }
@@ -2307,7 +2307,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         self.mention_default_field_values(source, ident, &mut err);
 
-        if let Some((this_res, outer_ident)) = outermost_res {
+        let shown_candidates = if let Some((this_res, outer_ident)) = outermost_res {
             let mut import_suggestions = self.lookup_import_candidates(
                 outer_ident,
                 this_res.ns().unwrap_or(Namespace::TypeNS),
@@ -2338,7 +2338,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 };
                 err.subdiagnostic(label);
             }
-        }
+            !point_to_def
+        } else {
+            false
+        };
 
         let mut non_exhaustive = None;
         // If an ADT is foreign and marked as `non_exhaustive`, then that's
@@ -2476,8 +2479,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // 2) the use isn't nested, otherwise `dedup_span` is one ident in `{...}`.
         //
         // See issue #156060.
-        let can_replace_use =
-            !single_nested && !outermost_res.is_some_and(|(_, outer)| outer.span != ident.span);
+        let can_replace_use = !shown_candidates
+            && !single_nested
+            && !outermost_res.is_some_and(|(_, outer)| outer.span != ident.span);
         if can_replace_use {
             // We prioritize shorter paths, non-core imports and direct imports over the
             // alternatives.
@@ -3261,7 +3265,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 .stripped_cfg_items
                 .iter()
                 .filter_map(|item| {
-                    let parent_scope = self.opt_local_def_id(item.parent_scope)?.to_def_id();
+                    let parent_scope = self.local_modules.iter().find_map(|m| match m.kind {
+                        ModuleKind::Def(_, def_id, node_id, _) if node_id == item.parent_scope => {
+                            Some(def_id)
+                        }
+                        _ => None,
+                    })?;
                     Some(StrippedCfgItem { parent_scope, ident: item.ident, cfg: item.cfg.clone() })
                 })
                 .collect::<Vec<_>>();

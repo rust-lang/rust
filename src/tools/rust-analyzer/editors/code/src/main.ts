@@ -187,6 +187,7 @@ function createCommands(): Record<string, CommandFactory> {
         clearFlycheck: { enabled: commands.clearFlycheck },
         runFlycheck: { enabled: commands.runFlycheck },
         ssr: { enabled: commands.ssr },
+        evaluatePredicate: { enabled: commands.evaluatePredicate },
         serverVersion: { enabled: commands.serverVersion },
         viewMemoryLayout: { enabled: commands.viewMemoryLayout },
         toggleCheckOnSave: { enabled: commands.toggleCheckOnSave },

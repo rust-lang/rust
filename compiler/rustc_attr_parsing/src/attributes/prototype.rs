@@ -1,6 +1,6 @@
 //! Attributes that are only used on function prototypes.
 
-use rustc_feature::{AttributeTemplate, template};
+use rustc_feature::AttributeStability;
 use rustc_hir::Target;
 use rustc_hir::attrs::{AttributeKind, MirDialect, MirPhase};
 use rustc_span::{Span, Symbol, sym};
@@ -8,14 +8,15 @@ use rustc_span::{Span, Symbol, sym};
 use crate::attributes::SingleAttributeParser;
 use crate::context::AcceptContext;
 use crate::parser::{ArgParser, NameValueParser};
-use crate::session_diagnostics;
 use crate::target_checking::AllowedTargets;
 use crate::target_checking::Policy::Allow;
+use crate::{AttributeTemplate, session_diagnostics, template, unstable};
 
 pub(crate) struct CustomMirParser;
 
 impl SingleAttributeParser for CustomMirParser {
     const PATH: &[rustc_span::Symbol] = &[sym::custom_mir];
+    const STABILITY: AttributeStability = unstable!(custom_mir);
 
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
 

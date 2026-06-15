@@ -389,7 +389,7 @@ pub(crate) struct SelfInConstGenericTy {
 #[derive(Diagnostic)]
 #[diag(
     "{$is_gca ->
-    [true] generic parameters in const blocks are only allowed as the direct value of a `type const`
+    [true] generic parameters in const blocks are not allowed; use a named `const` item instead
     *[false] generic parameters may not be used in const operations
 }"
 )]
@@ -1742,7 +1742,7 @@ pub(crate) struct ElidedLifetimesInPaths {
 )]
 pub(crate) struct UnusedImports {
     #[subdiagnostic]
-    pub sugg: UnusedImportsSugg,
+    pub sugg: Option<UnusedImportsSugg>,
     #[help("if this is a test module, consider adding a `#[cfg(test)]` to the containing module")]
     pub test_module_span: Option<Span>,
 

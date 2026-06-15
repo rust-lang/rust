@@ -18,7 +18,7 @@ use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_hir_analysis::suggest_impl_trait;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::span_bug;
-use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::print::{with_no_trimmed_paths, with_types_for_suggestion};
 use rustc_middle::ty::{
     self, Article, Binder, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast,
     suggest_constraining_type_params,
@@ -34,7 +34,7 @@ use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _
 use tracing::{debug, instrument};
 
 use super::FnCtxt;
-use crate::errors::{self, SuggestBoxingForReturnImplTrait};
+use crate::diagnostics::{self, SuggestBoxingForReturnImplTrait};
 use crate::fn_ctxt::rustc_span::BytePos;
 use crate::method::probe;
 use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
@@ -250,6 +250,74 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// Suggests calling `.collect()` on an `Iterator` it can be collected in the return type
+    /// ```compile_fail
+    /// let x: String = "foo".chars().map(|c| c); // with a .collect() here the code compiles
+    /// ```
+    pub(crate) fn suggest_collect(
+        &self,
+        err: &mut Diag<'_>,
+        expr: &hir::Expr<'_>,
+        expected_type: Ty<'tcx>,
+        found_type: Ty<'tcx>,
+    ) -> bool {
+        let tcx = self.tcx;
+        let expected = self.resolve_vars_if_possible(expected_type);
+        let found = self.resolve_vars_if_possible(found_type);
+
+        if expected.references_error() || found.references_error() || expected.is_unit() {
+            return false;
+        }
+
+        let Some(iterator_trait_id) = tcx.get_diagnostic_item(sym::Iterator) else {
+            return false;
+        };
+
+        if !self
+            .infcx
+            .type_implements_trait(iterator_trait_id, [found], self.param_env)
+            .must_apply_modulo_regions()
+        {
+            return false;
+        }
+
+        let Some(from_iterator_trait_id) = tcx.get_diagnostic_item(sym::FromIterator) else {
+            return false;
+        };
+
+        let Some(iterator_item_id) = tcx
+            .associated_items(iterator_trait_id)
+            .in_definition_order()
+            .find(|item| item.name() == sym::Item)
+            .map(|item| item.def_id)
+        else {
+            return false;
+        };
+
+        let item_type = Ty::new_projection(tcx, iterator_item_id, [found]);
+        let item_type =
+            self.normalize(expr.span, rustc_middle::ty::Unnormalized::new_wip(item_type));
+
+        let can_collect = self
+            .infcx
+            .type_implements_trait(from_iterator_trait_id, [expected, item_type], self.param_env)
+            .may_apply();
+
+        if can_collect {
+            err.span_suggestion_verbose(
+                expr.span.shrink_to_hi(),
+                format!(
+                    "consider using `.collect()` to convert the `Iterator` into a `{expected}`"
+                ),
+                ".collect()",
+                rustc_errors::Applicability::MaybeIncorrect,
+            );
+            return true;
+        }
+
+        false
+    }
+
     pub(crate) fn suggest_remove_last_method_call(
         &self,
         err: &mut Diag<'_>,
@@ -459,7 +527,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // but those checks need to be a bit more delicate and the benefit is diminishing.
             if self.can_eq(self.param_env, found_ty_inner, peeled) && error_tys_equate_as_ref {
                 let sugg = prefix_wrap(".as_ref()");
-                err.subdiagnostic(errors::SuggestConvertViaMethod {
+                err.subdiagnostic(diagnostics::SuggestConvertViaMethod {
                     span: expr.span.shrink_to_hi(),
                     sugg,
                     expected,
@@ -493,7 +561,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && self.can_eq(self.param_env, deref_ty, peeled)
                 {
                     let sugg = prefix_wrap(".as_deref()");
-                    err.subdiagnostic(errors::SuggestConvertViaMethod {
+                    err.subdiagnostic(diagnostics::SuggestConvertViaMethod {
                         span: expr.span.shrink_to_hi(),
                         sugg,
                         expected,
@@ -506,7 +574,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if self.can_eq(self.param_env, deref_ty, peeled) {
                         let explicit_deref = "*".repeat(n_step);
                         let sugg = prefix_wrap(&format!(".map(|v| &{explicit_deref}v)"));
-                        err.subdiagnostic(errors::SuggestConvertViaMethod {
+                        err.subdiagnostic(diagnostics::SuggestConvertViaMethod {
                             span: expr.span.shrink_to_hi(),
                             sugg,
                             expected,
@@ -570,7 +638,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if self.may_coerce(Ty::new_box(self.tcx, found), expected) {
             let suggest_boxing = match *found.kind() {
                 ty::Tuple(tuple) if tuple.is_empty() => {
-                    errors::SuggestBoxing::Unit { start: span.shrink_to_lo(), end: span }
+                    diagnostics::SuggestBoxing::Unit { start: span.shrink_to_lo(), end: span }
                 }
                 ty::Coroutine(def_id, ..)
                     if matches!(
@@ -581,18 +649,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ))
                     ) =>
                 {
-                    errors::SuggestBoxing::AsyncBody
+                    diagnostics::SuggestBoxing::AsyncBody
                 }
                 _ if let Node::ExprField(expr_field) = self.tcx.parent_hir_node(hir_id)
                     && expr_field.is_shorthand =>
                 {
-                    errors::SuggestBoxing::ExprFieldShorthand {
+                    diagnostics::SuggestBoxing::ExprFieldShorthand {
                         start: span.shrink_to_lo(),
                         end: span.shrink_to_hi(),
                         ident: expr_field.ident,
                     }
                 }
-                _ => errors::SuggestBoxing::Other {
+                _ => diagnostics::SuggestBoxing::Other {
                     start: span.shrink_to_lo(),
                     end: span.shrink_to_hi(),
                 },
@@ -902,17 +970,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             &hir::FnRetTy::DefaultReturn(_) if self.tcx.is_closure_like(fn_id.to_def_id()) => {}
             &hir::FnRetTy::DefaultReturn(span) if expected.is_unit() => {
                 if !self.can_add_return_type(fn_id) {
-                    err.subdiagnostic(errors::ExpectedReturnTypeLabel::Unit { span });
+                    err.subdiagnostic(diagnostics::ExpectedReturnTypeLabel::Unit { span });
                 } else if let Some(found) = found.make_suggestable(self.tcx, false, None) {
-                    err.subdiagnostic(errors::AddReturnTypeSuggestion::Add {
+                    err.subdiagnostic(diagnostics::AddReturnTypeSuggestion::Add {
                         span,
                         found: found.to_string(),
                     });
                 } else if let Some(sugg) = suggest_impl_trait(self, self.param_env, found) {
-                    err.subdiagnostic(errors::AddReturnTypeSuggestion::Add { span, found: sugg });
+                    err.subdiagnostic(diagnostics::AddReturnTypeSuggestion::Add {
+                        span,
+                        found: sugg,
+                    });
                 } else {
                     // FIXME: if `found` could be `impl Iterator` we should suggest that.
-                    err.subdiagnostic(errors::AddReturnTypeSuggestion::MissingHere { span });
+                    err.subdiagnostic(diagnostics::AddReturnTypeSuggestion::MissingHere { span });
                 }
 
                 return true;
@@ -938,7 +1009,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .collect::<Vec<_>>()
                         .join("::");
 
-                    err.subdiagnostic(errors::ExpectedReturnTypeLabel::ImplTrait {
+                    err.subdiagnostic(diagnostics::ExpectedReturnTypeLabel::ImplTrait {
                         span: hir_ty.span,
                         trait_name,
                     });
@@ -1001,13 +1072,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     debug!(?found);
                     if found.is_suggestable(self.tcx, false) {
                         if ty.span.is_empty() {
-                            err.subdiagnostic(errors::AddReturnTypeSuggestion::Add {
+                            err.subdiagnostic(diagnostics::AddReturnTypeSuggestion::Add {
                                 span: ty.span,
                                 found: found.to_string(),
                             });
                             return true;
                         } else {
-                            err.subdiagnostic(errors::ExpectedReturnTypeLabel::Other {
+                            err.subdiagnostic(diagnostics::ExpectedReturnTypeLabel::Other {
                                 span: ty.span,
                                 expected,
                             });
@@ -1026,7 +1097,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let ty = self.normalize(hir_ty.span, Unnormalized::new_wip(ty));
                     let ty = self.tcx.instantiate_bound_regions_with_erased(ty);
                     if self.may_coerce(expected, ty) {
-                        err.subdiagnostic(errors::ExpectedReturnTypeLabel::Other {
+                        err.subdiagnostic(diagnostics::ExpectedReturnTypeLabel::Other {
                             span: hir_ty.span,
                             expected,
                         });
@@ -1088,7 +1159,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        diag.subdiagnostic(errors::NoteCallerChoosesTyForTyParam {
+        diag.subdiagnostic(diagnostics::NoteCallerChoosesTyForTyParam {
             ty_param_name: expected_ty_as_param.name,
             found_ty: found,
         });
@@ -1471,9 +1542,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let def_path = self.tcx.def_path_str(adt_def.did());
                 let span = expr.span.shrink_to_hi();
                 let subdiag = if self.type_is_copy_modulo_regions(self.param_env, ty) {
-                    errors::OptionResultRefMismatch::Copied { span, def_path }
+                    diagnostics::OptionResultRefMismatch::Copied { span, def_path }
                 } else if self.type_is_clone_modulo_regions(self.param_env, ty) {
-                    errors::OptionResultRefMismatch::Cloned { span, def_path }
+                    diagnostics::OptionResultRefMismatch::Cloned { span, def_path }
                 } else {
                     return false;
                 };
@@ -2204,6 +2275,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) -> bool {
+        // don't suggest missing `.expect()` or `?` in destructuring assignments LHS.
+        // If the immediate parent is an Assign Expr, and the LHS and the RHS of that Expr
+        // overlap with each other, it's guaranteed that the expression came from desugaring
+        // a destructuring assignment.
+        let parent_node = self.tcx.parent_hir_node(expr.hir_id);
+        if let hir::Node::Expr(e) = parent_node
+            && let hir::ExprKind::Assign(lhs, rhs, _) = e.kind
+            && rhs.hir_id == expr.hir_id
+            && lhs.span.overlaps(rhs.span)
+        {
+            return false;
+        }
+
         let ty::Adt(adt, args) = found.kind() else {
             return false;
         };
@@ -2468,7 +2552,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && self.type_is_clone_modulo_regions(self.param_env, first_ty)
                 && (expr.is_size_lit() || expr_ty.is_usize_like())
             {
-                err.subdiagnostic(errors::ReplaceCommaWithSemicolon {
+                err.subdiagnostic(diagnostics::ReplaceCommaWithSemicolon {
                     comma_span,
                     descr: "a vector",
                 });
@@ -2481,7 +2565,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if self.type_is_copy_modulo_regions(self.param_env, first_ty)
                 && (expr.is_size_lit() || expr_is_const_usize)
             {
-                err.subdiagnostic(errors::ReplaceCommaWithSemicolon {
+                err.subdiagnostic(diagnostics::ReplaceCommaWithSemicolon {
                     comma_span,
                     descr: "an array",
                 });
@@ -2592,7 +2676,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // suggestions would be often wrong. So suppress the suggestion. See #145294.
                     if let (ty::Adt(exp_adt, _), ty::Adt(act_adt, _)) = (expected.kind(), expr_ty.kind())
                         && exp_adt.did() == act_adt.did()
-                        && sole_field.ty(self.tcx, args).is_ty_var() {
+                        && sole_field.ty(self.tcx, args).skip_norm_wip().is_ty_var() {
                             return None;
                     }
 
@@ -2609,10 +2693,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let note_about_variant_field_privacy = (field_is_local && !field_is_accessible)
                         .then(|| " (its field is private, but it's local to this crate and its privacy can be changed)".to_string());
 
-                    let sole_field_ty = sole_field.ty(self.tcx, args);
+                    let sole_field_ty = sole_field.ty(self.tcx, args).skip_norm_wip();
                     if self.may_coerce(expr_ty, sole_field_ty) {
-                        let variant_path =
-                            with_no_trimmed_paths!(self.tcx.def_path_str(variant.def_id));
+                        let variant_path = with_types_for_suggestion!(with_no_trimmed_paths!(
+                            self.tcx.def_path_str(variant.def_id)
+                        ));
                         // FIXME #56861: DRYer prelude filtering
                         if let Some(path) = variant_path.strip_prefix("std::prelude::")
                             && let Some((_, path)) = path.split_once("::")
@@ -2639,12 +2724,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Some(CtorKind::Const) => unreachable!("unit variants don't have fields"),
                 };
 
-                // Suggest constructor as deep into the block tree as possible.
-                // This fixes https://github.com/rust-lang/rust/issues/101065,
-                // and also just helps make the most minimal suggestions.
+                // Suggest constructor as deep into the block tree as possible,
+                // but don't cross macro contexts. This fixes #101065 while
+                // keeping suggestions out of macro definitions (#142359).
                 let mut expr = expr;
                 while let hir::ExprKind::Block(block, _) = &expr.kind
                     && let Some(expr_) = &block.expr
+                    && expr_.span.eq_ctxt(expr.span)
                 {
                     expr = expr_
                 }

@@ -12,7 +12,7 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation, DocAttribute};
-use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::def::{CtorKind, DefKind, MacroKinds, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{Attribute, BodyId, ConstStability, Mutability, Stability, StableSince, find_attr};
@@ -20,7 +20,7 @@ use rustc_index::IndexVec;
 use rustc_metadata::rendered_const;
 use rustc_middle::span_bug;
 use rustc_middle::ty::fast_reject::SimplifiedType;
-use rustc_middle::ty::{self, TyCtxt, Visibility};
+use rustc_middle::ty::{self, Ty, TyCtxt, Visibility};
 use rustc_resolve::rustdoc::{
     DocFragment, add_doc_fragment, attrs_to_doc_fragments, inner_docs, span_of_fragments,
 };
@@ -491,7 +491,7 @@ impl Item {
 
     /// Returns true if item is an associated function with a `self` parameter.
     pub(crate) fn has_self_param(&self) -> bool {
-        if let ItemKind::MethodItem(box Function { decl, .. }, _) = &self.inner.kind {
+        if let ItemKind::MethodItem(Function { decl, .. }, _) = &self.inner.kind {
             decl.receiver_type().is_some()
         } else {
             false
@@ -505,8 +505,8 @@ impl Item {
         };
         match kind {
             ItemKind::ModuleItem(Module { span, .. }) => Some(*span),
-            ItemKind::ImplItem(box Impl { kind: ImplKind::Auto, .. }) => None,
-            ItemKind::ImplItem(box Impl { kind: ImplKind::Blanket(_), .. }) => {
+            ItemKind::ImplItem(Impl { kind: ImplKind::Auto, .. }) => None,
+            ItemKind::ImplItem(Impl { kind: ImplKind::Blanket(_), .. }) => {
                 if let ItemId::Blanket { impl_id, .. } = self.item_id {
                     Some(rustc_span(impl_id, tcx))
                 } else {
@@ -667,16 +667,21 @@ impl Item {
         self.type_() == ItemType::Variant
     }
     pub(crate) fn is_associated_type(&self) -> bool {
-        matches!(self.kind, AssocTypeItem(..) | StrippedItem(box AssocTypeItem(..)))
+        matches!(self.kind, AssocTypeItem(..) | StrippedItem(AssocTypeItem(..)))
     }
     pub(crate) fn is_required_associated_type(&self) -> bool {
-        matches!(self.kind, RequiredAssocTypeItem(..) | StrippedItem(box RequiredAssocTypeItem(..)))
+        matches!(self.kind, RequiredAssocTypeItem(..) | StrippedItem(RequiredAssocTypeItem(..)))
     }
     pub(crate) fn is_associated_const(&self) -> bool {
-        matches!(self.kind, ProvidedAssocConstItem(..) | ImplAssocConstItem(..) | StrippedItem(box (ProvidedAssocConstItem(..) | ImplAssocConstItem(..))))
+        matches!(
+            self.kind,
+            ProvidedAssocConstItem(..)
+                | ImplAssocConstItem(..)
+                | StrippedItem(ProvidedAssocConstItem(..) | ImplAssocConstItem(..))
+        )
     }
     pub(crate) fn is_required_associated_const(&self) -> bool {
-        matches!(self.kind, RequiredAssocConstItem(..) | StrippedItem(box RequiredAssocConstItem(..)))
+        matches!(self.kind, RequiredAssocConstItem(..) | StrippedItem(RequiredAssocConstItem(..)))
     }
     pub(crate) fn is_method(&self) -> bool {
         self.type_() == ItemType::Method
@@ -758,9 +763,31 @@ impl Item {
         find_attr!(&self.attrs.other_attrs, NonExhaustive(..))
     }
 
-    /// Returns a documentation-level item type from the item.
+    /// Returns a documentation-level item type from the item. In case of a `macro_rules!` which
+    /// contains an attr/derive kind, it will always return `ItemType::Macro`. If you want all
+    /// kinds, you need to use [`Item::types`].
     pub(crate) fn type_(&self) -> ItemType {
         ItemType::from(self)
+    }
+
+    /// Returns an item types. There is only one case where it can return more than one kind:
+    /// for `macro_rules!` items which contain an attr/derive kind.
+    pub(crate) fn types(&self) -> impl Iterator<Item = ItemType> {
+        if let ItemKind::MacroItem(_, macro_kinds) = self.kind {
+            Either::Right(macro_kinds.iter().map(|kind| match kind {
+                MacroKinds::ATTR => ItemType::DeclMacroAttribute,
+                MacroKinds::DERIVE => ItemType::DeclMacroDerive,
+                MacroKinds::BANG => ItemType::Macro,
+                _ => panic!("unsupported macro kind {kind:?}"),
+            }))
+        } else {
+            Either::Left(std::iter::once(self.type_()))
+        }
+    }
+
+    /// Returns true if this a macro declared with the `macro` keyword or with `macro_rules!.
+    pub(crate) fn is_decl_macro(&self) -> bool {
+        matches!(self.kind, ItemKind::MacroItem(..))
     }
 
     pub(crate) fn defaultness(&self) -> Option<Defaultness> {
@@ -770,6 +797,11 @@ impl Item {
             }
             _ => None,
         }
+    }
+
+    /// Generates the HTML file name based on the item kind.
+    pub(crate) fn html_filename(&self) -> String {
+        format!("{type_}.{name}.html", type_ = self.type_(), name = self.name.unwrap())
     }
 
     /// Returns a `FnHeader` if `self` is a function item, otherwise returns `None`.
@@ -790,7 +822,7 @@ impl Item {
                 {
                     hir::Constness::NotConst
                 } else {
-                    hir::Constness::Const
+                    hir::Constness::Const { always: false }
                 }
             } else {
                 hir::Constness::NotConst
@@ -821,11 +853,8 @@ impl Item {
                         safety.into()
                     },
                     abi,
-                    constness: if tcx.is_const_fn(def_id) {
-                        hir::Constness::Const
-                    } else {
-                        hir::Constness::NotConst
-                    },
+                    // Foreign functions can never be const or comptime
+                    constness: hir::Constness::NotConst,
                     asyncness: hir::IsAsync::NotAsync,
                 }
             }
@@ -931,7 +960,13 @@ pub(crate) enum ItemKind {
     ForeignStaticItem(Static, hir::Safety),
     /// `type`s from an extern block
     ForeignTypeItem,
-    MacroItem(Macro),
+    /// A macro defined with `macro_rules` or the `macro` keyword. It can be multiple things (macro,
+    /// derive and attribute, potentially multiple at once). Don't forget to look into the
+    ///`MacroKinds` values.
+    ///
+    /// If a `macro_rules!` only contains a `attr`/`derive` branch, then it's not stored in this
+    /// variant but in the `ProcMacroItem` variant.
+    MacroItem(Macro, MacroKinds),
     ProcMacroItem(ProcMacro),
     PrimitiveItem(PrimitiveType),
     /// A required associated constant in a trait declaration.
@@ -986,7 +1021,7 @@ impl ItemKind {
             | ForeignFunctionItem(_, _)
             | ForeignStaticItem(_, _)
             | ForeignTypeItem
-            | MacroItem(_)
+            | MacroItem(..)
             | ProcMacroItem(_)
             | PrimitiveItem(_)
             | RequiredAssocConstItem(..)
@@ -1163,11 +1198,8 @@ impl GenericBound {
     }
 
     fn is_bounded_by_lang_item(&self, tcx: TyCtxt<'_>, lang_item: LangItem) -> bool {
-        if let GenericBound::TraitBound(
-            PolyTrait { ref trait_, .. },
-            rustc_hir::TraitBoundModifiers::NONE,
-        ) = *self
-            && tcx.is_lang_item(trait_.def_id(), lang_item)
+        if let GenericBound::TraitBound(poly_trait_ref, rustc_hir::TraitBoundModifiers::NONE) = self
+            && tcx.is_lang_item(poly_trait_ref.trait_.def_id(), lang_item)
         {
             return true;
         }
@@ -1175,8 +1207,8 @@ impl GenericBound {
     }
 
     pub(crate) fn get_trait_path(&self) -> Option<Path> {
-        if let GenericBound::TraitBound(PolyTrait { ref trait_, .. }, _) = *self {
-            Some(trait_.clone())
+        if let GenericBound::TraitBound(poly_trait_ref, _) = self {
+            Some(poly_trait_ref.trait_.clone())
         } else {
             None
         }
@@ -1215,7 +1247,7 @@ impl PreciseCapturingArg {
 pub(crate) enum WherePredicate {
     BoundPredicate { ty: Type, bounds: Vec<GenericBound>, bound_params: Vec<GenericParamDef> },
     RegionPredicate { lifetime: Lifetime, bounds: Vec<GenericBound> },
-    EqPredicate { lhs: QPathData, rhs: Term },
+    ProjectionPredicate { lhs: QPathData, rhs: Term },
 }
 
 impl WherePredicate {
@@ -1508,9 +1540,9 @@ impl Type {
 
     pub(crate) fn primitive_type(&self) -> Option<PrimitiveType> {
         match *self {
-            Primitive(p) | BorrowedRef { type_: box Primitive(p), .. } => Some(p),
-            Slice(..) | BorrowedRef { type_: box Slice(..), .. } => Some(PrimitiveType::Slice),
-            Array(..) | BorrowedRef { type_: box Array(..), .. } => Some(PrimitiveType::Array),
+            Primitive(p) | BorrowedRef { type_: Primitive(p), .. } => Some(p),
+            Slice(..) | BorrowedRef { type_: Slice(..), .. } => Some(PrimitiveType::Slice),
+            Array(..) | BorrowedRef { type_: Array(..), .. } => Some(PrimitiveType::Array),
             Tuple(ref tys) => {
                 if tys.is_empty() {
                     Some(PrimitiveType::Unit)
@@ -1590,7 +1622,7 @@ impl Type {
             Type::Path { path } => return Some(path.def_id()),
             DynTrait(bounds, _) => return bounds.first().map(|b| b.trait_.def_id()),
             Primitive(p) => return cache.primitive_locations.get(p).cloned(),
-            BorrowedRef { type_: box Generic(..), .. } => PrimitiveType::Reference,
+            BorrowedRef { type_: Generic(..), .. } => PrimitiveType::Reference,
             BorrowedRef { type_, .. } => return type_.def_id(cache),
             Tuple(tys) => {
                 if tys.is_empty() {
@@ -1605,7 +1637,7 @@ impl Type {
             Type::Pat(..) => PrimitiveType::Pat,
             Type::FieldOf(..) => PrimitiveType::FieldOf,
             RawPointer(..) => PrimitiveType::RawPointer,
-            QPath(box QPathData { self_type, .. }) => return self_type.def_id(cache),
+            QPath(QPathData { self_type, .. }) => return self_type.def_id(cache),
             Generic(_) | SelfTy | Infer | ImplTrait(_) | UnsafeBinder(_) => return None,
         };
         Primitive(t).def_id(cache)
@@ -1717,6 +1749,40 @@ impl PrimitiveType {
             kw::Fn => Some(PrimitiveType::Fn),
             sym::never => Some(PrimitiveType::Never),
             _ => None,
+        }
+    }
+
+    pub(crate) fn from_ty(ty: Ty<'_>) -> Option<Self> {
+        match ty.kind() {
+            ty::Array(..) => Some(Self::Array),
+            ty::Bool => Some(Self::Bool),
+            ty::Char => Some(Self::Char),
+            ty::FnDef(..) | ty::FnPtr(..) => Some(Self::Fn),
+            ty::Int(int) => Some(Self::from(*int)),
+            ty::Uint(uint) => Some(Self::from(*uint)),
+            ty::Float(float) => Some(Self::from(*float)),
+            ty::Never => Some(Self::Never),
+            ty::Pat(..) => Some(Self::Pat),
+            ty::RawPtr(..) => Some(Self::RawPointer),
+            ty::Ref(..) => Some(Self::Reference),
+            ty::Slice(..) => Some(Self::Slice),
+            ty::Str => Some(Self::Str),
+            ty::Tuple(elems) if elems.is_empty() => Some(Self::Unit),
+            ty::Tuple(_) => Some(Self::Tuple),
+            ty::Adt(..)
+            | ty::Alias(..)
+            | ty::Bound(..)
+            | ty::Closure(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineClosure(..)
+            | ty::CoroutineWitness(..)
+            | ty::Dynamic(..)
+            | ty::Error(..)
+            | ty::Foreign(..)
+            | ty::Infer(..)
+            | ty::Param(..)
+            | ty::Placeholder(..)
+            | ty::UnsafeBinder(..) => None,
         }
     }
 

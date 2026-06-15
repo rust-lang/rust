@@ -15,10 +15,10 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, instrument};
 
 use crate::builder::expr::category::{Category, RvalueFunc};
-use crate::builder::matches::{DeclareLetBindings, HasMatchGuard};
+use crate::builder::matches::{DeclareLetBindings, Exhaustive, HasMatchGuard};
 use crate::builder::scope::LintLevel;
 use crate::builder::{BlockAnd, BlockAndExtension, BlockFrame, Builder, NeedsTemporary};
-use crate::errors::{LoopMatchArmWithGuard, LoopMatchUnsupportedType};
+use crate::diagnostics::{LoopMatchArmWithGuard, LoopMatchUnsupportedType};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which
@@ -247,7 +247,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::LoopMatch {
                 state,
                 region_scope,
-                match_data: box LoopMatchMatchData { box ref arms, span: match_span, scrutinee },
+                match_data: LoopMatchMatchData { ref arms, span: match_span, scrutinee },
             } => {
                 // Intuitively, this is a combination of a loop containing a labeled block
                 // containing a match.
@@ -322,7 +322,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         &scrutinee_place_builder,
                         match_start_span,
                         patterns,
-                        false,
+                        Exhaustive::Yes,
                     );
 
                     let state_place = scrutinee_place_builder.to_place(this);
@@ -347,7 +347,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             LintLevel::Inherited,
                             move |this| {
                                 this.in_const_continuable_scope(
-                                    Box::from(arms),
+                                    arms.clone(),
                                     built_tree.clone(),
                                     state_place,
                                     expr_span,
@@ -587,7 +587,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.push_assign(block, source_info, destination, address_of);
                 block.unit()
             }
-            ExprKind::Adt(box AdtExpr {
+            ExprKind::Adt(AdtExpr {
                 adt_def,
                 variant_index,
                 args,
@@ -698,7 +698,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
                 block.unit()
             }
-            ExprKind::InlineAsm(box InlineAsmExpr {
+            ExprKind::InlineAsm(InlineAsmExpr {
                 asm_macro,
                 template,
                 ref operands,
@@ -914,7 +914,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block,
                     source_info,
                     destination,
-                    Rvalue::Reborrow(target, mutability, place.into()),
+                    Rvalue::Reborrow(target, mutability, place),
                 );
                 block.unit()
             }

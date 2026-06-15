@@ -110,6 +110,11 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         matches!(self.tcx.def_kind(def_id), DefKind::Static { .. }).then(|| def_id)
     }
 
+    fn filter_adt_def(&self, def_id: DefId) -> Option<DefId> {
+        matches!(self.tcx.def_kind(def_id), DefKind::Struct | DefKind::Enum | DefKind::Union)
+            .then(|| def_id)
+    }
+
     pub fn target_endian(&self) -> Endian {
         self.tcx.data_layout.endian
     }
@@ -150,6 +155,11 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
     /// Retrieve all static items defined in this crate.
     pub fn crate_statics(&self, crate_num: CrateNum) -> Vec<DefId> {
         filter_def_ids(self.tcx, crate_num, |def_id| self.filter_static_def(def_id))
+    }
+
+    /// Retrieve all ADTs defined in this crate.
+    pub fn crate_adts(&self, crate_num: CrateNum) -> Vec<DefId> {
+        filter_def_ids(self.tcx, crate_num, |def_id| self.filter_adt_def(def_id))
     }
 
     pub fn foreign_module(&self, mod_def: DefId) -> &ForeignModule {

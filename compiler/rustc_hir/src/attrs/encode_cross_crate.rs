@@ -78,9 +78,10 @@ impl AttributeKind {
             NonExhaustive(..) => Yes, // Needed for rustdoc
             OnConst { .. } => Yes,
             OnMove { .. } => Yes,
+            OnTypeError { .. } => Yes,
             OnUnimplemented { .. } => Yes,
             OnUnknown { .. } => Yes,
-            OnUnmatchArgs { .. } => Yes,
+            OnUnmatchedArgs { .. } => Yes,
             Optimize(..) => No,
             PanicRuntime => No,
             PatchableFunctionEntry { .. } => Yes,
@@ -112,6 +113,7 @@ impl AttributeKind {
             RustcClean { .. } => No,
             RustcCoherenceIsCore => No,
             RustcCoinductive => No,
+            RustcComptime(..) => No, // Encoded directly in signature
             RustcConfusables { .. } => Yes,
             RustcConstStability { .. } => Yes,
             RustcConstStableIndirect => No,
@@ -191,6 +193,7 @@ impl AttributeKind {
             RustcUnsafeSpecializationMarker => No,
             Sanitize { .. } => No,
             ShouldPanic { .. } => No,
+            Splat(..) => Yes,
             Stability { .. } => Yes,
             TargetFeature { .. } => No,
             TestRunner(..) => Yes,

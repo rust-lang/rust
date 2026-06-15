@@ -8,7 +8,7 @@ use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use rustc_target::callconv::{FnAbi, PassMode};
 
-use crate::errors;
+use crate::diagnostics;
 
 /// Are vector registers used?
 enum UsesVectorRegisters {
@@ -25,10 +25,7 @@ fn passes_vectors_by_value(mode: &PassMode, repr: &BackendRepr) -> UsesVectorReg
     match mode {
         PassMode::Ignore | PassMode::Indirect { .. } => UsesVectorRegisters::No,
         PassMode::Cast { pad_i32: _, cast }
-            if cast
-                .prefix
-                .iter()
-                .any(|r| r.is_some_and(|x| matches!(x.kind, RegKind::Vector { .. })))
+            if cast.prefix.iter().any(|x| matches!(x.kind, RegKind::Vector { .. }))
                 || matches!(cast.rest.unit.kind, RegKind::Vector { .. }) =>
         {
             UsesVectorRegisters::FixedVector
@@ -74,7 +71,7 @@ fn do_check_simd_vector_abi<'tcx>(
                     Some((_, feature)) => feature,
                     None => {
                         let (span, _hir_id) = loc();
-                        tcx.dcx().emit_err(errors::AbiErrorUnsupportedVectorType {
+                        tcx.dcx().emit_err(diagnostics::AbiErrorUnsupportedVectorType {
                             span,
                             ty: arg_abi.layout.ty,
                             is_call,
@@ -84,7 +81,7 @@ fn do_check_simd_vector_abi<'tcx>(
                 };
                 if !feature.is_empty() && !have_feature(Symbol::intern(feature)) {
                     let (span, _hir_id) = loc();
-                    tcx.dcx().emit_err(errors::AbiErrorDisabledVectorType {
+                    tcx.dcx().emit_err(diagnostics::AbiErrorDisabledVectorType {
                         span,
                         required_feature: feature,
                         ty: arg_abi.layout.ty,
@@ -101,7 +98,7 @@ fn do_check_simd_vector_abi<'tcx>(
                 };
                 if !required_feature.is_empty() && !have_feature(Symbol::intern(required_feature)) {
                     let (span, _) = loc();
-                    tcx.dcx().emit_err(errors::AbiErrorDisabledVectorType {
+                    tcx.dcx().emit_err(diagnostics::AbiErrorDisabledVectorType {
                         span,
                         required_feature,
                         ty: arg_abi.layout.ty,
@@ -118,7 +115,7 @@ fn do_check_simd_vector_abi<'tcx>(
     // The `vectorcall` ABI is special in that it requires SSE2 no matter which types are being passed.
     if abi.conv == CanonAbi::X86(X86Call::Vectorcall) && !have_feature(sym::sse2) {
         let (span, _hir_id) = loc();
-        tcx.dcx().emit_err(errors::AbiRequiredTargetFeature {
+        tcx.dcx().emit_err(diagnostics::AbiRequiredTargetFeature {
             span,
             required_feature: "sse2",
             abi: "vectorcall",
@@ -145,7 +142,7 @@ fn do_check_unsized_params<'tcx>(
     for arg_abi in fn_abi.args.iter() {
         if !arg_abi.layout.layout.is_sized() {
             let (span, _hir_id) = loc();
-            tcx.dcx().emit_err(errors::AbiErrorUnsupportedUnsizedParameter {
+            tcx.dcx().emit_err(diagnostics::AbiErrorUnsupportedUnsizedParameter {
                 span,
                 ty: arg_abi.layout.ty,
                 is_call,

@@ -10,7 +10,7 @@ use rustc_middle::{mir, thir};
 use rustc_span::Span;
 use tracing::instrument;
 
-use crate::errors::{GenericConstantTooComplex, GenericConstantTooComplexSub};
+use crate::diagnostics::{GenericConstantTooComplex, GenericConstantTooComplexSub};
 
 /// We do not allow all binary operations in abstract consts, so filter disallowed ones.
 fn check_binop(op: mir::BinOp) -> bool {
@@ -70,7 +70,11 @@ fn recurse_build<'tcx>(
         }
         &ExprKind::ZstLiteral { user_ty: _ } => ty::Const::zero_sized(tcx, node.ty),
         &ExprKind::NamedConst { def_id, args, user_ty: _ } => {
-            let uneval = ty::UnevaluatedConst::new(def_id, args);
+            let uneval = ty::UnevaluatedConst::new(
+                tcx,
+                ty::UnevaluatedConstKind::new_from_def_id(tcx, def_id),
+                args,
+            );
             ty::Const::new_unevaluated(tcx, uneval)
         }
         ExprKind::ConstParam { param, .. } => ty::Const::new_param(tcx, *param),
@@ -105,7 +109,7 @@ fn recurse_build<'tcx>(
         // }
         // ```
         ExprKind::Block { block } => {
-            if let thir::Block { stmts: box [], expr: Some(e), .. } = &body.blocks[*block] {
+            if let thir::Block { stmts: [], expr: Some(e), .. } = &body.blocks[*block] {
                 recurse_build(tcx, body, *e, root_span)?
             } else {
                 maybe_supported_error(GenericConstantTooComplexSub::BlockNotSupported(node.span))?

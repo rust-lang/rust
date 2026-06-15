@@ -122,7 +122,7 @@ pub enum InstanceKind<'tcx> {
     ///
     /// This generates a body that will just borrow the (owned) self type,
     /// and dispatch to the `FnMut::call_mut` instance for the closure.
-    ClosureOnceShim { call_once: DefId, track_caller: bool },
+    ClosureOnceShim { call_once: DefId, closure: DefId, track_caller: bool },
 
     /// `<[FnMut/Fn coroutine-closure] as FnOnce>::call_once`
     ///
@@ -151,6 +151,9 @@ pub enum InstanceKind<'tcx> {
     ///
     /// The `DefId` is for `core::ptr::drop_glue`.
     /// The `Option<Ty<'tcx>>` is either `Some(T)`, or `None` for empty drop glue.
+    ///
+    /// The type must be monomorphic; for polymorphic drop glue use
+    /// `rustc_mir_transform::build_drop_shim`.
     DropGlue(DefId, Option<Ty<'tcx>>),
 
     /// Compiler-generated `<T as Clone>::clone` implementation.
@@ -247,7 +250,7 @@ impl<'tcx> InstanceKind<'tcx> {
             | InstanceKind::Virtual(def_id, _)
             | InstanceKind::Intrinsic(def_id)
             | InstanceKind::ThreadLocalShim(def_id)
-            | InstanceKind::ClosureOnceShim { call_once: def_id, track_caller: _ }
+            | InstanceKind::ClosureOnceShim { call_once: def_id, closure: _, track_caller: _ }
             | ty::InstanceKind::ConstructCoroutineInClosureShim {
                 coroutine_closure_def_id: def_id,
                 receiver_by_ref: _,
@@ -310,7 +313,9 @@ impl<'tcx> InstanceKind<'tcx> {
             InstanceKind::Item(def_id) | InstanceKind::Virtual(def_id, _) => {
                 tcx.body_codegen_attrs(def_id).flags.contains(CodegenFnAttrFlags::TRACK_CALLER)
             }
-            InstanceKind::ClosureOnceShim { call_once: _, track_caller } => track_caller,
+            InstanceKind::ClosureOnceShim { call_once: _, closure: _, track_caller } => {
+                track_caller
+            }
             _ => false,
         }
     }
@@ -763,7 +768,8 @@ impl<'tcx> Instance<'tcx> {
             .def_id;
         let track_caller =
             tcx.codegen_fn_attrs(closure_did).flags.contains(CodegenFnAttrFlags::TRACK_CALLER);
-        let def = ty::InstanceKind::ClosureOnceShim { call_once, track_caller };
+        let def =
+            ty::InstanceKind::ClosureOnceShim { call_once, closure: closure_did, track_caller };
 
         let self_ty = Ty::new_closure(tcx, closure_did, args);
 

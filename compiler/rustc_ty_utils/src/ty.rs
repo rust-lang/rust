@@ -292,8 +292,8 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
     }
 }
 
-fn typing_env_normalized_for_post_analysis(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TypingEnv<'_> {
-    ty::TypingEnv::non_body_analysis(tcx, def_id).with_post_analysis_normalized(tcx)
+fn param_env_normalized_for_post_analysis(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
+    tcx.param_env(def_id).with_normalized(tcx)
 }
 
 /// Check if a function is async.
@@ -358,12 +358,13 @@ fn impl_self_is_guaranteed_unsized<'tcx>(tcx: TyCtxt<'tcx>, impl_def_id: DefId) 
     let cause = traits::ObligationCause::dummy();
     let param_env = tcx.param_env(impl_def_id);
 
+    let self_ty = ocx.normalize(&cause, param_env, tcx.type_of(impl_def_id).instantiate_identity());
     let tail = tcx.struct_tail_raw(
-        tcx.type_of(impl_def_id).instantiate_identity().skip_norm_wip(),
+        self_ty,
         &cause,
         |ty| {
             // FIXME: ambiguity is just ignored.
-            ocx.normalize(&cause, param_env, Unnormalized::new_wip(ty))
+            ocx.normalize(&cause, param_env, ty)
         },
         || (),
     );
@@ -404,7 +405,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         asyncness,
         adt_sizedness_constraint,
         param_env,
-        typing_env_normalized_for_post_analysis,
+        param_env_normalized_for_post_analysis,
         defaultness,
         unsizing_params_for_adt,
         impl_self_is_guaranteed_unsized,

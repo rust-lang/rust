@@ -3,19 +3,15 @@
 //!
 //! Issue: <https://github.com/rust-lang/rust/issues/31788>
 
-//@ normalize-stderr: "loaded from .*libstd-.*.rmeta" -> "loaded from SYSROOT/libstd-*.rmeta"
+//@ normalize-stderr: "loaded from \$.*libcore-.*.rmeta" -> "loaded from SYSROOT/libcore-*.rmeta"
 //@ dont-require-annotations: NOTE
 
 #![feature(lang_items)]
 
-extern crate core;
-
-use core::panic::PanicInfo;
-
-#[lang = "panic_impl"]
-fn panic_impl(info: &PanicInfo) -> ! {
-    //~^ ERROR: found duplicate lang item `panic_impl`
-    //~| NOTE first defined in crate `std`
+#[lang = "panic_fmt"]
+fn panic_fmt() -> ! {
+    //~^ ERROR: found duplicate lang item `panic_fmt`
+    //~| NOTE first defined in crate `core`
     loop {}
 }
 

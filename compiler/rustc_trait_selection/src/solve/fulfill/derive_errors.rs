@@ -34,9 +34,7 @@ pub(super) fn fulfillment_error_for_no_solution<'tcx>(
         }
         ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, expected_ty)) => {
             let ct_ty = match ct.kind() {
-                ty::ConstKind::Unevaluated(uv) => {
-                    infcx.tcx.type_of(uv.def).instantiate(infcx.tcx, uv.args).skip_norm_wip()
-                }
+                ty::ConstKind::Unevaluated(uv) => uv.type_of(infcx.tcx).skip_norm_wip(),
                 ty::ConstKind::Param(param_ct) => {
                     param_ct.find_const_ty_from_env(obligation.param_env)
                 }
@@ -393,7 +391,6 @@ impl<'tcx> BestObligation<'tcx> {
         &mut self,
         goal: &inspect::InspectGoal<'_, 'tcx>,
     ) -> ControlFlow<PredicateObligation<'tcx>> {
-        let tcx = goal.infcx().tcx;
         let pred_kind = goal.goal().predicate.kind();
 
         match pred_kind.no_bound_vars() {
@@ -402,7 +399,7 @@ impl<'tcx> BestObligation<'tcx> {
             }
             Some(ty::PredicateKind::NormalizesTo(pred))
                 if let ty::AliasTermKind::ProjectionTy { .. }
-                | ty::AliasTermKind::ProjectionConst { .. } = pred.alias.kind(tcx) =>
+                | ty::AliasTermKind::ProjectionConst { .. } = pred.alias.kind =>
             {
                 self.detect_error_in_self_ty_normalization(goal, pred.alias.self_ty())?;
                 self.detect_non_well_formed_assoc_item(goal, pred.alias)?;
@@ -469,7 +466,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
             }
             ty::PredicateKind::NormalizesTo(normalizes_to)
                 if matches!(
-                    normalizes_to.alias.kind(tcx),
+                    normalizes_to.alias.kind,
                     ty::AliasTermKind::ProjectionTy { .. }
                         | ty::AliasTermKind::ProjectionConst { .. }
                 ) =>
@@ -560,12 +557,12 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
         // and therefore is treated as rigid.
         if let Some(ty::PredicateKind::AliasRelate(lhs, rhs, _)) = pred.kind().no_bound_vars() {
             goal.infcx().visit_proof_tree_at_depth(
-                goal.goal().with(tcx, ty::ClauseKind::WellFormed(lhs.into())),
+                goal.goal().with(tcx, ty::ClauseKind::WellFormed(lhs)),
                 goal.depth() + 1,
                 self,
             )?;
             goal.infcx().visit_proof_tree_at_depth(
-                goal.goal().with(tcx, ty::ClauseKind::WellFormed(rhs.into())),
+                goal.goal().with(tcx, ty::ClauseKind::WellFormed(rhs)),
                 goal.depth() + 1,
                 self,
             )?;

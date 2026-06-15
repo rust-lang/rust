@@ -63,6 +63,7 @@ impl TypingModeErasedStatus for MayBeErased {}
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
+#[cfg_attr(feature = "nightly", rustc_must_match_exhaustively)]
 pub enum TypingMode<I: Interner, S: TypingModeErasedStatus = MayBeErased> {
     /// When checking whether impls overlap, we check whether any obligations
     /// are guaranteed to never hold when unifying the impls. This requires us
@@ -76,7 +77,8 @@ pub enum TypingMode<I: Interner, S: TypingModeErasedStatus = MayBeErased> {
     /// We also have to be careful when generalizing aliases inside of higher-ranked
     /// types to not unnecessarily constrain any inference variables.
     Coherence,
-    /// Analysis includes type inference, checking that items are well-formed, and
+    /// Typeck is the typing mode mainly used in `rustc_hir_typeck` and related crate.
+    /// It includes type inference, checking that items are well-formed, and
     /// pretty much everything else which may emit proper type errors to the user.
     ///
     /// We only normalize opaque types which may get defined by the current body,
@@ -104,30 +106,35 @@ pub enum TypingMode<I: Interner, S: TypingModeErasedStatus = MayBeErased> {
     ///     let x: <() as Assoc>::Output = true;
     /// }
     /// ```
-    Analysis { defining_opaque_types_and_generators: I::LocalDefIds },
-    /// The behavior during MIR borrowck is identical to `TypingMode::Analysis`
-    /// except that the initial value for opaque types is the type computed during
-    /// HIR typeck with unique unconstrained region inference variables.
+    Typeck { defining_opaque_types_and_generators: I::LocalDefIds },
+    /// `PostTypeckUntilBorrowck` is used after `Typeck` has finished, up to and including borrowck,
+    /// for anything that accesses typeck results. This is the behavior that's used mainly in borrowck,
+    /// but, for example, also in late lints and other analyses while building MIR. The behavior of
+    /// `PostTypeckUntilBorrowck` is identical to `TypingMode::Typeck` except that the initial value for
+    /// opaque types is the type computed during HIR typeck with unique unconstrained region inference variables.
     ///
-    /// This is currently only used with by the new solver as it results in new
+    /// This is currently only used by the new solver as it results in new
     /// non-universal defining uses of opaque types, which is a breaking change.
     /// See tests/ui/impl-trait/non-defining-use/as-projection-term.rs.
-    Borrowck { defining_opaque_types: I::LocalDefIds },
+    PostTypeckUntilBorrowck { defining_opaque_types: I::LocalDefIds },
     /// Any analysis after borrowck for a given body should be able to use all the
     /// hidden types defined by borrowck, without being able to define any new ones.
     ///
     /// This is currently only used by the new solver, but should be implemented in
     /// the old solver as well.
-    PostBorrowckAnalysis { defined_opaque_types: I::LocalDefIds },
-    /// After analysis, mostly during codegen and MIR optimizations, we're able to
+    PostBorrowck { defined_opaque_types: I::LocalDefIds },
+    /// After analysis, mostly during MIR optimizations, we're able to
     /// reveal all opaque types. As the hidden type should *never* be observable
     /// directly by the user, this should not be used by checks which may expose
     /// such details to the user.
     ///
-    /// There are some exceptions to this as for example `layout_of` and const-evaluation
-    /// always run in `PostAnalysis` mode, even when used during analysis. This exposes
-    /// some information about the underlying type to users, but not the type itself.
+    /// However, we restrict `layout_of` and const-evaluation from exposing some information like
+    /// coroutine layout which requires optimized MIR.
     PostAnalysis,
+
+    /// During codegen and MIR optimizations, we're able to reveal all opaque types and compute all
+    /// layouts.
+    Codegen,
 
     /// The typing modes above (except coherence) only differ in how they handle
     ///
@@ -167,28 +174,30 @@ impl<I: Interner> PartialEq for TypingModeEqWrapper<I> {
         match (self.0, other.0) {
             (TypingMode::Coherence, TypingMode::Coherence) => true,
             (
-                TypingMode::Analysis { defining_opaque_types_and_generators: l },
-                TypingMode::Analysis { defining_opaque_types_and_generators: r },
+                TypingMode::Typeck { defining_opaque_types_and_generators: l },
+                TypingMode::Typeck { defining_opaque_types_and_generators: r },
             ) => l == r,
             (
-                TypingMode::Borrowck { defining_opaque_types: l },
-                TypingMode::Borrowck { defining_opaque_types: r },
+                TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: l },
+                TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: r },
             ) => l == r,
             (
-                TypingMode::PostBorrowckAnalysis { defined_opaque_types: l },
-                TypingMode::PostBorrowckAnalysis { defined_opaque_types: r },
+                TypingMode::PostBorrowck { defined_opaque_types: l },
+                TypingMode::PostBorrowck { defined_opaque_types: r },
             ) => l == r,
             (TypingMode::PostAnalysis, TypingMode::PostAnalysis) => true,
+            (TypingMode::Codegen, TypingMode::Codegen) => true,
             (
                 TypingMode::ErasedNotCoherence(MayBeErased),
                 TypingMode::ErasedNotCoherence(MayBeErased),
             ) => true,
             (
                 TypingMode::Coherence
-                | TypingMode::Analysis { .. }
-                | TypingMode::Borrowck { .. }
-                | TypingMode::PostBorrowckAnalysis { .. }
+                | TypingMode::Typeck { .. }
+                | TypingMode::PostTypeckUntilBorrowck { .. }
+                | TypingMode::PostBorrowck { .. }
                 | TypingMode::PostAnalysis
+                | TypingMode::Codegen
                 | TypingMode::ErasedNotCoherence(MayBeErased),
                 _,
             ) => false,
@@ -207,10 +216,11 @@ impl<I: Interner, S: TypingModeErasedStatus> TypingMode<I, S> {
     pub fn is_coherence(&self) -> bool {
         match self {
             TypingMode::Coherence => true,
-            TypingMode::Analysis { .. }
-            | TypingMode::Borrowck { .. }
-            | TypingMode::PostBorrowckAnalysis { .. }
+            TypingMode::Typeck { .. }
+            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis
+            | TypingMode::Codegen
             | TypingMode::ErasedNotCoherence(_) => false,
         }
     }
@@ -224,10 +234,11 @@ impl<I: Interner, S: TypingModeErasedStatus> TypingMode<I, S> {
         match self {
             TypingMode::ErasedNotCoherence(_) => true,
             TypingMode::Coherence
-            | TypingMode::Analysis { .. }
-            | TypingMode::Borrowck { .. }
-            | TypingMode::PostBorrowckAnalysis { .. }
-            | TypingMode::PostAnalysis => false,
+            | TypingMode::Typeck { .. }
+            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::PostBorrowck { .. }
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen => false,
         }
     }
 }
@@ -240,16 +251,17 @@ impl<I: Interner> TypingMode<I, MayBeErased> {
     pub fn assert_not_erased(self) -> TypingMode<I, CantBeErased> {
         match self {
             TypingMode::Coherence => TypingMode::Coherence,
-            TypingMode::Analysis { defining_opaque_types_and_generators } => {
-                TypingMode::Analysis { defining_opaque_types_and_generators }
+            TypingMode::Typeck { defining_opaque_types_and_generators } => {
+                TypingMode::Typeck { defining_opaque_types_and_generators }
             }
-            TypingMode::Borrowck { defining_opaque_types } => {
-                TypingMode::Borrowck { defining_opaque_types }
+            TypingMode::PostTypeckUntilBorrowck { defining_opaque_types } => {
+                TypingMode::PostTypeckUntilBorrowck { defining_opaque_types }
             }
-            TypingMode::PostBorrowckAnalysis { defined_opaque_types } => {
-                TypingMode::PostBorrowckAnalysis { defined_opaque_types }
+            TypingMode::PostBorrowck { defined_opaque_types } => {
+                TypingMode::PostBorrowck { defined_opaque_types }
             }
             TypingMode::PostAnalysis => TypingMode::PostAnalysis,
+            TypingMode::Codegen => TypingMode::Codegen,
             TypingMode::ErasedNotCoherence(MayBeErased) => panic!(
                 "Called `assert_not_erased` from a place that can be called by the trait solver in `TypingMode::ErasedNotCoherence`. `TypingMode` is `ErasedNotCoherence` in a place where that should be impossible"
             ),
@@ -260,11 +272,11 @@ impl<I: Interner> TypingMode<I, MayBeErased> {
 impl<I: Interner> TypingMode<I, CantBeErased> {
     /// Analysis outside of a body does not define any opaque types.
     pub fn non_body_analysis() -> TypingMode<I> {
-        TypingMode::Analysis { defining_opaque_types_and_generators: Default::default() }
+        TypingMode::Typeck { defining_opaque_types_and_generators: Default::default() }
     }
 
     pub fn typeck_for_body(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
-        TypingMode::Analysis {
+        TypingMode::Typeck {
             defining_opaque_types_and_generators: cx
                 .opaque_types_and_coroutines_defined_by(body_def_id),
         }
@@ -276,7 +288,7 @@ impl<I: Interner> TypingMode<I, CantBeErased> {
     /// FIXME: This will be removed because it's generally not correct to define
     /// opaques outside of HIR typeck.
     pub fn analysis_in_body(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
-        TypingMode::Analysis {
+        TypingMode::Typeck {
             defining_opaque_types_and_generators: cx.opaque_types_defined_by(body_def_id),
         }
     }
@@ -286,7 +298,7 @@ impl<I: Interner> TypingMode<I, CantBeErased> {
         if defining_opaque_types.is_empty() {
             TypingMode::non_body_analysis()
         } else {
-            TypingMode::Borrowck { defining_opaque_types }
+            TypingMode::PostTypeckUntilBorrowck { defining_opaque_types }
         }
     }
 
@@ -295,7 +307,7 @@ impl<I: Interner> TypingMode<I, CantBeErased> {
         if defined_opaque_types.is_empty() {
             TypingMode::non_body_analysis()
         } else {
-            TypingMode::PostBorrowckAnalysis { defined_opaque_types }
+            TypingMode::PostBorrowck { defined_opaque_types }
         }
     }
 }
@@ -304,16 +316,17 @@ impl<I: Interner> From<TypingMode<I, CantBeErased>> for TypingMode<I, MayBeErase
     fn from(value: TypingMode<I, CantBeErased>) -> Self {
         match value {
             TypingMode::Coherence => TypingMode::Coherence,
-            TypingMode::Analysis { defining_opaque_types_and_generators } => {
-                TypingMode::Analysis { defining_opaque_types_and_generators }
+            TypingMode::Typeck { defining_opaque_types_and_generators } => {
+                TypingMode::Typeck { defining_opaque_types_and_generators }
             }
-            TypingMode::Borrowck { defining_opaque_types } => {
-                TypingMode::Borrowck { defining_opaque_types }
+            TypingMode::PostTypeckUntilBorrowck { defining_opaque_types } => {
+                TypingMode::PostTypeckUntilBorrowck { defining_opaque_types }
             }
-            TypingMode::PostBorrowckAnalysis { defined_opaque_types } => {
-                TypingMode::PostBorrowckAnalysis { defined_opaque_types }
+            TypingMode::PostBorrowck { defined_opaque_types } => {
+                TypingMode::PostBorrowck { defined_opaque_types }
             }
             TypingMode::PostAnalysis => TypingMode::PostAnalysis,
+            TypingMode::Codegen => TypingMode::Codegen,
         }
     }
 }
@@ -393,7 +406,16 @@ pub trait InferCtxtLike: Sized {
         value: ty::Binder<Self::Interner, T>,
     ) -> T;
 
-    fn enter_forall<T: TypeFoldable<Self::Interner>, U>(
+    fn enter_forall_without_assumptions<T: TypeFoldable<Self::Interner>, U>(
+        &self,
+        value: ty::Binder<Self::Interner, T>,
+        f: impl FnOnce(T) -> U,
+    ) -> U;
+
+    /// FIXME(-Zassumptions-on-binders): Any usage of this method is likely wrong
+    /// and should be replaced in the long term by actually taking assumptions into
+    /// account.
+    fn enter_forall_with_empty_assumptions<T: TypeFoldable<Self::Interner>, U>(
         &self,
         value: ty::Binder<Self::Interner, T>,
         f: impl FnOnce(T) -> U,
@@ -533,11 +555,10 @@ where
 
     match infcx.typing_mode_raw().assert_not_erased() {
         TypingMode::Coherence
-        | TypingMode::Analysis { .. }
-        | TypingMode::Borrowck { .. }
-        | TypingMode::PostBorrowckAnalysis { .. } => {
-            infcx.cx().features().feature_bound_holds_in_crate(symbol)
-        }
-        TypingMode::PostAnalysis => true,
+        | TypingMode::Typeck { .. }
+        | TypingMode::PostTypeckUntilBorrowck { .. }
+        | TypingMode::PostBorrowck { .. }
+        | TypingMode::PostAnalysis => infcx.cx().features().feature_bound_holds_in_crate(symbol),
+        TypingMode::Codegen => true,
     }
 }

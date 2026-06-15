@@ -36,7 +36,7 @@ use crate::pass_manager::MirPass;
 
 pub(crate) struct ImpossiblePredicates;
 
-fn has_impossible_predicates(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+pub(crate) fn has_impossible_predicates(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     let predicates = tcx.predicates_of(def_id).instantiate_identity(tcx);
     tracing::trace!(?predicates);
     let predicates =

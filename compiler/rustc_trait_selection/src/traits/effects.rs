@@ -458,13 +458,16 @@ fn evaluate_host_effect_for_destruct_goal<'tcx>(
         ty::Adt(adt_def, args) => {
             let mut const_conditions: ThinVec<_> = adt_def
                 .all_fields()
-                .map(|field| ty::TraitRef::new(tcx, destruct_def_id, [field.ty(tcx, args)]))
+                .map(|field| {
+                    ty::TraitRef::new(tcx, destruct_def_id, [field.ty(tcx, args).skip_norm_wip()])
+                })
                 .collect();
             match adt_def.destructor(tcx).map(|dtor| tcx.constness(dtor.did)) {
+                Some(hir::Constness::Const { always: true }) => todo!("FIXME(comptime)"),
                 // `Drop` impl exists, but it's not const. Type cannot be `[const] Destruct`.
                 Some(hir::Constness::NotConst) => return Err(EvaluationFailure::NoSolution),
                 // `Drop` impl exists, and it's const. Require `Ty: [const] Drop` to hold.
-                Some(hir::Constness::Const) => {
+                Some(hir::Constness::Const { always: false }) => {
                     let drop_def_id = tcx.require_lang_item(LangItem::Drop, obligation.cause.span);
                     let drop_trait_ref = ty::TraitRef::new(tcx, drop_def_id, [self_ty]);
                     const_conditions.push(drop_trait_ref);
@@ -561,7 +564,9 @@ fn evaluate_host_effect_for_fn_goal<'tcx>(
     };
 
     match tcx.constness(def) {
-        hir::Constness::Const => Ok(tcx
+        // FIXME(comptime)
+        hir::Constness::Const { always: true } => Err(EvaluationFailure::NoSolution),
+        hir::Constness::Const { always: false } => Ok(tcx
             .const_conditions(def)
             .instantiate(tcx, args)
             .into_iter()
@@ -592,8 +597,15 @@ fn evaluate_host_effect_from_selection_candidate<'tcx>(
             Err(_) => Err(EvaluationFailure::NoSolution),
             Ok(Some(source)) => match source {
                 ImplSource::UserDefined(impl_) => {
-                    if tcx.impl_trait_header(impl_.impl_def_id).constness != hir::Constness::Const {
-                        return Err(EvaluationFailure::NoSolution);
+                    match tcx.impl_trait_header(impl_.impl_def_id).constness {
+                        rustc_hir::Constness::Const { always } => {
+                            if always {
+                                todo!()
+                            }
+                        }
+                        rustc_hir::Constness::NotConst => {
+                            return Err(EvaluationFailure::NoSolution);
+                        }
                     }
 
                     let mut nested = impl_.nested;

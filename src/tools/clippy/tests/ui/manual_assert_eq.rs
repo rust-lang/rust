@@ -1,7 +1,6 @@
 //@aux-build:proc_macros.rs
 #![warn(clippy::manual_assert_eq)]
-#![allow(clippy::manual_ignore_case_cmp)] // only raised before the fix
-#![expect(clippy::eq_op, clippy::assertions_on_constants)]
+#![expect(clippy::assertions_on_constants, clippy::eq_op)]
 
 fn main() {
     let a = "a";

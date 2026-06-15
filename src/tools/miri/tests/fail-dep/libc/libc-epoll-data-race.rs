@@ -6,33 +6,13 @@
 // ensure deterministic schedule
 //@compile-flags: -Zmiri-deterministic-concurrency
 
-use std::convert::TryInto;
 use std::thread;
 use std::thread::spawn;
 
 #[path = "../../utils/libc.rs"]
 mod libc_utils;
-
-#[track_caller]
-fn check_epoll_wait<const N: usize>(epfd: i32, expected_notifications: &[(u32, u64)]) {
-    let epoll_event = libc::epoll_event { events: 0, u64: 0 };
-    let mut array: [libc::epoll_event; N] = [epoll_event; N];
-    let maxsize = N;
-    let array_ptr = array.as_mut_ptr();
-    let res = unsafe { libc::epoll_wait(epfd, array_ptr, maxsize.try_into().unwrap(), 0) };
-    if res < 0 {
-        panic!("epoll_wait failed: {}", std::io::Error::last_os_error());
-    }
-    assert_eq!(
-        res,
-        expected_notifications.len().try_into().unwrap(),
-        "got wrong number of notifications"
-    );
-    let got_notifications =
-        unsafe { std::slice::from_raw_parts(array_ptr, res.try_into().unwrap()) };
-    let got_notifications = got_notifications.iter().map(|e| (e.events, e.u64)).collect::<Vec<_>>();
-    assert_eq!(got_notifications, expected_notifications, "got wrong notifications");
-}
+use libc_utils::epoll::*;
+use libc_utils::*;
 
 fn main() {
     // Create an epoll instance.
@@ -41,27 +21,17 @@ fn main() {
 
     // Create two socketpair instances.
     let mut fds_a = [-1, -1];
-    let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds_a.as_mut_ptr()) };
-    assert_eq!(res, 0);
-
+    unsafe {
+        errno_check(libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds_a.as_mut_ptr()))
+    };
     let mut fds_b = [-1, -1];
-    let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds_b.as_mut_ptr()) };
-    assert_eq!(res, 0);
+    unsafe {
+        errno_check(libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds_b.as_mut_ptr()))
+    };
 
     // Register both pipe read ends.
-    let mut ev = libc::epoll_event {
-        events: (libc::EPOLLIN | libc::EPOLLET) as _,
-        u64: u64::try_from(fds_a[1]).unwrap(),
-    };
-    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds_a[1], &mut ev) };
-    assert_eq!(res, 0);
-
-    let mut ev = libc::epoll_event {
-        events: (libc::EPOLLIN | libc::EPOLLET) as _,
-        u64: u64::try_from(fds_b[1]).unwrap(),
-    };
-    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds_b[1], &mut ev) };
-    assert_eq!(res, 0);
+    epoll_ctl_add(epfd, fds_a[1], EPOLLIN | EPOLLET).unwrap();
+    epoll_ctl_add(epfd, fds_b[1], EPOLLIN | EPOLLET).unwrap();
 
     static mut VAL_ONE: u8 = 40; // This one will be read soundly.
     static mut VAL_TWO: u8 = 50; // This one will be read unsoundly.
@@ -78,9 +48,7 @@ fn main() {
     thread::yield_now();
 
     // With room for one event: check result from epoll_wait.
-    let expected_event = u32::try_from(libc::EPOLLIN).unwrap();
-    let expected_value = u64::try_from(fds_a[1]).unwrap();
-    check_epoll_wait::<1>(epfd, &[(expected_event, expected_value)]);
+    check_epoll_wait_partial(epfd, &[Ev { events: EPOLLIN, data: fds_a[1] }], 1, -1);
 
     // Since we only received one event, we have synchronized with
     // the write to VAL_ONE but not with the one to VAL_TWO.

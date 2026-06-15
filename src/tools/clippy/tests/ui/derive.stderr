@@ -1,5 +1,5 @@
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> tests/ui/derive.rs:15:1
+  --> tests/ui/derive.rs:13:1
    |
 LL | / impl Clone for Qux {
 LL | |
@@ -14,7 +14,7 @@ LL | | }
    = help: to override `-D warnings` add `#[allow(clippy::expl_impl_clone_on_copy)]`
 
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> tests/ui/derive.rs:41:1
+  --> tests/ui/derive.rs:39:1
    |
 LL | / impl<'a> Clone for Lt<'a> {
 LL | |
@@ -27,7 +27,7 @@ LL | | }
    = help: consider deriving `Clone` or removing `Copy`
 
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> tests/ui/derive.rs:54:1
+  --> tests/ui/derive.rs:52:1
    |
 LL | / impl Clone for BigArray {
 LL | |
@@ -40,7 +40,7 @@ LL | | }
    = help: consider deriving `Clone` or removing `Copy`
 
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> tests/ui/derive.rs:67:1
+  --> tests/ui/derive.rs:65:1
    |
 LL | / impl Clone for FnPtr {
 LL | |
@@ -53,7 +53,7 @@ LL | | }
    = help: consider deriving `Clone` or removing `Copy`
 
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> tests/ui/derive.rs:89:1
+  --> tests/ui/derive.rs:87:1
    |
 LL | / impl<T: Clone> Clone for Generic2<T> {
 LL | |
@@ -65,5 +65,14 @@ LL | | }
    |
    = help: consider deriving `Clone` or removing `Copy`
 
-error: aborting due to 5 previous errors
+error: docs for unsafe field missing `# Safety` section
+  --> tests/ui/derive.rs:117:9
+   |
+LL |         pub unsafe actual: (),
+   |         ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::missing-safety-doc` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_safety_doc)]`
+
+error: aborting due to 6 previous errors
 

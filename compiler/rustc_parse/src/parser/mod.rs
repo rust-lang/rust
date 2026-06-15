@@ -36,8 +36,8 @@ use rustc_ast::util::classify;
 use rustc_ast::{
     self as ast, AnonConst, AttrArgs, AttrId, BinOpKind, ByRef, Const, CoroutineKind,
     DUMMY_NODE_ID, DelimArgs, Expr, ExprKind, Extern, HasAttrs, HasTokens, ImplRestriction,
-    MgcaDisambiguation, Mutability, Recovered, RestrictionKind, Safety, StrLit, Visibility,
-    VisibilityKind,
+    MgcaDisambiguation, MutRestriction, Mutability, Recovered, RestrictionKind, Safety, StrLit,
+    Visibility, VisibilityKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
@@ -51,8 +51,8 @@ pub use token_type::{ExpKeywordPair, ExpTokenPair, TokenType};
 use tracing::debug;
 
 use crate::errors::{
-    self, IncorrectImplRestriction, IncorrectVisibilityRestriction, NonStringAbiLiteral,
-    TokenDescription,
+    self, IncorrectImplRestriction, IncorrectMutRestriction, IncorrectVisibilityRestriction,
+    NonStringAbiLiteral, TokenDescription,
 };
 use crate::exp;
 
@@ -297,6 +297,13 @@ impl SeqSep {
     }
 }
 
+/// Whether parsing `impl` or `mut` restrictions.
+#[derive(Clone, Copy, Debug)]
+enum ParsingRestrictionKind {
+    Impl,
+    Mut,
+}
+
 #[derive(Debug)]
 pub enum FollowedByType {
     Yes,
@@ -409,7 +416,7 @@ impl<'a> Parser<'a> {
                 self.bump();
                 Ok(Recovered::No)
             } else {
-                self.unexpected_try_recover(&exp.tok)
+                Err(self.unexpected_err(&exp.tok))
             }
         } else {
             self.expect_one_of(slice::from_ref(&exp), &[])
@@ -910,6 +917,13 @@ impl<'a> Parser<'a> {
                             }
 
                             // Attempt to keep parsing if it was an omitted separator.
+                            // `&raw <expr>` already has a specific suggestion for missing
+                            // `const`/`mut`, so don't recover `<expr>` as the next element in
+                            // a comma-separated list.
+                            if exp.token_type == TokenType::Comma && self.is_expected_raw_ref_mut()
+                            {
+                                return Err(expect_err);
+                            }
                             self.last_unexpected_token_span = None;
                             match f(self) {
                                 Ok(t) => {
@@ -1550,37 +1564,9 @@ impl<'a> Parser<'a> {
     /// Enforces the `impl_restriction` feature gate whenever an explicit restriction is encountered.
     fn parse_impl_restriction(&mut self) -> PResult<'a, ImplRestriction> {
         if self.eat_keyword(exp!(Impl)) {
-            let lo = self.prev_token.span;
-            // No units or tuples are allowed to follow `impl` here, so we can safely bump `(`.
-            self.expect(exp!(OpenParen))?;
-            if self.eat_keyword(exp!(In)) {
-                let path = self.parse_path(PathStyle::Mod)?; // `in path`
-                self.expect(exp!(CloseParen))?; // `)`
-                let restriction = RestrictionKind::Restricted {
-                    path: Box::new(path),
-                    id: ast::DUMMY_NODE_ID,
-                    shorthand: false,
-                };
-                let span = lo.to(self.prev_token.span);
-                self.psess.gated_spans.gate(sym::impl_restriction, span);
-                return Ok(ImplRestriction { kind: restriction, span, tokens: None });
-            } else if self.look_ahead(1, |t| t == &token::CloseParen)
-                && self.is_keyword_ahead(0, &[kw::Crate, kw::Super, kw::SelfLower])
-            {
-                let path = self.parse_path(PathStyle::Mod)?; // `crate`/`super`/`self`
-                self.expect(exp!(CloseParen))?; // `)`
-                let restriction = RestrictionKind::Restricted {
-                    path: Box::new(path),
-                    id: ast::DUMMY_NODE_ID,
-                    shorthand: true,
-                };
-                let span = lo.to(self.prev_token.span);
-                self.psess.gated_spans.gate(sym::impl_restriction, span);
-                return Ok(ImplRestriction { kind: restriction, span, tokens: None });
-            } else {
-                self.recover_incorrect_impl_restriction(lo)?;
-                // Emit diagnostic, but continue with no impl restriction.
-            }
+            let (kind, span, gated_span) = self.parse_restriction(ParsingRestrictionKind::Impl)?;
+            self.psess.gated_spans.gate(sym::impl_restriction, gated_span);
+            return Ok(ImplRestriction { kind, span, tokens: None });
         }
         Ok(ImplRestriction {
             kind: RestrictionKind::Unrestricted,
@@ -1589,15 +1575,73 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Recovery for e.g. `impl(something) trait`
-    fn recover_incorrect_impl_restriction(&mut self, lo: Span) -> PResult<'a, ()> {
-        let path = self.parse_path(PathStyle::Mod)?;
-        self.expect(exp!(CloseParen))?; // `)`
-        let path_str = pprust::path_to_string(&path);
-        self.dcx().emit_err(IncorrectImplRestriction { span: path.span, inner_str: path_str });
-        let end = self.prev_token.span;
-        self.psess.gated_spans.gate(sym::impl_restriction, lo.to(end));
-        Ok(())
+    /// Parses an optional `mut` restriction.
+    /// Enforces the `mut_restriction` feature gate whenever an explicit restriction is encountered.
+    fn parse_mut_restriction(&mut self) -> PResult<'a, MutRestriction> {
+        if self.eat_keyword(exp!(Mut)) {
+            let (kind, span, gated_span) = self.parse_restriction(ParsingRestrictionKind::Mut)?;
+            self.psess.gated_spans.gate(sym::mut_restriction, gated_span);
+            return Ok(MutRestriction { kind, span, tokens: None });
+        }
+        Ok(MutRestriction {
+            kind: RestrictionKind::Unrestricted,
+            span: self.token.span.shrink_to_lo(),
+            tokens: None,
+        })
+    }
+
+    /// Parses `impl` or `mut` restrictions.
+    /// Returns the parsed restriction and its span, as well as the gated span.
+    fn parse_restriction(
+        &mut self,
+        restriction_kind: ParsingRestrictionKind,
+    ) -> PResult<'a, (RestrictionKind, Span, Span)> {
+        let lo = self.prev_token.span;
+        // No units or tuples are allowed to follow `impl` or `mut` here, so we can safely bump `(`.
+        self.expect(exp!(OpenParen))?;
+        if self.eat_keyword(exp!(In)) {
+            let path = self.parse_path(PathStyle::Mod)?; // `in path`
+            self.expect(exp!(CloseParen))?; // `)`
+            let restriction = RestrictionKind::Restricted {
+                path: Box::new(path),
+                id: ast::DUMMY_NODE_ID,
+                shorthand: false,
+            };
+            let span = lo.to(self.prev_token.span);
+            Ok((restriction, span, span))
+        } else if self.look_ahead(1, |t| t == &token::CloseParen)
+            && self.is_keyword_ahead(0, &[kw::Crate, kw::Super, kw::SelfLower])
+        {
+            let path = self.parse_path(PathStyle::Mod)?; // `crate`/`super`/`self`
+            self.expect(exp!(CloseParen))?; // `)`
+            let restriction = RestrictionKind::Restricted {
+                path: Box::new(path),
+                id: ast::DUMMY_NODE_ID,
+                shorthand: true,
+            };
+            let span = lo.to(self.prev_token.span);
+            Ok((restriction, span, span))
+        } else {
+            // Emit diagnostic, but continue with no restrictions.
+            // Recovery for `impl(something) trait` or `mut (something) field`.
+            let path = self.parse_path(PathStyle::Mod)?;
+            self.expect(exp!(CloseParen))?; // `)`
+            let path_str = pprust::path_to_string(&path);
+            let end = self.prev_token.span;
+            match restriction_kind {
+                ParsingRestrictionKind::Impl => {
+                    self.dcx().emit_err(IncorrectImplRestriction {
+                        span: path.span,
+                        inner_str: path_str,
+                    });
+                }
+                ParsingRestrictionKind::Mut => {
+                    self.dcx()
+                        .emit_err(IncorrectMutRestriction { span: path.span, inner_str: path_str });
+                }
+            }
+            Ok((RestrictionKind::Unrestricted, self.token.span.shrink_to_lo(), lo.to(end)))
+        }
     }
 
     /// Parses `extern string_literal?`.

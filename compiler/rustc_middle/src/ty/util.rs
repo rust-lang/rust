@@ -216,11 +216,11 @@ impl<'tcx> TyCtxt<'tcx> {
         ty: Ty<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
     ) -> Ty<'tcx> {
-        let tcx = self;
-        tcx.struct_tail_raw(
+        self.assert_fully_normalized(typing_env, ty);
+        self.struct_tail_raw(
             ty,
             &ObligationCause::dummy(),
-            |ty| tcx.normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)),
+            |ty| self.normalize_erasing_regions(typing_env, ty),
             || {},
         )
     }
@@ -255,7 +255,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         mut ty: Ty<'tcx>,
         cause: &ObligationCause<'tcx>,
-        mut normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
+        mut normalize: impl FnMut(Unnormalized<'tcx, Ty<'tcx>>) -> Ty<'tcx>,
         // This is currently used to allow us to walk a ValTree
         // in lockstep with the type in order to get the ValTree branch that
         // corresponds to an unsized field.
@@ -283,7 +283,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     match def.non_enum_variant().tail_opt() {
                         Some(field) => {
                             f();
-                            ty = field.ty(self, args);
+                            ty = normalize(field.ty(self, args));
                         }
                         None => break,
                     }
@@ -299,15 +299,6 @@ impl<'tcx> TyCtxt<'tcx> {
                 ty::Pat(inner, _) => {
                     f();
                     ty = inner;
-                }
-
-                ty::Alias(..) => {
-                    let normalized = normalize(ty);
-                    if ty == normalized {
-                        return ty;
-                    } else {
-                        ty = normalized;
-                    }
                 }
 
                 _ => {
@@ -333,9 +324,9 @@ impl<'tcx> TyCtxt<'tcx> {
         target: Ty<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
     ) -> (Ty<'tcx>, Ty<'tcx>) {
-        let tcx = self;
-        tcx.struct_lockstep_tails_raw(source, target, |ty| {
-            tcx.normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty))
+        self.assert_fully_normalized(typing_env, (source, target));
+        self.struct_lockstep_tails_raw(source, target, |ty| {
+            self.normalize_erasing_regions(typing_env, ty)
         })
     }
 
@@ -351,7 +342,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         source: Ty<'tcx>,
         target: Ty<'tcx>,
-        normalize: impl Fn(Ty<'tcx>) -> Ty<'tcx>,
+        normalize: impl Fn(Unnormalized<'tcx, Ty<'tcx>>) -> Ty<'tcx>,
     ) -> (Ty<'tcx>, Ty<'tcx>) {
         let (mut a, mut b) = (source, target);
         loop {
@@ -360,8 +351,8 @@ impl<'tcx> TyCtxt<'tcx> {
                     if a_def == b_def && a_def.is_struct() =>
                 {
                     if let Some(f) = a_def.non_enum_variant().tail_opt() {
-                        a = f.ty(self, a_args);
-                        b = f.ty(self, b_args);
+                        a = normalize(f.ty(self, a_args));
+                        b = normalize(f.ty(self, b_args));
                     } else {
                         break;
                     }
@@ -372,20 +363,6 @@ impl<'tcx> TyCtxt<'tcx> {
                         b = *b_tys.last().unwrap();
                     } else {
                         break;
-                    }
-                }
-                (ty::Alias(..), _) | (_, ty::Alias(..)) => {
-                    // If either side is a projection, attempt to
-                    // progress via normalization. (Should be safe to
-                    // apply to both sides as normalization is
-                    // idempotent.)
-                    let a_norm = normalize(a);
-                    let b_norm = normalize(b);
-                    if a == a_norm && b == b_norm {
-                        break;
-                    } else {
-                        a = a_norm;
-                        b = b_norm;
                     }
                 }
 
@@ -928,7 +905,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 return Ty::new_error(self, guar);
             }
 
-            ty = self.type_of(def_id).instantiate(self, args).skip_norm_wip();
+            ty = self.type_of(def_id).instantiate(self, args).skip_normalization();
             depth += 1;
         }
 
@@ -954,7 +931,7 @@ impl<'tcx> TyCtxt<'tcx> {
             | ty::AliasTermKind::InherentConst { .. }
             | ty::AliasTermKind::FreeTy { .. }
             | ty::AliasTermKind::FreeConst { .. }
-            | ty::AliasTermKind::UnevaluatedConst { .. }
+            | ty::AliasTermKind::AnonConst { .. }
             | ty::AliasTermKind::ProjectionConst { .. } => None,
         }
     }
@@ -990,7 +967,7 @@ impl<'tcx> OpaqueTypeExpander<'tcx> {
                 Some(expanded_ty) => *expanded_ty,
                 None => {
                     let generic_ty = self.tcx.type_of(def_id);
-                    let concrete_ty = generic_ty.instantiate(self.tcx, args).skip_norm_wip();
+                    let concrete_ty = generic_ty.instantiate(self.tcx, args).skip_normalization();
                     let expanded_ty = self.fold_ty(concrete_ty);
                     self.expanded_cache.insert((def_id, args), expanded_ty);
                     expanded_ty
@@ -1070,7 +1047,11 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for FreeAliasTypeExpander<'tcx> {
 
         self.depth += 1;
         let ty = ensure_sufficient_stack(|| {
-            self.tcx.type_of(def_id).instantiate(self.tcx, args).skip_norm_wip().fold_with(self)
+            self.tcx
+                .type_of(def_id)
+                .instantiate(self.tcx, args)
+                .skip_normalization()
+                .fold_with(self)
         });
         self.depth -= 1;
         ty

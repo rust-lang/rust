@@ -2,11 +2,10 @@ use std::any::Any;
 use std::hash::Hash;
 
 use rustc_ast::expand::allocator::AllocatorMethod;
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_metadata::EncodedMetadata;
 use rustc_metadata::creader::MetadataLoaderDyn;
-use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
+use rustc_middle::dep_graph::WorkProductMap;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::Session;
@@ -14,7 +13,6 @@ use rustc_session::config::{CrateType, OutputFilenames, PrintRequest};
 use rustc_span::Symbol;
 
 use super::CodegenObject;
-use super::write::WriteBackendMethods;
 use crate::back::archive::ArArchiveBuilderBuilder;
 use crate::back::link::link_binary;
 use crate::{CompiledModules, CrateInfo, ModuleCodegen, TargetConfig};
@@ -79,6 +77,12 @@ pub trait CodegenBackend {
         vec![]
     }
 
+    /// Returns a list of all intrinsics that this backend definitely
+    /// does *not* replace, which means their fallback bodies can be MIR-inlined.
+    fn fallback_intrinsics(&self) -> Vec<Symbol> {
+        vec![]
+    }
+
     /// Is ThinLTO supported by this backend?
     fn thin_lto_supported(&self) -> bool {
         true
@@ -125,11 +129,15 @@ pub trait CodegenBackend {
         sess: &Session,
         outputs: &OutputFilenames,
         crate_info: &CrateInfo,
-    ) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>);
+    ) -> (CompiledModules, WorkProductMap);
 
     fn print_pass_timings(&self) {}
 
     fn print_statistics(&self) {}
+
+    fn print_statistics_json(&self) -> String {
+        String::new()
+    }
 
     /// This is called on the returned [`CompiledModules`] from [`join_codegen`](Self::join_codegen).
     fn link(
@@ -152,9 +160,9 @@ pub trait CodegenBackend {
     }
 }
 
-pub trait ExtraBackendMethods:
-    WriteBackendMethods + Sized + Send + Sync + DynSend + DynSync
-{
+pub trait ExtraBackendMethods: Send + Sync + DynSend + DynSync {
+    type Module;
+
     fn codegen_allocator<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -169,11 +177,4 @@ pub trait ExtraBackendMethods:
         tcx: TyCtxt<'_>,
         cgu_name: Symbol,
     ) -> (ModuleCodegen<Self::Module>, u64);
-
-    /// Returns `true` if this backend can be safely called from multiple threads.
-    ///
-    /// Defaults to `true`.
-    fn supports_parallel(&self) -> bool {
-        true
-    }
 }

@@ -1,4 +1,4 @@
-use rustc_feature::template;
+use rustc_feature::AttributeStability;
 use rustc_hir::attrs::AttributeKind;
 use rustc_session::lint::builtin::MISPLACED_DIAGNOSTIC_ATTRIBUTES;
 use rustc_span::sym;
@@ -6,9 +6,10 @@ use rustc_span::sym;
 use crate::attributes::diagnostic::*;
 use crate::attributes::prelude::*;
 use crate::context::AcceptContext;
-use crate::errors::DiagnosticOnMoveOnlyForAdt;
+use crate::diagnostics::DiagnosticOnMoveOnlyForAdt;
 use crate::parser::ArgParser;
 use crate::target_checking::{ALL_TARGETS, AllowedTargets};
+use crate::template;
 
 #[derive(Default)]
 pub(crate) struct OnMoveParser {
@@ -20,6 +21,7 @@ impl OnMoveParser {
     fn parse<'sess>(&mut self, cx: &mut AcceptContext<'_, 'sess>, args: &ArgParser, mode: Mode) {
         if !cx.features().diagnostic_on_move() {
             // `UnknownDiagnosticAttribute` is emitted in rustc_resolve/macros.rs
+            args.ignore_args();
             return;
         }
 
@@ -42,6 +44,7 @@ impl AttributeParser for OnMoveParser {
     const ATTRIBUTES: AcceptMapping<Self> = &[(
         &[sym::diagnostic, sym::on_move],
         template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
+        AttributeStability::Stable, // Unstable, stability checked manually in the parser
         |this, cx, args| {
             this.parse(cx, args, Mode::DiagnosticOnMove);
         },

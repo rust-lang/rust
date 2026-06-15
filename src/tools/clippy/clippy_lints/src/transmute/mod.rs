@@ -514,7 +514,7 @@ impl Transmute {
             && first.vis.is_accessible_from(cx.tcx.parent_module(outer.hir_id), cx.tcx)
         {
             (
-                first.ty(cx.tcx, struct_args),
+                first.ty(cx.tcx, struct_args).skip_norm_wip(),
                 Sugg::NonParen(format!("{}.{}", outer_sugg.maybe_paren(), first.name).into()),
             )
         } else {

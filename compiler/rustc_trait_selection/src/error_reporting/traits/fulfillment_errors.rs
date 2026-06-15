@@ -39,10 +39,12 @@ use tracing::{debug, instrument};
 
 use super::suggestions::get_explanation_based_on_obligation;
 use super::{ArgKind, CandidateSimilarity, GetSafeTransmuteErrorAndReason, ImplCandidate};
+use crate::diagnostics::{
+    ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch, CoroClosureNotFn,
+};
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::infer::TyCategory;
 use crate::error_reporting::traits::report_dyn_incompatibility;
-use crate::errors::{ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch, CoroClosureNotFn};
 use crate::infer::{self, InferCtxt, InferCtxtExt as _};
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::{
@@ -73,10 +75,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     root_obligation.cause.code().peel_derives()
                     && !obligation.predicate.has_non_region_infer()
                 {
-                    if let Some(cause) = self
-                        .tcx
-                        .diagnostic_hir_wf_check((tcx.erase_and_anonymize_regions(obligation.predicate), *wf_loc))
-                    {
+                    if let Some(cause) = self.tcx.diagnostic_hir_wf_check((
+                        tcx.erase_and_anonymize_regions(obligation.predicate),
+                        *wf_loc,
+                    )) {
                         obligation.cause = cause.clone();
                         span = obligation.cause.span;
                     }
@@ -89,13 +91,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 } = *obligation.cause.code()
                 {
                     debug!("ObligationCauseCode::CompareImplItemObligation");
-                    return self.report_extra_impl_obligation(
-                        span,
-                        impl_item_def_id,
-                        trait_item_def_id,
-                        &format!("`{}`", obligation.predicate),
-                    )
-                    .emit()
+                    return self
+                        .report_extra_impl_obligation(
+                            span,
+                            impl_item_def_id,
+                            trait_item_def_id,
+                            &format!("`{}`", obligation.predicate),
+                        )
+                        .emit();
                 }
 
                 // Report a const-param specific error
@@ -116,7 +119,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         //
                         // We rely on a few heuristics to identify cases where this root
                         // obligation is more important than the leaf obligation:
-                        let (main_trait_predicate, main_obligation) = if let ty::PredicateKind::Clause(
+                        let (main_trait_predicate, main_obligation) =
+                            if let ty::PredicateKind::Clause(
                             ty::ClauseKind::Trait(root_pred)
                         ) = root_obligation.predicate.kind().skip_binder()
                             && !leaf_trait_predicate.self_ty().skip_binder().has_escaping_bound_vars()
@@ -146,26 +150,24 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             // The root trait is not `Unsize`, as to avoid talking about it in
                             // `tests/ui/coercion/coerce-issue-49593-box-never.rs`.
                             && !self.tcx.is_lang_item(root_pred.def_id(), LangItem::Unsize)
-                        {
-                            (
-                                self.resolve_vars_if_possible(
-                                    root_obligation.predicate.kind().rebind(root_pred),
-                                ),
-                                root_obligation,
-                            )
-                        } else {
-                            (leaf_trait_predicate, &obligation)
-                        };
+                            {
+                                (
+                                    self.resolve_vars_if_possible(
+                                        root_obligation.predicate.kind().rebind(root_pred),
+                                    ),
+                                    root_obligation,
+                                )
+                            } else {
+                                (leaf_trait_predicate, &obligation)
+                            };
 
-                        if let Some(guar) = self.emit_specialized_closure_kind_error(
-                            &obligation,
-                            leaf_trait_predicate,
-                        ) {
+                        if let Some(guar) = self
+                            .emit_specialized_closure_kind_error(&obligation, leaf_trait_predicate)
+                        {
                             return guar;
                         }
 
-                        if let Err(guar) = leaf_trait_predicate.error_reported()
-                        {
+                        if let Err(guar) = leaf_trait_predicate.error_reported() {
                             return guar;
                         }
                         // Silence redundant errors on binding access that are already
@@ -185,29 +187,32 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             })
                             .unwrap_or_default();
 
-                        let CustomDiagnostic {
-                            message,
-                            label,
-                            notes,
-                            parent_label,
-                        } = self.on_unimplemented_note(main_trait_predicate, main_obligation, &mut long_ty_file);
+                        let CustomDiagnostic { message, label, notes, parent_label } = self
+                            .on_unimplemented_note(
+                                main_trait_predicate,
+                                main_obligation,
+                                &mut long_ty_file,
+                            );
 
                         let have_alt_message = message.is_some() || label.is_some();
 
-                        let message = message.unwrap_or_else(|| self.get_standard_error_message(
-                            main_trait_predicate,
-                            None,
-                            post_message,
-                            &mut long_ty_file,
-                        ));
-                        let is_try_conversion = self.is_try_conversion(span, main_trait_predicate.def_id());
+                        let message = message.unwrap_or_else(|| {
+                            self.get_standard_error_message(
+                                main_trait_predicate,
+                                None,
+                                post_message,
+                                &mut long_ty_file,
+                            )
+                        });
+                        let is_try_conversion =
+                            self.is_try_conversion(span, main_trait_predicate.def_id());
                         let is_question_mark = matches!(
                             root_obligation.cause.code().peel_derives(),
                             ObligationCauseCode::QuestionMark,
-                        ) && !(
-                            self.tcx.is_diagnostic_item(sym::FromResidual, main_trait_predicate.def_id())
-                                || self.tcx.is_lang_item(main_trait_predicate.def_id(), LangItem::Try)
-                        );
+                        ) && !(self
+                            .tcx
+                            .is_diagnostic_item(sym::FromResidual, main_trait_predicate.def_id())
+                            || self.tcx.is_lang_item(main_trait_predicate.def_id(), LangItem::Try));
                         let is_unsize =
                             self.tcx.is_lang_item(leaf_trait_predicate.def_id(), LangItem::Unsize);
                         let question_mark_message = "the question mark operation (`?`) implicitly \
@@ -240,13 +245,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             (message, notes)
                         };
 
-                        let (err_msg, safe_transmute_explanation) = if self.tcx.is_lang_item(
-                            main_trait_predicate.def_id(),
-                            LangItem::TransmuteTrait,
-                        ) {
+                        let (err_msg, safe_transmute_explanation) = if self
+                            .tcx
+                            .is_lang_item(main_trait_predicate.def_id(), LangItem::TransmuteTrait)
+                        {
                             // Recompute the safe transmute reason and use that for the error reporting
-                            let (report_obligation, report_pred) =
-                                self.select_transmute_obligation_for_reporting(
+                            let (report_obligation, report_pred) = self
+                                .select_transmute_obligation_for_reporting(
                                     &obligation,
                                     main_trait_predicate,
                                     root_obligation,
@@ -258,13 +263,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 span,
                             ) {
                                 GetSafeTransmuteErrorAndReason::Silent => {
-                                    return self.dcx().span_delayed_bug(
-                                        span, "silent safe transmute error"
-                                    );
+                                    return self
+                                        .dcx()
+                                        .span_delayed_bug(span, "silent safe transmute error");
                                 }
-                                GetSafeTransmuteErrorAndReason::Default => {
-                                    (message, None)
-                                }
+                                GetSafeTransmuteErrorAndReason::Default => (message, None),
                                 GetSafeTransmuteErrorAndReason::Error {
                                     err_msg,
                                     safe_transmute_explanation,
@@ -285,15 +288,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         {
                             let trait_ref = leaf_trait_predicate.skip_binder().trait_ref;
 
-                            if let Some(found_ty) = trait_ref.args.get(1).and_then(|arg| arg.as_type())
+                            if let Some(found_ty) =
+                                trait_ref.args.get(1).and_then(|arg| arg.as_type())
                             {
                                 let ty = main_trait_predicate.skip_binder().self_ty();
 
-                                if let Some(cast_ty) = self.find_explicit_cast_type(
-                                    obligation.param_env,
-                                    found_ty,
-                                    ty,
-                                ) {
+                                if let Some(cast_ty) =
+                                    self.find_explicit_cast_type(obligation.param_env, found_ty, ty)
+                                {
                                     let found_ty_str =
                                         self.tcx.short_string(found_ty, &mut long_ty_file);
                                     let cast_ty_str =
@@ -306,13 +308,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             }
                         }
 
-
                         *err.long_ty_path() = long_ty_file;
 
                         let mut suggested = false;
                         let mut noted_missing_impl = false;
                         if is_try_conversion || is_question_mark {
-                            (suggested, noted_missing_impl) = self.try_conversion_context(&obligation, main_trait_predicate, &mut err);
+                            (suggested, noted_missing_impl) = self.try_conversion_context(
+                                &obligation,
+                                main_trait_predicate,
+                                &mut err,
+                            );
                         }
 
                         suggested |= self.detect_negative_literal(
@@ -378,8 +383,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         }
 
                         let ty_span = match leaf_trait_predicate.self_ty().skip_binder().kind() {
-                            ty::Adt(def, _) if def.did().is_local()
-                                && !self.can_suggest_derive(&obligation, leaf_trait_predicate) => self.tcx.def_span(def.did()),
+                            ty::Adt(def, _)
+                                if def.did().is_local()
+                                    && !self
+                                        .can_suggest_derive(&obligation, leaf_trait_predicate) =>
+                            {
+                                self.tcx.def_span(def.did())
+                            }
                             _ => DUMMY_SP,
                         };
                         if let Some(s) = label {
@@ -391,8 +401,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 // `std::marker::Sized` is not implemented for `T`" as we will point
                                 // at the type param with a label to suggest constraining it.
                                 && !self.tcx.is_diagnostic_item(sym::FromResidual, leaf_trait_predicate.def_id())
-                                    // Don't say "the trait `FromResidual<Option<Infallible>>` is
-                                    // not implemented for `Result<T, E>`".
+                            // Don't say "the trait `FromResidual<Option<Infallible>>` is
+                            // not implemented for `Result<T, E>`".
                             {
                                 // We do this just so that the JSON output's `help` position is the
                                 // right one and not `file.rs:1:1`. The render is the same.
@@ -404,7 +414,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             }
                         } else if let Some(custom_explanation) = safe_transmute_explanation {
                             err.span_label(span, custom_explanation);
-                        } else if (explanation.len() > self.tcx.sess.diagnostic_width() || ty_span != DUMMY_SP) && !noted_missing_impl {
+                        } else if (explanation.len() > self.tcx.sess.diagnostic_width()
+                            || ty_span != DUMMY_SP)
+                            && !noted_missing_impl
+                        {
                             // Really long types don't look good as span labels, instead move it
                             // to a `help`.
                             err.span_label(span, "unsatisfied trait bound");
@@ -423,7 +436,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         if let ObligationCauseCode::Coercion { source, target } =
                             *obligation.cause.code().peel_derives()
                         {
-                            if self.tcx.is_lang_item(leaf_trait_predicate.def_id(), LangItem::Sized) {
+                            if self.tcx.is_lang_item(leaf_trait_predicate.def_id(), LangItem::Sized)
+                            {
                                 self.suggest_borrowing_for_object_cast(
                                     &mut err,
                                     root_obligation,
@@ -436,19 +450,42 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         if let Some((msg, span)) = type_def {
                             err.span_label(span, msg);
                         }
-                        for note in notes {
-                            // If it has a custom `#[rustc_on_unimplemented]` note, let's display it
-                            err.note(note);
+                        // `#[rustc_on_unimplemented]` notes for derivable traits (e.g. `Debug`'s
+                        // "add `#[derive(Debug)]` to `X` or manually `impl Debug for X`") duplicate
+                        // the `consider annotating X with #[derive(..)]` suggestion that
+                        // `suggest_derive` emits below, so skip them when that suggestion will be
+                        // shown. We keep the note otherwise (e.g. when a field isn't `Debug`, so
+                        // the derive can't be suggested) to avoid leaving the diagnostic without
+                        // actionable guidance.
+                        let derive_suggestion_will_be_shown = main_trait_predicate
+                            == leaf_trait_predicate
+                            && self.can_suggest_derive(&obligation, leaf_trait_predicate);
+                        if !derive_suggestion_will_be_shown {
+                            for note in notes {
+                                // If it has a custom `#[rustc_on_unimplemented]` note, let's display
+                                // it.
+                                err.note(note);
+                            }
                         }
                         if let Some(s) = parent_label {
                             let body = obligation.cause.body_id;
                             err.span_label(tcx.def_span(body), s);
                         }
 
-                        self.suggest_floating_point_literal(&obligation, &mut err, leaf_trait_predicate);
-                        self.suggest_dereferencing_index(&obligation, &mut err, leaf_trait_predicate);
-                        suggested |= self.suggest_dereferences(&obligation, &mut err, leaf_trait_predicate);
-                        suggested |= self.suggest_fn_call(&obligation, &mut err, leaf_trait_predicate);
+                        self.suggest_floating_point_literal(
+                            &obligation,
+                            &mut err,
+                            leaf_trait_predicate,
+                        );
+                        self.suggest_dereferencing_index(
+                            &obligation,
+                            &mut err,
+                            leaf_trait_predicate,
+                        );
+                        suggested |=
+                            self.suggest_dereferences(&obligation, &mut err, leaf_trait_predicate);
+                        suggested |=
+                            self.suggest_fn_call(&obligation, &mut err, leaf_trait_predicate);
                         suggested |= self.suggest_cast_to_fn_pointer(
                             &obligation,
                             &mut err,
@@ -456,15 +493,22 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             main_trait_predicate,
                             span,
                         );
-                        suggested |=
-                            self.suggest_remove_reference(&obligation, &mut err, leaf_trait_predicate);
+                        suggested |= self.suggest_remove_reference(
+                            &obligation,
+                            &mut err,
+                            leaf_trait_predicate,
+                        );
                         suggested |= self.suggest_semicolon_removal(
                             &obligation,
                             &mut err,
                             span,
                             leaf_trait_predicate,
                         );
-                        self.note_different_trait_with_same_name(&mut err, &obligation, leaf_trait_predicate);
+                        self.note_different_trait_with_same_name(
+                            &mut err,
+                            &obligation,
+                            leaf_trait_predicate,
+                        );
                         self.note_adt_version_mismatch(&mut err, leaf_trait_predicate);
                         self.suggest_remove_await(&obligation, &mut err);
                         self.suggest_derive(&obligation, &mut err, leaf_trait_predicate);
@@ -478,7 +522,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             );
                         }
 
-                        if self.suggest_add_clone_to_arg(&obligation, &mut err, leaf_trait_predicate) {
+                        if self.suggest_add_clone_to_arg(
+                            &obligation,
+                            &mut err,
+                            leaf_trait_predicate,
+                        ) {
                             return err.emit();
                         }
 
@@ -553,11 +601,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     <https://github.com/rust-lang/rust/issues/148922> \
                                     for more information)",
                                 );
-                                err.help("you might have intended to use the type `()` here instead");
+                                err.help(
+                                    "you might have intended to use the type `()` here instead",
+                                );
                             }
                         }
 
-                        self.explain_hrtb_projection(&mut err, leaf_trait_predicate, obligation.param_env, &obligation.cause);
+                        self.explain_hrtb_projection(
+                            &mut err,
+                            leaf_trait_predicate,
+                            obligation.param_env,
+                            &obligation.cause,
+                        );
                         self.suggest_desugaring_async_fn_in_trait(&mut err, main_trait_predicate);
 
                         // Return early if the trait is Debug or Display and the invocation
@@ -586,9 +641,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         err
                     }
 
-                    ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(predicate)) => {
-                        self.report_host_effect_error(bound_predicate.rebind(predicate), &obligation, span)
-                    }
+                    ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(predicate)) => self
+                        .report_host_effect_error(
+                            bound_predicate.rebind(predicate),
+                            &obligation,
+                            span,
+                        ),
 
                     ty::PredicateKind::Subtype(predicate) => {
                         // Errors for Subtype predicates show up as
@@ -668,17 +726,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         }
                     }
 
-                    // Errors for `ConstEvaluatable` predicates show up as
-                    // `SelectionError::ConstEvalFailure`,
-                    // not `Unimplemented`.
+                    // Errors for `ConstEvaluatable`, `ConstEquate` predicates show up as
+                    // `SelectionError::ConstEvalFailure`, not `Unimplemented`.
+                    // Ambiguous predicates should never error.
+                    // We never return `Err` when proving `UnstableFeature` goal.
                     ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
-                    // Errors for `ConstEquate` predicates show up as
-                    // `SelectionError::ConstEvalFailure`,
-                    // not `Unimplemented`.
                     | ty::PredicateKind::ConstEquate { .. }
-                    // Ambiguous predicates should never error
                     | ty::PredicateKind::Ambiguous
-                    // We never return Err when proving UnstableFeature goal.
                     | ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature { .. })
                     | ty::PredicateKind::NormalizesTo { .. }
                     | ty::PredicateKind::AliasRelate { .. }
@@ -692,7 +746,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
             }
 
-            SelectionError::SignatureMismatch(box SignatureMismatchData {
+            SelectionError::SignatureMismatch(SignatureMismatchData {
                 found_trait_ref,
                 expected_trait_ref,
                 terr: terr @ TypeError::CyclicTy(_),
@@ -702,7 +756,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 expected_trait_ref,
                 terr,
             ),
-            SelectionError::SignatureMismatch(box SignatureMismatchData {
+            SelectionError::SignatureMismatch(SignatureMismatchData {
                 found_trait_ref,
                 expected_trait_ref,
                 terr: _,
@@ -736,12 +790,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
 
             // Already reported in the query.
-            SelectionError::NotConstEvaluatable(NotConstEvaluatable::Error(guar)) |
-            // Already reported.
-            SelectionError::Overflow(OverflowError::Error(guar)) => {
+            SelectionError::NotConstEvaluatable(NotConstEvaluatable::Error(guar))
+            | SelectionError::Overflow(OverflowError::Error(guar)) => {
                 self.set_tainted_by_errors(guar);
-                return guar
-            },
+                return guar;
+            }
 
             SelectionError::Overflow(_) => {
                 bug!("overflow should be handled before the `report_selection_error` path");
@@ -778,6 +831,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     pub(super) fn apply_do_not_recommend(
         &self,
         obligation: &mut PredicateObligation<'tcx>,
+        root_obligation: &PredicateObligation<'tcx>,
     ) -> bool {
         let mut base_cause = obligation.cause.code().clone();
         let mut applied_do_not_recommend = false;
@@ -785,6 +839,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             if let ObligationCauseCode::ImplDerived(ref c) = base_cause {
                 if self.tcx.do_not_recommend_impl(c.impl_or_alias_def_id) {
                     let code = (*c.derived.parent_code).clone();
+                    // Keep more precise spans that still point within the parent obligation,
+                    // but do not let hidden impl details move the span outside of it.
+                    if code == *root_obligation.cause.code()
+                        && root_obligation.cause.span.eq_ctxt(obligation.cause.span)
+                        && !root_obligation.cause.span.contains(obligation.cause.span)
+                    {
+                        obligation.cause.span = root_obligation.cause.span;
+                    }
                     obligation.cause.map_code(|_| code);
                     obligation.predicate = c.derived.parent_trait_pred.upcast(self.tcx);
                     applied_do_not_recommend = true;
@@ -1604,9 +1666,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             }
                         };
 
-                    if let Some(lhs) = lhs.to_alias_term(self.tcx)
+                    if let Some(lhs) = lhs.to_alias_term()
                         && let ty::AliasTermKind::ProjectionTy { .. }
-                        | ty::AliasTermKind::ProjectionConst { .. } = lhs.kind(self.tcx)
+                        | ty::AliasTermKind::ProjectionConst { .. } = lhs.kind
                         && let Some((better_type_err, expected_term)) =
                             derive_better_type_error(lhs, rhs)
                     {
@@ -1614,9 +1676,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             Some((lhs, self.resolve_vars_if_possible(expected_term), rhs)),
                             better_type_err,
                         )
-                    } else if let Some(rhs) = rhs.to_alias_term(self.tcx)
+                    } else if let Some(rhs) = rhs.to_alias_term()
                         && let ty::AliasTermKind::ProjectionTy { .. }
-                        | ty::AliasTermKind::ProjectionConst { .. } = rhs.kind(self.tcx)
+                        | ty::AliasTermKind::ProjectionConst { .. } = rhs.kind
                         && let Some((better_type_err, expected_term)) =
                             derive_better_type_error(rhs, lhs)
                     {
@@ -1757,11 +1819,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         expected_ty: ty::Term<'tcx>,
         long_ty_path: &mut Option<PathBuf>,
     ) -> Option<(String, Span, Option<Span>)> {
+        let projection_def_id = projection_term.expect_projection_def_id();
         let trait_def_id = projection_term.trait_def_id(self.tcx);
         let self_ty = projection_term.self_ty();
 
         with_forced_trimmed_paths! {
-            if self.tcx.is_lang_item(projection_term.def_id(), LangItem::FnOnceOutput) {
+            if self.tcx.is_lang_item(projection_def_id, LangItem::FnOnceOutput) {
                 let (span, closure_span) = if let ty::Closure(def_id, _) = *self_ty.kind() {
                     let def_span = self.tcx.def_span(def_id);
                     if let Some(local_def_id) = def_id.as_local()
@@ -3685,41 +3748,37 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ty::ConstKind::Unevaluated(uv) => {
                     let mut err =
                         self.dcx().struct_span_err(span, "unconstrained generic constant");
-                    let const_span = self.tcx.def_span(uv.def);
+                    let const_span = uv.kind.def_span(self.tcx);
 
-                    let const_ty =
-                        self.tcx.type_of(uv.def).instantiate(self.tcx, uv.args).skip_norm_wip();
+                    let const_ty = uv.type_of(self.tcx).skip_norm_wip();
                     let cast = if const_ty != self.tcx.types.usize { " as usize" } else { "" };
                     let msg = "try adding a `where` bound";
-                    match self.tcx.sess.source_map().span_to_snippet(const_span) {
-                        Ok(snippet) => {
-                            let code = format!("[(); {snippet}{cast}]:");
-                            let def_id = if let ObligationCauseCode::CompareImplItem {
-                                trait_item_def_id,
-                                ..
-                            } = obligation.cause.code()
-                            {
-                                trait_item_def_id.as_local()
-                            } else {
-                                Some(obligation.cause.body_id)
-                            };
-                            if let Some(def_id) = def_id
-                                && let Some(generics) = self.tcx.hir_get_generics(def_id)
-                            {
-                                err.span_suggestion_verbose(
-                                    generics.tail_span_for_predicate_suggestion(),
-                                    msg,
-                                    format!("{} {code}", generics.add_where_or_trailing_comma()),
-                                    Applicability::MaybeIncorrect,
-                                );
-                            } else {
-                                err.help(format!("{msg}: where {code}"));
-                            };
-                        }
-                        _ => {
-                            err.help(msg);
-                        }
-                    };
+                    if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(const_span) {
+                        let code = format!("[(); {snippet}{cast}]:");
+                        let suggestion_def_id = if let ObligationCauseCode::CompareImplItem {
+                            trait_item_def_id,
+                            ..
+                        } = obligation.cause.code()
+                        {
+                            trait_item_def_id.as_local()
+                        } else {
+                            Some(obligation.cause.body_id)
+                        };
+                        if let Some(suggestion_def_id) = suggestion_def_id
+                            && let Some(generics) = self.tcx.hir_get_generics(suggestion_def_id)
+                        {
+                            err.span_suggestion_verbose(
+                                generics.tail_span_for_predicate_suggestion(),
+                                msg,
+                                format!("{} {code}", generics.add_where_or_trailing_comma()),
+                                Applicability::MaybeIncorrect,
+                            );
+                        } else {
+                            err.help(format!("{msg}: where {code}"));
+                        };
+                    } else {
+                        err.help(msg);
+                    }
                     Ok(err)
                 }
                 ty::ConstKind::Expr(_) => {

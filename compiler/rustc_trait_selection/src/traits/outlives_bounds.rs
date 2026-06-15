@@ -1,4 +1,5 @@
 use rustc_infer::infer::InferOk;
+use rustc_infer::infer::canonical::QueryRegionConstraint;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::traits::query::type_op::ImpliedOutlivesBounds;
 use rustc_macros::extension;
@@ -83,7 +84,7 @@ fn implied_outlives_bounds<'a, 'tcx>(
         // outlives bound required proving some higher-ranked coroutine obl.
         let QueryRegionConstraints { constraints, assumptions: _ } = constraints;
         let cause = ObligationCause::misc(span, body_id);
-        for &(constraint, _, vis) in &constraints {
+        for &QueryRegionConstraint { constraint, visible_for_leak_check: vis, .. } in &constraints {
             match constraint {
                 ty::RegionConstraint::Outlives(predicate) => {
                     infcx.register_outlives_constraint(predicate, vis, &cause)

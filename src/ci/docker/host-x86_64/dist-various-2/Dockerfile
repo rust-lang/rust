@@ -27,9 +27,6 @@ RUN apt-get update && apt-get build-dep -y clang llvm && apt-get install -y --no
   g++-9-arm-linux-gnueabi \
   g++-11-riscv64-linux-gnu
 
-RUN apt-key adv --batch --yes --keyserver keyserver.ubuntu.com --recv-keys 74DA7924C5513486
-RUN add-apt-repository -y 'deb https://apt.dilos.org/dilos dilos2 main'
-
 ENV \
     AR_x86_64_unknown_fuchsia=x86_64-unknown-fuchsia-ar \
     CC_x86_64_unknown_fuchsia=x86_64-unknown-fuchsia-clang \
@@ -50,9 +47,9 @@ ENV \
     CFLAGS_x86_64_fortanix_unknown_sgx="-D__ELF__ -isystem/usr/include/x86_64-linux-gnu -mlvi-hardening -mllvm -x86-experimental-lvi-inline-asm-hardening" \
     CXX_x86_64_fortanix_unknown_sgx=clang++-11 \
     CXXFLAGS_x86_64_fortanix_unknown_sgx="-D__ELF__ -isystem/usr/include/x86_64-linux-gnu -mlvi-hardening -mllvm -x86-experimental-lvi-inline-asm-hardening" \
-    AR_i686_unknown_freebsd=i686-unknown-freebsd12-ar \
-    CC_i686_unknown_freebsd=i686-unknown-freebsd12-clang \
-    CXX_i686_unknown_freebsd=i686-unknown-freebsd12-clang++ \
+    AR_i686_unknown_freebsd=i686-unknown-freebsd14-ar \
+    CC_i686_unknown_freebsd=i686-unknown-freebsd14-clang \
+    CXX_i686_unknown_freebsd=i686-unknown-freebsd14-clang++ \
     CC_aarch64_unknown_uefi=clang-11 \
     CXX_aarch64_unknown_uefi=clang++-11 \
     CC_i686_unknown_uefi=clang-11 \

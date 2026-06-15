@@ -9,6 +9,7 @@
 [relabel]
 allow-unauthenticated = [
     "A-*",
+    "B-*",
     "C-*",
     "D-*",
     "E-*",
@@ -776,6 +777,10 @@ message_on_add = [
 PR #{number} "{title}" fixes a regression and has been nominated for backport.
 {recipients}, what do you think about it?
 This topic will help T-compiler getting context about it.
+
+Tip: to approve or decline from this Zulip thread, use:
+@_**triagebot** backport approve beta #{number}
+@_**triagebot** backport decline beta #{number}
 """,
     """\
 /poll Should #{number} be beta backported?
@@ -801,6 +806,11 @@ message_on_add = [
     """\
 PR #{number} "{title}" fixes a regression and has been nominated for backport.
 {recipients}, what do you think about it?
+This topic will help T-compiler getting context about it.
+
+Tip: to approve or decline from this Zulip thread, use:
+@_**triagebot** backport approve stable #{number}
+@_**triagebot** backport decline stable #{number}
 """,
     """\
 /poll Approve stable backport of #{number}?
@@ -941,11 +951,21 @@ Issue #{number} "{title}" has been added.
 # ------------------------------------------------------------------------------
 
 [mentions."compiler/rustc_codegen_cranelift"]
-message = "The Cranelift subtree was changed"
+message = """
+`rustc_codegen_cranelift` is developed in its own repository. If possible, consider \
+making this change to \
+[rust-lang/rustc_codegen_cranelift](https://github.com/rust-lang/rustc_codegen_cranelift) \
+instead.
+"""
 cc = ["@bjorn3"]
 
 [mentions."compiler/rustc_codegen_gcc"]
-message = "The GCC codegen subtree was changed"
+message = """
+`rustc_codegen_gcc` is developed in its own repository. If possible, consider \
+making this change to \
+[rust-lang/rustc_codegen_gcc](https://github.com/rust-lang/rustc_codegen_gcc) \
+instead.
+"""
 cc = ["@antoyo", "@GuillaumeGomez"]
 
 [mentions."compiler/rustc_const_eval/src/"]
@@ -1049,7 +1069,7 @@ cc = ["@Nadrieril"]
 message = "Some changes occurred in cfg and check-cfg configuration"
 cc = ["@Urgau"]
 
-[mentions."compiler/rustc_attr_parsing/src/attributes/diagnostic/check_cfg.rs"]
+[mentions."compiler/rustc_attr_parsing/src/check_cfg.rs"]
 message = "Some changes occurred in check-cfg diagnostics"
 cc = ["@Urgau"]
 
@@ -1099,8 +1119,9 @@ cc = ["@tgross35"]
 
 [mentions."library/portable-simd"]
 message = """
-Portable SIMD is developed in its own repository. If possible, consider \
-making this change to [rust-lang/portable-simd](https://github.com/rust-lang/portable-simd) \
+`portable-simd` is developed in its own repository. If possible, consider \
+making this change to \
+[rust-lang/portable-simd](https://github.com/rust-lang/portable-simd) \
 instead.
 """
 cc = ["@calebzulawski", "@programmerjake"]
@@ -1126,10 +1147,6 @@ cc = [
 message = "Some changes occurred in GUI tests."
 cc = ["@GuillaumeGomez"]
 
-[mentions."tests/auxiliary/minicore.rs"]
-message = "This PR modifies `tests/auxiliary/minicore.rs`."
-cc = ["@jieyouxu"]
-
 [mentions."src/rustdoc-json-types"]
 message = """
 rustdoc-json-types is a **public** (although nightly-only) API. \
@@ -1147,7 +1164,12 @@ cc = [
 cc = ["@ehuss"]
 
 [mentions."src/tools/clippy"]
-message = "The Clippy subtree was changed"
+message = """
+`clippy` is developed in its own repository. If possible, consider \
+making this change to \
+[rust-lang/rust-clippy](https://github.com/rust-lang/rust-clippy) \
+instead.
+"""
 cc = ["@rust-lang/clippy"]
 
 [mentions."src/tools/compiletest"]
@@ -1160,7 +1182,12 @@ new or modified directive in `src/doc/rustc-dev-guide/`.
 """
 
 [mentions."src/tools/miri"]
-message = "The Miri subtree was changed"
+message = """
+`miri` is developed in its own repository. If possible, consider \
+making this change to \
+[rust-lang/miri](https://github.com/rust-lang/miri) \
+instead.
+"""
 cc = ["@rust-lang/miri"]
 
 [mentions."src/tools/run-make-support"]
@@ -1169,15 +1196,20 @@ cc = ["@jieyouxu"]
 
 [mentions."src/tools/rust-analyzer"]
 message = """
-rust-analyzer is developed in its own repository. If possible, consider making \
-this change to [rust-lang/rust-analyzer] instead.
-
-[rust-lang/rust-analyzer]: https://github.com/rust-lang/rust-analyzer
+`rust-analyzer` is developed in its own repository. If possible, consider \
+making this change to \
+[rust-lang/rust-analyzer](https://github.com/rust-lang/rust-analyzer) \
+instead.
 """
 cc = ["@rust-lang/rust-analyzer"]
 
 [mentions."src/tools/rustfmt"]
-message = "The Rustfmt subtree was changed"
+message = """
+`rustfmt` is developed in its own repository. If possible, consider \
+making this change to \
+[rust-lang/rustfmt](https://github.com/rust-lang/rustfmt) \
+instead.
+"""
 cc = ["@rust-lang/rustfmt"]
 
 [mentions."compiler/rustc_middle/src/mir/syntax.rs"]
@@ -1389,7 +1421,12 @@ https://github.com/rust-lang/reference/blob/HEAD/src/identifiers.md.
 cc = ["@ehuss"]
 
 [mentions."src/doc/rustc-dev-guide"]
-message = "The rustc-dev-guide subtree was changed. If this PR *only* touches the dev guide consider submitting a PR directly to [rust-lang/rustc-dev-guide](https://github.com/rust-lang/rustc-dev-guide/pulls) otherwise thank you for updating the dev guide with your changes."
+message = """
+`rustc-dev-guide` is developed in its own repository. If possible, consider \
+making this change to \
+[rust-lang/rustc-dev-guide](https://github.com/rust-lang/rustc-dev-guide) \
+instead.
+"""
 cc = ["@BoxyUwU", "@tshepang"]
 
 [mentions."compiler/rustc_passes/src/check_attr.rs"]
@@ -1490,6 +1527,9 @@ libs = [
     "@thomcc",
     "@joboet",
     "@nia-e",
+    "@LawnGnome",
+    "@clarfonthey",
+    "@aapoalas",
 ]
 infra-ci = [
     "@Mark-Simulacrum",
@@ -1608,7 +1648,7 @@ dep-bumps = [
 "/compiler/rustc_public" =                               ["project-stable-mir"]
 "/library/alloc" =                                       ["libs"]
 "/library/alloctests" =                                  ["libs"]
-"/library/core" =                                        ["libs", "@scottmcm"]
+"/library/core" =                                        ["libs"]
 "/library/coretests" =                                   ["libs"]
 "/library/panic_abort" =                                 ["libs"]
 "/library/panic_unwind" =                                ["libs"]

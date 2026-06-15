@@ -1,6 +1,6 @@
 use rustc_ast::ast::{AttrStyle, LitKind, MetaItemLit};
 use rustc_errors::{Applicability, msg};
-use rustc_feature::template;
+use rustc_feature::AttributeStability;
 use rustc_hir::Target;
 use rustc_hir::attrs::{
     AttributeKind, CfgEntry, CfgHideShow, CfgInfo, DocAttribute, DocInline, HideOrShow,
@@ -10,9 +10,9 @@ use rustc_span::{Span, Symbol, edition, sym};
 use thin_vec::ThinVec;
 
 use super::prelude::{ALL_TARGETS, AllowedTargets};
-use super::{AcceptMapping, AttributeParser};
+use super::{AcceptMapping, AttributeParser, template};
 use crate::context::{AcceptContext, FinalizeContext};
-use crate::errors::{
+use crate::diagnostics::{
     AttrCrateLevelOnly, DocAliasDuplicated, DocAutoCfgExpectsHideOrShow,
     DocAutoCfgHideShowExpectsList, DocAutoCfgHideShowUnexpectedItem, DocAutoCfgWrongLiteral,
     DocTestLiteral, DocTestTakesList, DocTestUnknown, DocUnknownAny, DocUnknownInclude,
@@ -41,7 +41,7 @@ fn check_keyword(cx: &mut AcceptContext<'_, '_>, keyword: Symbol, span: Span) ->
 
 fn check_attribute(cx: &mut AcceptContext<'_, '_>, attribute: Symbol, span: Span) -> bool {
     // FIXME: This should support attributes with namespace like `diagnostic::do_not_recommend`.
-    if rustc_feature::BUILTIN_ATTRIBUTE_MAP.contains_key(&attribute) {
+    if rustc_feature::BUILTIN_ATTRIBUTE_MAP.contains(&attribute) {
         return true;
     }
     cx.emit_err(DocAttributeNotAttribute { span, attribute });
@@ -190,6 +190,8 @@ impl DocParser {
 
                 // FIXME: convert list into a Vec of `AttributeKind` because current code is awful.
                 for attr in list.mixed() {
+                    // Arguments of `attr` are checked via the span, so can be safely ignored
+                    attr.ignore_args();
                     self.attribute.test_attrs.push(attr.span());
                 }
             }
@@ -702,6 +704,7 @@ impl AttributeParser for DocParser {
             ],
             NameValueStr: "string"
         ),
+        AttributeStability::Stable, // Some parts of the attribute are unstable, manually checked in parser
         |this, cx, args| {
             this.accept_single_doc_attr(cx, args);
         },

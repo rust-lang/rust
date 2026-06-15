@@ -19,11 +19,10 @@ where
     pub(super) fn normalize_inherent_associated_term(
         &mut self,
         goal: Goal<I, ty::NormalizesTo<I>>,
-        def_id: I::InherentAssocTermId,
     ) -> QueryResultOrRerunNonErased<I> {
         let cx = self.cx();
         let inherent = goal.predicate.alias;
-
+        let def_id = inherent.expect_inherent_def_id();
         let impl_def_id = cx.inherent_alias_term_parent(def_id);
         let impl_args = self.fresh_args_for_item(impl_def_id.into());
 
@@ -54,7 +53,7 @@ where
                 .map(|pred| goal.with(cx, pred)),
         );
 
-        let normalized = match inherent.kind(cx) {
+        let normalized: I::Term = match inherent.kind {
             ty::AliasTermKind::InherentTy { def_id } => {
                 cx.type_of(def_id.into()).instantiate(cx, inherent_args).skip_norm_wip().into()
             }
@@ -74,6 +73,7 @@ where
             }
             kind => panic!("expected inherent alias, found {kind:?}"),
         };
+
         self.instantiate_normalizes_to_term(goal, normalized);
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }

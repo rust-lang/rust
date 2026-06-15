@@ -29,7 +29,7 @@ use tracing::{debug, instrument};
 
 pub(crate) use self::check_match::check_match;
 use self::migration::PatMigration;
-use crate::errors::*;
+use crate::diagnostics::*;
 use crate::thir::cx::ThirBuildCx;
 
 /// Context for lowering HIR patterns to THIR patterns.
@@ -177,7 +177,7 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
         // Lower the endpoint into a temporary `thir::Pat` that will then be
         // deconstructed to obtain the constant value and other data.
         let endpoint_pat: Box<Pat<'tcx>> = self.lower_pat_expr(pat, expr);
-        let box Pat { ref kind, extra, .. } = endpoint_pat;
+        let Pat { ref kind, extra, .. } = endpoint_pat;
 
         // Preserve any ascriptions from endpoint constants.
         if let Some(extra) = extra {
@@ -657,7 +657,14 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
         let args = self.typeck_results.node_args(id);
         // FIXME(mgca): we will need to special case IACs here to have type system compatible
         // generic args, instead of how we represent them in body expressions.
-        let c = ty::Const::new_unevaluated(self.tcx, ty::UnevaluatedConst { def: def_id, args });
+        let c = ty::Const::new_unevaluated(
+            self.tcx,
+            ty::UnevaluatedConst::new(
+                self.tcx,
+                ty::UnevaluatedConstKind::new_from_def_id(self.tcx, def_id),
+                args,
+            ),
+        );
         let mut pattern = self.const_to_pat(c, ty, id, span);
 
         // If this is an associated constant with an explicit user-written

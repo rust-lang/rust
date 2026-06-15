@@ -22,8 +22,12 @@ runners:
     os: ubuntu-24.04-16core-64gb
     <<: *base-job
 
-  - &job-macos
+  - &job-macos-15
     os: macos-15 # macOS 15 Arm64
+    <<: *base-job
+
+  - &job-macos-26
+    os: macos-26 # macOS 26 Arm64
     <<: *base-job
 
   - &job-windows
@@ -144,6 +148,21 @@ pr:
     <<: *job-linux-4c
   - name: x86_64-gnu-gcc
     doc_url: https://rustc-dev-guide.rust-lang.org/tests/codegen-backend-tests/cg_gcc.html
+    env:
+      CODEGEN_BACKENDS: llvm,gcc
+    <<: *job-linux-4c
+  - name: x86_64-gnu-gcc-core-tests
+    doc_url: https://rustc-dev-guide.rust-lang.org/tests/codegen-backend-tests/cg_gcc.html
+    env:
+      CODEGEN_BACKENDS: gcc
+    <<: *job-linux-4c
+  
+  # This job tests features we want to stabilize soon, to ensure they don't
+  # regress.
+  - name: x86_64-gnu-pre-stabilization
+    doc_url: https://rustc-dev-guide.rust-lang.org/tests/pre-stabilization-ci-job.html
+    env:
+      CODEGEN_BACKENDS: llvm
     <<: *job-linux-4c
 
 # Jobs that run when you perform a try build (@bors try)
@@ -261,6 +280,9 @@ auto:
   - name: dist-x86_64-freebsd
     <<: *job-linux-4c
 
+  - name: dist-aarch64-freebsd
+    <<: *job-aarch64-linux
+
   - name: dist-x86_64-illumos
     <<: *job-linux-4c
 
@@ -353,10 +375,6 @@ auto:
   - name: optional-x86_64-gnu-parallel-frontend
     # This test can be flaky, so do not cancel CI if it fails, for now.
     continue_on_error: true
-    <<: *job-linux-4c
-
-  - name: x86_64-gnu-gcc
-    doc_url: https://rustc-dev-guide.rust-lang.org/tests/codegen-backend-tests/cg_gcc.html
     <<: *job-linux-4c
 
   # This job ensures commits landing on nightly still pass the full
@@ -461,6 +479,7 @@ auto:
         --enable-profiler
         --disable-docs
         --set rust.jemalloc
+        --set llvm.link-shared=true
         --set rust.lto=thin
         --set rust.codegen-units=1
       # Ensure that host tooling is built to support our minimum support macOS version.
@@ -469,7 +488,7 @@ auto:
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-macos
+    <<: *job-macos-15
 
   - name: dist-apple-various
     env:
@@ -506,12 +525,12 @@ auto:
       MACOSX_DEPLOYMENT_TARGET: 10.12
       MACOSX_STD_DEPLOYMENT_TARGET: 10.12
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
-    <<: *job-macos
+    <<: *job-macos-15
 
   - name: dist-aarch64-apple
     env:
       SCRIPT: >-
-        ./x.py dist bootstrap
+        ./x.py dist bootstrap enzyme
         --include-default-paths
         --host=aarch64-apple-darwin
         --target=aarch64-apple-darwin
@@ -520,6 +539,7 @@ auto:
         --enable-sanitizers
         --enable-profiler
         --set rust.jemalloc
+        --set llvm.link-shared=true
         --set rust.lto=thin
         --set rust.codegen-units=1
       # Aarch64 tooling only needs to support macOS 11.0 and up as nothing else
@@ -529,7 +549,7 @@ auto:
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-macos
+    <<: *job-macos-15
 
   - name: aarch64-apple
     env:
@@ -545,7 +565,29 @@ auto:
       # supports the hardware, so only need to test it there.
       MACOSX_DEPLOYMENT_TARGET: 11.0
       MACOSX_STD_DEPLOYMENT_TARGET: 11.0
-    <<: *job-macos
+    <<: *job-macos-15
+
+  # EXPERIMENT(#157687): we will try to run `aarch64-apple`-equivalent workload
+  # on `macos-26` runner images in parallel to evaluate the running times, since
+  # previous attempts have timed out multiple times. Remove/revert this job if
+  # this hangs or times out, or if it becomes the slowest Merge CI job, and let
+  # T-infra know.
+  - name: aarch64-apple-macos-26
+    doc_url: https://github.com/rust-lang/rust/issues/157687
+    env:
+      SCRIPT: >
+        ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin &&
+        ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin src/tools/cargo
+      RUST_CONFIGURE_ARGS: >-
+        --enable-sanitizers
+        --enable-profiler
+        --set rust.jemalloc
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+      # Aarch64 tooling only needs to support macOS 11.0 and up as nothing else
+      # supports the hardware, so only need to test it there.
+      MACOSX_DEPLOYMENT_TARGET: 11.0
+      MACOSX_STD_DEPLOYMENT_TARGET: 11.0
+    <<: *job-macos-26
 
   ######################
   #  Windows Builders  #

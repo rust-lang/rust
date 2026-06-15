@@ -1,4 +1,5 @@
-#![warn(clippy::empty_line_after_outer_attr, clippy::empty_line_after_doc_comments)]
+#![warn(clippy::empty_line_after_doc_comments)]
+#![deny(clippy::empty_line_after_outer_attr)]
 
 //~vvv empty_line_after_doc_comments
 /// Meant to be an

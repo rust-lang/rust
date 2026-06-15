@@ -125,6 +125,7 @@ where
 
     fn consider_error_guaranteed_candidate(
         ecx: &mut EvalCtxt<'_, D>,
+        _goal: Goal<I, Self>,
         _guar: I::ErrorGuaranteed,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
@@ -898,6 +899,8 @@ where
                         predicate: TraitRef::new(ecx.cx(), sized_trait, [ty]).upcast(ecx.cx()),
                     },
                 );
+                // FIXME(field_projections): This function does some questionable incomplete stuff by
+                // returning `Err(NoSolution)` on ambiguity.
                 ecx.try_evaluate_added_goals()? == Certainty::Yes
             }
             && match base.kind() {
@@ -1587,9 +1590,7 @@ where
     ) -> Option<Result<Candidate<I>, NoSolutionOrRerunNonErased>> {
         if let ty::Coroutine(def_id, _) = self_ty.kind() {
             match self.typing_mode() {
-                TypingMode::Analysis {
-                    defining_opaque_types_and_generators: stalled_generators,
-                } => {
+                TypingMode::Typeck { defining_opaque_types_and_generators: stalled_generators } => {
                     if def_id.as_local().is_some_and(|def_id| stalled_generators.contains(&def_id))
                     {
                         return Some(self.forced_ambiguity(MaybeInfo {
@@ -1609,8 +1610,9 @@ where
                 }
                 TypingMode::Coherence
                 | TypingMode::PostAnalysis
-                | TypingMode::Borrowck { defining_opaque_types: _ }
-                | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ } => {}
+                | TypingMode::Codegen
+                | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _ }
+                | TypingMode::PostBorrowck { defined_opaque_types: _ } => {}
             }
         }
 

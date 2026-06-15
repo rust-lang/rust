@@ -53,7 +53,7 @@ impl<'ecx, T: EarlyLintPass> EarlyContextAndPass<'ecx, T> {
     {
         let is_crate_node = id == ast::CRATE_NODE_ID;
         debug!(?id);
-        let push = self.context.builder.push(attrs, is_crate_node, None);
+        let push = self.context.builder.push(attrs, is_crate_node);
 
         debug!("early context: enter_attrs({:?})", attrs);
         lint_callback!(self, check_attributes, attrs);

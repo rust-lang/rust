@@ -494,6 +494,102 @@ export function ssr(ctx: CtxInit): Cmd {
     };
 }
 
+const EVALUATE_PREDICATE_LAST_INPUT_KEY = "evaluatePredicate.lastInput";
+
+export function evaluatePredicate(ctx: CtxInit): Cmd {
+    return async () => {
+        const editor = ctx.activeRustEditor;
+        if (!editor) {
+            await vscode.window.showWarningMessage(
+                "rust-analyzer: evaluate predicate requires an active Rust editor",
+            );
+            return;
+        }
+
+        const client = ctx.client;
+        const textDocument = client.code2ProtocolConverter.asTextDocumentIdentifier(
+            editor.document,
+        );
+        const position = client.code2ProtocolConverter.asPosition(editor.selection.active);
+
+        const input = vscode.window.createInputBox();
+        input.value = ctx.extCtx.workspaceState.get<string>(
+            EVALUATE_PREDICATE_LAST_INPUT_KEY,
+            "Vec<u32>: Clone",
+        );
+        input.prompt = "Enter a Rust where-clause predicate";
+        input.placeholder = "Vec<u32>: Clone";
+
+        let requestId = 0;
+        let hidden = false;
+        const updatePredicateResult = async (text: string) => {
+            const currentRequestId = ++requestId;
+            await ctx.extCtx.workspaceState.update(EVALUATE_PREDICATE_LAST_INPUT_KEY, text);
+            if (text.trim() === "") {
+                input.validationMessage = undefined;
+                return;
+            }
+
+            try {
+                const result = await client.sendRequest(ra.evaluatePredicate, {
+                    text,
+                    textDocument,
+                    position,
+                });
+                if (!hidden && currentRequestId === requestId) {
+                    input.validationMessage = predicateEvaluationValidationMessage(result);
+                }
+            } catch (error) {
+                if (!hidden && currentRequestId === requestId) {
+                    input.validationMessage = {
+                        message: String(error),
+                        severity: vscode.InputBoxValidationSeverity.Error,
+                    };
+                }
+            }
+        };
+
+        await new Promise<void>((resolve) => {
+            input.onDidChangeValue((text) => void updatePredicateResult(text));
+            input.onDidAccept(() => input.hide());
+            input.onDidHide(() => {
+                hidden = true;
+                input.dispose();
+                resolve();
+            });
+            input.show();
+            void updatePredicateResult(input.value);
+        });
+    };
+}
+
+function predicateEvaluationValidationMessage(
+    result: ra.EvaluatePredicateResult,
+): vscode.InputBoxValidationMessage {
+    switch (result.status) {
+        case "holds":
+            return {
+                message: result.message,
+                severity: vscode.InputBoxValidationSeverity.Info,
+            };
+        case "notProven":
+            return {
+                message: result.message,
+                severity: vscode.InputBoxValidationSeverity.Warning,
+            };
+        case "invalid":
+            return {
+                message: result.message,
+                severity: vscode.InputBoxValidationSeverity.Error,
+            };
+        case "unsupported":
+            return {
+                message: result.message,
+                severity: vscode.InputBoxValidationSeverity.Warning,
+            };
+    }
+}
+
 export function serverVersion(ctx: CtxInit): Cmd {
     return async () => {
         if (!ctx.serverPath) {

@@ -101,6 +101,12 @@ pub struct VarsOs {
     inner: env_imp::Env,
 }
 
+#[stable(feature = "env_vars_unimpl_send_sync", since = "CURRENT_RUSTC_VERSION")]
+impl !Send for VarsOs {}
+
+#[stable(feature = "env_vars_unimpl_send_sync", since = "CURRENT_RUSTC_VERSION")]
+impl !Sync for VarsOs {}
+
 /// Returns an iterator of (variable, value) pairs of strings, for all the
 /// environment variables of the current process.
 ///
@@ -220,14 +226,13 @@ impl fmt::Debug for VarsOs {
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
 pub fn var<K: AsRef<OsStr>>(key: K) -> Result<String, VarError> {
-    _var(key.as_ref())
-}
-
-fn _var(key: &OsStr) -> Result<String, VarError> {
-    match var_os(key) {
-        Some(s) => s.into_string().map_err(VarError::NotUnicode),
-        None => Err(VarError::NotPresent),
+    fn inner(key: &OsStr) -> Result<String, VarError> {
+        env_imp::getenv(key)
+            .ok_or(VarError::NotPresent)?
+            .into_string()
+            .map_err(VarError::NotUnicode)
     }
+    inner(key.as_ref())
 }
 
 /// Fetches the environment variable `key` from the current process, returning
@@ -257,11 +262,7 @@ fn _var(key: &OsStr) -> Result<String, VarError> {
 #[must_use]
 #[stable(feature = "env", since = "1.0.0")]
 pub fn var_os<K: AsRef<OsStr>>(key: K) -> Option<OsString> {
-    _var_os(key.as_ref())
-}
-
-fn _var_os(key: &OsStr) -> Option<OsString> {
-    env_imp::getenv(key)
+    env_imp::getenv(key.as_ref())
 }
 
 /// The error type for operations interacting with environment variables.
@@ -303,12 +304,12 @@ impl Error for VarError {}
 ///
 /// # Safety
 ///
-/// This function is safe to call in a single-threaded program.
+/// This function is sound to call in a single-threaded program.
 ///
-/// This function is also always safe to call on Windows, in single-threaded
+/// This function is also always sound to call on Windows, in single-threaded
 /// and multi-threaded programs.
 ///
-/// In multi-threaded programs on other operating systems, the only safe option is
+/// In multi-threaded programs on other operating systems, the only sound option is
 /// to not use `set_var` or `remove_var` at all.
 ///
 /// The exact requirement is: you
@@ -322,7 +323,7 @@ impl Error for VarError {}
 /// lookups from [`std::net::ToSocketAddrs`]. No stable guarantee is made about
 /// which functions may read from the environment in future versions of a
 /// library. All this makes it not practically possible for you to guarantee
-/// that no other thread will read the environment, so the only safe option is
+/// that no other thread will read the environment, so the only sound option is
 /// to not use `set_var` or `remove_var` in multi-threaded programs at all.
 ///
 /// Discussion of this unsafety on Unix may be found in:
@@ -366,12 +367,12 @@ pub unsafe fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
 ///
 /// # Safety
 ///
-/// This function is safe to call in a single-threaded program.
+/// This function is sound to call in a single-threaded program.
 ///
-/// This function is also always safe to call on Windows, in single-threaded
+/// This function is also always sound to call on Windows, in single-threaded
 /// and multi-threaded programs.
 ///
-/// In multi-threaded programs on other operating systems, the only safe option is
+/// In multi-threaded programs on other operating systems, the only sound option is
 /// to not use `set_var` or `remove_var` at all.
 ///
 /// The exact requirement is: you
@@ -385,7 +386,7 @@ pub unsafe fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
 /// lookups from [`std::net::ToSocketAddrs`]. No stable guarantee is made about
 /// which functions may read from the environment in future versions of a
 /// library. All this makes it not practically possible for you to guarantee
-/// that no other thread will read the environment, so the only safe option is
+/// that no other thread will read the environment, so the only sound option is
 /// to not use `set_var` or `remove_var` in multi-threaded programs at all.
 ///
 /// Discussion of this unsafety on Unix may be found in:
@@ -605,6 +606,7 @@ impl Error for JoinPathsError {
 /// For example, [XDG Base Directories] on Unix or the `LOCALAPPDATA` and `APPDATA` environment variables on Windows.
 ///
 /// [XDG Base Directories]: https://specifications.freedesktop.org/basedir-spec/latest/
+//  feature(xdg_basedir): This should link to std::os::unix::xdg once it's stabilized
 ///
 /// # Unix
 ///
@@ -640,6 +642,7 @@ impl Error for JoinPathsError {
 /// ```
 #[must_use]
 #[stable(feature = "env", since = "1.0.0")]
+#[doc(alias = "home")]
 pub fn home_dir() -> Option<PathBuf> {
     paths_imp::home_dir()
 }
@@ -689,7 +692,7 @@ pub fn home_dir() -> Option<PathBuf> {
 /// [GetTempPath]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-gettemppatha
 /// [appledoc]: https://developer.apple.com/library/archive/documentation/Security/Conceptual/SecureCodingGuide/Articles/RaceConditions.html#//apple_ref/doc/uid/TP40002585-SW10
 ///
-/// ```no_run
+/// ```
 /// use std::env;
 ///
 /// fn main() {
@@ -1071,41 +1074,42 @@ pub mod consts {
     ///
     /// <details><summary>Full list of possible values</summary>
     ///
-    /// * `"linux"`
-    /// * `"windows"`
-    /// * `"macos"`
-    /// * `"android"`
-    /// * `"ios"`
-    /// * `"openbsd"`
-    /// * `"freebsd"`
-    /// * `"netbsd"`
-    /// * `"wasi"`
-    /// * `"hermit"`
+    // tidy-alphabetical-start
     /// * `"aix"`
+    /// * `"android"`
     /// * `"apple"`
     /// * `"dragonfly"`
     /// * `"emscripten"`
     /// * `"espidf"`
     /// * `"fortanix"`
-    /// * `"uefi"`
+    /// * `"freebsd"`
     /// * `"fuchsia"`
     /// * `"haiku"`
     /// * `"hermit"`
-    /// * `"watchos"`
-    /// * `"visionos"`
-    /// * `"tvos"`
     /// * `"horizon"`
     /// * `"hurd"`
     /// * `"illumos"`
+    /// * `"ios"`
     /// * `"l4re"`
+    /// * `"linux"`
+    /// * `"macos"`
+    /// * `"netbsd"`
     /// * `"nto"`
+    /// * `"openbsd"`
     /// * `"redox"`
     /// * `"solaris"`
     /// * `"solid_asp3"`
+    /// * `"tvos"`
+    /// * `"uefi"`
     /// * `"vexos"`
+    /// * `"visionos"`
     /// * `"vita"`
     /// * `"vxworks"`
+    /// * `"wasi"`
+    /// * `"watchos"`
+    /// * `"windows"`
     /// * `"xous"`
+    // tidy-alphabetical-end
     ///
     /// </details>
     #[stable(feature = "env", since = "1.0.0")]

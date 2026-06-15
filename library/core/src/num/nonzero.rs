@@ -31,30 +31,14 @@ use crate::{fmt, intrinsics, ptr, ub_checks};
     reason = "implementation detail which may disappear or be replaced at any time",
     issue = "none"
 )]
-pub unsafe trait ZeroablePrimitive: Sized + Copy + private::Sealed {
+pub impl(self) unsafe trait ZeroablePrimitive: Sized + Copy {
     /// A type like `Self` but with a niche that includes zero.
     type NonZeroInner: Sized + Copy;
 }
 
 macro_rules! impl_zeroable_primitive {
     ($($NonZeroInner:ident ( $primitive:ty )),+ $(,)?) => {
-        mod private {
-            #[unstable(
-                feature = "nonzero_internals",
-                reason = "implementation detail which may disappear or be replaced at any time",
-                issue = "none"
-            )]
-            pub trait Sealed {}
-        }
-
         $(
-            #[unstable(
-                feature = "nonzero_internals",
-                reason = "implementation detail which may disappear or be replaced at any time",
-                issue = "none"
-            )]
-            impl private::Sealed for $primitive {}
-
             #[unstable(
                 feature = "nonzero_internals",
                 reason = "implementation detail which may disappear or be replaced at any time",
@@ -185,7 +169,7 @@ impl_nonzero_auto_trait!(UnwindSafe);
 
 #[stable(feature = "nonzero", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-impl<T> const Clone for NonZero<T>
+const impl<T> Clone for NonZero<T>
 where
     T: ZeroablePrimitive,
 {
@@ -204,11 +188,11 @@ impl<T> Copy for NonZero<T> where T: ZeroablePrimitive {}
 #[doc(hidden)]
 #[unstable(feature = "trivial_clone", issue = "none")]
 #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-unsafe impl<T> const TrivialClone for NonZero<T> where T: ZeroablePrimitive {}
+const unsafe impl<T> TrivialClone for NonZero<T> where T: ZeroablePrimitive {}
 
 #[stable(feature = "nonzero", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-impl<T> const PartialEq for NonZero<T>
+const impl<T> PartialEq for NonZero<T>
 where
     T: ZeroablePrimitive + [const] PartialEq,
 {
@@ -228,11 +212,11 @@ impl<T> StructuralPartialEq for NonZero<T> where T: ZeroablePrimitive + Structur
 
 #[stable(feature = "nonzero", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-impl<T> const Eq for NonZero<T> where T: ZeroablePrimitive + [const] Eq {}
+const impl<T> Eq for NonZero<T> where T: ZeroablePrimitive + [const] Eq {}
 
 #[stable(feature = "nonzero", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-impl<T> const PartialOrd for NonZero<T>
+const impl<T> PartialOrd for NonZero<T>
 where
     T: ZeroablePrimitive + [const] PartialOrd,
 {
@@ -264,7 +248,7 @@ where
 
 #[stable(feature = "nonzero", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-impl<T> const Ord for NonZero<T>
+const impl<T> Ord for NonZero<T>
 where
     // FIXME(const_hack): the T: ~const Destruct should be inferred from the Self: ~const Destruct.
     // See https://github.com/rust-lang/rust/issues/144207
@@ -310,7 +294,7 @@ where
 
 #[stable(feature = "from_nonzero", since = "1.31.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T> const From<NonZero<T>> for T
+const impl<T> From<NonZero<T>> for T
 where
     T: ZeroablePrimitive,
 {
@@ -323,7 +307,7 @@ where
 
 #[stable(feature = "nonzero_bitor", since = "1.45.0")]
 #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-impl<T> const BitOr for NonZero<T>
+const impl<T> BitOr for NonZero<T>
 where
     T: ZeroablePrimitive + [const] BitOr<Output = T>,
 {
@@ -338,7 +322,7 @@ where
 
 #[stable(feature = "nonzero_bitor", since = "1.45.0")]
 #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-impl<T> const BitOr<T> for NonZero<T>
+const impl<T> BitOr<T> for NonZero<T>
 where
     T: ZeroablePrimitive + [const] BitOr<Output = T>,
 {
@@ -353,7 +337,7 @@ where
 
 #[stable(feature = "nonzero_bitor", since = "1.45.0")]
 #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-impl<T> const BitOr<NonZero<T>> for T
+const impl<T> BitOr<NonZero<T>> for T
 where
     T: ZeroablePrimitive + [const] BitOr<Output = T>,
 {
@@ -368,7 +352,7 @@ where
 
 #[stable(feature = "nonzero_bitor", since = "1.45.0")]
 #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-impl<T> const BitOrAssign for NonZero<T>
+const impl<T> BitOrAssign for NonZero<T>
 where
     T: ZeroablePrimitive,
     Self: [const] BitOr<Output = Self>,
@@ -381,7 +365,7 @@ where
 
 #[stable(feature = "nonzero_bitor", since = "1.45.0")]
 #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-impl<T> const BitOrAssign<T> for NonZero<T>
+const impl<T> BitOrAssign<T> for NonZero<T>
 where
     T: ZeroablePrimitive,
     Self: [const] BitOr<T, Output = Self>,
@@ -660,8 +644,8 @@ macro_rules! nonzero_integer {
             /// # Some(())
             /// # }
             /// ```
-            #[stable(feature = "isolate_most_least_significant_one", since = "CURRENT_RUSTC_VERSION")]
-            #[rustc_const_stable(feature = "isolate_most_least_significant_one", since = "CURRENT_RUSTC_VERSION")]
+            #[stable(feature = "isolate_most_least_significant_one", since = "1.97.0")]
+            #[rustc_const_stable(feature = "isolate_most_least_significant_one", since = "1.97.0")]
             #[must_use = "this returns the result of the operation, \
                         without modifying the original"]
             #[inline(always)]
@@ -692,8 +676,8 @@ macro_rules! nonzero_integer {
             /// # Some(())
             /// # }
             /// ```
-            #[stable(feature = "isolate_most_least_significant_one", since = "CURRENT_RUSTC_VERSION")]
-            #[rustc_const_stable(feature = "isolate_most_least_significant_one", since = "CURRENT_RUSTC_VERSION")]
+            #[stable(feature = "isolate_most_least_significant_one", since = "1.97.0")]
+            #[rustc_const_stable(feature = "isolate_most_least_significant_one", since = "1.97.0")]
             #[must_use = "this returns the result of the operation, \
                         without modifying the original"]
             #[inline(always)]
@@ -708,6 +692,16 @@ macro_rules! nonzero_integer {
 
             /// Returns the index of the highest bit set to one in `self`.
             ///
+            #[doc = sign_dependent_expr!{
+                $signedness ?
+                if signed {
+                    ""
+                }
+                if unsigned {
+                    "Note that this is equivalent to [`ilog2`](Self::ilog2)."
+                }
+            }]
+            ///
             /// # Examples
             ///
             /// ```
@@ -720,8 +714,8 @@ macro_rules! nonzero_integer {
             /// # Some(())
             /// # }
             /// ```
-            #[stable(feature = "int_lowest_highest_one", since = "CURRENT_RUSTC_VERSION")]
-            #[rustc_const_stable(feature = "int_lowest_highest_one", since = "CURRENT_RUSTC_VERSION")]
+            #[stable(feature = "int_lowest_highest_one", since = "1.97.0")]
+            #[rustc_const_stable(feature = "int_lowest_highest_one", since = "1.97.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline(always)]
@@ -743,8 +737,8 @@ macro_rules! nonzero_integer {
             /// # Some(())
             /// # }
             /// ```
-            #[stable(feature = "int_lowest_highest_one", since = "CURRENT_RUSTC_VERSION")]
-            #[rustc_const_stable(feature = "int_lowest_highest_one", since = "CURRENT_RUSTC_VERSION")]
+            #[stable(feature = "int_lowest_highest_one", since = "1.97.0")]
+            #[rustc_const_stable(feature = "int_lowest_highest_one", since = "1.97.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline(always)]
@@ -1479,7 +1473,7 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
     (unsigned $Int:ty) => {
         #[stable(feature = "nonzero_div", since = "1.51.0")]
         #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-        impl const Div<NonZero<$Int>> for $Int {
+        const impl Div<NonZero<$Int>> for $Int {
             type Output = $Int;
 
             /// Same as `self / other.get()`, but because `other` is a `NonZero<_>`,
@@ -1498,7 +1492,7 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
 
         #[stable(feature = "nonzero_div_assign", since = "1.79.0")]
         #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-        impl const DivAssign<NonZero<$Int>> for $Int {
+        const impl DivAssign<NonZero<$Int>> for $Int {
             /// Same as `self /= other.get()`, but because `other` is a `NonZero<_>`,
             /// there's never a runtime check for division-by-zero.
             ///
@@ -1512,7 +1506,7 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
 
         #[stable(feature = "nonzero_div", since = "1.51.0")]
         #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-        impl const Rem<NonZero<$Int>> for $Int {
+        const impl Rem<NonZero<$Int>> for $Int {
             type Output = $Int;
 
             /// This operation satisfies `n % d == n - (n / d) * d`, and cannot panic.
@@ -1526,7 +1520,7 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
 
         #[stable(feature = "nonzero_div_assign", since = "1.79.0")]
         #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-        impl const RemAssign<NonZero<$Int>> for $Int {
+        const impl RemAssign<NonZero<$Int>> for $Int {
             /// This operation satisfies `n % d == n - (n / d) * d`, and cannot panic.
             #[inline]
             fn rem_assign(&mut self, other: NonZero<$Int>) {
@@ -1567,7 +1561,7 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
     (signed $Int:ty) => {
         #[stable(feature = "signed_nonzero_neg", since = "1.71.0")]
         #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-        impl const Neg for NonZero<$Int> {
+        const impl Neg for NonZero<$Int> {
             type Output = Self;
 
             #[inline]
@@ -1774,6 +1768,8 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// except that it has no failure cases to worry about
         /// since this value can never be zero.
         ///
+        /// Note that this is equivalent to [`highest_one`](Self::highest_one).
+        ///
         /// # Examples
         ///
         /// ```
@@ -1962,8 +1958,8 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # Some(())
         /// # }
         /// ```
-        #[stable(feature = "uint_bit_width", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "uint_bit_width", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "uint_bit_width", since = "1.97.0")]
+        #[rustc_const_stable(feature = "uint_bit_width", since = "1.97.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]

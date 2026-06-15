@@ -214,10 +214,7 @@ impl<I: Interner> Relate<I> for ty::AliasTy<I> {
         b: ty::AliasTy<I>,
     ) -> RelateResult<I, ty::AliasTy<I>> {
         if a.kind.def_id() != b.kind.def_id() {
-            Err(TypeError::ProjectionMismatched(ExpectedFound::new(
-                a.kind.def_id(),
-                b.kind.def_id(),
-            )))
+            Err(TypeError::ProjectionMismatched(ExpectedFound::new(a.kind.into(), b.kind.into())))
         } else {
             let cx = relation.cx();
             let args = if let Some(variances) = cx.opt_alias_variances(a.kind) {
@@ -225,7 +222,30 @@ impl<I: Interner> Relate<I> for ty::AliasTy<I> {
             } else {
                 relate_args_invariantly(relation, a.args, b.args)?
             };
-            Ok(ty::AliasTy::new_from_args(relation.cx(), a.kind, args))
+            Ok(ty::AliasTy::new_from_args(cx, a.kind, args))
+        }
+    }
+}
+
+impl<I: Interner> Relate<I> for ty::UnevaluatedConst<I> {
+    fn relate<R: TypeRelation<I>>(
+        relation: &mut R,
+        a: ty::UnevaluatedConst<I>,
+        b: ty::UnevaluatedConst<I>,
+    ) -> RelateResult<I, ty::UnevaluatedConst<I>> {
+        let cx = relation.cx();
+        if a.kind != b.kind {
+            Err(TypeError::ConstMismatch(ExpectedFound::new(
+                Const::new_unevaluated(cx, a),
+                Const::new_unevaluated(cx, b),
+            )))
+        } else {
+            // FIXME(mgca): remove this
+            debug_assert_eq!(a.type_of(cx).skip_norm_wip(), b.type_of(cx).skip_norm_wip());
+
+            let args = relate_args_invariantly(relation, a.args, b.args)?;
+
+            Ok(ty::UnevaluatedConst::new(cx, a.kind, args))
         }
     }
 }
@@ -236,13 +256,13 @@ impl<I: Interner> Relate<I> for ty::AliasTerm<I> {
         a: ty::AliasTerm<I>,
         b: ty::AliasTerm<I>,
     ) -> RelateResult<I, ty::AliasTerm<I>> {
-        if a.def_id() != b.def_id() {
-            Err(TypeError::ProjectionMismatched(ExpectedFound::new(a.def_id(), b.def_id())))
+        if a.kind != b.kind {
+            Err(TypeError::ProjectionMismatched(ExpectedFound::new(a.kind, b.kind)))
         } else {
-            let args = match a.kind(relation.cx()) {
-                ty::AliasTermKind::OpaqueTy { .. } => relate_args_with_variances(
+            let args = match a.kind {
+                ty::AliasTermKind::OpaqueTy { def_id } => relate_args_with_variances(
                     relation,
-                    relation.cx().variances_of(a.def_id()),
+                    relation.cx().variances_of(def_id.into()),
                     a.args,
                     b.args,
                 )?,
@@ -251,7 +271,7 @@ impl<I: Interner> Relate<I> for ty::AliasTerm<I> {
                 | ty::AliasTermKind::FreeTy { .. }
                 | ty::AliasTermKind::InherentTy { .. }
                 | ty::AliasTermKind::InherentConst { .. }
-                | ty::AliasTermKind::UnevaluatedConst { .. }
+                | ty::AliasTermKind::AnonConst { .. }
                 | ty::AliasTermKind::ProjectionConst { .. } => {
                     relate_args_invariantly(relation, a.args, b.args)?
                 }
@@ -269,8 +289,8 @@ impl<I: Interner> Relate<I> for ty::ExistentialProjection<I> {
     ) -> RelateResult<I, ty::ExistentialProjection<I>> {
         if a.def_id != b.def_id {
             Err(TypeError::ProjectionMismatched(ExpectedFound::new(
-                a.def_id.into(),
-                b.def_id.into(),
+                relation.cx().alias_term_kind_from_def_id(a.def_id.into()),
+                relation.cx().alias_term_kind_from_def_id(b.def_id.into()),
             )))
         } else {
             let term = relation.relate_with_variance(
@@ -591,21 +611,8 @@ pub fn structurally_relate_consts<I: Interner, R: TypeRelation<I>>(
         // While this is slightly incorrect, it shouldn't matter for `min_const_generics`
         // and is the better alternative to waiting until `generic_const_exprs` can
         // be stabilized.
-        (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu)) if au.def == bu.def => {
-            // FIXME(mgca): remove this
-            if cfg!(debug_assertions) {
-                let a_ty = cx.type_of(au.def.into()).instantiate(cx, au.args).skip_norm_wip();
-                let b_ty = cx.type_of(bu.def.into()).instantiate(cx, bu.args).skip_norm_wip();
-                assert_eq!(a_ty, b_ty);
-            }
-
-            let args = relation.relate_with_variance(
-                ty::Invariant,
-                VarianceDiagInfo::default(),
-                au.args,
-                bu.args,
-            )?;
-            return Ok(Const::new_unevaluated(cx, ty::UnevaluatedConst { def: au.def, args }));
+        (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu)) => {
+            return Ok(Const::new_unevaluated(cx, relation.relate(au, bu)?));
         }
         (ty::ConstKind::Expr(ae), ty::ConstKind::Expr(be)) => {
             let expr = relation.relate(ae, be)?;

@@ -109,8 +109,7 @@ fn const_to_valtree_inner<'tcx>(
             // switch to the base type.
             place.layout = ecx.layout_of(*base).unwrap();
             ensure_sufficient_stack(|| const_to_valtree_inner(ecx, &place, num_nodes))
-        },
-
+        }
 
         ty::RawPtr(_, _) => {
             // Not all raw pointers are allowed, as we cannot properly test them for
@@ -137,23 +136,19 @@ fn const_to_valtree_inner<'tcx>(
         // agree with runtime equality tests.
         ty::FnPtr(..) => Err(ValTreeCreationError::NonSupportedType(ty)),
 
-        ty::Ref(_, _, _)  => {
+        ty::Ref(_, _, _) => {
             let derefd_place = ecx.deref_pointer(place).report_err()?;
             const_to_valtree_inner(ecx, &derefd_place, num_nodes)
         }
 
-        ty::Str | ty::Slice(_) | ty::Array(_, _) => {
-            slice_branches(ecx, place, num_nodes)
-        }
+        ty::Str | ty::Slice(_) | ty::Array(_, _) => slice_branches(ecx, place, num_nodes),
         // Trait objects are not allowed in type level constants, as we have no concept for
         // resolving their backing type, even if we can do that at const eval time. We may
         // hypothetically be able to allow `dyn StructuralPartialEq` trait objects in the future,
         // but it is unclear if this is useful.
         ty::Dynamic(..) => Err(ValTreeCreationError::NonSupportedType(ty)),
 
-        ty::Tuple(elem_tys) => {
-            branches(ecx, place, elem_tys.len(), None, num_nodes)
-        }
+        ty::Tuple(elem_tys) => branches(ecx, place, elem_tys.len(), None, num_nodes),
 
         ty::Adt(def, _) => {
             if def.is_union() {
@@ -163,22 +158,30 @@ fn const_to_valtree_inner<'tcx>(
             }
 
             let variant = ecx.read_discriminant(place).report_err()?;
-            branches(ecx, place, def.variant(variant).fields.len(), def.is_enum().then_some(variant), num_nodes)
+            branches(
+                ecx,
+                place,
+                def.variant(variant).fields.len(),
+                def.is_enum().then_some(variant),
+                num_nodes,
+            )
         }
+
+        // FIXME(oli-obk): we could look behind opaque types
+        ty::Alias(..) => Err(ValTreeCreationError::NonSupportedType(ty)),
+
+        // FIXME(oli-obk): we can probably encode closures just like structs
+        ty::Closure(..) => Err(ValTreeCreationError::NonSupportedType(ty)),
 
         ty::Never
         | ty::Error(_)
         | ty::Foreign(..)
         | ty::Infer(ty::FreshIntTy(_))
         | ty::Infer(ty::FreshFloatTy(_))
-        // FIXME(oli-obk): we could look behind opaque types
-        | ty::Alias(..)
         | ty::Param(_)
         | ty::Bound(..)
         | ty::Placeholder(..)
         | ty::Infer(_)
-        // FIXME(oli-obk): we can probably encode closures just like structs
-        | ty::Closure(..)
         | ty::CoroutineClosure(..)
         | ty::Coroutine(..)
         | ty::CoroutineWitness(..)
@@ -199,10 +202,12 @@ fn reconstruct_place_meta<'tcx>(
 
     let mut last_valtree = valtree;
     // Traverse the type, and update `last_valtree` as we go.
+    //
+    // FIXME(#155345): Missing normalization call
     let tail = tcx.struct_tail_raw(
         layout.ty,
         &ObligationCause::dummy(),
-        |ty| ty,
+        |ty| ty.skip_norm_wip(),
         || {
             let branches = last_valtree.to_branch();
             last_valtree = branches.last().unwrap().to_value().valtree;
@@ -236,19 +241,7 @@ pub(crate) fn eval_to_valtree<'tcx>(
     typing_env: ty::TypingEnv<'tcx>,
     cid: GlobalId<'tcx>,
 ) -> EvalToValTreeResult<'tcx> {
-    if cfg!(debug_assertions) {
-        match typing_env.typing_mode().assert_not_erased() {
-            ty::TypingMode::PostAnalysis => {}
-            ty::TypingMode::Coherence
-            | ty::TypingMode::Analysis { .. }
-            | ty::TypingMode::Borrowck { .. }
-            | ty::TypingMode::PostBorrowckAnalysis { .. } => {
-                bug!(
-                    "Const eval should always happens in PostAnalysis mode. See the comment in `InterpCx::new` for more details."
-                )
-            }
-        }
-    }
+    crate::assert_typing_mode(typing_env.typing_mode());
     let const_alloc = tcx.eval_to_allocation_raw(typing_env.as_query_input(cid))?;
 
     // FIXME Need to provide a span to `eval_to_valtree`

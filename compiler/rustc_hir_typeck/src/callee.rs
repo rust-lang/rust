@@ -12,10 +12,10 @@ use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
-use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::{self, FnSig, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Span, sym};
+use rustc_span::{Ident, Span, sym};
 use rustc_target::spec::{AbiMap, AbiMapping};
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::infer::InferCtxtExt as _;
@@ -25,8 +25,10 @@ use tracing::{debug, instrument};
 use super::method::MethodCallee;
 use super::method::probe::ProbeScope;
 use super::{Expectation, FnCtxt, TupleArgumentsFlag};
-use crate::errors;
+use crate::diagnostics;
 use crate::method::TreatNotYetDefinedOpaques;
+use crate::method::confirm::ConfirmContext;
+use crate::method::probe::{IsSuggestion, Mode};
 
 /// Checks that it is legal to call methods of the trait corresponding
 /// to `trait_id` (this only cares about the trait, not the specific
@@ -44,14 +46,14 @@ pub(crate) fn check_legal_trait_for_method_call(
         && !tcx.is_lang_item(tcx.parent(body_id), LangItem::Drop)
     {
         let sugg = if let Some(receiver) = receiver.filter(|s| !s.is_empty()) {
-            errors::ExplicitDestructorCallSugg::Snippet {
+            diagnostics::ExplicitDestructorCallSugg::Snippet {
                 lo: expr_span.shrink_to_lo().to(receiver.shrink_to_lo()),
                 hi: receiver.shrink_to_hi().to(expr_span.shrink_to_hi()),
             }
         } else {
-            errors::ExplicitDestructorCallSugg::Empty(span)
+            diagnostics::ExplicitDestructorCallSugg::Empty(span)
         };
-        return Err(tcx.dcx().emit_err(errors::ExplicitDestructorCall { span, sugg }));
+        return Err(tcx.dcx().emit_err(diagnostics::ExplicitDestructorCall { span, sugg }));
     }
     tcx.ensure_result().coherent_trait(trait_id)
 }
@@ -103,7 +105,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         if self.is_scalable_vector_ctor(autoderef.final_ty()) {
-            let mut err = self.dcx().create_err(errors::ScalableVectorCtor {
+            let mut err = self.dcx().create_err(diagnostics::ScalableVectorCtor {
                 span: callee_expr.span,
                 ty: autoderef.final_ty(),
             });
@@ -188,13 +190,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // The interrupt ABIs should only be called by the CPU. They have complex
             // pre- and postconditions, and can use non-standard instructions like `iret` on x86.
             | CanonAbi::Interrupt(_) => {
-                let err = crate::errors::AbiCannotBeCalled { span, abi };
+                let err = crate::diagnostics::AbiCannotBeCalled { span, abi };
                 self.tcx.dcx().emit_err(err);
             }
 
             // This is an entry point for the host, and cannot be called directly.
             CanonAbi::GpuKernel => {
-                let err = crate::errors::GpuKernelAbiCannotBeCalled { span };
+                let err = crate::diagnostics::GpuKernelAbiCannotBeCalled { span };
                 self.tcx.dcx().emit_err(err);
             }
 
@@ -202,6 +204,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | CanonAbi::Rust
             | CanonAbi::RustCold
             | CanonAbi::RustPreserveNone
+            | CanonAbi::RustTail
+            | CanonAbi::Swift
             | CanonAbi::Arm(_)
             | CanonAbi::X86(_) => {}
         }
@@ -590,16 +594,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         let fn_sig = self.normalize(call_expr.span, Unnormalized::new_wip(fn_sig));
 
-        self.check_argument_types(
-            call_expr.span,
-            call_expr,
-            fn_sig.inputs(),
-            fn_sig.output(),
-            expected,
-            arg_exprs,
-            fn_sig.c_variadic(),
-            TupleArgumentsFlag::DontTupleArguments,
-            def_id,
+        self.check_argument_types_maybe_method_like(
+            &fn_sig, call_expr, arg_exprs, expected, def_id,
         );
 
         if fn_sig.abi() == rustc_abi::ExternAbi::RustCall {
@@ -612,11 +608,117 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
                 self.require_type_is_sized(ty, sp, ObligationCauseCode::RustCall);
             } else {
-                self.dcx().emit_err(errors::RustCallIncorrectArgs { span: sp });
+                self.dcx().emit_err(diagnostics::RustCallIncorrectArgs { span: sp });
             }
         }
 
         fn_sig.output()
+    }
+
+    /// Performs arguments check with an additional routine of adjusting the first argument,
+    /// so it corresponds to the first parameter of the function. We reuse adjustments
+    /// that are obtained from `probe_for_name`, where the first argument pretends to be
+    /// a receiver like in a method call. At this point this routine is used for delegations,
+    /// as from this moment we always generate a call (earlier method calls were generated),
+    /// so we can both propagate parent generics and get benefits from adjustments from method call.
+    fn check_argument_types_maybe_method_like(
+        &self,
+        fn_sig: &FnSig<'tcx>,
+        call_expr: &'tcx hir::Expr<'tcx>,
+        arg_exprs: &'tcx [hir::Expr<'tcx>],
+        expected: Expectation<'tcx>,
+        def_id: Option<DefId>,
+    ) {
+        let do_check = || {
+            self.check_argument_types(
+                call_expr.span,
+                call_expr,
+                fn_sig.inputs(),
+                fn_sig.output(),
+                expected,
+                arg_exprs,
+                fn_sig.c_variadic(),
+                TupleArgumentsFlag::DontTupleArguments,
+                def_id,
+            );
+        };
+
+        let Some(scope) = self.get_scope_for_method_call_adjustments(call_expr, arg_exprs) else {
+            return do_check();
+        };
+
+        let first_expr = &arg_exprs[0];
+        let first_arg_type = self.check_expr(first_expr);
+
+        // Reuse method probing that is used during method call, as all this code pretends that
+        // we generated method call.
+        let pick = self.probe_for_name(
+            Mode::MethodCall,
+            Ident::dummy(),
+            None,
+            IsSuggestion(false),
+            first_arg_type,
+            call_expr.hir_id,
+            scope,
+        );
+
+        let Ok(ref pick) = pick else { return do_check() };
+
+        // Fool typechecker by placing an adjusted type of the first arg to avoid errors.
+        // We already wrote type of `first_expr` during `self.check_expr(first_expr)` above.
+        let first_arg_type = self
+            .typeck_results
+            .borrow_mut()
+            .node_types_mut()
+            .insert(first_expr.hir_id, pick.self_ty)
+            .expect("must be set");
+
+        do_check();
+
+        let mut results = self.typeck_results.borrow_mut();
+
+        // Remove any added adjustments for `first_expr` during `do_check` and replace them with ours.
+        let mut adjustments = results.adjustments_mut();
+        let adjustments = adjustments.entry(first_expr.hir_id).or_default();
+
+        let mut ctx = ConfirmContext::new(self, first_expr.span, first_expr, first_expr);
+        *adjustments = ctx.create_ty_adjustments_from_pick(first_arg_type, pick).1;
+
+        // Restore original first provided arg type.
+        results.node_types_mut().insert(first_expr.hir_id, first_arg_type);
+    }
+
+    /// Gets scope for method-call like adjustments for the first argument of the call.
+    /// Now only delegations are processed this way.
+    fn get_scope_for_method_call_adjustments(
+        &self,
+        call_expr: &'tcx hir::Expr<'tcx>,
+        arg_exprs: &'tcx [hir::Expr<'tcx>],
+    ) -> Option<ProbeScope> {
+        // Check that we are inside delegation and processing its call. First, we check that
+        // the parent of call expr. is delegation and then make sure that it is compiler-generated
+        // by comparing their hir ids (otherwise we will encounter errors in nested delegations,
+        // see tests\ui\delegation\impl-reuse-pass.rs:237).
+        let parent_def = self.tcx.hir_get_parent_item(call_expr.hir_id).def_id;
+        let Some(info) = self.tcx.hir_opt_delegation_info(parent_def) else {
+            return None;
+        };
+
+        if call_expr.hir_id != info.call_expr_id {
+            return None;
+        };
+
+        let Some(path_res_id) = info.call_path_res else { return None };
+
+        // Check that delegation has first provided arg and that the call path
+        // resolves to a trait method (inherent methods are not yet supported).
+        if arg_exprs.is_empty()
+            || !self.tcx.opt_associated_item(path_res_id).is_some_and(|i| i.is_method())
+        {
+            return None;
+        }
+
+        Some(ProbeScope::Single(path_res_id))
     }
 
     /// Attempts to reinterpret `method(rcvr, args...)` as `rcvr.method(args...)`
@@ -743,9 +845,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let callee_ty = self.resolve_vars_if_possible(callee_ty);
         let mut path = None;
-        let mut err = self.dcx().create_err(errors::InvalidCallee {
+        let mut err = self.dcx().create_err(diagnostics::InvalidCallee {
             span: callee_expr.span,
-            ty: callee_ty,
             found: match &unit_variant {
                 Some((_, kind, path)) => format!("{kind} `{path}`"),
                 None => format!("`{}`", self.tcx.short_string(callee_ty, &mut path)),
@@ -849,7 +950,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         if let Some(span) = self.tcx.hir_res_span(def) {
-            let callee_ty = callee_ty.to_string();
             let label = match (unit_variant, inner_callee_path) {
                 (Some((_, kind, path)), _) => {
                     err.arg("kind", kind);
@@ -859,6 +959,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (_, Some(hir::QPath::Resolved(_, path))) => {
                     self.tcx.sess.source_map().span_to_snippet(path.span).ok().map(|p| {
                         err.arg("func", p);
+                        err.arg("ty", callee_ty);
                         msg!("`{$func}` defined here returns `{$ty}`")
                     })
                 }
@@ -868,6 +969,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // type definitions themselves, but rather variables *of* that type.
                         Res::Local(hir_id) => {
                             err.arg("local_name", self.tcx.hir_name(hir_id));
+                            err.arg("ty", callee_ty);
                             Some(msg!("`{$local_name}` has type `{$ty}`"))
                         }
                         Res::Def(kind, def_id) if kind.ns() == Some(Namespace::ValueNS) => {
@@ -875,7 +977,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             Some(msg!("`{$path}` defined here"))
                         }
                         _ => {
-                            err.arg("path", callee_ty);
+                            err.arg("path", callee_ty.to_string());
                             Some(msg!("`{$path}` defined here"))
                         }
                     }
@@ -923,6 +1025,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         callee_did: DefId,
         callee_args: GenericArgsRef<'tcx>,
     ) {
+        let const_context = self.tcx.hir_body_const_context(self.body_id);
+
+        if let hir::Constness::Const { always: true } = self.tcx.constness(callee_did) {
+            match const_context {
+                Some(hir::ConstContext::Const { .. } | hir::ConstContext::Static(_)) => {}
+                Some(hir::ConstContext::ConstFn) | None => {
+                    self.dcx().span_err(span, "comptime fns can only be called at compile time");
+                }
+            }
+        }
+
         // FIXME(const_trait_impl): We should be enforcing these effects unconditionally.
         // This can be done as soon as we convert the standard library back to
         // using const traits, since if we were to enforce these conditions now,
@@ -936,7 +1049,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        let host = match self.tcx.hir_body_const_context(self.body_id) {
+        let host = match const_context {
             Some(hir::ConstContext::Const { .. } | hir::ConstContext::Static(_)) => {
                 ty::BoundConstness::Const
             }

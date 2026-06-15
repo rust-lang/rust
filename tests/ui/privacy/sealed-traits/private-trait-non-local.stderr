@@ -1,11 +1,16 @@
-error[E0603]: module `index` is private
-  --> $DIR/private-trait-non-local.rs:2:18
+error[E0603]: module `b` is private
+  --> $DIR/private-trait-non-local.rs:4:13
    |
-LL | use core::slice::index::private_slice_index::Sealed;
-   |                  ^^^^^ private module        ------ trait `Sealed` is not publicly re-exported
+LL | use aux::a::b::Sealed;
+   |             ^  ------ trait `Sealed` is not publicly re-exported
+   |             |
+   |             private module
    |
-note: the module `index` is defined here
-  --> $SRC_DIR/core/src/slice/mod.rs:LL:COL
+note: the module `b` is defined here
+  --> $DIR/auxiliary/private-trait-non-local-aux.rs:2:5
+   |
+LL |     mod b {
+   |     ^^^^^
 
 error: aborting due to 1 previous error
 

@@ -752,16 +752,19 @@ impl<'a> Parser<'a> {
         Err(err)
     }
 
+    pub(super) fn is_expected_raw_ref_mut(&self) -> bool {
+        self.prev_token.is_keyword(kw::Raw)
+            && self.expected_token_types.contains(TokenType::KwMut)
+            && self.expected_token_types.contains(TokenType::KwConst)
+            && self.token.can_begin_expr()
+    }
+
     /// Adds a label when `&raw EXPR` was written instead of `&raw const EXPR`/`&raw mut EXPR`.
     ///
     /// Given that not all parser diagnostics flow through `expected_one_of_not_found`, this
     /// label may need added to other diagnostics emission paths as needed.
     pub(super) fn label_expected_raw_ref(&mut self, err: &mut Diag<'_>) {
-        if self.prev_token.is_keyword(kw::Raw)
-            && self.expected_token_types.contains(TokenType::KwMut)
-            && self.expected_token_types.contains(TokenType::KwConst)
-            && self.token.can_begin_expr()
-        {
+        if self.is_expected_raw_ref_mut() {
             err.span_suggestions(
                 self.prev_token.span.shrink_to_hi(),
                 "`&raw` must be followed by `const` or `mut` to be a raw reference expression",
@@ -1349,19 +1352,19 @@ impl<'a> Parser<'a> {
                 (BinOpKind::Gt, AssocOp::Binary(BinOpKind::Gt | BinOpKind::Ge)) |
                 (BinOpKind::Ge, AssocOp::Binary(BinOpKind::Gt | BinOpKind::Ge)) => {
                     let expr_to_str = |e: &Expr| {
-                        self.span_to_snippet(e.span)
-                            .unwrap_or_else(|_| pprust::expr_to_string(e))
+                        self.span_to_snippet(e.span).unwrap_or_else(|_| pprust::expr_to_string(e))
                     };
-                    err.chaining_sugg = Some(ComparisonOperatorsCannotBeChainedSugg::SplitComparison {
-                        span: inner_op.span.shrink_to_hi(),
-                        middle_term: expr_to_str(r1),
-                    });
+                    err.chaining_sugg =
+                        Some(ComparisonOperatorsCannotBeChainedSugg::SplitComparison {
+                            span: inner_op.span.shrink_to_hi(),
+                            middle_term: expr_to_str(r1),
+                        });
                     false // Keep the current parse behavior, where the AST is `(x < y) < z`.
                 }
                 // `x == y < z`
                 (
                     BinOpKind::Eq,
-                    AssocOp::Binary(BinOpKind::Lt | BinOpKind::Le | BinOpKind::Gt | BinOpKind::Ge)
+                    AssocOp::Binary(BinOpKind::Lt | BinOpKind::Le | BinOpKind::Gt | BinOpKind::Ge),
                 ) => {
                     // Consume `z`/outer-op-rhs.
                     let snapshot = self.create_snapshot_for_diagnostic();
@@ -1369,10 +1372,11 @@ impl<'a> Parser<'a> {
                         Ok(r2) => {
                             // We are sure that outer-op-rhs could be consumed, the suggestion is
                             // likely correct.
-                            err.chaining_sugg = Some(ComparisonOperatorsCannotBeChainedSugg::Parenthesize {
-                                left: r1.span.shrink_to_lo(),
-                                right: r2.span.shrink_to_hi(),
-                            });
+                            err.chaining_sugg =
+                                Some(ComparisonOperatorsCannotBeChainedSugg::Parenthesize {
+                                    left: r1.span.shrink_to_lo(),
+                                    right: r2.span.shrink_to_hi(),
+                                });
                             true
                         }
                         Err(expr_err) => {
@@ -1385,17 +1389,18 @@ impl<'a> Parser<'a> {
                 // `x > y == z`
                 (
                     BinOpKind::Lt | BinOpKind::Le | BinOpKind::Gt | BinOpKind::Ge,
-                    AssocOp::Binary(BinOpKind::Eq)
+                    AssocOp::Binary(BinOpKind::Eq),
                 ) => {
                     let snapshot = self.create_snapshot_for_diagnostic();
                     // At this point it is always valid to enclose the lhs in parentheses, no
                     // further checks are necessary.
                     match self.parse_expr() {
                         Ok(_) => {
-                            err.chaining_sugg = Some(ComparisonOperatorsCannotBeChainedSugg::Parenthesize {
-                                left: l1.span.shrink_to_lo(),
-                                right: r1.span.shrink_to_hi(),
-                            });
+                            err.chaining_sugg =
+                                Some(ComparisonOperatorsCannotBeChainedSugg::Parenthesize {
+                                    left: l1.span.shrink_to_lo(),
+                                    right: r1.span.shrink_to_hi(),
+                                });
                             true
                         }
                         Err(expr_err) => {
@@ -1405,7 +1410,7 @@ impl<'a> Parser<'a> {
                         }
                     }
                 }
-                _ => false
+                _ => false,
             };
         }
         false
@@ -1889,9 +1894,8 @@ impl<'a> Parser<'a> {
         true
     }
 
-    /// Creates a `Diag` for an unexpected token `t` and tries to recover if it is a
-    /// closing delimiter.
-    pub(super) fn unexpected_try_recover(&mut self, t: &TokenKind) -> PResult<'a, Recovered> {
+    /// Creates a `Diag` for an unexpected token `t`
+    pub(super) fn unexpected_err(&mut self, t: &TokenKind) -> Diag<'a> {
         let token_str = pprust::token_kind_to_string(t);
         let this_token_str = super::token_descr(&self.token);
         let (prev_sp, sp) = match (&self.token.kind, self.subparser_name) {
@@ -1926,7 +1930,7 @@ impl<'a> Parser<'a> {
             err.span_label(prev_sp, label_exp);
             err.span_label(sp, "unexpected token");
         }
-        Err(err)
+        err
     }
 
     pub(super) fn expect_semi(&mut self) -> PResult<'a, ()> {

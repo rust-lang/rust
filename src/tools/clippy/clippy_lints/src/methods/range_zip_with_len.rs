@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::source::{SpanRangeExt as _, snippet_with_applicability};
-use clippy_utils::{SpanlessEq, get_parent_expr, higher, is_integer_const, sym};
+use clippy_utils::{SpanlessEq, get_parent_expr, higher, is_integer_literal, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Node, Pat, PatKind, QPath};
 use rustc_lint::LateContext;
@@ -12,14 +12,14 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, recv: &'
     if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator)
         // range expression in `.zip()` call: `0..x.len()`
         && let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::Range::hir(cx, zip_arg)
-        && is_integer_const(cx, start, 0)
+        && is_integer_literal(start, 0)
         // `.len()` call
         && let ExprKind::MethodCall(len_path, len_recv, [], _) = end.kind
         && len_path.ident.name == sym::len
         // `.iter()` and `.len()` called on same `Path`
         && let ExprKind::Path(QPath::Resolved(_, iter_path)) = recv.kind
         && let ExprKind::Path(QPath::Resolved(_, len_path)) = len_recv.kind
-        && SpanlessEq::new(cx).eq_path_segments(iter_path.segments, len_path.segments)
+        && SpanlessEq::new(cx).eq_path_segments(expr.span.ctxt(), iter_path.segments, len_path.segments)
     {
         span_lint_and_then(
             cx,

@@ -52,15 +52,17 @@ impl<'tcx> TyCtxt<'tcx> {
             }
             fn fold_const(&mut self, c: Const<'tcx>) -> Const<'tcx> {
                 let ct = match c.kind() {
-                    ty::ConstKind::Unevaluated(uv) => match self.tcx.thir_abstract_const(uv.def) {
-                        Err(e) => ty::Const::new_error(self.tcx, e),
-                        Ok(Some(bac)) => {
-                            let args = self.tcx.erase_and_anonymize_regions(uv.args);
-                            let bac = bac.instantiate(self.tcx, args).skip_norm_wip();
-                            return bac.fold_with(self);
+                    ty::ConstKind::Unevaluated(uv) if let Some(def_id) = uv.kind.opt_def_id() => {
+                        match self.tcx.thir_abstract_const(def_id) {
+                            Err(e) => ty::Const::new_error(self.tcx, e),
+                            Ok(Some(bac)) => {
+                                let args = self.tcx.erase_and_anonymize_regions(uv.args);
+                                let bac = bac.instantiate(self.tcx, args).skip_norm_wip();
+                                return bac.fold_with(self);
+                            }
+                            Ok(None) => c,
                         }
-                        Ok(None) => c,
-                    },
+                    }
                     _ => c,
                 };
                 ct.super_fold_with(self)

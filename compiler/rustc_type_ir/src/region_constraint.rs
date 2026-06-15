@@ -898,11 +898,12 @@ fn rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling<
             // in coherence
             match infcx.typing_mode_raw() {
                 TypingMode::Coherence => candidates.push(RegionConstraint::Ambiguity),
-                TypingMode::Analysis { .. }
+                TypingMode::Typeck { .. }
                 | TypingMode::ErasedNotCoherence { .. }
-                | TypingMode::Borrowck { .. }
-                | TypingMode::PostBorrowckAnalysis { .. }
-                | TypingMode::PostAnalysis => (),
+                | TypingMode::PostTypeckUntilBorrowck { .. }
+                | TypingMode::PostBorrowck { .. }
+                | TypingMode::PostAnalysis
+                | TypingMode::Codegen => (),
             };
 
             RegionConstraint::Or(candidates.into_boxed_slice())
@@ -1095,11 +1096,7 @@ fn alias_outlives_candidates_from_assumptions<Infcx: InferCtxtLike<Interner = I>
 
     let prev_universe = infcx.universe();
 
-    // FIXME(-Zassumptions-on-binders): Handle the assumptions on this binder
-    infcx.enter_forall(bound_outlives, |(alias, r)| {
-        let u = infcx.universe();
-        infcx.insert_placeholder_assumptions(u, Some(Assumptions::empty()));
-
+    infcx.enter_forall_with_empty_assumptions(bound_outlives, |(alias, r)| {
         for bound_type_outlives in assumptions.type_outlives.iter() {
             let OutlivesPredicate(alias2, r2) =
                 infcx.instantiate_binder_with_infer(*bound_type_outlives);
@@ -1186,14 +1183,14 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeRelation<I>
     where
         T: Relate<I>,
     {
-        self.infcx.enter_forall(a, |a| {
+        self.infcx.enter_forall_with_empty_assumptions(a, |a| {
             let u = self.infcx.universe();
             self.infcx.insert_placeholder_assumptions(u, Some(Assumptions::empty()));
             let b = self.infcx.instantiate_binder_with_infer(b);
             self.relate(a, b)
         })?;
 
-        self.infcx.enter_forall(b, |b| {
+        self.infcx.enter_forall_with_empty_assumptions(b, |b| {
             let u = self.infcx.universe();
             self.infcx.insert_placeholder_assumptions(u, Some(Assumptions::empty()));
             let a = self.infcx.instantiate_binder_with_infer(a);

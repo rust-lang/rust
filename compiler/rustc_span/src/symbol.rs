@@ -2,11 +2,12 @@
 //! allows bidirectional lookup; i.e., given a value, one can easily find the
 //! type, and vice versa.
 
-use std::hash::{Hash, Hasher};
+use std::hash::{BuildHasher, Hash, Hasher};
 use std::{fmt, str};
 
 use rustc_arena::DroplessArena;
-use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::FxBuildHasher;
+use rustc_data_structures::hash_table::{Entry, HashTable};
 use rustc_data_structures::stable_hash::{StableCompare, StableHash, StableHashCtxt, StableHasher};
 use rustc_data_structures::sync::Lock;
 use rustc_macros::{Decodable, Encodable, StableHash, symbols};
@@ -183,6 +184,7 @@ symbols! {
         Cell,
         Char,
         Cleanup,
+        Client,
         Clone,
         CoercePointee,
         CoercePointeeValidated,
@@ -211,6 +213,7 @@ symbols! {
         Eq,
         Equal,
         Err,
+        Expected,
         ExternC,
         ExternRust,
         Float,
@@ -221,6 +224,7 @@ symbols! {
         FnPtr,
         Formatter,
         Forward,
+        Found,
         From,
         FromIterator,
         FromResidual,
@@ -237,6 +241,7 @@ symbols! {
         IntoFuture,
         IntoIterator,
         IntoIteratorItem,
+        IoBufReader,
         IrTyKind,
         Item,
         ItemContext,
@@ -267,7 +272,6 @@ symbols! {
         PinDerefMutHelper,
         Pointer,
         Poll,
-        ProcMacro,
         Range,
         RangeCopy,
         RangeFrom,
@@ -293,6 +297,8 @@ symbols! {
         ResumeTy,
         Reverse,
         Rust,
+        // Temporary name for the rust_embed hack introduced in #145108
+        RustEmbed,
         RustaceansAreAwesome,
         RwLock,
         RwLockReadGuard,
@@ -306,6 +312,7 @@ symbols! {
         Some,
         Source,
         SpanCtxt,
+        StdinLock,
         Str,
         String,
         Struct,
@@ -316,7 +323,6 @@ symbols! {
         Target,
         This,
         TokenStream,
-        Trait,
         TrivialClone,
         Try,
         TryCaptureGeneric,
@@ -355,6 +361,7 @@ symbols! {
         abi_msp430_interrupt,
         abi_ptx,
         abi_riscv_interrupt,
+        abi_swift,
         abi_sysv64,
         abi_thiscall,
         abi_unadjusted,
@@ -464,6 +471,7 @@ symbols! {
         async_iterator,
         async_iterator_poll_next,
         async_trait_bounds,
+        atomic,
         atomic_and,
         atomic_cxchg,
         atomic_cxchgweak,
@@ -506,7 +514,6 @@ symbols! {
         await_macro,
         backchain,
         backend_repr,
-        bang,
         begin_panic,
         bench,
         bevy_ecs,
@@ -538,6 +545,7 @@ symbols! {
         braced_empty_structs,
         branch,
         breakpoint,
+        breg,
         bridge,
         bswap,
         built,
@@ -575,7 +583,6 @@ symbols! {
         cfg_boolean_literals,
         cfg_contract_checks,
         cfg_doctest,
-        cfg_emscripten_wasm_eh,
         cfg_eval,
         cfg_overflow_checks,
         cfg_panic,
@@ -598,6 +605,7 @@ symbols! {
         cfi,
         cfi_encoding,
         char,
+        clflushopt_target_feature,
         client,
         clippy,
         clobber_abi,
@@ -702,6 +710,7 @@ symbols! {
         contracts_internals,
         contracts_requires,
         convert,
+        coprocessor,
         copy,
         copy_closures,
         copy_nonoverlapping,
@@ -751,7 +760,6 @@ symbols! {
         custom_mir,
         custom_test_frameworks,
         d32,
-        dbg_macro,
         dead_code,
         dead_code_pub_in_binary,
         dealloc,
@@ -805,8 +813,10 @@ symbols! {
         diagnostic_namespace,
         diagnostic_on_const,
         diagnostic_on_move,
+        diagnostic_on_type_error,
         diagnostic_on_unknown,
         diagnostic_on_unmatch_args,
+        diagnostic_on_unmatched_args,
         dialect,
         direct,
         discriminant_kind,
@@ -852,7 +862,6 @@ symbols! {
         edition_panic,
         effective_target_features,
         effects,
-        eh_catch_typeinfo,
         eh_personality,
         eii,
         eii_declaration,
@@ -869,7 +878,6 @@ symbols! {
         //   to be detected if it accidentally does get used.
         empty: "",
         empty_braces: "{}",
-        emscripten_wasm_eh,
         enable,
         end,
         entry_nops,
@@ -880,6 +888,7 @@ symbols! {
         ermsb_target_feature,
         exact_div,
         except,
+        exception,
         exception_handling: "exception-handling",
         exclusive_range_pattern,
         exhaustive_integer_patterns,
@@ -889,6 +898,8 @@ symbols! {
         exp2f32,
         exp2f64,
         exp2f128,
+        expand1,
+        expand2,
         expect,
         expected,
         expf16,
@@ -906,6 +917,7 @@ symbols! {
         expr_fragment_specifier_2024,
         extended_key_value_attributes,
         extended_varargs_abi_support,
+        extendedl32r,
         extern_absolute_paths,
         extern_crate_item_prelude,
         extern_crate_self,
@@ -947,6 +959,7 @@ symbols! {
         field_offset,
         field_projections,
         field_representing_type,
+        field_representing_type_actual_type_id,
         field_representing_type_raw,
         field_type,
         fields,
@@ -988,6 +1001,9 @@ symbols! {
         format_argument,
         format_arguments,
         format_macro,
+        format_placeholder,
+        format_unsafe_arg,
+        fp,
         framework,
         freeze,
         freeze_impls,
@@ -1037,6 +1053,7 @@ symbols! {
         global_asm,
         global_registration,
         globs,
+        gpu_kernel: "gpu-kernel",
         gpu_launch_sized_workgroup_mem,
         gt,
         guard,
@@ -1048,6 +1065,8 @@ symbols! {
         hexagon_target_feature,
         hidden,
         hide,
+        highpriinterrupts,
+        hint,
         homogeneous_aggregate,
         html_favicon_url,
         html_logo_url,
@@ -1108,6 +1127,7 @@ symbols! {
         internal,
         internal_eq_trait_method_impls,
         internal_features,
+        interrupt,
         into_async_iter_into_iter,
         into_future,
         into_iter,
@@ -1203,6 +1223,7 @@ symbols! {
         lt,
         m68k,
         m68k_target_feature,
+        mac16,
         macho: "mach-o",
         macro_at_most_once_rep,
         macro_attr,
@@ -1315,6 +1336,8 @@ symbols! {
         mir_unwind_unreachable,
         mir_variant,
         miri,
+        misc,
+        miscsr,
         mmx_reg,
         modifiers,
         module,
@@ -1336,6 +1359,7 @@ symbols! {
         must_use,
         mut_preserve_binding_mode_2024,
         mut_ref,
+        mut_restriction,
         mutable,
         naked,
         naked_asm,
@@ -1420,6 +1444,7 @@ symbols! {
         of,
         off,
         offload,
+        offload_kernel,
         offset,
         offset_of,
         offset_of_enum,
@@ -1431,9 +1456,10 @@ symbols! {
         on,
         on_const,
         on_move,
+        on_type_error,
         on_unimplemented,
         on_unknown,
-        on_unmatch_args,
+        on_unmatched_args,
         opaque,
         opaque_module_name_placeholder: "<opaque>",
         ops,
@@ -1561,6 +1587,8 @@ symbols! {
         prelude_import,
         preserves_flags,
         prfchw_target_feature,
+        prid,
+        primitive,
         proc_dash_macro: "proc-macro",
         proc_macro,
         proc_macro_attribute,
@@ -1695,12 +1723,12 @@ symbols! {
         rust_analyzer,
         rust_begin_unwind,
         rust_cold_cc,
-        rust_eh_catch_typeinfo,
         rust_eh_personality,
         rust_future,
         rust_logo,
         rust_out,
         rust_preserve_none_cc,
+        rust_tail_cc,
         rustc,
         rustc_abi,
         // FIXME(#82232, #143834): temporary name to mitigate `#[align]` nameres ambiguity
@@ -1720,6 +1748,7 @@ symbols! {
         rustc_clean,
         rustc_coherence_is_core,
         rustc_coinductive,
+        rustc_comptime,
         rustc_confusables,
         rustc_const_stable,
         rustc_const_stable_indirect,
@@ -1817,7 +1846,9 @@ symbols! {
         rustdoc_missing_doc_code_examples,
         rustfmt,
         rvalue_static_promotion,
+        rvector,
         rwpi,
+        s32c1i,
         s390x,
         s390x_target_feature,
         s390x_target_feature_vector,
@@ -1834,6 +1865,12 @@ symbols! {
         self_in_typedefs,
         self_struct_ctor,
         semiopaque,
+        sgpr32,
+        sgpr64,
+        sgpr96,
+        sgpr128,
+        sgpr256,
+        sgpr512,
         sha2,
         sha3,
         sha512_sm_x86,
@@ -1951,6 +1988,7 @@ symbols! {
         specialization,
         speed,
         spirv,
+        splat,
         spotlight,
         sqrtf16,
         sqrtf32,
@@ -2022,8 +2060,8 @@ symbols! {
         target_feature_11,
         target_feature_inline_always,
         target_has_atomic,
-        target_has_atomic_equal_alignment,
         target_has_atomic_load_store,
+        target_has_atomic_primitive_alignment,
         target_has_reliable_f16,
         target_has_reliable_f16_math,
         target_has_reliable_f128,
@@ -2047,9 +2085,11 @@ symbols! {
         test_unstable_lint,
         thread,
         thread_local,
+        threadptr,
         three_way_compare,
         thumb2,
         thumb_mode: "thumb-mode",
+        time,
         tmm_reg,
         to_owned_method,
         to_string,
@@ -2096,6 +2136,9 @@ symbols! {
         type_changing_struct_update,
         type_id,
         type_id_eq,
+        type_id_field_representing_type,
+        type_id_fields,
+        type_id_variants,
         type_id_vtable,
         type_info,
         type_ir,
@@ -2156,11 +2199,13 @@ symbols! {
         underscore_imports,
         underscore_lifetimes,
         uniform_paths,
+        unimplemented,
         unit,
         universal_impl_trait,
         unix,
         unlikely,
         unmarked_api,
+        unnamed_enum_variants,
         unnamed_fields,
         unpin,
         unqualified_local_imports,
@@ -2238,6 +2283,21 @@ symbols! {
         verbatim,
         version,
         vfp2,
+        vgpr16,
+        vgpr32,
+        vgpr64,
+        vgpr96,
+        vgpr128,
+        vgpr160,
+        vgpr192,
+        vgpr224,
+        vgpr256,
+        vgpr288,
+        vgpr320,
+        vgpr352,
+        vgpr384,
+        vgpr512,
+        vgpr1024,
         view_types,
         vis,
         visible_private_types,
@@ -2268,6 +2328,7 @@ symbols! {
         while_let,
         whole_dash_archive: "whole-archive",
         width,
+        windowed,
         windows,
         windows_subsystem,
         with_negative_coherence,
@@ -2293,9 +2354,11 @@ symbols! {
         x87_target_feature,
         xcoff,
         xer,
+        xloop,
         xmm_reg,
         xop_target_feature,
         xtensa,
+        xtensa_target_feature,
         yeet_desugar_details,
         yeet_expr,
         yes,
@@ -2710,7 +2773,8 @@ pub(crate) struct Interner(Lock<InternerInner>);
 // between `Interner`s.
 struct InternerInner {
     arena: DroplessArena,
-    byte_strs: FxIndexSet<&'static [u8]>,
+    indices: HashTable<(&'static [u8], u32)>,
+    byte_strs: Vec<&'static [u8]>,
 }
 
 impl Interner {
@@ -2718,24 +2782,34 @@ impl Interner {
     // effectively pre-interning all these strings for both `Symbol` and
     // `ByteSymbol`.
     fn prefill(init: &[&'static str], extra: &[&'static str]) -> Self {
-        let byte_strs = FxIndexSet::from_iter(
-            init.iter().copied().chain(extra.iter().copied()).map(|str| str.as_bytes()),
-        );
+        let values = init.iter().copied().chain(extra.iter().copied()).map(|str| str.as_bytes());
+        let (size_hint, _) = values.size_hint();
+        let mut conflicting_values: Vec<&[u8]> = Vec::new();
 
-        // The order in which duplicates are reported is irrelevant.
-        #[expect(rustc::potential_query_instability)]
-        if byte_strs.len() != init.len() + extra.len() {
+        let mut indices: HashTable<(&'static [u8], u32)> = HashTable::with_capacity(size_hint);
+        let hasher = FxBuildHasher::default();
+
+        let mut byte_strs: Vec<&'static [u8]> = Vec::with_capacity(size_hint);
+
+        for v in values {
+            match indices.entry(hasher.hash_one(&v), |&(s, _)| s == v, |&(s, _)| hasher.hash_one(s))
+            {
+                Entry::Occupied(v) => conflicting_values.push(v.get().0),
+                Entry::Vacant(view) => {
+                    view.insert((v, byte_strs.len() as u32));
+                    byte_strs.push(v);
+                }
+            }
+        }
+
+        if conflicting_values.len() != 0 {
             panic!(
                 "duplicate symbols in the rustc symbol list and the extra symbols added by the driver: {:?}",
-                FxHashSet::intersection(
-                    &init.iter().copied().collect(),
-                    &extra.iter().copied().collect(),
-                )
-                .collect::<Vec<_>>()
+                conflicting_values
             )
         }
 
-        Interner(Lock::new(InternerInner { arena: Default::default(), byte_strs }))
+        Interner(Lock::new(InternerInner { arena: Default::default(), indices, byte_strs }))
     }
 
     fn intern_str(&self, str: &str) -> Symbol {
@@ -2748,24 +2822,29 @@ impl Interner {
 
     #[inline]
     fn intern_inner(&self, byte_str: &[u8]) -> u32 {
-        let mut inner = self.0.lock();
-        if let Some(idx) = inner.byte_strs.get_index_of(byte_str) {
-            return idx as u32;
-        }
+        let hasher = FxBuildHasher::default();
+        let hash_of_byte_str = hasher.hash_one(byte_str);
 
-        let byte_str: &[u8] = inner.arena.alloc_slice(byte_str);
+        self.0.with_lock(|inner| {
+            match inner.indices.entry(
+                hash_of_byte_str,
+                |&(s, _)| s == byte_str,
+                |&(s, _)| hasher.hash_one(s),
+            ) {
+                Entry::Occupied(v) => v.get().1,
+                Entry::Vacant(view) => {
+                    let byte_str: &[u8] = inner.arena.alloc_slice(byte_str);
 
-        // SAFETY: we can extend the arena allocation to `'static` because we
-        // only access these while the arena is still alive.
-        let byte_str: &'static [u8] = unsafe { &*(byte_str as *const [u8]) };
-
-        // This second hash table lookup can be avoided by using `RawEntryMut`,
-        // but this code path isn't hot enough for it to be worth it. See
-        // #91445 for details.
-        let (idx, is_new) = inner.byte_strs.insert_full(byte_str);
-        debug_assert!(is_new); // due to the get_index_of check above
-
-        idx as u32
+                    // SAFETY: we can extend the arena allocation to `'static` because we
+                    // only access these while the arena is still alive.
+                    let byte_str: &'static [u8] = unsafe { &*(byte_str as *const [u8]) };
+                    let idx = inner.byte_strs.len() as u32;
+                    view.insert((byte_str, idx));
+                    inner.byte_strs.push(byte_str);
+                    idx
+                }
+            }
+        })
     }
 
     /// Get the symbol as a string.
@@ -2785,7 +2864,7 @@ impl Interner {
     }
 
     fn get_inner(&self, index: usize) -> &[u8] {
-        self.0.lock().byte_strs.get_index(index).unwrap()
+        self.0.with_lock(|inner| inner.byte_strs[index])
     }
 }
 

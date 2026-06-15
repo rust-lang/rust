@@ -729,10 +729,9 @@ fn ty_is_known_nonnull<'tcx>(
                 return false;
             }
 
-            def.variants()
-                .iter()
-                .filter_map(|variant| transparent_newtype_field(tcx, variant))
-                .any(|field| ty_is_known_nonnull(tcx, typing_env, field.ty(tcx, args)))
+            def.variants().iter().filter_map(|variant| transparent_newtype_field(tcx, variant)).any(
+                |field| ty_is_known_nonnull(tcx, typing_env, field.ty(tcx, args).skip_norm_wip()),
+            )
         }
         ty::Pat(base, pat) => {
             ty_is_known_nonnull(tcx, typing_env, *base)
@@ -789,6 +788,7 @@ fn get_nullable_type<'tcx>(
                     .next_back()
                     .expect("No non-zst fields in transparent type.")
                     .ty(tcx, field_args)
+                    .skip_norm_wip()
             };
             return get_nullable_type(tcx, typing_env, inner_field_ty);
         }
@@ -852,10 +852,10 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
         ty::Adt(ty_def, args) => {
             let field_ty = match &ty_def.variants().raw[..] {
                 [var_one, var_two] => match (&var_one.fields.raw[..], &var_two.fields.raw[..]) {
-                    ([], [field]) | ([field], []) => field.ty(tcx, args),
+                    ([], [field]) | ([field], []) => field.ty(tcx, args).skip_norm_wip(),
                     ([field1], [field2]) => {
-                        let ty1 = field1.ty(tcx, args);
-                        let ty2 = field2.ty(tcx, args);
+                        let ty1 = field1.ty(tcx, args).skip_norm_wip();
+                        let ty2 = field2.ty(tcx, args).skip_norm_wip();
 
                         if is_niche_optimization_candidate(tcx, typing_env, ty1) {
                             ty2

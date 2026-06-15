@@ -81,7 +81,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     .now()
                     .duration_since(this.machine.monotonic_clock.epoch()),
             None => {
-                return this.set_last_error_and_return(LibcError("EINVAL"), dest);
+                return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
             }
         };
 
@@ -109,7 +109,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Using tz is obsolete and should always be null
         let tz = this.read_pointer(tz_op)?;
         if !this.ptr_is_null(tz)? {
-            return this.set_last_error_and_return_i32(LibcError("EINVAL"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
         }
 
         let duration = system_time_to_duration(&SystemTime::now())?;
@@ -334,11 +334,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let deadline = this.read_scalar(deadline_op)?.to_u64()?;
         // Our mach_absolute_time "ticks" are plain nanoseconds.
-        let duration = Duration::from_nanos(deadline);
+        let deadline = Duration::from_nanos(deadline);
+        // This is *absolute* time.
+        let deadline = this.machine.monotonic_clock.epoch().add_lossy(deadline);
 
         this.block_thread(
             BlockReason::Sleep,
-            Some((TimeoutClock::Monotonic, TimeoutAnchor::Absolute, duration)),
+            Some(deadline.into()),
             callback!(
                 @capture<'tcx> {}
                 |_this, unblock: UnblockKind| {
@@ -360,12 +362,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let _rem = this.read_pointer(rem)?; // Signal handlers are not supported, so rem will never be written to.
 
         let Some(duration) = this.read_timespec(&duration)? else {
-            return this.set_last_error_and_return_i32(LibcError("EINVAL"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
         };
+        let deadline = this.machine.monotonic_clock.now().add_lossy(duration);
 
         this.block_thread(
             BlockReason::Sleep,
-            Some((TimeoutClock::Monotonic, TimeoutAnchor::Relative, duration)),
+            Some(deadline.into()),
             callback!(
                 @capture<'tcx> {}
                 |_this, unblock: UnblockKind| {
@@ -398,17 +401,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         let Some(duration) = this.read_timespec(&timespec)? else {
-            return this.set_last_error_and_return_i32(LibcError("EINVAL"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
         };
 
-        let timeout_anchor = if flags == 0 {
+        let timeout_style = if flags == 0 {
             // No flags set, the timespec should be interpreted as a duration
-            // to sleep for
-            TimeoutAnchor::Relative
+            // to sleep for, i.e., a relative time.
+            TimeoutStyle::Relative
         } else if flags == this.eval_libc_i32("TIMER_ABSTIME") {
             // Only flag TIMER_ABSTIME set, the timespec should be interpreted as
             // an absolute time.
-            TimeoutAnchor::Absolute
+            TimeoutStyle::Absolute
         } else {
             // The standard lib (through `sleep_until`) only needs TIMER_ABSTIME
             throw_unsup_format!(
@@ -416,10 +419,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 TIMER_ABSTIME is supported"
             );
         };
+        let deadline = this.machine.timeout(TimeoutClock::Monotonic, timeout_style, duration);
 
         this.block_thread(
             BlockReason::Sleep,
-            Some((TimeoutClock::Monotonic, timeout_anchor, duration)),
+            Some(deadline),
             callback!(
                 @capture<'tcx> {}
                 |_this, unblock: UnblockKind| {
@@ -440,10 +444,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let timeout_ms = this.read_scalar(timeout)?.to_u32()?;
 
         let duration = Duration::from_millis(timeout_ms.into());
+        let deadline = this.machine.monotonic_clock.now().add_lossy(duration);
 
         this.block_thread(
             BlockReason::Sleep,
-            Some((TimeoutClock::Monotonic, TimeoutAnchor::Relative, duration)),
+            Some(deadline.into()),
             callback!(
                 @capture<'tcx> {}
                 |_this, unblock: UnblockKind| {
@@ -453,5 +458,52 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             ),
         );
         interp_ok(())
+    }
+
+    /// Parse a `timespec` struct and return it as a [`Duration`]. It returns [`None`]
+    /// if the value in the `timespec` struct is invalid. Some libc functions will return
+    /// EINVAL in this case.
+    fn read_timespec(&mut self, tp: &MPlaceTy<'tcx>) -> InterpResult<'tcx, Option<Duration>> {
+        let this = self.eval_context_mut();
+        let sec_field = this.project_field_named(tp, "tv_sec")?;
+        let sec = this.read_scalar(&sec_field)?.to_int(sec_field.layout.size)?;
+        let nsec_field = this.project_field_named(tp, "tv_nsec")?;
+        let nsec = this.read_scalar(&nsec_field)?.to_int(nsec_field.layout.size)?;
+
+        interp_ok(try {
+            // tv_sec must be non-negative.
+            let seconds: u64 = sec.try_into().ok()?;
+            // tv_nsec must be non-negative.
+            let nanoseconds: u32 = nsec.try_into().ok()?;
+            if nanoseconds >= 1_000_000_000 {
+                // tv_nsec must not be greater than 999,999,999.
+                None?
+            }
+            Duration::new(seconds, nanoseconds)
+        })
+    }
+
+    /// Parse a `timeval` struct and return it as a [`Duration`]. It returns [`None`]
+    /// if the value in the `timeval` struct is invalid. Some libc functions will return
+    /// EINVAL in this case.
+    fn read_timeval(&mut self, tp: &MPlaceTy<'tcx>) -> InterpResult<'tcx, Option<Duration>> {
+        let this = self.eval_context_mut();
+        let sec_field = this.project_field_named(tp, "tv_sec")?;
+        let sec = this.read_scalar(&sec_field)?.to_int(sec_field.layout.size)?;
+
+        let usec_field = this.project_field_named(tp, "tv_usec")?;
+        let usec = this.read_scalar(&usec_field)?.to_int(usec_field.layout.size)?;
+
+        interp_ok(try {
+            // tv_sec must be non-negative.
+            let seconds: u64 = sec.try_into().ok()?;
+            // tv_usec must be non-negative.
+            let microseconds: u32 = usec.try_into().ok()?;
+            if microseconds >= 1_000_000 {
+                // tv_usec must not be greater than 999,999.
+                None?
+            }
+            Duration::new(seconds, microseconds.strict_mul(1000))
+        })
     }
 }

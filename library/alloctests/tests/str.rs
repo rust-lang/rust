@@ -1886,7 +1886,13 @@ fn to_lowercase() {
 #[test]
 fn to_uppercase() {
     assert_eq!("".to_uppercase(), "");
-    assert_eq!("aéǅßﬁᾀ".to_uppercase(), "AÉǄSSFIἈΙ");
+    assert_eq!("aéǅßẞﬁᾀ".to_uppercase(), "AÉǄSSẞFIἈΙ");
+}
+
+#[test]
+fn to_casefold_unnormalized() {
+    assert_eq!("".to_casefold_unnormalized(), "");
+    assert_eq!("ꮿﬁῲὼ\u{0345}ßẞΣς".to_casefold_unnormalized(), "Ꮿfiὼιὼιssssσσ");
 }
 
 #[test]
@@ -2348,6 +2354,7 @@ fn utf8_char_counts() {
         .flat_map(|n| n - spread..=n + spread)
         .collect::<Vec<usize>>();
     if cfg!(not(miri)) {
+        // Miri is too slow
         reps.extend([1024, 1 << 16].iter().copied().flat_map(|n| n - spread..=n + spread));
     }
     let counts = if cfg!(miri) { 0..1 } else { 0..8 };
@@ -2424,6 +2431,16 @@ fn floor_char_boundary() {
     check_many("🇯🇵", 0..4, 0);
     check_many("🇯🇵", 4..8, 4);
     check_many("🇯🇵", 8..10, 8);
+
+    // anticipate length- and index-based specializations
+    let s = "jpĵƥ日本🇯🇵jpĵƥ日本🇯🇵";
+    let expected = [
+        0, 1, 2, 2, 4, 4, 6, 6, 6, 9, 9, 9, 12, 12, 12, 12, 16, 16, 16, 16, 20, 21, 22, 22, 24, 24,
+        26, 26, 26, 29, 29, 29, 32, 32, 32, 32, 36, 36, 36, 36, 40, 40, 40, 40,
+    ];
+    for (idx, &ret) in expected.iter().enumerate() {
+        check_many(s, [idx], ret);
+    }
 }
 
 #[test]
@@ -2470,4 +2487,14 @@ fn ceil_char_boundary() {
 
     // above len
     check_many("hello", 5..=10, 5);
+
+    // anticipate length- and index-based specializations
+    let s = "jpĵƥ日本🇯🇵jpĵƥ日本🇯🇵";
+    let expected = [
+        0, 1, 2, 4, 4, 6, 6, 9, 9, 9, 12, 12, 12, 16, 16, 16, 16, 20, 20, 20, 20, 21, 22, 24, 24,
+        26, 26, 29, 29, 29, 32, 32, 32, 36, 36, 36, 36, 40, 40, 40, 40, 40, 40, 40,
+    ];
+    for (idx, &ret) in expected.iter().enumerate() {
+        check_many(s, [idx], ret);
+    }
 }

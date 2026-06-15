@@ -16,6 +16,8 @@ use crate::sys::random as sys;
 /// security is not a concern,  consider using an alternative random number
 /// generator (potentially seeded from this one).
 ///
+/// If you need to fill a buffer with random bytes, use `DefaultRandomSource.fill_bytes(&mut buf)`.
+///
 /// # Underlying sources
 ///
 /// Platform               | Source
@@ -43,7 +45,9 @@ use crate::sys::random as sys;
 /// TEEOS                  | `TEE_GenerateRandom`
 /// UEFI                   | [`EFI_RNG_PROTOCOL`](https://uefi.org/specs/UEFI/2.10/37_Secure_Technologies.html#random-number-generator-protocol)
 /// VxWorks                | `randABytes` after waiting for `randSecure` to become ready
-/// WASI                   | [`random_get`](https://github.com/WebAssembly/WASI/blob/main/legacy/preview1/docs.md#-random_getbuf-pointeru8-buf_len-size---result-errno)
+/// WASIp1                 | [`random_get`](https://github.com/WebAssembly/WASI/blob/wasi-0.1/preview1/docs.md#-random_getbuf-pointeru8-buf_len-size---result-errno)
+/// WASIp2                 | [`get-random-bytes`]
+/// WASIp3                 | [`get-random-bytes`]
 /// ZKVM                   | `sys_rand`
 ///
 /// Note that the sources used might change over time.
@@ -54,6 +58,8 @@ use crate::sys::random as sys;
 ///
 /// [`getrandom`]: https://www.man7.org/linux/man-pages/man2/getrandom.2.html
 /// [`/dev/urandom`]: https://www.man7.org/linux/man-pages/man4/random.4.html
+/// [`get-random-bytes`]: https://github.com/WebAssembly/WASI/blob/main/proposals/random/imports.md#get-random-bytes-func
+#[doc(alias = "getrandom", alias = "getentropy", alias = "arc4random")]
 #[derive(Default, Debug, Clone, Copy)]
 #[unstable(feature = "random", issue = "130703")]
 pub struct DefaultRandomSource;

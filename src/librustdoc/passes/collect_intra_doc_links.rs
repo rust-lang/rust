@@ -117,9 +117,9 @@ impl Res {
             DefKind::Fn | DefKind::AssocFn => return Suggestion::Function,
             // FIXME: handle macros with multiple kinds, and attribute/derive macros that aren't
             // proc macros
-            DefKind::Macro(MacroKinds::BANG) => return Suggestion::Macro,
-
+            DefKind::Macro(MacroKinds::ATTR) => "attribute",
             DefKind::Macro(MacroKinds::DERIVE) => "derive",
+            DefKind::Macro(_) => return Suggestion::Macro,
             DefKind::Struct => "struct",
             DefKind::Enum => "enum",
             DefKind::Trait => "trait",
@@ -328,7 +328,12 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
                             })
                         }
                     }
-                    _ => unreachable!(),
+                    _ => Err(UnresolvedPath {
+                        item_id,
+                        module_id,
+                        partial_res: Some(Res::Def(DefKind::TyAlias, did)),
+                        unresolved: variant_name.to_string().into(),
+                    }),
                 }
             }
             _ => Err(UnresolvedPath {

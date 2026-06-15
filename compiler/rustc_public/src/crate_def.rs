@@ -165,4 +165,30 @@ macro_rules! crate_def_with_ty {
 
         impl CrateDefType for $name {}
     };
+    ( $(#[$attr:meta])*
+      $vis:vis $name:ident {
+        $(
+            $(#[$f_attr:meta])*
+            $f_vis:vis $f_name:ident: $f_ty:ty,
+        )*
+      }
+    ) => {
+        $(#[$attr])*
+        #[derive(Clone, PartialEq, Eq, Debug)]
+        $vis struct $name {
+            pub(crate) def: DefId,
+            $(
+                $(#[$f_attr])*
+                $f_vis $f_name: $f_ty,
+            )*
+        }
+
+        impl CrateDef for $name {
+            fn def_id(&self) -> DefId {
+                self.def
+            }
+        }
+
+        impl CrateDefType for $name {}
+    };
 }

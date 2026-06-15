@@ -1,10 +1,11 @@
+use super::implicit_return::IMPLICIT_RETURN;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{is_from_proc_macro, last_path_segment, std_or_core};
+use clippy_utils::{is_from_proc_macro, is_lint_allowed, last_path_segment, std_or_core};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Block, Body, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, LangItem, UnOp};
+use rustc_hir::{Block, Body, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, LangItem, Stmt, StmtKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::{TyCtxt, TypeckResults};
 use rustc_session::impl_lint_pass;
@@ -185,8 +186,8 @@ impl LateLintPass<'_> for NonCanonicalImpls {
                     if let Some(copy_trait) = self.copy_trait
                         && implements_trait(cx, trait_impl.self_ty(), copy_trait, &[])
                     {
-                        for (assoc, _, block) in assoc_fns {
-                            check_clone_on_copy(cx, assoc, block);
+                        for (assoc, body, _) in assoc_fns {
+                            check_clone_on_copy(cx, assoc, body.value);
                         }
                     }
                 },
@@ -208,29 +209,34 @@ impl LateLintPass<'_> for NonCanonicalImpls {
     }
 }
 
-fn check_clone_on_copy(cx: &LateContext<'_>, impl_item: &ImplItem<'_>, block: &Block<'_>) {
-    if impl_item.ident.name == sym::clone {
-        if block.stmts.is_empty()
-            && let Some(expr) = block.expr
-            && let ExprKind::Unary(UnOp::Deref, deref) = expr.kind
-            && let ExprKind::Path(qpath) = deref.kind
-            && last_path_segment(&qpath).ident.name == kw::SelfLower
-        {
-            // this is the canonical implementation, `fn clone(&self) -> Self { *self }`
-            return;
-        }
+fn is_deref_self(expr: &Expr<'_>) -> bool {
+    if let ExprKind::Unary(UnOp::Deref, deref) = expr.kind
+        && let ExprKind::Path(qpath) = deref.kind
+        && last_path_segment(&qpath).ident.name == kw::SelfLower
+    {
+        return true;
+    }
+    false
+}
 
+fn check_clone_on_copy(cx: &LateContext<'_>, impl_item: &ImplItem<'_>, body_expr: &Expr<'_>) {
+    if impl_item.ident.name == sym::clone {
         if is_from_proc_macro(cx, impl_item) {
             return;
         }
 
+        let add_return = match is_canonical_clone_body(body_expr) {
+            IsCanonical::WithReturn if is_lint_allowed(cx, IMPLICIT_RETURN, body_expr.hir_id) => false,
+            IsCanonical::WithReturn | IsCanonical::WithoutReturn => return,
+            IsCanonical::No => !is_lint_allowed(cx, IMPLICIT_RETURN, body_expr.hir_id),
+        };
         span_lint_and_sugg(
             cx,
             NON_CANONICAL_CLONE_IMPL,
-            block.span,
+            body_expr.span,
             "non-canonical implementation of `clone` on a `Copy` type",
             "change this to",
-            "{ *self }".to_owned(),
+            if add_return { "{ return *self; }" } else { "{ *self }" }.to_owned(),
             Applicability::MaybeIncorrect,
         );
     }
@@ -245,6 +251,40 @@ fn check_clone_on_copy(cx: &LateContext<'_>, impl_item: &ImplItem<'_>, block: &B
             String::new(),
             Applicability::MaybeIncorrect,
         );
+    }
+}
+
+enum IsCanonical {
+    WithoutReturn,
+    WithReturn,
+    No,
+}
+
+fn is_canonical_clone_body(body_expr: &Expr<'_>) -> IsCanonical {
+    let ExprKind::Block(block, ..) = body_expr.kind else {
+        return IsCanonical::No;
+    };
+    let single_expr = match (block.stmts, block.expr) {
+        ([], Some(expr)) => Some(expr),
+        (
+            [
+                Stmt {
+                    kind: StmtKind::Expr(expr) | StmtKind::Semi(expr),
+                    ..
+                },
+            ],
+            None,
+        ) => Some(*expr),
+        _ => None,
+    };
+    let Some(expr) = single_expr else {
+        return IsCanonical::No;
+    };
+
+    match expr.kind {
+        ExprKind::Ret(Some(ret)) if is_deref_self(ret) => IsCanonical::WithReturn,
+        _ if is_deref_self(expr) => IsCanonical::WithoutReturn,
+        _ => IsCanonical::No,
     }
 }
 
@@ -269,7 +309,7 @@ fn check_partial_ord_on_ord<'tcx>(
     // Fix #12683, allow [`needless_return`] here
     else if block.expr.is_none()
         && let Some(stmt) = block.stmts.first()
-        && let rustc_hir::StmtKind::Semi(Expr {
+        && let StmtKind::Semi(Expr {
             kind: ExprKind::Ret(Some(ret)),
             ..
         }) = stmt.kind

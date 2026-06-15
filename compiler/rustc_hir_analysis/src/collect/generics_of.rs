@@ -9,7 +9,7 @@ use rustc_hir::{self as hir, AmbigArg, GenericParamKind, HirId, Node};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint;
-use rustc_span::{Span, Symbol, kw};
+use rustc_span::{Span, kw, sym};
 use tracing::{debug, instrument};
 
 use crate::middle::resolve_bound_vars as rbv;
@@ -97,8 +97,6 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             match tcx.anon_const_kind(def_id) {
                 // Stable: anon consts are not able to use any generic parameters...
                 ty::AnonConstKind::MCG => None,
-                // GCA anon consts inherit their parent's generics.
-                ty::AnonConstKind::GCA => Some(parent_did),
                 // we provide generics to repeat expr counts as a backwards compatibility hack. #76200
                 ty::AnonConstKind::RepeatExprCount => Some(parent_did),
 
@@ -328,22 +326,18 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     {
         // See `ClosureArgsParts`, `CoroutineArgsParts`, and `CoroutineClosureArgsParts`
         // for info on the usage of each of these fields.
-        let dummy_args = match kind {
-            ClosureKind::Closure => &["<closure_kind>", "<closure_signature>", "<upvars>"][..],
-            ClosureKind::Coroutine(_) => {
-                &["<coroutine_kind>", "<resume_ty>", "<yield_ty>", "<return_ty>", "<upvars>"][..]
-            }
-            ClosureKind::CoroutineClosure(_) => &[
-                "<closure_kind>",
-                "<closure_signature_parts>",
-                "<upvars>",
-                "<bound_captures_by_ref>",
-            ][..],
+        let len = match kind {
+            // The args are: closure_kind, closure_signature, upvars.
+            ClosureKind::Closure => 3,
+            // The args are: coroutine_kind, resume_ty, yield_ty, return_ty, upvars.
+            ClosureKind::Coroutine(_) => 5,
+            // The args are: closure_kind, closure_signature_parts, upvars, bound_captures_by_ref.
+            ClosureKind::CoroutineClosure(_) => 4,
         };
 
-        own_params.extend(dummy_args.iter().map(|&arg| ty::GenericParamDef {
+        own_params.extend((0..len).map(|_| ty::GenericParamDef {
             index: next_index(),
-            name: Symbol::intern(arg),
+            name: sym::empty, // dummy; exact value doesn't matter
             def_id: def_id.to_def_id(),
             pure_wrt_drop: false,
             kind: ty::GenericParamDefKind::Type { has_default: false, synthetic: false },

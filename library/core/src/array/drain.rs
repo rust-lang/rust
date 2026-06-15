@@ -6,8 +6,7 @@ impl<'l, 'f, T, U, F: FnMut(T) -> U> Drain<'l, 'f, T, F> {
     /// This function returns a function that lets you index the given array in const.
     /// As implemented it can optimize better than iterators, and can be constified.
     /// It acts like a sort of guard (owns the array) and iterator combined, which can be implemented
-    /// as it is a struct that implements const fn;
-    /// in that regard it is somewhat similar to an array::Iter implementing `UncheckedIterator`.
+    /// as it is a struct that implements const fn.
     /// The only method you're really allowed to call is `next()`,
     /// anything else is more or less UB, hence this function being unsafe.
     /// Moved elements will not be dropped.
@@ -53,7 +52,7 @@ pub(super) struct Drain<'l, 'f, T, F> {
 
 #[rustc_const_unstable(feature = "array_try_map", issue = "79711")]
 #[unstable(feature = "array_try_map", issue = "79711")]
-impl<T, U, F> const FnOnce<(usize,)> for &mut Drain<'_, '_, T, F>
+const impl<T, U, F> FnOnce<(usize,)> for &mut Drain<'_, '_, T, F>
 where
     F: [const] FnMut(T) -> U,
 {
@@ -66,7 +65,7 @@ where
 }
 #[rustc_const_unstable(feature = "array_try_map", issue = "79711")]
 #[unstable(feature = "array_try_map", issue = "79711")]
-impl<T, U, F> const FnMut<(usize,)> for &mut Drain<'_, '_, T, F>
+const impl<T, U, F> FnMut<(usize,)> for &mut Drain<'_, '_, T, F>
 where
     F: [const] FnMut(T) -> U,
 {
@@ -101,7 +100,7 @@ where
 }
 #[rustc_const_unstable(feature = "array_try_map", issue = "79711")]
 #[unstable(feature = "array_try_map", issue = "79711")]
-impl<T: [const] Destruct, F> const Drop for Drain<'_, '_, T, F> {
+const impl<T: [const] Destruct, F> Drop for Drain<'_, '_, T, F> {
     fn drop(&mut self) {
         let slice = if T::IS_ZST {
             from_raw_parts_mut::<[T]>(

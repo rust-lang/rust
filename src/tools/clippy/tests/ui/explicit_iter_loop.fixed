@@ -1,13 +1,5 @@
-#![deny(clippy::explicit_iter_loop)]
-#![allow(
-    clippy::linkedlist,
-    clippy::similar_names,
-    clippy::needless_borrow,
-    clippy::deref_addrof,
-    clippy::unnecessary_mut_passed,
-    dead_code,
-    non_local_definitions
-)]
+#![warn(clippy::explicit_iter_loop)]
+#![expect(clippy::needless_borrow, clippy::unnecessary_mut_passed)]
 
 use core::slice;
 use std::collections::*;

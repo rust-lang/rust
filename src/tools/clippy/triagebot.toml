@@ -73,6 +73,7 @@ This lint has been nominated for inclusion.
 message_on_add = [
     """\
 PR rust-clippy#{number} "{title}" has been nominated for lint inclusion.
+Cc: {recipients}
 """,
     """\
 /poll Approve lint inclusion of rust-clippy#{number}?
@@ -93,13 +94,13 @@ users_on_vacation = [
     "Alexendoo",
     "y21",
     "blyxyas",
-    "samueltardieu",
+    "ada4a"
 ]
 
 [assign.owners]
 "/.github" = ["@flip1995"]
 "/triagebot.toml" = ["@flip1995"]
-"/book" = ["@flip1995"]
+"/book" = ["@ada4a", "@samueltardieu"]
 "*" = [
     "@Manishearth",
     "@llogiq",
@@ -108,4 +109,5 @@ users_on_vacation = [
     "@Jarcho",
     "@y21",
     "@samueltardieu",
+    "@ada4a",
 ]

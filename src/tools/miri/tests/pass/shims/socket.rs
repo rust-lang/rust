@@ -1,9 +1,11 @@
 //@ignore-target: windows # No socket support on Windows
 //@compile-flags: -Zmiri-disable-isolation
+//@run-native
 
 use std::io::{ErrorKind, Read, Write};
 use std::net::{Shutdown, TcpListener, TcpStream};
 use std::thread;
+use std::time::Duration;
 
 const TEST_BYTES: &[u8] = b"these are some test bytes!";
 
@@ -16,6 +18,9 @@ fn main() {
     test_peer_addr();
     test_shutdown();
     test_sockopt_ttl();
+    test_sockopt_nodelay();
+    test_sockopt_read_timeout();
+    test_sockopt_write_timeout();
 }
 
 fn test_create_ipv4_listener() {
@@ -26,21 +31,15 @@ fn test_create_ipv6_listener() {
     let _listener_ipv6 = TcpListener::bind("[::1]:0").unwrap();
 }
 
-/// Try to connect to a TCP listener running in a separate thread and
-/// accepting connections.
+/// Try to connect to a TCP listener and accepting connections.
 fn test_accept_and_connect() {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     // Get local address with randomized port to know where
     // we need to connect to.
     let address = listener.local_addr().unwrap();
 
-    let handle = thread::spawn(move || {
-        let (_stream, _addr) = listener.accept().unwrap();
-    });
-
     let _stream = TcpStream::connect(address).unwrap();
-
-    handle.join().unwrap();
+    let (_other_stream, _addr) = listener.accept().unwrap();
 }
 
 /// Test reading and writing into two connected sockets and ensuring
@@ -119,8 +118,6 @@ fn test_peer_addr() {
 /// Test shutting down TCP streams.
 fn test_shutdown() {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-    // Get local address with randomized port to know where
-    // we need to connect to.
     let address = listener.local_addr().unwrap();
 
     // Start server thread.
@@ -157,7 +154,73 @@ fn test_shutdown() {
 /// Test setting and reading the TTL socket option.
 fn test_sockopt_ttl() {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-    listener.ttl().unwrap();
+    listener.set_ttl(16).unwrap();
+    assert_eq!(listener.ttl().unwrap(), 16);
+}
 
-    // TODO: Once we support setting the TTL we should also test it here.
+/// Test setting and reading the TCP nodelay socket option.
+fn test_sockopt_nodelay() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+
+    let stream = TcpStream::connect(address).unwrap();
+    let _other_end = listener.accept().unwrap();
+
+    stream.set_nodelay(true).unwrap();
+    assert_eq!(stream.nodelay().unwrap(), true);
+    stream.set_nodelay(false).unwrap();
+    assert_eq!(stream.nodelay().unwrap(), false);
+}
+
+/// Test setting and reading the SNDTIMEO socket option.
+/// This also tests that a read won't block indefinitely
+/// when the read timeout is set to [`Some`] duration.
+fn test_sockopt_read_timeout() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+
+    let mut stream = TcpStream::connect(address).unwrap();
+    let _other_end = listener.accept().unwrap();
+
+    // By default, reads on blocking sockets should block indefinitely.
+    assert_eq!(stream.read_timeout().unwrap(), None);
+
+    let short_read_timeout = Some(Duration::from_millis(40));
+    stream.set_read_timeout(short_read_timeout).unwrap();
+    assert_eq!(stream.read_timeout().unwrap(), short_read_timeout);
+
+    let mut buffer = [0u8; 128];
+    // This should not block indefinitely and instead return EAGAIN/EWOULDBLOCK.
+    let err = stream.read(&mut buffer).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::WouldBlock);
+}
+
+/// Test setting and reading the RCVTIMEO socket option.
+/// This also tests that a write won't block indefinitely when
+/// the write timeout is set to [`Some`] duration.
+fn test_sockopt_write_timeout() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+
+    let mut stream = TcpStream::connect(address).unwrap();
+    let _other_end = listener.accept().unwrap();
+
+    // By default, writes on blocking sockets should block indefinitely.
+    assert_eq!(stream.write_timeout().unwrap(), None);
+
+    let short_write_timeout = Some(Duration::from_millis(40));
+    stream.set_write_timeout(short_write_timeout).unwrap();
+    assert_eq!(stream.write_timeout().unwrap(), short_write_timeout);
+
+    let fill_buffer = [1u8; 1024];
+    loop {
+        match stream.write_all(&fill_buffer) {
+            Ok(_) => { /* continue to fill up buffer */ }
+            // When we get an EAGAIN/EWOULDBLOCK when writing into a blocking socket,
+            // we know it's because of the write timeout exceeding because the write
+            // buffer is full.
+            Err(err) if err.kind() == ErrorKind::WouldBlock => break,
+            Err(err) => panic!("unexpected error whilst filling up buffer: {err}"),
+        }
+    }
 }

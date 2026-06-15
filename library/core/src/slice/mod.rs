@@ -596,6 +596,7 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     #[rustc_const_unstable(feature = "const_index", issue = "143775")]
+    #[rustc_no_writable]
     pub const fn get_mut<I>(&mut self, index: I) -> Option<&mut I::Output>
     where
         I: [const] SliceIndex<Self>,
@@ -681,6 +682,7 @@ impl<T> [T] {
     #[must_use]
     #[track_caller]
     #[rustc_const_unstable(feature = "const_index", issue = "143775")]
+    #[rustc_no_writable]
     pub const unsafe fn get_unchecked_mut<I>(&mut self, index: I) -> &mut I::Output
     where
         I: [const] SliceIndex<Self>,
@@ -4350,6 +4352,7 @@ impl<T> [T] {
     ///
     /// assert_eq!(&bytes, b"Hello, Wello!");
     /// ```
+    #[inline]
     #[stable(feature = "copy_within", since = "1.37.0")]
     #[track_caller]
     pub fn copy_within<R: RangeBounds<usize>>(&mut self, src: R, dest: usize)
@@ -5594,7 +5597,7 @@ const trait CloneFromSpec<T> {
 }
 
 #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-impl<T> const CloneFromSpec<T> for [T]
+const impl<T> CloneFromSpec<T> for [T]
 where
     T: [const] Clone + [const] Destruct,
 {
@@ -5616,7 +5619,7 @@ where
 }
 
 #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-impl<T> const CloneFromSpec<T> for [T]
+const impl<T> CloneFromSpec<T> for [T]
 where
     T: [const] TrivialClone + [const] Destruct,
 {
@@ -5631,7 +5634,7 @@ where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-impl<T> const Default for &[T] {
+const impl<T> Default for &[T] {
     /// Creates an empty slice.
     fn default() -> Self {
         &[]
@@ -5640,7 +5643,7 @@ impl<T> const Default for &[T] {
 
 #[stable(feature = "mut_slice_default", since = "1.5.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-impl<T> const Default for &mut [T] {
+const impl<T> Default for &mut [T] {
     /// Creates a mutable empty slice.
     fn default() -> Self {
         &mut []
@@ -5739,24 +5742,6 @@ impl fmt::Display for GetDisjointMutError {
     }
 }
 
-mod private_get_disjoint_mut_index {
-    use super::{Range, RangeInclusive, range};
-
-    #[unstable(feature = "get_disjoint_mut_helpers", issue = "none")]
-    pub trait Sealed {}
-
-    #[unstable(feature = "get_disjoint_mut_helpers", issue = "none")]
-    impl Sealed for usize {}
-    #[unstable(feature = "get_disjoint_mut_helpers", issue = "none")]
-    impl Sealed for Range<usize> {}
-    #[unstable(feature = "get_disjoint_mut_helpers", issue = "none")]
-    impl Sealed for RangeInclusive<usize> {}
-    #[unstable(feature = "get_disjoint_mut_helpers", issue = "none")]
-    impl Sealed for range::Range<usize> {}
-    #[unstable(feature = "get_disjoint_mut_helpers", issue = "none")]
-    impl Sealed for range::RangeInclusive<usize> {}
-}
-
 /// A helper trait for `<[T]>::get_disjoint_mut()`.
 ///
 /// # Safety
@@ -5764,9 +5749,7 @@ mod private_get_disjoint_mut_index {
 /// If `is_in_bounds()` returns `true` and `is_overlapping()` returns `false`,
 /// it must be safe to index the slice with the indices.
 #[unstable(feature = "get_disjoint_mut_helpers", issue = "none")]
-pub unsafe trait GetDisjointMutIndex:
-    Clone + private_get_disjoint_mut_index::Sealed
-{
+pub impl(self) unsafe trait GetDisjointMutIndex: Clone {
     /// Returns `true` if `self` is in bounds for `len` slice elements.
     #[unstable(feature = "get_disjoint_mut_helpers", issue = "none")]
     fn is_in_bounds(&self, len: usize) -> bool;

@@ -199,23 +199,32 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.anon_const_kind(def_id)
     }
 
+    fn def_span(self, def_id: DefId) -> Span {
+        self.def_span(def_id)
+    }
+
     type AdtDef = ty::AdtDef<'tcx>;
     fn adt_def(self, adt_def_id: DefId) -> Self::AdtDef {
         self.adt_def(adt_def_id)
     }
 
-    fn alias_ty_kind_from_def_id(self, def_id: DefId) -> ty::AliasTyKind<'tcx> {
+    fn unevaluated_const_kind_from_def_id(
+        self,
+        def_id: Self::DefId,
+    ) -> ty::UnevaluatedConstKind<'tcx> {
         match self.def_kind(def_id) {
-            DefKind::AssocTy
-                if let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(def_id)) =>
-            {
-                ty::Inherent { def_id }
+            DefKind::AssocConst { .. } => {
+                if let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(def_id)) {
+                    ty::UnevaluatedConstKind::Inherent { def_id }
+                } else {
+                    ty::UnevaluatedConstKind::Projection { def_id }
+                }
             }
-            DefKind::AssocTy => ty::Projection { def_id },
-
-            DefKind::OpaqueTy => ty::Opaque { def_id },
-            DefKind::TyAlias => ty::Free { def_id },
-            kind => bug!("unexpected DefKind in AliasTy: {kind:?}"),
+            DefKind::Const { .. } => ty::UnevaluatedConstKind::Free { def_id },
+            DefKind::AnonConst | DefKind::InlineConst | DefKind::Ctor(_, CtorKind::Const) => {
+                ty::UnevaluatedConstKind::Anon { def_id }
+            }
+            kind => bug!("unexpected DefKind in UnevaluatedConst: {kind:?}"),
         }
     }
 
@@ -239,7 +248,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             DefKind::TyAlias => ty::AliasTermKind::FreeTy { def_id },
             DefKind::Const { .. } => ty::AliasTermKind::FreeConst { def_id },
             DefKind::AnonConst | DefKind::Ctor(_, CtorKind::Const) => {
-                ty::AliasTermKind::UnevaluatedConst { def_id }
+                ty::AliasTermKind::AnonConst { def_id }
             }
             kind => bug!("unexpected DefKind in AliasTy: {kind:?}"),
         }
@@ -435,7 +444,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn closure_is_const(self, def_id: DefId) -> bool {
         debug_assert_matches!(self.def_kind(def_id), DefKind::Closure);
-        self.constness(def_id) == hir::Constness::Const
+        matches!(self.constness(def_id), hir::Constness::Const { always: false })
     }
 
     fn alias_has_const_conditions(self, def_id: DefId) -> bool {

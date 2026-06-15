@@ -24,6 +24,7 @@ pub fn default_paths_to_vendor(builder: &Builder<'_>) -> Vec<(PathBuf, Vec<&'sta
         ("compiler/rustc_codegen_cranelift/Cargo.toml", vec![]),
         ("compiler/rustc_codegen_gcc/Cargo.toml", vec![]),
         ("library/Cargo.toml", vec![]),
+        ("library/stdarch/Cargo.toml", vec![]),
         ("src/bootstrap/Cargo.toml", vec![]),
         ("src/tools/rustbook/Cargo.toml", SUBMODULES_FOR_RUSTBOOK.into()),
         ("src/tools/rustc-perf/Cargo.toml", vec!["src/tools/rustc-perf"]),
@@ -46,9 +47,15 @@ pub(crate) struct Vendor {
     /// Determines whether vendored dependencies use versioned directories.
     pub(crate) versioned_dirs: bool,
     /// The root directory of the source code.
+    ///
+    /// Vendored dependencies will be stored in <root_dir>/vendor and
+    /// <root_dir>/library/vendor unless overridden by `output_dir`.
     pub(crate) root_dir: PathBuf,
-    /// The target directory for storing vendored dependencies.
-    pub(crate) output_dir: PathBuf,
+    /// The root directory for storing vendored dependencies in <output_dir>/vendor
+    /// and <output_dir>/library/vendor.
+    pub(crate) output_dir: Option<PathBuf>,
+    /// Only vendor crates necessary by the library workspace.
+    pub(crate) only_library_workspace: bool,
 }
 
 impl Step for Vendor {
@@ -68,7 +75,8 @@ impl Step for Vendor {
             sync_args: run.builder.config.cmd.vendor_sync_args(),
             versioned_dirs: run.builder.config.cmd.vendor_versioned_dirs(),
             root_dir: run.builder.src.clone(),
-            output_dir: run.builder.src.join(VENDOR_DIR),
+            output_dir: None,
+            only_library_workspace: false,
         });
     }
 
@@ -79,6 +87,55 @@ impl Step for Vendor {
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let _guard = builder.group(&format!("Vendoring sources to {:?}", self.root_dir));
 
+        let config = if self.only_library_workspace {
+            String::new()
+        } else {
+            let mut cmd = command(&builder.initial_cargo);
+            cmd.arg("vendor");
+
+            if self.versioned_dirs {
+                cmd.arg("--versioned-dirs");
+            }
+
+            let to_vendor = default_paths_to_vendor(builder);
+            // These submodules must be present for `x vendor` to work.
+            for (_, submodules) in &to_vendor {
+                for submodule in submodules {
+                    builder.build.require_submodule(submodule, None);
+                }
+            }
+
+            // Sync these paths by default.
+            for (p, _) in &to_vendor {
+                cmd.arg("--sync").arg(p);
+            }
+
+            // Also sync explicitly requested paths.
+            for sync_arg in self.sync_args {
+                cmd.arg("--sync").arg(sync_arg);
+            }
+
+            // Reuse vendored dependencies when building source tarball for offline support.
+            if builder.config.vendor {
+                cmd.arg("--respect-source-config")
+                    .arg("--config")
+                    .arg(builder.src.join(".cargo").join("config.toml"));
+            }
+
+            // Will read the libstd Cargo.toml
+            // which uses the unstable `public-dependency` feature.
+            cmd.env("RUSTC_BOOTSTRAP", "1");
+            cmd.env("RUSTC", &builder.initial_rustc);
+
+            cmd.current_dir(&self.root_dir);
+            match &self.output_dir {
+                None => cmd.arg(VENDOR_DIR),
+                Some(output_dir) => cmd.arg(output_dir.join(VENDOR_DIR)),
+            };
+
+            cmd.run_capture_stdout(builder).stdout()
+        };
+
         let mut cmd = command(&builder.initial_cargo);
         cmd.arg("vendor");
 
@@ -86,22 +143,11 @@ impl Step for Vendor {
             cmd.arg("--versioned-dirs");
         }
 
-        let to_vendor = default_paths_to_vendor(builder);
-        // These submodules must be present for `x vendor` to work.
-        for (_, submodules) in &to_vendor {
-            for submodule in submodules {
-                builder.build.require_submodule(submodule, None);
-            }
-        }
-
-        // Sync these paths by default.
-        for (p, _) in &to_vendor {
-            cmd.arg("--sync").arg(p);
-        }
-
-        // Also sync explicitly requested paths.
-        for sync_arg in self.sync_args {
-            cmd.arg("--sync").arg(sync_arg);
+        // Reuse vendored dependencies when building source tarball for offline support.
+        if builder.config.vendor {
+            cmd.arg("--respect-source-config")
+                .arg("--config")
+                .arg(builder.src.join("library").join(".cargo").join("config.toml"));
         }
 
         // Will read the libstd Cargo.toml
@@ -109,10 +155,15 @@ impl Step for Vendor {
         cmd.env("RUSTC_BOOTSTRAP", "1");
         cmd.env("RUSTC", &builder.initial_rustc);
 
-        cmd.current_dir(self.root_dir).arg(&self.output_dir);
+        cmd.current_dir(self.root_dir.join("library"));
+        match &self.output_dir {
+            None => cmd.arg(VENDOR_DIR),
+            Some(output_dir) => cmd.arg(output_dir.join("library").join(VENDOR_DIR)),
+        };
 
-        let config = cmd.run_capture_stdout(builder);
-        VendorOutput { config: config.stdout() }
+        let config_library = cmd.run_capture_stdout(builder).stdout();
+
+        VendorOutput { config, config_library }
     }
 }
 
@@ -120,4 +171,5 @@ impl Step for Vendor {
 #[derive(Debug, Clone)]
 pub(crate) struct VendorOutput {
     pub(crate) config: String,
+    pub(crate) config_library: String,
 }

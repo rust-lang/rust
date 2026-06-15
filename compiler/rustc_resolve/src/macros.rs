@@ -165,7 +165,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     }
 
     fn mark_scope_with_compile_error(&mut self, id: NodeId) {
-        if let Some(id) = self.opt_local_def_id(id)
+        if let Some(id) = self.owners.get(&id).map(|i| i.def_id)
             && self.tcx.def_kind(id).is_module_like()
         {
             self.mods_with_parse_errors.insert(id.to_def_id());
@@ -215,7 +215,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         parent_module_id: Option<NodeId>,
     ) -> LocalExpnId {
         let parent_module =
-            parent_module_id.map(|module_id| self.local_def_id(module_id).to_def_id());
+            parent_module_id.map(|module_id| self.owner_def_id(module_id).to_def_id());
         let expn_id = self.tcx.with_stable_hashing_context(|hcx| {
             LocalExpnId::fresh(
                 ExpnData::allow_unstable(
@@ -379,6 +379,10 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         self.containers_deriving_copy.contains(&expn_id)
     }
 
+    fn has_derive_ord(&self, expn_id: LocalExpnId) -> bool {
+        self.containers_deriving_ord.contains(&expn_id)
+    }
+
     fn resolve_derives(
         &mut self,
         expn_id: LocalExpnId,
@@ -398,6 +402,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             resolutions: derive_paths(),
             helper_attrs: Vec::new(),
             has_derive_copy: false,
+            has_derive_ord: false,
         });
         let parent_scope = self.invocation_parent_scopes[&expn_id];
         for (i, resolution) in entry.resolutions.iter_mut().enumerate() {
@@ -420,6 +425,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
                                 );
                             }
                             entry.has_derive_copy |= ext.builtin_name == Some(sym::Copy);
+                            entry.has_derive_ord |= ext.builtin_name == Some(sym::Ord);
                             ext
                         }
                         Ok(_) | Err(Determinacy::Determined) => self.dummy_ext(MacroKind::Derive),
@@ -455,6 +461,12 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         if entry.has_derive_copy || self.has_derive_copy(parent_scope.expansion) {
             self.containers_deriving_copy.insert(expn_id);
         }
+        // Similar to the above `Copy` and `Clone` case, the code generated for
+        // `derive(PartialOrd)` changes if `derive(Ord)` is also present.
+        // FIXME(makai410): this also doesn't work with `#[derive(PartialOrd)] #[derive(Ord)]`.
+        if entry.has_derive_ord || self.has_derive_ord(parent_scope.expansion) {
+            self.containers_deriving_ord.insert(expn_id);
+        }
         assert!(self.derive_data.is_empty());
         self.derive_data = derive_data;
         Ok(())
@@ -489,7 +501,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     }
 
     fn declare_proc_macro(&mut self, id: NodeId) {
-        self.proc_macros.push(self.local_def_id(id))
+        self.proc_macros.push(self.owner_def_id(id))
     }
 
     fn append_stripped_cfg_item(
@@ -707,7 +719,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             (sym::on_move, Some(sym::diagnostic_on_move)),
             (sym::on_const, Some(sym::diagnostic_on_const)),
             (sym::on_unknown, Some(sym::diagnostic_on_unknown)),
-            (sym::on_unmatch_args, Some(sym::diagnostic_on_unmatch_args)),
+            (sym::on_unmatched_args, Some(sym::diagnostic_on_unmatched_args)),
+            (sym::on_type_error, Some(sym::diagnostic_on_type_error)),
         ];
 
         if res == Res::NonMacroAttr(NonMacroAttrKind::Tool)
@@ -947,9 +960,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 path_res @ (PathResult::NonModule(..) | PathResult::Failed { .. }) => {
                     let mut suggestion = None;
                     let (span, message, label, module, segment) = match path_res {
-                        PathResult::Failed {
-                            span, label, module, segment_name, message, ..
-                        } => {
+                        PathResult::Failed { span, label, module, segment, message, .. } => {
                             // try to suggest if it's not a macro, maybe a function
                             if let PathResult::NonModule(partial_res) = self
                                 .cm()
@@ -968,7 +979,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     Applicability::MaybeIncorrect,
                                 ));
                             }
-                            (span, message, label, module, segment_name)
+                            (span, message, label, module, segment.name)
                         }
                         PathResult::NonModule(partial_res) => {
                             let found_an = partial_res.base_res().article();
@@ -1273,8 +1284,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 PathResult::NonModule(..) |
                 // HACK(Urgau): This shouldn't be necessary
                 PathResult::Failed { is_error_from_last_segment: false, .. } => {
-                    self.dcx()
-                        .emit_err(errors::CfgAccessibleUnsure { span });
+                    self.dcx().emit_err(errors::CfgAccessibleUnsure { span });
 
                     // If we get a partially resolved NonModule in one namespace, we should get the
                     // same result in any other namespaces, so we can return early.

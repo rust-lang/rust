@@ -12,7 +12,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 use tracing::{instrument, trace};
 
-use crate::errors::{DuplicateArg, NotParam};
+use crate::diagnostics::{DuplicateArg, NotParam};
 
 struct OpaqueTypeCollector<'tcx> {
     tcx: TyCtxt<'tcx>,

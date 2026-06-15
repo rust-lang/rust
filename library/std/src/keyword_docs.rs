@@ -238,7 +238,7 @@ mod break_keyword {}
 ///
 /// Turning a `fn` into a `const fn` has no effect on run-time uses of that function.
 ///
-/// ## Other uses of `const`
+/// ## raw pointers
 ///
 /// The `const` keyword is also used in raw pointers in combination with `mut`, as seen in `*const
 /// T` and `*mut T`. More about `const` as used in raw pointers can be read at the Rust docs for the [pointer primitive].

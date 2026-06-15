@@ -12,7 +12,7 @@ use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_data_structures::thousands::usize_with_underscores;
 use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, EncodeCrossCrate};
-use rustc_hir::def_id::{CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
+use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::find_attr;
 use rustc_hir_pretty::id_to_string;
@@ -35,12 +35,12 @@ use rustc_span::{
 };
 use tracing::{debug, instrument, trace};
 
+use crate::diagnostics::{FailCreateFileEncoder, FailWriteFile};
 use crate::eii::EiiMapEncodedKeyValue;
-use crate::errors::{FailCreateFileEncoder, FailWriteFile};
 use crate::rmeta::*;
 
 pub(super) struct EncodeContext<'a, 'tcx> {
-    opaque: opaque::FileEncoder,
+    opaque: opaque::FileEncoder<'a>,
     tcx: TyCtxt<'tcx>,
     feat: &'tcx rustc_feature::Features,
     tables: TableBuilders,
@@ -510,18 +510,20 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_def_path_table(&mut self) {
-        let table = self.tcx.def_path_table();
+        let defs = self.tcx.definitions();
         if self.is_proc_macro {
-            for def_index in std::iter::once(CRATE_DEF_INDEX)
-                .chain(self.tcx.resolutions(()).proc_macros.iter().map(|p| p.local_def_index))
+            for def_id in std::iter::once(CRATE_DEF_ID)
+                .chain(self.tcx.resolutions(()).proc_macros.iter().copied())
             {
-                let def_key = self.lazy(table.def_key(def_index));
-                let def_path_hash = table.def_path_hash(def_index);
-                self.tables.def_keys.set_some(def_index, def_key);
-                self.tables.def_path_hashes.set(def_index, def_path_hash.local_hash().as_u64());
+                let def_key = self.lazy(defs.def_key(def_id));
+                let def_path_hash = defs.def_path_hash(def_id);
+                self.tables.def_keys.set_some(def_id.local_def_index, def_key);
+                self.tables
+                    .def_path_hashes
+                    .set(def_id.local_def_index, def_path_hash.local_hash().as_u64());
             }
         } else {
-            for (def_index, def_key, def_path_hash) in table.enumerated_keys_and_path_hashes() {
+            for (def_index, def_key, def_path_hash) in defs.enumerated_keys_and_path_hashes() {
                 let def_key = self.lazy(def_key);
                 self.tables.def_keys.set_some(def_index, def_key);
                 self.tables.def_path_hashes.set(def_index, def_path_hash.local_hash().as_u64());
@@ -1120,6 +1122,9 @@ fn should_encode_mir(
                     && reachable_set.contains(&def_id)
                     && (tcx.generics_of(def_id).requires_monomorphization(tcx)
                         || tcx.cross_crate_inlinable(def_id)));
+            // Comptime fns do not have optimized MIR at all.
+            let opt =
+                opt && !matches!(tcx.constness(def_id), hir::Constness::Const { always: true });
             // The function has a `const` modifier or is in a `const trait`.
             let is_const_fn = tcx.is_const_fn(def_id.to_def_id());
             (is_const_fn, opt)
@@ -1151,6 +1156,7 @@ fn should_encode_variances<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, def_kind: Def
         | DefKind::Static { .. }
         | DefKind::Const { .. }
         | DefKind::ForeignMod
+        | DefKind::TyAlias
         | DefKind::Impl { .. }
         | DefKind::Trait
         | DefKind::TraitAlias
@@ -1164,7 +1170,6 @@ fn should_encode_variances<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, def_kind: Def
         | DefKind::Closure
         | DefKind::ExternCrate
         | DefKind::SyntheticCoroutineBody => false,
-        DefKind::TyAlias => tcx.type_alias_is_lazy(def_id),
     }
 }
 
@@ -1531,7 +1536,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if let Some(name) = tcx.intrinsic(def_id) {
                 record!(self.tables.intrinsic[def_id] <- name);
             }
-            if let DefKind::TyParam = def_kind {
+            if let DefKind::TyParam | DefKind::Trait = def_kind {
                 let default = self.tcx.object_lifetime_default(def_id);
                 record!(self.tables.object_lifetime_default[def_id] <- default);
             }
@@ -1982,8 +1987,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let tcx = self.tcx;
             let proc_macro_decls_static = tcx.proc_macro_decls_static(()).unwrap().local_def_index;
             let stability = tcx.lookup_stability(CRATE_DEF_ID);
-            let macros =
-                self.lazy_array(tcx.resolutions(()).proc_macros.iter().map(|p| p.local_def_index));
             for (i, span) in self.tcx.sess.proc_macro_quoted_spans() {
                 let span = self.lazy(span);
                 self.tables.proc_macro_quoted_spans.set_some(i, span);
@@ -2005,6 +2008,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record_array!(self.tables.doc_link_traits_in_scope[LOCAL_CRATE.as_def_id()] <- traits);
             }
 
+            let mut macros = vec![];
+
             // Normally, this information is encoded when we walk the items
             // defined in this crate. However, we skip doing that for proc-macro crates,
             // so we manually encode just the information that we need
@@ -2016,25 +2021,35 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 // Proc-macros may have attributes like `#[allow_internal_unstable]`,
                 // so downstream crates need access to them.
                 let attrs = tcx.hir_attrs(proc_macro);
-                let macro_kind = if find_attr!(attrs, ProcMacro) {
-                    MacroKind::Bang
+                let (macro_kind, kind) = if find_attr!(attrs, ProcMacro) {
+                    (MacroKind::Bang, ProcMacroKind::Bang { name: name.as_str().to_owned() })
                 } else if find_attr!(attrs, ProcMacroAttribute) {
-                    MacroKind::Attr
-                } else if let Some(trait_name) =
-                    find_attr!(attrs, ProcMacroDerive { trait_name, ..} => trait_name)
+                    (MacroKind::Attr, ProcMacroKind::Attr { name: name.as_str().to_owned() })
+                } else if let Some((trait_name, helper_attrs)) = find_attr!(attrs,
+                    ProcMacroDerive { trait_name, helper_attrs } => (trait_name, helper_attrs))
                 {
                     name = *trait_name;
-                    MacroKind::Derive
+                    (
+                        MacroKind::Derive,
+                        ProcMacroKind::CustomDerive {
+                            trait_name: name.as_str().to_owned(),
+                            attributes: helper_attrs
+                                .iter()
+                                .map(|attr| attr.as_str().to_owned())
+                                .collect(),
+                        },
+                    )
                 } else {
                     bug!("Unknown proc-macro type for item {:?}", id);
                 };
+
+                macros.push((id.local_def_index, self.lazy(kind)));
 
                 let mut def_key = self.tcx.hir_def_key(id);
                 def_key.disambiguated_data.data = DefPathData::MacroNs(name);
 
                 let def_id = id.to_def_id();
                 self.tables.def_kind.set_some(def_id.index, DefKind::Macro(macro_kind.into()));
-                self.tables.proc_macro.set_some(def_id.index, macro_kind);
                 self.encode_attrs(id);
                 record!(self.tables.def_keys[def_id] <- def_key);
                 record!(self.tables.def_ident_span[def_id] <- span);
@@ -2044,6 +2059,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     record!(self.tables.lookup_stability[def_id] <- stability);
                 }
             }
+
+            let macros = self.lazy_array(macros);
 
             Some(ProcMacroData { proc_macro_decls_static, stability, macros })
         } else {
