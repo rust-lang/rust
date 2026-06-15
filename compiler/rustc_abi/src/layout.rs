@@ -1122,9 +1122,10 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             // the field ordering to try and catch some code making assumptions about layouts
             // we don't guarantee.
             // In the future, we might do more than shuffle field order (e.g. introduce extra padding),
-            // but never for `repr(Rust)` structs with only zero-sized fields or single-variant
-            // `repr(Rust)` enums with only zero-sized fields, which must remain zero-sized as per
-            // T-lang decision https://github.com/rust-lang/reference/pull/2262
+            // but never for `repr(Rust)` structs with only zero-sized fields, single-variant
+            // `repr(Rust)` enums with only zero-sized fields, or zero-variant `repr(Rust)` enums,
+            // which must remain zero-sized as per T-lang decisions in
+            // https://github.com/rust-lang/reference/pull/2262 and https://github.com/rust-lang/reference/pull/2293
             if repr.can_randomize_type_layout() && cfg!(feature = "randomize") {
                 #[cfg(feature = "randomize")]
                 {
