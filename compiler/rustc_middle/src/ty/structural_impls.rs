@@ -371,7 +371,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             ty::CoroutineClosure(did, args) => {
                 ty::CoroutineClosure(did, args.try_fold_with(folder)?)
             }
-            ty::Alias(data) => ty::Alias(data.try_fold_with(folder)?),
+            ty::Alias(is_rigid, data) => ty::Alias(is_rigid, data.try_fold_with(folder)?),
             ty::Pat(ty, pat) => ty::Pat(ty.try_fold_with(folder)?, pat.try_fold_with(folder)?),
 
             ty::Bool
@@ -410,7 +410,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             ty::CoroutineWitness(did, args) => ty::CoroutineWitness(did, args.fold_with(folder)),
             ty::Closure(did, args) => ty::Closure(did, args.fold_with(folder)),
             ty::CoroutineClosure(did, args) => ty::CoroutineClosure(did, args.fold_with(folder)),
-            ty::Alias(data) => ty::Alias(data.fold_with(folder)),
+            ty::Alias(is_rigid, data) => ty::Alias(is_rigid, data.fold_with(folder)),
             ty::Pat(ty, pat) => ty::Pat(ty.fold_with(folder), pat.fold_with(folder)),
 
             ty::Bool
@@ -458,7 +458,7 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
             ty::CoroutineWitness(_did, args) => args.visit_with(visitor),
             ty::Closure(_did, args) => args.visit_with(visitor),
             ty::CoroutineClosure(_did, args) => args.visit_with(visitor),
-            ty::Alias(data) => data.visit_with(visitor),
+            ty::Alias(_is_rigid, data) => data.visit_with(visitor),
 
             ty::Pat(ty, pat) => {
                 try_visit!(ty.visit_with(visitor));
@@ -633,7 +633,9 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Const<'tcx> {
         folder: &mut F,
     ) -> Result<Self, F::Error> {
         let kind = match self.kind() {
-            ConstKind::Unevaluated(uv) => ConstKind::Unevaluated(uv.try_fold_with(folder)?),
+            ConstKind::Unevaluated(is_rigid, uv) => {
+                ConstKind::Unevaluated(is_rigid, uv.try_fold_with(folder)?)
+            }
             ConstKind::Value(v) => ConstKind::Value(v.try_fold_with(folder)?),
             ConstKind::Expr(e) => ConstKind::Expr(e.try_fold_with(folder)?),
 
@@ -648,7 +650,9 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Const<'tcx> {
 
     fn super_fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
         let kind = match self.kind() {
-            ConstKind::Unevaluated(uv) => ConstKind::Unevaluated(uv.fold_with(folder)),
+            ConstKind::Unevaluated(is_rigid, uv) => {
+                ConstKind::Unevaluated(is_rigid, uv.fold_with(folder))
+            }
             ConstKind::Value(v) => ConstKind::Value(v.fold_with(folder)),
             ConstKind::Expr(e) => ConstKind::Expr(e.fold_with(folder)),
 
@@ -665,7 +669,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Const<'tcx> {
 impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Const<'tcx> {
     fn super_visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         match self.kind() {
-            ConstKind::Unevaluated(uv) => uv.visit_with(visitor),
+            ConstKind::Unevaluated(_is_rigid, uv) => uv.visit_with(visitor),
             ConstKind::Value(v) => v.visit_with(visitor),
             ConstKind::Expr(e) => e.visit_with(visitor),
             ConstKind::Error(e) => e.visit_with(visitor),

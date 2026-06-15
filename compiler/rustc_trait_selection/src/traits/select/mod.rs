@@ -882,13 +882,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         );
 
                         match (c1.kind(), c2.kind()) {
-                            (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b))
-                                if a.kind == b.kind
-                                    && matches!(
-                                        a.kind,
-                                        ty::UnevaluatedConstKind::Projection { .. }
-                                            | ty::UnevaluatedConstKind::Inherent { .. }
-                                    ) =>
+                            (
+                                ty::ConstKind::Unevaluated(_, a),
+                                ty::ConstKind::Unevaluated(_, b),
+                            ) if a.kind == b.kind
+                                && matches!(
+                                    a.kind,
+                                    ty::UnevaluatedConstKind::Projection { .. }
+                                        | ty::UnevaluatedConstKind::Inherent { .. }
+                                ) =>
                             {
                                 if let Ok(InferOk { obligations, value: () }) = self
                                     .infcx
@@ -907,8 +909,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     );
                                 }
                             }
-                            (_, ty::ConstKind::Unevaluated(_))
-                            | (ty::ConstKind::Unevaluated(_), _) => (),
+                            (_, ty::ConstKind::Unevaluated(_, _))
+                            | (ty::ConstKind::Unevaluated(_, _), _) => (),
                             (_, _) => {
                                 if let Ok(InferOk { obligations, value: () }) = self
                                     .infcx
@@ -927,7 +929,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
 
                     let evaluate = |c: ty::Const<'tcx>| {
-                        if let ty::ConstKind::Unevaluated(_) = c.kind() {
+                        if let ty::ConstKind::Unevaluated(_, _) = c.kind() {
                             match crate::traits::try_evaluate_const(
                                 self.infcx,
                                 c,
@@ -987,7 +989,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                         ty::ConstKind::Error(_) => return Ok(EvaluatedToOk),
                         ty::ConstKind::Value(cv) => cv.ty,
-                        ty::ConstKind::Unevaluated(uv) => uv.type_of(self.tcx()).skip_norm_wip(),
+                        ty::ConstKind::Unevaluated(_, uv) => uv.type_of(self.tcx()).skip_norm_wip(),
                         // FIXME(generic_const_exprs): See comment in `fulfill.rs`
                         ty::ConstKind::Expr(_) => return Ok(EvaluatedToOk),
                         ty::ConstKind::Placeholder(_) => {
@@ -1658,6 +1660,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         loop {
             let (alias_ty, def_id) = match *self_ty.kind() {
                 ty::Alias(
+                    _,
                     alias_ty @ ty::AliasTy {
                         kind: ty::Projection { def_id } | ty::Opaque { def_id },
                         ..
@@ -2348,10 +2351,13 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ty::Placeholder(..)
             | ty::Dynamic(..)
             | ty::Param(..)
-            | ty::Alias(ty::AliasTy {
-                kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
-                ..
-            })
+            | ty::Alias(
+                _,
+                ty::AliasTy {
+                    kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
+                    ..
+                },
+            )
             | ty::Bound(..)
             | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("asked to assemble constituent types of unexpected type: {:?}", t);
@@ -2420,7 +2426,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 assumptions: vec![],
             }),
 
-            ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
+            ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
                 if self.infcx.can_define_opaque_ty(def_id) {
                     unreachable!()
                 } else {

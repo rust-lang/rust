@@ -805,7 +805,9 @@ impl<'tcx> GenericKind<'tcx> {
         match *self {
             GenericKind::Param(ref p) => p.to_ty(tcx),
             GenericKind::Placeholder(ref p) => Ty::new_placeholder(tcx, *p),
-            GenericKind::Alias(ref p) => p.to_ty(tcx),
+            // FIXME(rigid_aliases_marker): We probably want all uses of `GenericKind` to
+            // already be fully normalized.
+            GenericKind::Alias(ref p) => p.to_ty(tcx, ty::IsRigid::No),
         }
     }
 }

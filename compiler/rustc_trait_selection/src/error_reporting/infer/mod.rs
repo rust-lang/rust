@@ -209,8 +209,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
         let (def_id, args) = match *ty.kind() {
-            ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => (def_id, args),
-            ty::Alias(ty::AliasTy { kind, args, .. })
+            ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => (def_id, args),
+            ty::Alias(_, ty::AliasTy { kind, args, .. })
                 if self.tcx.is_impl_trait_in_trait(kind.def_id()) =>
             {
                 (kind.def_id(), args)
@@ -281,10 +281,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
     ) {
         let (alias, &def_id, concrete) = match (expected.kind(), found.kind()) {
-            (ty::Alias(proj @ ty::AliasTy { kind: ty::Projection { def_id }, .. }), _) => {
+            (ty::Alias(_, proj @ ty::AliasTy { kind: ty::Projection { def_id }, .. }), _) => {
                 (proj, def_id, found)
             }
-            (_, ty::Alias(proj @ ty::AliasTy { kind: ty::Projection { def_id }, .. })) => {
+            (_, ty::Alias(_, proj @ ty::AliasTy { kind: ty::Projection { def_id }, .. })) => {
                 (proj, def_id, expected)
             }
             _ => return,
@@ -348,7 +348,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     "the associated type `{}` is defined as `{}` in the implementation, \
                     but the where-bound `{}` shadows this definition\n\
                     see issue #152409 <https://github.com/rust-lang/rust/issues/152409> for more information",
-                    self.ty_to_string(tcx.mk_ty_from_kind(ty::Alias(*alias))),
+                    self.ty_to_string(alias.to_ty(tcx, ty::IsRigid::No)),
                     self.ty_to_string(concrete),
                     self.ty_to_string(alias.self_ty())
                 ));
@@ -1705,7 +1705,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         && values.expected.sort_string(self.tcx)
                             != values.found.sort_string(self.tcx);
                     let sort_string = |ty: Ty<'tcx>| match (extra, ty.kind()) {
-                        (true, ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. })) => {
+                        (true, ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. })) => {
                             let sm = self.tcx.sess.source_map();
                             let pos = sm.lookup_char_pos(self.tcx.def_span(*def_id).lo());
                             DiagStyledString::normal(format!(
@@ -1715,9 +1715,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 pos.col.to_usize() + 1,
                             ))
                         }
-                        (true, &ty::Alias(ty::AliasTy { kind: ty::Projection { def_id }, .. }))
-                            if self.tcx.is_impl_trait_in_trait(def_id) =>
-                        {
+                        (
+                            true,
+                            &ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id }, .. }),
+                        ) if self.tcx.is_impl_trait_in_trait(def_id) => {
                             let sm = self.tcx.sess.source_map();
                             let pos = sm.lookup_char_pos(self.tcx.def_span(def_id).lo());
                             DiagStyledString::normal(format!(
@@ -2553,7 +2554,7 @@ impl TyCategory {
     pub fn from_ty(tcx: TyCtxt<'_>, ty: Ty<'_>) -> Option<(Self, DefId)> {
         match *ty.kind() {
             ty::Closure(def_id, _) => Some((Self::Closure, def_id)),
-            ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }) => {
+            ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }) => {
                 let kind =
                     if tcx.ty_is_opaque_future(ty) { Self::OpaqueFuture } else { Self::Opaque };
                 Some((kind, def_id))

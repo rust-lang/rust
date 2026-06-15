@@ -483,7 +483,7 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
             ty::Tuple(fields) => TyKind::RigidTy(RigidTy::Tuple(
                 fields.iter().map(|ty| ty.stable(tables, cx)).collect(),
             )),
-            ty::Alias(alias_ty) => {
+            ty::Alias(_is_rigid, alias_ty) => {
                 TyKind::Alias(alias_ty.kind.stable(tables, cx), alias_ty.stable(tables, cx))
             }
             ty::Param(param_ty) => TyKind::Param(param_ty.stable(tables, cx)),
@@ -548,7 +548,7 @@ impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
                 }
             }
             ty::ConstKind::Param(param) => crate::ty::TyConstKind::Param(param.stable(tables, cx)),
-            ty::ConstKind::Unevaluated(uv) => {
+            ty::ConstKind::Unevaluated(_is_rigid, uv) => {
                 let Some(def_id) = uv.kind.opt_def_id() else {
                     // FIXME: implement (both AliasTy and UnevaluatedConst will be needing this soon)
                     panic!(

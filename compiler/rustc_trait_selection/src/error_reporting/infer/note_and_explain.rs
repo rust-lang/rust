@@ -46,8 +46,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         );
                     }
                     (
-                        ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }),
-                        ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }),
+                        ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }),
+                        ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }),
                     ) => {
                         // Issue #63167
                         diag.note("distinct uses of `impl Trait` result in different opaque types");
@@ -89,24 +89,28 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         );
                     }
                     (
-                        ty::Alias(ty::AliasTy {
-                            kind: ty::Projection { .. } | ty::Inherent { .. },
-                            ..
-                        }),
-                        ty::Alias(ty::AliasTy {
-                            kind: ty::Projection { .. } | ty::Inherent { .. },
-                            ..
-                        }),
+                        ty::Alias(
+                            _,
+                            ty::AliasTy {
+                                kind: ty::Projection { .. } | ty::Inherent { .. }, ..
+                            },
+                        ),
+                        ty::Alias(
+                            _,
+                            ty::AliasTy {
+                                kind: ty::Projection { .. } | ty::Inherent { .. }, ..
+                            },
+                        ),
                     ) => {
                         diag.note("an associated type was expected, but a different one was found");
                     }
                     // FIXME(inherent_associated_types): Extend this to support `ty::Inherent`, too.
                     (
                         ty::Param(p),
-                        ty::Alias(proj @ ty::AliasTy { kind: ty::Projection { def_id }, .. }),
+                        ty::Alias(_, proj @ ty::AliasTy { kind: ty::Projection { def_id }, .. }),
                     )
                     | (
-                        ty::Alias(proj @ ty::AliasTy { kind: ty::Projection { def_id }, .. }),
+                        ty::Alias(_, proj @ ty::AliasTy { kind: ty::Projection { def_id }, .. }),
                         ty::Param(p),
                     ) if !tcx.is_impl_trait_in_trait(def_id)
                         && let Some(generics) = body_generics =>
@@ -229,10 +233,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
                     (
                         ty::Param(p),
-                        ty::Dynamic(..) | ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }),
+                        ty::Dynamic(..) | ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }),
                     )
                     | (
-                        ty::Dynamic(..) | ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }),
+                        ty::Dynamic(..) | ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }),
                         ty::Param(p),
                     ) => {
                         if let Some(generics) = body_generics {
@@ -308,6 +312,7 @@ impl<T> Trait<T> for X {
                     }
                     (
                         ty::Alias(
+                            _,
                             proj_ty @ ty::AliasTy {
                                 kind: ty::Projection { def_id } | ty::Inherent { def_id },
                                 ..
@@ -328,6 +333,7 @@ impl<T> Trait<T> for X {
                     (
                         _,
                         ty::Alias(
+                            _,
                             proj_ty @ ty::AliasTy {
                                 kind: ty::Projection { def_id } | ty::Inherent { def_id },
                                 ..
@@ -368,9 +374,10 @@ impl<T> Trait<T> for X {
                     }
                     (
                         ty::Dynamic(t, _),
-                        ty::Alias(ty::AliasTy {
-                            kind: ty::Opaque { def_id: opaque_def_id }, ..
-                        }),
+                        ty::Alias(
+                            _,
+                            ty::AliasTy { kind: ty::Opaque { def_id: opaque_def_id }, .. },
+                        ),
                     ) if let Some(def_id) = t.principal_def_id()
                         && tcx
                             .explicit_item_self_bounds(opaque_def_id)
@@ -429,8 +436,8 @@ impl<T> Trait<T> for X {
                             ));
                         }
                     }
-                    (_, ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }))
-                    | (ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }), _) => {
+                    (_, ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }))
+                    | (ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }), _) => {
                         if let Some(body_owner_def_id) = body_owner_def_id
                             && def_id.is_local()
                             && matches!(
@@ -822,7 +829,7 @@ fn foo(&self) -> Self::T { String::new() }
         let tcx = self.tcx;
 
         let assoc = tcx.associated_item(proj_ty.kind.def_id());
-        if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }) =
+        if let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }) =
             *proj_ty.self_ty().kind()
         {
             let opaque_local_def_id = def_id.as_local();
@@ -873,9 +880,10 @@ fn foo(&self) -> Self::T { String::new() }
             .filter_map(|item| {
                 let method = tcx.fn_sig(item.def_id).instantiate_identity().skip_norm_wip();
                 match *method.output().skip_binder().kind() {
-                    ty::Alias(ty::AliasTy {
-                        kind: ty::Projection { def_id: item_def_id }, ..
-                    }) if item_def_id == proj_ty_item_def_id => Some((
+                    ty::Alias(
+                        _,
+                        ty::AliasTy { kind: ty::Projection { def_id: item_def_id }, .. },
+                    ) if item_def_id == proj_ty_item_def_id => Some((
                         tcx.def_span(item.def_id),
                         format!("consider calling `{}`", tcx.def_path_str(item.def_id)),
                     )),

@@ -115,12 +115,17 @@ where
             panic!("We do not expect to encounter `Fresh` variables in the new solver")
         }
 
-        (ty::Alias(alias_a), ty::Alias(alias_b))
-            if infcx.next_trait_solver()
-                && alias_a.is_rigid == ty::IsRigid::Yes
-                && alias_b.is_rigid == ty::IsRigid::Yes =>
-        {
-            structurally_relate_tys(relation, a, b)
+        (ty::Alias(is_rigid_a, _), ty::Alias(is_rigid_b, _)) if infcx.next_trait_solver() => {
+            match (is_rigid_a, is_rigid_b) {
+                (ty::IsRigid::Yes, ty::IsRigid::Yes) => structurally_relate_tys(relation, a, b),
+                _ => match relation.structurally_relate_aliases() {
+                    StructurallyRelateAliases::Yes => structurally_relate_tys(relation, a, b),
+                    StructurallyRelateAliases::No => {
+                        relation.register_alias_relate_predicate(a, b);
+                        Ok(a)
+                    }
+                },
+            }
         }
 
         (_, ty::Alias(..)) | (ty::Alias(..), _) if infcx.next_trait_solver() => {
@@ -136,8 +141,8 @@ where
         // All other cases of inference are errors
         (ty::Infer(_), _) | (_, ty::Infer(_)) => Err(TypeError::Sorts(ExpectedFound::new(a, b))),
 
-        (ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }), _)
-        | (_, ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. })) => {
+        (ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }), _)
+        | (_, ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. })) => {
             assert!(!infcx.next_trait_solver());
             match infcx.typing_mode_raw().assert_not_erased() {
                 // During coherence, opaque types should be treated as *possibly*
@@ -209,11 +214,10 @@ where
             Ok(a)
         }
 
-        (ty::ConstKind::Unevaluated(uv_a), ty::ConstKind::Unevaluated(uv_b))
-            if (infcx.cx().features().generic_const_exprs() || infcx.next_trait_solver())
-                && uv_a.is_rigid == ty::IsRigid::Yes
-                && uv_b.is_rigid == ty::IsRigid::Yes =>
-        {
+        (
+            ty::ConstKind::Unevaluated(ty::IsRigid::Yes, _),
+            ty::ConstKind::Unevaluated(ty::IsRigid::Yes, _),
+        ) if (infcx.cx().features().generic_const_exprs() || infcx.next_trait_solver()) => {
             structurally_relate_consts(relation, a, b)
         }
 

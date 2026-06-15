@@ -820,13 +820,14 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
             ty::Foreign(def_id) => self.print_def_path(def_id, &[])?,
             ty::Alias(
+                _is_rigid,
                 ref data @ ty::AliasTy {
                     kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
                     ..
                 },
             ) => data.print(self)?,
             ty::Placeholder(placeholder) => placeholder.print(self)?,
-            ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
+            ty::Alias(_is_rigid, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
                 // We use verbose printing in 'NO_QUERIES' mode, to
                 // avoid needing to call `predicates_of`. This should
                 // only affect certain debug messages (e.g. messages printed
@@ -846,7 +847,10 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     DefKind::TyAlias | DefKind::AssocTy => {
                         // NOTE: I know we should check for NO_QUERIES here, but it's alright.
                         // `type_of` on a type alias or assoc type should never cause a cycle.
-                        if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: d }, .. }) = *self
+                        if let ty::Alias(
+                            _is_rigid,
+                            ty::AliasTy { kind: ty::Opaque { def_id: d }, .. },
+                        ) = *self
                             .tcx()
                             .type_of(parent)
                             .instantiate_identity()
@@ -1367,7 +1371,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         let fn_args = if self.tcx().features().return_type_notation()
             && let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, .. }) =
                 self.tcx().opt_rpitit_info(def_id)
-            && let ty::Alias(alias_ty) =
+            && let ty::Alias(_is_rigid, alias_ty) =
                 self.tcx().fn_sig(fn_def_id).skip_binder().output().skip_binder().kind()
             && alias_ty.kind.def_id() == def_id
             && let generics = self.tcx().generics_of(fn_def_id)
@@ -1562,7 +1566,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         }
 
         match ct.kind() {
-            ty::ConstKind::Unevaluated(ty::UnevaluatedConst { kind, args, .. }) => {
+            ty::ConstKind::Unevaluated(_is_rigid, ty::UnevaluatedConst { kind, args, .. }) => {
                 match kind {
                     ty::UnevaluatedConstKind::Projection { def_id }
                     | ty::UnevaluatedConstKind::Inherent { def_id }

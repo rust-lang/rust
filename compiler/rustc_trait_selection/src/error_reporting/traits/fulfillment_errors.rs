@@ -1612,7 +1612,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         infer::BoundRegionConversionTime::HigherRankedType,
                         bound_predicate.rebind(data),
                     );
-                    let unnormalized_term = data.projection_term.to_term(self.tcx);
+                    let unnormalized_term = data.projection_term.to_term(self.tcx, ty::IsRigid::No);
                     // FIXME(-Znext-solver): For diagnostic purposes, it would be nice
                     // to deeply normalize this type.
                     let normalized_term = ocx.normalize(
@@ -1651,7 +1651,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             let normalized_term = ocx.normalize(
                                 &ObligationCause::dummy(),
                                 obligation.param_env,
-                                Unnormalized::new_wip(alias_term.to_term(self.tcx)),
+                                Unnormalized::new_wip(
+                                    alias_term.to_term(self.tcx, ty::IsRigid::No),
+                                ),
                             );
 
                             if let Err(terr) = ocx.eq(
@@ -1912,10 +1914,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ty::Closure(..) => Some(9),
                 ty::Tuple(..) => Some(10),
                 ty::Param(..) => Some(11),
-                ty::Alias(ty::AliasTy { kind: ty::Projection { .. }, .. }) => Some(12),
-                ty::Alias(ty::AliasTy { kind: ty::Inherent { .. }, .. }) => Some(13),
-                ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }) => Some(14),
-                ty::Alias(ty::AliasTy { kind: ty::Free { .. }, .. }) => Some(15),
+                ty::Alias(_, ty::AliasTy { kind: ty::Projection { .. }, .. }) => Some(12),
+                ty::Alias(_, ty::AliasTy { kind: ty::Inherent { .. }, .. }) => Some(13),
+                ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }) => Some(14),
+                ty::Alias(_, ty::AliasTy { kind: ty::Free { .. }, .. }) => Some(15),
                 ty::Never => Some(16),
                 ty::Adt(..) => Some(17),
                 ty::Coroutine(..) => Some(18),
@@ -2808,12 +2810,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         let infcx = self.infcx;
                         *self.var_map.entry(ty).or_insert_with(|| infcx.next_ty_var(DUMMY_SP))
                     }
-                    ty::Alias(alias)
-                        if alias.is_rigid == ty::IsRigid::Yes
+                    &ty::Alias(is_rigid, alias)
+                        if is_rigid == ty::IsRigid::Yes
                             && ty.has_type_flags(ty::TypeFlags::HAS_TY_PARAM) =>
                     {
                         let alias = alias.fold_with(self);
-                        Ty::new_alias(self.cx(), alias.to_non_rigid())
+                        Ty::new_alias(self.cx(), ty::IsRigid::No, alias)
                     }
                     _ => ty.super_fold_with(self),
                 }
@@ -3757,7 +3759,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         match obligation.predicate.kind().skip_binder() {
             ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(ct)) => match ct.kind() {
-                ty::ConstKind::Unevaluated(uv) => {
+                ty::ConstKind::Unevaluated(_, uv) => {
                     let mut err =
                         self.dcx().struct_span_err(span, "unconstrained generic constant");
                     let const_span = uv.kind.def_span(self.tcx);

@@ -33,6 +33,7 @@ fn associated_type_bounds<'tcx>(
     ty::print::with_reduced_queries!({
         let item_ty = Ty::new_projection_from_args(
             tcx,
+            ty::IsRigid::No,
             assoc_item_def_id.to_def_id(),
             GenericArgs::identity_for_item(tcx, assoc_item_def_id),
         );
@@ -144,6 +145,7 @@ fn remap_gat_vars_and_recurse_into_nested_projections<'tcx>(
 
     let gat_vars = loop {
         if let ty::Alias(
+            _,
             alias_ty @ ty::AliasTy { kind: ty::Projection { def_id: alias_ty_def_id }, .. },
         ) = *clause_ty.kind()
         {
@@ -457,7 +459,7 @@ pub(super) fn explicit_item_bounds_with_filter(
                 in_trait_or_impl: Some(hir::RpitContext::Trait),
             } => {
                 let args = GenericArgs::identity_for_item(tcx, def_id);
-                let item_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
+                let item_ty = Ty::new_opaque(tcx, ty::IsRigid::No, def_id.to_def_id(), args);
                 let bounds = &*tcx.arena.alloc_slice(
                     &opaque_type_bounds(tcx, def_id, bounds, item_ty, *span, filter)
                         .to_vec()
@@ -476,7 +478,7 @@ pub(super) fn explicit_item_bounds_with_filter(
             }
             | rustc_hir::OpaqueTyOrigin::TyAlias { parent: _, .. } => {
                 let args = GenericArgs::identity_for_item(tcx, def_id);
-                let item_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
+                let item_ty = Ty::new_opaque(tcx, ty::IsRigid::No, def_id.to_def_id(), args);
                 let bounds = opaque_type_bounds(tcx, def_id, bounds, item_ty, *span, filter);
                 assert_only_contains_predicates_from(filter, bounds, item_ty);
                 bounds
@@ -552,11 +554,10 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTyToOpaque<'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if let &ty::Alias(ty::AliasTy {
-            kind: ty::Projection { def_id: projection_ty_def_id },
-            args,
-            ..
-        }) = ty.kind()
+        if let &ty::Alias(
+            _,
+            ty::AliasTy { kind: ty::Projection { def_id: projection_ty_def_id }, args, .. },
+        ) = ty.kind()
             && let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, .. }) =
                 self.tcx.opt_rpitit_info(projection_ty_def_id)
             && fn_def_id == self.fn_def_id

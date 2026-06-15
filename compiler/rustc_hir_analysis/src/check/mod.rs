@@ -487,7 +487,7 @@ fn fn_sig_suggestion<'tcx>(
     let mut output = sig.output();
 
     let asyncness = if tcx.asyncness(assoc.def_id).is_async() {
-        output = if let ty::Alias(alias_ty) = *output.kind()
+        output = if let ty::Alias(_, alias_ty) = *output.kind()
             && let Some(output) = tcx
                 .explicit_item_self_bounds(alias_ty.kind.def_id())
                 .iter_instantiated_copied(tcx, alias_ty.args)

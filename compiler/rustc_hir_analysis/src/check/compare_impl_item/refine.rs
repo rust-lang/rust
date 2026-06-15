@@ -89,6 +89,7 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
 
         // If the hidden type is not an opaque, then we have "refined" the trait signature.
         let ty::Alias(
+            _,
             impl_opaque @ ty::AliasTy { kind: ty::Opaque { def_id: impl_opaque_def_id }, .. },
         ) = *hidden_ty.kind()
         else {
@@ -267,7 +268,7 @@ struct ImplTraitInTraitCollector<'tcx> {
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'tcx> {
     fn visit_ty(&mut self, ty: Ty<'tcx>) {
-        if let ty::Alias(proj @ ty::AliasTy { kind: ty::Projection { def_id }, .. }) = *ty.kind()
+        if let ty::Alias(_, proj @ ty::AliasTy { kind: ty::Projection { def_id }, .. }) = *ty.kind()
             && self.tcx.is_impl_trait_in_trait(def_id)
         {
             if self.types.insert(proj) {
@@ -317,9 +318,10 @@ fn report_mismatched_rpitit_signature<'tcx>(
     let mut return_ty = trait_m_sig.output().fold_with(&mut super::RemapLateParam { tcx, mapping });
 
     if tcx.asyncness(impl_m_def_id).is_async() && tcx.asyncness(trait_m_def_id).is_async() {
-        let &ty::Alias(ty::AliasTy {
-            kind: ty::Projection { def_id: future_ty_def_id }, args, ..
-        }) = return_ty.kind()
+        let &ty::Alias(
+            _,
+            ty::AliasTy { kind: ty::Projection { def_id: future_ty_def_id }, args, .. },
+        ) = return_ty.kind()
         else {
             span_bug!(
                 tcx.def_span(trait_m_def_id),

@@ -80,6 +80,10 @@ pub(super) fn can_match_erased_ty<'tcx>(
     assert!(!outlives_predicate.has_escaping_bound_vars());
     let erased_outlives_predicate = tcx.erase_and_anonymize_regions(outlives_predicate);
     let outlives_ty = erased_outlives_predicate.skip_binder().0;
+    // FIXME(rigid_aliases_marker): The aliases in `erased_ty` are currently not
+    // marked as rigid. We should probably do that instead as we only ever want to
+    // prove `TypeOutlives` once all aliases in them have been normalized.
+    let outlives_ty = ty::set_aliases_to_non_rigid(tcx, outlives_ty).skip_normalization();
     if outlives_ty == erased_ty {
         // pointless micro-optimization
         true

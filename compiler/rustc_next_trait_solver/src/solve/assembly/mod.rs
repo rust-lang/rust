@@ -790,9 +790,14 @@ where
             }
 
             ty::Alias(
+                ty::IsRigid::Yes,
                 alias_ty @ AliasTy { kind: ty::Projection { .. } | ty::Opaque { .. }, .. },
             ) => alias_ty,
-            ty::Alias(AliasTy { kind: ty::Inherent { .. } | ty::Free { .. }, .. }) => {
+            ty::Alias(ty::IsRigid::No, _) => unreachable!("non-rigid self type: {self_ty:?}"),
+            ty::Alias(
+                ty::IsRigid::Yes,
+                AliasTy { kind: ty::Inherent { .. } | ty::Free { .. }, .. },
+            ) => {
                 self.cx().delay_bug(format!("could not normalize {self_ty:?}, it is not WF"));
                 return Ok(());
             }
@@ -1085,7 +1090,7 @@ where
                     self.cx
                 }
                 fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
-                    if let ty::Alias(alias_ty) = ty.kind() {
+                    if let ty::Alias(_is_rigid, alias_ty) = ty.kind() {
                         if alias_ty == self.alias_ty {
                             return self.self_ty;
                         }

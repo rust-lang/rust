@@ -369,7 +369,7 @@ pub fn normalize_param_env_or_error<'tcx>(
                     // should actually be okay since without `feature(generic_const_exprs)` the only
                     // const arguments that have a non-empty param env are array repeat counts. These
                     // do not appear in the type system though.
-                    if let ty::ConstKind::Unevaluated(uv) = c.kind()
+                    if let ty::ConstKind::Unevaluated(_, uv) = c.kind()
                         && matches!(uv.kind, ty::UnevaluatedConstKind::Anon { .. })
                     {
                         let infcx = self.0.infer_ctxt().build(TypingMode::non_body_analysis());
@@ -608,7 +608,7 @@ pub fn try_evaluate_const<'tcx>(
         | ty::ConstKind::Bound(_, _)
         | ty::ConstKind::Placeholder(_)
         | ty::ConstKind::Expr(_) => Err(EvaluateConstErr::HasGenericsOrInfers),
-        ty::ConstKind::Unevaluated(uv) => {
+        ty::ConstKind::Unevaluated(_, uv) => {
             let opt_anon_const_kind = match uv.kind {
                 ty::UnevaluatedConstKind::Anon { def_id } => {
                     Some((def_id, tcx.anon_const_kind(def_id)))

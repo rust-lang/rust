@@ -184,10 +184,10 @@ where
         // With eager normalization, we should normalize the args of alias before
         // normalizing the alias itself.
         let ty = ty.try_super_fold_with(self)?;
-        let ty::Alias(alias_ty) = ty.kind() else { return Ok(ty) };
+        let ty::Alias(orig_is_rigid, _) = ty.kind() else { return Ok(ty) };
         // We support ambiguous aliases inside rigid alias. So we still recognize
         // the rigidness of the outer alias.
-        if !self.cx().renormalize_rigid_aliases() && alias_ty.is_rigid == ty::IsRigid::Yes {
+        if !self.cx().renormalize_rigid_aliases() && orig_is_rigid == ty::IsRigid::Yes {
             return Ok(ty);
         }
 
@@ -213,10 +213,7 @@ where
             .expect_ty()
         };
 
-        if self.cx().renormalize_rigid_aliases()
-            && let ty::Alias(original_alias) = original.kind()
-            && original_alias.is_rigid == ty::IsRigid::Yes
-        {
+        if self.cx().renormalize_rigid_aliases() && orig_is_rigid == ty::IsRigid::Yes {
             // find out missing typing env change.
             let original = crate::resolve::eager_resolve_vars(infcx, original);
             let normalized = crate::resolve::eager_resolve_vars(infcx, normalized);
@@ -237,10 +234,10 @@ where
         // With eager normalization, we should normalize the args of alias before
         // normalizing the alias itself.
         let ct = ct.try_super_fold_with(self)?;
-        let ty::ConstKind::Unevaluated(uv) = ct.kind() else { return Ok(ct) };
+        let ty::ConstKind::Unevaluated(orig_is_rigid, _) = ct.kind() else { return Ok(ct) };
         // We support ambiguous aliases inside rigid alias. So we still recognize
         // the rigidness of the outer alias.
-        if !self.cx().renormalize_rigid_aliases() && uv.is_rigid == ty::IsRigid::Yes {
+        if !self.cx().renormalize_rigid_aliases() && orig_is_rigid == ty::IsRigid::Yes {
             return Ok(ct);
         }
 
@@ -266,10 +263,7 @@ where
             .expect_const()
         };
 
-        if self.cx().renormalize_rigid_aliases()
-            && let ty::ConstKind::Unevaluated(original_alias) = original.kind()
-            && original_alias.is_rigid == ty::IsRigid::Yes
-        {
+        if self.cx().renormalize_rigid_aliases() && orig_is_rigid == ty::IsRigid::Yes {
             // find out missing typing env change.
             let original = crate::resolve::eager_resolve_vars(infcx, original);
             let normalized = crate::resolve::eager_resolve_vars(infcx, normalized);

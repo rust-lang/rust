@@ -96,7 +96,10 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         &self,
         alias_ty: ty::AliasTy<'tcx>,
     ) -> Vec<ty::PolyTypeOutlivesPredicate<'tcx>> {
-        let erased_alias_ty = self.tcx.erase_and_anonymize_regions(alias_ty.to_ty(self.tcx));
+        // FIXME(rigid_aliases_marker): This should use `IsRigid::Yes` once the old solver
+        // is gone.
+        let erased_alias_ty =
+            self.tcx.erase_and_anonymize_regions(alias_ty.to_ty(self.tcx, ty::IsRigid::No));
         self.declared_generic_bounds_from_env_for_erased_ty(erased_alias_ty)
     }
 
@@ -104,8 +107,9 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     pub(crate) fn alias_bound(&self, alias_ty: ty::AliasTy<'tcx>) -> VerifyBound<'tcx> {
         // Search the env for where clauses like `P: 'a`.
         let env_bounds = self.approx_declared_bounds_from_env(alias_ty).into_iter().map(|binder| {
+            // FIXME(rigid_aliases_marker): We probably want to assert the alias is rigid here.
             if let Some(ty::OutlivesPredicate(ty, r)) = binder.no_bound_vars()
-                && let ty::Alias(alias_ty_from_bound) = *ty.kind()
+                && let ty::Alias(_is_rigid, alias_ty_from_bound) = *ty.kind()
                 && alias_ty_from_bound == alias_ty
             {
                 // Micro-optimize if this is an exact match (this
@@ -236,8 +240,9 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                 // And therefore we can safely use structural equality for alias types.
                 (GenericKind::Param(p1), ty::Param(p2)) if p1 == p2 => {}
                 (GenericKind::Placeholder(p1), ty::Placeholder(p2)) if p1 == p2 => {}
-                (GenericKind::Alias(a1), ty::Alias(a2)) if a1.kind.def_id() == a2.kind.def_id() => {
-                }
+                // FIXME(rigid_aliases_marker): We probably want to assert that the rhs is rigid.
+                (GenericKind::Alias(a1), ty::Alias(_, a2))
+                    if a1.kind.def_id() == a2.kind.def_id() => {}
                 _ => return None,
             }
 

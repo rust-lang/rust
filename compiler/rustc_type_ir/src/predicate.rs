@@ -724,12 +724,7 @@ impl<I: Interner> AliasTerm<I> {
                 panic!("Cannot turn `{}` into `AliasTy`", kind.descr())
             }
         };
-        ty::AliasTy {
-            kind,
-            args: self.args,
-            is_rigid: ty::IsRigid::No,
-            _use_alias_ty_new_instead: (),
-        }
+        ty::AliasTy { kind, args: self.args, _use_alias_ty_new_instead: () }
     }
 
     pub fn expect_ct(self) -> ty::UnevaluatedConst<I> {
@@ -747,34 +742,19 @@ impl<I: Interner> AliasTerm<I> {
                 panic!("Cannot turn `{}` into `UnevaluatedConst`", kind.descr())
             }
         };
-        ty::UnevaluatedConst {
-            kind,
-            args: self.args,
-            is_rigid: ty::IsRigid::No,
-            _use_unevaluated_const_new_instead: (),
-        }
+        ty::UnevaluatedConst { kind, args: self.args, _use_unevaluated_const_new_instead: () }
     }
 
-    pub fn to_term(self, interner: I) -> I::Term {
-        self.to_term_with_rigidness(interner, ty::IsRigid::No)
-    }
-
-    pub fn to_rigid_term(self, interner: I) -> I::Term {
-        self.to_term_with_rigidness(interner, ty::IsRigid::Yes)
-    }
-
-    fn to_term_with_rigidness(self, interner: I, is_rigid: ty::IsRigid) -> I::Term {
+    pub fn to_term(self, interner: I, is_rigid: ty::IsRigid) -> I::Term {
         let alias_ty = |kind| {
-            Ty::new_alias(
-                interner,
-                ty::AliasTy::with_args_and_rigidness(interner, kind, self.args, is_rigid),
-            )
-            .into()
+            Ty::new_alias(interner, is_rigid, ty::AliasTy::new_from_args(interner, kind, self.args))
+                .into()
         };
         let unevaluated_const = |kind| {
             I::Const::new_unevaluated(
                 interner,
-                ty::UnevaluatedConst::with_rigidness(interner, kind, self.args, is_rigid),
+                is_rigid,
+                ty::UnevaluatedConst::new(interner, kind, self.args),
             )
             .into()
         };

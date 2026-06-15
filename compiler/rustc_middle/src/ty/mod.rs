@@ -687,11 +687,11 @@ impl<'tcx> Term<'tcx> {
     pub fn to_alias_term(self) -> Option<AliasTerm<'tcx>> {
         match self.kind() {
             TermKind::Ty(ty) => match *ty.kind() {
-                ty::Alias(alias_ty) => Some(alias_ty.into()),
+                ty::Alias(_, alias_ty) => Some(alias_ty.into()),
                 _ => None,
             },
             TermKind::Const(ct) => match ct.kind() {
-                ConstKind::Unevaluated(uv) => Some(uv.into()),
+                ConstKind::Unevaluated(_, uv) => Some(uv.into()),
                 _ => None,
             },
         }
@@ -700,11 +700,11 @@ impl<'tcx> Term<'tcx> {
     pub fn is_non_rigid_alias(self) -> bool {
         match self.kind() {
             ty::TermKind::Ty(ty) => match ty.kind() {
-                ty::Alias(alias_ty) => alias_ty.is_rigid == ty::IsRigid::No,
+                ty::Alias(ty::IsRigid::No, _) => true,
                 _ => false,
             },
             ty::TermKind::Const(ct) => match ct.kind() {
-                ty::ConstKind::Unevaluated(uv) => uv.is_rigid == ty::IsRigid::No,
+                ty::ConstKind::Unevaluated(ty::IsRigid::No, _) => true,
                 _ => false,
             },
         }

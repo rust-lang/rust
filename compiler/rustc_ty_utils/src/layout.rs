@@ -175,7 +175,7 @@ fn extract_const_value<'tcx>(
             }
             Err(error(cx, LayoutError::TooGeneric(ty)))
         }
-        ty::ConstKind::Unevaluated(_) => {
+        ty::ConstKind::Unevaluated(_, _) => {
             let err = if ct.has_param() {
                 LayoutError::TooGeneric(ty)
             } else {
@@ -442,7 +442,8 @@ fn layout_of_uncached<'tcx>(
             }
 
             let metadata = if let Some(metadata_def_id) = tcx.lang_items().metadata_type() {
-                let pointee_metadata = Ty::new_projection(tcx, metadata_def_id, [pointee]);
+                let pointee_metadata =
+                    Ty::new_projection(tcx, ty::IsRigid::No, metadata_def_id, [pointee]);
                 let metadata_ty = match tcx.try_normalize_erasing_regions(
                     cx.typing_env,
                     Unnormalized::new_wip(pointee_metadata),

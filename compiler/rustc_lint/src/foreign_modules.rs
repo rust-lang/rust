@@ -355,16 +355,16 @@ fn structurally_same_type_impl<'tcx>(
                 | (ty::Coroutine(..), ty::Coroutine(..))
                 | (ty::CoroutineWitness(..), ty::CoroutineWitness(..))
                 | (
-                    ty::Alias(ty::AliasTy { kind: ty::Projection { .. }, .. }),
-                    ty::Alias(ty::AliasTy { kind: ty::Projection { .. }, .. }),
+                    ty::Alias(_, ty::AliasTy { kind: ty::Projection { .. }, .. }),
+                    ty::Alias(_, ty::AliasTy { kind: ty::Projection { .. }, .. }),
                 )
                 | (
-                    ty::Alias(ty::AliasTy { kind: ty::Inherent { .. }, .. }),
-                    ty::Alias(ty::AliasTy { kind: ty::Inherent { .. }, .. }),
+                    ty::Alias(_, ty::AliasTy { kind: ty::Inherent { .. }, .. }),
+                    ty::Alias(_, ty::AliasTy { kind: ty::Inherent { .. }, .. }),
                 )
                 | (
-                    ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }),
-                    ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }),
+                    ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }),
+                    ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }),
                 ) => false,
 
                 // These definitely should have been caught above.

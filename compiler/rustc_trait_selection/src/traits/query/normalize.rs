@@ -203,7 +203,7 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
             return Ok(*ty);
         }
 
-        let &ty::Alias(data) = ty.kind() else {
+        let &ty::Alias(_, data) = ty.kind() else {
             let res = ty.try_super_fold_with(self)?;
             self.cache.insert(ty, res);
             return Ok(res);
@@ -273,7 +273,7 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
         }
 
         let uv = match constant.kind() {
-            ty::ConstKind::Unevaluated(uv) => uv,
+            ty::ConstKind::Unevaluated(_, uv) => uv,
             _ => return constant.try_super_fold_with(self),
         };
 
@@ -377,7 +377,7 @@ impl<'a, 'tcx> QueryNormalizer<'a, 'tcx> {
         // Similarly, `tcx.normalize_canonicalized_free_alias` will only unwrap one layer
         // of type/const and we need to continue folding it to reveal the TAIT behind it
         // or further normalize nested unevaluated consts.
-        if res != term.to_term(tcx)
+        if res != term.to_term(tcx, ty::IsRigid::No)
             && (res.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION)
                 || matches!(
                     term.kind,

@@ -385,7 +385,7 @@ fn def_id_of_type_cached<'a>(ty: Ty<'a>, visited: &mut SsoHashSet<Ty<'a>>) -> Op
         | ty::CoroutineWitness(def_id, _)
         | ty::Foreign(def_id) => Some(def_id),
 
-        ty::Alias(alias) => Some(alias.kind.def_id()),
+        ty::Alias(_is_rigid, alias) => Some(alias.kind.def_id()),
 
         ty::Bool
         | ty::Char

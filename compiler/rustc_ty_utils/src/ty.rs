@@ -224,6 +224,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) {
         if let ty::Alias(
+            _,
             unshifted_alias_ty @ ty::AliasTy {
                 kind: ty::Projection { def_id: unshifted_alias_ty_def_id },
                 ..
@@ -391,7 +392,7 @@ fn impl_self_is_guaranteed_unsized<'tcx>(tcx: TyCtxt<'tcx>, impl_def_id: DefId) 
         | ty::CoroutineWitness(_, _)
         | ty::Never
         | ty::Tuple(_)
-        | ty::Alias(_)
+        | ty::Alias(_, _)
         | ty::Param(_)
         | ty::Bound(_, _)
         | ty::Placeholder(_)

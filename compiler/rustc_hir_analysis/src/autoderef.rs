@@ -165,8 +165,9 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             return None;
         }
 
-        let (normalized_ty, obligations) = self
-            .normalize_ty(Unnormalized::new(Ty::new_projection(tcx, trait_target_def_id, [ty])))?;
+        let (normalized_ty, obligations) = self.normalize_ty(Unnormalized::new(
+            Ty::new_projection(tcx, ty::IsRigid::No, trait_target_def_id, [ty]),
+        ))?;
         debug!("overloaded_deref_ty({:?}) = ({:?}, {:?})", ty, normalized_ty, obligations);
         self.state.obligations.extend(obligations);
 

@@ -148,11 +148,12 @@ impl<'tcx> Ty<'tcx> {
             ty::Infer(ty::FreshTy(_)) => "fresh type".into(),
             ty::Infer(ty::FreshIntTy(_)) => "fresh integral type".into(),
             ty::Infer(ty::FreshFloatTy(_)) => "fresh floating-point type".into(),
-            ty::Alias(ty::AliasTy {
-                kind: ty::Projection { .. } | ty::Inherent { .. }, ..
-            }) => "associated type".into(),
+            ty::Alias(
+                _is_rigid,
+                ty::AliasTy { kind: ty::Projection { .. } | ty::Inherent { .. }, .. },
+            ) => "associated type".into(),
             ty::Param(p) => format!("type parameter `{p}`").into(),
-            ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }) => {
+            ty::Alias(_is_rigid, ty::AliasTy { kind: ty::Opaque { .. }, .. }) => {
                 if tcx.ty_is_opaque_future(self) { "future".into() } else { "opaque type".into() }
             }
             ty::Error(_) => "type error".into(),
@@ -207,12 +208,15 @@ impl<'tcx> Ty<'tcx> {
             ty::Tuple(..) => "tuple".into(),
             ty::Placeholder(..) => "higher-ranked type".into(),
             ty::Bound(..) => "bound type variable".into(),
-            ty::Alias(ty::AliasTy {
-                kind: ty::Projection { .. } | ty::Inherent { .. }, ..
-            }) => "associated type".into(),
-            ty::Alias(ty::AliasTy { kind: ty::Free { .. }, .. }) => "type alias".into(),
+            ty::Alias(
+                _is_rigid,
+                ty::AliasTy { kind: ty::Projection { .. } | ty::Inherent { .. }, .. },
+            ) => "associated type".into(),
+            ty::Alias(_is_rigid, ty::AliasTy { kind: ty::Free { .. }, .. }) => "type alias".into(),
             ty::Param(_) => "type parameter".into(),
-            ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }) => "opaque type".into(),
+            ty::Alias(_is_rigid, ty::AliasTy { kind: ty::Opaque { .. }, .. }) => {
+                "opaque type".into()
+            }
         }
     }
 }

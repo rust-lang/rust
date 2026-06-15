@@ -859,13 +859,13 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalSelfTypeVisitor<'tcx> {
                     ControlFlow::Continue(())
                 }
             }
-            ty::Alias(ty::AliasTy { kind: ty::Projection { def_id }, .. })
+            ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id }, .. })
                 if self.tcx.is_impl_trait_in_trait(*def_id) =>
             {
                 // We'll deny these later in their own pass
                 ControlFlow::Continue(())
             }
-            ty::Alias(proj @ ty::AliasTy { kind: ty::Projection { .. }, .. }) => {
+            ty::Alias(_, proj @ ty::AliasTy { kind: ty::Projection { .. }, .. }) => {
                 match self.allow_self_projections {
                     AllowSelfProjections::Yes => {
                         // Only walk contained types if the parent trait is not a supertrait.
@@ -886,11 +886,14 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalSelfTypeVisitor<'tcx> {
         let ct = self.tcx.expand_abstract_consts(ct);
 
         match ct.kind() {
-            ty::ConstKind::Unevaluated(ty::UnevaluatedConst {
-                kind: ty::UnevaluatedConstKind::Projection { def_id },
-                args,
-                ..
-            }) if self.tcx.features().min_generic_const_args() => {
+            ty::ConstKind::Unevaluated(
+                _,
+                ty::UnevaluatedConst {
+                    kind: ty::UnevaluatedConstKind::Projection { def_id },
+                    args,
+                    ..
+                },
+            ) if self.tcx.features().min_generic_const_args() => {
                 match self.allow_self_projections {
                     AllowSelfProjections::Yes => {
                         let trait_def_id = self.tcx.parent(def_id);
@@ -966,7 +969,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalRpititVisitor<'tcx> {
     type Result = ControlFlow<MethodViolation>;
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
-        if let ty::Alias(proj @ ty::AliasTy { kind: ty::Projection { def_id }, .. }) = *ty.kind()
+        if let ty::Alias(_, proj @ ty::AliasTy { kind: ty::Projection { def_id }, .. }) = *ty.kind()
             && Some(proj) != self.allowed
             && self.tcx.is_impl_trait_in_trait(def_id)
         {

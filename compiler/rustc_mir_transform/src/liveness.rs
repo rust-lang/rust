@@ -249,7 +249,7 @@ fn maybe_drop_guard<'tcx>(
                 | ty::Dynamic(..)
                 | ty::Array(..)
                 | ty::Slice(..)
-                | ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. })
+                | ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. })
         ) && ty.needs_drop(tcx, typing_env)
     } else {
         false

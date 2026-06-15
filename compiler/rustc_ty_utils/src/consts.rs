@@ -75,7 +75,7 @@ fn recurse_build<'tcx>(
                 ty::UnevaluatedConstKind::new_from_def_id(tcx, def_id),
                 args,
             );
-            ty::Const::new_unevaluated(tcx, uneval)
+            ty::Const::new_unevaluated(tcx, ty::IsRigid::No, uneval)
         }
         ExprKind::ConstParam { param, .. } => ty::Const::new_param(tcx, *param),
 

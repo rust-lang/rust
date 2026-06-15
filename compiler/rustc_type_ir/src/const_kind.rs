@@ -34,7 +34,7 @@ pub enum ConstKind<I: Interner> {
     /// An unnormalized const item such as an anon const or assoc const or free const item.
     /// Right now anything other than anon consts does not actually work properly but this
     /// should
-    Unevaluated(ty::UnevaluatedConst<I>),
+    Unevaluated(ty::IsRigid, ty::UnevaluatedConst<I>),
 
     /// Used to hold computed value.
     Value(I::ValueConst),
@@ -59,7 +59,7 @@ impl<I: Interner> fmt::Debug for ConstKind<I> {
             Infer(var) => write!(f, "{var:?}"),
             Bound(debruijn, var) => crate::debug_bound_var(f, *debruijn, var),
             Placeholder(placeholder) => write!(f, "{placeholder:?}"),
-            Unevaluated(uv) => write!(f, "{uv:?}"),
+            Unevaluated(is_rigid, uv) => write!(f, "Unevaluated({is_rigid:?}, {uv:?})"),
             Value(val) => write!(f, "{val:?}"),
             Error(_) => write!(f, "{{const error}}"),
             Expr(expr) => write!(f, "{expr:?}"),
@@ -80,9 +80,6 @@ pub struct UnevaluatedConst<I: Interner> {
     pub kind: UnevaluatedConstKind<I>,
     pub args: I::GenericArgs,
 
-    #[lift(identity)]
-    pub is_rigid: ty::IsRigid,
-
     /// This field exists to prevent the creation of `UnevaluatedConst` without using [`UnevaluatedConst::new`].
     #[derive_where(skip(Debug))]
     pub(crate) _use_unevaluated_const_new_instead: (),
@@ -97,16 +94,6 @@ impl<I: Interner> UnevaluatedConst<I> {
         kind: UnevaluatedConstKind<I>,
         args: I::GenericArgs,
     ) -> UnevaluatedConst<I> {
-        Self::with_rigidness(interner, kind, args, ty::IsRigid::No)
-    }
-
-    #[inline]
-    pub fn with_rigidness(
-        interner: I,
-        kind: UnevaluatedConstKind<I>,
-        args: I::GenericArgs,
-        is_rigid: ty::IsRigid,
-    ) -> UnevaluatedConst<I> {
         if cfg!(debug_assertions) {
             let def_id = match kind {
                 ty::UnevaluatedConstKind::Projection { def_id } => def_id.into(),
@@ -116,7 +103,7 @@ impl<I: Interner> UnevaluatedConst<I> {
             };
             interner.debug_assert_args_compatible(def_id, args);
         }
-        UnevaluatedConst { kind, args, is_rigid, _use_unevaluated_const_new_instead: () }
+        UnevaluatedConst { kind, args, _use_unevaluated_const_new_instead: () }
     }
 
     pub fn type_of(self, interner: I) -> ty::Unnormalized<I, I::Ty> {
@@ -127,10 +114,6 @@ impl<I: Interner> UnevaluatedConst<I> {
             ty::UnevaluatedConstKind::Anon { def_id } => def_id.into(),
         };
         interner.type_of(def_id).instantiate(interner, self.args)
-    }
-
-    pub fn to_non_rigid(self) -> UnevaluatedConst<I> {
-        UnevaluatedConst { is_rigid: ty::IsRigid::No, ..self }
     }
 }
 

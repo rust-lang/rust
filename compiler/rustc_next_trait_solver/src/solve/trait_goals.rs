@@ -235,15 +235,15 @@ where
         // when merging candidates anyways.
         //
         // See tests/ui/impl-trait/auto-trait-leakage/avoid-query-cycle-via-item-bound.rs.
-        if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, is_rigid, .. }) =
+        if let ty::Alias(is_rigid, ty::AliasTy { kind: ty::Opaque { def_id }, .. }) =
             goal.predicate.self_ty().kind()
         {
+            debug_assert!(is_rigid == ty::IsRigid::Yes);
             if ecx.opaque_accesses.might_rerun() {
                 ecx.opaque_accesses.rerun_always(RerunReason::AutoTraitLeakage)?;
                 return Err(NoSolution.into());
             }
 
-            debug_assert!(is_rigid == ty::IsRigid::Yes);
             for item_bound in cx.item_self_bounds(def_id.into()).skip_binder() {
                 if item_bound
                     .as_trait_clause()
@@ -1287,13 +1287,14 @@ where
             ty::Dynamic(..)
             | ty::Param(..)
             | ty::Foreign(..)
-            | ty::Alias(ty::AliasTy {
-                kind: ty::Projection { .. } | ty::Free { .. } | ty::Inherent { .. },
-                ..
-            })
+            | ty::Alias(
+                ty::IsRigid::Yes,
+                ty::AliasTy {
+                    kind: ty::Projection { .. } | ty::Free { .. } | ty::Inherent { .. },
+                    ..
+                },
+            )
             | ty::Placeholder(..) => Some(Err(NoSolution.into())),
-
-            ty::Infer(_) | ty::Bound(_, _) => panic!("unexpected type `{self_ty:?}`"),
 
             // Coroutines have one special built-in candidate, `Unpin`, which
             // takes precedence over the structural auto trait candidate being
@@ -1317,7 +1318,7 @@ where
             // okay to consider auto traits because that'll reveal its hidden type. For
             // non-opaque aliases, we will not assemble any candidates since there's no way
             // to further look into its type.
-            ty::Alias(..) => None,
+            ty::Alias(ty::IsRigid::Yes, ty::AliasTy { kind: ty::Opaque { .. }, .. }) => None,
 
             // For rigid types, any possible implementation that could apply to
             // the type (even if after unification and processing nested goals
@@ -1347,6 +1348,10 @@ where
             | ty::Adt(_, _)
             | ty::UnsafeBinder(_) => check_impls(),
             ty::Error(_) => None,
+
+            ty::Infer(_) | ty::Alias(ty::IsRigid::No, _) | ty::Bound(_, _) => {
+                panic!("unexpected type `{self_ty:?}`")
+            }
         }
     }
 

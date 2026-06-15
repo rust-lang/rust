@@ -243,12 +243,12 @@ where
             return;
         }
 
-        if let ty::Alias(ty::AliasTy { kind: ty::Projection { def_id }, args, .. }) = *t.kind()
+        if let ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id }, args, .. }) = *t.kind()
             && self.tcx.is_impl_trait_in_trait(def_id)
         {
             // visit the opaque of the RPITIT
             self.tcx.type_of(def_id).instantiate(self.tcx, args).skip_norm_wip().visit_with(self)
-        } else if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args: opaque_ty_args, .. }) = *t.kind()
+        } else if let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args: opaque_ty_args, .. }) = *t.kind()
             && let Some(opaque_def_id) = def_id.as_local()
             // Don't recurse infinitely on an opaque
             && self.seen.insert(opaque_def_id)

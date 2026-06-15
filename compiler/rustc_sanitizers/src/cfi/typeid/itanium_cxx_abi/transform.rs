@@ -252,9 +252,12 @@ fn trait_object_ty<'tcx>(tcx: TyCtxt<'tcx>, poly_trait_ref: ty::PolyTraitRef<'tc
                         );
                         let term = tcx.normalize_erasing_regions(
                             ty::TypingEnv::fully_monomorphized(),
-                            Unnormalized::new_wip(projection_term.to_term(tcx)),
+                            Unnormalized::new_wip(projection_term.to_term(tcx, ty::IsRigid::No)),
                         );
-                        debug!("Projection {:?} -> {term}", projection_term.to_term(tcx),);
+                        debug!(
+                            "Projection {:?} -> {term}",
+                            projection_term.to_term(tcx, ty::IsRigid::No)
+                        );
                         ty::ExistentialPredicate::Projection(
                             ty::ExistentialProjection::erase_self_ty(
                                 tcx,

@@ -894,12 +894,16 @@ impl<'tcx> TyCtxt<'tcx> {
     /// [free]: ty::Free
     /// [expand_free_alias_tys]: Self::expand_free_alias_tys
     pub fn peel_off_free_alias_tys(self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
-        let ty::Alias(ty::AliasTy { kind: ty::Free { .. }, .. }) = ty.kind() else { return ty };
+        let ty::Alias(_is_rigid, ty::AliasTy { kind: ty::Free { .. }, .. }) = ty.kind() else {
+            return ty;
+        };
 
         let limit = self.recursion_limit();
         let mut depth = 0;
 
-        while let &ty::Alias(ty::AliasTy { kind: ty::Free { def_id }, args, .. }) = ty.kind() {
+        while let &ty::Alias(_is_rigid, ty::AliasTy { kind: ty::Free { def_id }, args, .. }) =
+            ty.kind()
+        {
             if !limit.value_within_limit(depth) {
                 let guar = self.dcx().delayed_bug("overflow expanding free alias type");
                 return Ty::new_error(self, guar);
@@ -993,7 +997,9 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = *t.kind() {
+        if let ty::Alias(_is_rigid, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) =
+            *t.kind()
+        {
             self.expand_opaque_ty(def_id, args).unwrap_or(t)
         } else if t.has_opaque_types() {
             t.super_fold_with(self)
@@ -1037,7 +1043,8 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for FreeAliasTypeExpander<'tcx> {
         if !ty.has_type_flags(ty::TypeFlags::HAS_TY_FREE_ALIAS) {
             return ty;
         }
-        let &ty::Alias(ty::AliasTy { kind: ty::Free { def_id }, args, .. }) = ty.kind() else {
+        let &ty::Alias(_is_rigid, ty::AliasTy { kind: ty::Free { def_id }, args, .. }) = ty.kind()
+        else {
             return ty.super_fold_with(self);
         };
         if !self.tcx.recursion_limit().value_within_limit(self.depth) {

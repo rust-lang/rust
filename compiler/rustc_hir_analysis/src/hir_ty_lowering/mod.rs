@@ -1216,7 +1216,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // feature `lazy_type_alias` enabled get encoded as a type alias that normalization will
             // then actually instantiate the where bounds of.
             let alias_ty = ty::AliasTy::new_from_args(tcx, ty::Free { def_id }, args);
-            Ty::new_alias(tcx, alias_ty)
+            Ty::new_alias(tcx, ty::IsRigid::No, alias_ty)
         } else {
             tcx.at(span).type_of(def_id).instantiate(tcx, args).skip_norm_wip()
         }
@@ -1357,7 +1357,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             TypeRelativePath::AssocItem(alias_term) => {
                 let alias_ty = alias_term.expect_ty();
                 let def_id = alias_ty.kind.def_id();
-                let ty = alias_ty.to_ty(tcx);
+                let ty = alias_ty.to_ty(tcx, ty::IsRigid::No);
                 let ty = self.check_param_uses_if_mcg(ty, span, false);
                 Ok((ty, tcx.def_kind(def_id), def_id))
             }
@@ -1396,7 +1396,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 if let Some(def_id) = alias_ct.kind.opt_def_id() {
                     self.require_type_const_attribute(def_id, span)?;
                 }
-                let ct = Const::new_unevaluated(tcx, alias_ct);
+                let ct = Const::new_unevaluated(tcx, ty::IsRigid::No, alias_ct);
                 let ct = self.check_param_uses_if_mcg(ct, span, false);
                 Ok(ct)
             }
@@ -1833,7 +1833,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ty::AssocTag::Type,
         ) {
             Ok((item_def_id, item_args)) => {
-                Ty::new_projection_from_args(self.tcx(), item_def_id, item_args)
+                Ty::new_projection_from_args(self.tcx(), ty::IsRigid::No, item_def_id, item_args)
             }
             Err(guar) => Ty::new_error(self.tcx(), guar),
         }
@@ -1864,7 +1864,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ty::UnevaluatedConstKind::new_from_def_id(tcx, item_def_id),
             item_args,
         );
-        Ok(Const::new_unevaluated(tcx, uv))
+        Ok(Const::new_unevaluated(tcx, ty::IsRigid::No, uv))
     }
 
     /// Lower a [resolved][hir::QPath::Resolved] (type-level) associated item path.
@@ -2118,7 +2118,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     GenericsArgsErrExtend::OpaqueTy,
                 );
                 let args = self.lower_generic_args_of_path_segment(span, did, segment);
-                Ty::new_opaque(tcx, did, args)
+                Ty::new_opaque(tcx, ty::IsRigid::No, did, args)
             }
             Res::Def(
                 DefKind::Enum
@@ -2717,6 +2717,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let args = self.lower_generic_args_of_path_segment(span, did, segment);
                 ty::Const::new_unevaluated(
                     tcx,
+                    ty::IsRigid::No,
                     ty::UnevaluatedConst::new(
                         tcx,
                         ty::UnevaluatedConstKind::new_from_def_id(tcx, did),
@@ -2874,6 +2875,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             Some(v) => v,
             None => ty::Const::new_unevaluated(
                 tcx,
+                ty::IsRigid::No,
                 ty::UnevaluatedConst::new(
                     tcx,
                     ty::UnevaluatedConstKind::Anon { def_id: anon.def_id.to_def_id() },
@@ -3484,9 +3486,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         debug!(?args);
 
         if in_trait.is_some() {
-            Ty::new_projection_from_args(tcx, def_id, args)
+            Ty::new_projection_from_args(tcx, ty::IsRigid::No, def_id, args)
         } else {
-            Ty::new_opaque(tcx, def_id, args)
+            Ty::new_opaque(tcx, ty::IsRigid::No, def_id, args)
         }
     }
 

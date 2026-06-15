@@ -261,6 +261,7 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
                     return true;
                 }
             }
+            // FIXME(rigid_aliases_marker): we should fast-path for rigid aliases here.
             ty::Error(_) | ty::Alias(..) | ty::Bound(..) => return true,
             ty::Infer(var) => return self.var_and_ty_may_unify(var, lhs),
 
@@ -468,7 +469,7 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
             }
 
             ty::ConstKind::Expr(_)
-            | ty::ConstKind::Unevaluated(_)
+            | ty::ConstKind::Unevaluated(_, _)
             | ty::ConstKind::Error(_)
             | ty::ConstKind::Infer(_)
             | ty::ConstKind::Bound(..) => {
@@ -499,7 +500,7 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
 
             // As we don't necessarily eagerly evaluate constants,
             // they might unify with any value.
-            ty::ConstKind::Expr(_) | ty::ConstKind::Unevaluated(_) | ty::ConstKind::Error(_) => {
+            ty::ConstKind::Expr(_) | ty::ConstKind::Unevaluated(_, _) | ty::ConstKind::Error(_) => {
                 true
             }
 

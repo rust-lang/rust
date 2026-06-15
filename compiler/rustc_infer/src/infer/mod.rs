@@ -1245,10 +1245,11 @@ impl<'tcx> InferCtxt<'tcx> {
                     .unwrap_or(ct),
                 InferConst::Fresh(_) => ct,
             },
+
             ty::ConstKind::Param(_)
             | ty::ConstKind::Bound(_, _)
             | ty::ConstKind::Placeholder(_)
-            | ty::ConstKind::Unevaluated(_)
+            | ty::ConstKind::Unevaluated(_, _)
             | ty::ConstKind::Value(_)
             | ty::ConstKind::Error(_)
             | ty::ConstKind::Expr(_) => ct,

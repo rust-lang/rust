@@ -113,12 +113,16 @@ impl<'tcx> Ty<'tcx> {
                 InhabitedPredicate::True
             }
             Never => InhabitedPredicate::False,
+            // FIXME(rigid_aliases_marker): This should only encounter rigid aliases with the new solver.
             Param(_)
-            | Alias(ty::AliasTy {
-                kind: ty::Inherent { .. } | ty::Projection { .. } | ty::Free { .. },
-                ..
-            }) => InhabitedPredicate::GenericType(self),
-            &Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
+            | Alias(
+                _,
+                ty::AliasTy {
+                    kind: ty::Inherent { .. } | ty::Projection { .. } | ty::Free { .. },
+                    ..
+                },
+            ) => InhabitedPredicate::GenericType(self),
+            &Alias(_is_rigid, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
                 match def_id.as_local() {
                     // Foreign opaque is considered inhabited.
                     None => InhabitedPredicate::True,

@@ -216,16 +216,13 @@ impl<I: Interner> Relate<I> for ty::AliasTy<I> {
         if a.kind.def_id() != b.kind.def_id() {
             Err(TypeError::ProjectionMismatched(ExpectedFound::new(a.kind.into(), b.kind.into())))
         } else {
-            // Users shouldn't know about this so the mismatch should be caught
-            // during development rather than presented as type error.
-            debug_assert_eq!(a.is_rigid, b.is_rigid, "{a:?} != {b:?}");
             let cx = relation.cx();
             let args = if let Some(variances) = cx.opt_alias_variances(a.kind) {
                 relate_args_with_variances(relation, variances, a.args, b.args)?
             } else {
                 relate_args_invariantly(relation, a.args, b.args)?
             };
-            Ok(ty::AliasTy::with_args_and_rigidness(relation.cx(), a.kind, args, a.is_rigid))
+            Ok(ty::AliasTy::new_from_args(relation.cx(), a.kind, args))
         }
     }
 }
@@ -239,19 +236,16 @@ impl<I: Interner> Relate<I> for ty::UnevaluatedConst<I> {
         let cx = relation.cx();
         if a.kind != b.kind {
             Err(TypeError::ConstMismatch(ExpectedFound::new(
-                Const::new_unevaluated(cx, a),
-                Const::new_unevaluated(cx, b),
+                Const::new_unevaluated(cx, ty::IsRigid::Yes, a),
+                Const::new_unevaluated(cx, ty::IsRigid::Yes, b),
             )))
         } else {
-            // Users shouldn't know about this so the mismatch should be caught
-            // during development rather than presented as type error.
-            debug_assert_eq!(a.is_rigid, b.is_rigid, "{a:?} != {b:?}");
             // FIXME(mgca): remove this
             debug_assert_eq!(a.type_of(cx).skip_norm_wip(), b.type_of(cx).skip_norm_wip());
 
             let args = relate_args_invariantly(relation, a.args, b.args)?;
 
-            Ok(ty::UnevaluatedConst::with_rigidness(cx, a.kind, args, a.is_rigid))
+            Ok(ty::UnevaluatedConst::new(cx, a.kind, args))
         }
     }
 }
@@ -529,9 +523,12 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
         }
 
         // Alias tend to mostly already be handled downstream due to normalization.
-        (ty::Alias(a), ty::Alias(b)) => {
-            let alias_ty = relation.relate(a, b)?;
-            Ok(Ty::new_alias(cx, alias_ty))
+        (ty::Alias(is_rigid_a, alias_a), ty::Alias(is_rigid_b, alias_b)) => {
+            // Users shouldn't know about this so the mismatch should be caught
+            // during development rather than presented as type error.
+            debug_assert_eq!(is_rigid_a, is_rigid_b, "{a:?} != {b:?}");
+            let alias_ty = relation.relate(alias_a, alias_b)?;
+            Ok(Ty::new_alias(cx, is_rigid_a, alias_ty))
         }
 
         (ty::Pat(a_ty, a_pat), ty::Pat(b_ty, b_pat)) => {
@@ -617,8 +614,14 @@ pub fn structurally_relate_consts<I: Interner, R: TypeRelation<I>>(
         // While this is slightly incorrect, it shouldn't matter for `min_const_generics`
         // and is the better alternative to waiting until `generic_const_exprs` can
         // be stabilized.
-        (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu)) => {
-            return Ok(Const::new_unevaluated(cx, relation.relate(au, bu)?));
+        (
+            ty::ConstKind::Unevaluated(is_rigid_a, au),
+            ty::ConstKind::Unevaluated(is_rigid_b, bu),
+        ) => {
+            // Users shouldn't know about this so the mismatch should be caught
+            // during development rather than presented as type error.
+            debug_assert_eq!(is_rigid_a, is_rigid_b, "{a:?} != {b:?}");
+            return Ok(Const::new_unevaluated(cx, is_rigid_a, relation.relate(au, bu)?));
         }
         (ty::ConstKind::Expr(ae), ty::ConstKind::Expr(be)) => {
             let expr = relation.relate(ae, be)?;

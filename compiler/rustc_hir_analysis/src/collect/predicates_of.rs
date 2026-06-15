@@ -433,7 +433,7 @@ fn const_evaluatable_predicates_of<'tcx>(
 
     impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ConstCollector<'tcx> {
         fn visit_const(&mut self, c: ty::Const<'tcx>) {
-            if let ty::ConstKind::Unevaluated(uv) = c.kind() {
+            if let ty::ConstKind::Unevaluated(_, uv) = c.kind() {
                 if is_const_param_default(self.tcx, uv.kind) {
                     // Do not look into const param defaults,
                     // these get checked when they are actually instantiated.
@@ -519,11 +519,10 @@ pub(super) fn explicit_predicates_of<'tcx>(
             //     identity args of the trait.
             // * It must be an associated type for this trait (*not* a
             //   supertrait).
-            if let &ty::Alias(ty::AliasTy {
-                kind: ty::Projection { def_id: projection_def_id },
-                args,
-                ..
-            }) = ty.kind()
+            if let &ty::Alias(
+                _,
+                ty::AliasTy { kind: ty::Projection { def_id: projection_def_id }, args, .. },
+            ) = ty.kind()
             {
                 args == trait_identity_args
                     // FIXME(return_type_notation): This check should be more robust

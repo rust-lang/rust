@@ -367,7 +367,7 @@ fn compute_definition_site_hidden_types_from_defining_uses<'tcx>(
         // usage of the opaque type and we can ignore it. This check is mirrored in typeck's
         // writeback.
         if !rcx.infcx.tcx.use_typing_mode_post_typeck_until_borrowck() {
-            if let &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) =
+            if let &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) =
                 hidden_type.ty.skip_binder().kind()
                 && def_id == opaque_type_key.def_id.to_def_id()
                 && args == opaque_type_key.args
@@ -500,7 +500,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for ToArgRegionsFolder<'_, 'tcx> {
                 Ty::new_coroutine(tcx, def_id, self.fold_closure_args(def_id, args)?)
             }
 
-            ty::Alias(ty::AliasTy { kind, args, .. })
+            ty::Alias(_, ty::AliasTy { kind, args, .. })
                 if let Some(variances) = tcx.opt_alias_variances(kind) =>
             {
                 let args = tcx.mk_args_from_iter(std::iter::zip(variances, args.iter()).map(
@@ -512,7 +512,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for ToArgRegionsFolder<'_, 'tcx> {
                         }
                     },
                 ))?;
-                ty::AliasTy::new_from_args(tcx, kind, args).to_ty(tcx)
+                ty::AliasTy::new_from_args(tcx, kind, args).to_ty(tcx, ty::IsRigid::No)
             }
 
             _ => ty.try_super_fold_with(self)?,
@@ -541,7 +541,7 @@ pub(crate) fn apply_definition_site_hidden_types<'tcx>(
     for &(key, hidden_type) in opaque_types {
         let Some(expected) = hidden_types.get(&key.def_id) else {
             if !tcx.use_typing_mode_post_typeck_until_borrowck() {
-                if let &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) =
+                if let &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) =
                     hidden_type.ty.kind()
                     && def_id == key.def_id.to_def_id()
                     && args == key.args

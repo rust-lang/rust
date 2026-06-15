@@ -179,6 +179,7 @@ fn evaluate_host_effect_from_conditionally_const_item_bounds<'tcx>(
 
     let mut consider_ty = obligation.predicate.self_ty();
     while let ty::Alias(
+        _,
         alias_ty @ ty::AliasTy {
             kind: kind @ (ty::Projection { def_id } | ty::Opaque { def_id }),
             ..
@@ -275,6 +276,7 @@ fn evaluate_host_effect_from_item_bounds<'tcx>(
 
     let mut consider_ty = obligation.predicate.self_ty();
     while let ty::Alias(
+        _,
         alias_ty @ ty::AliasTy {
             kind: kind @ (ty::Projection { def_id } | ty::Opaque { def_id }),
             ..
@@ -377,7 +379,7 @@ fn evaluate_host_effect_for_copy_clone_goal<'tcx>(
         | ty::Foreign(..)
         | ty::Ref(_, _, ty::Mutability::Mut)
         | ty::Adt(_, _)
-        | ty::Alias(_)
+        | ty::Alias(_, _)
         | ty::Param(_)
         | ty::Placeholder(..) => Err(EvaluationFailure::NoSolution),
 

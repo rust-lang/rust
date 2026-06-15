@@ -548,7 +548,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
 
             // We may still encounter projections here due to the printing
             // logic sometimes passing identity-substituted impl headers.
-            ty::Alias(ty::AliasTy { kind: ty::Projection { def_id }, args, .. }) => {
+            ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id }, args, .. }) => {
                 self.print_def_path(def_id, args)?;
             }
 
@@ -692,7 +692,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
 
             // We may still encounter unevaluated consts due to the printing
             // logic sometimes passing identity-substituted impl headers.
-            ty::ConstKind::Unevaluated(ty::UnevaluatedConst { kind, args, .. }) => match kind {
+            ty::ConstKind::Unevaluated(_, ty::UnevaluatedConst { kind, args, .. }) => match kind {
                 ty::UnevaluatedConstKind::Projection { def_id }
                 | ty::UnevaluatedConstKind::Inherent { def_id }
                 | ty::UnevaluatedConstKind::Free { def_id }

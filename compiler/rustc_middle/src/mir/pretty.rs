@@ -1491,7 +1491,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
             let val = match const_ {
                 Const::Ty(_, ct) => match ct.kind() {
                     ty::ConstKind::Param(p) => format!("ty::Param({p})"),
-                    ty::ConstKind::Unevaluated(uv) => {
+                    ty::ConstKind::Unevaluated(_is_rigid, uv) => {
                         let kind = match uv.kind {
                             ty::UnevaluatedConstKind::Projection { def_id }
                             | ty::UnevaluatedConstKind::Inherent { def_id }

@@ -659,6 +659,7 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
         // generic args, instead of how we represent them in body expressions.
         let c = ty::Const::new_unevaluated(
             self.tcx,
+            ty::IsRigid::No,
             ty::UnevaluatedConst::new(
                 self.tcx,
                 ty::UnevaluatedConstKind::new_from_def_id(self.tcx, def_id),

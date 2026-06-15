@@ -44,7 +44,7 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
         let mut convert = ConstToPat::new(self, id, span, c);
 
         match c.kind() {
-            ty::ConstKind::Unevaluated(uv) => convert.unevaluated_to_pat(uv, ty),
+            ty::ConstKind::Unevaluated(_, uv) => convert.unevaluated_to_pat(uv, ty),
             ty::ConstKind::Value(value) => convert.valtree_to_pat(value),
             _ => span_bug!(span, "Invalid `ConstKind` for `const_to_pat`: {:?}", c),
         }
@@ -72,7 +72,7 @@ impl<'tcx> ConstToPat<'tcx> {
 
     /// We errored. Signal that in the pattern, so that follow up errors can be silenced.
     fn mk_err(&self, mut err: Diag<'_>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
-        if let ty::ConstKind::Unevaluated(uv) = self.c.kind() {
+        if let ty::ConstKind::Unevaluated(_, uv) = self.c.kind() {
             if let ty::UnevaluatedConstKind::Projection { def_id }
             | ty::UnevaluatedConstKind::Inherent { def_id } = uv.kind
                 && let Some(def_id) = def_id.as_local()
@@ -116,7 +116,7 @@ impl<'tcx> ConstToPat<'tcx> {
                     self.tcx.dcx().create_err(CouldNotEvalConstPattern { span: self.span });
                 // We've emitted an error on the original const, it would be redundant to complain
                 // on its use as well.
-                if let ty::ConstKind::Unevaluated(uv) = self.c.kind()
+                if let ty::ConstKind::Unevaluated(_, uv) = self.c.kind()
                     && let ty::UnevaluatedConstKind::Projection { .. }
                     | ty::UnevaluatedConstKind::Inherent { .. }
                     | ty::UnevaluatedConstKind::Free { .. } = uv.kind

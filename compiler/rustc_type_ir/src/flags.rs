@@ -307,18 +307,14 @@ impl<I: Interner> FlagComputation<I> {
                 self.add_args(args.as_slice());
             }
 
-            ty::Alias(alias) => {
+            ty::Alias(is_rigid, alias) => {
+                self.add_is_rigid(is_rigid);
                 self.add_flags(match alias.kind {
                     ty::Projection { .. } => TypeFlags::HAS_TY_PROJECTION,
                     ty::Free { .. } => TypeFlags::HAS_TY_FREE_ALIAS,
                     ty::Opaque { .. } => TypeFlags::HAS_TY_OPAQUE,
                     ty::Inherent { .. } => TypeFlags::HAS_TY_INHERENT,
                 });
-                match alias.is_rigid {
-                    ty::IsRigid::Yes => self.add_flags(TypeFlags::HAS_RIGID_ALIAS),
-                    ty::IsRigid::No => self.add_flags(TypeFlags::HAS_NON_RIGID_ALIAS),
-                }
-
                 self.add_alias_ty(alias);
             }
 
@@ -481,10 +477,10 @@ impl<I: Interner> FlagComputation<I> {
 
     fn add_const_kind(&mut self, c: &ty::ConstKind<I>) {
         match *c {
-            ty::ConstKind::Unevaluated(uv) => {
+            ty::ConstKind::Unevaluated(is_rigid, uv) => {
+                self.add_is_rigid(is_rigid);
                 self.add_args(uv.args.as_slice());
                 self.add_flags(TypeFlags::HAS_CT_PROJECTION);
-                self.add_flags(TypeFlags::HAS_NON_RIGID_ALIAS);
             }
             ty::ConstKind::Infer(infer) => match infer {
                 ty::InferConst::Fresh(_) => self.add_flags(TypeFlags::HAS_CT_FRESH),
@@ -543,6 +539,13 @@ impl<I: Interner> FlagComputation<I> {
                 ty::GenericArgKind::Lifetime(lt) => self.add_region(lt),
                 ty::GenericArgKind::Const(ct) => self.add_const(ct),
             }
+        }
+    }
+
+    fn add_is_rigid(&mut self, is_rigid: ty::IsRigid) {
+        match is_rigid {
+            ty::IsRigid::Yes => self.add_flags(TypeFlags::HAS_RIGID_ALIAS),
+            ty::IsRigid::No => self.add_flags(TypeFlags::HAS_NON_RIGID_ALIAS),
         }
     }
 

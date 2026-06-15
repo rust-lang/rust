@@ -52,7 +52,9 @@ impl<'tcx> TyCtxt<'tcx> {
             }
             fn fold_const(&mut self, c: Const<'tcx>) -> Const<'tcx> {
                 let ct = match c.kind() {
-                    ty::ConstKind::Unevaluated(uv) if let Some(def_id) = uv.kind.opt_def_id() => {
+                    ty::ConstKind::Unevaluated(_is_rigid, uv)
+                        if let Some(def_id) = uv.kind.opt_def_id() =>
+                    {
                         match self.tcx.thir_abstract_const(def_id) {
                             Err(e) => ty::Const::new_error(self.tcx, e),
                             Ok(Some(bac)) => {

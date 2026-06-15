@@ -16,7 +16,7 @@ where
         goal: Goal<I, ProjectionPredicate<I>>,
     ) -> QueryResultOrRerunNonErased<I> {
         let cx = self.cx();
-        let projection_term = goal.predicate.projection_term.to_term(cx);
+        let projection_term = goal.predicate.projection_term.to_term(cx, ty::IsRigid::No);
         let goal = goal.with(
             cx,
             ty::PredicateKind::AliasRelate(

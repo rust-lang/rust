@@ -467,7 +467,7 @@ impl<'tcx> Generalizer<'_, 'tcx> {
 
         let is_nested_alias = mem::replace(&mut self.in_alias, true);
         let result = match self.relate(alias, alias) {
-            Ok(alias) => Ok(alias.to_term(self.cx())),
+            Ok(alias) => Ok(alias.to_term(self.cx(), ty::IsRigid::No)),
             Err(e) => {
                 if is_nested_alias {
                     return Err(e);
@@ -637,14 +637,12 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
             }
 
             // We shouldn't perform lazy norm for rigid aliases.
-            ty::Alias(data) if data.is_rigid == ty::IsRigid::No => {
-                match self.structurally_relate_aliases {
-                    StructurallyRelateAliases::No => {
-                        self.generalize_alias_term(data.into()).map(|v| v.expect_type())
-                    }
-                    StructurallyRelateAliases::Yes => relate::structurally_relate_tys(self, t, t),
+            ty::Alias(ty::IsRigid::No, data) => match self.structurally_relate_aliases {
+                StructurallyRelateAliases::No => {
+                    self.generalize_alias_term(data.into()).map(|v| v.expect_type())
                 }
-            }
+                StructurallyRelateAliases::Yes => relate::structurally_relate_tys(self, t, t),
+            },
 
             _ => relate::structurally_relate_tys(self, t, t),
         }?;
@@ -757,7 +755,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
             // `structurally_relate_consts` once it is fully structural.
             //
             // We shouldn't perform lazy norm for rigid aliases.
-            ty::ConstKind::Unevaluated(uv) if uv.is_rigid == ty::IsRigid::No => {
+            ty::ConstKind::Unevaluated(ty::IsRigid::No, uv) => {
                 match self.structurally_relate_aliases {
                     // Hack: Fall back to old behavior if GCE is enabled (it used to just be the Yes
                     // path), as doing this new No path breaks some GCE things. I expect GCE to be
@@ -766,7 +764,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                         self.generalize_alias_term(uv.into()).map(|v| v.expect_const())
                     }
                     _ => {
-                        let ty::UnevaluatedConst { kind, args, is_rigid, .. } = uv;
+                        let ty::UnevaluatedConst { kind, args, .. } = uv;
                         let args = self.relate_with_variance(
                             ty::Invariant,
                             ty::VarianceDiagInfo::default(),
@@ -775,7 +773,8 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                         )?;
                         Ok(ty::Const::new_unevaluated(
                             tcx,
-                            ty::UnevaluatedConst::with_rigidness(tcx, kind, args, is_rigid),
+                            ty::IsRigid::No,
+                            ty::UnevaluatedConst::new(tcx, kind, args),
                         ))
                     }
                 }

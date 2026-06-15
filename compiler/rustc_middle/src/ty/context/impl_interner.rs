@@ -649,7 +649,9 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             //
             // Impls which apply to an alias after normalization are handled by
             // `assemble_candidates_after_normalizing_self_ty`.
-            ty::Alias(_) | ty::Placeholder(..) | ty::Error(_) => (),
+            ty::Alias(ty::IsRigid::Yes, _) | ty::Placeholder(..) | ty::Error(_) => (),
+            // Need to support aliases not marked as rigid for the old solver.
+            ty::Alias(ty::IsRigid::No, _) => (),
 
             // FIXME: These should ideally not exist as a self type. It would be nice for
             // the builtin auto trait impls of coroutines to instead directly recurse

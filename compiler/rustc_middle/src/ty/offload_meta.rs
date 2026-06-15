@@ -119,7 +119,8 @@ impl MappingFlags {
                 MappingFlags::LITERAL | MappingFlags::IMPLICIT
             }
 
-            ty::Adt(_, _) | ty::Tuple(_) | ty::Array(_, _) | ty::Alias(_) | ty::Param(_) => {
+            // FIXME: This should not treat aliases this way.
+            ty::Adt(_, _) | ty::Tuple(_) | ty::Array(_, _) | ty::Alias(_, _) | ty::Param(_) => {
                 MappingFlags::TO
             }
 

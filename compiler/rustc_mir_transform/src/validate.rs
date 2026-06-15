@@ -679,7 +679,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 };
 
                 let kind = match parent_ty.ty.kind() {
-                    &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
+                    &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
                         self.tcx.type_of(def_id).instantiate(self.tcx, args).skip_norm_wip().kind()
                     }
                     kind => kind,
@@ -1551,7 +1551,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     pty.kind(),
                     ty::Adt(..)
                         | ty::Coroutine(..)
-                        | ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. })
+                        | ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. })
                 ) {
                     self.fail(
                         location,

@@ -52,9 +52,9 @@ use crate::relate::{Relate, RelateResult, TypeRelation, VarianceDiagInfo};
 use crate::visit::TypeSuperVisitable;
 use crate::{
     AliasTy, Binder, BoundRegion, BoundVar, BoundVariableKind, ConstKind, DebruijnIndex,
-    FallibleTypeFolder, InferCtxtLike, InferTy, Interner, OutlivesPredicate, RegionKind, TyKind,
-    TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor, TypingMode, UniverseIndex, Variance,
-    VisitorResult,
+    FallibleTypeFolder, InferCtxtLike, InferTy, Interner, IsRigid, OutlivesPredicate, RegionKind,
+    TyKind, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor, TypingMode, UniverseIndex,
+    Variance, VisitorResult,
 };
 
 #[derive_where(Clone, Debug; I: Interner)]
@@ -1106,7 +1106,7 @@ fn alias_outlives_candidates_from_assumptions<Infcx: InferCtxtLike<Interner = I>
                 region_constraints: vec![RegionConstraint::RegionOutlives(r2, r)],
             };
 
-            if let Ok(_) = relation.relate(alias.to_ty(infcx.cx()), alias2) {
+            if let Ok(_) = relation.relate(alias.to_ty(infcx.cx(), IsRigid::No), alias2) {
                 candidates
                     .push(RegionConstraint::And(relation.region_constraints.into_boxed_slice()));
             }
