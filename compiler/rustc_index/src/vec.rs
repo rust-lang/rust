@@ -67,6 +67,7 @@ impl<I: Idx, T: Hash> Hash for IndexVec<I, T> {
 
 #[cfg(feature = "nightly")]
 unsafe impl<I: Idx, #[may_dangle] T> Drop for IndexVec<I, T> {
+    #[inline]
     fn drop(&mut self) {
         if self.capacity.index() == 0 {
             return;
@@ -92,18 +93,19 @@ impl<I: Idx, T> IndexVec<I, T> {
     /// Constructs a new `IndexVec<I, T>` from a `Vec<T>`.
     #[inline]
     pub fn from_raw(raw: Vec<T>) -> Self {
-        let (data, len, capacity) = raw.into_raw_parts();
+        let mut me = ManuallyDrop::new(raw);
 
         IndexVec {
-            data,
-            len: I::new(len),
-            capacity: I::new(capacity),
+            data: me.as_mut_ptr(),
+            len: I::new(me.len()),
+            capacity: I::new(me.capacity()),
 
             _marker: PhantomData,
             _marker2: PhantomData,
         }
     }
 
+    #[inline]
     pub fn into_vec(self) -> Vec<T> {
         let me = ManuallyDrop::new(self);
         // fixme this is unsound because we rely on correct Idx trait impls
