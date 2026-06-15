@@ -4,10 +4,12 @@ use hir::Node;
 use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::{
-    self, GenericClauses, ImplTraitInTraitData, Ty, TyCtxt, TypeVisitable, TypeVisitor, Upcast,
+    self, ClausePolarity, GenericClauses, ImplTraitInTraitData, Ty, TyCtxt, TypeVisitable,
+    TypeVisitor, Upcast,
 };
 use rustc_span::{DUMMY_SP, Ident, Span, bug, span_bug};
 use tracing::{debug, instrument, trace};
@@ -70,6 +72,15 @@ pub(super) fn clauses_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericClauses<'
                 .copied()
                 .chain(std::iter::once((ty::TraitRef::identity(tcx, def_id).upcast(tcx), span))),
         );
+    }
+
+    if !tcx.features().move_trait() {
+        result.clauses = tcx.arena.alloc_from_iter(result.clauses.iter().copied().filter(|p| {
+            !p.0.as_trait_clause().is_some_and(|p| {
+                p.polarity() == ClausePolarity::Positive
+                    && matches!(tcx.as_lang_item(p.def_id()), Some(LangItem::Move))
+            })
+        }));
     }
 
     debug!("clauses_of({:?}) = {:?}", def_id, result);
@@ -195,19 +206,13 @@ fn gather_explicit_clauses_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generi
             PredicateFilter::All,
             OverlappingAsssocItemConstraints::Allowed,
         );
-        icx.lowerer().add_implicit_sizedness_bounds(
+        icx.lowerer().add_implicit_bounds(
             &mut bounds,
             tcx.types.self_param,
             self_bounds,
             ImpliedBoundsContext::TraitDef(def_id),
             span,
-        );
-        icx.lowerer().add_default_traits(
-            &mut bounds,
-            tcx.types.self_param,
-            self_bounds,
-            ImpliedBoundsContext::TraitDef(def_id),
-            span,
+            true,
         );
         clauses.extend(bounds);
     }
@@ -234,19 +239,13 @@ fn gather_explicit_clauses_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generi
                 let param_ty = icx.lowerer().lower_ty_param(param.hir_id);
                 let mut bounds = Vec::new();
                 // Implicit bounds are added to type params unless a `?Trait` bound is found
-                icx.lowerer().add_implicit_sizedness_bounds(
+                icx.lowerer().add_implicit_bounds(
                     &mut bounds,
                     param_ty,
                     &[],
                     ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
                     param.span,
-                );
-                icx.lowerer().add_default_traits(
-                    &mut bounds,
-                    param_ty,
-                    &[],
-                    ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
-                    param.span,
+                    true,
                 );
                 trace!(?bounds);
                 clauses.extend(bounds);
@@ -690,19 +689,13 @@ pub(super) fn implied_clauses_with_filter<'tcx>(
         | PredicateFilter::SelfOnly
         | PredicateFilter::SelfTraitThatDefines(_)
         | PredicateFilter::SelfAndAssociatedTypeBounds => {
-            icx.lowerer().add_implicit_sizedness_bounds(
+            icx.lowerer().add_implicit_bounds(
                 &mut bounds,
                 self_param_ty,
                 superbounds,
                 ImpliedBoundsContext::TraitDef(trait_def_id),
                 item.span,
-            );
-            icx.lowerer().add_default_traits(
-                &mut bounds,
-                self_param_ty,
-                superbounds,
-                ImpliedBoundsContext::TraitDef(trait_def_id),
-                item.span,
+                true,
             );
         }
         //`ConstIfConst` is only interested in `[const]` bounds.
@@ -992,19 +985,13 @@ impl<'tcx> ItemCtxt<'tcx> {
                 match param.kind {
                     hir::GenericParamKind::Type { .. } => {
                         let param_ty = self.lowerer().lower_ty_param(param.hir_id);
-                        self.lowerer().add_implicit_sizedness_bounds(
+                        self.lowerer().add_implicit_bounds(
                             &mut bounds,
                             param_ty,
                             &[],
                             ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
                             param.span,
-                        );
-                        self.lowerer().add_default_traits(
-                            &mut bounds,
-                            param_ty,
-                            &[],
-                            ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
-                            param.span,
+                            true,
                         );
                     }
                     hir::GenericParamKind::Lifetime { .. }
