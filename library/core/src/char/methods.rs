@@ -495,7 +495,7 @@ impl char {
                 || args.escape_grapheme_extender && self.is_grapheme_extender()
                 || self.is_default_ignorable()
                 || self.is_format_control()
-                || self.is_unassigned() =>
+                || !self.is_assigned() =>
             {
                 EscapeDebug::unicode(self)
             }
@@ -1177,54 +1177,56 @@ impl char {
         self > '\u{AC}' && unicode::Cf(self)
     }
 
-    /// Returns `true` if this `char` has not yet been assigned a meaning by Unicode, as of
+    /// Returns `true` if this `char` has been assigned a meaning by Unicode, as of
     /// [`UNICODE_VERSION`].
     ///
     /// [`UNICODE_VERSION`]: Self::UNICODE_VERSION
-    ///
-    /// These characters may have a meaning assigned in the future,
-    /// except for the 66 [noncharacters] which will never be assigned a meaning.
-    ///
-    /// [noncharacters]: https://www.unicode.org/faq/private_use#noncharacters
     ///
     /// Many of Unicode's [stability policies] apply only to assigned characters.
     ///
     /// [stability policies]: https://www.unicode.org/policies/stability_policy.html
     ///
-    /// Unassigned characters (code points with the general category of `Cn`) are [described] in Chapter 4
-    /// (Character Properties) of the Unicode Standard, and [specified] in the Unicode Character Database
-    /// by their exclusion from [`UnicodeData.txt`].
+    /// Currently unassigned characters (characters for which this method returns `false`)
+    /// may have a meaning assigned in a future version of Unicode,
+    /// except for the 66 [noncharacters] which will never be assigned a meaning.
     ///
-    /// [described]: https://www.unicode.org/versions/latest/core-spec/chapter-4/#G134153
-    /// [specified]: https://www.unicode.org/reports/tr44/#GC_Values_Table
+    /// [noncharacters]: https://www.unicode.org/faq/private_use.html#noncharacters
+    ///
+    /// A character is considered assigned if it is present in [`UnicodeData.txt`].
+    /// Unassigned characters have general category `Cn`, as [described] in Chapter 4
+    /// (Character Properties) of the Unicode Standard.
+    ///
     /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
+    /// [described]: https://www.unicode.org/versions/latest/core-spec/chapter-4/#G134153
     ///
     /// # Examples
     ///
     /// Basic usage:
     ///
-    /// ```ignore(private)
-    /// assert!('\u{FFFE}'.is_unassigned()); // noncharacter, will never be assigned
+    /// ```
+    /// #![feature(char_unassigned_private_use)]
+    /// assert!('γ'.is_assigned()); // once a character is assigned, it stays assigned forever
+    /// assert!(!'\u{FFFE}'.is_assigned()); // noncharacter, will never be assigned
     ///
-    /// //assert!('\u{7AAAA}'.is_unassigned()); // not currently assigned, but may be in the future,
-    ///                                         // so we shouldn't rely on the current status
-    ///
-    /// assert!(!'γ'.is_unassigned()); // once a character is assigned, it stays assigned forever
+    /// // Not currently assigned, but may be in the future,
+    /// // so we shouldn't rely on the current status
+    /// /* assert!(!'\u{7AAAA}'.is_assigned()); */
     /// ```
     #[must_use]
+    #[unstable(feature = "char_unassigned_private_use", issue = "none")]
     #[inline]
-    fn is_unassigned(self) -> bool {
+    pub fn is_assigned(self) -> bool {
         match self {
-            '\0'..='\u{377}' => false,
-            '\u{378}'..='\u{3FFFD}' => unicode::Cn_planes_0_3(self),
+            '\0'..='\u{377}' => true,
+            '\u{378}'..='\u{3FFFD}' => !unicode::Cn_planes_0_3(self),
             // Assigned character ranges in planes 4 and above.
             // `src/tools/unicode-table-generator/src/main.rs` asserts that this is correct
             '\u{E0001}'
             | '\u{E0020}'..='\u{E007F}'
             | '\u{E0100}'..='\u{E01EF}'
             | '\u{F0000}'..='\u{FFFFD}'
-            | '\u{100000}'..='\u{10FFFD}' => false,
-            _ => true,
+            | '\u{100000}'..='\u{10FFFD}' => true,
+            _ => false,
         }
     }
 
