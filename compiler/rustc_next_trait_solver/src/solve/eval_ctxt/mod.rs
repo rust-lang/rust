@@ -35,8 +35,8 @@ use crate::solve::ty::may_use_unstable_feature;
 use crate::solve::{
     CanonicalInput, CanonicalResponse, Certainty, ExternalConstraintsData, FIXPOINT_STEP_LIMIT,
     Goal, GoalEvaluation, GoalSource, GoalStalledOn, HasChanged, MaybeCause,
-    NestedNormalizationGoals, NoSolution, QueryInput, QueryResult, Response, VisibleForLeakCheck,
-    inspect,
+    NestedNormalizationGoals, NoSolution, QueryInput, QueryResult, Response, SucceededInErased,
+    VisibleForLeakCheck, inspect,
 };
 
 mod probe;
@@ -502,6 +502,7 @@ where
             ref stalled_vars,
             ref sub_roots,
             stalled_certainty,
+            ref previously_succeeded_in_erased,
         }) = stalled_on
         else {
             return MayMakeProgress;
@@ -522,7 +523,31 @@ where
         // If any opaques changed in the opaque type storage,
         // rerunning might make progress so we should rerun.
         if self.delegate.opaque_types_storage_num_entries().needs_reevaluation(num_opaques) {
-            return MayMakeProgress;
+            // Unless this goal previously succeeded in erased mode.
+            // If the stalled goal successfully evaluated while erasing opaque types,
+            // and the current state of the opaque type storage is not different in a way that is
+            // relevant, this stalled goal cannot make any progress and we set this variable to true.
+            let mut previous_erased_run_is_still_valid = false;
+
+            if let &SucceededInErased::Yes { accessed_opaques } = previously_succeeded_in_erased {
+                match self.should_rerun_after_erased_canonicalization(
+                    accessed_opaques,
+                    self.typing_mode(),
+                    &self.delegate.clone_opaque_types_lookup_table(),
+                ) {
+                    RerunDecision::Yes => {}
+                    RerunDecision::EagerlyPropagateToParent => {
+                        unreachable!("we never retry stalled queries if the parent was erased")
+                    }
+                    RerunDecision::No => {
+                        previous_erased_run_is_still_valid = true;
+                    }
+                }
+            }
+
+            if !previous_erased_run_is_still_valid {
+                return MayMakeProgress;
+            }
         }
 
         // Otherwise, we can be sure that this stalled goal cannot make any progress
@@ -574,7 +599,7 @@ where
         )
         .entered();
 
-        let (result, orig_values, canonical_goal) = 'retry_canonicalize: {
+        let (result, orig_values, canonical_goal, succeeded_in_erased) = 'retry_canonicalize: {
             let skip_erased_attempt = if typing_mode.is_coherence() {
                 true
             } else {
@@ -630,11 +655,23 @@ where
                 match should_rerun {
                     RerunDecision::Yes => debug!("rerunning in original typing mode"),
                     RerunDecision::No => {
-                        break 'retry_canonicalize (canonical_result, orig_values, canonical_goal);
+                        break 'retry_canonicalize (
+                            canonical_result,
+                            orig_values,
+                            canonical_goal,
+                            SucceededInErased::Yes { accessed_opaques },
+                        );
                     }
                     RerunDecision::EagerlyPropagateToParent => {
                         self.opaque_accesses.update(accessed_opaques)?;
-                        break 'retry_canonicalize (canonical_result, orig_values, canonical_goal);
+                        break 'retry_canonicalize (
+                            canonical_result,
+                            orig_values,
+                            canonical_goal,
+                            // If we're propagating up, we should never retry the goal.
+                            // That means `No` is fine to return, it doesn't really matter.
+                            SucceededInErased::No,
+                        );
                     }
                 }
             }
@@ -653,7 +690,7 @@ where
                 "we run without TypingMode::ErasedNotCoherence, so opaques are available, and we don't retry if the outer typing mode is ErasedNotCoherence: {accessed_opaques:?} after {goal:?}"
             );
 
-            (canonical_result, orig_values, canonical_goal)
+            (canonical_result, orig_values, canonical_goal, SucceededInErased::No)
         };
 
         debug!(?result);
@@ -761,6 +798,7 @@ where
                         stalled_vars,
                         sub_roots,
                         stalled_certainty: certainty,
+                        previously_succeeded_in_erased: succeeded_in_erased,
                     })
                 }
             },
