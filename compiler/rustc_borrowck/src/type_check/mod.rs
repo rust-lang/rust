@@ -18,7 +18,7 @@ use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_infer::infer::{
     BoundRegionConversionTime, InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin,
 };
-use rustc_infer::traits::PredicateObligations;
+use rustc_infer::traits::{PredicateObligations, ScrubbedTraitError};
 use rustc_middle::bug;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -2742,10 +2742,16 @@ impl<'tcx> TypeOp<'tcx> for InstantiateOpaqueType<'tcx> {
         span: Span,
     ) -> Result<TypeOpOutput<'tcx, Self>, ErrorGuaranteed> {
         let (mut output, region_constraints) =
-            scrape_region_constraints(infcx, root_def_id, "InstantiateOpaqueType", span, |ocx| {
-                ocx.register_obligations(self.obligations.clone());
-                Ok(())
-            })?;
+            scrape_region_constraints::<_, _, ScrubbedTraitError<'tcx>>(
+                infcx,
+                root_def_id,
+                "InstantiateOpaqueType",
+                span,
+                |ocx| {
+                    ocx.register_obligations(self.obligations.clone());
+                    Ok(())
+                },
+            )?;
         self.region_constraints = Some(region_constraints);
         output.error_info = Some(self);
         Ok(output)

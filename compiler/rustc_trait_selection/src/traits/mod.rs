@@ -38,6 +38,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
+use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 
 pub use self::coherence::{
@@ -104,6 +105,12 @@ impl<'tcx> FulfillmentError<'tcx> {
                 false
             }
         }
+    }
+}
+
+impl<'tcx> EngineError<'tcx> for FulfillmentError<'tcx> {
+    fn try_report_errors(infcx: &InferCtxt<'tcx>, errors: ThinVec<Self>) {
+        infcx.err_ctxt().report_fulfillment_errors(errors);
     }
 }
 
