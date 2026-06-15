@@ -340,7 +340,6 @@
 #![feature(exact_size_is_empty)]
 #![feature(exclusive_wrapper)]
 #![feature(extend_one)]
-#![feature(float_algebraic)]
 #![feature(float_gamma)]
 #![feature(float_minimum_maximum)]
 #![feature(fmt_internals)]
