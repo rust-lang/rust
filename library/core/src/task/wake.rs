@@ -421,7 +421,7 @@ impl Waker {
     /// As long as the executor keeps running and the task is not finished,
     /// it is guaranteed that each invocation of [`wake()`](Self::wake) (or
     /// [`wake_by_ref()`](Self::wake_by_ref)) will be followed by at least one
-    /// [`poll()`] of the task to which this `Waker` belongs, and the call to
+    /// [`poll()`] of the task to which this `Waker` belongs, such that the call to
     /// [`wake()`](Self::wake) (or [`wake_by_ref()`](Self::wake_by_ref)) _happens-before_
     /// the beginning of the invocation of [`poll()`]. This makes it possible to temporarily
     /// yield to other tasks while running potentially unbounded processing loops.
