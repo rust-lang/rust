@@ -95,10 +95,10 @@ impl fmt::Display for AllocError {
 ///
 /// ### Currently allocated memory
 ///
-/// Some of the methods require that a memory block is *currently allocated* by specific allocator.
+/// Some of the methods require that a memory block is *currently allocated* by some specific allocator.
 /// This means that:
-/// * the starting address for that memory block was previously
-///   returned by the [`allocate`], [`allocate_zeroed`], [`grow`], or [`shrink`] methods,
+/// * the starting address for that memory block was previously returned by
+///   the [`allocate`], [`allocate_zeroed`], [`grow`], [`grow_zeroed`], or [`shrink`] methods,
 ///   called on an allocator that's equivalent to this specific allocator; and
 /// * the memory block has not subsequently been [*invalidated*].
 ///
@@ -110,7 +110,7 @@ impl fmt::Display for AllocError {
 /// of the following happens:
 /// * The memory block is deallocated. This occurs when the memory block
 ///   is passed as an argument to a [`deallocate`] call, or when it is passed
-///   as an argument to a [`grow`] or [`shrink`] call that returns `Ok`.
+///   as an argument to a [`grow`], [`grow_zeroed`] or [`shrink`] call that returns `Ok`.
 /// * All (equivalent) allocators that this memory block is allocated with,
 ///   each has one of the following happen to them:
 ///   * The allocator's destructor runs.
@@ -127,9 +127,19 @@ impl fmt::Display for AllocError {
 /// its memory blocks. Therefore, collections may safely expose `&` access
 /// to its allocator.
 ///
+/// Also note that, even in cases where are other "alive" allocators known to be
+/// equivalent to a given collection's allocator, most collections still should
+/// not publicly expose `&mut` access to its allocator. The fact that there are
+/// other "alive" allocators would prevent this `&mut` access from invalidating
+/// the collection's memory block, but public `&mut` access is still likely to
+/// be unsound, since a user could replace the collection's allocator with
+/// a non-equivalent allocator, causing the collection to deallocate its memory
+/// with the wrong allocator.
+///
 /// [`allocate`]: Allocator::allocate
 /// [`allocate_zeroed`]: Allocator::allocate_zeroed
 /// [`grow`]: Allocator::grow
+/// [`grow_zeroed`]: Allocator::grow_zeroed
 /// [`shrink`]: Allocator::shrink
 /// [`deallocate`]: Allocator::deallocate
 ///
@@ -140,7 +150,8 @@ impl fmt::Display for AllocError {
 ///  * the memory block must be *currently allocated* with alignment of [`layout.align()`], and
 ///  * [`layout.size()`] must fall in the range `min ..= max`, where:
 ///    - `min` is the size of the layout used to allocate the block, and
-///    - `max` is the actual size returned from [`allocate`], [`grow`], or [`shrink`].
+///    - `max` is the actual size returned from [`allocate`], [`allocate_zeroed`],
+///      [`grow`], [`grow_zeroed`], or [`shrink`].
 ///
 /// [`layout.align()`]: Layout::align
 /// [`layout.size()`]: Layout::size
@@ -148,7 +159,7 @@ impl fmt::Display for AllocError {
 /// # Safety
 ///
 /// Implementors of `Allocator` must ensure that a memory block that
-/// are [*currently allocated*] by the allocator points to valid memory,
+/// is [*currently allocated*] by the allocator points to valid memory,
 /// until that memory block is [*invalidated*]. The implementor must also
 /// not violate this invariant of `Allocator` via allocator equivalences
 /// that are in the implementor's control (e.g., via a misbehaving
@@ -237,7 +248,7 @@ pub const unsafe trait Allocator {
     /// this, the allocator may extend the allocation referenced by `ptr` to fit the new layout.
     ///
     /// If this returns `Ok`, then the memory block referenced by `ptr` has been [*invalidated*].
-    /// Any access to the old `ptr` is Undefined Behavior, even if the allocation was grown in-place.
+    /// The old `ptr` must not be used to access the memory, even if the allocation was grown in-place.
     /// The newly returned pointer is the only valid pointer for accessing this memory now.
     ///
     /// If this method returns `Err`, then the memory block has not been *invalidated*,
@@ -365,7 +376,7 @@ pub const unsafe trait Allocator {
     ///
     ///
     /// If this returns `Ok`, then the memory block referenced by `ptr` has been [*invalidated*].
-    /// Any access to the old `ptr` is Undefined Behavior, even if the allocation was shrunk in-place.
+    /// The old `ptr` must not be used to access the memory, even if the allocation was shrunk in-place.
     /// The newly returned pointer is the only valid pointer for accessing this memory now.
     ///
     /// If this method returns `Err`, then the memory block has not been *invalidated*,
