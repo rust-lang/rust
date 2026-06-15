@@ -32,6 +32,7 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
         // GCC uses an extra `-` in the arch name
         match cli_options.cc_arg_style {
             CcArgStyle::Clang => vec!["-march=armv8.6a+crypto+crc+dotprod+fp16"],
+            // SVE tests aren't run under GCC so there are no target features added for SVE
             CcArgStyle::Gcc => vec!["-march=armv8.6-a+crypto+crc+dotprod+fp16+sha3+sm4"],
         }
     }
@@ -113,6 +114,12 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
             .filter(|i| !(a32 && i.arch_tags == vec!["A64".to_string()]))
             // Skip SVE intrinsics on big endian
             .filter(|i| !(big_endian && (i.extension == "SVE" || i.extension == "SVE2")))
+            // Skip SVE intrinsics when testing against GCC as our wrappers run into ICEs
+            // See <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=125818>
+            .filter(|i| {
+                !(matches!(cli_options.cc_arg_style, CcArgStyle::Gcc)
+                    && (i.extension == "SVE" || i.extension == "SVE2"))
+            })
             .take(sample_size)
             .collect::<Vec<_>>();
 
