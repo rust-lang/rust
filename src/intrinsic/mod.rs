@@ -705,10 +705,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         unimplemented!();
     }
 
-    fn va_end(&mut self, _va_list: RValue<'gcc>) {
-        // FIXME(antoyo): implement.
-    }
-
     fn retag_reg(&mut self, _ptr: Self::Value, _info: &RetagInfo<Self::Value>) -> Self::Value {
         unimplemented!()
     }
