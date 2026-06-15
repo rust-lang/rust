@@ -1139,8 +1139,9 @@ impl char {
     /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
     ///
     #[must_use]
+    #[unstable(feature = "char_unassigned_private_use", issue = "none")]
     #[inline]
-    const fn is_private_use(self) -> bool {
+    pub const fn is_private_use(self) -> bool {
         // According to
         // https://www.unicode.org/policies/stability_policy.html#Property_Value,
         // the set of codepoints in `Co` will never change.
