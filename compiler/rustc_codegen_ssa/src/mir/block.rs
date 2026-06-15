@@ -1317,7 +1317,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                     LocalRef::Operand(arg) => {
                         let Ref(place_value) = arg.val else {
-                            bug!("only `Ref` should use `PassMode::Indirect`");
+                            bug!(
+                                "only `Ref` should use `PassMode::Indirect`, but got {:?}",
+                                arg.val
+                            );
                         };
                         bx.typed_place_copy(place_value, tmp.val, fn_abi.args[i].layout);
                         op.val = arg.val;
