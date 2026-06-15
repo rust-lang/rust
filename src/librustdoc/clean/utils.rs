@@ -323,7 +323,7 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
             warn!(
                 "tried to get argument name from PatKind::Expr, which is silly in function arguments"
             );
-            return Symbol::intern("()");
+            return sym::empty_parens;
         }
         PatKind::Slice(begin, mid, end) => {
             fn print_pat(pat: &Pat<'_>, wild: bool) -> impl Display {

@@ -4451,6 +4451,7 @@ declare_lint! {
     Warn,
     "detects diagnostic attribute with malformed diagnostic format literals",
 }
+
 declare_lint! {
     /// The `ambiguous_glob_imports` lint detects glob imports that should report ambiguity
     /// errors, but previously didn't do that due to rustc bugs.
@@ -5512,4 +5513,44 @@ declare_lint! {
         reason: fcw!(FutureReleaseError #154024),
         report_in_deps: false,
     };
+}
+
+declare_lint! {
+    /// The `unsafe_code` lint catches usage of `unsafe` code and other
+    /// potentially unsound constructs like `no_mangle`, `export_name`,
+    /// and `link_section`.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(unsafe_code)]
+    /// fn main() {
+    ///     unsafe {
+    ///
+    ///     }
+    /// }
+    ///
+    /// #[no_mangle]
+    /// fn func_0() { }
+    ///
+    /// #[export_name = "exported_symbol_name"]
+    /// pub fn name_in_rust() { }
+    ///
+    /// #[no_mangle]
+    /// #[link_section = ".example_section"]
+    /// pub static VAR1: u32 = 1;
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// This lint is intended to restrict the usage of `unsafe` blocks and other
+    /// constructs (including, but not limited to `no_mangle`, `link_section`
+    /// and `export_name` attributes) wrong usage of which causes undefined
+    /// behavior.
+    pub UNSAFE_CODE,
+    Allow,
+    "usage of `unsafe` code and other potentially unsound constructs",
+    @eval_always = true
 }

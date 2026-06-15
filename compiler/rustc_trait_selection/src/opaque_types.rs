@@ -9,7 +9,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::{ErrorGuaranteed, Span};
 
-use crate::errors::NonGenericOpaqueTypeParam;
+use crate::diagnostics::NonGenericOpaqueTypeParam;
 use crate::regions::OutlivesEnvironmentBuildExt;
 use crate::traits::ObligationCtxt;
 

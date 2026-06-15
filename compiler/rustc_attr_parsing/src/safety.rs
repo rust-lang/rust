@@ -1,6 +1,7 @@
 use rustc_ast::Safety;
 use rustc_errors::{Diagnostic, MultiSpan};
 use rustc_hir::AttrPath;
+use rustc_lint_defs::builtin::UNSAFE_CODE;
 use rustc_session::lint::LintId;
 use rustc_session::lint::builtin::UNSAFE_ATTR_OUTSIDE_UNSAFE;
 use rustc_span::Span;
@@ -21,6 +22,7 @@ impl<'sess> AttributeParser<'sess> {
             return;
         }
 
+        // Check if expected & actual safety match
         match (expected_safety, attr_safety) {
             // - Unsafe builtin attribute
             // - User wrote `#[unsafe(..)]`, which is permitted on any edition
@@ -30,7 +32,7 @@ impl<'sess> AttributeParser<'sess> {
 
             // - Unsafe builtin attribute
             // - User did not write `#[unsafe(..)]`
-            (AttributeSafety::Unsafe { unsafe_since }, Safety::Default) => {
+            (AttributeSafety::Unsafe { unsafe_since, note: _ }, Safety::Default) => {
                 let path_span = attr_path.span;
 
                 // If the `attr_item`'s span is not from a macro, then just suggest
@@ -111,6 +113,18 @@ impl<'sess> AttributeParser<'sess> {
                     "`check_attribute_safety` does not expect `Safety::Safe` on attributes",
                 );
             }
+        }
+
+        // Emit `unsafe_code` lint
+        if let AttributeSafety::Unsafe { note, .. } = expected_safety {
+            let attr_path = attr_path.clone();
+            emit_lint(
+                LintId::of(UNSAFE_CODE),
+                attr_span.into(),
+                EmitAttribute(Box::new(move |dcx, level, _| {
+                    diagnostics::UnsafeAttribute { attr_path, note }.into_diag(dcx, level)
+                })),
+            )
         }
     }
 }

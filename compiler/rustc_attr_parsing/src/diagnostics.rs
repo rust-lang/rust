@@ -302,8 +302,12 @@ pub(crate) struct DiagnosticOnUnknownOnlyForImports {
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[diagnostic::on_unmatch_args]` can only be applied to macro definitions")]
-pub(crate) struct DiagnosticOnUnmatchArgsOnlyForMacros;
+#[diag("`#[diagnostic::on_unmatched_args]` can only be applied to macro definitions")]
+pub(crate) struct DiagnosticOnUnmatchedArgsOnlyForMacros;
+
+#[derive(Diagnostic)]
+#[diag("`#[diagnostic::on_type_error]` can only be applied to enums, structs or unions")]
+pub(crate) struct DiagnosticOnTypeErrorOnlyForAdt;
 
 #[derive(Diagnostic)]
 #[diag("`#[diagnostic::do_not_recommend]` can only be placed on trait implementations")]
@@ -826,3 +830,11 @@ pub(crate) enum InvalidOnClause {
     "using multiple `rustc_on_unimplemented` (or mixing it with `diagnostic::on_unimplemented`) is not supported"
 )]
 pub(crate) struct DupesNotAllowed;
+
+#[derive(Diagnostic)]
+#[diag("usage of the unsafe `#[{$attr_path}]` attribute")]
+#[note("{$note}")]
+pub(crate) struct UnsafeAttribute {
+    pub attr_path: AttrPath,
+    pub note: &'static str,
+}

@@ -12,8 +12,8 @@ use rustc_middle::ty::{
     Unnormalized,
 };
 use rustc_span::Span;
+use rustc_trait_selection::diagnostics::impl_trait_overcapture_suggestion;
 use rustc_trait_selection::error_reporting::infer::region::unexpected_hidden_region_diagnostic;
-use rustc_trait_selection::errors::impl_trait_overcapture_suggestion;
 
 use crate::MirBorrowckCtxt;
 use crate::borrow_set::BorrowData;
