@@ -3,6 +3,7 @@
 
 //! [`Struct::struct_field`]
 //! [`Enum::Variant`]
+//! [`Enum::StructVariant::field`]
 //! [`Trait::AssocType`]
 //! [`Trait::ASSOC_CONST`]
 //! [`Trait::method`]
@@ -25,6 +26,7 @@
 // Regression test for <https://github.com/rust-lang/rust/issues/152511>:
 // link target IDs for associated items need matching `paths` entries.
 //@ has "$.paths[*].path" '["non_page", "Struct", "struct_field"]'
+//@ has "$.paths[*].path" '["non_page", "Enum", "StructVariant", "field"]'
 //@ has "$.paths[*].path" '["non_page", "Trait", "AssocType"]'
 //@ has "$.paths[*].path" '["non_page", "Trait", "ASSOC_CONST"]'
 //@ has "$.paths[*].path" '["non_page", "Trait", "method"]'
@@ -38,6 +40,7 @@ pub struct Struct {
 
 pub enum Enum {
     Variant(),
+    StructVariant { field: i32 },
 }
 
 pub trait Trait {

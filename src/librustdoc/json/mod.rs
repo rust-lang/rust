@@ -14,6 +14,7 @@ use std::io::{BufWriter, Write, stdout};
 use std::path::PathBuf;
 use std::rc::Rc;
 
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -129,24 +130,23 @@ impl<'tcx> JsonRenderer<'tcx> {
         paths
     }
 
-    #[allow(rustc::potential_query_instability)]
     fn add_intra_doc_link_paths(&self, paths: &mut FxHashMap<types::Id, types::ItemSummary>) {
         // The link target IDs were already interned when the `links` maps were emitted.
         // This only fills missing summaries in `paths`, where JSON object order is not meaningful.
-        for link in self.cache.intra_doc_links.values().flatten() {
+        #[allow(rustc::potential_query_instability)]
+        let links = self.cache.intra_doc_links.values();
+        for link in links.flatten() {
             let Some(UrlFragment::Item(item_id)) = link.fragment.as_ref() else {
                 continue;
             };
             let item_id = *item_id;
             let id = self.id_from_item_default(item_id.into());
 
-            if paths.contains_key(&id) || item_id.is_local() && !self.index.contains_key(&id) {
+            if paths.contains_key(&id) || (item_id.is_local() && !self.index.contains_key(&id)) {
                 continue;
             }
 
-            let Some(path) = self.path_for_link_target(link.page_id, item_id) else {
-                continue;
-            };
+            let path = self.path_for_link_target(link.page_id, item_id);
             let kind = ItemType::from_def_id(item_id, self.tcx);
             paths.insert(
                 id,
@@ -159,30 +159,44 @@ impl<'tcx> JsonRenderer<'tcx> {
         }
     }
 
-    fn path_for_link_target(&self, page_id: DefId, item_id: DefId) -> Option<Vec<String>> {
-        self.path_from_cached_parent(item_id).or_else(|| {
-            let mut path = self.path_from_cached_parent(page_id)?;
-            path.push(self.tcx.opt_item_name(item_id)?.to_string());
-            Some(path)
+    fn path_for_link_target(&self, page_id: DefId, item_id: DefId) -> Vec<String> {
+        let parent_id = self.tcx.parent(item_id);
+        // Inherent items have an unnamed impl parent, while variant fields have one extra named
+        // parent between themselves and their page.
+        let (mut path, variant_id) = match self.tcx.def_kind(parent_id) {
+            DefKind::Impl { .. } => (
+                self.cached_path(page_id).expect("intra-doc link page should have a cached path"),
+                None,
+            ),
+            DefKind::Variant => {
+                (self.path_for_named_item(self.tcx.parent(parent_id)), Some(parent_id))
+            }
+            _ => (self.path_for_named_item(parent_id), None),
+        };
+
+        if let Some(variant_id) = variant_id {
+            path.push(self.tcx.item_name(variant_id).to_string());
+        }
+        path.push(self.tcx.item_name(item_id).to_string());
+        path
+    }
+
+    fn path_for_named_item(&self, item_id: DefId) -> Vec<String> {
+        self.cached_path(item_id).unwrap_or_else(|| {
+            let kind = ItemType::from_def_id(item_id, self.tcx);
+            clean::inline::get_item_path(self.tcx, item_id, kind)
+                .into_iter()
+                .map(|name| name.to_string())
+                .collect()
         })
     }
 
-    fn path_from_cached_parent(&self, item_id: DefId) -> Option<Vec<String>> {
-        let mut suffix = Vec::new();
-        let mut current = item_id;
-
-        loop {
-            if let Some((path, _)) =
-                self.cache.paths.get(&current).or_else(|| self.cache.external_paths.get(&current))
-            {
-                let mut path = path.iter().map(|s| s.to_string()).collect::<Vec<_>>();
-                path.extend(suffix.into_iter().rev());
-                return Some(path);
-            }
-
-            suffix.push(self.tcx.opt_item_name(current)?.to_string());
-            current = self.tcx.opt_parent(current)?;
-        }
+    fn cached_path(&self, item_id: DefId) -> Option<Vec<String>> {
+        self.cache
+            .paths
+            .get(&item_id)
+            .or_else(|| self.cache.external_paths.get(&item_id))
+            .map(|(path, _)| path.iter().map(|name| name.to_string()).collect())
     }
 }
 
