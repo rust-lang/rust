@@ -1,7 +1,7 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_middle::ty::TyCtxt;
 
-use crate::errors::GlobOrListDelegationUnusedTargetExpr;
+use crate::diagnostics::GlobOrListDelegationUnusedTargetExpr;
 
 pub fn check_glob_and_list_delegations_target_expr(tcx: TyCtxt<'_>) {
     let mut delegations_by_group_id = FxIndexMap::default();
