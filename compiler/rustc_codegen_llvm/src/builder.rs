@@ -1954,53 +1954,62 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
                 self.set_dbg_loc(dbg_loc);
             }
 
-            match self.tcx.sess.opts.unstable_opts.cfi_mode {
-                rustc_session::config::CfiMode::Trap => {
-                    self.abort();
+            let is_diag = self.tcx.sess.opts.unstable_opts.sanitizer_cfi_diag.unwrap_or(false);
+            let is_recover =
+                self.tcx.sess.opts.unstable_opts.sanitizer_cfi_recover.unwrap_or(false);
+
+            if is_diag || is_recover {
+                let fty = self.cx.type_func(
+                    &[self.cx.type_ptr(), self.cx.type_isize(), self.cx.type_isize()],
+                    self.cx.type_void(),
+                );
+                let ubsan_handler = self.declare_cfn(
+                    if is_recover {
+                        "__ubsan_handle_cfi_check_fail"
+                    } else {
+                        "__ubsan_handle_cfi_check_fail_abort"
+                    },
+                    llvm::UnnamedAddr::Global,
+                    fty,
+                );
+
+                let mut expected_ty = String::from("fn(");
+                for (i, arg) in fn_abi.args.iter().enumerate() {
+                    if i > 0 {
+                        expected_ty.push_str(", ");
+                    }
+                    use std::fmt::Write;
+                    write!(&mut expected_ty, "{}", arg.layout.ty).unwrap();
+                }
+                expected_ty.push(')');
+                if !fn_abi.ret.layout.ty.is_unit() {
+                    use std::fmt::Write;
+                    write!(&mut expected_ty, " -> {}", fn_abi.ret.layout.ty).unwrap();
+                }
+
+                // 4 for cfi-icall (indirect call)
+                let check_kind = 4;
+                let diag_data =
+                    self.generate_ubsan_cfi_diag_data(self.span, expected_ty, check_kind);
+
+                let function_address = self.ptrtoint(llfn, self.cx.type_isize());
+                self.call(
+                    fty,
+                    None,
+                    None,
+                    ubsan_handler,
+                    &[diag_data, function_address, self.const_usize(0)],
+                    None,
+                    None,
+                );
+                if is_recover {
+                    self.br(bb_pass);
+                } else {
                     self.unreachable();
                 }
-                rustc_session::config::CfiMode::Diag => {
-                    let fty = self.cx.type_func(
-                        &[self.cx.type_ptr(), self.cx.type_isize(), self.cx.type_isize()],
-                        self.cx.type_void(),
-                    );
-                    let ubsan_handler = self.declare_cfn(
-                        "__ubsan_handle_cfi_check_fail_abort",
-                        llvm::UnnamedAddr::Global,
-                        fty,
-                    );
-
-                    let mut expected_ty = String::from("fn(");
-                    for (i, arg) in fn_abi.args.iter().enumerate() {
-                        if i > 0 {
-                            expected_ty.push_str(", ");
-                        }
-                        use std::fmt::Write;
-                        write!(&mut expected_ty, "{}", arg.layout.ty).unwrap();
-                    }
-                    expected_ty.push(')');
-                    if !fn_abi.ret.layout.ty.is_unit() {
-                        use std::fmt::Write;
-                        write!(&mut expected_ty, " -> {}", fn_abi.ret.layout.ty).unwrap();
-                    }
-
-                    // 4 for cfi-icall (indirect call)
-                    let check_kind = 4;
-                    let diag_data =
-                        self.generate_ubsan_cfi_diag_data(self.span, expected_ty, check_kind);
-
-                    let function_address = self.ptrtoint(llfn, self.cx.type_isize());
-                    self.call(
-                        fty,
-                        None,
-                        None,
-                        ubsan_handler,
-                        &[diag_data, function_address, self.const_usize(0)],
-                        None,
-                        None,
-                    );
-                    self.unreachable();
-                }
+            } else {
+                self.abort();
+                self.unreachable();
             }
 
             self.switch_to_block(bb_pass);

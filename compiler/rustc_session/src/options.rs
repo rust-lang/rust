@@ -773,7 +773,6 @@ mod desc {
     pub(crate) const parse_cfguard: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `checks`, or `nochecks`";
     pub(crate) const parse_cfprotection: &str = "`none`|`no`|`n` (default), `branch`, `return`, or `full`|`yes`|`y` (equivalent to `branch` and `return`)";
-    pub(crate) const parse_cfi_mode: &str = "`trap` (default) or `diag`";
     pub(crate) const parse_debuginfo: &str = "either an integer (0, 1, 2), `none`, `line-directives-only`, `line-tables-only`, `limited`, or `full`";
     pub(crate) const parse_debuginfo_compression: &str = "one of `none`, `zlib`, or `zstd`";
     pub(crate) const parse_mir_strip_debuginfo: &str =
@@ -1304,15 +1303,6 @@ pub mod parse {
             Some("return") => CFProtection::Return,
             Some("full") => CFProtection::Full,
             Some(_) => return false,
-        };
-        true
-    }
-
-    pub(crate) fn parse_cfi_mode(slot: &mut CfiMode, v: Option<&str>) -> bool {
-        *slot = match v {
-            Some("trap") => CfiMode::Trap,
-            Some("diag") => CfiMode::Diag,
-            _ => return false,
         };
         true
     }
@@ -2271,8 +2261,6 @@ options! {
         "cache the results of derive proc macro invocations (potentially unsound!) (default: no"),
     cf_protection: CFProtection = (CFProtection::None, parse_cfprotection, [TRACKED],
         "instrument control-flow architecture protection"),
-    cfi_mode: CfiMode = (CfiMode::Trap, parse_cfi_mode, [TRACKED],
-        "set the CFI failure mode: `trap` (default) or `diag`"),
     check_cfg_all_expected: bool = (false, parse_bool, [UNTRACKED],
         "show all expected values in check-cfg diagnostics (default: no)"),
     checksum_hash_algorithm: Option<SourceFileHashAlgorithm> = (None, parse_cargo_src_file_hash, [TRACKED],
@@ -2638,6 +2626,10 @@ written to standard error output)"),
         "enable generalizing pointer types (default: no)"),
     sanitizer_cfi_normalize_integers: Option<bool> = (None, parse_opt_bool, [TRACKED] { TARGET_MODIFIER: SanitizerCfiNormalizeIntegers },
         "enable normalizing integer types (default: no)"),
+    sanitizer_cfi_diag: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "enable CFI diagnostics (default: no)"),
+    sanitizer_cfi_recover: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "enable CFI recovery (default: no)"),
     sanitizer_dataflow_abilist: Vec<String> = (Vec::new(), parse_comma_list, [TRACKED],
         "additional ABI list files that control how shadow parameters are passed (comma separated)"),
     sanitizer_kcfi_arity: Option<bool> = (None, parse_opt_bool, [TRACKED],

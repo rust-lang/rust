@@ -13,7 +13,7 @@
 //@ [cfi] compile-flags: -C opt-level=0 -C codegen-units=1 -C lto
 //@ [cfi] compile-flags: -C prefer-dynamic=off
 //@ [cfi] compile-flags: -Z sanitizer=cfi
-//@ [cfi] compile-flags: -Z cfi-mode=diag
+//@ [cfi] compile-flags: -Z sanitizer-cfi-diag=true
 //@ [kcfi] compile-flags: -Z sanitizer=kcfi
 //@ [kcfi] compile-flags: -C panic=abort -C prefer-dynamic=off
 //@ run-fail-or-crash
