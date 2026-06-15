@@ -370,7 +370,7 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
         let passes = store
             .late_module_passes
             .iter()
-            .map(|mk_pass| (mk_pass)(tcx))
+            .map(|mk_pass| mk_pass(tcx))
             .chain(std::iter::once(builtin_lints))
             .collect::<Vec<_>>();
 
@@ -408,7 +408,7 @@ fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
 
     // Note: `passes` is often empty after filtering.
     let mut passes: Vec<_> =
-        unerased_lint_store(tcx.sess).late_passes.iter().map(|mk_pass| (mk_pass)(tcx)).collect();
+        unerased_lint_store(tcx.sess).late_passes.iter().map(|mk_pass| mk_pass(tcx)).collect();
     passes.retain(|pass| {
         let lints = pass.get_lints();
         // Lintless passes are always in

@@ -336,7 +336,7 @@ pub fn check_ast_node<'a>(
     if passes.is_empty() {
         check_ast_node_inner(sess, check_node, context, builtin_lints);
     } else {
-        let mut passes: Vec<_> = passes.iter().map(|mk_pass| (mk_pass)()).collect();
+        let mut passes: Vec<_> = passes.iter().map(|mk_pass| mk_pass()).collect();
         passes.push(Box::new(builtin_lints));
         let pass = RuntimeCombinedEarlyLintPass { passes };
         check_ast_node_inner(sess, check_node, context, pass);
