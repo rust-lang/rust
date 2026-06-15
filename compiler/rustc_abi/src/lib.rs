@@ -89,6 +89,10 @@ bitflags! {
         /// If true, the type's crate has opted into layout randomization.
         /// Other flags can still inhibit reordering and thus randomization.
         /// The seed stored in `ReprOptions.field_shuffle_seed`.
+        ///
+        /// `repr(Rust)` structs with only zero-sized fields and single-variant `repr(Rust)` enums with only
+        /// zero-sized fields must remain zero-sized as per T-lang decision
+        /// https://github.com/rust-lang/reference/pull/2262
         const RANDOMIZE_LAYOUT   = 1 << 4;
         /// If true, the type is always passed indirectly by non-Rustic ABIs.
         /// See [`TyAndLayout::pass_indirectly_in_non_rustic_abis`] for details.
