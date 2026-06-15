@@ -174,7 +174,7 @@ impl PassByRefOrValue {
                         && size <= self.ref_min_size
                         && let hir::TyKind::Ref(_, MutTy { ty: decl_ty, .. }) = input.kind
                     {
-                        if let Some(typeck) = cx.maybe_typeck_results()
+                        if let Some(typeck) = cx.typeck_results
                             // Don't lint if a raw pointer is created.
                             // TODO: Limit the check only to raw pointers to the argument (or part of the argument)
                             //       which escape the current function.

@@ -72,7 +72,7 @@ impl<'tcx> MaybeTypeckRes<'tcx> for LateContext<'tcx> {
     #[inline]
     #[cfg_attr(debug_assertions, track_caller)]
     fn typeck_res(&self) -> Option<&TypeckResults<'tcx>> {
-        if let Some(typeck) = self.maybe_typeck_results() {
+        if let Some(typeck) = self.typeck_results {
             Some(typeck)
         } else {
             // It's possible to get the `TypeckResults` for any other body, but
