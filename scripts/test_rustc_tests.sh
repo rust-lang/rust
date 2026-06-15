@@ -19,7 +19,7 @@ for test in $(rg -i --files-with-matches "//(\[\w+\])?~[^\|]*\s*ERR|//@ error-pa
   rm $test
 done
 
-git checkout -- tests/ui/issues/auxiliary/issue-3136-a.rs # contains //~ERROR, but shouldn't be removed
+git checkout -- tests/ui/cross-crate/auxiliary/nested-struct-in-polymorphic-impl-method.rs # contains //~ERROR, but shouldn't be removed
 git checkout -- tests/ui/entry-point/auxiliary/bad_main_functions.rs
 
 # missing features
@@ -149,6 +149,7 @@ rm tests/ui/abi/large-byval-align.rs # exceeds implementation limit of Cranelift
 rm -r tests/run-make/short-ice # ICE backtrace begin/end marker mismatch
 rm -r tests/run-make/naked-dead-code-elimination # function not eliminated
 rm tests/ui/codegen/huge-stacks.rs # Cranelift doesn't allow stack frames to exceed 4GB
+rm -r tests/run-make/doctests-test_harness # different thread names likely caused by -Zpanic-abort-tests
 
 # doesn't work due to the way the rustc test suite is invoked.
 # should work when using ./x.py test the way it is intended
@@ -175,6 +176,7 @@ rm tests/codegen-units/item-collection/opaque-return-impls.rs # extra mono item.
 # ============
 rm -r tests/run-make/extern-fn-explicit-align # argument alignment not yet supported
 rm -r tests/run-make/panic-abort-eh_frame # .eh_frame emitted with panic=abort
+rm -r tests/run-make/staticlib-hide-internal-symbols # -Zstaticlib-hide-internal-symbols seems to be broken
 
 # bugs in the test suite
 # ======================
