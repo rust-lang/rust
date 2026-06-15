@@ -71,6 +71,16 @@ impl HasHuge {
     }
 }
 
+// don't lint (issue #17202): the size of `[T; N]` depends on a const generic parameter
+fn const_generic_array<const N: usize, T>(value: Box<[T; N]>) -> Box<[T; N]> {
+    value
+}
+
+// don't lint (issue #17202): the size of `[T; 10]` depends on the generic element type
+fn generic_element_array<T>(value: Box<[T; 10]>) -> Box<[T; 10]> {
+    value
+}
+
 fn main() {
     // don't lint: this is a closure
     let a = || -> Box<usize> { Box::new(5) };
