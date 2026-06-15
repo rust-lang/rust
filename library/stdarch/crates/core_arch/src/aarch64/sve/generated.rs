@@ -43336,19 +43336,6 @@ pub fn svusmmla_s32(op1: svint32_t, op2: svuint8_t, op3: svint8_t) -> svint32_t 
     unsafe { _svusmmla_s32(op1, op2.as_signed(), op3) }
 }
 #[doc = "Concatenate even elements from two inputs"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuzp1_b8)"]
-#[inline]
-#[target_feature(enable = "sve")]
-#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(uzp1))]
-pub fn svuzp1_b8(op1: svbool_t, op2: svbool_t) -> svbool_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uzp1.nxv16i1")]
-        fn _svuzp1_b8(op1: svbool_t, op2: svbool_t) -> svbool_t;
-    }
-    unsafe { _svuzp1_b8(op1, op2) }
-}
-#[doc = "Concatenate even elements from two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuzp1_b16)"]
 #[inline]
 #[target_feature(enable = "sve")]
@@ -43356,10 +43343,10 @@ pub fn svuzp1_b8(op1: svbool_t, op2: svbool_t) -> svbool_t {
 #[cfg_attr(test, assert_instr(uzp1))]
 pub fn svuzp1_b16(op1: svbool_t, op2: svbool_t) -> svbool_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uzp1.nxv8i1")]
-        fn _svuzp1_b16(op1: svbool8_t, op2: svbool8_t) -> svbool8_t;
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uzp1.b16")]
+        fn _svuzp1_b16(op1: svbool_t, op2: svbool_t) -> svbool_t;
     }
-    unsafe { _svuzp1_b16(op1.sve_into(), op2.sve_into()).sve_into() }
+    unsafe { _svuzp1_b16(op1.sve_into(), op2.sve_into()) }
 }
 #[doc = "Concatenate even elements from two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuzp1_b32)"]
@@ -43369,10 +43356,10 @@ pub fn svuzp1_b16(op1: svbool_t, op2: svbool_t) -> svbool_t {
 #[cfg_attr(test, assert_instr(uzp1))]
 pub fn svuzp1_b32(op1: svbool_t, op2: svbool_t) -> svbool_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uzp1.nxv4i1")]
-        fn _svuzp1_b32(op1: svbool4_t, op2: svbool4_t) -> svbool4_t;
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uzp1.b32")]
+        fn _svuzp1_b32(op1: svbool_t, op2: svbool_t) -> svbool_t;
     }
-    unsafe { _svuzp1_b32(op1.sve_into(), op2.sve_into()).sve_into() }
+    unsafe { _svuzp1_b32(op1.sve_into(), op2.sve_into()) }
 }
 #[doc = "Concatenate even elements from two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuzp1_b64)"]
@@ -43382,10 +43369,10 @@ pub fn svuzp1_b32(op1: svbool_t, op2: svbool_t) -> svbool_t {
 #[cfg_attr(test, assert_instr(uzp1))]
 pub fn svuzp1_b64(op1: svbool_t, op2: svbool_t) -> svbool_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uzp1.nxv2i1")]
-        fn _svuzp1_b64(op1: svbool2_t, op2: svbool2_t) -> svbool2_t;
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uzp1.b64")]
+        fn _svuzp1_b64(op1: svbool_t, op2: svbool_t) -> svbool_t;
     }
-    unsafe { _svuzp1_b64(op1.sve_into(), op2.sve_into()).sve_into() }
+    unsafe { _svuzp1_b64(op1.sve_into(), op2.sve_into()) }
 }
 #[doc = "Concatenate even elements from two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuzp1[_f32])"]
@@ -43500,6 +43487,19 @@ pub fn svuzp1_u32(op1: svuint32_t, op2: svuint32_t) -> svuint32_t {
 #[cfg_attr(test, assert_instr(uzp1))]
 pub fn svuzp1_u64(op1: svuint64_t, op2: svuint64_t) -> svuint64_t {
     unsafe { svuzp1_s64(op1.as_signed(), op2.as_signed()).as_unsigned() }
+}
+#[doc = "Concatenate even elements from two inputs"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuzp1[_b8])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+#[cfg_attr(test, assert_instr(uzp1))]
+pub fn svuzp1_b8(op1: svbool_t, op2: svbool_t) -> svbool_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uzp1.nxv16i1")]
+        fn _svuzp1_b8(op1: svbool_t, op2: svbool_t) -> svbool_t;
+    }
+    unsafe { _svuzp1_b8(op1, op2) }
 }
 #[doc = "Concatenate even quadwords from two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuzp1q[_f32])"]
@@ -43616,19 +43616,6 @@ pub fn svuzp1q_u64(op1: svuint64_t, op2: svuint64_t) -> svuint64_t {
     unsafe { svuzp1q_s64(op1.as_signed(), op2.as_signed()).as_unsigned() }
 }
 #[doc = "Concatenate odd elements from two inputs"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuzp2_b8)"]
-#[inline]
-#[target_feature(enable = "sve")]
-#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(uzp2))]
-pub fn svuzp2_b8(op1: svbool_t, op2: svbool_t) -> svbool_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uzp2.nxv16i1")]
-        fn _svuzp2_b8(op1: svbool_t, op2: svbool_t) -> svbool_t;
-    }
-    unsafe { _svuzp2_b8(op1, op2) }
-}
-#[doc = "Concatenate odd elements from two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuzp2_b16)"]
 #[inline]
 #[target_feature(enable = "sve")]
@@ -43636,10 +43623,10 @@ pub fn svuzp2_b8(op1: svbool_t, op2: svbool_t) -> svbool_t {
 #[cfg_attr(test, assert_instr(uzp2))]
 pub fn svuzp2_b16(op1: svbool_t, op2: svbool_t) -> svbool_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uzp2.nxv8i1")]
-        fn _svuzp2_b16(op1: svbool8_t, op2: svbool8_t) -> svbool8_t;
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uzp2.b16")]
+        fn _svuzp2_b16(op1: svbool_t, op2: svbool_t) -> svbool_t;
     }
-    unsafe { _svuzp2_b16(op1.sve_into(), op2.sve_into()).sve_into() }
+    unsafe { _svuzp2_b16(op1.sve_into(), op2.sve_into()) }
 }
 #[doc = "Concatenate odd elements from two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuzp2_b32)"]
@@ -43649,10 +43636,10 @@ pub fn svuzp2_b16(op1: svbool_t, op2: svbool_t) -> svbool_t {
 #[cfg_attr(test, assert_instr(uzp2))]
 pub fn svuzp2_b32(op1: svbool_t, op2: svbool_t) -> svbool_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uzp2.nxv4i1")]
-        fn _svuzp2_b32(op1: svbool4_t, op2: svbool4_t) -> svbool4_t;
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uzp2.b32")]
+        fn _svuzp2_b32(op1: svbool_t, op2: svbool_t) -> svbool_t;
     }
-    unsafe { _svuzp2_b32(op1.sve_into(), op2.sve_into()).sve_into() }
+    unsafe { _svuzp2_b32(op1.sve_into(), op2.sve_into()) }
 }
 #[doc = "Concatenate odd elements from two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuzp2_b64)"]
@@ -43662,10 +43649,10 @@ pub fn svuzp2_b32(op1: svbool_t, op2: svbool_t) -> svbool_t {
 #[cfg_attr(test, assert_instr(uzp2))]
 pub fn svuzp2_b64(op1: svbool_t, op2: svbool_t) -> svbool_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uzp2.nxv2i1")]
-        fn _svuzp2_b64(op1: svbool2_t, op2: svbool2_t) -> svbool2_t;
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uzp2.b64")]
+        fn _svuzp2_b64(op1: svbool_t, op2: svbool_t) -> svbool_t;
     }
-    unsafe { _svuzp2_b64(op1.sve_into(), op2.sve_into()).sve_into() }
+    unsafe { _svuzp2_b64(op1.sve_into(), op2.sve_into()) }
 }
 #[doc = "Concatenate odd elements from two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuzp2[_f32])"]
@@ -43780,6 +43767,19 @@ pub fn svuzp2_u32(op1: svuint32_t, op2: svuint32_t) -> svuint32_t {
 #[cfg_attr(test, assert_instr(uzp2))]
 pub fn svuzp2_u64(op1: svuint64_t, op2: svuint64_t) -> svuint64_t {
     unsafe { svuzp2_s64(op1.as_signed(), op2.as_signed()).as_unsigned() }
+}
+#[doc = "Concatenate odd elements from two inputs"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuzp2[_b8])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+#[cfg_attr(test, assert_instr(uzp2))]
+pub fn svuzp2_b8(op1: svbool_t, op2: svbool_t) -> svbool_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uzp2.nxv16i1")]
+        fn _svuzp2_b8(op1: svbool_t, op2: svbool_t) -> svbool_t;
+    }
+    unsafe { _svuzp2_b8(op1, op2) }
 }
 #[doc = "Concatenate odd quadwords from two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuzp2q[_f32])"]
@@ -44421,19 +44421,6 @@ pub fn svwrffr(op: svbool_t) {
     unsafe { _svwrffr(op) }
 }
 #[doc = "Interleave elements from low halves of two inputs"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svzip1_b8)"]
-#[inline]
-#[target_feature(enable = "sve")]
-#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(zip1))]
-pub fn svzip1_b8(op1: svbool_t, op2: svbool_t) -> svbool_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.zip1.nxv16i1")]
-        fn _svzip1_b8(op1: svbool_t, op2: svbool_t) -> svbool_t;
-    }
-    unsafe { _svzip1_b8(op1, op2) }
-}
-#[doc = "Interleave elements from low halves of two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svzip1_b16)"]
 #[inline]
 #[target_feature(enable = "sve")]
@@ -44441,10 +44428,10 @@ pub fn svzip1_b8(op1: svbool_t, op2: svbool_t) -> svbool_t {
 #[cfg_attr(test, assert_instr(zip1))]
 pub fn svzip1_b16(op1: svbool_t, op2: svbool_t) -> svbool_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.zip1.nxv8i1")]
-        fn _svzip1_b16(op1: svbool8_t, op2: svbool8_t) -> svbool8_t;
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.zip1.b16")]
+        fn _svzip1_b16(op1: svbool_t, op2: svbool_t) -> svbool_t;
     }
-    unsafe { _svzip1_b16(op1.sve_into(), op2.sve_into()).sve_into() }
+    unsafe { _svzip1_b16(op1.sve_into(), op2.sve_into()) }
 }
 #[doc = "Interleave elements from low halves of two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svzip1_b32)"]
@@ -44454,10 +44441,10 @@ pub fn svzip1_b16(op1: svbool_t, op2: svbool_t) -> svbool_t {
 #[cfg_attr(test, assert_instr(zip1))]
 pub fn svzip1_b32(op1: svbool_t, op2: svbool_t) -> svbool_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.zip1.nxv4i1")]
-        fn _svzip1_b32(op1: svbool4_t, op2: svbool4_t) -> svbool4_t;
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.zip1.b32")]
+        fn _svzip1_b32(op1: svbool_t, op2: svbool_t) -> svbool_t;
     }
-    unsafe { _svzip1_b32(op1.sve_into(), op2.sve_into()).sve_into() }
+    unsafe { _svzip1_b32(op1.sve_into(), op2.sve_into()) }
 }
 #[doc = "Interleave elements from low halves of two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svzip1_b64)"]
@@ -44467,10 +44454,10 @@ pub fn svzip1_b32(op1: svbool_t, op2: svbool_t) -> svbool_t {
 #[cfg_attr(test, assert_instr(zip1))]
 pub fn svzip1_b64(op1: svbool_t, op2: svbool_t) -> svbool_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.zip1.nxv2i1")]
-        fn _svzip1_b64(op1: svbool2_t, op2: svbool2_t) -> svbool2_t;
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.zip1.b64")]
+        fn _svzip1_b64(op1: svbool_t, op2: svbool_t) -> svbool_t;
     }
-    unsafe { _svzip1_b64(op1.sve_into(), op2.sve_into()).sve_into() }
+    unsafe { _svzip1_b64(op1.sve_into(), op2.sve_into()) }
 }
 #[doc = "Interleave elements from low halves of two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svzip1[_f32])"]
@@ -44585,6 +44572,19 @@ pub fn svzip1_u32(op1: svuint32_t, op2: svuint32_t) -> svuint32_t {
 #[cfg_attr(test, assert_instr(zip1))]
 pub fn svzip1_u64(op1: svuint64_t, op2: svuint64_t) -> svuint64_t {
     unsafe { svzip1_s64(op1.as_signed(), op2.as_signed()).as_unsigned() }
+}
+#[doc = "Interleave elements from low halves of two inputs"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svzip1[_b8])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+#[cfg_attr(test, assert_instr(zip1))]
+pub fn svzip1_b8(op1: svbool_t, op2: svbool_t) -> svbool_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.zip1.nxv16i1")]
+        fn _svzip1_b8(op1: svbool_t, op2: svbool_t) -> svbool_t;
+    }
+    unsafe { _svzip1_b8(op1, op2) }
 }
 #[doc = "Interleave quadwords from low halves of two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svzip1q[_f32])"]
@@ -44701,19 +44701,6 @@ pub fn svzip1q_u64(op1: svuint64_t, op2: svuint64_t) -> svuint64_t {
     unsafe { svzip1q_s64(op1.as_signed(), op2.as_signed()).as_unsigned() }
 }
 #[doc = "Interleave elements from high halves of two inputs"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svzip2_b8)"]
-#[inline]
-#[target_feature(enable = "sve")]
-#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(zip2))]
-pub fn svzip2_b8(op1: svbool_t, op2: svbool_t) -> svbool_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.zip2.nxv16i1")]
-        fn _svzip2_b8(op1: svbool_t, op2: svbool_t) -> svbool_t;
-    }
-    unsafe { _svzip2_b8(op1, op2) }
-}
-#[doc = "Interleave elements from high halves of two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svzip2_b16)"]
 #[inline]
 #[target_feature(enable = "sve")]
@@ -44721,10 +44708,10 @@ pub fn svzip2_b8(op1: svbool_t, op2: svbool_t) -> svbool_t {
 #[cfg_attr(test, assert_instr(zip2))]
 pub fn svzip2_b16(op1: svbool_t, op2: svbool_t) -> svbool_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.zip2.nxv8i1")]
-        fn _svzip2_b16(op1: svbool8_t, op2: svbool8_t) -> svbool8_t;
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.zip2.b16")]
+        fn _svzip2_b16(op1: svbool_t, op2: svbool_t) -> svbool_t;
     }
-    unsafe { _svzip2_b16(op1.sve_into(), op2.sve_into()).sve_into() }
+    unsafe { _svzip2_b16(op1.sve_into(), op2.sve_into()) }
 }
 #[doc = "Interleave elements from high halves of two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svzip2_b32)"]
@@ -44734,10 +44721,10 @@ pub fn svzip2_b16(op1: svbool_t, op2: svbool_t) -> svbool_t {
 #[cfg_attr(test, assert_instr(zip2))]
 pub fn svzip2_b32(op1: svbool_t, op2: svbool_t) -> svbool_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.zip2.nxv4i1")]
-        fn _svzip2_b32(op1: svbool4_t, op2: svbool4_t) -> svbool4_t;
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.zip2.b32")]
+        fn _svzip2_b32(op1: svbool_t, op2: svbool_t) -> svbool_t;
     }
-    unsafe { _svzip2_b32(op1.sve_into(), op2.sve_into()).sve_into() }
+    unsafe { _svzip2_b32(op1.sve_into(), op2.sve_into()) }
 }
 #[doc = "Interleave elements from high halves of two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svzip2_b64)"]
@@ -44747,10 +44734,10 @@ pub fn svzip2_b32(op1: svbool_t, op2: svbool_t) -> svbool_t {
 #[cfg_attr(test, assert_instr(zip2))]
 pub fn svzip2_b64(op1: svbool_t, op2: svbool_t) -> svbool_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.zip2.nxv2i1")]
-        fn _svzip2_b64(op1: svbool2_t, op2: svbool2_t) -> svbool2_t;
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.zip2.b64")]
+        fn _svzip2_b64(op1: svbool_t, op2: svbool_t) -> svbool_t;
     }
-    unsafe { _svzip2_b64(op1.sve_into(), op2.sve_into()).sve_into() }
+    unsafe { _svzip2_b64(op1.sve_into(), op2.sve_into()) }
 }
 #[doc = "Interleave elements from high halves of two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svzip2[_f32])"]
@@ -44865,6 +44852,19 @@ pub fn svzip2_u32(op1: svuint32_t, op2: svuint32_t) -> svuint32_t {
 #[cfg_attr(test, assert_instr(zip2))]
 pub fn svzip2_u64(op1: svuint64_t, op2: svuint64_t) -> svuint64_t {
     unsafe { svzip2_s64(op1.as_signed(), op2.as_signed()).as_unsigned() }
+}
+#[doc = "Interleave elements from high halves of two inputs"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svzip2[_b8])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+#[cfg_attr(test, assert_instr(zip2))]
+pub fn svzip2_b8(op1: svbool_t, op2: svbool_t) -> svbool_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.zip2.nxv16i1")]
+        fn _svzip2_b8(op1: svbool_t, op2: svbool_t) -> svbool_t;
+    }
+    unsafe { _svzip2_b8(op1, op2) }
 }
 #[doc = "Interleave quadwords from high halves of two inputs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svzip2q[_f32])"]

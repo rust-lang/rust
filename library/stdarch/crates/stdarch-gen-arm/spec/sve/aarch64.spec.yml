@@ -1021,7 +1021,7 @@ intrinsics:
     doc: Interleave elements from low halves of two inputs
     arguments: ["op1: {sve_type}", "op2: {sve_type}"]
     return_type: "{sve_type}"
-    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    types: [b8, f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
     assert_instr: [zip1]
     compose:
       - LLVMLink: { name: "zip1.{sve_type}" }
@@ -1031,10 +1031,13 @@ intrinsics:
     doc: Interleave elements from low halves of two inputs
     arguments: ["op1: {sve_type}", "op2: {sve_type}"]
     return_type: "{sve_type}"
-    types: [b8, b16, b32, b64]
+    types: [b16, b32, b64]
     assert_instr: [zip1]
     compose:
-      - LLVMLink: { name: "zip1.{sve_type}" }
+      - LLVMLink:
+          name: "llvm.aarch64.sve.zip1.b{size}"
+          arguments: ["op1: svbool_t", "op2: svbool_t"]
+          return_type: "svbool_t"
 
   - name: svzip1q[_{type}]
     attr: [*sve-unstable]
@@ -1052,7 +1055,7 @@ intrinsics:
     doc: Interleave elements from high halves of two inputs
     arguments: ["op1: {sve_type}", "op2: {sve_type}"]
     return_type: "{sve_type}"
-    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    types: [b8, f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
     assert_instr: [zip2]
     compose:
       - LLVMLink: { name: "zip2.{sve_type}" }
@@ -1062,10 +1065,13 @@ intrinsics:
     doc: Interleave elements from high halves of two inputs
     arguments: ["op1: {sve_type}", "op2: {sve_type}"]
     return_type: "{sve_type}"
-    types: [b8, b16, b32, b64]
+    types: [b16, b32, b64]
     assert_instr: [zip2]
     compose:
-      - LLVMLink: { name: "zip2.{sve_type}" }
+      - LLVMLink:
+          name: "llvm.aarch64.sve.zip2.b{size}"
+          arguments: ["op1: svbool_t", "op2: svbool_t"]
+          return_type: "svbool_t"
 
   - name: svzip2q[_{type}]
     attr: [*sve-unstable]
@@ -1083,7 +1089,7 @@ intrinsics:
     doc: Concatenate even elements from two inputs
     arguments: ["op1: {sve_type}", "op2: {sve_type}"]
     return_type: "{sve_type}"
-    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    types: [b8, f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
     assert_instr: [uzp1]
     compose:
       - LLVMLink: { name: "uzp1.{sve_type}" }
@@ -1093,10 +1099,13 @@ intrinsics:
     doc: Concatenate even elements from two inputs
     arguments: ["op1: {sve_type}", "op2: {sve_type}"]
     return_type: "{sve_type}"
-    types: [b8, b16, b32, b64]
+    types: [b16, b32, b64]
     assert_instr: [uzp1]
     compose:
-      - LLVMLink: { name: "uzp1.{sve_type}" }
+      - LLVMLink:
+          name: "llvm.aarch64.sve.uzp1.b{size}"
+          arguments: ["op1: svbool_t", "op2: svbool_t"]
+          return_type: "svbool_t"
 
   - name: svuzp1q[_{type}]
     attr: [*sve-unstable]
@@ -1114,7 +1123,7 @@ intrinsics:
     doc: Concatenate odd elements from two inputs
     arguments: ["op1: {sve_type}", "op2: {sve_type}"]
     return_type: "{sve_type}"
-    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    types: [b8, f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
     assert_instr: [uzp2]
     compose:
       - LLVMLink: { name: "uzp2.{sve_type}" }
@@ -1124,10 +1133,13 @@ intrinsics:
     doc: Concatenate odd elements from two inputs
     arguments: ["op1: {sve_type}", "op2: {sve_type}"]
     return_type: "{sve_type}"
-    types: [b8, b16, b32, b64]
+    types: [b16, b32, b64]
     assert_instr: [uzp2]
     compose:
-      - LLVMLink: { name: "uzp2.{sve_type}" }
+      - LLVMLink:
+          name: "llvm.aarch64.sve.uzp2.b{size}"
+          arguments: ["op1: svbool_t", "op2: svbool_t"]
+          return_type: "svbool_t"
 
   - name: svuzp2q[_{type}]
     attr: [*sve-unstable]
