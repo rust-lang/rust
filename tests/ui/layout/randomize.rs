@@ -67,6 +67,8 @@ pub struct ZstFieldsStruct {
     d: [(); 42],
 }
 #[allow(dead_code)]
+pub enum EmptyEnum {}
+#[allow(dead_code)]
 pub enum SingleUnitVariantEnum { A }
 #[allow(dead_code)]
 pub enum SingleZstFieldTupleVariantEnum { A((), [u64; 0], [u8; 0], [(); 42]) }
@@ -87,6 +89,7 @@ const _: () = {
     assert!(size_of::<EmptyStruct>() == 0);
     assert!(size_of::<ZstFieldsTupleStruct>() == 0);
     assert!(size_of::<ZstFieldsStruct>() == 0);
+    assert!(size_of::<EmptyEnum>() == 0);
     assert!(size_of::<SingleUnitVariantEnum>() == 0);
     assert!(size_of::<SingleZstFieldTupleVariantEnum>() == 0);
     assert!(size_of::<SingleZstFieldVariantEnum>() == 0);
