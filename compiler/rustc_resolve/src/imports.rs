@@ -1120,6 +1120,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let (import, import_error) = &errors[0];
 
             let mut custom_diagnostic = CustomDiagnostic::default();
+            let unresolved = import_error.segment.map(|s| s.name).unwrap_or(kw::Underscore);
 
             // `import` use of the attribute. We assume that someone who put the attribute on the
             // import has moren information than the person who put it on the module, so we choose
@@ -1132,7 +1133,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         err.segment.map(|s| s.name).unwrap_or(kw::Underscore)
                     })
                     .join(", ");
-                let args = FormatArgs { this, .. };
+                let args = FormatArgs { this, unresolved: unresolved.to_string(), .. };
                 custom_diagnostic.update(directive, &args);
             }
 
@@ -1149,7 +1150,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         "<unnamed crate>".to_string()
                     };
 
-                    let args = FormatArgs { this, .. };
+                    let args = FormatArgs { this, unresolved: unresolved.to_string(), .. };
 
                     custom_diagnostic.update(&on_unknown_attr.directive, &args);
                 } else {

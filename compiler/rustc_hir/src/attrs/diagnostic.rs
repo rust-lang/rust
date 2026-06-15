@@ -153,6 +153,9 @@ impl FormatString {
                 Piece::Arg(FormatArg::Found) => ret.push_str(&args.found),
                 Piece::Arg(FormatArg::Expected) => ret.push_str(&args.expected),
 
+                // only for on_unknown
+                Piece::Arg(FormatArg::Unresolved) => ret.push_str(&args.unresolved),
+
                 // It's only `rustc_onunimplemented` from here
                 Piece::Arg(FormatArg::ThisPath) => ret.push_str(&args.this_path),
                 Piece::Arg(FormatArg::ThisResolved) => {
@@ -215,6 +218,7 @@ pub struct FormatArgs {
     pub this_path: String = String::new(),
     pub found: String = String::new(),
     pub expected: String = String::new(),
+    pub unresolved: String = String::new(),
     pub item_context: &'static str = "",
     pub generic_args: Vec<(Symbol, String)> = Vec::new(),
 }
@@ -248,6 +252,8 @@ pub enum FormatArg {
     Found,
     /// {Expected} in diagnostic::on_type_error
     Expected,
+    /// {Unresolved} in diagnostic::on_unknown
+    Unresolved,
 }
 
 /// Represents the `on` filter in `#[rustc_on_unimplemented]`.
