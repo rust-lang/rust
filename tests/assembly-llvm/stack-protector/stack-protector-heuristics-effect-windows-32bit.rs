@@ -7,7 +7,7 @@
 //@ [strong] compile-flags: -Z stack-protector=strong
 //@ [basic] compile-flags: -Z stack-protector=basic
 //@ [none] compile-flags: -Z stack-protector=none
-//@ compile-flags: -C opt-level=2 -Z merge-functions=disabled -Cpanic=abort -Cdebuginfo=1
+//@ compile-flags: -Z allow-partial-mitigations=stack-protector -C opt-level=2 -Z merge-functions=disabled -Cpanic=abort -Cdebuginfo=1
 
 #![crate_type = "lib"]
 #![allow(internal_features)]
