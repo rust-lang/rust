@@ -1,0 +1,120 @@
+- // MIR for `overlapping_lifetimes` before MoveElimination
++ // MIR for `overlapping_lifetimes` after MoveElimination
+  
+  fn overlapping_lifetimes(_1: bool) -> Fields {
+      debug flag => _1;
+      let mut _0: Fields;
+      let _2: Fields;
+      let _4: ();
+      let mut _5: *const Fields;
+      let _6: ();
+      let mut _7: bool;
+      let mut _8: Fields;
+      let mut _9: Fields;
+      let _10: ();
+      let mut _11: *const Fields;
+      scope 1 {
+-         debug src => _2;
++         debug src => _9;
+          let mut _3: Fields;
+          scope 2 {
+-             debug dst => _3;
++             debug dst => _0;
+              scope 3 {
+              }
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_2);
+-         _2 = make_fields(const 0_u8) -> [return: bb1, unwind unreachable];
++         nop;
++         StorageLive(_9);
++         _9 = make_fields(const 0_u8) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+-         StorageLive(_3);
+-         StorageLive(_4);
++         nop;
++         nop;
++         nop;
+          StorageLive(_5);
+-         _5 = &raw const _2;
++         _5 = &raw const _9;
++         StorageLive(_4);
+          _4 = observe(move _5) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+-         StorageDead(_5);
+          StorageDead(_4);
+-         StorageLive(_7);
+-         _7 = copy _1;
+-         switchInt(move _7) -> [0: bb5, otherwise: bb3];
++         StorageDead(_5);
++         nop;
++         nop;
++         nop;
++         nop;
++         switchInt(move _1) -> [0: bb5, otherwise: bb3];
+      }
+  
+      bb3: {
+-         StorageLive(_8);
+-         _8 = make_fields(const 1_u8) -> [return: bb4, unwind unreachable];
++         nop;
++         _0 = make_fields(const 1_u8) -> [return: bb4, unwind unreachable];
+      }
+  
+      bb4: {
+-         _3 = move _8;
+-         StorageDead(_8);
++         nop;
++         nop;
+          goto -> bb6;
+      }
+  
+      bb5: {
+-         StorageLive(_9);
+-         _9 = move _2;
+-         _3 = move _9;
++         nop;
++         nop;
++         _0 = move _9;
+          StorageDead(_9);
++         nop;
++         StorageLive(_9);
+          goto -> bb6;
+      }
+  
+      bb6: {
+-         StorageDead(_7);
+-         StorageLive(_10);
++         nop;
++         nop;
++         nop;
+          StorageLive(_11);
+-         _11 = &raw const _3;
++         _11 = &raw const _0;
++         StorageLive(_10);
+          _10 = observe(move _11) -> [return: bb7, unwind unreachable];
+      }
+  
+      bb7: {
+-         StorageDead(_11);
+          StorageDead(_10);
+-         _0 = move _3;
+-         StorageDead(_3);
+-         StorageDead(_2);
++         StorageDead(_11);
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         StorageDead(_9);
+          return;
+      }
+  }
+  
