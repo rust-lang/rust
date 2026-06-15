@@ -183,6 +183,31 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         );
     }
 
+    /// Certain proofs (e.g. `Move`) may error during MIR typeck, so handle them separately.
+    pub(super) fn prove_fallible_predicate(
+        &mut self,
+        predicate: impl Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>> + std::fmt::Debug,
+        locations: Locations,
+        category: ConstraintCategory<'tcx>,
+    ) {
+        let span = self.last_span;
+        let predicate = predicate.upcast(self.tcx());
+        let op = FallibleCustomTypeOp::new(
+            |ocx| {
+                ocx.register_obligation(Obligation::new(
+                    ocx.infcx.tcx,
+                    ObligationCause::dummy_with_span(span),
+                    self.infcx.param_env,
+                    predicate,
+                ));
+                Ok(())
+            },
+            "fallible type op",
+        );
+
+        let _: Result<_, ErrorGuaranteed> = self.fully_perform_op(locations, category, op);
+    }
+
     pub(super) fn normalize<T>(
         &mut self,
         value: Unnormalized<'tcx, T>,

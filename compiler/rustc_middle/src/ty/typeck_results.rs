@@ -203,7 +203,7 @@ pub struct TypeckResults<'tcx> {
 
     /// Goals proven during HIR typeck which may be potentially region dependent.
     ///
-    /// Borrowck *uniquifies* regions which may cause these goal to be ambiguous in MIR
+    /// Borrowck *uniquifies* regions which may cause these goals to be ambiguous in MIR
     /// type check. We ICE if goals fail in borrowck to detect bugs during MIR building or
     /// missed checks in HIR typeck. To avoid ICE due to region dependence we store all
     /// goals which may be region dependent and reprove them in case borrowck encounters
