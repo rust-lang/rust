@@ -208,8 +208,6 @@ generate! {
     deprecated_in_future,
     deref_mut_method,
     diagnostics,
-    disallowed_profile,
-    disallowed_profiles,
     disallowed_types,
     drain,
     dump,
