@@ -2054,7 +2054,8 @@ pub const fn rotate_right<T: [const] fallback::FunnelShift>(x: T, shift: u32) ->
     unsafe { unchecked_funnel_shr(x, x, shift % (mem::size_of::<T>() as u32 * 8)) }
 }
 
-/// Returns (a + b) mod 2<sup>N</sup>, where N is the width of T in bits.
+/// Wrapping (modular) addition. Computes `a + b`,
+/// wrapping around at the boundary of the type.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
@@ -2068,7 +2069,8 @@ pub const fn rotate_right<T: [const] fallback::FunnelShift>(x: T, shift: u32) ->
 #[rustc_nounwind]
 #[rustc_intrinsic]
 pub const fn wrapping_add<T: Copy>(a: T, b: T) -> T;
-/// Returns (a - b) mod 2<sup>N</sup>, where N is the width of T in bits.
+/// Wrapping (modular) subtraction. Computes `a - b`,
+/// wrapping around at the boundary of the type.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
@@ -2082,7 +2084,8 @@ pub const fn wrapping_add<T: Copy>(a: T, b: T) -> T;
 #[rustc_nounwind]
 #[rustc_intrinsic]
 pub const fn wrapping_sub<T: Copy>(a: T, b: T) -> T;
-/// Returns (a * b) mod 2<sup>N</sup>, where N is the width of T in bits.
+/// Wrapping (modular) multiplication. Computes `a *
+/// b`, wrapping around at the boundary of the type.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
