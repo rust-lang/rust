@@ -29,10 +29,10 @@ LL | #![feature(asm_unwind)]
    |            ^^^^^^^^^^
 
 error: feature `negative_impls` is declared but not used
-  --> $DIR/unused-language-features.rs:15:28
+  --> $DIR/unused-language-features.rs:15:27
    |
-LL | #![cfg_attr(all(), feature(negative_impls))]
-   |                            ^^^^^^^^^^^^^^
+LL | #![cfg_attr(true, feature(negative_impls))]
+   |                           ^^^^^^^^^^^^^^
 
 error: aborting due to 5 previous errors
 

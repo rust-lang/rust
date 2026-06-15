@@ -9,7 +9,7 @@ macro_rules! alias_core_ffi {
     ($($t:ident)*) => {$(
         #[stable(feature = "raw_os", since = "1.1.0")]
         #[doc = include_str!(concat!("../../../../core/src/ffi/", stringify!($t), ".md"))]
-        #[doc(cfg(all()))]
+        #[doc(cfg(true))]
         pub type $t = core::ffi::$t;
     )*}
 }

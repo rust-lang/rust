@@ -783,6 +783,23 @@ pub(crate) mod unexpected_cfg_value {
 }
 
 #[derive(Diagnostic)]
+#[diag("use of empty `cfg({$predicate}())`")]
+#[note(
+    "this used to be a common pattern before `cfg(true)` and `cfg(false)` were added to the language in Rust 1.88"
+)]
+pub(crate) struct EmptyCfgPredictate {
+    #[suggestion(
+        "consider using a boolean literal",
+        code = "{lit}",
+        applicability = "machine-applicable",
+        style = "verbose"
+    )]
+    pub predicate_span: Span,
+    pub predicate: Symbol,
+    pub lit: bool,
+}
+
+#[derive(Diagnostic)]
 pub(crate) enum InvalidOnClause {
     #[diag("empty `on`-clause in `#[rustc_on_unimplemented]`", code = E0232)]
     Empty {

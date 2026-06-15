@@ -12,11 +12,11 @@
 //~^ ERROR feature `asm_unwind` is declared but not used
 
 // Enabled via cfg_attr, unused
-#![cfg_attr(all(), feature(negative_impls))]
+#![cfg_attr(true, feature(negative_impls))]
 //~^ ERROR feature `negative_impls` is declared but not used
 
 // Not enabled via cfg_attr, so should not warn even if unused
-#![cfg_attr(any(), feature(never_type))]
+#![cfg_attr(false, feature(never_type))]
 
 macro_rules! use_asm_unwind {
     () => {

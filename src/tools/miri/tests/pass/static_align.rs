@@ -1,5 +1,6 @@
 #![feature(static_align)]
 #![deny(non_upper_case_globals)]
+#![allow(empty_cfg_predicate)]
 
 use std::cell::Cell;
 

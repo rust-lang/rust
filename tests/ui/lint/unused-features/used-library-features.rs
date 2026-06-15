@@ -5,7 +5,7 @@
 
 // Used library features
 #![feature(error_iter)]
-#![cfg_attr(all(), feature(allocator_api))]
+#![cfg_attr(true, feature(allocator_api))]
 
 pub fn use_error_iter(e: &(dyn std::error::Error + 'static)) {
     for _ in e.sources() {}

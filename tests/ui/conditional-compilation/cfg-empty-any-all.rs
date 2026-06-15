@@ -1,4 +1,5 @@
 //! Test the behaviour of `cfg(any())` and `cfg(all())`
+#![allow(empty_cfg_predicate)]
 
 #[cfg(any())]  // Equivalent to cfg(false)
 struct Disabled;
