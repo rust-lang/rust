@@ -35226,19 +35226,6 @@ pub fn svreinterpret_u64_u64(op: svuint64_t) -> svuint64_t {
     unsafe { crate::intrinsics::transmute_unchecked(op) }
 }
 #[doc = "Reverse all elements"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrev_b8)"]
-#[inline]
-#[target_feature(enable = "sve")]
-#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(rev))]
-pub fn svrev_b8(op: svbool_t) -> svbool_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.vector.reverse.nxv16i1")]
-        fn _svrev_b8(op: svbool_t) -> svbool_t;
-    }
-    unsafe { _svrev_b8(op) }
-}
-#[doc = "Reverse all elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrev_b16)"]
 #[inline]
 #[target_feature(enable = "sve")]
@@ -35246,10 +35233,10 @@ pub fn svrev_b8(op: svbool_t) -> svbool_t {
 #[cfg_attr(test, assert_instr(rev))]
 pub fn svrev_b16(op: svbool_t) -> svbool_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.vector.reverse.nxv8i1")]
-        fn _svrev_b16(op: svbool8_t) -> svbool8_t;
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.rev.b16")]
+        fn _svrev_b16(op: svbool_t) -> svbool_t;
     }
-    unsafe { _svrev_b16(op.sve_into()).sve_into() }
+    unsafe { _svrev_b16(op.sve_into()) }
 }
 #[doc = "Reverse all elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrev_b32)"]
@@ -35259,10 +35246,10 @@ pub fn svrev_b16(op: svbool_t) -> svbool_t {
 #[cfg_attr(test, assert_instr(rev))]
 pub fn svrev_b32(op: svbool_t) -> svbool_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.vector.reverse.nxv4i1")]
-        fn _svrev_b32(op: svbool4_t) -> svbool4_t;
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.rev.b32")]
+        fn _svrev_b32(op: svbool_t) -> svbool_t;
     }
-    unsafe { _svrev_b32(op.sve_into()).sve_into() }
+    unsafe { _svrev_b32(op.sve_into()) }
 }
 #[doc = "Reverse all elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrev_b64)"]
@@ -35272,10 +35259,10 @@ pub fn svrev_b32(op: svbool_t) -> svbool_t {
 #[cfg_attr(test, assert_instr(rev))]
 pub fn svrev_b64(op: svbool_t) -> svbool_t {
     unsafe extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.vector.reverse.nxv2i1")]
-        fn _svrev_b64(op: svbool2_t) -> svbool2_t;
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.rev.b64")]
+        fn _svrev_b64(op: svbool_t) -> svbool_t;
     }
-    unsafe { _svrev_b64(op.sve_into()).sve_into() }
+    unsafe { _svrev_b64(op.sve_into()) }
 }
 #[doc = "Reverse all elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrev[_f32])"]
@@ -35390,6 +35377,19 @@ pub fn svrev_u32(op: svuint32_t) -> svuint32_t {
 #[cfg_attr(test, assert_instr(rev))]
 pub fn svrev_u64(op: svuint64_t) -> svuint64_t {
     unsafe { svrev_s64(op.as_signed()).as_unsigned() }
+}
+#[doc = "Reverse all elements"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrev[_b8])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+#[cfg_attr(test, assert_instr(rev))]
+pub fn svrev_b8(op: svbool_t) -> svbool_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.vector.reverse.nxv16i1")]
+        fn _svrev_b8(op: svbool_t) -> svbool_t;
+    }
+    unsafe { _svrev_b8(op) }
 }
 #[doc = "Reverse bytes within elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrevb[_s16]_m)"]

@@ -1207,7 +1207,7 @@ intrinsics:
     doc: Reverse all elements
     arguments: ["op: {sve_type}"]
     return_type: "{sve_type}"
-    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    types: [b8, f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
     assert_instr: [rev]
     compose:
       - LLVMLink: { name: "llvm.vector.reverse.{sve_type}" }
@@ -1217,10 +1217,13 @@ intrinsics:
     doc: Reverse all elements
     arguments: ["op: {sve_type}"]
     return_type: "{sve_type}"
-    types: [b8, b16, b32, b64]
+    types: [b16, b32, b64]
     assert_instr: [rev]
     compose:
-      - LLVMLink: { name: "llvm.vector.reverse.{sve_type}" }
+      - LLVMLink:
+          name: "llvm.aarch64.sve.rev.b{size}"
+          arguments: ["op: svbool_t"]
+          return_type: "svbool_t"
 
   - name: svrevb[_{type}]{_mxz}
     attr: [*sve-unstable]
