@@ -1,13 +1,19 @@
 #!/usr/bin/env sh
 
-set -ex
-
 if [ $# -lt 2 ]; then
-    >&2 echo "Usage: $0 <TARGET> <CC>"
+    >&2 echo "Usage: $0 <TARGET> <CC> <..args for \`cargo test\`..>"
     exit 1
 fi
 
-case ${2} in
+set -ex
+
+# Pop both arguments and leave "$@" as containing args to be forwarded to `cargo test`
+TARGET="$1"
+shift
+CC_KIND="$1"
+shift
+
+case ${CC_KIND} in
     clang)
         export CC="${CLANG_PATH}"
         CC_ARG_STYLE=clang
@@ -22,7 +28,7 @@ case ${2} in
         CC_ARG_STYLE=clang
         ;;
     *)
-        >&2 echo "Unknown compiler: ${2}"
+        >&2 echo "Unknown compiler: ${CC_KIND}"
         exit 1
         ;;
 esac
@@ -35,7 +41,7 @@ echo "PROFILE=${PROFILE}"
 
 INTRINSIC_TEST="--manifest-path=crates/intrinsic-test/Cargo.toml"
 
-case ${1} in
+case ${TARGET} in
     aarch64_be*)
         export CFLAGS="-I${AARCH64_BE_TOOLCHAIN}/aarch64_be-none-linux-gnu/libc/usr/include --sysroot={AARCH64_BE_TOOLCHAIN}/aarch64_be-none-linux-gnu/libc -Wno-nonportable-vector-initialization"
         ARCH=aarch64_be
@@ -60,24 +66,25 @@ case ${1} in
 
 esac
 
-case "${1}" in
+case "${TARGET}" in
     x86_64-unknown-linux-gnu*)
         env -u CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER \
             cargo run "${INTRINSIC_TEST}" --release \
             --bin intrinsic-test -- intrinsics_data/x86-intel.xml \
             --skip "crates/intrinsic-test/missing_${ARCH}_common.txt" \
-            --skip "crates/intrinsic-test/missing_${ARCH}_${2}.txt" \
-            --target "${1}" \
+            --skip "crates/intrinsic-test/missing_${ARCH}_${CC_KIND}.txt" \
+            --target "${TARGET}" \
             --cc-arg-style "${CC_ARG_STYLE}"
         ;;
     *)
         cargo run "${INTRINSIC_TEST}" --release \
             --bin intrinsic-test -- intrinsics_data/arm_intrinsics.json \
             --skip "crates/intrinsic-test/missing_${ARCH}_common.txt" \
-            --skip "crates/intrinsic-test/missing_${ARCH}_${2}.txt" \
-            --target "${1}" \
+            --skip "crates/intrinsic-test/missing_${ARCH}_${CC_KIND}.txt" \
+            --target "${TARGET}" \
             --cc-arg-style "${CC_ARG_STYLE}"
         ;;
 esac
 
-cargo test --manifest-path=rust_programs/Cargo.toml --target "${1}" --profile "${PROFILE}" --tests
+cargo test --manifest-path=rust_programs/Cargo.toml --target "${TARGET}" --profile "${PROFILE}" \
+    --tests "$@"
