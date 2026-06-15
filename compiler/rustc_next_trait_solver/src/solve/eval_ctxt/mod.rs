@@ -276,6 +276,12 @@ where
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+enum RerunStalled {
+    WontMakeProgress(Certainty),
+    MayMakeProgress,
+}
+
 impl<'a, D, I> EvalCtxt<'a, D>
 where
     D: SolverDelegate<Interner = I>,
@@ -474,6 +480,56 @@ where
         Ok(goal_evaluation)
     }
 
+    /// This is a fast path optimization:
+    /// If we have run this goal before, and it was stalled, check that any of the goal's
+    /// args have changed. This is a cheap way to determine that if we were to rerun this goal now,
+    /// it will remain stalled since it'll canonicalize the same way and evaluation is pure.
+    /// Therefore, we can skip this rerun
+    fn rerunning_stalled_goal_may_make_progress(
+        &self,
+        stalled_on: Option<&GoalStalledOn<I>>,
+    ) -> RerunStalled {
+        use RerunStalled::*;
+
+        // If fast paths are turned off, then we assume all goals can always make progress
+        if self.delegate.disable_trait_solver_fast_paths() {
+            return MayMakeProgress;
+        }
+
+        // If the goal isn't stalled, we should definitely run it.
+        let Some(&GoalStalledOn {
+            num_opaques,
+            ref stalled_vars,
+            ref sub_roots,
+            stalled_certainty,
+        }) = stalled_on
+        else {
+            return MayMakeProgress;
+        };
+
+        // If any of the stalled goal's generic arguments changed,
+        // rerunning might make progress so we should rerun.
+        if stalled_vars.iter().any(|value| self.delegate.is_changed_arg(*value)) {
+            return MayMakeProgress;
+        }
+
+        // If some inference took place in any of the sub roots,
+        // rerunning might make progress so we should rerun.
+        if sub_roots.iter().any(|&vid| self.delegate.sub_unification_table_root_var(vid) != vid) {
+            return MayMakeProgress;
+        }
+
+        // If any opaques changed in the opaque type storage,
+        // rerunning might make progress so we should rerun.
+        if self.delegate.opaque_types_storage_num_entries().needs_reevaluation(num_opaques) {
+            return MayMakeProgress;
+        }
+
+        // Otherwise, we can be sure that this stalled goal cannot make any progress
+        // and we can exit early.
+        WontMakeProgress(stalled_certainty)
+    }
+
     /// Recursively evaluates `goal`, returning the nested goals in case
     /// the nested goal is a `NormalizesTo` goal.
     ///
@@ -487,21 +543,8 @@ where
         goal: Goal<I, I::Predicate>,
         stalled_on: Option<GoalStalledOn<I>>,
     ) -> Result<(NestedNormalizationGoals<I>, GoalEvaluation<I>), NoSolutionOrRerunNonErased> {
-        // If we have run this goal before, and it was stalled, check that any of the goal's
-        // args have changed. Otherwise, we don't need to re-run the goal because it'll remain
-        // stalled, since it'll canonicalize the same way and evaluation is pure.
-        if let Some(GoalStalledOn {
-            num_opaques,
-            ref stalled_vars,
-            ref sub_roots,
-            stalled_certainty,
-        }) = stalled_on
-            && !self.delegate.disable_trait_solver_fast_paths()
-            && !stalled_vars.iter().any(|value| self.delegate.is_changed_arg(*value))
-            && !sub_roots
-                .iter()
-                .any(|&vid| self.delegate.sub_unification_table_root_var(vid) != vid)
-            && !self.delegate.opaque_types_storage_num_entries().needs_reevaluation(num_opaques)
+        if let RerunStalled::WontMakeProgress(stalled_certainty) =
+            self.rerunning_stalled_goal_may_make_progress(stalled_on.as_ref())
         {
             return Ok((
                 NestedNormalizationGoals::empty(),
