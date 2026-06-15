@@ -35,6 +35,7 @@ use late::{
     ForwardGenericParamBanReason, HasGenericParams, PathSource, PatternSource,
     UnnecessaryQualification,
 };
+pub use macros::registered_tools_ast;
 use macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::node_id::NodeMap;
@@ -76,7 +77,7 @@ use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
 use crate::imports::OnUnknownData;
-type Res = def::Res<NodeId>;
+use crate::ref_mut::{CmCell, CmRefCell};
 
 mod build_reduced_graph;
 mod check_unused;
@@ -90,9 +91,7 @@ mod late;
 mod macros;
 pub mod rustdoc;
 
-pub use macros::registered_tools_ast;
-
-use crate::ref_mut::{CmCell, CmRefCell};
+type Res = def::Res<NodeId>;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 enum Determinacy {
