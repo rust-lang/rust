@@ -1112,20 +1112,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let default_message =
             format!("unresolved import{} {}", pluralize!(paths.len()), paths.join(", "),);
 
-        // Process `#[diagnostic::on_unknown]` attributes.
+        // Process `import` use of  the `#[diagnostic::on_unknown]` attribute.
         //
         // We don't need to check feature gates here; that happens on initialization of the
         // `on_unknown_attr` fields.
-        let (message, label, notes) = {
-            let (import, import_error) = &errors[0];
-
-            let mut custom_diagnostic = CustomDiagnostic::default();
-            let unresolved = import_error.segment.map(|s| s.name).unwrap_or(kw::Underscore);
-
-            // `import` use of the attribute. We assume that someone who put the attribute on the
-            // import has moren information than the person who put it on the module, so we choose
-            // to prioritize the import attribute. We still display all the notes, though.
-            if let Some(directive) = import_error.on_unknown_attr.as_ref().map(|a| &a.directive) {
+        let (mut message, label, mut notes) =
+            if let Some(directive) = errors[0].1.on_unknown_attr.as_ref().map(|a| &a.directive) {
                 let this = errors
                     .iter()
                     .map(|(_import, err)| {
@@ -1133,15 +1125,27 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         err.segment.map(|s| s.name).unwrap_or(kw::Underscore)
                     })
                     .join(", ");
-                let args = FormatArgs { this, unresolved: unresolved.to_string(), .. };
-                custom_diagnostic.update(directive, &args);
-            }
 
-            // `mod` use of the attribute.
-            if let Some(ModuleOrUniformRoot::Module(module_data)) = import.imported_module.get()
-                && let Some(on_unknown_attr) = &module_data.on_unknown_attr
-            {
-                if let ModuleKind::Def(DefKind::Mod, _, _, name) = module_data.kind {
+                let args = FormatArgs { unresolved: this.clone(), this, .. };
+
+                let CustomDiagnostic { message, label, notes, parent_label: _dead } =
+                    directive.eval(None, &args);
+
+                (message, label, notes)
+            } else {
+                (None, None, Vec::new())
+            };
+
+        // `module` use of the `#[diagnostic::on_unknown]` attribute.
+        // We assume that someone who put the attribute on the import has more information than
+        // the person who put it on the module, so we choose to prioritize the import attribute.
+        let mut mod_diagnostics: Vec<CustomDiagnostic> = errors
+            .iter()
+            .map(|(import, import_error)| {
+                if let Some(ModuleOrUniformRoot::Module(module_data)) = import.imported_module.get()
+                    && let Some(on_unknown_attr) = &module_data.on_unknown_attr
+                    && let ModuleKind::Def(DefKind::Mod, _, _, name) = module_data.kind
+                {
                     let this = if let Some(name) = name {
                         name.to_string()
                     } else if let Some(crate_name) = &self.tcx.sess.opts.crate_name {
@@ -1149,25 +1153,40 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     } else {
                         "<unnamed crate>".to_string()
                     };
-
+                    let unresolved = import_error.segment.map(|s| s.name).unwrap_or(kw::Underscore);
                     let args = FormatArgs { this, unresolved: unresolved.to_string(), .. };
 
-                    custom_diagnostic.update(&on_unknown_attr.directive, &args);
+                    on_unknown_attr.directive.eval(None, &args)
                 } else {
-                    // We messed up somewhere? This might be reachable though,
-                    // we don't do target checking when doing early parsing.
+                    // It's possible we're here because an attribute was on the wrong item,
+                    // as we don't do target checking when doing early parsing.
+                    CustomDiagnostic::default()
+                }
+            })
+            .collect();
+
+        // If there is no import attribute with a message,
+        // but all mod messages are the same, use that.
+        let mod_message =
+            mod_diagnostics.iter_mut().flat_map(|d| d.message.take()).all_equal_value();
+        if message.is_none()
+            && let Ok(mod_msg) = mod_message
+        {
+            message = Some(mod_msg);
+        }
+
+        let mut diag = if let Some(message) = message {
+            struct_span_code_err!(self.dcx(), span, E0432, "{message}").with_note(default_message)
+        } else {
+            struct_span_code_err!(self.dcx(), span, E0432, "{default_message}")
+        };
+
+        for mod_diag in mod_diagnostics.iter_mut() {
+            for mod_note in mod_diag.notes.drain(..) {
+                if !notes.contains(&mod_note) {
+                    notes.push(mod_note);
                 }
             }
-
-            let CustomDiagnostic { message, label, notes, parent_label: _dead } = custom_diagnostic;
-            (message, label, notes)
-        };
-        let has_custom_message = message.is_some();
-        let message = message.as_deref().unwrap_or(default_message.as_str());
-
-        let mut diag = struct_span_code_err!(self.dcx(), span, E0432, "{message}");
-        if has_custom_message {
-            diag.note(default_message);
         }
 
         if !notes.is_empty() {
@@ -1182,14 +1201,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         /// Upper limit on the number of `span_label` messages.
         const MAX_LABEL_COUNT: usize = 10;
+        let mod_labels = mod_diagnostics.into_iter().map(|cd| cd.label);
 
-        for (import, err) in errors.into_iter().take(MAX_LABEL_COUNT) {
+        for ((import, err), mod_label) in errors.into_iter().zip(mod_labels).take(MAX_LABEL_COUNT) {
             let label_span = match err.segment {
                 Some(segment) => segment.span,
                 None => err.span,
             };
             if let Some(label) = &label {
                 diag.span_label(label_span, label.clone());
+            } else if let Some(label) = mod_label {
+                diag.span_label(label_span, label);
             } else if let Some(label) = &err.label {
                 diag.span_label(label_span, label.clone());
             }
