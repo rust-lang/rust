@@ -1,5 +1,5 @@
 error[E0618]: expected function, found `U`
-  --> $DIR/issue-21701.rs:2:13
+  --> $DIR/call-non-fn-type-param.rs:4:13
    |
 LL | fn foo<U>(t: U) {
    |           - `t` has type `U`
@@ -9,7 +9,7 @@ LL |     let y = t();
    |             call expression requires function
 
 error[E0618]: expected function, found struct `Bar`
-  --> $DIR/issue-21701.rs:9:13
+  --> $DIR/call-non-fn-type-param.rs:11:13
    |
 LL | struct Bar;
    | ---------- struct `Bar` defined here

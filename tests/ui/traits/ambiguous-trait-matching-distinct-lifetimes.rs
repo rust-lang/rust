@@ -1,7 +1,9 @@
-// Test that (for now) we report an ambiguity error here, because
-// specific trait relationships are ignored for the purposes of trait
-// matching. This behavior should likely be improved such that this
-// test passes. See #21974 for more details.
+//! <https://github.com/rust-lang/rust/issues/21974>.
+//!
+//! Test that (for now) we report an ambiguity error here, because
+//! specific trait relationships are ignored for the purposes of trait
+//! matching. This behavior should likely be improved such that this
+//! test passes.
 
 trait Foo {
     fn foo(self);

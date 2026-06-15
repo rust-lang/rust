@@ -1,11 +1,11 @@
 error[E0283]: type annotations needed: cannot satisfy `&'a T: Foo`
-  --> $DIR/issue-21974.rs:11:19
+  --> $DIR/ambiguous-trait-matching-distinct-lifetimes.rs:13:19
    |
 LL |     where &'a T : Foo,
    |                   ^^^
    |
 note: multiple `impl`s or `where` clauses satisfying `&'a T: Foo` found
-  --> $DIR/issue-21974.rs:11:19
+  --> $DIR/ambiguous-trait-matching-distinct-lifetimes.rs:13:19
    |
 LL |     where &'a T : Foo,
    |                   ^^^
@@ -13,13 +13,13 @@ LL |           &'b T : Foo
    |                   ^^^
 
 error[E0283]: type annotations needed: cannot satisfy `&T: Foo`
-  --> $DIR/issue-21974.rs:14:7
+  --> $DIR/ambiguous-trait-matching-distinct-lifetimes.rs:16:7
    |
 LL |     x.foo();
    |       ^^^
    |
 note: multiple `impl`s or `where` clauses satisfying `&T: Foo` found
-  --> $DIR/issue-21974.rs:11:19
+  --> $DIR/ambiguous-trait-matching-distinct-lifetimes.rs:13:19
    |
 LL |     where &'a T : Foo,
    |                   ^^^

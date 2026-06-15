@@ -1,5 +1,5 @@
 error[E0277]: `Rc<()>` cannot be sent between threads safely
-  --> $DIR/issue-21763.rs:11:11
+  --> $DIR/hashmap-send-requires-send-contents.rs:12:11
    |
 LL |     foo::<HashMap<Rc<()>, Rc<()>>>();
    |           ^^^^^^^^^^^^^^^^^^^^^^^ `Rc<()>` cannot be sent between threads safely
@@ -12,7 +12,7 @@ note: required because it appears within the type `hashbrown::map::HashMap<Rc<()
 note: required because it appears within the type `HashMap<Rc<()>, Rc<()>>`
   --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
 note: required by a bound in `foo`
-  --> $DIR/issue-21763.rs:8:11
+  --> $DIR/hashmap-send-requires-send-contents.rs:9:11
    |
 LL | fn foo<T: Send>() {}
    |           ^^^^ required by this bound in `foo`

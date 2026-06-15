@@ -1,4 +1,5 @@
-// Regression test for HashMap only impl'ing Send/Sync if its contents do
+//! Regression test for <https://github.com/rust-lang/rust/issues/21763>.
+//! Test HashMap only impl Send/Sync if its contents do
 
 //@ normalize-stderr: "(?:[A-Za-z]:[/\\]|/).*[\\/]hashbrown\S+" -> "$$HASHBROWN_SRC_LOCATION"
 
