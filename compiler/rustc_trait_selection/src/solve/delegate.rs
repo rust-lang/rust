@@ -32,7 +32,7 @@ use thin_vec::{ThinVec, thin_vec};
 
 use super::inspect::InferCtxtProofTreeExt;
 use crate::solve::inspect::{self, InspectConfig, ProofTreeVisitor};
-use crate::traits::{EvaluateConstErr, ObligationCause, sizedness_fast_path, specialization_graph};
+use crate::traits::{EvaluateConstErr, ObligationCause, implicit_fast_path, specialization_graph};
 
 #[repr(transparent)]
 pub struct SolverDelegate<'tcx>(InferCtxt<'tcx>);
@@ -177,7 +177,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     match self.0.tcx.as_lang_item(trait_pred.def_id()) {
                         Some(LangItem::Sized) | Some(LangItem::MetaSized) => {
                             let predicate = self.resolve_vars_if_possible(goal.predicate);
-                            if sizedness_fast_path(self.tcx, predicate, goal.param_env) {
+                            if implicit_fast_path(self.tcx, predicate, goal.param_env) {
                                 Outcome::TriviallyHolds
                             } else {
                                 Outcome::NoFastPath
