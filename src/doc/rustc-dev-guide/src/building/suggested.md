@@ -337,7 +337,6 @@ The sequence of commands you want is as follows:
 
 - Initial build: `./x build library`
 - Subsequent builds: `./x build library --keep-stage-std=1`
-  - Note that we added the `--keep-stage-std=1` flag here
 
 As mentioned, the effect of `--keep-stage-std=1` is that we just _assume_ that the
 old standard library can be re-used.
