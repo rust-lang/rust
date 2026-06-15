@@ -215,6 +215,11 @@
                 "category": "rust-analyzer"
             },
             {
+                "command": "rust-analyzer.newProject",
+                "title": "Create New Project...",
+                "category": "rust-analyzer"
+            },
+            {
                 "command": "rust-analyzer.rebuildProcMacros",
                 "title": "Rebuild proc macros and build scripts",
                 "category": "rust-analyzer"
@@ -491,6 +496,23 @@
                         "markdownDescription": "Do not start rust-analyzer server when the extension is activated.",
                         "default": false,
                         "type": "boolean"
+                    },
+                    "rust-analyzer.projectCreation.openAfterCreate": {
+                        "markdownDescription": "Control what happens after `rust-analyzer: Create New Project...` finishes creating a Cargo project.",
+                        "default": "ask",
+                        "enum": [
+                            "ask",
+                            "open",
+                            "openNewWindow",
+                            "addToWorkspace"
+                        ],
+                        "enumDescriptions": [
+                            "Prompt for how to open the new project.",
+                            "Open the new project in the current window.",
+                            "Open the new project in a new window.",
+                            "Add the new project to the current workspace, or open it if no workspace is open."
+                        ],
+                        "type": "string"
                     }
                 }
             },
@@ -3813,6 +3835,9 @@
                     "when": "inRustProject"
                 },
                 {
+                    "command": "rust-analyzer.newProject"
+                },
+                {
                     "command": "rust-analyzer.reloadWorkspace",
                     "when": "inRustProject"
                 },
@@ -3931,6 +3956,13 @@
                 }
             ]
         },
+        "viewsWelcome": [
+            {
+                "view": "explorer",
+                "contents": "Create a new Rust project.\n[Create Rust Project](command:rust-analyzer.newProject)",
+                "when": "workspaceFolderCount == 0"
+            }
+        ],
         "viewsContainers": {
             "activitybar": [
                 {
@@ -3956,6 +3988,14 @@
                 "title": "Learn about rust-analyzer",
                 "description": "A brief introduction to get started with rust-analyzer. Learn about key features and resources to help you get the most out of the extension.",
                 "steps": [
+                    {
+                        "id": "create-project",
+                        "title": "Create a Rust project",
+                        "description": "Start a new Cargo binary or library project from VS Code.\n\n[Create a Rust Project](command:rust-analyzer.newProject)",
+                        "media": {
+                            "markdown": "./walkthrough-create-project.md"
+                        }
+                    },
                     {
                         "id": "setup",
                         "title": "Useful Setup Tips",
