@@ -534,7 +534,6 @@ rustc_lint::early_lint_methods!(
         PartialPubFields: partial_pub_fields::PartialPubFields = partial_pub_fields::PartialPubFields,
         UnderscoreTyped: let_with_type_underscore::UnderscoreTyped = let_with_type_underscore::UnderscoreTyped,
         ExcessiveNesting: excessive_nesting::ExcessiveNesting = excessive_nesting::ExcessiveNesting::new(conf),
-        RefPatterns: ref_patterns::RefPatterns = ref_patterns::RefPatterns,
         NeedlessElse: needless_else::NeedlessElse = needless_else::NeedlessElse,
         RawStrings: raw_strings::RawStrings = raw_strings::RawStrings::new(conf),
         Visibility: visibility::Visibility = visibility::Visibility,
@@ -862,6 +861,7 @@ rustc_lint::late_lint_methods!(
         ByteCharSlice: byte_char_slices::ByteCharSlice = byte_char_slices::ByteCharSlice,
         ManualAssertEq: manual_assert_eq::ManualAssertEq = manual_assert_eq::ManualAssertEq,
         WithCapacityZero: with_capacity_zero::WithCapacityZero = with_capacity_zero::WithCapacityZero,
+        RefPatterns: ref_patterns::RefPatterns = ref_patterns::RefPatterns,
         // add late passes here, used by `cargo dev new_lint`
     ]]
 );
