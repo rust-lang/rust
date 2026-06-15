@@ -56,6 +56,15 @@ impl DenseLocationMap {
         PointIndex::new(start_index)
     }
 
+    /// Returns the `PointIndex` for the terminator in the given `BasicBlock`. O(1).
+    #[inline]
+    pub fn terminator(&self, block: BasicBlock) -> PointIndex {
+        let next_block = BasicBlock::new(block.index() + 1);
+        let next_start_index =
+            *self.statements_before_block.get(next_block).unwrap_or(&self.num_points);
+        PointIndex::new(next_start_index - 1)
+    }
+
     /// Return the PointIndex for the block start of this index.
     #[inline]
     pub fn to_block_start(&self, index: PointIndex) -> PointIndex {
