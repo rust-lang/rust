@@ -120,13 +120,16 @@ use rustc_mir_dataflow::impls::{
 use rustc_mir_dataflow::points::DenseLocationMap;
 use tracing::{debug, trace};
 
+use crate::PassPolicy;
 use crate::patch::MirPatch;
 
 pub(super) struct MoveElimination;
 
 impl<'tcx> crate::MirPass<'tcx> for MoveElimination {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 2
+    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optimization(
+            sess.mir_opt_level() >= 2 && sess.opts.unstable_opts.mir_move_elimination,
+        )
     }
 
     #[tracing::instrument(level = "trace", skip(self, tcx, body))]
@@ -163,10 +166,6 @@ impl<'tcx> crate::MirPass<'tcx> for MoveElimination {
         }
 
         apply_alias_fixup(tcx, body);
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }
 

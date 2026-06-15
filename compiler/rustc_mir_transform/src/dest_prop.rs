@@ -155,7 +155,9 @@ pub(super) struct DestinationPropagation;
 
 impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
     fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optimization(sess.mir_opt_level() >= 2)
+        PassPolicy::optimization(
+            sess.mir_opt_level() >= 2 && !sess.opts.unstable_opts.mir_move_elimination,
+        )
     }
 
     #[tracing::instrument(level = "trace", skip(self, tcx, body))]
