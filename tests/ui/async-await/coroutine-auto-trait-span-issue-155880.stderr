@@ -1,0 +1,17 @@
+error: implementation of `Send` is not general enough
+  --> $DIR/coroutine-auto-trait-span-issue-155880.rs:28:5
+   |
+LL |   async fn inner<'a, T: Trait + 'a>(_: T, x: T::Assoc<'a>) -> T::Assoc<'a> {
+   |  __________________________________________________________________________-
+LL | |     std::future::ready(x).await
+LL | | }
+   | |_- this async fn captures a value whose type is not `Send`
+...
+LL |       is_send(outer())
+   |       ^^^^^^^^^^^^^^^^ implementation of `Send` is not general enough
+   |
+   = note: `Send` would have to be implemented for the type `&'0 u32`, for any lifetime `'0`...
+   = note: ...but `Send` is actually implemented for the type `&'1 u32`, for some specific lifetime `'1`
+
+error: aborting due to 1 previous error
+
