@@ -157,7 +157,6 @@ def type_from_lldb(ty: lldb.SBType, sbtarget: lldb.SBTarget) -> Type:
 
     return Type(
         ty.GetByteSize(),
-        ty.GetByteAlign(),
         ty.GetBasicType(),
         ty.GetTypeClass(),
         [field_from_lldb(ty.GetFieldAtIndex(i)) for i in range(ty.GetNumberOfFields())],

@@ -150,7 +150,6 @@ class Field:
 @dataclass(slots=True)
 class Type:
     size: ByteSize
-    align: ByteSize
     # When GDB support is added to the test framework, basic_type and type_class will probably be
     # converted to a wrapper IntEnum that converts GDB's equivalent information to
     basic_type: int
