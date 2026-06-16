@@ -386,6 +386,10 @@ pub(crate) struct SelfInGenericParamDefault {
 pub(crate) struct SelfInConstGenericTy {
     #[primary_span]
     pub(crate) span: Span,
+    #[help(
+        "add `#![feature(min_adt_const_params)]` to the crate attributes to enable `Self` as a const parameter type"
+    )]
+    pub(crate) enable_feature: bool,
 }
 
 #[derive(Diagnostic)]
