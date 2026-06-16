@@ -43,7 +43,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // If this is storing a &Freeze reference with a retag, record that it's not
                 // possible to perform writes through the stored pointer.
                 let flags = if let ty::Ref(_, pointee_ty, Mutability::Not) =
-                    operand.ty(self.mir, self.cx.tcx()).kind()
+                    cg_operand.layout.ty.kind()
                     && with_retag.yes()
                     && pointee_ty.is_freeze(self.cx.tcx(), self.cx.typing_env())
                 {
