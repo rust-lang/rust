@@ -1009,6 +1009,10 @@ pub struct ParamEnv<'tcx> {
 }
 
 impl<'tcx> rustc_type_ir::inherent::ParamEnv<TyCtxt<'tcx>> for ParamEnv<'tcx> {
+    fn empty() -> Self {
+        Self::empty()
+    }
+
     fn caller_bounds(self) -> impl inherent::SliceLike<Item = ty::Clause<'tcx>> {
         self.caller_bounds()
     }
