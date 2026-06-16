@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::env;
 use std::error::Error;
 use std::ffi::OsString;
@@ -22,7 +23,7 @@ use tracing::trace;
 
 use super::metadata::{create_compressed_metadata_file, search_for_section};
 use super::rmeta_link;
-use super::symbol_edit::apply_hide;
+use super::symbol_edit::{apply_edits, collect_internal_names};
 use crate::common;
 // Public for ArchiveBuilderBuilder::extract_bundled_libs
 pub use crate::errors::ExtractBundledLibsError;
@@ -314,12 +315,18 @@ pub enum AddArchiveKind<'a> {
     Other,
 }
 
+pub struct ArchiveSymbols {
+    pub exported: FxHashSet<String>,
+    pub rename_suffix: Option<String>,
+    pub hide: bool,
+}
+
 pub trait ArchiveBuilder {
     fn add_file(&mut self, path: &Path, kind: ArchiveEntryKind);
 
     fn add_archive(&mut self, archive: &Path, kind: AddArchiveKind<'_>) -> io::Result<()>;
 
-    fn build(self: Box<Self>, output: &Path, exported_symbols: Option<FxHashSet<String>>) -> bool;
+    fn build(self: Box<Self>, output: &Path, symbols: Option<ArchiveSymbols>) -> bool;
 }
 
 fn target_archive_format_to_object_kind(format: &str) -> Option<ObjectArchiveKind> {
@@ -534,9 +541,9 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
 
     /// Combine the provided files, rlibs, and native libraries into a single
     /// `Archive`.
-    fn build(self: Box<Self>, output: &Path, exported_symbols: Option<FxHashSet<String>>) -> bool {
+    fn build(self: Box<Self>, output: &Path, symbols: Option<ArchiveSymbols>) -> bool {
         let sess = self.sess;
-        match self.build_inner(output, exported_symbols) {
+        match self.build_inner(output, symbols) {
             Ok(any_members) => any_members,
             Err(error) => {
                 sess.dcx().emit_fatal(ArchiveBuildFailure { path: output.to_owned(), error })
@@ -546,11 +553,7 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
 }
 
 impl<'a> ArArchiveBuilder<'a> {
-    fn build_inner(
-        self,
-        output: &Path,
-        exported_symbols: Option<FxHashSet<String>>,
-    ) -> io::Result<bool> {
+    fn build_inner(self, output: &Path, symbols: Option<ArchiveSymbols>) -> io::Result<bool> {
         let archive_kind = match &*self.sess.target.archive_format {
             "gnu" => ArchiveKind::Gnu,
             "bsd" => ArchiveKind::Bsd,
@@ -560,6 +563,39 @@ impl<'a> ArArchiveBuilder<'a> {
             kind => {
                 self.sess.dcx().emit_fatal(UnknownArchiveKind { kind });
             }
+        };
+
+        // Collect all internally-defined symbol names across every Rust object file.
+        // This set is needed because rename must also apply to *undefined* references
+        // (cross-object calls within the staticlib), but we cannot use `!exported.contains(name)`
+        // alone — that would also match external C symbols like `malloc` which must not be renamed.
+        let rename = if let Some(sym) = &symbols
+            && let Some(rename_suffix) = sym.rename_suffix.as_deref()
+        {
+            let mut names = FxHashSet::default();
+            for (_, entry) in &self.entries {
+                if entry.kind != ArchiveEntryKind::RustObj {
+                    continue;
+                }
+                match &entry.source {
+                    ArchiveEntrySource::Archive { archive_index, file_range } => {
+                        let src_archive = &self.src_archives[*archive_index];
+                        let start = file_range.0 as usize;
+                        let end = start + file_range.1 as usize;
+                        if let Some(data) = src_archive.1.get(start..end) {
+                            collect_internal_names(data, &sym.exported, &mut names);
+                        }
+                    }
+                    ArchiveEntrySource::File(file) => {
+                        if let Ok(data) = fs::read(file) {
+                            collect_internal_names(&data, &sym.exported, &mut names);
+                        }
+                    }
+                }
+            }
+            Some((names, rename_suffix))
+        } else {
+            None
         };
 
         let mut entries = Vec::new();
@@ -588,9 +624,9 @@ impl<'a> ArArchiveBuilder<'a> {
                     };
 
                     if entry.kind == ArchiveEntryKind::RustObj
-                        && let Some(exported) = &exported_symbols
+                        && let Some(sym) = &symbols
                     {
-                        Box::new(apply_hide(data, exported))
+                        Box::new(apply_edits(data, &sym.exported, sym.hide, rename.as_ref()))
                     } else {
                         Box::new(data)
                     }
@@ -602,9 +638,13 @@ impl<'a> ArArchiveBuilder<'a> {
                     )
                     .map_err(|err| io_error_context("failed to map object file", err))?;
                     if entry.kind == ArchiveEntryKind::RustObj
-                        && let Some(exported) = &exported_symbols
+                        && let Some(sym) = &symbols
                     {
-                        Box::new(apply_hide(&mmap, exported))
+                        let edited = apply_edits(&mmap, &sym.exported, sym.hide, rename.as_ref());
+                        match edited {
+                            Cow::Borrowed(_) => Box::new(mmap) as Box<dyn AsRef<[u8]>>,
+                            Cow::Owned(v) => Box::new(v),
+                        }
                     } else {
                         Box::new(mmap) as Box<dyn AsRef<[u8]>>
                     }
