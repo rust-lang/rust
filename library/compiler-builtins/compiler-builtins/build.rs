@@ -590,9 +590,6 @@ mod c {
             }
         } else {
             build.compile("libcompiler-rt.a");
-            // TEMP: print OUT_DIR so we can grab the .a before cleanup
-            let out = env::var("OUT_DIR").unwrap();
-            eprintln!("COMPILER_RT_OUT_DIR={}", out);
         }
     }
 
