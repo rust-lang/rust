@@ -33,13 +33,13 @@ use rustc_span::{Ident, Span, Symbol, kw, sym};
 use tracing::debug;
 
 use crate::Namespace::{self, *};
-use crate::diagnostics::{DiagMode, Suggestion, import_candidates};
-use crate::errors::{
+use crate::diagnostics::{
     self, CannotBeReexportedCratePublic, CannotBeReexportedCratePublicNS,
     CannotBeReexportedPrivate, CannotBeReexportedPrivateNS, CannotDetermineImportResolution,
     CannotGlobImportAllCrates, ConsiderAddingMacroExport, ConsiderMarkingAsPub,
     ConsiderMarkingAsPubCrate,
 };
+use crate::errors::{DiagMode, Suggestion, import_candidates};
 use crate::ref_mut::CmCell;
 use crate::{
     AmbiguityError, BindingKey, CmResolver, Decl, DeclData, DeclKind, Determinacy, Finalize,
@@ -1014,7 +1014,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         AMBIGUOUS_GLOB_REEXPORTS,
                         import.root_id,
                         import.root_span,
-                        errors::AmbiguousGlobReexports {
+                        diagnostics::AmbiguousGlobReexports {
                             name: key.ident.name.to_string(),
                             namespace: key.ns.descr().to_string(),
                             first_reexport: import.root_span,
@@ -1045,7 +1045,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 HIDDEN_GLOB_REEXPORTS,
                                 binding_id,
                                 binding.span,
-                                errors::HiddenGlobReexports {
+                                diagnostics::HiddenGlobReexports {
                                     name: key.ident.name.to_string(),
                                     namespace: key.ns.descr().to_owned(),
                                     glob_reexport: glob_decl.span,
@@ -1069,7 +1069,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         EXPORTED_PRIVATE_DEPENDENCIES,
                         binding_id,
                         binding.span,
-                        crate::errors::ReexportPrivateDependency {
+                        crate::diagnostics::ReexportPrivateDependency {
                             name: key.ident.name,
                             kind: binding.res().descr(),
                             krate: self.tcx.crate_name(reexported_def_id.krate),
@@ -1462,7 +1462,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         UNUSED_IMPORTS,
                         id,
                         import.span,
-                        crate::errors::RedundantImportVisibility {
+                        crate::diagnostics::RedundantImportVisibility {
                             span: import.span,
                             help: (),
                             max_vis: max_vis.to_string(def_id, self.tcx),
@@ -1778,7 +1778,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         {
             let ImportKind::Single { id, .. } = import.kind else { unreachable!() };
             let sugg = self.tcx.source_span(extern_crate_id).shrink_to_lo();
-            let diagnostic = crate::errors::PrivateExternCrateReexport { ident, sugg };
+            let diagnostic = crate::diagnostics::PrivateExternCrateReexport { ident, sugg };
             return Some(BufferedEarlyLint {
                 lint_id: LintId::of(PUB_USE_OF_PRIVATE_EXTERN_CRATE),
                 node_id: id,
@@ -1889,20 +1889,20 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         .into_iter()
                         .map(|(span, is_imported)| match (span.is_dummy(), is_imported) {
                             (false, true) => {
-                                errors::RedundantImportSub::ImportedHere { span, ident }
+                                diagnostics::RedundantImportSub::ImportedHere { span, ident }
                             }
                             (false, false) => {
-                                errors::RedundantImportSub::DefinedHere { span, ident }
+                                diagnostics::RedundantImportSub::DefinedHere { span, ident }
                             }
                             (true, true) => {
-                                errors::RedundantImportSub::ImportedPrelude { span, ident }
+                                diagnostics::RedundantImportSub::ImportedPrelude { span, ident }
                             }
                             (true, false) => {
-                                errors::RedundantImportSub::DefinedPrelude { span, ident }
+                                diagnostics::RedundantImportSub::DefinedPrelude { span, ident }
                             }
                         })
                         .collect();
-                    errors::RedundantImport { subs, ident }.into_diag(dcx, level)
+                    diagnostics::RedundantImport { subs, ident }.into_diag(dcx, level)
                 },
             );
             return true;

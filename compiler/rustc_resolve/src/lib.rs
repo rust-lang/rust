@@ -26,9 +26,9 @@ use std::ops::ControlFlow;
 use std::sync::Arc;
 use std::{fmt, mem};
 
-use diagnostics::{ImportSuggestion, LabelSuggestion, StructCtor, Suggestion};
+use diagnostics::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
 use effective_visibilities::EffectiveVisibilitiesVisitor;
-use errors::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
+use errors::{ImportSuggestion, LabelSuggestion, StructCtor, Suggestion};
 use hygiene::Macros20NormalizedSyntaxContext;
 use imports::{Import, ImportData, ImportKind, NameResolution, PendingDecl};
 use late::{
@@ -2273,7 +2273,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         PRIVATE_MACRO_USE,
                         import.root_id,
                         ident.span,
-                        errors::MacroIsPrivate { ident },
+                        diagnostics::MacroIsPrivate { ident },
                     );
                 }
             }

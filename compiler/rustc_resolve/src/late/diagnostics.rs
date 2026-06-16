@@ -32,7 +32,7 @@ use thin_vec::ThinVec;
 use tracing::debug;
 
 use super::NoConstantGenericsReason;
-use crate::diagnostics::{ImportSuggestion, LabelSuggestion, TypoSuggestion};
+use crate::errors::{ImportSuggestion, LabelSuggestion, TypoSuggestion};
 use crate::late::{
     AliasPossibility, LateResolutionVisitor, LifetimeBinderKind, LifetimeRes, LifetimeRibKind,
     LifetimeUseSet, QSelf, RibKind,
@@ -40,7 +40,7 @@ use crate::late::{
 use crate::ty::fast_reject::SimplifiedType;
 use crate::{
     Finalize, Module, ModuleOrUniformRoot, ParentScope, PathResult, PathSource, Res, Resolver,
-    ScopeSet, Segment, errors, path_names_to_string,
+    ScopeSet, Segment, diagnostics, path_names_to_string,
 };
 
 /// A field or associated item from self type suggested in case of resolution failure.
@@ -1594,7 +1594,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 Side::Start => (segment.ident.span.between(range.span), " @ ".into()),
                 Side::End => (range.span.to(segment.ident.span), format!("{} @ ..", segment.ident)),
             };
-            err.subdiagnostic(errors::UnexpectedResUseAtOpInSlicePatWithRangeSugg {
+            err.subdiagnostic(diagnostics::UnexpectedResUseAtOpInSlicePatWithRangeSugg {
                 span,
                 ident: segment.ident,
                 snippet,
@@ -1758,7 +1758,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             }) else {
                 return;
             };
-            err.subdiagnostic(errors::UnexpectedResChangeTyParamToConstParamSugg {
+            err.subdiagnostic(diagnostics::UnexpectedResChangeTyParamToConstParamSugg {
                 before: span.shrink_to_lo(),
                 after: span.shrink_to_hi(),
             });
@@ -1801,7 +1801,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         });
 
         if let Some(param) = param {
-            err.subdiagnostic(errors::UnexpectedResChangeTyToConstParamSugg {
+            err.subdiagnostic(diagnostics::UnexpectedResChangeTyToConstParamSugg {
                 span: param.shrink_to_lo(),
                 applicability,
             });
@@ -3437,7 +3437,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 format!("corresponding const parameter on the type defined here",),
             );
 
-            err.subdiagnostic(errors::UnexpectedMissingConstParameter {
+            err.subdiagnostic(diagnostics::UnexpectedMissingConstParameter {
                 span: insert_span,
                 snippet,
                 item_name: format!("{}", target_ident),
@@ -3662,7 +3662,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                 } else {
                                     Some(deletion_span)
                                 };
-                                Some(errors::SingleUseLifetimeSugg {
+                                Some(diagnostics::SingleUseLifetimeSugg {
                                     deletion_span,
                                     use_span,
                                     replace_lt,
@@ -3670,7 +3670,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             } else {
                                 None
                             };
-                            errors::SingleUseLifetime {
+                            diagnostics::SingleUseLifetime {
                                 suggestion,
                                 param_span: param_ident.span,
                                 use_span,
@@ -3690,7 +3690,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             lint::builtin::UNUSED_LIFETIMES,
                             param.id,
                             param.ident.span,
-                            errors::UnusedLifetime { deletion_span, ident: param.ident },
+                            diagnostics::UnusedLifetime { deletion_span, ident: param.ident },
                         );
                     }
                 }
@@ -3907,7 +3907,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     ) -> ErrorGuaranteed {
         self.r
             .dcx()
-            .create_err(errors::ParamInTyOfConstParam {
+            .create_err(diagnostics::ParamInTyOfConstParam {
                 span: lifetime_ref.ident.span,
                 name: lifetime_ref.ident.name,
             })
@@ -3926,20 +3926,20 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             NoConstantGenericsReason::IsEnumDiscriminant => self
                 .r
                 .dcx()
-                .create_err(errors::ParamInEnumDiscriminant {
+                .create_err(diagnostics::ParamInEnumDiscriminant {
                     span: lifetime_ref.ident.span,
                     name: lifetime_ref.ident.name,
-                    param_kind: errors::ParamKindInEnumDiscriminant::Lifetime,
+                    param_kind: diagnostics::ParamKindInEnumDiscriminant::Lifetime,
                 })
                 .emit(),
             NoConstantGenericsReason::NonTrivialConstArg => {
                 assert!(!self.r.tcx.features().generic_const_exprs());
                 self.r
                     .dcx()
-                    .create_err(errors::ParamInNonTrivialAnonConst {
+                    .create_err(diagnostics::ParamInNonTrivialAnonConst {
                         span: lifetime_ref.ident.span,
                         name: lifetime_ref.ident.name,
-                        param_kind: errors::ParamKindInNonTrivialAnonConst::Lifetime,
+                        param_kind: diagnostics::ParamKindInNonTrivialAnonConst::Lifetime,
                         help: self.r.tcx.sess.is_nightly_build(),
                         is_gca: self.r.tcx.features().generic_const_args(),
                         help_gca: self.r.tcx.features().generic_const_args(),
