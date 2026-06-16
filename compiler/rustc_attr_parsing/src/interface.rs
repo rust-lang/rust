@@ -70,6 +70,9 @@ impl<'sess> AttributeParser<'sess> {
         attrs: &[ast::Attribute],
         sym: &'static [Symbol],
     ) -> Option<Attribute> {
+        if !attrs.iter().any(|attr| attr.path_matches(sym)) {
+            return None;
+        }
         Self::parse_limited_should_emit(
             sess,
             attrs,
