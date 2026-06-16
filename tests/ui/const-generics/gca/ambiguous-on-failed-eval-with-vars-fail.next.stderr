@@ -15,19 +15,19 @@ LL |     let (mut arr, mut arr_with_weird_len): ([_; N], _) = free();
    |                                          +++++++++++++
 
 error[E0271]: type mismatch resolving `10 == 2`
-  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:35:45
+  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:36:45
    |
 LL |     let (mut arr, mut arr_with_weird_len) = free();
    |                                             ^^^^^^ types differ
 
 error[E0284]: type annotations needed for `([(); _], [(); 10])`
-  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:46:9
+  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:48:9
    |
 LL |     let (mut arr, mut arr_with_weird_len) = proj();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ------ type must be known at this point
    |
 note: required by a const generic parameter in `proj`
-  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:41:9
+  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:43:9
    |
 LL | fn proj<const N: usize>() -> ([(); N], [(); <S as Trait>::PROJ::<N>]) {
    |         ^^^^^^^^^^^^^^ required by this const generic parameter in `proj`
@@ -37,7 +37,7 @@ LL |     let (mut arr, mut arr_with_weird_len): ([_; N], _) = proj();
    |                                          +++++++++++++
 
 error[E0271]: type mismatch resolving `10 == 2`
-  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:52:45
+  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:55:45
    |
 LL |     let (mut arr, mut arr_with_weird_len) = proj();
    |                                             ^^^^^^ types differ
