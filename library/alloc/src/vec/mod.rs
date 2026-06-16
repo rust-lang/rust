@@ -2626,14 +2626,12 @@ impl<T, A: Allocator> Vec<T, A> {
         self.dedup_by(|a, b| key(a) == key(b))
     }
 
-    /// Removes all but the first of consecutive elements in the vector satisfying a given equality
-    /// relation.
-    ///
-    /// The `same_bucket` function is passed references to two elements from the vector and
-    /// must determine if the elements compare equal. The elements are passed in opposite order
-    /// from their order in the slice, so if `same_bucket(a, b)` returns `true`, `a` is removed.
+    /// Removes consecutive elements for which `same_bucket` returns `true`,
+    /// keeping the first element of each consecutive group.
     ///
     /// If the vector is sorted, this removes all duplicates.
+    ///
+    /// Note: `same_bucket` does not need to be an equivalence relation.
     ///
     /// # Examples
     ///
@@ -2642,6 +2640,8 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// vec.dedup_by(|a, b| a.eq_ignore_ascii_case(b));
     ///
+    /// // "Bar" is removed because it compares equal to the preceding element
+    /// // ignoring ASCII case.
     /// assert_eq!(vec, ["foo", "bar", "baz", "bar"]);
     /// ```
     #[stable(feature = "dedup_by", since = "1.16.0")]
