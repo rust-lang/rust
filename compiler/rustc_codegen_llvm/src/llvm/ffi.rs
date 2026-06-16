@@ -2453,6 +2453,7 @@ unsafe extern "C" {
         FileType: FileType,
         VerifyIR: bool,
     ) -> LLVMRustResult;
+    pub(crate) fn LLVMRustIsIntrinsicCall(val: &Value) -> bool;
     pub(crate) fn LLVMRustOptimize<'a>(
         M: &'a Module,
         TM: &'a TargetMachine,

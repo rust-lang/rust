@@ -2,7 +2,7 @@ use std::assert_matches;
 use std::ops::Deref;
 
 use rustc_abi::{Align, Scalar, Size, WrappingRange};
-use rustc_ast::expand::typetree::FncTree;
+use rustc_ast::expand::typetree::{FncTree, TypeTree};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
@@ -521,8 +521,8 @@ pub trait BuilderMethods<'a, 'tcx>:
             let tt = typetree_from_ty(self.tcx(), ty);
             dbg!("got tt");
             let fnc_tree = FncTree {
-                args: vec![tt.clone()],
-                ret: tt,
+                args: vec![tt.clone(), tt],
+                ret: TypeTree::new(),
             };
             dbg!(&fnc_tree);
             self.memcpy(dst.llval, dst.align, src.llval, src.align, bytes, flags, Some(fnc_tree));

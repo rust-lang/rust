@@ -907,6 +907,14 @@ enum class LLVMRustDebugEmissionKind {
   DebugDirectivesOnly,
 };
 
+
+extern "C" bool LLVMRustIsIntrinsicCall(LLVMValueRef V) {
+  if (auto *CB = llvm::dyn_cast<llvm::CallBase>(llvm::unwrap(V))) {
+    return CB->getIntrinsicID() != llvm::Intrinsic::not_intrinsic;
+  }
+  return false;
+}
+
 static DICompileUnit::DebugEmissionKind
 fromRust(LLVMRustDebugEmissionKind Kind) {
   switch (Kind) {

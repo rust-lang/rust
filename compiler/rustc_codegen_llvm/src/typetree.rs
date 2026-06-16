@@ -3,7 +3,7 @@ use std::ffi::{CString, c_char, c_uint};
 use rustc_ast::expand::typetree::{FncTree, TypeTree as RustTypeTree};
 
 use crate::attributes;
-use crate::llvm::{self, EnzymeWrapper, Value};
+use crate::llvm::{self, EnzymeWrapper, TypeTree, Value};
 
 fn to_enzyme_typetree(
     rust_typetree: RustTypeTree,
@@ -104,13 +104,21 @@ pub(crate) fn add_tt<'ll>(
             dbg!("attribute string: {:?}", c_str);
             dbg!(&fn_def);
 
-            attributes::apply_to_llfn(fn_def, llvm::AttributePlace::Argument(i as u32), &[attr]);
+            if llvm::LLVMRustIsIntrinsicCall(fn_def) {
+                attributes::apply_to_callsite(fn_def, llvm::AttributePlace::Argument(i as u32), &[attr]);
+            } else {
+                attributes::apply_to_llfn(fn_def, llvm::AttributePlace::Argument(i as u32), &[attr]);
+            }
             enzyme_wrapper.tree_to_string_free(c_str.as_ptr());
         }
     }
     dbg!("finished to iter over inputs");
 
     unsafe {
+        if ret_tt == rustc_ast::expand::typetree::TypeTree::new() {
+            dbg!("skipping empty return tt");
+            return;
+        }
         let enzyme_tt = to_enzyme_typetree(ret_tt, llvm_data_layout, llcx);
         let enzyme_wrapper = EnzymeWrapper::get_instance();
         let c_str = enzyme_wrapper.tree_to_string(enzyme_tt.inner);
@@ -126,7 +134,11 @@ pub(crate) fn add_tt<'ll>(
 
         dbg!(&fn_def);
 
-        attributes::apply_to_llfn(fn_def, llvm::AttributePlace::ReturnValue, &[ret_attr]);
+        if llvm::LLVMRustIsIntrinsicCall(fn_def) {
+            attributes::apply_to_callsite(fn_def, llvm::AttributePlace::ReturnValue, &[ret_attr]);
+        } else {
+            attributes::apply_to_llfn(fn_def, llvm::AttributePlace::ReturnValue, &[ret_attr]);
+        }
         enzyme_wrapper.tree_to_string_free(c_str.as_ptr());
     }
     dbg!("finished to add return attribute");
