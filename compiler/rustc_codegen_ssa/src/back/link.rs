@@ -53,7 +53,9 @@ use rustc_target::spec::{
 };
 use tracing::{debug, info, warn};
 
-use super::archive::{AddArchiveKind, ArchiveBuilder, ArchiveBuilderBuilder, ArchiveEntryKind};
+use super::archive::{
+    AddArchiveKind, ArchiveBuilder, ArchiveBuilderBuilder, ArchiveEntryKind, ArchiveSymbols,
+};
 use super::command::Command;
 use super::linker::{self, Linker};
 use super::metadata::{MetadataPosition, create_wrapper_file};
@@ -566,11 +568,21 @@ fn link_staticlib(
         sess.dcx().emit_fatal(e);
     }
 
-    let exported_symbols = if sess.opts.unstable_opts.staticlib_hide_internal_symbols {
+    let hide = sess.opts.unstable_opts.staticlib_hide_internal_symbols;
+    let rename = sess.opts.unstable_opts.staticlib_rename_internal_symbols;
+
+    let exported_symbols = if hide || rename {
         if !matches!(sess.target.binary_format, BinaryFormat::Elf | BinaryFormat::MachO) {
-            sess.dcx().emit_warn(errors::StaticlibHideInternalSymbolsUnsupported {
-                binary_format: sess.target.archive_format.to_string(),
-            });
+            if hide {
+                sess.dcx().emit_warn(errors::StaticlibHideInternalSymbolsUnsupported {
+                    binary_format: sess.target.archive_format.to_string(),
+                });
+            }
+            if rename {
+                sess.dcx().emit_warn(errors::StaticlibRenameInternalSymbolsUnsupported {
+                    binary_format: sess.target.archive_format.to_string(),
+                });
+            }
             None
         } else {
             crate_info
@@ -581,7 +593,14 @@ fn link_staticlib(
     } else {
         None
     };
-    ab.build(out_filename, exported_symbols);
+
+    let symbols = exported_symbols.map(|exported| ArchiveSymbols {
+        exported,
+        rename_suffix: rename.then(|| crate_info.symbol_rename_suffix.clone()),
+        hide,
+    });
+
+    ab.build(out_filename, symbols);
 
     let crates = crate_info.used_crates.iter();
 
