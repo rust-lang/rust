@@ -4085,7 +4085,7 @@ impl FnDeclFlags {
     /// argument, and no splatted argument.
     /// To modify these flags, use the `set_*` methods, for readability.
     // FIXME: use Default instead when that trait is const stable.
-    pub const fn default() -> Self {
+    pub fn default() -> Self {
         Self { flags: 0, splatted: 0 }
             .set_implicit_self(ImplicitSelfKind::None)
             .set_lifetime_elision_allowed(false)
@@ -4095,7 +4095,7 @@ impl FnDeclFlags {
 
     /// Set the implicit self kind.
     #[must_use = "this method does not modify the receiver"]
-    pub const fn set_implicit_self(mut self, implicit_self: ImplicitSelfKind) -> Self {
+    pub fn set_implicit_self(mut self, implicit_self: ImplicitSelfKind) -> Self {
         self.flags &= !Self::IMPLICIT_SELF_MASK;
 
         match implicit_self {
@@ -4111,7 +4111,7 @@ impl FnDeclFlags {
 
     /// Set the C-style variadic argument flag.
     #[must_use = "this method does not modify the receiver"]
-    pub const fn set_c_variadic(mut self, c_variadic: bool) -> Self {
+    pub fn set_c_variadic(mut self, c_variadic: bool) -> Self {
         if c_variadic {
             self.flags |= Self::C_VARIADIC_FLAG;
         } else {
@@ -4123,7 +4123,7 @@ impl FnDeclFlags {
 
     /// Set the lifetime elision allowed flag.
     #[must_use = "this method does not modify the receiver"]
-    pub const fn set_lifetime_elision_allowed(mut self, allowed: bool) -> Self {
+    pub fn set_lifetime_elision_allowed(mut self, allowed: bool) -> Self {
         if allowed {
             self.flags |= Self::LIFETIME_ELISION_ALLOWED_FLAG;
         } else {
@@ -4135,7 +4135,7 @@ impl FnDeclFlags {
 
     /// Set the splatted argument flag.
     #[must_use = "this method does not modify the receiver"]
-    pub const fn set_has_splatted_arg(mut self, has_splatted_arg: bool) -> Self {
+    pub fn set_has_splatted_arg(mut self, has_splatted_arg: bool) -> Self {
         if has_splatted_arg {
             self.flags |= Self::HAS_SPLATTED_ARG_FLAG;
         } else {
@@ -4146,7 +4146,7 @@ impl FnDeclFlags {
     }
 
     /// Get the implicit self kind.
-    pub const fn implicit_self(self) -> ImplicitSelfKind {
+    pub fn implicit_self(self) -> ImplicitSelfKind {
         match self.flags & Self::IMPLICIT_SELF_MASK {
             0 => ImplicitSelfKind::None,
             1 => ImplicitSelfKind::Imm,
@@ -4158,17 +4158,17 @@ impl FnDeclFlags {
     }
 
     /// Do the function arguments end with a C-style variadic argument?
-    pub const fn c_variadic(self) -> bool {
+    pub fn c_variadic(self) -> bool {
         self.flags & Self::C_VARIADIC_FLAG != 0
     }
 
     /// Is lifetime elision allowed?
-    pub const fn lifetime_elision_allowed(self) -> bool {
+    pub fn lifetime_elision_allowed(self) -> bool {
         self.flags & Self::LIFETIME_ELISION_ALLOWED_FLAG != 0
     }
 
     /// Does this function have a splatted argument?
-    pub const fn has_splatted_arg(self) -> bool {
+    pub fn has_splatted_arg(self) -> bool {
         self.flags & Self::HAS_SPLATTED_ARG_FLAG != 0
     }
 
