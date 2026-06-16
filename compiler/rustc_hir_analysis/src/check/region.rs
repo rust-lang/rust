@@ -148,7 +148,7 @@ fn resolve_block<'tcx>(
             if !terminating
                 && !visitor
                     .tcx
-                    .lints_that_dont_need_to_run(())
+                    .skippable_lints(())
                     .contains(&lint::LintId::of(lint::builtin::TAIL_EXPR_DROP_ORDER))
             {
                 // If this temporary scope will be changing once the codebase adopts Rust 2024,

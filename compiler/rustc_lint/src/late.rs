@@ -355,7 +355,7 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     let store = unerased_lint_store(tcx.sess);
 
     if store.late_module_passes.is_empty() {
-        if pass_must_run(tcx.lints_that_dont_need_to_run(()), &builtin_lints.get_lints()) {
+        if pass_must_run(tcx.skippable_lints(()), &builtin_lints.get_lints()) {
             late_lint_mod_inner(tcx, module_def_id, context, builtin_lints);
         }
     } else {
@@ -397,12 +397,12 @@ fn late_lint_mod_inner<'tcx, T: LateLintPass<'tcx>>(
 }
 
 fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
-    let lints_that_dont_need_to_run = tcx.lints_that_dont_need_to_run(());
+    let skippable_lints = tcx.skippable_lints(());
 
     // Note: `passes` is often empty after filtering.
     let mut passes: Vec<_> =
         unerased_lint_store(tcx.sess).late_passes.iter().map(|mk_pass| mk_pass(tcx)).collect();
-    passes.retain(|pass| pass_must_run(lints_that_dont_need_to_run, &pass.get_lints()));
+    passes.retain(|pass| pass_must_run(skippable_lints, &pass.get_lints()));
     if passes.is_empty() {
         return;
     }

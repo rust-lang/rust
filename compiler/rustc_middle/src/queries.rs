@@ -541,7 +541,7 @@ rustc_queries! {
         desc { "computing `#[expect]`ed lints in this crate" }
     }
 
-    query lints_that_dont_need_to_run(_: ()) -> &'tcx UnordSet<LintId> {
+    query skippable_lints(_: ()) -> &'tcx UnordSet<LintId> {
         arena_cache
         // This depends on the lint store, which includes internal lints when the
         // untracked `-Zunstable-options` flag is set.
