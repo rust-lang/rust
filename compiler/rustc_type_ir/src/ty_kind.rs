@@ -17,6 +17,7 @@ use rustc_type_ir_macros::{
 use self::TyKind::*;
 pub use self::closure::*;
 use crate::inherent::*;
+use crate::ty::AliasTy;
 #[cfg(feature = "nightly")]
 use crate::visit::TypeVisitable;
 use crate::{self as ty, BoundVarIndexKind, FloatTy, IntTy, Interner, UintTy};
@@ -24,7 +25,7 @@ use crate::{self as ty, BoundVarIndexKind, FloatTy, IntTy, Interner, UintTy};
 mod closure;
 
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
-#[derive(GenericTypeVisitable, Lift_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
@@ -427,45 +428,10 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
     }
 }
 
-/// Represents the projection of an associated, opaque, or lazy-type-alias type.
-///
-/// * For a projection, this would be `<Ty as Trait<...>>::N<...>`.
-/// * For an inherent projection, this would be `Ty::N<...>`.
-/// * For an opaque type, there is no explicit syntax.
-#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
-#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
-#[cfg_attr(
-    feature = "nightly",
-    derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
-)]
-pub struct AliasTy<I: Interner> {
-    /// The parameters of the associated or opaque type.
-    ///
-    /// For a projection, these are the generic parameters for the trait and the
-    /// GAT parameters, if there are any.
-    ///
-    /// For an inherent projection, they consist of the self type and the GAT parameters,
-    /// if there are any.
-    ///
-    /// For RPIT the generic parameters are for the generics of the function,
-    /// while for TAIT it is used for the generic parameters of the alias.
-    pub args: I::GenericArgs,
-
-    #[type_foldable(identity)]
-    #[type_visitable(ignore)]
-    pub kind: AliasTyKind<I>,
-
-    /// This field exists to prevent the creation of `AliasTy` without using [`AliasTy::new_from_args`].
-    #[derive_where(skip(Debug))]
-    pub(crate) _use_alias_ty_new_instead: (),
-}
-
-impl<I: Interner> Eq for AliasTy<I> {}
-
 impl<I: Interner> AliasTy<I> {
     pub fn new_from_args(interner: I, kind: AliasTyKind<I>, args: I::GenericArgs) -> AliasTy<I> {
         interner.debug_assert_args_compatible(kind.def_id(), args);
-        AliasTy { kind, args, _use_alias_ty_new_instead: () }
+        AliasTy { kind, args, _use_alias_new_instead: () }
     }
 
     pub fn new(
