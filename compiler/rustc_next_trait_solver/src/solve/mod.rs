@@ -438,4 +438,11 @@ pub struct GoalStalledOn<I: Interner> {
     /// The certainty that will be returned on subsequent evaluations if this
     /// goal remains stalled.
     pub stalled_certainty: Certainty,
+    pub previously_succeeded_in_erased: SucceededInErased<I>,
+}
+
+#[derive_where(Clone, Debug; I: Interner)]
+pub enum SucceededInErased<I: Interner> {
+    Yes { accessed_opaques: AccessedOpaques<I> },
+    No,
 }
