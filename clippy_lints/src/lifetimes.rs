@@ -161,7 +161,9 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
     }
 
     fn check_poly_trait_ref(&mut self, cx: &LateContext<'tcx>, poly_trait_ref: &'tcx PolyTraitRef<'tcx>) {
-        report_extra_trait_object_lifetimes(cx, poly_trait_ref.bound_generic_params, &poly_trait_ref.trait_ref);
+        if !poly_trait_ref.span.from_expansion() {
+            report_extra_trait_object_lifetimes(cx, poly_trait_ref.bound_generic_params, &poly_trait_ref.trait_ref);
+        }
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
