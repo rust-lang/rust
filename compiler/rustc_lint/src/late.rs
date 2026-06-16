@@ -349,24 +349,26 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
         only_module: true,
     };
 
+    let skippable_lints = tcx.skippable_lints(());
+
     // Note: `passes` is often empty. In that case, it's faster to run
     // `builtin_lints` directly rather than bundling it up into the
     // `RuntimeCombinedLateLintPass`.
-    let store = unerased_lint_store(tcx.sess);
-
-    if store.late_module_passes.is_empty() {
-        if pass_must_run(tcx.skippable_lints(()), &builtin_lints.get_lints()) {
+    let mut passes: Vec<_> = unerased_lint_store(tcx.sess)
+        .late_module_passes
+        .iter()
+        .map(|mk_pass| mk_pass(tcx))
+        .filter(|pass| pass_must_run(skippable_lints, &pass.get_lints()))
+        .collect();
+    let builtin_lints_must_run = pass_must_run(skippable_lints, &builtin_lints.get_lints());
+    if passes.is_empty() {
+        if builtin_lints_must_run {
             late_lint_mod_inner(tcx, module_def_id, context, builtin_lints);
         }
     } else {
-        let builtin_lints = Box::new(builtin_lints) as Box<dyn LateLintPass<'tcx>>;
-        let passes = store
-            .late_module_passes
-            .iter()
-            .map(|mk_pass| mk_pass(tcx))
-            .chain(std::iter::once(builtin_lints))
-            .collect::<Vec<_>>();
-
+        if builtin_lints_must_run {
+            passes.push(Box::new(builtin_lints) as Box<dyn LateLintPass<'tcx>>);
+        }
         let pass = RuntimeCombinedLateLintPass { passes };
         late_lint_mod_inner(tcx, module_def_id, context, pass);
     }
@@ -400,9 +402,12 @@ fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
     let skippable_lints = tcx.skippable_lints(());
 
     // Note: `passes` is often empty after filtering.
-    let mut passes: Vec<_> =
-        unerased_lint_store(tcx.sess).late_passes.iter().map(|mk_pass| mk_pass(tcx)).collect();
-    passes.retain(|pass| pass_must_run(skippable_lints, &pass.get_lints()));
+    let passes: Vec<_> = unerased_lint_store(tcx.sess)
+        .late_passes
+        .iter()
+        .map(|mk_pass| mk_pass(tcx))
+        .filter(|pass| pass_must_run(skippable_lints, &pass.get_lints()))
+        .collect();
     if passes.is_empty() {
         return;
     }
