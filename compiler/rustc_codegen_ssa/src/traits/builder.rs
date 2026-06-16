@@ -518,7 +518,8 @@ pub trait BuilderMethods<'a, 'tcx>:
             //let ty = self.backend_type(layout);
             let ty = layout.ty;
             dbg!(&ty);
-            let tt = typetree_from_ty(self.tcx(), ty);
+            let tt: TypeTree = typetree_from_ty(self.tcx(), ty);
+            let tt = tt.add_indirection();
             dbg!("got tt");
             let fnc_tree = FncTree {
                 args: vec![tt.clone(), tt],

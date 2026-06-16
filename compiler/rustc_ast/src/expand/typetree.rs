@@ -57,6 +57,9 @@ impl TypeTree {
         }
         Self(ints)
     }
+    pub fn add_indirection(self) -> Self {
+        Self(vec![Type { offset: 0, size: 1, kind: Kind::Pointer, child: self }])
+    }
 }
 
 #[derive(Clone, Eq, PartialEq, Encodable, Decodable, Debug, StableHash)]
