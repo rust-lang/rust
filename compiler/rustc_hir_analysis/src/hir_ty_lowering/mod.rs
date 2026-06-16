@@ -2595,7 +2595,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             if !variant_def.fields.iter().any(|field_def| field_def.name == init.field.name) {
                 let err = tcx.dcx().struct_span_err(
                     init.field.span,
-                    format!("struct expression has no field named `{}`", init.field),
+                    format!("struct `{}` has no field named `{}`", variant_def.name, init.field),
                 );
                 return ty::Const::new_error(tcx, err.emit());
             }
