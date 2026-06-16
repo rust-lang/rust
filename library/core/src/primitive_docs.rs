@@ -1841,7 +1841,14 @@ mod prim_ref {}
 ///   call will be valid ABI-wise. The callee receives the result of transmuting the function pointer
 ///   from `fn()` to `fn(i32)`; that transmutation is itself a well-defined operation, it's just
 ///   almost certainly UB to later call that function pointer.)
-/// - Any two types with size 0 and alignment 1 are ABI-compatible.
+/// - Any two types fulfilling all the following conditions are ABI-compatible;
+///   such types are said to have "trivial ABI":
+///   - Size 0
+///   - Alignment 1
+///   - Not `repr(C)`
+///   - Not a `repr(transparent)` wrapper around a type that fails to satisfy these conditions
+/// - A `repr(transparent)` type is ABI-compatible with its unique field that does not have trivial ABI
+///   (as defined above). If there is no such field, the type has trivial ABI.
 /// - A `repr(transparent)` type `T` is ABI-compatible with its unique non-trivial field, i.e., the
 ///   unique field that doesn't have size 0 and alignment 1 (if there is such a field).
 /// - `i32` is ABI-compatible with `NonZero<i32>`, and similar for all other integer types.
