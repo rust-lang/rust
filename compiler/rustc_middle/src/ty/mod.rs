@@ -2353,6 +2353,7 @@ pub fn fnc_typetrees<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>) -> FncTree {
 
     // Check if this is actually a function type
     if !fn_ty.is_fn() {
+        dbg!("not a function type: {}", fn_ty);
         return FncTree { args: vec![], ret: TypeTree::new() };
     }
 
@@ -2376,6 +2377,12 @@ pub fn fnc_typetrees<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>) -> FncTree {
 /// Generate TypeTree for a specific type.
 /// This function analyzes a Rust type and creates appropriate TypeTree metadata.
 pub fn typetree_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> TypeTree {
+    if !tcx.sess.opts.unstable_opts.autodiff.contains(&rustc_session::config::AutoDiff::Enable) {
+        return TypeTree::new();
+    }
+    if tcx.sess.opts.unstable_opts.autodiff.contains(&rustc_session::config::AutoDiff::NoTT) {
+        return TypeTree::new();
+    }
     let mut visited = Vec::new();
     typetree_from_ty_inner(tcx, ty, 0, &mut visited)
 }

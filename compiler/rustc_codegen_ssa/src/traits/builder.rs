@@ -237,7 +237,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn alloca(&mut self, size: Size, align: Align) -> Self::Value;
     fn alloca_with_ty(&mut self, layout: TyAndLayout<'tcx>) -> Self::Value;
 
-    fn load(&mut self, ty: Self::Type, ptr: Self::Value, align: Align) -> Self::Value;
+    fn load(&mut self, ty: Self::Type, ptr: Self::Value, align: Align, tt: Option<rustc_ast::expand::typetree::FncTree>) -> Self::Value;
     fn volatile_load(&mut self, ty: Self::Type, ptr: Self::Value) -> Self::Value;
     fn atomic_load(
         &mut self,
@@ -248,7 +248,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     ) -> Self::Value;
     fn load_from_place(&mut self, ty: Self::Type, place: PlaceValue<Self::Value>) -> Self::Value {
         assert_eq!(place.llextra, None);
-        self.load(ty, place.llval, place.align)
+        self.load(ty, place.llval, place.align, None)
     }
     fn load_operand(&mut self, place: PlaceRef<'tcx, Self::Value>)
     -> OperandRef<'tcx, Self::Value>;
@@ -462,6 +462,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         src_align: Align,
         size: Self::Value,
         flags: MemFlags,
+        tt: Option<rustc_ast::expand::typetree::FncTree>,
     );
     fn memset(
         &mut self,
@@ -470,6 +471,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         size: Self::Value,
         align: Align,
         flags: MemFlags,
+        tt: Option<rustc_ast::expand::typetree::FncTree>,
     );
 
     /// *Typed* copy for non-overlapping places.

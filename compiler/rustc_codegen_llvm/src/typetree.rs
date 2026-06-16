@@ -56,8 +56,12 @@ pub(crate) fn add_tt<'ll>(
     llmod: &'ll llvm::Module,
     llcx: &'ll llvm::Context,
     fn_def: &'ll Value,
+    tcx: rustc_middle::ty::TyCtxt<'_>,
     tt: FncTree,
 ) {
+    if !tcx.sess.opts.unstable_opts.autodiff.contains(&rustc_session::config::AutoDiff::Enable) {
+        return;
+    }
     // TypeTree processing uses functions from Enzyme, which we might not have available if we did
     // not build this compiler with `llvm_enzyme`. This feature is not strictly necessary, but
     // skipping this function increases the chance that Enzyme fails to compile some code.

@@ -290,6 +290,7 @@ fn match_args_from_caller_to_enzyme<'ll, 'tcx>(
 // cover some assumptions of enzyme/autodiff, which could lead to UB otherwise.
 pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
     builder: &mut Builder<'_, 'll, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     cx: &SimpleCx<'ll>,
     fn_to_diff: &'ll Value,
     outer_name: &str,
@@ -375,7 +376,7 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
     );
 
     if !fnc_tree.args.is_empty() || !fnc_tree.ret.0.is_empty() {
-        crate::typetree::add_tt(cx.llmod, cx.llcx, fn_to_diff, fnc_tree);
+        crate::typetree::add_tt(cx.llmod, cx.llcx, fn_to_diff, tcx, fnc_tree);
     }
 
     let call = builder.call(enzyme_ty, None, None, ad_fn, &args, None, None);

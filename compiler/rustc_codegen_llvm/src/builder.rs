@@ -181,11 +181,12 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
     }
 
     pub(crate) fn load(&mut self, ty: &'ll Type, ptr: &'ll Value, align: Align) -> &'ll Value {
-        unsafe {
+        let load = unsafe {
             let load = llvm::LLVMBuildLoad2(self.llbuilder, ty, ptr, UNNAMED);
             llvm::LLVMSetAlignment(load, align.bytes() as c_uint);
             load
-        }
+        };
+        load
     }
 }
 
@@ -627,13 +628,17 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn load(&mut self, ty: &'ll Type, ptr: &'ll Value, align: Align) -> &'ll Value {
-        unsafe {
+    fn load(&mut self, ty: &'ll Type, ptr: &'ll Value, align: Align, tt: Option<FncTree>) -> &'ll Value {
+        let load = unsafe {
             let load = llvm::LLVMBuildLoad2(self.llbuilder, ty, ptr, UNNAMED);
             let align = align.min(self.cx().tcx.sess.target.max_reliable_alignment());
             llvm::LLVMSetAlignment(load, align.bytes() as c_uint);
             load
+        };
+        if let Some(tt) = tt {
+            crate::typetree::add_tt(self.cx().llmod, self.cx().llcx, load, self.tcx, tt);
         }
+        load
     }
 
     fn volatile_load(&mut self, ty: &'ll Type, ptr: &'ll Value) -> &'ll Value {
@@ -1113,7 +1118,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         // vs. copying a struct with mixed types requires different derivative handling.
         // The TypeTree tells Enzyme exactly what memory layout to expect.
         if let Some(tt) = tt {
-            crate::typetree::add_tt(self.cx().llmod, self.cx().llcx, memcpy, tt);
+            crate::typetree::add_tt(self.cx().llmod, self.cx().llcx, memcpy, self.tcx, tt);
         }
     }
 
@@ -1125,11 +1130,12 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         src_align: Align,
         size: &'ll Value,
         flags: MemFlags,
+        tt: Option<FncTree>,
     ) {
         assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memmove not supported");
         let size = self.intcast(size, self.type_isize(), false);
         let is_volatile = flags.contains(MemFlags::VOLATILE);
-        unsafe {
+        let memmove = unsafe {
             llvm::LLVMRustBuildMemMove(
                 self.llbuilder,
                 dst,
@@ -1138,7 +1144,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 src_align.bytes() as c_uint,
                 size,
                 is_volatile,
-            );
+            )
+        };
+        if let Some(tt) = tt {
+            crate::typetree::add_tt(self.cx().llmod, self.cx().llcx, memmove, self.tcx, tt);
         }
     }
 
@@ -1149,10 +1158,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         size: &'ll Value,
         align: Align,
         flags: MemFlags,
+        tt: Option<FncTree>,
     ) {
         assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memset not supported");
         let is_volatile = flags.contains(MemFlags::VOLATILE);
-        unsafe {
+        let memset = unsafe {
             llvm::LLVMRustBuildMemSet(
                 self.llbuilder,
                 ptr,
@@ -1160,7 +1170,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 fill_byte,
                 size,
                 is_volatile,
-            );
+            )
+        };
+        if let Some(tt) = tt {
+            crate::typetree::add_tt(self.cx().llmod, self.cx().llcx, memset, self.tcx, tt);
         }
     }
 

@@ -1,4 +1,5 @@
 use rustc_abi::{Align, FieldIdx, WrappingRange};
+use rustc_ast::expand::typetree::FncTree;
 use rustc_middle::mir::SourceInfo;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
@@ -29,10 +30,16 @@ fn copy_intrinsic<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let align = layout.align.abi;
     let size = bx.mul(bx.const_usize(size.bytes()), count);
     let flags = if volatile { MemFlags::VOLATILE } else { MemFlags::empty() };
+    let tcx = bx.tcx();
+    let tt = rustc_middle::ty::typetree_from_ty(tcx, ty);
+    let fnc_tree = FncTree {
+        args: vec![tt.clone()],
+        ret: tt,
+    };
     if allow_overlap {
-        bx.memmove(dst, align, src, align, size, flags);
+        bx.memmove(dst, align, src, align, size, flags, Some(fnc_tree));
     } else {
-        bx.memcpy(dst, align, src, align, size, flags, None);
+        bx.memcpy(dst, align, src, align, size, flags, Some(fnc_tree));
     }
 }
 
@@ -49,7 +56,7 @@ fn memset_intrinsic<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let align = layout.align.abi;
     let size = bx.mul(bx.const_usize(size.bytes()), count);
     let flags = if volatile { MemFlags::VOLATILE } else { MemFlags::empty() };
-    bx.memset(dst, val, size, align, flags);
+    bx.memset(dst, val, size, align, flags, None);
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {

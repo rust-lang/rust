@@ -119,6 +119,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             size,
                             dest.val.align,
                             MemFlags::empty(),
+                            None,
                         );
                         return;
                     }
@@ -136,14 +137,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         && let Ok(&byte) = bytes.iter().all_equal_value()
                     {
                         let fill = bx.cx().const_u8(byte);
-                        bx.memset(start, fill, size, dest.val.align, MemFlags::empty());
+                        bx.memset(start, fill, size, dest.val.align, MemFlags::empty(), None);
                         return true;
                     }
 
                     // Use llvm.memset.p0i8.* to initialize byte arrays
                     let v = bx.from_immediate(v);
                     if bx.cx().val_ty(v) == bx.cx().type_i8() {
-                        bx.memset(start, v, size, dest.val.align, MemFlags::empty());
+                        bx.memset(start, v, size, dest.val.align, MemFlags::empty(), None);
                         return true;
                     }
                     false
