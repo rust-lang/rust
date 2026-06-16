@@ -1,0 +1,8 @@
+error: function items cannot be used as const arguments
+  --> $DIR/trait-assoc-fn-as-const-arg.rs:4:26
+   |
+LL |     fn x(&self) -> [i32; Bar::x];
+   |                          ^^^^^^
+
+error: aborting due to 1 previous error
+
