@@ -28,6 +28,14 @@ pub(super) trait SveInto<T>: Sized {
     unsafe fn sve_into(self) -> T;
 }
 
+impl<T> SveInto<T> for T {
+    #[inline]
+    #[target_feature(enable = "sve")]
+    unsafe fn sve_into(self) -> T {
+        self
+    }
+}
+
 macro_rules! impl_sve_type {
     ($(($v:vis, $elem_type:ty, $name:ident, $elt:literal))*) => ($(
         #[doc = concat!("Scalable vector of type ", stringify!($elem_type))]
