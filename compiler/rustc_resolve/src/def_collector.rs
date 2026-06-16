@@ -15,10 +15,11 @@ use rustc_middle::ty::{PerOwnerResolverData, TyCtxtFeed};
 use rustc_span::{Span, Symbol, sym};
 use tracing::{debug, instrument};
 
+use crate::diagnostics::{ImplFnConst, TraitFnConst};
 use crate::macros::MacroRulesScopeRef;
 use crate::{
-    ConstArgContext, ImplTraitContext, InvocationParent, ParentScope, Resolver, with_owner,
-    with_owner_tables,
+    ConstArgContext, ConstOwner, ImplTraitContext, InvocationParent, ParentScope, Resolver,
+    with_owner, with_owner_tables,
 };
 
 pub(crate) fn collect_definitions<'ra>(
@@ -67,12 +68,14 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         )
     }
 
+    #[instrument(level = "trace", skip(self, f))]
     fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_def: LocalDefId, f: F) {
         let orig_parent_def = mem::replace(&mut self.invocation_parent.parent_def, parent_def);
         f(self);
         self.invocation_parent.parent_def = orig_parent_def;
     }
 
+    #[instrument(level = "trace", skip(self, f))]
     pub(super) fn with_owner<F: FnOnce(&mut Self, TyCtxtFeed<'tcx, LocalDefId>)>(
         &mut self,
         owner: NodeId,
@@ -102,6 +105,16 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         with_owner_tables(self, owner, tables, |this| f(this, feed));
         let old = mem::replace(&mut self.invocation_parent.owner, orig_invoc_owner);
         assert_eq!(old, owner);
+    }
+
+    fn with_const_owner<F: FnOnce(&mut Self)>(
+        &mut self,
+        const_owner: Option<(ConstOwner, ast::Const)>,
+        f: F,
+    ) {
+        let orig_itc = mem::replace(&mut self.invocation_parent.const_owner, const_owner);
+        f(self);
+        self.invocation_parent.const_owner = orig_itc;
     }
 
     fn with_impl_trait<F: FnOnce(&mut Self)>(
@@ -149,6 +162,14 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         let old_parent = self.r.invocation_parents.insert(id, self.invocation_parent);
         assert!(old_parent.is_none(), "parent `LocalDefId` is reset for an invocation");
     }
+
+    fn lower_constness(&self, constness: Const) -> hir::Constness {
+        match constness {
+            Const::Always(_) => hir::Constness::Const { always: true },
+            Const::Yes(_) => hir::Constness::Const { always: false },
+            Const::No => hir::Constness::NotConst,
+        }
+    }
 }
 
 impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
@@ -156,28 +177,43 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         // Pick the def data. This need not be unique, but the more
         // information we encapsulate into, the better
         let mut opt_syn_ext = None;
-        let def_kind = match &i.kind {
-            ItemKind::Impl(i) => DefKind::Impl { of_trait: i.of_trait.is_some() },
-            ItemKind::ForeignMod(..) => DefKind::ForeignMod,
-            ItemKind::Mod(..) => DefKind::Mod,
-            ItemKind::Trait(..) => DefKind::Trait,
-            ItemKind::TraitAlias(..) => DefKind::TraitAlias,
-            ItemKind::Enum(..) => DefKind::Enum,
-            ItemKind::Struct(..) => DefKind::Struct,
-            ItemKind::Union(..) => DefKind::Union,
-            ItemKind::ExternCrate(..) => DefKind::ExternCrate,
-            ItemKind::TyAlias(..) => DefKind::TyAlias,
-            ItemKind::Static(s) => DefKind::Static {
-                safety: hir::Safety::Safe,
-                mutability: s.mutability,
-                nested: false,
-            },
+
+        let (def_kind, constness) = match &i.kind {
+            ItemKind::Impl(i) => (
+                DefKind::Impl { of_trait: i.of_trait.is_some() },
+                Some(self.lower_constness(i.constness)),
+            ),
+            ItemKind::ForeignMod(..) => (DefKind::ForeignMod, None),
+            ItemKind::Mod(..) => (DefKind::Mod, None),
+            ItemKind::Trait(tr) => (DefKind::Trait, Some(self.lower_constness(tr.constness))),
+            ItemKind::TraitAlias(ta) => {
+                (DefKind::TraitAlias, Some(self.lower_constness(ta.constness)))
+            }
+            ItemKind::Enum(..) => (DefKind::Enum, None),
+            ItemKind::Struct(..) => (DefKind::Struct, None),
+            ItemKind::Union(..) => (DefKind::Union, None),
+            ItemKind::ExternCrate(..) => (DefKind::ExternCrate, None),
+            ItemKind::TyAlias(..) => (DefKind::TyAlias, None),
+            ItemKind::Static(s) => (
+                DefKind::Static {
+                    safety: hir::Safety::Safe,
+                    mutability: s.mutability,
+                    nested: false,
+                },
+                None,
+            ),
             ItemKind::Const(citem) => {
                 let is_type_const = matches!(citem.rhs_kind, ConstItemRhsKind::TypeConst { .. });
-                DefKind::Const { is_type_const }
+                (DefKind::Const { is_type_const }, None)
             }
-            ItemKind::ConstBlock(..) => DefKind::Const { is_type_const: false },
-            ItemKind::Fn(..) | ItemKind::Delegation(..) => DefKind::Fn,
+            ItemKind::ConstBlock(..) => (DefKind::Const { is_type_const: false }, None),
+            ItemKind::Fn(func) => {
+                (DefKind::Fn, Some(self.lower_constness(func.sig.header.constness)))
+            }
+            ItemKind::Delegation(..) => {
+                // Need to compute constness lazily
+                (DefKind::Fn, None)
+            }
             ItemKind::MacroDef(ident, def) => {
                 let edition = i.span.edition();
 
@@ -206,9 +242,9 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 let ext = self.r.compile_macro(def, *ident, &attrs, i.span, i.id, edition);
                 let macro_kinds = ext.macro_kinds();
                 opt_syn_ext = Some(ext);
-                DefKind::Macro(macro_kinds)
+                (DefKind::Macro(macro_kinds), None)
             }
-            ItemKind::GlobalAsm(..) => DefKind::GlobalAsm,
+            ItemKind::GlobalAsm(..) => (DefKind::GlobalAsm, None),
             ItemKind::Use(_) => {
                 return self.with_owner(i.id, None, DefKind::Use, i.span, |this, feed| {
                     this.brg_visit_item(i, feed);
@@ -227,13 +263,38 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             def_kind,
             i.span,
             |this, feed| {
+                if let Some(constness) = constness {
+                    feed.constness(constness);
+                }
                 if let Some(ext) = opt_syn_ext {
                     this.r.local_macro_map.insert(feed.def_id(), self.r.arenas.alloc_macro(ext));
                 }
 
                 this.with_parent(feed.def_id(), |this| {
-                    this.with_impl_trait(ImplTraitContext::Existential, |this| {
-                        this.brg_visit_item(i, feed)
+                    let const_owner = match &i.kind {
+                        ItemKind::Impl(i) => Some((
+                            match &i.of_trait {
+                                None => ConstOwner::InherentImpl,
+                                Some(tr) => ConstOwner::TraitImpl {
+                                    polarity: tr.polarity,
+                                    trait_ref_span: tr.trait_ref.path.span,
+                                },
+                            },
+                            i.constness,
+                        )),
+                        ItemKind::Trait(t) => {
+                            Some((ConstOwner::Trait { vis: i.span }, t.constness))
+                        }
+                        ItemKind::Fn(f) => Some((ConstOwner::Fn, f.sig.header.constness)),
+                        ItemKind::Static(_) | ItemKind::Const(_) => {
+                            Some((ConstOwner::Const, Const::Yes(i.span)))
+                        }
+                        _ => None,
+                    };
+                    this.with_const_owner(const_owner, |this| {
+                        this.with_impl_trait(ImplTraitContext::Existential, |this| {
+                            this.brg_visit_item(i, feed)
+                        })
                     })
                 });
             },
@@ -389,10 +450,111 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
     }
 
     fn visit_assoc_item(&mut self, i: &'a AssocItem, ctxt: visit::AssocCtxt) {
-        let (ident, def_kind, ns) = match &i.kind {
-            AssocItemKind::Fn(Fn { ident, .. })
-            | AssocItemKind::Delegation(Delegation { ident, .. }) => {
-                (*ident, DefKind::AssocFn, ValueNS)
+        let (ident, def_kind, ns, constness) = match &i.kind {
+            AssocItemKind::Fn(Fn { ident, sig, .. }) => {
+                let constness =
+                    match (sig.header.constness, self.invocation_parent.const_owner.unwrap(), ctxt)
+                    {
+                        (Const::No, (_, other), _) => other,
+
+                        (other, (_, Const::No), visit::AssocCtxt::Impl { of_trait: false }) => {
+                            other
+                        }
+                        (
+                            Const::Always(span) | Const::Yes(span),
+                            (parent, parent_constness),
+                            visit::AssocCtxt::Trait | visit::AssocCtxt::Impl { of_trait: true },
+                        ) => {
+                            let const_trait_impl = self.r.features.const_trait_impl();
+                            let make_impl_const_sugg = if const_trait_impl
+                                && let visit::AssocCtxt::Impl { of_trait: true } = ctxt
+                                && let Const::No = parent_constness
+                                && let ConstOwner::TraitImpl {
+                                    polarity: ImplPolarity::Positive,
+                                    trait_ref_span,
+                                } = parent
+                            {
+                                Some(trait_ref_span.shrink_to_lo())
+                            } else {
+                                None
+                            };
+
+                            let map = self.r.tcx.sess.source_map();
+
+                            let make_trait_const_sugg = if const_trait_impl
+                                && let (ConstOwner::Trait { vis }, Const::No) =
+                                    (parent, parent_constness)
+                            {
+                                Some(map.span_extend_while_whitespace(vis).shrink_to_hi())
+                            } else {
+                                None
+                            };
+                            self.r.dcx().emit_err(TraitFnConst {
+                                span,
+                                in_impl: matches!(ctxt, visit::AssocCtxt::Impl { of_trait: true }),
+                                const_context_label: match parent_constness {
+                                    Const::Always(span) | Const::Yes(span) => Some(span),
+                                    Const::No => None,
+                                },
+                                remove_const_sugg: (
+                                    map.span_extend_while_whitespace(span),
+                                    match parent_constness {
+                                        Const::Always(_) | Const::Yes(_) => {
+                                            rustc_errors::Applicability::MachineApplicable
+                                        }
+                                        Const::No => rustc_errors::Applicability::MaybeIncorrect,
+                                    },
+                                ),
+                                requires_multiple_changes: make_impl_const_sugg.is_some()
+                                    || make_trait_const_sugg.is_some(),
+                                make_impl_const_sugg,
+                                make_trait_const_sugg,
+                                constness: sig.header.constness.descr(),
+                            });
+                            parent_constness
+                        }
+                        (
+                            Const::Yes(span),
+                            (_, Const::Yes(parent_constness)),
+                            visit::AssocCtxt::Impl { of_trait: false },
+                        ) => {
+                            let span =
+                                self.r.tcx.sess.source_map().span_extend_while_whitespace(span);
+                            self.r.dcx().emit_err(ImplFnConst { span, parent_constness });
+                            Const::Yes(parent_constness)
+                        }
+                        (
+                            Const::Yes(span) | Const::Always(span),
+                            (_, parent_constness @ (Const::Yes(parent) | Const::Always(parent))),
+                            _,
+                        ) => {
+                            self.r
+                                .dcx()
+                                .struct_span_err(
+                                    span,
+                                    "conflicting `const`/`comptime` fn marker in const impl",
+                                )
+                                .with_span_label(
+                                    parent,
+                                    "this declares all associated functions implicitly const",
+                                )
+                                .emit();
+                            parent_constness
+                        }
+                    };
+                let constness = if i
+                    .attrs
+                    .iter()
+                    .any(|attr| attr.has_name(sym::rustc_non_const_trait_method))
+                {
+                    Const::No
+                } else {
+                    constness
+                };
+                (*ident, DefKind::AssocFn, ValueNS, Some(constness))
+            }
+            AssocItemKind::Delegation(Delegation { ident, .. }) => {
+                (*ident, DefKind::AssocFn, ValueNS, None)
             }
             AssocItemKind::Const(ConstItem { ident, rhs_kind, .. }) => (
                 *ident,
@@ -400,8 +562,9 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                     is_type_const: matches!(rhs_kind, ConstItemRhsKind::TypeConst { .. }),
                 },
                 ValueNS,
+                None,
             ),
-            AssocItemKind::Type(TyAlias { ident, .. }) => (*ident, DefKind::AssocTy, TypeNS),
+            AssocItemKind::Type(TyAlias { ident, .. }) => (*ident, DefKind::AssocTy, TypeNS, None),
             AssocItemKind::MacCall(..) => {
                 self.visit_macro_invoc(i.id);
                 self.visit_assoc_item_mac_call(i, ctxt);
@@ -413,8 +576,13 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         };
 
         self.with_owner(i.id, Some(ident.name), def_kind, i.span, |this, feed| {
-            this.with_parent(feed.def_id(), |this| {
-                this.brg_visit_assoc_item(i, ctxt, ident, ns, feed)
+            if let Some(constness) = constness {
+                feed.constness(this.lower_constness(constness));
+            }
+            this.with_const_owner(constness.map(|c| (ConstOwner::Fn, c)), |this| {
+                this.with_parent(feed.def_id(), |this| {
+                    this.brg_visit_assoc_item(i, ctxt, ident, ns, feed)
+                })
             });
         })
     }
@@ -449,7 +617,12 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                     let parent = this
                         .create_def(constant.id, None, DefKind::AnonConst, constant.value.span)
                         .def_id();
-                    this.with_parent(parent, |this| visit::walk_anon_const(this, constant));
+                    this.with_const_owner(
+                        Some((ConstOwner::Const, Const::Yes(constant.value.span))),
+                        |this| {
+                            this.with_parent(parent, |this| visit::walk_anon_const(this, constant))
+                        },
+                    );
                 })
             }
         };
@@ -465,7 +638,28 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 self.visit_invoc(expr.id);
                 return;
             }
-            ExprKind::Closure(..) | ExprKind::Gen(..) => {
+            ExprKind::Closure(closure) => {
+                let constness = match (closure.constness, self.invocation_parent.const_owner) {
+                    (Const::No, _) => Const::No,
+                    // FIXME(const_closures, comptime): always const closures
+                    (Const::Always(_), _) => unimplemented!(),
+                    (Const::Yes(span), None | Some((_, Const::No))) => {
+                        self.r.tcx.dcx().span_err(
+                            span,
+                            "cannot use `const` closures outside of const contexts",
+                        );
+                        Const::No
+                    }
+                    (Const::Yes(_), Some((_, Const::Yes(_) | Const::Always(_)))) => {
+                        closure.constness
+                    }
+                };
+                let constness = self.lower_constness(constness);
+                let feed = self.create_def(expr.id, None, DefKind::Closure, expr.span);
+                feed.constness(constness);
+                feed.def_id()
+            }
+            ExprKind::Gen(..) => {
                 self.create_def(expr.id, None, DefKind::Closure, expr.span).def_id()
             }
             ExprKind::ConstBlock(constant) => {
@@ -483,7 +677,10 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
 
                     let def =
                         this.create_def(constant.id, None, def_kind, constant.value.span).def_id();
-                    this.with_parent(def, |this| visit::walk_anon_const(this, constant));
+                    this.with_const_owner(
+                        Some((ConstOwner::Const, Const::Yes(constant.value.span))),
+                        |this| this.with_parent(def, |this| visit::walk_anon_const(this, constant)),
+                    );
                 });
             }
 

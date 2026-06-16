@@ -188,6 +188,23 @@ struct InvocationParent {
     in_attr: bool,
     const_arg_context: ConstArgContext,
     owner: NodeId,
+    pub(crate) const_owner: Option<(ConstOwner, ast::Const)>,
+}
+
+#[derive(Copy, Debug, Clone)]
+enum ConstOwner {
+    TraitImpl {
+        polarity: ast::ImplPolarity,
+        trait_ref_span: Span,
+    },
+    Trait {
+        vis: Span,
+    },
+    InherentImpl,
+    /// Const and nonconst fns or methods.
+    Fn,
+    /// Anon consts, const blocks, free consts, assoc consts, ...
+    Const,
 }
 
 impl InvocationParent {
@@ -197,6 +214,7 @@ impl InvocationParent {
         in_attr: false,
         const_arg_context: ConstArgContext::NonDirect,
         owner: CRATE_NODE_ID,
+        const_owner: None,
     };
 }
 

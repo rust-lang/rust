@@ -428,7 +428,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             | DefKind::Enum
             | DefKind::Trait
             | DefKind::TyAlias
-            | DefKind::Fn
+            | DefKind::Fn { .. }
             | DefKind::Const { .. }
             | DefKind::Static { .. } = kind
             {
