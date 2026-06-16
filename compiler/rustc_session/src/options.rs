@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use std::str;
 
 use rustc_abi::Align;
+use rustc_ast::attr::version::RustcVersion;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_data_structures::stable_hash::StableHasher;
@@ -846,6 +847,7 @@ mod desc {
         super::mitigation_coverage::DeniedPartialMitigationKind::KINDS;
     pub(crate) const parse_deny_partial_mitigations: &str =
         super::mitigation_coverage::DeniedPartialMitigationKind::KINDS;
+    pub(crate) const parse_rust_version: &str = "a rust version (`xx.yy.zz`)";
 }
 
 pub mod parse {
@@ -2054,6 +2056,18 @@ pub mod parse {
         };
         true
     }
+
+    pub(crate) fn parse_rust_version(slot: &mut Option<RustcVersion>, v: Option<&str>) -> bool {
+        let Some(v) = v else {
+            return false;
+        };
+        if let Some(version) = RustcVersion::parse_str_strict(v) {
+            *slot = Some(version);
+            true
+        } else {
+            false
+        }
+    }
 }
 
 options! {
@@ -2454,6 +2468,8 @@ options! {
         "lint LLVM IR (default: no)"),
     lint_mir: bool = (false, parse_bool, [UNTRACKED],
         "lint MIR before and after each transformation"),
+    lint_rust_version: Option<RustcVersion> = (None, parse_rust_version, [TRACKED],
+        "control the minimum rust version for lints"),
     llvm_module_flag: Vec<(String, u32, String)> = (Vec::new(), parse_llvm_module_flag, [TRACKED],
         "a list of module flags to pass to LLVM (space separated)"),
     llvm_plugins: Vec<String> = (Vec::new(), parse_list, [TRACKED],

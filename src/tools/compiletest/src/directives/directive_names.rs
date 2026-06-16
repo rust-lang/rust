@@ -250,6 +250,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "only-powerpc",
     "only-riscv32",
     "only-riscv64",
+    "only-riscv64gc-unknown-linux-gnu",
     "only-rustc_abi-x86-sse2",
     "only-s390x",
     "only-sparc",

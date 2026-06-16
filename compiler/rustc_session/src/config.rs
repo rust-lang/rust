@@ -3059,6 +3059,7 @@ pub(crate) mod dep_tracking {
     use std::path::PathBuf;
 
     use rustc_abi::Align;
+    use rustc_ast::attr::version::RustcVersion;
     use rustc_data_structures::fx::FxIndexMap;
     use rustc_data_structures::stable_hash::StableHasher;
     use rustc_errors::LanguageIdentifier;
@@ -3184,7 +3185,8 @@ pub(crate) mod dep_tracking {
         InliningThreshold,
         FunctionReturn,
         Align,
-        CodegenRetagOptions
+        CodegenRetagOptions,
+        RustcVersion,
     );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)

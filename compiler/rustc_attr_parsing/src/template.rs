@@ -2,7 +2,9 @@ use rustc_ast::ast::Safety;
 use rustc_hir::AttrStyle;
 use rustc_span::Symbol;
 
-/// A template that the attribute input must match.
+/// A template to suggest the correct syntax of an attribute.
+///
+/// This is not used to *check* attributes. The attribute's parser is responsible for that.
 /// Only top-level shape (`#[attr]` vs `#[attr(...)]` vs `#[attr = ...]`) is considered now.
 #[derive(Clone, Copy, Default)]
 pub struct AttributeTemplate {
