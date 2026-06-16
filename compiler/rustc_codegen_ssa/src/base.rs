@@ -962,6 +962,7 @@ impl CrateInfo {
             natvis_debugger_visualizers: Default::default(),
             lint_level_specs: CodegenLintLevelSpecs::from_tcx(tcx),
             metadata_symbol: exported_symbols::metadata_symbol_name(tcx),
+            symbol_rename_suffix: format!(".rs{:x}", tcx.stable_crate_id(LOCAL_CRATE)),
             each_linked_rlib_file_for_lto: Default::default(),
             exported_symbols_for_lto: Default::default(),
         };
