@@ -15,7 +15,7 @@ use rustc_type_ir::solve::{
     RerunNonErased, RerunReason, RerunResultExt, SmallCopyList,
 };
 use rustc_type_ir::{
-    self as ty, CanonicalVarValues, ClauseKind, InferCtxtLike, Interner, MayBeErased,
+    self as ty, CanonicalVarValues, ClauseKind, ConstKind, InferCtxtLike, Interner, MayBeErased,
     OpaqueTypeKey, PredicateKind, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
 };
@@ -563,6 +563,102 @@ where
         WontMakeProgress(stalled_certainty)
     }
 
+    /// This is a fast path optimization:
+    /// If *all* the self types of all the where clauses in the goals `ParamEnv` are a
+    /// generic arg (this is common if for example the `ParamEnv` only contains `T: Clone`
+    /// for some generic function `fn foo<T: Clone>(t: T)`)
+    /// And the goal does not mention any generic args, then we already know for certain that
+    /// the evaluation of the goal doesn't depend on the `ParamEnv` in any way. That means that
+    /// it's equivalent to evaluating the goal with an *empty* `ParamEnv`.
+    ///
+    /// This is desirable because the `ParamEnv` is part of the cache key, so more cache keys will
+    /// match if they all mention the same empty `ParamEnv`.
+    fn try_strip_param_env(&self, goal: Goal<I, I::Predicate>) -> Goal<I, I::Predicate> {
+        let clause_relevant_for_goal_evaluation = |clause: ClauseKind<I>| -> bool {
+            match clause {
+                ClauseKind::Trait(trait_predicate) => {
+                    let irrelevant =
+                        // If the self type of this clause is a generic parameter
+                        // i.e. T: Clone as opposed to i32: Clone or Vec<T>: Clone
+                        matches!(trait_predicate.self_ty().kind(), ty::Param(_))
+                        // And the goal can never in any way use this clause because it
+                        // doesn't mention any type params
+                        && !goal.predicate.has_param()
+                        // then the clause is irrelevant to the outcome of the goal.
+                    ;
+
+                    !irrelevant
+                }
+                ClauseKind::RegionOutlives(_) => true,
+                // FIXME: atm never relevant for goal evaluation, but might be in the future so `true`
+                // to avoid future performance cliffs
+                ClauseKind::TypeOutlives(_) => true,
+                ClauseKind::Projection(projection_predicate) => {
+                    let irrelevant =
+                        // If the self type of this projection clause is a generic parameter
+                        // i.e. <T as Bar>::Foo as opposed to <i32 as Bar>::Foo or <Vec<T> as Bar>::Foo
+                        matches!(projection_predicate.self_ty().kind(), ty::Param(_))
+                        // And the goal can never in any way use this clause because it
+                        // doesn't mention any type params
+                        && !goal.predicate.has_param()
+                        // then the clause is irrelevant to the outcome of the goal.
+                    ;
+
+                    !irrelevant
+                }
+                ClauseKind::ConstArgHasType(c, _) => {
+                    let irrelevant =
+                        // If the const this clause bounds, is a generic parameter,
+                        // i.e. N: usize as opposed to 4: usize
+                        matches!(c.kind(), ConstKind::Param(_))
+                        // and the goal can never in any way use this clause because it
+                        // doesn't mention any const params
+                        && !goal.predicate.has_const_param()
+                        // then the clause is irrelevant to the outcome of the goal.
+                    ;
+
+                    !irrelevant
+                }
+                ClauseKind::WellFormed(_) => true,
+                ClauseKind::ConstEvaluatable(c) => {
+                    let irrelevant =
+                        // If the const this clause bounds, is a generic parameter,
+                        // i.e. N is evaluatable as opposed to 3 is evaluatable
+                        matches!(c.kind(), ConstKind::Param(_))
+                        // and the goal can never in any way use this clause because it
+                        // doesn't mention any const params
+                        && !goal.predicate.has_const_param()
+                        // then the clause is irrelevant to the outcome of the goal.
+                    ;
+
+                    !irrelevant
+                }
+                ClauseKind::HostEffect(_) => true,
+                ClauseKind::UnstableFeature(_) => true,
+            }
+        };
+
+        let any_clause_relevant_for_goal = goal
+            .param_env
+            .caller_bounds()
+            .iter()
+            .any(|i| clause_relevant_for_goal_evaluation(i.kind().skip_binder()));
+
+        // If no clause is relevant to the outcome of the goal, we can strip the `ParamEnv`.
+        if !any_clause_relevant_for_goal {
+            if !goal.param_env.caller_bounds().is_empty() {
+                tracing::debug!(
+                    "stripping param env {:?} because it is irrelevant to prove {:?}",
+                    goal.param_env,
+                    goal.predicate
+                );
+            }
+            Goal { param_env: ParamEnv::empty(), predicate: goal.predicate }
+        } else {
+            goal
+        }
+    }
+
     /// Recursively evaluates `goal`, returning the nested goals in case
     /// the nested goal is a `NormalizesTo` goal.
     ///
@@ -590,6 +686,7 @@ where
             ));
         }
 
+        let opaques = self.delegate.clone_opaque_types_lookup_table();
         self.evaluate_goal_cold(source, goal)
     }
 
@@ -618,6 +715,8 @@ where
         .entered();
 
         let (result, orig_values, canonical_goal, succeeded_in_erased) = 'retry_canonicalize: {
+            let goal = self.try_strip_param_env(goal);
+
             let skip_erased_attempt = if typing_mode.is_coherence() {
                 true
             } else {
