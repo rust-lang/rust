@@ -786,7 +786,10 @@ impl<T: ::core::hash::Hash + Trait, U: ::core::hash::Hash> ::core::hash::Hash
     }
 }
 #[automatically_derived]
-impl<T: Trait, U> ::core::marker::StructuralPartialEq for Generic<T, U> { }
+impl<T: ::core::cmp::PartialEq + Trait, U: ::core::cmp::PartialEq>
+    ::core::marker::StructuralPartialEq for Generic<T, U> where
+    T::A: ::core::cmp::PartialEq {
+}
 #[automatically_derived]
 impl<T: ::core::cmp::PartialEq + Trait, U: ::core::cmp::PartialEq>
     ::core::cmp::PartialEq for Generic<T, U> where
@@ -903,8 +906,9 @@ impl<T: ::core::hash::Hash + ::core::marker::Copy + Trait,
     }
 }
 #[automatically_derived]
-impl<T: Trait, U> ::core::marker::StructuralPartialEq for PackedGeneric<T, U>
-    {
+impl<T: ::core::cmp::PartialEq + Trait, U: ::core::cmp::PartialEq>
+    ::core::marker::StructuralPartialEq for PackedGeneric<T, U> where
+    T::A: ::core::cmp::PartialEq {
 }
 #[automatically_derived]
 impl<T: ::core::cmp::PartialEq + ::core::marker::Copy + Trait,
@@ -1595,7 +1599,9 @@ impl<T: ::core::hash::Hash, U: ::core::hash::Hash> ::core::hash::Hash for
     }
 }
 #[automatically_derived]
-impl<T, U> ::core::marker::StructuralPartialEq for EnumGeneric<T, U> { }
+impl<T: ::core::cmp::PartialEq, U: ::core::cmp::PartialEq>
+    ::core::marker::StructuralPartialEq for EnumGeneric<T, U> {
+}
 #[automatically_derived]
 impl<T: ::core::cmp::PartialEq, U: ::core::cmp::PartialEq>
     ::core::cmp::PartialEq for EnumGeneric<T, U> {

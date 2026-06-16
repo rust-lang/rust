@@ -80,11 +80,11 @@ note: required because it appears within the type `SalsaStorage`
    |
 LL | struct SalsaStorage {
    |        ^^^^^^^^^^^^
-note: required by a bound in `Database::Storage`
+note: required by an implicit `Sized` bound in `Database::Storage`
   --> $DIR/cycle-cache-err-60010.rs:7:5
    |
 LL |     type Storage;
-   |     ^^^^^^^^^^^^^ required by this bound in `Database::Storage`
+   |     ^^^^^^^^^^^^^ required by the implicit `Sized` requirement on this associated type in `Database::Storage`
 help: consider relaxing the implicit `Sized` restriction
    |
 LL |     type Storage: ?Sized;

@@ -1,14 +1,25 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    // Pin GitHub Actions to their commit SHA digests
+    "helpers:pinGitHubActionDigests"
+  ],
   // Let Renovatebot keep an opened issue that tracks our dependencies
   "dependencyDashboard": true,
-  // Disable "normal" package updates
-  "enabledManagers": [],
-  // Update lockfiles once per week
-  "lockFileMaintenance": {
-    "enabled": true,
-    "schedule": [
-      "before 5am on Tuesday"
-    ]
-  }
+  // Require manual approval from the Dependency Dashboard before opening PRs
+  "dependencyDashboardApproval": true,
+  // Don't manage dependencies inside subtrees. They are updated upstream and
+  // synced in. See `src/doc/rustc-dev-guide/src/external-repos.md` for the list.
+  "ignorePaths": [
+    "compiler/rustc_codegen_cranelift/**",
+    "compiler/rustc_codegen_gcc/**",
+    "library/compiler-builtins/**",
+    "library/portable-simd/**",
+    "library/stdarch/**",
+    "src/doc/rustc-dev-guide/**",
+    "src/tools/clippy/**",
+    "src/tools/miri/**",
+    "src/tools/rust-analyzer/**",
+    "src/tools/rustfmt/**"
+  ]
 }
