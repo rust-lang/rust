@@ -2,6 +2,6 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   // Let Renovatebot keep an opened issue that tracks our dependencies
   "dependencyDashboard": true,
-  // Disable "normal" package updates
-  "enabledManagers": []
+  // Require manual approval from the Dependency Dashboard before opening PRs
+  "dependencyDashboardApproval": true
 }
