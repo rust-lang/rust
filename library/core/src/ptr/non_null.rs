@@ -49,6 +49,10 @@ use crate::{fmt, hash, intrinsics, mem, ptr};
 ///
 /// # Representation
 ///
+/// `NonNull<T>` is guaranteed to be ABI-compatible with `*const T`,
+/// `*mut T`, `&T`, `&mut T`, and `Box<T, Global>` for all `T`, but its
+/// pointer must not be null.
+///
 /// Thanks to the [null pointer optimization],
 /// `NonNull<T>` and `Option<NonNull<T>>`
 /// are guaranteed to have the same size and alignment:
