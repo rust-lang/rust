@@ -2030,3 +2030,12 @@ pub(crate) struct OnlyStructsCanBeViewedAdt<'tcx> {
     pub article: &'static str,
     pub kind: &'static str,
 }
+
+#[derive(Diagnostic)]
+#[diag("the type of const parameters must not depend on other generic parameters", code = E0770)]
+pub(crate) struct ParamInTyOfConstParam<'tcx> {
+    #[primary_span]
+    #[label("the type `{$ty}` must not depend on other generic parameter")]
+    pub(crate) span: Span,
+    pub(crate) ty: Ty<'tcx>,
+}
