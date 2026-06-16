@@ -31,8 +31,8 @@ use tracing::debug;
 
 use crate::Namespace::{MacroNS, TypeNS, ValueNS};
 use crate::def_collector::DefCollector;
-use crate::error_helper::StructCtor;
-use crate::imports::{ImportData, ImportKind, OnUnknownData};
+use crate::error_helper::{OnUnknownData, StructCtor};
+use crate::imports::{ImportData, ImportKind};
 use crate::macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
 use crate::ref_mut::CmCell;
 use crate::{

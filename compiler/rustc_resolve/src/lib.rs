@@ -76,7 +76,7 @@ use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
-use crate::imports::OnUnknownData;
+use crate::error_helper::OnUnknownData;
 use crate::ref_mut::{CmCell, CmRefCell};
 
 mod build_reduced_graph;
