@@ -9,7 +9,7 @@ use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
 };
 
-use crate::{self as ty, BoundVarIndexKind, Interner};
+use crate::{self as ty, BoundVarIndexKind, Interner, UnevaluatedConst};
 
 /// Represents a constant in Rust.
 #[derive_where(Clone, Copy, Hash, PartialEq; I: Interner)]
@@ -67,26 +67,6 @@ impl<I: Interner> fmt::Debug for ConstKind<I> {
     }
 }
 
-/// An unevaluated (potentially generic) constant used in the type-system.
-#[derive_where(Clone, Copy, Debug, Hash, PartialEq; I: Interner)]
-#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
-#[cfg_attr(
-    feature = "nightly",
-    derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
-)]
-pub struct UnevaluatedConst<I: Interner> {
-    #[type_foldable(identity)]
-    #[type_visitable(ignore)]
-    pub kind: UnevaluatedConstKind<I>,
-    pub args: I::GenericArgs,
-
-    /// This field exists to prevent the creation of `UnevaluatedConst` without using [`UnevaluatedConst::new`].
-    #[derive_where(skip(Debug))]
-    pub(crate) _use_unevaluated_const_new_instead: (),
-}
-
-impl<I: Interner> Eq for UnevaluatedConst<I> {}
-
 impl<I: Interner> UnevaluatedConst<I> {
     #[inline]
     pub fn new(
@@ -103,7 +83,7 @@ impl<I: Interner> UnevaluatedConst<I> {
             };
             interner.debug_assert_args_compatible(def_id, args);
         }
-        UnevaluatedConst { kind, args, _use_unevaluated_const_new_instead: () }
+        UnevaluatedConst { kind, args, _use_alias_new_instead: () }
     }
 
     pub fn type_of(self, interner: I) -> ty::Unnormalized<I, I::Ty> {
@@ -121,7 +101,7 @@ impl<I: Interner> UnevaluatedConst<I> {
 /// and handled in very similar ways. The documentation for AliasTyKind/etc. may be helpful when
 /// learning about UnevaluatedConstKind.
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
-#[derive(GenericTypeVisitable, Lift_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
