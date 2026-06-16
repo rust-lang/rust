@@ -3,6 +3,7 @@ use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
 use std::ops::{Deref, DerefMut, RangeBounds};
+use std::ptr::NonNull;
 use std::{fmt, ptr, slice, vec};
 
 #[cfg(feature = "nightly")]
@@ -37,7 +38,7 @@ use crate::{Idx, IndexSlice};
 ///
 /// [`newtype_index!`]: ../macro.newtype_index.html
 pub struct IndexVec<I: Idx, T> {
-    data: *mut T,
+    data: NonNull<T>,
     len: I,
     capacity: I,
 
@@ -96,7 +97,7 @@ impl<I: Idx, T> IndexVec<I, T> {
         let mut me = ManuallyDrop::new(raw);
 
         IndexVec {
-            data: me.as_mut_ptr(),
+            data: unsafe { NonNull::new_unchecked(me.as_mut_ptr()) },
             len: I::new(me.len()),
             capacity: I::new(me.capacity()),
 
@@ -109,7 +110,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     pub fn into_vec(self) -> Vec<T> {
         let me = ManuallyDrop::new(self);
         // fixme this is unsound because we rely on correct Idx trait impls
-        unsafe { Vec::from_raw_parts(me.data, me.len.index(), me.capacity.index()) }
+        unsafe { Vec::from_raw_parts(me.data.as_ptr(), me.len.index(), me.capacity.index()) }
     }
 
     #[inline]
@@ -157,13 +158,15 @@ impl<I: Idx, T> IndexVec<I, T> {
 
     #[inline]
     pub fn as_slice(&self) -> &IndexSlice<I, T> {
-        IndexSlice::from_raw(unsafe { std::slice::from_raw_parts(self.data, self.len.index()) })
+        IndexSlice::from_raw(unsafe {
+            std::slice::from_raw_parts(self.data.as_ptr(), self.len.index())
+        })
     }
 
     #[inline]
     pub fn as_mut_slice(&mut self) -> &mut IndexSlice<I, T> {
         IndexSlice::from_raw_mut(unsafe {
-            std::slice::from_raw_parts_mut(self.data, self.len.index())
+            std::slice::from_raw_parts_mut(self.data.as_ptr(), self.len.index())
         })
     }
 
@@ -177,7 +180,7 @@ impl<I: Idx, T> IndexVec<I, T> {
             unsafe {
                 // todo copy pasta from Vec::push_mut
                 let end = self.data.add(len);
-                ptr::write(end, d);
+                ptr::write(end.as_ptr(), d);
                 self.len = I::new(len + 1);
             }
         } else {
@@ -418,6 +421,8 @@ mod size_asserts {
     use crate::static_assert_size;
     static_assert_size!(IndexVec<u32, u8>, 16);
     static_assert_size!(IndexVec<usize, u8>, 24);
+    static_assert_size!(Option<IndexVec<u32, u8>>, 16);
+    static_assert_size!(Option<IndexVec<usize, u8>>, 24);
 }
 
 #[cfg(test)]
