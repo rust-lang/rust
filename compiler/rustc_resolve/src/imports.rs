@@ -39,7 +39,7 @@ use crate::diagnostics::{
     CannotGlobImportAllCrates, ConsiderAddingMacroExport, ConsiderMarkingAsPub,
     ConsiderMarkingAsPubCrate,
 };
-use crate::errors::{DiagMode, Suggestion, import_candidates};
+use crate::error_helper::{DiagMode, Suggestion, import_candidates};
 use crate::ref_mut::CmCell;
 use crate::{
     AmbiguityError, BindingKey, CmResolver, Decl, DeclData, DeclKind, Determinacy, Finalize,
