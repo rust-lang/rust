@@ -1469,23 +1469,12 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
 
     fn visit_field_def(&mut self, f: &'ast FieldDef) {
         self.resolve_doc_links(&f.attrs, MaybeExported::Ok(f.id));
-        let FieldDef {
-            attrs,
-            id: _,
-            span: _,
-            vis,
-            ident,
-            ty,
-            is_placeholder: _,
-            default,
-            mut_restriction: _,
-            safety: _,
-        } = f;
+        let FieldDef { attrs, id: _, span: _, vis, ident, ty, is_placeholder: _, extras: _ } = f;
         walk_list!(self, visit_attribute, attrs);
         try_visit!(self.visit_vis(vis));
         visit_opt!(self, visit_ident, ident);
         try_visit!(self.visit_ty(ty));
-        if let Some(v) = &default {
+        if let Some(v) = f.default() {
             self.resolve_anon_const(v, AnonConstKind::FieldDefaultValue);
         }
     }

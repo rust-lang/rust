@@ -3626,15 +3626,36 @@ pub struct FieldDef {
     pub id: NodeId,
     pub span: Span,
     pub vis: Visibility,
-    pub mut_restriction: MutRestriction,
-    pub safety: Safety,
+    pub extras: Option<Box<(Safety, MutRestriction, Option<AnonConst>)>>,
     pub ident: Option<Ident>,
 
     pub ty: Box<Ty>,
-    pub default: Option<AnonConst>,
     pub is_placeholder: bool,
 }
 
+impl FieldDef {
+    pub fn mut_restriction(&self) -> &MutRestriction {
+        static DEFAULT: MutRestriction =
+            MutRestriction { kind: RestrictionKind::Unrestricted, span: DUMMY_SP, tokens: None };
+
+        match &self.extras {
+            Some(extras) => &extras.1,
+            None => &DEFAULT,
+        }
+    }
+    pub fn default(&self) -> Option<&AnonConst> {
+        match &self.extras {
+            Some(extras) => extras.2.as_ref(),
+            None => None,
+        }
+    }
+    pub fn safety(&self) -> Safety {
+        match &self.extras {
+            Some(extras) => extras.0,
+            None => Safety::Default,
+        }
+    }
+}
 /// Was parsing recovery performed?
 #[derive(Copy, Clone, Debug, Encodable, Decodable, StableHash, Walkable)]
 pub enum Recovered {
@@ -4393,7 +4414,7 @@ mod size_asserts {
     static_assert_size!(Block, 32);
     static_assert_size!(Expr, 72);
     static_assert_size!(ExprKind, 40);
-    static_assert_size!(FieldDef, 136);
+    static_assert_size!(FieldDef, 88);
     static_assert_size!(Fn, 192);
     static_assert_size!(ForeignItem, 80);
     static_assert_size!(ForeignItemKind, 16);

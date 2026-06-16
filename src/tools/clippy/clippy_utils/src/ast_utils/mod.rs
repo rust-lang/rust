@@ -726,7 +726,7 @@ fn eq_struct_field(l: &FieldDef, r: &FieldDef) -> bool {
     l.is_placeholder == r.is_placeholder
         && over(&l.attrs, &r.attrs, eq_attr)
         && eq_vis(&l.vis, &r.vis)
-        && eq_mut_restriction(&l.mut_restriction, &r.mut_restriction)
+        && eq_mut_restriction(l.mut_restriction(), r.mut_restriction())
         && both(l.ident.as_ref(), r.ident.as_ref(), |l, r| eq_id(*l, *r))
         && eq_ty(&l.ty, &r.ty)
 }

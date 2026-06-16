@@ -2151,12 +2151,10 @@ impl<'a> Parser<'a> {
                     FieldDef {
                         span: lo.to(ty.span),
                         vis,
-                        mut_restriction,
-                        safety: Safety::Default,
+                        extras: Self::field_def_extras(Safety::Default, mut_restriction, default),
                         ident: None,
                         id: DUMMY_NODE_ID,
                         ty,
-                        default,
                         attrs,
                         is_placeholder: false,
                     },
@@ -2181,6 +2179,21 @@ impl<'a> Parser<'a> {
             }
             error
         })
+    }
+
+    fn field_def_extras(
+        safety: Safety,
+        mut_restriction: MutRestriction,
+        default: Option<AnonConst>,
+    ) -> Option<Box<(Safety, MutRestriction, Option<AnonConst>)>> {
+        match (safety, mut_restriction, default) {
+            (Safety::Default, MutRestriction { kind: RestrictionKind::Unrestricted, .. }, None) => {
+                None
+            }
+            (safety, mut_restriction, default) => {
+                Some(Box::new((safety, mut_restriction, default)))
+            }
+        }
     }
 
     /// Parses an element of a struct declaration.
@@ -2374,11 +2387,9 @@ impl<'a> Parser<'a> {
             span: lo.to(self.prev_token.span),
             ident: Some(name),
             vis,
-            safety,
-            mut_restriction,
+            extras: Self::field_def_extras(safety, mut_restriction, default),
             id: DUMMY_NODE_ID,
             ty,
-            default,
             attrs,
             is_placeholder: false,
         })
