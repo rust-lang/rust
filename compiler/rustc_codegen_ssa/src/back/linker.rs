@@ -1233,6 +1233,9 @@ impl<'a> Linker for EmLinker<'a> {
             }
             LinkOutputKind::DynamicDylib | LinkOutputKind::StaticDylib => {
                 self.cmd.arg("-sSIDE_MODULE=2");
+                // Shared libraries have no `main`, so emcc must not link in the
+                // standalone-wasm entry shim that expects one. Mirrors `WasmLd`.
+                self.link_arg("--no-entry");
             }
             // -fno-pie is the default on Emscripten.
             LinkOutputKind::StaticNoPicExe | LinkOutputKind::StaticPicExe => {}
