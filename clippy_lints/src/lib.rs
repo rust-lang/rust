@@ -414,7 +414,7 @@ mod zombie_processes;
 use clippy_config::{Conf, get_configuration_metadata, sanitize_explanation};
 use clippy_utils::macros::FormatArgsStorage;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_lint::Lint;
+use rustc_lint::{Lint, pass_must_run};
 use rustc_middle::ty::TyCtxt;
 use utils::attr_collector::AttrStorage;
 
@@ -471,12 +471,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
 
     store.late_passes.push(Box::new(move |tcx: TyCtxt<'_>| {
         let dont_need = tcx.lints_that_dont_need_to_run(());
-        let is_active = |lints: &rustc_lint::LintVec| {
-            lints.is_empty()
-                || !lints
-                    .iter()
-                    .all(|lint| dont_need.contains(&rustc_lint::LintId::of(lint)))
-        };
+        let is_active = |lints: &rustc_lint::LintVec| pass_must_run(dont_need, lints);
         Box::new(CombinedLateLintPass::new(
             tcx,
             conf,
