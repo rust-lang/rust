@@ -46,6 +46,7 @@ def get_target() -> Target:
 BLESS: Final[bool] = os.environ["LLDB_BATCHMODE_BLESS_TEST_DATA"] == "1"
 """Global constant set by `compiletest` that determines whether or not we are blessing the test
 data."""
+
 TARGET: Final[Target] = get_target()
 """Global constant set by `compiletest`. Determines which target the tests were run for, thus which
 set of test input we check."""
@@ -142,6 +143,7 @@ class Field:
     type: str
     """The fully qualified name of the field's type. Full type information should be looked up
     via `TargetData.types`"""
+
     offset: ByteSize
 
 
@@ -154,18 +156,17 @@ class Type:
     basic_type: int
     """The `lldb.eBasicType` value associated with this type. Tested due to our use of it in type
     recognizer functions."""
+
     type_class: int
     """The `lldb.eTypeClass` value associated with thjs type. Tested due to our use of it in type
     recognizer functions."""
+
     fields: list[Field]
-    """
-    Stored as a list due to our reliance on `SBType.GetFieldAtIndex()`
-    """
+    """Stored as a list due to our reliance on `SBType.GetFieldAtIndex()`"""
+
     generic_params: list[str]
-    """
-    Stored as a list due to our reliance on `SBType.GetTemplateArgumentType()` and the sequential
-    behavior of `lldb_providers.get_template_args`
-    """
+    """Stored as a list due to our reliance on `SBType.GetTemplateArgumentType()` and the sequential
+    behavior of `lldb_providers.get_template_args`"""
     # FIXME the only way we can look up static fields is by name (as of lldb 22), so we need a way
     # to discover them. ATM only sum-type enums on MSVC use static fields, and those are fixed
     # values, so it's not super urgent.
@@ -184,9 +185,11 @@ class Child:
     name: str
     """The name used to access the child. If the parent object has a synthetic, the child name can
     be overridden."""
+
     type: str
     """The fully qualified name of the child's type. Full type information should be looked up
     via `TargetData.types`"""
+
     value: Optional[Primitive]
     children: list["Child"]
     """Children are stored as a list because of our use of `GetChildAtIndex()`. Providers can also
@@ -199,25 +202,33 @@ class Variable:
     type: str
     """The fully qualified name of the variable's type. Full type information should be looked up
     via `TargetData.types`"""
+
     pretty_type_name: Optional[str]
     """Type names can be overridden by `SyntehticProvider.get_type_name()` in LLDB and by
     `type_printer` in GDB"""
+
     pretty_print: Optional[str]
     """The string-result of pretty printing the value (`SBValue.GetSummary` for LLDB,
     `pretty_printer.to_string` for GDB). `None` for aggregates with no summary provider."""
+
     value: Optional[Primitive]
     """`None` if the object does not have a primitive representation."""
+
     synthetic: Optional[str]
     """The class/function name of the synthetic provider (lldb) or pretty printer (gdb).
     `None` if the object does not have a synthetic provider"""
+
     summary: Optional[str]
     """The function name of the summary provider. `None` if the object does not have a summary
     provider, or if the test data is for GDB"""
+
     format: Optional[int]
     """The `lldb.eFormat` enum variant associated with this type (if applicable)."""
+
     # Stored as a list instead of a dict because child order matters
     children: list[Child]
-    """A list of children provided by the object. If the object has a synthetic provider, the """
+    """A list of children provided by the object. If the object has a synthetic provider, the
+    children are the result of the provider's `get_child_at_index` function"""
 
 
 @dataclass(slots=True)
@@ -237,11 +248,13 @@ class TargetData:
     bless_metadata: BlessMetadata = field(default_factory=BlessMetadata)
     """Miscellaneous data included to make diagnosing issues easier. This data is not intended to be
     tested against."""
+
     types: dict[str, Type] = field(default_factory=dict)
     """
     A map of type names to types. Contains all types present in the test's variables, including the
     types of fields and child objects.
     """
+
     # If we ever decide that it makes sense to check the same variable twice at the same breakpoint
     # this will need to be converted to a list
     breakpoints: list[dict[str, Variable]] = field(default_factory=list)
