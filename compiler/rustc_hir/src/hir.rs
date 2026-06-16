@@ -5408,6 +5408,16 @@ impl<'hir> Node<'hir> {
         }
     }
 
+    /// For expressions, patterns, and types return the path if it's a path expr/pat/ty.
+    pub fn path(self) -> Option<&'hir QPath<'hir>> {
+        match self {
+            Node::Ty(Ty { kind: TyKind::Path(path), .. })
+            | Node::Expr(Expr { kind: ExprKind::Path(path), .. })
+            | Node::PatExpr(PatExpr { kind: PatExprKind::Path(path), .. }) => Some(path),
+            _ => None,
+        }
+    }
+
     expect_methods_self! {
         expect_param,         &'hir Param<'hir>,        Node::Param(n),        n;
         expect_item,          &'hir Item<'hir>,         Node::Item(n),         n;

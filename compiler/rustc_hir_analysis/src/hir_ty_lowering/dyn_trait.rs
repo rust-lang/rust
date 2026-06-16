@@ -599,19 +599,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let tcx = self.tcx();
         let [poly_trait_ref, ..] = hir_bounds else { return None };
 
-        let in_path = match tcx.parent_hir_node(hir_id) {
-            hir::Node::Ty(hir::Ty {
-                kind: hir::TyKind::Path(hir::QPath::TypeRelative(qself, _)),
-                ..
-            })
-            | hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Path(hir::QPath::TypeRelative(qself, _)),
-                ..
-            })
-            | hir::Node::PatExpr(hir::PatExpr {
-                kind: hir::PatExprKind::Path(hir::QPath::TypeRelative(qself, _)),
-                ..
-            }) if qself.hir_id == hir_id => true,
+        let in_path = match tcx.parent_hir_node(hir_id).path() {
+            Some(hir::QPath::TypeRelative(qself, _)) if qself.hir_id == hir_id => true,
             _ => false,
         };
         let needs_bracket = in_path
