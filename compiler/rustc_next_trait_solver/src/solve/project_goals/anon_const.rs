@@ -13,9 +13,14 @@ where
     #[instrument(level = "trace", skip(self), ret)]
     pub(super) fn normalize_anon_const(
         &mut self,
-        goal: Goal<I, ty::NormalizesTo<I>>,
+        goal: Goal<I, ty::ProjectionPredicate<I>>,
     ) -> QueryResultOrRerunNonErased<I> {
-        let uv = goal.predicate.alias.expect_ct();
-        self.evaluate_const_and_instantiate_normalizes_to_term(goal, uv)
+        let uv = goal.predicate.projection_term.expect_ct();
+        self.evaluate_const_and_instantiate_projection_term(
+            goal.param_env,
+            goal.predicate.projection_term,
+            goal.predicate.term,
+            uv,
+        )
     }
 }

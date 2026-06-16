@@ -735,7 +735,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     | ty::PredicateKind::Ambiguous
                     | ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature { .. })
                     | ty::PredicateKind::NormalizesTo { .. }
-                    | ty::PredicateKind::AliasRelate { .. }
+                    | ty::PredicateKind::AliasRelate(..)
                     | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType { .. }) => {
                         span_bug!(
                             span,
@@ -1747,6 +1747,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 else {
                     return None;
                 };
+                if !proj.projection_term.kind.is_trait_projection() {
+                    return None;
+                }
 
                 let trait_ref = self.enter_forall_and_leak_universe(
                     predicate.kind().rebind(proj.projection_term.trait_ref(self.tcx)),
@@ -1819,6 +1822,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         expected_ty: ty::Term<'tcx>,
         long_ty_path: &mut Option<PathBuf>,
     ) -> Option<(String, Span, Option<Span>)> {
+        if !projection_term.kind.is_trait_projection() {
+            return None;
+        }
+
         let projection_def_id = projection_term.expect_projection_def_id();
         let trait_def_id = projection_term.trait_def_id(self.tcx);
         let self_ty = projection_term.self_ty();

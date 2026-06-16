@@ -472,20 +472,13 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
     + UpcastFrom<I, ty::TraitRef<I>>
     + UpcastFrom<I, ty::Binder<I, ty::TraitRef<I>>>
     + UpcastFrom<I, ty::TraitPredicate<I>>
+    + UpcastFrom<I, ty::ProjectionPredicate<I>>
     + UpcastFrom<I, ty::OutlivesPredicate<I, I::Ty>>
     + UpcastFrom<I, ty::OutlivesPredicate<I, I::Region>>
     + IntoKind<Kind = ty::Binder<I, ty::PredicateKind<I>>>
     + Elaboratable<I>
 {
     fn as_clause(self) -> Option<I::Clause>;
-
-    fn as_normalizes_to(self) -> Option<ty::Binder<I, ty::NormalizesTo<I>>> {
-        let kind = self.kind();
-        match kind.skip_binder() {
-            ty::PredicateKind::NormalizesTo(pred) => Some(kind.rebind(pred)),
-            _ => None,
-        }
-    }
 
     fn allow_normalization(self) -> bool {
         match self.kind().skip_binder() {
