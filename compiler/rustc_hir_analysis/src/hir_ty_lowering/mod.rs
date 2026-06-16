@@ -2791,8 +2791,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             Res::Def(DefKind::Static { .. }, _) => {
                 span_bug!(span, "use of bare `static` ConstArgKind::Path's not yet supported")
             }
+            Res::Def(DefKind::AssocFn, _) => {
+                let guar =
+                    self.dcx().span_err(span, "function items cannot be used as const arguments");
+                Const::new_error(tcx, guar)
+            }
             // FIXME(const_generics): create real const to allow fn items as const paths
-            Res::Def(DefKind::Fn | DefKind::AssocFn, did) => {
+            Res::Def(DefKind::Fn, did) => {
                 self.dcx().span_delayed_bug(span, "function items cannot be used as const args");
                 let args = self.lower_generic_args_of_path_segment(
                     span,
