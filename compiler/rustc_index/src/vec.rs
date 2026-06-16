@@ -3,7 +3,7 @@ use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
 use std::ops::{Deref, DerefMut, RangeBounds};
-use std::{fmt, slice, vec};
+use std::{fmt, ptr, slice, vec};
 
 #[cfg(feature = "nightly")]
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -171,7 +171,18 @@ impl<I: Idx, T> IndexVec<I, T> {
     #[inline]
     pub fn push(&mut self, d: T) -> I {
         let idx = self.next_index();
-        self.mutate(|vec| vec.push(d));
+        let len = self.len.index();
+
+        if len < self.capacity.index() {
+            unsafe {
+                // todo copy pasta from Vec::push_mut
+                let end = self.data.add(len);
+                ptr::write(end, d);
+                self.len = I::new(len + 1);
+            }
+        } else {
+            self.mutate(|vec| vec.push(d));
+        }
         idx
     }
 
