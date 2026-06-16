@@ -2,10 +2,11 @@ use std::assert_matches;
 use std::ops::Deref;
 
 use rustc_abi::{Align, Scalar, Size, WrappingRange};
+use rustc_ast::expand::typetree::FncTree;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
-use rustc_middle::ty::{AtomicOrdering, Instance, Ty};
+use rustc_middle::ty::{typetree_from_ty, AtomicOrdering, Instance, Ty};
 use rustc_session::config::OptLevel;
 use rustc_span::Span;
 use rustc_target::callconv::FnAbi;
@@ -504,14 +505,28 @@ pub trait BuilderMethods<'a, 'tcx>:
             let ty = self.backend_type(layout);
             let val = self.load_from_place(ty, src);
             self.store_to_place_with_flags(val, dst, flags);
+            dbg!("typed copy, branch1, nontemporal");
         } else if self.sess().opts.optimize == OptLevel::No && self.is_backend_immediate(layout) {
             // If we're not optimizing, the aliasing information from `memcpy`
             // isn't useful, so just load-store the value for smaller code.
             let temp = self.load_operand(src.with_type(layout));
+            dbg!("typed copy, branch2, immediate");
             temp.val.store_with_flags(self, dst.with_type(layout), flags);
         } else if !layout.is_zst() {
             let bytes = self.const_usize(layout.size.bytes());
-            self.memcpy(dst.llval, dst.align, src.llval, src.align, bytes, flags, None);
+            dbg!("typed copy, branch3");
+            //let ty = self.backend_type(layout);
+            let ty = layout.ty;
+            dbg!(&ty);
+            let tt = typetree_from_ty(self.tcx(), ty);
+            dbg!("got tt");
+            let fnc_tree = FncTree {
+                args: vec![tt.clone()],
+                ret: tt,
+            };
+            dbg!(&fnc_tree);
+            self.memcpy(dst.llval, dst.align, src.llval, src.align, bytes, flags, Some(fnc_tree));
+            dbg!("done");
         }
     }
 

@@ -62,6 +62,9 @@ pub(crate) fn add_tt<'ll>(
     if !tcx.sess.opts.unstable_opts.autodiff.contains(&rustc_session::config::AutoDiff::Enable) {
         return;
     }
+    if tcx.sess.opts.unstable_opts.autodiff.contains(&rustc_session::config::AutoDiff::NoTT) {
+        return;
+    }
     // TypeTree processing uses functions from Enzyme, which we might not have available if we did
     // not build this compiler with `llvm_enzyme`. This feature is not strictly necessary, but
     // skipping this function increases the chance that Enzyme fails to compile some code.
@@ -73,6 +76,7 @@ pub(crate) fn add_tt<'ll>(
     let inputs = tt.args;
     let ret_tt: RustTypeTree = tt.ret;
 
+    dbg!("getting DataLayout");
     let llvm_data_layout: *const c_char = unsafe { llvm::LLVMGetDataLayoutStr(&*llmod) };
     let llvm_data_layout =
         std::str::from_utf8(unsafe { std::ffi::CStr::from_ptr(llvm_data_layout) }.to_bytes())
@@ -80,6 +84,7 @@ pub(crate) fn add_tt<'ll>(
 
     let attr_name = "enzyme_type";
     let c_attr_name = CString::new(attr_name).unwrap();
+    dbg!("going to iter over inputs");
 
     for (i, input) in inputs.iter().enumerate() {
         unsafe {
@@ -95,11 +100,15 @@ pub(crate) fn add_tt<'ll>(
                 c_str.as_ptr(),
                 c_str.to_bytes().len() as c_uint,
             );
+            dbg!("adding attribute for argument {}", i);
+            dbg!("attribute string: {:?}", c_str);
+            dbg!(&fn_def);
 
             attributes::apply_to_llfn(fn_def, llvm::AttributePlace::Argument(i as u32), &[attr]);
             enzyme_wrapper.tree_to_string_free(c_str.as_ptr());
         }
     }
+    dbg!("finished to iter over inputs");
 
     unsafe {
         let enzyme_tt = to_enzyme_typetree(ret_tt, llvm_data_layout, llcx);
@@ -115,7 +124,10 @@ pub(crate) fn add_tt<'ll>(
             c_str.to_bytes().len() as c_uint,
         );
 
+        dbg!(&fn_def);
+
         attributes::apply_to_llfn(fn_def, llvm::AttributePlace::ReturnValue, &[ret_attr]);
         enzyme_wrapper.tree_to_string_free(c_str.as_ptr());
     }
+    dbg!("finished to add return attribute");
 }
