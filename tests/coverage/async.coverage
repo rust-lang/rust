@@ -24,8 +24,7 @@
    LL|       |
    LL|      0|async fn foo() -> [bool; 10] { [false; 10] } // unused function; executor does not block on `h()`
    LL|       |
-   LL|      1|async fn g(x: u8) {
-                                ^0
+   LL|      0|async fn g(x: u8) {
    LL|      0|    match x {
    LL|      0|        y if e().await == y => (),
    LL|      0|        y if f().await == y => (),
@@ -33,8 +32,7 @@
    LL|       |    }
    LL|      0|}
    LL|       |
-   LL|      1|async fn h(x: usize) { // The function signature is counted when called, but the body is not
-                                   ^0
+   LL|      0|async fn h(x: usize) { // The function signature is counted when called, but the body is not
    LL|       |                       // executed (not awaited) so the open brace has a `0` count (at least when
    LL|       |                       // displayed with `llvm-cov show` in color-mode).
    LL|      0|    match x {
@@ -92,8 +90,7 @@
    LL|       |    }
    LL|      1|}
    LL|       |
-   LL|      1|async fn m(x: u8) -> u8 { x - 1 }
-                                      ^0^0    ^0
+   LL|      0|async fn m(x: u8) -> u8 { x - 1 }
    LL|       |
    LL|      1|fn main() {
    LL|      1|    let _ = g(10);
