@@ -2,6 +2,7 @@ use tracing::{debug, instrument};
 
 use self::combine::{PredicateEmittingRelation, super_combine_consts, super_combine_tys};
 use crate::data_structures::DelayedSet;
+use crate::region_constraint::RegionConstraint;
 use crate::relate::combine::combine_ty_args;
 pub use crate::relate::*;
 use crate::solve::{Goal, VisibleForLeakCheck};
@@ -30,6 +31,70 @@ pub trait RelateExt: InferCtxtLike {
         Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>,
         TypeError<Self::Interner>,
     >;
+
+    fn eq_structurally_relating_aliases_with_region_constraints<T: Relate<Self::Interner>>(
+        &self,
+        param_env: <Self::Interner as Interner>::ParamEnv,
+        lhs: T,
+        rhs: T,
+        span: <Self::Interner as Interner>::Span,
+    ) -> Result<
+        (
+            Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>,
+            RegionConstraint<Self::Interner>,
+        ),
+        TypeError<Self::Interner>,
+    >;
+
+    fn relate_with_region_constraints<T: Relate<Self::Interner>>(
+        &self,
+        param_env: <Self::Interner as Interner>::ParamEnv,
+        lhs: T,
+        variance: ty::Variance,
+        rhs: T,
+        span: <Self::Interner as Interner>::Span,
+    ) -> Result<
+        (
+            Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>,
+            RegionConstraint<Self::Interner>,
+        ),
+        TypeError<Self::Interner>,
+    >;
+}
+
+fn relate_with_options<Infcx, T>(
+    infcx: &Infcx,
+    structurally_relate_aliases: StructurallyRelateAliases,
+    param_env: <Infcx::Interner as Interner>::ParamEnv,
+    lhs: T,
+    variance: ty::Variance,
+    rhs: T,
+    span: <Infcx::Interner as Interner>::Span,
+    collect_region_constraints: bool,
+) -> Result<
+    (
+        Vec<Goal<Infcx::Interner, <Infcx::Interner as Interner>::Predicate>>,
+        Option<RegionConstraint<Infcx::Interner>>,
+    ),
+    TypeError<Infcx::Interner>,
+>
+where
+    Infcx: InferCtxtLike,
+    T: Relate<Infcx::Interner>,
+{
+    let mut relate = SolverRelating::build(
+        infcx,
+        structurally_relate_aliases,
+        variance,
+        param_env,
+        span,
+        collect_region_constraints.then(Vec::new),
+    );
+    relate.relate(lhs, rhs)?;
+    Ok((
+        relate.goals,
+        relate.region_constraints.map(|c| RegionConstraint::And(c.into_boxed_slice())),
+    ))
 }
 
 impl<Infcx: InferCtxtLike> RelateExt for Infcx {
@@ -44,10 +109,17 @@ impl<Infcx: InferCtxtLike> RelateExt for Infcx {
         Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>,
         TypeError<Self::Interner>,
     > {
-        let mut relate =
-            SolverRelating::new(self, StructurallyRelateAliases::No, variance, param_env, span);
-        relate.relate(lhs, rhs)?;
-        Ok(relate.goals)
+        let (goals, _) = relate_with_options(
+            self,
+            StructurallyRelateAliases::No,
+            param_env,
+            lhs,
+            variance,
+            rhs,
+            span,
+            false,
+        )?;
+        Ok(goals)
     }
 
     fn eq_structurally_relating_aliases<T: Relate<Self::Interner>>(
@@ -60,15 +132,70 @@ impl<Infcx: InferCtxtLike> RelateExt for Infcx {
         Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>,
         TypeError<Self::Interner>,
     > {
-        let mut relate = SolverRelating::new(
+        let (goals, _) = relate_with_options(
             self,
             StructurallyRelateAliases::Yes,
-            ty::Invariant,
             param_env,
+            lhs,
+            ty::Invariant,
+            rhs,
             span,
-        );
-        relate.relate(lhs, rhs)?;
-        Ok(relate.goals)
+            false,
+        )?;
+        Ok(goals)
+    }
+
+    fn eq_structurally_relating_aliases_with_region_constraints<T: Relate<Self::Interner>>(
+        &self,
+        param_env: <Self::Interner as Interner>::ParamEnv,
+        lhs: T,
+        rhs: T,
+        span: <Self::Interner as Interner>::Span,
+    ) -> Result<
+        (
+            Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>,
+            RegionConstraint<Self::Interner>,
+        ),
+        TypeError<Self::Interner>,
+    > {
+        let (goals, region_constraints) = relate_with_options(
+            self,
+            StructurallyRelateAliases::Yes,
+            param_env,
+            lhs,
+            ty::Invariant,
+            rhs,
+            span,
+            true,
+        )?;
+        Ok((goals, region_constraints.unwrap()))
+    }
+
+    fn relate_with_region_constraints<T: Relate<Self::Interner>>(
+        &self,
+        param_env: <Self::Interner as Interner>::ParamEnv,
+        lhs: T,
+        variance: ty::Variance,
+        rhs: T,
+        span: <Self::Interner as Interner>::Span,
+    ) -> Result<
+        (
+            Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>,
+            RegionConstraint<Self::Interner>,
+        ),
+        TypeError<Self::Interner>,
+    > {
+        let (goals, region_constraints) = relate_with_options(
+            self,
+            StructurallyRelateAliases::No,
+            param_env,
+            lhs,
+            variance,
+            rhs,
+            span,
+            true,
+        )?;
+        Ok((goals, region_constraints.unwrap()))
     }
 }
 
@@ -82,6 +209,7 @@ pub struct SolverRelating<'infcx, Infcx, I: Interner> {
     // Mutable fields.
     ambient_variance: ty::Variance,
     goals: Vec<Goal<I, I::Predicate>>,
+    region_constraints: Option<Vec<RegionConstraint<I>>>,
     /// The cache only tracks the `ambient_variance` as it's the
     /// only field which is mutable and which meaningfully changes
     /// the result when relating types.
@@ -119,6 +247,17 @@ where
         param_env: I::ParamEnv,
         span: I::Span,
     ) -> Self {
+        Self::build(infcx, structurally_relate_aliases, ambient_variance, param_env, span, None)
+    }
+
+    fn build(
+        infcx: &'infcx Infcx,
+        structurally_relate_aliases: StructurallyRelateAliases,
+        ambient_variance: ty::Variance,
+        param_env: I::ParamEnv,
+        span: I::Span,
+        region_constraints: Option<Vec<RegionConstraint<I>>>,
+    ) -> Self {
         SolverRelating {
             infcx,
             structurally_relate_aliases,
@@ -126,6 +265,7 @@ where
             ambient_variance,
             param_env,
             goals: vec![],
+            region_constraints,
             cache: Default::default(),
         }
     }
@@ -262,6 +402,35 @@ where
             ty::Invariant => self.infcx.equate_regions(a, b, VisibleForLeakCheck::Yes, self.span),
             ty::Bivariant => {
                 unreachable!("Expected bivariance to be handled in relate_with_variance")
+            }
+        }
+
+        let resolve_region = |r: I::Region| match r.kind() {
+            ty::ReVar(vid) => self.infcx.opportunistic_resolve_lt_var(vid),
+            _ => r,
+        };
+        let a = resolve_region(a);
+        let b = resolve_region(b);
+
+        if let Some(region_constraints) = &mut self.region_constraints {
+            if a == b {
+                return Ok(a);
+            } else {
+                match self.ambient_variance {
+                    ty::Covariant => {
+                        region_constraints.push(RegionConstraint::RegionOutlives(a, b));
+                    }
+                    ty::Contravariant => {
+                        region_constraints.push(RegionConstraint::RegionOutlives(b, a));
+                    }
+                    ty::Invariant => {
+                        region_constraints.push(RegionConstraint::RegionOutlives(a, b));
+                        region_constraints.push(RegionConstraint::RegionOutlives(b, a));
+                    }
+                    ty::Bivariant => {
+                        unreachable!("Expected bivariance to be handled in relate_with_variance")
+                    }
+                }
             }
         }
 
