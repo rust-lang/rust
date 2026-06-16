@@ -117,6 +117,7 @@ use precedence::*;
 use ptr_nulls::*;
 use redundant_semicolon::*;
 use reference_casting::*;
+use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::LocalModDefId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
@@ -740,6 +741,22 @@ fn register_internals(store: &mut LintStore) {
             LintId::of(RUSTC_MUST_MATCH_EXHAUSTIVELY),
         ],
     );
+}
+
+/// Must a pass (which contains `lints`) run? Maybe not, e.g. for dependencies built with
+/// `--cap-lints=allow`.
+///
+/// Note: this is a conservative estimate intended for optimization purposes. It might return
+/// `true` for a pass that need not run, but it will never return `false` for a pass that must run.
+pub fn pass_must_run(skippable: &UnordSet<LintId>, lints: &LintVec) -> bool {
+    // A pass without any lints? Clippy sometimes does this, to collect things while traversing.
+    // Such a pass must always run.
+    if lints.is_empty() {
+        return true;
+    }
+
+    // Otherwise, the pass must run unless all lints within are skippable.
+    !lints.iter().all(|lint| skippable.contains(&LintId::of(lint)))
 }
 
 #[cfg(test)]
