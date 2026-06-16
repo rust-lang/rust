@@ -1476,7 +1476,7 @@ impl<'a> TraitDef<'a> {
         for field in struct_def.fields() {
             let sp = field.span.with_ctxt(self.span.ctxt());
             match field.ident {
-                Some(ident) => named_idents.push((ident, sp, field.default.as_ref())),
+                Some(ident) => named_idents.push((ident, sp, field.default_value())),
                 _ => just_spans.push(sp),
             }
         }
