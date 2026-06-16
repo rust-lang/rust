@@ -120,6 +120,7 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
     }
 
     bb19 (cleanup): {
+        BackwardIncompatibleDropHint(_3, UnwindStorageDead);
         resume;
     }
 }

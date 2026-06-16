@@ -19,7 +19,7 @@ fn main() -> () {
 
     bb0: {
         StorageLive(_1);
-        _1 = std::mem::size_of::<Foo>() -> [return: bb1, unwind: bb5];
+        _1 = std::mem::size_of::<Foo>() -> [return: bb1, unwind: bb6];
     }
 
     bb1: {
@@ -63,6 +63,18 @@ fn main() -> () {
     }
 
     bb5 (cleanup): {
+        BackwardIncompatibleDropHint(_6, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_5, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_2, UnwindStorageDead);
+        goto -> bb7;
+    }
+
+    bb6 (cleanup): {
+        BackwardIncompatibleDropHint(_1, UnwindStorageDead);
+        goto -> bb7;
+    }
+
+    bb7 (cleanup): {
         resume;
     }
 }

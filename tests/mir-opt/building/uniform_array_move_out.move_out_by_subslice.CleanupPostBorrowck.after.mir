@@ -46,7 +46,7 @@ fn move_out_by_subslice() -> () {
 
     bb5: {
         StorageDead(_4);
-        drop(_1) -> [return: bb6, unwind: bb9];
+        drop(_1) -> [return: bb6, unwind: bb10];
     }
 
     bb6: {
@@ -55,14 +55,22 @@ fn move_out_by_subslice() -> () {
     }
 
     bb7 (cleanup): {
-        drop(_1) -> [return: bb9, unwind terminate(cleanup)];
+        nop;
+        drop(_1) -> [return: bb10, unwind terminate(cleanup)];
     }
 
     bb8 (cleanup): {
+        nop;
         drop(_2) -> [return: bb9, unwind terminate(cleanup)];
     }
 
     bb9 (cleanup): {
+        nop;
+        goto -> bb10;
+    }
+
+    bb10 (cleanup): {
+        nop;
         resume;
     }
 }

@@ -118,8 +118,8 @@ fn const_array_len(_1: [T; 5]) -> () {
     }
 
     bb15 (cleanup): {
-        StorageDead(_13);
-        StorageDead(_12);
+        BackwardIncompatibleDropHint(_13, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_12, UnwindStorageDead);
         goto -> bb22;
     }
 
@@ -128,8 +128,8 @@ fn const_array_len(_1: [T; 5]) -> () {
     }
 
     bb17 (cleanup): {
-        StorageDead(_11);
-        StorageDead(_10);
+        BackwardIncompatibleDropHint(_11, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_10, UnwindStorageDead);
         goto -> bb22;
     }
 
@@ -138,8 +138,8 @@ fn const_array_len(_1: [T; 5]) -> () {
     }
 
     bb19 (cleanup): {
-        StorageDead(_9);
-        StorageDead(_8);
+        BackwardIncompatibleDropHint(_9, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_8, UnwindStorageDead);
         goto -> bb22;
     }
 
@@ -148,8 +148,8 @@ fn const_array_len(_1: [T; 5]) -> () {
     }
 
     bb21 (cleanup): {
-        StorageDead(_7);
-        StorageDead(_6);
+        BackwardIncompatibleDropHint(_7, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_6, UnwindStorageDead);
         goto -> bb22;
     }
 
@@ -158,22 +158,22 @@ fn const_array_len(_1: [T; 5]) -> () {
     }
 
     bb23 (cleanup): {
-        StorageDead(_5);
+        BackwardIncompatibleDropHint(_5, UnwindStorageDead);
         drop(_4) -> [return: bb24, unwind terminate(cleanup)];
     }
 
     bb24 (cleanup): {
-        StorageDead(_4);
+        BackwardIncompatibleDropHint(_4, UnwindStorageDead);
         drop(_3) -> [return: bb25, unwind terminate(cleanup)];
     }
 
     bb25 (cleanup): {
-        StorageDead(_3);
+        BackwardIncompatibleDropHint(_3, UnwindStorageDead);
         drop(_2) -> [return: bb26, unwind terminate(cleanup)];
     }
 
     bb26 (cleanup): {
-        StorageDead(_2);
+        BackwardIncompatibleDropHint(_2, UnwindStorageDead);
         drop(_1) -> [return: bb27, unwind terminate(cleanup)];
     }
 

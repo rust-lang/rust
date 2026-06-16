@@ -1,5 +1,4 @@
 //@ compile-flags: -Zmir-opt-level=0
-//@ skip-filecheck
 // Non-coroutine unwind paths use BackwardIncompatibleDropHint where a future
 // edition would insert StorageDead.
 
@@ -12,6 +11,11 @@ impl Drop for Droppable {
 }
 
 fn test() {
+    // CHECK-LABEL: fn test(
+    // The built MIR dump asserts the exact BackwardIncompatibleDropHint placement.
+    // FileCheck runs on post-borrowck MIR, where CleanupPostBorrowck has removed
+    // those hints again.
+    // CHECK-NOT: BackwardIncompatibleDropHint
     let x = 42i32;
     let y = Droppable;
     may_panic();

@@ -86,19 +86,20 @@ fn test_or() -> () {
     }
 
     bb13 (cleanup): {
-        StorageDead(_6);
-        StorageDead(_5);
+        BackwardIncompatibleDropHint(_6, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_5, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_4, UnwindStorageDead);
         goto -> bb15;
     }
 
     bb14 (cleanup): {
-        StorageDead(_3);
-        StorageDead(_2);
+        BackwardIncompatibleDropHint(_3, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_2, UnwindStorageDead);
         goto -> bb15;
     }
 
     bb15 (cleanup): {
-        StorageDead(_1);
+        BackwardIncompatibleDropHint(_1, UnwindStorageDead);
         resume;
     }
 }

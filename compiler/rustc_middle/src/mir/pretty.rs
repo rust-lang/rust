@@ -879,10 +879,8 @@ impl Debug for StatementKind<'_> {
             Intrinsic(ref intrinsic) => write!(fmt, "{intrinsic}"),
             ConstEvalCounter => write!(fmt, "ConstEvalCounter"),
             Nop => write!(fmt, "nop"),
-            BackwardIncompatibleDropHint { ref place, reason: _ } => {
-                // The reason is intentionally omitted to keep MIR diffs stable
-                // across future-compatibility lint implementation details.
-                write!(fmt, "BackwardIncompatibleDropHint({place:?})")
+            BackwardIncompatibleDropHint { ref place, reason } => {
+                write!(fmt, "BackwardIncompatibleDropHint({place:?}, {reason:?})")
             }
         }
     }

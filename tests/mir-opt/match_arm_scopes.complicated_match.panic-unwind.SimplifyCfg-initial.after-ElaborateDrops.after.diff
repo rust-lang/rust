@@ -243,17 +243,17 @@
       }
   
 -     bb25 (cleanup): {
--         StorageDead(_16);
--         StorageDead(_15);
+-         BackwardIncompatibleDropHint(_16, UnwindStorageDead);
+-         BackwardIncompatibleDropHint(_15, UnwindStorageDead);
 +     bb22 (cleanup): {
           goto -> bb27;
       }
   
 -     bb26 (cleanup): {
--         StorageDead(_7);
--         StorageDead(_5);
--         StorageDead(_8);
--         StorageDead(_6);
+-         BackwardIncompatibleDropHint(_7, UnwindStorageDead);
+-         BackwardIncompatibleDropHint(_5, UnwindStorageDead);
+-         BackwardIncompatibleDropHint(_8, UnwindStorageDead);
+-         BackwardIncompatibleDropHint(_6, UnwindStorageDead);
 -         goto -> bb27;
 +     bb23 (cleanup): {
 +         resume;

@@ -33,8 +33,8 @@ fn bar(_1: Box<[T]>) -> () {
     }
 
     bb4 (cleanup): {
-        StorageDead(_3);
-        StorageDead(_2);
+        BackwardIncompatibleDropHint(_3, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_2, UnwindStorageDead);
         drop(_1) -> [return: bb5, unwind terminate(cleanup)];
     }
 

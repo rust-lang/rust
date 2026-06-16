@@ -30,21 +30,30 @@ use run_make_support::{dynamic_lib_name, rfs, rust_lib_name, rustc};
 // maximum value of 4096) so if this function gets big enough rustc's error
 // handling path will be exercised.
 fn generate_program(n: u32) -> String {
-    let mut program = String::from("pub type BigType = Vec<Vec<String>>;\n\n");
+    let mut program = String::from(
+        "pub type BigType = u64;\n\n\
+        #[inline(always)]\n\
+        fn step1(x: u64) -> u64 { std::hint::black_box(x.wrapping_add(1)) }\n\
+        #[inline(always)]\n\
+        fn step2(x: u64) -> u64 { std::hint::black_box(x.wrapping_add(1)) }\n\
+        #[inline(always)]\n\
+        fn step3(x: u64) -> u64 { std::hint::black_box(x.wrapping_add(1)) }\n\n",
+    );
     program.push_str("pub fn big_function() -> BigType {\n");
-    program.push_str("    vec![\n");
+    program.push_str("    let mut value = 0u64;\n");
     for i in 1..=n {
-        program.push_str(&format!("vec![\"string{}\".to_owned()],\n", i));
+        program.push_str(&format!("    value = step3(step2(step1(value.wrapping_add({i}))));\n"));
     }
-    program.push_str("    ]\n");
+    program.push_str("    value\n");
     program.push_str("}\n");
     program
 }
 
 fn main() {
-    // The reported threshold is around 1366 (4096/3), but let's bump it to
-    // around 1500 to be less sensitive.
-    rfs::write("generated.rs", generate_program(1500));
+    // Use non-droppy values so this debuginfo test is not coupled to unwind cleanup markers.
+    // Each iteration generates three inlined callsites. The reported threshold is around
+    // 1366 (4096/3), but let's bump it above that to be less sensitive.
+    rfs::write("generated.rs", generate_program(1400));
 
     rustc()
         .input("proc.rs")

@@ -65,6 +65,8 @@ fn helper() -> u8 {
     }
 
     bb11 (cleanup): {
+        BackwardIncompatibleDropHint(_2, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_1, UnwindStorageDead);
         resume;
     }
 }

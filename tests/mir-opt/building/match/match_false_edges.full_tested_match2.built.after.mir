@@ -123,6 +123,10 @@ fn full_tested_match2() -> () {
     }
 
     bb16 (cleanup): {
+        BackwardIncompatibleDropHint(_7, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_6, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_2, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_1, UnwindStorageDead);
         resume;
     }
 }

@@ -47,13 +47,13 @@ fn foo(_1: Box<[T]>) -> T {
     }
 
     bb5 (cleanup): {
-        StorageDead(_3);
-        StorageDead(_4);
+        BackwardIncompatibleDropHint(_3, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_4, UnwindStorageDead);
         goto -> bb6;
     }
 
     bb6 (cleanup): {
-        StorageDead(_2);
+        BackwardIncompatibleDropHint(_2, UnwindStorageDead);
         drop(_1) -> [return: bb7, unwind terminate(cleanup)];
     }
 

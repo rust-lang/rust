@@ -19,7 +19,7 @@ fn test_complex() -> () {
     bb0: {
         StorageLive(_1);
         StorageLive(_2);
-        _2 = E::f() -> [return: bb1, unwind: bb38];
+        _2 = E::f() -> [return: bb1, unwind: bb42];
     }
 
     bb1: {
@@ -42,7 +42,7 @@ fn test_complex() -> () {
 
     bb5: {
         StorageLive(_4);
-        _4 = always_true() -> [return: bb6, unwind: bb38];
+        _4 = always_true() -> [return: bb6, unwind: bb40];
     }
 
     bb6: {
@@ -64,7 +64,7 @@ fn test_complex() -> () {
     }
 
     bb9: {
-        drop(_7) -> [return: bb11, unwind: bb37];
+        drop(_7) -> [return: bb11, unwind: bb38];
     }
 
     bb10: {
@@ -78,7 +78,7 @@ fn test_complex() -> () {
     }
 
     bb12: {
-        drop(_7) -> [return: bb13, unwind: bb37];
+        drop(_7) -> [return: bb13, unwind: bb38];
     }
 
     bb13: {
@@ -98,7 +98,7 @@ fn test_complex() -> () {
     }
 
     bb15: {
-        drop(_10) -> [return: bb17, unwind: bb36];
+        drop(_10) -> [return: bb17, unwind: bb37];
     }
 
     bb16: {
@@ -118,7 +118,7 @@ fn test_complex() -> () {
     }
 
     bb19: {
-        drop(_10) -> [return: bb20, unwind: bb35];
+        drop(_10) -> [return: bb20, unwind: bb37];
     }
 
     bb20: {
@@ -139,7 +139,7 @@ fn test_complex() -> () {
         StorageDead(_4);
         StorageDead(_1);
         StorageLive(_11);
-        _11 = always_true() -> [return: bb23, unwind: bb38];
+        _11 = always_true() -> [return: bb23, unwind: bb36];
     }
 
     bb23: {
@@ -156,7 +156,7 @@ fn test_complex() -> () {
 
     bb26: {
         StorageLive(_12);
-        _12 = E::f() -> [return: bb27, unwind: bb38];
+        _12 = E::f() -> [return: bb27, unwind: bb35];
     }
 
     bb27: {
@@ -199,25 +199,56 @@ fn test_complex() -> () {
     }
 
     bb35 (cleanup): {
-        StorageDead(_10);
-        StorageDead(_9);
-        StorageDead(_2);
-        goto -> bb38;
+        BackwardIncompatibleDropHint(_12, UnwindStorageDead);
+        goto -> bb36;
     }
 
     bb36 (cleanup): {
-        StorageDead(_10);
-        StorageDead(_9);
-        goto -> bb38;
+        BackwardIncompatibleDropHint(_11, UnwindStorageDead);
+        goto -> bb44;
     }
 
     bb37 (cleanup): {
-        StorageDead(_7);
-        StorageDead(_6);
-        goto -> bb38;
+        BackwardIncompatibleDropHint(_10, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_9, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_2, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_8, UnwindStorageDead);
+        goto -> bb39;
     }
 
     bb38 (cleanup): {
+        BackwardIncompatibleDropHint(_7, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_6, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_2, UnwindStorageDead);
+        goto -> bb39;
+    }
+
+    bb39 (cleanup): {
+        BackwardIncompatibleDropHint(_5, UnwindStorageDead);
+        goto -> bb41;
+    }
+
+    bb40 (cleanup): {
+        BackwardIncompatibleDropHint(_2, UnwindStorageDead);
+        goto -> bb41;
+    }
+
+    bb41 (cleanup): {
+        BackwardIncompatibleDropHint(_4, UnwindStorageDead);
+        goto -> bb43;
+    }
+
+    bb42 (cleanup): {
+        BackwardIncompatibleDropHint(_2, UnwindStorageDead);
+        goto -> bb43;
+    }
+
+    bb43 (cleanup): {
+        BackwardIncompatibleDropHint(_1, UnwindStorageDead);
+        goto -> bb44;
+    }
+
+    bb44 (cleanup): {
         resume;
     }
 }

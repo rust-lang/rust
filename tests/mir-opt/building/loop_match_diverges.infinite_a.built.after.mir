@@ -48,6 +48,7 @@ fn infinite_a(_1: u8) -> () {
     }
 
     bb7 (cleanup): {
+        BackwardIncompatibleDropHint(_2, UnwindStorageDead);
         resume;
     }
 }

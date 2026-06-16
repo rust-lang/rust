@@ -85,7 +85,7 @@
           _7 = copy ((_1 as B).0: u32);
           StorageLive(_8);
           _8 = copy _7;
-          _0 = consume(move _8) -> [return: bb11, unwind: bb14];
+          _0 = consume(move _8) -> [return: bb11, unwind: bb15];
       }
   
       bb7: {
@@ -93,7 +93,7 @@
           _5 = copy ((_1 as C).0: u32);
           StorageLive(_6);
           _6 = copy _5;
-          _0 = consume(move _6) -> [return: bb10, unwind: bb14];
+          _0 = consume(move _6) -> [return: bb10, unwind: bb16];
       }
   
       bb8: {
@@ -101,7 +101,7 @@
           _3 = copy ((_1 as D).0: u32);
           StorageLive(_4);
           _4 = copy _3;
-          _0 = consume(move _4) -> [return: bb9, unwind: bb14];
+          _0 = consume(move _4) -> [return: bb9, unwind: bb17];
       }
   
       bb9: {
@@ -135,6 +135,31 @@
       }
   
       bb14 (cleanup): {
+          BackwardIncompatibleDropHint(_10, UnwindStorageDead);
+          BackwardIncompatibleDropHint(_9, UnwindStorageDead);
+          goto -> bb18;
+      }
+  
+      bb15 (cleanup): {
+          BackwardIncompatibleDropHint(_8, UnwindStorageDead);
+          BackwardIncompatibleDropHint(_7, UnwindStorageDead);
+          goto -> bb18;
+      }
+  
+      bb16 (cleanup): {
+          BackwardIncompatibleDropHint(_6, UnwindStorageDead);
+          BackwardIncompatibleDropHint(_5, UnwindStorageDead);
+          goto -> bb18;
+      }
+  
+      bb17 (cleanup): {
+          BackwardIncompatibleDropHint(_4, UnwindStorageDead);
+          BackwardIncompatibleDropHint(_3, UnwindStorageDead);
+          goto -> bb18;
+      }
+  
+      bb18 (cleanup): {
+          BackwardIncompatibleDropHint(_1, UnwindStorageDead);
           resume;
       }
   }

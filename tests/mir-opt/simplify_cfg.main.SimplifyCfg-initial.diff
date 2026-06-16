@@ -12,8 +12,8 @@
       }
   
       bb1: {
--         falseUnwind -> [real: bb2, unwind: bb11];
-+         falseUnwind -> [real: bb2, unwind: bb6];
+-         falseUnwind -> [real: bb2, unwind: bb12];
++         falseUnwind -> [real: bb2, unwind: bb7];
       }
   
       bb2: {
@@ -62,6 +62,13 @@
 - 
 -     bb11 (cleanup): {
 +     bb6 (cleanup): {
+          BackwardIncompatibleDropHint(_2, UnwindStorageDead);
+-         goto -> bb12;
++         goto -> bb7;
+      }
+  
+-     bb12 (cleanup): {
++     bb7 (cleanup): {
           resume;
       }
   }

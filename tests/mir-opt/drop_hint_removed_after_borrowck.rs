@@ -1,6 +1,5 @@
 //@ compile-flags: -Zmir-opt-level=0
 //@ test-mir-pass: CleanupPostBorrowck
-//@ skip-filecheck
 // BackwardIncompatibleDropHint is only needed for borrowck/linting and should be
 // removed after borrowck by CleanupPostBorrowck.
 
@@ -14,6 +13,8 @@ impl Drop for Droppable {
 }
 
 fn test() {
+    // CHECK-LABEL: fn test(
+    // CHECK-NOT: BackwardIncompatibleDropHint
     let x = 42i32;
     let y = Droppable;
     may_panic();

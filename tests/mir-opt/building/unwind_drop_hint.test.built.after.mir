@@ -36,13 +36,13 @@ fn test() -> () {
     }
 
     bb3 (cleanup): {
-        BackwardIncompatibleDropHint(_3);
+        BackwardIncompatibleDropHint(_3, UnwindStorageDead);
         drop(_2) -> [return: bb4, unwind terminate(cleanup)];
     }
 
     bb4 (cleanup): {
-        BackwardIncompatibleDropHint(_2);
-        BackwardIncompatibleDropHint(_1);
+        BackwardIncompatibleDropHint(_2, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_1, UnwindStorageDead);
         resume;
     }
 }

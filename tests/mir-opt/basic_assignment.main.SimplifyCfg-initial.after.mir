@@ -73,19 +73,19 @@ fn main() -> () {
     }
 
     bb6 (cleanup): {
-        StorageDead(_6);
+        BackwardIncompatibleDropHint(_6, UnwindStorageDead);
         drop(_5) -> [return: bb7, unwind terminate(cleanup)];
     }
 
     bb7 (cleanup): {
-        StorageDead(_5);
+        BackwardIncompatibleDropHint(_5, UnwindStorageDead);
         drop(_4) -> [return: bb8, unwind terminate(cleanup)];
     }
 
     bb8 (cleanup): {
-        StorageDead(_4);
-        StorageDead(_2);
-        StorageDead(_1);
+        BackwardIncompatibleDropHint(_4, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_2, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_1, UnwindStorageDead);
         resume;
     }
 }

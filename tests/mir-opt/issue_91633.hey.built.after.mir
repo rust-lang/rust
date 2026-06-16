@@ -33,6 +33,9 @@ fn hey(_1: &[T]) -> () {
     }
 
     bb3 (cleanup): {
+        BackwardIncompatibleDropHint(_4, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_2, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_3, UnwindStorageDead);
         resume;
     }
 }

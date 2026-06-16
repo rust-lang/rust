@@ -1,6 +1,3 @@
-//@ edition: 2021
-//@ normalize-stderr: "\n\n\z" -> "\n"
-
 #![allow(unused)]
 #![deny(unwind_drop_order)]
 

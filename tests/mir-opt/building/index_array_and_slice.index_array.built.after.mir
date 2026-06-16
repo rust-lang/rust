@@ -26,6 +26,8 @@ fn index_array(_1: &[i32; 7], _2: usize) -> &i32 {
     }
 
     bb2 (cleanup): {
+        BackwardIncompatibleDropHint(_4, UnwindStorageDead);
+        BackwardIncompatibleDropHint(_3, UnwindStorageDead);
         resume;
     }
 }

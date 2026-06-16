@@ -49,6 +49,8 @@
       }
   
       bb5 (cleanup): {
+-         BackwardIncompatibleDropHint(_1, UnwindStorageDead);
++         nop;
           resume;
       }
   }
