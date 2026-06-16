@@ -2415,7 +2415,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
         }
 
-        let lint_ambiguous = match probes[0].0.kind {
+        let lint_ambiguous = match child_candidate.kind {
             TraitCandidate(_, lint) => lint,
             _ => false,
         };
