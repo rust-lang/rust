@@ -24,7 +24,7 @@ fn f() -> () {
 
     bb0: {
         StorageLive(_2);
-        _2 = String::new() -> [return: bb1, unwind: bb24];
+        _2 = String::new() -> [return: bb1, unwind: bb23];
     }
 
     bb1: {
@@ -33,13 +33,13 @@ fn f() -> () {
         _3 = const 12_i32;
         FakeRead(ForLet(None), _3);
         StorageLive(_4);
-        _4 = String::new() -> [return: bb2, unwind: bb23];
+        _4 = String::new() -> [return: bb2, unwind: bb22];
     }
 
     bb2: {
         FakeRead(ForLet(None), _4);
         StorageLive(_5);
-        _5 = String::new() -> [return: bb3, unwind: bb22];
+        _5 = String::new() -> [return: bb3, unwind: bb21];
     }
 
     bb3: {
@@ -65,18 +65,18 @@ fn f() -> () {
     }
 
     bb7: {
-        drop(_5) -> [return: bb8, unwind: bb22];
+        drop(_5) -> [return: bb8, unwind: bb21];
     }
 
     bb8: {
         StorageDead(_5);
-        drop(_4) -> [return: bb9, unwind: bb23];
+        drop(_4) -> [return: bb9, unwind: bb22];
     }
 
     bb9: {
         StorageDead(_4);
         StorageDead(_3);
-        drop(_2) -> [return: bb10, unwind: bb24];
+        drop(_2) -> [return: bb10, unwind: bb23];
     }
 
     bb10: {
@@ -89,7 +89,7 @@ fn f() -> () {
     }
 
     bb12: {
-        drop(_5) -> [return: bb13, unwind: bb22];
+        drop(_5) -> [return: bb13, unwind: bb21];
     }
 
     bb13: {
@@ -98,7 +98,7 @@ fn f() -> () {
     }
 
     bb14: {
-        drop(_4) -> [return: bb15, unwind: bb23];
+        drop(_4) -> [return: bb15, unwind: bb22];
     }
 
     bb15: {
@@ -112,7 +112,7 @@ fn f() -> () {
     }
 
     bb17: {
-        drop(_2) -> [return: bb18, unwind: bb24];
+        drop(_2) -> [return: bb18, unwind: bb23];
     }
 
     bb18: {
@@ -125,22 +125,18 @@ fn f() -> () {
     }
 
     bb20 (cleanup): {
-        drop(_7) -> [return: bb21, unwind terminate(cleanup)];
+        drop(_5) -> [return: bb21, unwind terminate(cleanup)];
     }
 
     bb21 (cleanup): {
-        drop(_5) -> [return: bb22, unwind terminate(cleanup)];
+        drop(_4) -> [return: bb22, unwind terminate(cleanup)];
     }
 
     bb22 (cleanup): {
-        drop(_4) -> [return: bb23, unwind terminate(cleanup)];
+        drop(_2) -> [return: bb23, unwind terminate(cleanup)];
     }
 
     bb23 (cleanup): {
-        drop(_2) -> [return: bb24, unwind terminate(cleanup)];
-    }
-
-    bb24 (cleanup): {
         resume;
     }
 }

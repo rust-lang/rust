@@ -31,20 +31,20 @@
       bb0: {
 +         _12 = const false;
           StorageLive(_4);
-          _4 = String::new() -> [return: bb1, unwind: bb27];
+          _4 = String::new() -> [return: bb1, unwind: bb26];
       }
   
       bb1: {
           StorageLive(_5);
           _5 = const 12_i32;
           StorageLive(_6);
-          _6 = String::new() -> [return: bb2, unwind: bb26];
+          _6 = String::new() -> [return: bb2, unwind: bb25];
       }
   
       bb2: {
 +         _12 = const true;
           StorageLive(_7);
-          _7 = String::new() -> [return: bb3, unwind: bb25];
+          _7 = String::new() -> [return: bb3, unwind: bb24];
       }
   
       bb3: {
@@ -59,7 +59,7 @@
           StorageDead(_9);
           StorageDead(_8);
           StorageLive(_10);
-          _10 = String::new() -> [return: bb5, unwind: bb24];
+          _10 = String::new() -> [return: bb5, unwind: bb23];
       }
   
       bb5: {
@@ -102,7 +102,7 @@
       }
   
       bb13 (cleanup): {
-          drop(_11) -> [return: bb25, unwind terminate(cleanup)];
+          drop(_11) -> [return: bb24, unwind terminate(cleanup)];
       }
   
       bb14 (cleanup): {
@@ -111,8 +111,8 @@
       }
   
       bb15 (cleanup): {
--         drop(_11) -> [return: bb26, unwind terminate(cleanup)];
-+         goto -> bb26;
+-         drop(_11) -> [return: bb25, unwind terminate(cleanup)];
++         goto -> bb25;
       }
   
       bb16 (cleanup): {
@@ -120,7 +120,7 @@
       }
   
       bb17 (cleanup): {
-          drop(_11) -> [return: bb27, unwind terminate(cleanup)];
+          drop(_11) -> [return: bb26, unwind terminate(cleanup)];
       }
   
       bb18 (cleanup): {
@@ -128,7 +128,7 @@
       }
   
       bb19 (cleanup): {
-          drop(_11) -> [return: bb28, unwind terminate(cleanup)];
+          drop(_11) -> [return: bb27, unwind terminate(cleanup)];
       }
   
       bb20 (cleanup): {
@@ -136,49 +136,44 @@
       }
   
       bb21 (cleanup): {
-          drop(_11) -> [return: bb29, unwind terminate(cleanup)];
+          drop(_11) -> [return: bb28, unwind terminate(cleanup)];
       }
   
       bb22 (cleanup): {
-          drop(_10) -> [return: bb24, unwind terminate(cleanup)];
+          drop(_10) -> [return: bb23, unwind terminate(cleanup)];
       }
   
       bb23 (cleanup): {
--         drop(_9) -> [return: bb24, unwind terminate(cleanup)];
-+         goto -> bb24;
+          drop(_7) -> [return: bb24, unwind terminate(cleanup)];
       }
   
       bb24 (cleanup): {
-          drop(_7) -> [return: bb25, unwind terminate(cleanup)];
+-         drop(_6) -> [return: bb25, unwind terminate(cleanup)];
++         goto -> bb30;
       }
   
       bb25 (cleanup): {
--         drop(_6) -> [return: bb26, unwind terminate(cleanup)];
-+         goto -> bb31;
+          drop(_4) -> [return: bb26, unwind terminate(cleanup)];
       }
   
       bb26 (cleanup): {
-          drop(_4) -> [return: bb27, unwind terminate(cleanup)];
+          drop(_2) -> [return: bb27, unwind terminate(cleanup)];
       }
   
       bb27 (cleanup): {
-          drop(_2) -> [return: bb28, unwind terminate(cleanup)];
+          drop(_1) -> [return: bb28, unwind terminate(cleanup)];
       }
   
       bb28 (cleanup): {
-          drop(_1) -> [return: bb29, unwind terminate(cleanup)];
-      }
-  
-      bb29 (cleanup): {
           resume;
 +     }
 + 
-+     bb30 (cleanup): {
-+         drop(_6) -> [return: bb26, unwind terminate(cleanup)];
++     bb29 (cleanup): {
++         drop(_6) -> [return: bb25, unwind terminate(cleanup)];
 +     }
 + 
-+     bb31 (cleanup): {
-+         switchInt(copy _12) -> [0: bb26, otherwise: bb30];
++     bb30 (cleanup): {
++         switchInt(copy _12) -> [0: bb25, otherwise: bb29];
       }
   }
   

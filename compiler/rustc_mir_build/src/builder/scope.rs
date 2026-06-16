@@ -821,9 +821,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let mut drop_idx = ROOT_NODE;
         for scope in &self.scopes.scopes[stack_index + 1..] {
-            for drop in &scope.drops {
-                drop_idx = drops.add_drop(*drop, drop_idx);
-            }
+            drop_idx = drops.add_scope_drops(scope, drop_idx);
         }
         drops.add_entry_point(block, drop_idx);
 
@@ -1022,11 +1020,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let drops = &mut scope.const_continue_drops;
 
-        let drop_idx = self.scopes.scopes[stack_index + 1..]
-            .iter()
-            .flat_map(|scope| &scope.drops)
-            .fold(ROOT_NODE, |drop_idx, &drop| drops.add_drop(drop, drop_idx));
-
+        let mut drop_idx = ROOT_NODE;
+        for scope in &self.scopes.scopes[stack_index + 1..] {
+            drop_idx = drops.add_scope_drops(scope, drop_idx);
+        }
         drops.add_entry_point(imaginary_target, drop_idx);
 
         self.cfg.terminate(imaginary_target, source_info, TerminatorKind::UnwindResume);
@@ -1035,11 +1032,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let stack_index = self.scopes.stack_index(region_scope, span);
         let mut drops = DropTree::new();
 
-        let drop_idx = self.scopes.scopes[stack_index + 1..]
-            .iter()
-            .flat_map(|scope| &scope.drops)
-            .fold(ROOT_NODE, |drop_idx, &drop| drops.add_drop(drop, drop_idx));
-
+        let mut drop_idx = ROOT_NODE;
+        for scope in &self.scopes.scopes[stack_index + 1..] {
+            drop_idx = drops.add_scope_drops(scope, drop_idx);
+        }
         drops.add_entry_point(drop_and_continue_block, drop_idx);
 
         // `build_drop_trees` doesn't have access to our source_info, so we
@@ -1071,12 +1067,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Upgrade `if_then_scope` to `&mut`.
         let if_then_scope = self.scopes.if_then_scope.as_mut().expect("upgrading & to &mut");
 
-        let mut drop_idx = ROOT_NODE;
         let drops = &mut if_then_scope.else_drops;
+        let mut drop_idx = ROOT_NODE;
         for scope in &self.scopes.scopes[stack_index + 1..] {
-            for drop in &scope.drops {
-                drop_idx = drops.add_drop(*drop, drop_idx);
-            }
+            drop_idx = drops.add_scope_drops(scope, drop_idx);
         }
         drops.add_entry_point(block, drop_idx);
 
@@ -1569,7 +1563,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let is_coroutine = self.coroutine.is_some();
         for scope in &mut self.scopes.scopes[uncached_scope..=target] {
             for drop in &scope.drops {
-                if is_coroutine || drop.kind == DropKind::Value {
+                let emit = match drop.kind {
+                    DropKind::Storage => is_coroutine,
+                    DropKind::Value | DropKind::ForLint => !scope.moved_locals.contains(drop.local),
+                };
+                if emit {
                     cached_drop = self.scopes.unwind_drops.add_drop(*drop, cached_drop);
                 }
             }
@@ -1630,9 +1628,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         for scope in &mut self.scopes.scopes[uncached_scope..=target] {
-            for drop in &scope.drops {
-                cached_drop = self.scopes.coroutine_drops.add_drop(*drop, cached_drop);
-            }
+            cached_drop = self.scopes.coroutine_drops.add_scope_drops(scope, cached_drop);
             scope.cached_coroutine_drop_block = Some(cached_drop);
         }
 

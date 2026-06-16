@@ -28,7 +28,7 @@ fn f_with_arg(_1: String, _2: String) -> () {
 
     bb0: {
         StorageLive(_4);
-        _4 = String::new() -> [return: bb1, unwind: bb43];
+        _4 = String::new() -> [return: bb1, unwind: bb42];
     }
 
     bb1: {
@@ -37,13 +37,13 @@ fn f_with_arg(_1: String, _2: String) -> () {
         _5 = const 12_i32;
         FakeRead(ForLet(None), _5);
         StorageLive(_6);
-        _6 = String::new() -> [return: bb2, unwind: bb42];
+        _6 = String::new() -> [return: bb2, unwind: bb41];
     }
 
     bb2: {
         FakeRead(ForLet(None), _6);
         StorageLive(_7);
-        _7 = String::new() -> [return: bb3, unwind: bb41];
+        _7 = String::new() -> [return: bb3, unwind: bb40];
     }
 
     bb3: {
@@ -66,7 +66,7 @@ fn f_with_arg(_1: String, _2: String) -> () {
     bb6: {
         StorageDead(_8);
         StorageLive(_10);
-        _10 = String::new() -> [return: bb7, unwind: bb40];
+        _10 = String::new() -> [return: bb7, unwind: bb39];
     }
 
     bb7: {
@@ -117,7 +117,7 @@ fn f_with_arg(_1: String, _2: String) -> () {
     }
 
     bb17: {
-        drop(_7) -> [return: bb18, unwind: bb41];
+        drop(_7) -> [return: bb18, unwind: bb40];
     }
 
     bb18: {
@@ -126,7 +126,7 @@ fn f_with_arg(_1: String, _2: String) -> () {
     }
 
     bb19: {
-        drop(_6) -> [return: bb20, unwind: bb42];
+        drop(_6) -> [return: bb20, unwind: bb41];
     }
 
     bb20: {
@@ -140,7 +140,7 @@ fn f_with_arg(_1: String, _2: String) -> () {
     }
 
     bb22: {
-        drop(_4) -> [return: bb23, unwind: bb43];
+        drop(_4) -> [return: bb23, unwind: bb42];
     }
 
     bb23: {
@@ -153,11 +153,11 @@ fn f_with_arg(_1: String, _2: String) -> () {
     }
 
     bb25: {
-        drop(_2) -> [return: bb26, unwind: bb44];
+        drop(_2) -> [return: bb26, unwind: bb43];
     }
 
     bb26: {
-        drop(_1) -> [return: bb27, unwind: bb45];
+        drop(_1) -> [return: bb27, unwind: bb44];
     }
 
     bb27: {
@@ -169,7 +169,7 @@ fn f_with_arg(_1: String, _2: String) -> () {
     }
 
     bb29 (cleanup): {
-        drop(_11) -> [return: bb41, unwind terminate(cleanup)];
+        drop(_11) -> [return: bb40, unwind terminate(cleanup)];
     }
 
     bb30 (cleanup): {
@@ -177,7 +177,7 @@ fn f_with_arg(_1: String, _2: String) -> () {
     }
 
     bb31 (cleanup): {
-        drop(_11) -> [return: bb42, unwind terminate(cleanup)];
+        drop(_11) -> [return: bb41, unwind terminate(cleanup)];
     }
 
     bb32 (cleanup): {
@@ -185,7 +185,7 @@ fn f_with_arg(_1: String, _2: String) -> () {
     }
 
     bb33 (cleanup): {
-        drop(_11) -> [return: bb43, unwind terminate(cleanup)];
+        drop(_11) -> [return: bb42, unwind terminate(cleanup)];
     }
 
     bb34 (cleanup): {
@@ -193,7 +193,7 @@ fn f_with_arg(_1: String, _2: String) -> () {
     }
 
     bb35 (cleanup): {
-        drop(_11) -> [return: bb44, unwind terminate(cleanup)];
+        drop(_11) -> [return: bb43, unwind terminate(cleanup)];
     }
 
     bb36 (cleanup): {
@@ -201,38 +201,34 @@ fn f_with_arg(_1: String, _2: String) -> () {
     }
 
     bb37 (cleanup): {
-        drop(_11) -> [return: bb45, unwind terminate(cleanup)];
+        drop(_11) -> [return: bb44, unwind terminate(cleanup)];
     }
 
     bb38 (cleanup): {
-        drop(_10) -> [return: bb40, unwind terminate(cleanup)];
+        drop(_10) -> [return: bb39, unwind terminate(cleanup)];
     }
 
     bb39 (cleanup): {
-        drop(_9) -> [return: bb40, unwind terminate(cleanup)];
+        drop(_7) -> [return: bb40, unwind terminate(cleanup)];
     }
 
     bb40 (cleanup): {
-        drop(_7) -> [return: bb41, unwind terminate(cleanup)];
+        drop(_6) -> [return: bb41, unwind terminate(cleanup)];
     }
 
     bb41 (cleanup): {
-        drop(_6) -> [return: bb42, unwind terminate(cleanup)];
+        drop(_4) -> [return: bb42, unwind terminate(cleanup)];
     }
 
     bb42 (cleanup): {
-        drop(_4) -> [return: bb43, unwind terminate(cleanup)];
+        drop(_2) -> [return: bb43, unwind terminate(cleanup)];
     }
 
     bb43 (cleanup): {
-        drop(_2) -> [return: bb44, unwind terminate(cleanup)];
+        drop(_1) -> [return: bb44, unwind terminate(cleanup)];
     }
 
     bb44 (cleanup): {
-        drop(_1) -> [return: bb45, unwind terminate(cleanup)];
-    }
-
-    bb45 (cleanup): {
         resume;
     }
 }
