@@ -45,7 +45,7 @@ use super::compare_eii::{compare_eii_function_types, compare_eii_statics};
 use crate::autoderef::Autoderef;
 use crate::constrained_generic_params::{Parameter, identify_constrained_generic_params};
 use crate::diagnostics;
-use crate::diagnostics::InvalidReceiverTyHint;
+use crate::diagnostics::{InvalidReceiverTyHint, ParamInTyOfConstParam};
 
 pub(super) struct WfCheckingCtxt<'a, 'tcx> {
     pub(super) ocx: ObligationCtxt<'a, 'tcx, FulfillmentError<'tcx>>,
@@ -855,7 +855,15 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &ty::GenericParamDef) -> Result<(), Er
             let ty = tcx.type_of(param.def_id).instantiate_identity().skip_norm_wip();
             let span = tcx.def_span(param.def_id);
             let def_id = param.def_id.expect_local();
-
+            if !tcx.features().generic_const_parameter_types() && ty.has_param() {
+                let hir::GenericParamKind::Const { ty: &hir::Ty { span, .. }, .. } =
+                    tcx.hir_node_by_def_id(def_id).expect_generic_param().kind
+                else {
+                    bug!()
+                };
+                let err = tcx.dcx().create_err(ParamInTyOfConstParam { span, ty }).emit();
+                return Err(err);
+            }
             if tcx.features().const_param_ty_unchecked() {
                 enter_wf_checking_ctxt(tcx, tcx.local_parent(def_id), |wfcx| {
                     wfcx.register_wf_obligation(span, None, ty.into());

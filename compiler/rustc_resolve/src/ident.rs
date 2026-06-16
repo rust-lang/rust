@@ -1584,7 +1584,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
 
                         RibKind::ConstParamTy => {
-                            if !self.features.generic_const_parameter_types() {
+                            // We check whether Self depends on generics parameters during HIR analysis
+                            if !self.features.generic_const_parameter_types()
+                                && !matches!(res, Res::SelfTyAlias { .. })
+                            {
                                 if let Some(span) = finalize {
                                     self.report_error(
                                         span,
