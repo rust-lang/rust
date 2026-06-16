@@ -24,7 +24,7 @@ use rustc_middle::ty::{
     TypeVisitable, TypeVisitableExt, Unnormalized, fold_regions,
 };
 use rustc_session::lint::builtin::UNINHABITED_STATIC;
-use rustc_span::sym;
+use rustc_span::{DesugaringKind, sym};
 use rustc_target::spec::{AbiMap, AbiMapping};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits;
@@ -2117,7 +2117,9 @@ fn check_type_alias_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalD
             // * check for emptiness to detect lone user-written `?Sized` bounds
             // * compare the param span to the pred span to detect lone user-written `Sized` bounds
             let has_explicit_bounds = bounded_params.is_empty()
-                || (*bounded_params).get(&param.index).is_some_and(|&&pred_sp| pred_sp != span);
+                || (*bounded_params).get(&param.index).is_some_and(|&&pred_sp| {
+                    !pred_sp.is_desugaring(DesugaringKind::DefaultBound { def: param.def_id })
+                });
             let const_param_help = !has_explicit_bounds;
 
             let mut diag = tcx.dcx().create_err(diagnostics::UnusedGenericParameter {
