@@ -3,5 +3,19 @@
   // Let Renovatebot keep an opened issue that tracks our dependencies
   "dependencyDashboard": true,
   // Require manual approval from the Dependency Dashboard before opening PRs
-  "dependencyDashboardApproval": true
+  "dependencyDashboardApproval": true,
+  // Don't manage dependencies inside subtrees. They are updated upstream and
+  // synced in. See `src/doc/rustc-dev-guide/src/external-repos.md` for the list.
+  "ignorePaths": [
+    "compiler/rustc_codegen_cranelift/**",
+    "compiler/rustc_codegen_gcc/**",
+    "library/compiler-builtins/**",
+    "library/portable-simd/**",
+    "library/stdarch/**",
+    "src/doc/rustc-dev-guide/**",
+    "src/tools/clippy/**",
+    "src/tools/miri/**",
+    "src/tools/rust-analyzer/**",
+    "src/tools/rustfmt/**"
+  ]
 }
