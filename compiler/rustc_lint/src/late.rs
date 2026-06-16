@@ -354,10 +354,10 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     // `RuntimeCombinedLateLintPass`.
     let store = unerased_lint_store(tcx.sess);
 
+    let dont_need_to_run = tcx.lints_that_dont_need_to_run(());
     if store.late_module_passes.is_empty() {
         // If all builtin lints can be skipped, there is no point in running `late_lint_mod_inner`
         // at all. This happens often for dependencies built with `--cap-lints=allow`.
-        let dont_need_to_run = tcx.lints_that_dont_need_to_run(());
         let can_skip_lints = builtin_lints
             .get_lints()
             .iter()
@@ -367,14 +367,25 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
         }
     } else {
         let builtin_lints = Box::new(builtin_lints) as Box<dyn LateLintPass<'tcx>>;
-        let mut binding = store
+        let mut passes = store
             .late_module_passes
             .iter()
             .map(|mk_pass| (mk_pass)(tcx))
             .chain(std::iter::once(builtin_lints))
             .collect::<Vec<_>>();
 
-        let pass = RuntimeCombinedLateLintPass { passes: binding.as_mut_slice() };
+        passes.retain(|pass| {
+            let lints = (**pass).get_lints();
+            // Lintless passes are always in
+            lints.is_empty() ||
+            // If the pass doesn't have a single needed lint, omit it
+            !lints.iter().all(|lint| dont_need_to_run.contains(&LintId::of(lint)))
+        });
+        if passes.is_empty() {
+            return;
+        }
+
+        let pass = RuntimeCombinedLateLintPass { passes: passes.as_mut_slice() };
         late_lint_mod_inner(tcx, module_def_id, context, pass);
     }
 }
