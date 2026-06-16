@@ -214,6 +214,11 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     // - https://github.com/rust-lang/rust/issues/153629
     sym::splat,
 
+    // The `#[unroll]` attribute.
+    //
+    // - https://github.com/rust-lang/rust/pull/156816
+    sym::unroll,
+
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================

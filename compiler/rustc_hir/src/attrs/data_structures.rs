@@ -129,6 +129,14 @@ impl InlineAttr {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, StableHash, PrintAttribute)]
+pub enum UnrollAttr {
+    Hint,
+    Full,
+    Never,
+    Count(u32),
+}
+
 #[derive(Copy, Clone, Encodable, Decodable, Debug, PartialEq, Eq, StableHash, PrintAttribute)]
 pub enum InstructionSetAttr {
     ArmA32,
@@ -1626,6 +1634,9 @@ pub enum AttributeKind {
     TypeLengthLimit {
         limit: Limit,
     },
+
+    /// Represents `#[unroll]`
+    Unroll(UnrollAttr),
 
     /// Represents `#[unstable_feature_bound]`.
     UnstableFeatureBound(ThinVec<(Symbol, Span)>),
