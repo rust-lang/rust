@@ -470,8 +470,8 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     }
 
     store.late_passes.push(Box::new(move |tcx: TyCtxt<'_>| {
-        let dont_need = tcx.lints_that_dont_need_to_run(());
-        let is_active = |lints: &rustc_lint::LintVec| pass_must_run(dont_need, lints);
+        let skippable_lints = tcx.skippable_lints(());
+        let is_active = |lints: &rustc_lint::LintVec| pass_must_run(skippable_lints, lints);
         Box::new(CombinedLateLintPass::new(
             tcx,
             conf,
