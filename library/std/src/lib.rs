@@ -787,6 +787,11 @@ include!("../../core/src/primitive_docs.rs");
 // because rustdoc only looks for these modules at the crate level.
 include!("keyword_docs.rs");
 
+// Include private modules that exist solely to provide rustdoc
+// documentation for built-in attributes. Using `include!` because rustdoc
+// only looks for these modules at the crate level.
+include!("attribute_docs.rs");
+
 // This is required to avoid an unstable error when `restricted-std` is not
 // enabled. The use of #![feature(restricted_std)] in rustc-std-workspace-std
 // is unconditional, so the unstable feature needs to be defined somewhere.
