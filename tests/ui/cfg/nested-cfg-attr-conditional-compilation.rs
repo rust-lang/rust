@@ -10,7 +10,7 @@
 //!
 //! Added in <https://github.com/rust-lang/rust/pull/34216>.
 
-#[cfg_attr(true, cfg_attr(true, cfg(false)))] //~ NOTE the item is gated here
+#[cfg_attr(true, cfg_attr(true, cfg(false)))] //~ NOTE the item is disabled
 fn f() {} //~ NOTE found an item that was configured out
 
 fn main() {

@@ -8,7 +8,7 @@ note: found an item that was configured out
   --> $DIR/nested-cfg-attr-conditional-compilation.rs:14:4
    |
 LL | #[cfg_attr(true, cfg_attr(true, cfg(false)))]
-   |                                     ----- the item is gated here
+   |                                     ----- the item is disabled
 LL | fn f() {}
    |    ^
 

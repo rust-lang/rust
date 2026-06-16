@@ -8,7 +8,7 @@ note: found an item that was configured out
   --> $DIR/cfg-rustdoc.rs:2:12
    |
 LL | #[cfg(doc)]
-   |       --- the item is gated here
+   |       --- the item is gated behind `doc`
 LL | pub struct Foo;
    |            ^^^
 

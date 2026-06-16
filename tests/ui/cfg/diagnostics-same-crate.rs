@@ -1,13 +1,13 @@
 #![allow(unexpected_cfgs)] // since we want to recognize them as unexpected
 
 pub mod inner {
-    #[cfg(false)] //~ NOTE the item is gated here
+    #[cfg(false)] //~ NOTE the item is disabled
     pub fn uwu() {}
     //~^ NOTE found an item that was configured out
 
-    #[cfg(false)] //~ NOTE the item is gated here
-    //~^ NOTE the item is gated here
-    //~| NOTE the item is gated here
+    #[cfg(false)] //~ NOTE the item is disabled
+    //~^ NOTE the item is disabled
+    //~| NOTE the item is disabled
     pub mod doesnt_exist {
         //~^ NOTE found an item that was configured out
         //~| NOTE found an item that was configured out
@@ -37,7 +37,7 @@ mod placeholder {
     //~| NOTE could not find `doesnt_exist` in `inner`
 }
 
-#[cfg(i_dont_exist_and_you_can_do_nothing_about_it)] //~ NOTE the item is gated here
+#[cfg(i_dont_exist_and_you_can_do_nothing_about_it)] //~ NOTE the item is gated behind `i_dont_exist_and_you_can_do_nothing_about_it`
 pub fn vanished() {} //~ NOTE found an item that was configured out
 
 fn main() {
