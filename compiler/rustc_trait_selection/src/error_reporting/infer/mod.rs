@@ -296,7 +296,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let obligation =
             Obligation::new(tcx, ObligationCause::dummy(), param_env, ty::Binder::dummy(trait_ref));
 
-        let applicable_impls = compute_applicable_impls_for_diagnostics(self.infcx, &obligation);
+        let applicable_impls =
+            compute_applicable_impls_for_diagnostics(self.infcx, &obligation, false);
 
         for candidate in applicable_impls {
             let impl_def_id = match candidate {
