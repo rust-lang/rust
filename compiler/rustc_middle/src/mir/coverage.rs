@@ -191,6 +191,23 @@ pub struct FunctionCoverageInfo {
     pub priority_list: Vec<BasicCoverageBlock>,
 
     pub mappings: Vec<Mapping>,
+    pub mcdc_info: Option<FunctionMCDCExtraInfo>,
+}
+
+/// Additional information carried by [`FunctionCoverageInfo`] when MC/DC is
+/// enabled.
+#[derive(Clone, Debug)]
+#[derive(TyEncodable, TyDecodable, Hash, StableHash)]
+pub struct FunctionMCDCExtraInfo {
+    /// Number of bits to allocate to the MC/DC bitmap for this function.
+    ///
+    /// This is the sum of the number of possible test vectors for each MC/DC
+    /// decision in the function.
+    pub bitmap_bits: usize,
+
+    /// Number of temporary test vector accumulators to allocate in the
+    /// function to accommodate the most deeply nested decisions.
+    pub num_temporaries: usize,
 }
 
 /// Coverage information for a function, recorded during MIR building and
