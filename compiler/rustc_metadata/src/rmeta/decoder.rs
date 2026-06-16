@@ -1331,7 +1331,6 @@ impl CrateMetadata {
             .tables
             .fn_arg_idents
             .get(self, id)
-            .expect("argument names not encoded for a function")
             .decode((self, tcx))
             .nth(0)
             .is_some_and(|ident| matches!(ident, Some(Ident { name: kw::SelfLower, .. })))

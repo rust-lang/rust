@@ -16,7 +16,7 @@ use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap, LocalModDefId};
 use rustc_hir::lints::DelayedLints;
 use rustc_hir::*;
 use rustc_macros::{Decodable, Encodable, StableHash};
-use rustc_span::{ErrorGuaranteed, ExpnId, Span};
+use rustc_span::{ErrorGuaranteed, ExpnId, Ident, Span};
 
 use crate::query::Providers;
 use crate::ty::TyCtxt;
@@ -483,6 +483,14 @@ pub fn provide(providers: &mut Providers) {
         }) = node
         {
             idents
+        } else if let Node::Ctor(VariantData::Tuple(fields, _, _)) = node {
+            tcx.arena.alloc_from_iter(fields.iter().map(|field| {
+                Some(if field.ident.is_numeric() {
+                    Ident::from_str_and_span(&format!("arg{}", field.ident), field.ident.span)
+                } else {
+                    field.ident
+                })
+            }))
         } else {
             span_bug!(
                 tcx.hir_span(tcx.local_def_id_to_hir_id(def_id)),

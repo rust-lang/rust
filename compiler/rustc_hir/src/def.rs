@@ -371,7 +371,11 @@ impl DefKind {
     pub fn is_fn_like(self) -> bool {
         matches!(
             self,
-            DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::SyntheticCoroutineBody
+            DefKind::Fn
+                | DefKind::AssocFn
+                | DefKind::Closure
+                | DefKind::SyntheticCoroutineBody
+                | DefKind::Ctor(..)
         )
     }
 
