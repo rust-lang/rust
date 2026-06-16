@@ -1099,6 +1099,78 @@ where
         self.relate(param_env, lhs, ty::Variance::Invariant, rhs)
     }
 
+    /// This should be used when relating a rigid alias with another type.
+    ///
+    /// Normally we emit a nested `AliasRelate` when equating an inference
+    /// variable and an alias. This causes us to instead constrain the inference
+    /// variable to the alias without emitting a nested alias relate goals.
+    #[instrument(level = "trace", skip(self, param_env), ret)]
+    pub(super) fn relate_rigid_alias_non_alias(
+        &mut self,
+        param_env: I::ParamEnv,
+        alias: ty::AliasTerm<I>,
+        variance: ty::Variance,
+        term: I::Term,
+    ) -> Result<(), NoSolutionOrRerunNonErased> {
+        // NOTE: this check is purely an optimization, the structural eq would
+        // always fail if the term is not an inference variable.
+        if term.is_infer() {
+            let cx = self.cx();
+            // We need to relate `alias` to `term` treating only the outermost
+            // constructor as rigid, relating any contained generic arguments as
+            // normal. We do this by first structurally equating the `term`
+            // with the alias constructor instantiated with unconstrained infer vars,
+            // and then relate this with the whole `alias`.
+            //
+            // Alternatively we could modify `Equate` for this case by adding another
+            // variant to `StructurallyRelateAliases`.
+            let def_id = match alias.kind {
+                ty::AliasTermKind::ProjectionTy { def_id } => def_id.into(),
+                ty::AliasTermKind::InherentTy { def_id } => def_id.into(),
+                ty::AliasTermKind::OpaqueTy { def_id } => def_id.into(),
+                ty::AliasTermKind::FreeTy { def_id } => def_id.into(),
+                ty::AliasTermKind::AnonConst { def_id } => def_id.into(),
+                ty::AliasTermKind::ProjectionConst { def_id } => def_id.into(),
+                ty::AliasTermKind::FreeConst { def_id } => def_id.into(),
+                ty::AliasTermKind::InherentConst { def_id } => def_id.into(),
+            };
+            let identity_args = self.fresh_args_for_item(def_id);
+            let rigid_ctor = alias.with_args(cx, identity_args);
+            let ctor_term = rigid_ctor.to_term(cx);
+            self.eq_structurally_relating_aliases(param_env, term, ctor_term)?;
+            self.relate(param_env, alias, variance, rigid_ctor)
+        } else {
+            Err(NoSolution.into())
+        }
+    }
+
+    /// This should only be used when we're either instantiating a previously
+    /// unconstrained "return value" or when we're sure that all aliases in
+    /// the types are rigid.
+    #[instrument(level = "trace", skip(self, param_env), ret)]
+    pub(super) fn eq_structurally_relating_aliases<T: Relate<I>>(
+        &mut self,
+        param_env: I::ParamEnv,
+        lhs: T,
+        rhs: T,
+    ) -> Result<(), NoSolutionOrRerunNonErased> {
+        let result = if self.cx().assumptions_on_binders() {
+            let (goals, region_constraints) =
+                self.delegate.eq_structurally_relating_aliases_with_region_constraints(
+                    param_env,
+                    lhs,
+                    rhs,
+                    self.origin_span,
+                )?;
+            self.register_solver_region_constraint(region_constraints);
+            goals
+        } else {
+            self.delegate.eq_structurally_relating_aliases(param_env, lhs, rhs, self.origin_span)?
+        };
+        assert_eq!(result, vec![]);
+        Ok(())
+    }
+
     #[instrument(level = "trace", skip(self, param_env), ret)]
     pub(super) fn sub<T: Relate<I>>(
         &mut self,
@@ -1117,7 +1189,19 @@ where
         variance: ty::Variance,
         rhs: T,
     ) -> Result<(), NoSolutionOrRerunNonErased> {
-        let goals = self.delegate.relate(param_env, lhs, variance, rhs, self.origin_span)?;
+        let goals = if self.cx().assumptions_on_binders() {
+            let (goals, region_constraints) = self.delegate.relate_with_region_constraints(
+                param_env,
+                lhs,
+                variance,
+                rhs,
+                self.origin_span,
+            )?;
+            self.register_solver_region_constraint(region_constraints);
+            goals
+        } else {
+            self.delegate.relate(param_env, lhs, variance, rhs, self.origin_span)?
+        };
         for &goal in goals.iter() {
             let source = match goal.predicate.kind().skip_binder() {
                 ty::PredicateKind::Subtype { .. }
@@ -1140,12 +1224,30 @@ where
     /// goals correctly.
     #[instrument(level = "trace", skip(self, param_env), ret)]
     pub(super) fn eq_and_get_goals<T: Relate<I>>(
-        &self,
+        &mut self,
         param_env: I::ParamEnv,
         lhs: T,
         rhs: T,
     ) -> Result<Vec<Goal<I, I::Predicate>>, NoSolution> {
-        Ok(self.delegate.relate(param_env, lhs, ty::Variance::Invariant, rhs, self.origin_span)?)
+        if self.cx().assumptions_on_binders() {
+            let (goals, region_constraints) = self.delegate.relate_with_region_constraints(
+                param_env,
+                lhs,
+                ty::Variance::Invariant,
+                rhs,
+                self.origin_span,
+            )?;
+            self.register_solver_region_constraint(region_constraints);
+            Ok(goals)
+        } else {
+            Ok(self.delegate.relate(
+                param_env,
+                lhs,
+                ty::Variance::Invariant,
+                rhs,
+                self.origin_span,
+            )?)
+        }
     }
 
     pub(super) fn instantiate_binder_with_infer<T: TypeFoldable<I> + Copy>(
