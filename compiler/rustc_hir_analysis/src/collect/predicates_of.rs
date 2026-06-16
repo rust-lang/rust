@@ -1053,7 +1053,10 @@ pub(super) fn const_conditions<'tcx>(
     def_id: LocalDefId,
 ) -> ty::ConstConditions<'tcx> {
     if !tcx.is_conditionally_const(def_id) {
-        bug!("const_conditions invoked for item that is not conditionally const: {def_id:?}");
+        bug!(
+            "const_conditions invoked for item that is not conditionally const: {def_id:?}, {:?}",
+            tcx.def_kind(def_id)
+        );
     }
 
     match tcx.opt_rpitit_info(def_id.to_def_id()) {
