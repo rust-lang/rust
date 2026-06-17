@@ -38,5 +38,32 @@ LL | |         // foo
 LL | |     }
    | |_____^ help: try: `some_slice.fill(0);`
 
-error: aborting due to 4 previous errors
+error: manually filling a slice
+  --> tests/ui/manual_slice_fill.rs:51:5
+   |
+LL | /     for slot in s {
+LL | |
+LL | |         *slot = 0;
+LL | |     }
+   | |_____^ help: try: `s.fill(0);`
+
+error: manually filling a slice
+  --> tests/ui/manual_slice_fill.rs:58:5
+   |
+LL | /     for slot in s {
+LL | |
+LL | |         *slot = 42;
+LL | |     }
+   | |_____^ help: try: `s.fill(42);`
+
+error: manually filling a slice
+  --> tests/ui/manual_slice_fill.rs:66:5
+   |
+LL | /     for slot in s {
+LL | |
+LL | |         *slot = x;
+LL | |     }
+   | |_____^ help: try: `s.fill(x);`
+
+error: aborting due to 7 previous errors
 
