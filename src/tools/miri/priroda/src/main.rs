@@ -331,8 +331,20 @@ impl<'tcx> PrirodaContext<'tcx> {
                 self.continue_execution().map(CommandResult::ExecutionStopped),
             DebuggerCommand::Breakpoint(path, line) =>
                 interp_ok(CommandResult::BreakpointResult(self.set_breakpoint(path, line))),
+            DebuggerCommand::ListLocals => interp_ok(CommandResult::Locals(self.list_locals())),
             DebuggerCommand::TerminateSession => interp_ok(CommandResult::TerminateSession),
         }
+    }
+
+    /// Returns the names of all user-visible locals in the innermost stack frame.
+    ///
+    /// Uses `var_debug_info` from the MIR body, which is the same source that
+    /// DWARF debug info is built from, so the names match what the user wrote.
+    fn list_locals(&self) -> Vec<String> {
+        let Some(frame) = self.ecx.active_thread_stack().last() else {
+            return Vec::new();
+        };
+        frame.body().var_debug_info.iter().map(|info| info.name.to_string()).collect()
     }
 }
 
@@ -342,6 +354,7 @@ enum DebuggerCommand {
     TerminateSession,
     Continue,
     Breakpoint(PathBuf, usize),
+    ListLocals,
 }
 
 enum BreakpointSetResult {
@@ -353,6 +366,7 @@ enum BreakpointSetResult {
 enum CommandResult {
     ExecutionStopped(StepResult),
     BreakpointResult(BreakpointSetResult),
+    Locals(Vec<String>),
     // FIXME: distinguish terminating the debugger session from disconnecting a
     // frontend and terminating the interpreted program once multiple frontends exist.
     TerminateSession,
@@ -389,6 +403,14 @@ impl Cli {
 
                             BreakpointSetResult::Duplicate => println!("Duplicate breakpoint"),
                         },
+                    CommandResult::Locals(names) =>
+                        if names.is_empty() {
+                            println!("no locals");
+                        } else {
+                            for name in &names {
+                                println!("{name}");
+                            }
+                        },
                     CommandResult::TerminateSession => {
                         println!("quitting");
                         return interp_ok(());
@@ -419,6 +441,7 @@ impl Cli {
             "q" | "quit" => Some(DebuggerCommand::TerminateSession),
             "c" | "continue" => Some(DebuggerCommand::Continue),
             "b" | "break" => self.parse_breakpoint(args),
+            "l" | "locals" => Some(DebuggerCommand::ListLocals),
             _ => None,
         }
     }
