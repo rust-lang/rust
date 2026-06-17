@@ -62,8 +62,8 @@ pub(super) fn check<'tcx>(
                     let rhs = fetch_cloned_expr(rhs);
                     if let ExprKind::Index(base_left, idx_left, _) = lhs.kind
                             && let ExprKind::Index(base_right, idx_right, _) = rhs.kind
-                            && let Some(ty) = get_slice_like_element_ty(cx, cx.typeck_results().expr_ty(base_left))
-                            && get_slice_like_element_ty(cx, cx.typeck_results().expr_ty(base_right)).is_some()
+                            && let Some(ty) = get_slice_like_element_ty(cx, cx.typeck_results.expr_ty(base_left))
+                            && get_slice_like_element_ty(cx, cx.typeck_results.expr_ty(base_right)).is_some()
                             && let Some((start_left, offset_left)) = get_details_from_idx(cx, idx_left, &starts)
                             && let Some((start_right, offset_right)) = get_details_from_idx(cx, idx_right, &starts)
                             && !local_used_in(cx, canonical_id, base_left)
@@ -490,7 +490,7 @@ fn is_array_length_equal_to_range(cx: &LateContext<'_>, start: &Expr<'_>, end: &
         }
     }
 
-    let arr_ty = cx.typeck_results().expr_ty(arr).peel_refs();
+    let arr_ty = cx.typeck_results.expr_ty(arr).peel_refs();
 
     if let ty::Array(_, s) = arr_ty.kind() {
         let size: u128 = if let Some(size) = s.try_to_target_usize(cx.tcx) {

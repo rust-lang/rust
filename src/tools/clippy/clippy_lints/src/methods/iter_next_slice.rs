@@ -32,7 +32,7 @@ pub(super) fn check<'tcx>(
     } else {
         "first"
     };
-    if derefs_to_slice(cx, caller_expr, cx.typeck_results().expr_ty(caller_expr)).is_some() {
+    if derefs_to_slice(cx, caller_expr, cx.typeck_results.expr_ty(caller_expr)).is_some() {
         // caller is a Slice
         if let hir::ExprKind::Index(caller_var, index_expr, _) = &caller_expr.kind
             && let Some(higher::Range {
@@ -87,6 +87,6 @@ pub(super) fn check<'tcx>(
 }
 
 fn is_vec_or_array<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) -> bool {
-    cx.typeck_results().expr_ty(expr).is_diag_item(cx, sym::Vec)
-        || matches!(&cx.typeck_results().expr_ty(expr).peel_refs().kind(), ty::Array(_, _))
+    cx.typeck_results.expr_ty(expr).is_diag_item(cx, sym::Vec)
+        || matches!(&cx.typeck_results.expr_ty(expr).peel_refs().kind(), ty::Array(_, _))
 }

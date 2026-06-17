@@ -621,7 +621,7 @@ pub fn expr_sig<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> Option<ExprFnS
             Some(id),
         ))
     } else {
-        ty_sig(cx, cx.typeck_results().expr_ty_adjusted(expr).peel_refs())
+        ty_sig(cx, cx.typeck_results.expr_ty_adjusted(expr).peel_refs())
     }
 }
 

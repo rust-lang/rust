@@ -50,7 +50,7 @@ fn report_lint(cx: &LateContext<'_>, pop_span: Span, pop_stmt_kind: PopStmt<'_>,
 fn match_method_call<const ARGS_COUNT: usize>(cx: &LateContext<'_>, expr: &Expr<'_>, method: Symbol) -> bool {
     if let ExprKind::MethodCall(_, _, args, _) = expr.kind
         && args.len() == ARGS_COUNT
-        && let Some(id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+        && let Some(id) = cx.typeck_results.type_dependent_def_id(expr.hir_id)
     {
         cx.tcx.is_diagnostic_item(method, id)
     } else {

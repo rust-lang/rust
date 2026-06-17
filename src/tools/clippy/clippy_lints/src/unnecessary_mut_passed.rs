@@ -50,16 +50,16 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMutPassed {
                     check_arguments(
                         cx,
                         &mut arguments.iter(),
-                        cx.typeck_results().expr_ty(fn_expr),
+                        cx.typeck_results.expr_ty(fn_expr),
                         &rustc_hir_pretty::qpath_to_string(&cx.tcx, path),
                         "function",
                     );
                 }
             },
             ExprKind::MethodCall(path, receiver, arguments, _)
-                if let Some(def_id) = cx.typeck_results().type_dependent_def_id(e.hir_id) =>
+                if let Some(def_id) = cx.typeck_results.type_dependent_def_id(e.hir_id) =>
             {
-                let args = cx.typeck_results().node_args(e.hir_id);
+                let args = cx.typeck_results.node_args(e.hir_id);
                 let method_type = cx.tcx.type_of(def_id).instantiate(cx.tcx, args).skip_norm_wip();
                 check_arguments(
                     cx,

@@ -259,7 +259,7 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
                 );
             },
             ExprKind::Index(target, _idx, _) => {
-                let e_ty = cx.typeck_results().expr_ty_adjusted(target).peel_refs();
+                let e_ty = cx.typeck_results.expr_ty_adjusted(target).peel_refs();
                 if e_ty.is_str() || e_ty.is_lang_item(cx, LangItem::String) {
                     span_lint(
                         cx,
@@ -275,7 +275,7 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
 }
 
 fn is_string(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
-    cx.typeck_results()
+    cx.typeck_results
         .expr_ty(e)
         .peel_refs()
         .is_lang_item(cx, LangItem::String)
@@ -418,7 +418,7 @@ impl<'tcx> LateLintPass<'tcx> for StrToString {
 
         if let ExprKind::MethodCall(path, self_arg, [], _) = &expr.kind
             && path.ident.name == sym::to_string
-            && let ty = cx.typeck_results().expr_ty(self_arg)
+            && let ty = cx.typeck_results.expr_ty(self_arg)
             && let ty::Ref(_, ty, ..) = ty.kind()
             && ty.is_str()
         {
@@ -440,7 +440,7 @@ impl<'tcx> LateLintPass<'tcx> for StrToString {
             && args.iter().any(|a| a.hir_id == expr.hir_id)
             && let Res::Def(DefKind::AssocFn, def_id) = expr.res(cx)
             && cx.tcx.is_diagnostic_item(sym::to_string_method, def_id)
-            && let Some(args) = cx.typeck_results().node_args_opt(expr.hir_id)
+            && let Some(args) = cx.typeck_results.node_args_opt(expr.hir_id)
             && args.type_at(0).is_str()
         {
             // Detected `ToString::to_string` passed as an argument (generic: any call or method call)
@@ -459,7 +459,7 @@ impl<'tcx> LateLintPass<'tcx> for StrToString {
 
 impl<'tcx> LateLintPass<'tcx> for TrimSplitWhitespace {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
-        let tyckres = cx.typeck_results();
+        let tyckres = cx.typeck_results;
         if let ExprKind::MethodCall(path, split_recv, [], split_ws_span) = expr.kind
             && path.ident.name == sym::split_whitespace
             && let Some(split_ws_def_id) = tyckres.type_dependent_def_id(expr.hir_id)

@@ -106,7 +106,7 @@ fn check_if_let_inner(cx: &LateContext<'_>, ctxt: SyntaxContext, if_let: &higher
             if matches!(else_expr.kind, ExprKind::Block(..)) {
                 return false;
             }
-            let let_expr_ty = cx.typeck_results().expr_ty(if_let.let_expr);
+            let let_expr_ty = cx.typeck_results.expr_ty(if_let.let_expr);
             if let_expr_ty.is_diag_item(cx, sym::Option) {
                 return else_expr.res(cx).ctor_parent(cx).is_lang_item(cx, OptionNone)
                     || eq_expr_value(cx, ctxt, if_let.let_expr, else_expr);
@@ -124,7 +124,7 @@ fn expr_ty_matches_p_ty(cx: &LateContext<'_>, expr: &Expr<'_>, p_expr: &Expr<'_>
     match cx.tcx.parent_hir_node(p_expr.hir_id) {
         // Compare match_expr ty with local in `let local = match match_expr {..}`
         Node::LetStmt(local) => {
-            let results = cx.typeck_results();
+            let results = cx.typeck_results;
             return same_type_modulo_regions(results.node_type(local.hir_id), results.expr_ty(expr));
         },
         // compare match_expr ty with RetTy in `fn foo() -> RetTy`
@@ -137,7 +137,7 @@ fn expr_ty_matches_p_ty(cx: &LateContext<'_>, expr: &Expr<'_>, p_expr: &Expr<'_>
                     .skip_norm_wip()
                     .output()
                     .skip_binder();
-                return same_type_modulo_regions(output, cx.typeck_results().expr_ty(expr));
+                return same_type_modulo_regions(output, cx.typeck_results.expr_ty(expr));
             }
         },
         // check the parent expr for this whole block `{ match match_expr {..} }`

@@ -23,7 +23,7 @@ enum CaseMethod {
 }
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, scrutinee: &'tcx Expr<'_>, arms: &'tcx [Arm<'_>]) {
-    if let ty::Ref(_, ty, _) = cx.typeck_results().expr_ty(scrutinee).kind()
+    if let ty::Ref(_, ty, _) = cx.typeck_results.expr_ty(scrutinee).kind()
         && let ty::Str = ty.kind()
     {
         let mut visitor = MatchExprVisitor { cx };
@@ -56,7 +56,7 @@ impl<'tcx> Visitor<'tcx> for MatchExprVisitor<'_, 'tcx> {
 impl MatchExprVisitor<'_, '_> {
     fn case_altered(&self, segment_ident: Symbol, receiver: &Expr<'_>) -> ControlFlow<CaseMethod> {
         if let Some(case_method) = get_case_method(segment_ident) {
-            let ty = self.cx.typeck_results().expr_ty(receiver).peel_refs();
+            let ty = self.cx.typeck_results.expr_ty(receiver).peel_refs();
 
             if ty.is_lang_item(self.cx, LangItem::String) || ty.kind() == &ty::Str {
                 return ControlFlow::Break(case_method);

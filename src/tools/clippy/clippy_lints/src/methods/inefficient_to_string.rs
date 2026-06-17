@@ -12,10 +12,10 @@ use rustc_middle::ty::{self, Ty};
 use super::INEFFICIENT_TO_STRING;
 
 pub fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, receiver: &hir::Expr<'_>, msrv: Msrv) {
-    if let Some(to_string_meth_did) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+    if let Some(to_string_meth_did) = cx.typeck_results.type_dependent_def_id(expr.hir_id)
         && cx.tcx.is_diagnostic_item(sym::to_string_method, to_string_meth_did)
-        && let Some(args) = cx.typeck_results().node_args_opt(expr.hir_id)
-        && let arg_ty = cx.typeck_results().expr_ty_adjusted(receiver)
+        && let Some(args) = cx.typeck_results.node_args_opt(expr.hir_id)
+        && let arg_ty = cx.typeck_results.expr_ty_adjusted(receiver)
         && let self_ty = args.type_at(0)
         && let (deref_self_ty, deref_count, _) = peel_and_count_ty_refs(self_ty)
         && deref_count >= 1

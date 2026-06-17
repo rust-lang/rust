@@ -12,7 +12,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, arg
     if !cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator) {
         return;
     }
-    let arg_ty = cx.typeck_results().expr_ty_adjusted(arg);
+    let arg_ty = cx.typeck_results.expr_ty_adjusted(arg);
     let sig = match arg_ty.kind() {
         ty::Closure(_, args) => args.as_closure().sig(),
         _ if arg_ty.is_fn() => arg_ty.fn_sig(cx.tcx),

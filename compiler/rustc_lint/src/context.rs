@@ -660,13 +660,8 @@ impl<'tcx> LateContext<'tcx> {
         self.tcx.type_is_use_cloned_modulo_regions(self.typing_env(), ty)
     }
 
-    #[inline]
-    pub fn typeck_results(&self) -> &'tcx ty::TypeckResults<'tcx> {
-        self.typeck_results
-    }
-
     /// Returns the final resolution of a `QPath`, or `Res::Err` if unavailable.
-    /// Unlike `.typeck_results().qpath_res(qpath, id)`, this can be used even outside
+    /// Unlike `.typeck_results.qpath_res(qpath, id)`, this can be used even outside
     /// bodies (e.g. for paths in `hir::Ty`), without any risk of ICE-ing.
     pub fn qpath_res(&self, qpath: &hir::QPath<'_>, id: hir::HirId) -> Res {
         match *qpath {

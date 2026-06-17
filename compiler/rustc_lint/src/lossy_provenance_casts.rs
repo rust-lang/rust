@@ -60,7 +60,7 @@ impl<'tcx> LateLintPass<'tcx> for LossyProvenanceCasts {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
         let hir::ExprKind::Cast(cast_from_expr, cast_to_hir) = expr.kind else { return };
 
-        let typeck_results = cx.typeck_results();
+        let typeck_results = cx.typeck_results;
         // Only lint casts from pointer to integer
         let cast_from_ty = typeck_results.expr_ty(cast_from_expr);
         if !cast_from_ty.is_raw_ptr() {

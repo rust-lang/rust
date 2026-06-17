@@ -26,7 +26,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, format_args: &FormatArgsStorag
         && !local.pat.span.from_expansion()
         && !local.span.in_external_macro(cx.sess().source_map())
         && !local.span.is_from_async_await()
-        && cx.typeck_results().pat_ty(local.pat).is_unit()
+        && cx.typeck_results.pat_ty(local.pat).is_unit()
     {
         // skip `let awa = ()`
         if let ExprKind::Tup([]) = init.kind {
@@ -303,7 +303,7 @@ fn needs_inferred_result_ty(
             Res::Def(DefKind::AssocFn | DefKind::Fn, id) => (id, None, args),
             _ => return false,
         },
-        ExprKind::MethodCall(_, receiver, args, _) => match cx.typeck_results().type_dependent_def_id(e.hir_id) {
+        ExprKind::MethodCall(_, receiver, args, _) => match cx.typeck_results.type_dependent_def_id(e.hir_id) {
             Some(id) => (id, Some(receiver), args),
             None => return false,
         },

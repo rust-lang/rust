@@ -49,7 +49,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedPeekable {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &Block<'tcx>) {
         // Don't lint `Peekable`s returned from a block
         if let Some(expr) = block.expr
-            && let Some(ty) = cx.typeck_results().expr_ty_opt(peel_ref_operators(cx, expr))
+            && let Some(ty) = cx.typeck_results.expr_ty_opt(peel_ref_operators(cx, expr))
             && ty.is_diag_item(cx, sym::IterPeekable)
         {
             return;
@@ -61,7 +61,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedPeekable {
                 && let PatKind::Binding(_, binding, ident, _) = local.pat.kind
                 && let Some(init) = local.init
                 && !init.span.from_expansion()
-                && let Some(ty) = cx.typeck_results().expr_ty_opt(init)
+                && let Some(ty) = cx.typeck_results.expr_ty_opt(init)
                 && let (ty, _, None | Some(Mutability::Mut)) = peel_and_count_ty_refs(ty)
                 && ty.is_diag_item(cx, sym::IterPeekable)
             {
@@ -215,7 +215,7 @@ impl<'tcx> Visitor<'tcx> for PeekableVisitor<'_, 'tcx> {
 }
 
 fn arg_is_mut_peekable(cx: &LateContext<'_>, arg: &Expr<'_>) -> bool {
-    if let Some(ty) = cx.typeck_results().expr_ty_opt(arg)
+    if let Some(ty) = cx.typeck_results.expr_ty_opt(arg)
         && let (ty, _, None | Some(Mutability::Mut)) = peel_and_count_ty_refs(ty)
         && ty.is_diag_item(cx, sym::IterPeekable)
     {

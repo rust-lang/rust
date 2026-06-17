@@ -9,7 +9,7 @@ use super::ITER_WITH_DRAIN;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, span: Span, arg: &Expr<'_>) {
     if !matches!(recv.kind, ExprKind::Field(..))
-        && let Some(adt) = cx.typeck_results().expr_ty(recv).ty_adt_def()
+        && let Some(adt) = cx.typeck_results.expr_ty(recv).ty_adt_def()
         && let Some(ty_name) = cx.tcx.get_diagnostic_name(adt.did())
         && matches!(ty_name, sym::Vec | sym::VecDeque)
         && let ExprKind::Path(QPath::Resolved(None, container_path)) = recv.kind

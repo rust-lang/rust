@@ -40,7 +40,7 @@ impl<'tcx> LateLintPass<'tcx> for MinMaxPass {
         if let Some((outer_max, outer_c, oe)) = min_max(cx, expr)
             && let Some((inner_max, inner_c, ie)) = min_max(cx, oe)
             && outer_max != inner_max
-            && let Some(ord) = Constant::partial_cmp(cx.tcx, cx.typeck_results().expr_ty(ie), &outer_c, &inner_c)
+            && let Some(ord) = Constant::partial_cmp(cx.tcx, cx.typeck_results.expr_ty(ie), &outer_c, &inner_c)
             && matches!(
                 (outer_max, ord),
                 (MinMax::Max, Equal | Greater) | (MinMax::Min, Equal | Less)
@@ -66,7 +66,7 @@ fn min_max<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(MinMax, Cons
     match expr.kind {
         ExprKind::Call(path, args) => {
             if let ExprKind::Path(ref qpath) = path.kind {
-                cx.typeck_results()
+                cx.typeck_results
                     .qpath_res(qpath, path.hir_id)
                     .opt_def_id()
                     .and_then(|def_id| match cx.tcx.get_diagnostic_name(def_id) {
@@ -79,7 +79,7 @@ fn min_max<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(MinMax, Cons
             }
         },
         ExprKind::MethodCall(path, receiver, args @ [_], _) => {
-            if cx.typeck_results().expr_ty(receiver).is_floating_point()
+            if cx.typeck_results.expr_ty(receiver).is_floating_point()
                 || cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Ord)
             {
                 match path.ident.name {

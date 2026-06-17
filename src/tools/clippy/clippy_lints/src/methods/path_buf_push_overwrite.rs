@@ -10,7 +10,7 @@ use std::path::{Component, Path};
 use super::PATH_BUF_PUSH_OVERWRITE;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arg: &'tcx Expr<'_>) {
-    if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+    if let Some(method_id) = cx.typeck_results.type_dependent_def_id(expr.hir_id)
         && let Some(impl_id) = cx.tcx.impl_of_assoc(method_id)
         && cx
             .tcx

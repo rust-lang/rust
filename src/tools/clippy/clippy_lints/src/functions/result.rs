@@ -197,7 +197,7 @@ pub(super) fn check_expr<'tcx>(
     large_err_ignored: &DefIdSet,
 ) {
     if let hir::ExprKind::Closure(closure) = expr.kind
-        && let ty::Closure(_, args) = cx.typeck_results().expr_ty(expr).kind()
+        && let ty::Closure(_, args) = cx.typeck_results.expr_ty(expr).kind()
         && let closure_sig = args.as_closure().sig()
         && let Ok(err_binder) = closure_sig.output().try_map_bound(|output_ty| {
             if let ty::Adt(adt, args) = output_ty.kind()

@@ -109,7 +109,7 @@ impl<'tcx> LateLintPass<'tcx> for Mutex {
         if !stmt.span.from_expansion()
             && let Some(init) = stmt.init
         {
-            let mid_ty = cx.typeck_results().expr_ty(init);
+            let mid_ty = cx.typeck_results.expr_ty(init);
             check_expr(cx, init.peel_blocks(), &TypeAscriptionKind::Optional(stmt.ty), mid_ty);
         }
     }

@@ -226,7 +226,7 @@ impl<'tcx> OffendingFilterExpr<'tcx> {
 
     fn hir(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, filter_param_id: HirId) -> Option<Self> {
         if let ExprKind::MethodCall(path, receiver, [], _) = expr.kind
-            && let Some(recv_ty) = cx.typeck_results().expr_ty(receiver).peel_refs().ty_adt_def()
+            && let Some(recv_ty) = cx.typeck_results.expr_ty(receiver).peel_refs().ty_adt_def()
         {
             // we still want to lint if the expression possibly contains side effects,
             // *but* it can't be machine-applicable then, because that can change the behavior of the program:
@@ -271,7 +271,7 @@ fn is_filter_some_map_unwrap(
     map_arg: &Expr<'_>,
 ) -> bool {
     let iterator = cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator);
-    let option = cx.typeck_results().expr_ty(filter_recv).is_diag_item(cx, sym::Option);
+    let option = cx.typeck_results.expr_ty(filter_recv).is_diag_item(cx, sym::Option);
 
     (iterator || option) && is_option_filter_map(cx, filter_arg, map_arg)
 }
@@ -345,7 +345,7 @@ pub(super) fn check(
                     CalledMethod::ResultIsOk => (".ok()", String::new()),
                     CalledMethod::OptionIsSome => {
                         let derefs = cx
-                            .typeck_results()
+                            .typeck_results
                             .expr_adjustments(map_arg)
                             .iter()
                             .filter(|adj| matches!(adj.kind, Adjust::Deref(_)))

@@ -11,10 +11,10 @@ use rustc_span::{Symbol, sym};
 use super::ITER_CLONED_COLLECT;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, method_name: Symbol, expr: &Expr<'_>, recv: &'tcx Expr<'_>) {
-    let expr_ty = cx.typeck_results().expr_ty(expr);
+    let expr_ty = cx.typeck_results.expr_ty(expr);
     if let ty::Adt(def, args) = expr_ty.kind()
         && def.is_diag_item(cx, sym::Vec)
-        && let recv_ty = cx.typeck_results().expr_ty(recv)
+        && let recv_ty = cx.typeck_results.expr_ty(recv)
         && let Some(slice) = derefs_to_slice(cx, recv, recv_ty)
         && let Some(iter_item_ty) = get_iterator_item_ty(cx, recv_ty)
         && let ty::Ref(_, iter_item_ty, _) = iter_item_ty.kind()

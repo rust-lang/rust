@@ -21,7 +21,7 @@ pub(super) fn check<'tcx>(
     unwrap_arg: &'tcx hir::Expr<'_>,
     msrv: Msrv,
 ) -> bool {
-    let recv_ty = cx.typeck_results().expr_ty(recv).peel_refs();
+    let recv_ty = cx.typeck_results.expr_ty(recv).peel_refs();
     let recv_ty_kind = match recv_ty.opt_diag_name(cx) {
         Some(sym::Option) => sym::Option,
         Some(sym::Result) if msrv.meets(cx, msrvs::RESULT_MAP_OR_ELSE) => sym::Result,

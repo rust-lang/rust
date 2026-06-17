@@ -80,7 +80,7 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
         // We only care about method calls corresponding to the `Clone`, `Deref` and `Borrow`
         // traits and ignore any other method call.
 
-        let Some((DefKind::AssocFn, did)) = cx.typeck_results().type_dependent_def(expr.hir_id)
+        let Some((DefKind::AssocFn, did)) = cx.typeck_results.type_dependent_def(expr.hir_id)
         else {
             return;
         };
@@ -95,7 +95,7 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
 
         let args = cx.tcx.normalize_erasing_regions(
             cx.typing_env(),
-            Unnormalized::new_wip(cx.typeck_results().node_args(expr.hir_id)),
+            Unnormalized::new_wip(cx.typeck_results.node_args(expr.hir_id)),
         );
         // Resolve the trait method instance.
         let Ok(Some(i)) = ty::Instance::try_resolve(cx.tcx, cx.typing_env(), did, args) else {
@@ -110,9 +110,9 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
             return;
         }
 
-        let receiver_ty = cx.typeck_results().expr_ty(receiver);
-        let expr_ty = cx.typeck_results().expr_ty_adjusted(expr);
-        let arg_adjustments = cx.typeck_results().expr_adjustments(receiver);
+        let receiver_ty = cx.typeck_results.expr_ty(receiver);
+        let expr_ty = cx.typeck_results.expr_ty_adjusted(expr);
+        let arg_adjustments = cx.typeck_results.expr_adjustments(receiver);
 
         // If there is any user defined auto-deref step, then we don't want to warn.
         // https://github.com/rust-lang/rust-clippy/issues/9272

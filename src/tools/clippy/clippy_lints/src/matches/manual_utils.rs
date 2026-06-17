@@ -30,10 +30,10 @@ pub(super) fn check_with<'tcx, F>(
 where
     F: Fn(&LateContext<'tcx>, &'tcx Pat<'_>, &'tcx Expr<'_>, SyntaxContext) -> Option<SomeExpr<'tcx>>,
 {
-    let (scrutinee_ty, ty_ref_count, ty_mutability) = peel_and_count_ty_refs(cx.typeck_results().expr_ty(scrutinee));
+    let (scrutinee_ty, ty_ref_count, ty_mutability) = peel_and_count_ty_refs(cx.typeck_results.expr_ty(scrutinee));
     let ty_mutability = ty_mutability.unwrap_or(Mutability::Mut);
 
-    if !(scrutinee_ty.is_diag_item(cx, sym::Option) && cx.typeck_results().expr_ty(expr).is_diag_item(cx, sym::Option))
+    if !(scrutinee_ty.is_diag_item(cx, sym::Option) && cx.typeck_results.expr_ty(expr).is_diag_item(cx, sym::Option))
     {
         return None;
     }
@@ -66,7 +66,7 @@ where
     let some_expr = get_some_expr_fn(cx, some_pat, some_expr, expr_ctxt)?;
 
     // These two lints will go back and forth with each other.
-    if cx.typeck_results().expr_ty(some_expr.expr) == cx.tcx.types.unit
+    if cx.typeck_results.expr_ty(some_expr.expr) == cx.tcx.types.unit
         && !is_lint_allowed(cx, OPTION_MAP_UNIT_FN, expr.hir_id)
     {
         return None;
@@ -186,8 +186,8 @@ fn can_pass_as_func<'tcx>(cx: &LateContext<'tcx>, binding: HirId, expr: &'tcx Ex
     match expr.kind {
         ExprKind::Call(func, [arg])
             if arg.res_local_id() == Some(binding)
-                && cx.typeck_results().expr_adjustments(arg).is_empty()
-                && !is_unsafe_fn(cx, cx.typeck_results().expr_ty(func).peel_refs()) =>
+                && cx.typeck_results.expr_adjustments(arg).is_empty()
+                && !is_unsafe_fn(cx, cx.typeck_results.expr_ty(func).peel_refs()) =>
         {
             Some(func)
         },

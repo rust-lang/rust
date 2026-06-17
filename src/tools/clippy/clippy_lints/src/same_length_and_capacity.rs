@@ -81,7 +81,7 @@ impl<'tcx> LateLintPass<'tcx> for SameLengthAndCapacity {
             && args.len() >= 3
             && eq_expr_value(cx, expr.span.ctxt(), &args[1], &args[2])
         {
-            let middle_ty = cx.typeck_results().node_type(ty.hir_id);
+            let middle_ty = cx.typeck_results.node_type(ty.hir_id);
             if middle_ty.is_diag_item(cx, rustc_sym::Vec) {
                 span_lint_and_help(
                     cx,

@@ -295,7 +295,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
         }
 
         if let hir::ExprKind::Match(await_expr, _arms, hir::MatchSource::AwaitDesugar) = expr.kind
-            && let ty = cx.typeck_results().expr_ty(await_expr)
+            && let ty = cx.typeck_results.expr_ty(await_expr)
             && let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: future_def_id }, .. }) = ty.kind()
             && cx.tcx.ty_is_opaque_future(ty)
             && let async_fn_def_id = cx.tcx.parent(*future_def_id)
@@ -316,7 +316,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             return;
         }
 
-        let ty = cx.typeck_results().expr_ty(expr);
+        let ty = cx.typeck_results.expr_ty(expr);
 
         let must_use_result = is_ty_must_use(cx, ty, expr);
         let type_lint_emitted_or_trivial = match must_use_result {
@@ -424,7 +424,7 @@ fn check_fn_must_use(cx: &LateContext<'_>, expr: &hir::Expr<'_>, expr_is_from_bl
                 None
             }
         }
-        hir::ExprKind::MethodCall(..) => cx.typeck_results().type_dependent_def_id(expr.hir_id),
+        hir::ExprKind::MethodCall(..) => cx.typeck_results.type_dependent_def_id(expr.hir_id),
         _ => None,
     };
 

@@ -88,13 +88,13 @@ fn handle(
     binding_id: HirId,
 ) {
     // Only deal with situations where both alternatives return the same non-adjusted type.
-    if cx.typeck_results().expr_ty(body_some) != cx.typeck_results().expr_ty(body_none)
+    if cx.typeck_results.expr_ty(body_some) != cx.typeck_results.expr_ty(body_none)
         || !safe_to_move_scrutinee(cx, expr, condition)
     {
         return;
     }
 
-    let expr_type = cx.typeck_results().expr_ty(expr);
+    let expr_type = cx.typeck_results.expr_ty(expr);
     // We check that the `Some(x) => x` doesn't do anything apart "returning" the value in `Some`.
     if let ExprKind::Path(QPath::Resolved(_, path)) = peel_blocks(body_some).kind
         && let Res::Local(local_id) = path.res
@@ -114,7 +114,7 @@ fn handle(
             && let Some(default_trait_id) = cx.tcx.get_diagnostic_item(sym::Default)
             && implements_trait(cx, expr_type, default_trait_id, &[])
             // We check if the initial condition implements Default.
-            && let Some(condition_ty) = cx.typeck_results().expr_ty(condition).walk().nth(1)
+            && let Some(condition_ty) = cx.typeck_results.expr_ty(condition).walk().nth(1)
             && let GenericArgKind::Type(condition_ty) = condition_ty.kind()
             && implements_trait(cx, condition_ty, default_trait_id, &[])
             && is_default_equivalent(cx, peel_blocks(body_none))
@@ -158,8 +158,8 @@ fn handle(
                 format!("{receiver}.unwrap_or_default()"),
                 applicability,
             );
-        } else if let Some(ty_name) = find_type_name(cx, cx.typeck_results().expr_ty(condition))
-            && cx.typeck_results().expr_adjustments(body_some).is_empty()
+        } else if let Some(ty_name) = find_type_name(cx, cx.typeck_results.expr_ty(condition))
+            && cx.typeck_results.expr_adjustments(body_some).is_empty()
             && let Some(or_body_snippet) = peel_blocks(body_none).span.get_source_text(cx)
             && let Some(indent) = indent_of(cx, expr.span)
             && ConstEvalCtxt::new(cx).eval_local(body_none, expr.span.ctxt()).is_some()
@@ -200,7 +200,7 @@ fn find_type_name<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<&'static
 /// ```
 fn safe_to_move_scrutinee(cx: &LateContext<'_>, expr: &Expr<'_>, scrutinee: &Expr<'_>) -> bool {
     if let Some(hir_id) = scrutinee.res_local_id()
-        && let scrutinee_ty = cx.typeck_results().expr_ty(scrutinee)
+        && let scrutinee_ty = cx.typeck_results.expr_ty(scrutinee)
         && scrutinee_ty.is_diag_item(cx, sym::Result)
         && !is_copy(cx, scrutinee_ty)
         && local_used_after_expr(cx, hir_id, expr)

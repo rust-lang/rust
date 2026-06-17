@@ -82,12 +82,12 @@ impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
             && addressee.span.ctxt() == ctxt
             && let ExprKind::Index(indexed, range, _) = addressee.kind
             && cx
-                .typeck_results()
+                .typeck_results
                 .expr_ty_adjusted(range)
                 .is_lang_item(cx, LangItem::RangeFull)
         {
-            let (expr_ty, expr_ref_count, _) = peel_and_count_ty_refs(cx.typeck_results().expr_ty(expr));
-            let (indexed_ty, indexed_ref_count, _) = peel_and_count_ty_refs(cx.typeck_results().expr_ty(indexed));
+            let (expr_ty, expr_ref_count, _) = peel_and_count_ty_refs(cx.typeck_results.expr_ty(expr));
+            let (indexed_ty, indexed_ref_count, _) = peel_and_count_ty_refs(cx.typeck_results.expr_ty(indexed));
             let parent_expr = get_parent_expr(cx, expr);
             let needs_parens_for_prefix =
                 parent_expr.is_some_and(|parent| cx.precedence(parent) > ExprPrecedence::Prefix);
@@ -112,13 +112,13 @@ impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
                         kind: ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, _),
                         ..
                     })
-                ) || cx.typeck_results().expr_adjustments(expr).first().is_some_and(|a| {
+                ) || cx.typeck_results.expr_adjustments(expr).first().is_some_and(|a| {
                     matches!(
                         a.kind,
                         Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Mut { .. }))
                     )
                 }) || (matches!(
-                    cx.typeck_results().expr_ty(indexed).ref_mutability(),
+                    cx.typeck_results.expr_ty(indexed).ref_mutability(),
                     Some(Mutability::Mut)
                 ) && mutability == Mutability::Not)
                 {

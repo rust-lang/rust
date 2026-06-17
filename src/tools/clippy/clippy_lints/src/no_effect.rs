@@ -151,7 +151,7 @@ impl NoEffect {
                                 && let [.., final_stmt] = block.stmts
                                 && final_stmt.hir_id == stmt.hir_id
                             {
-                                let expr_ty = cx.typeck_results().expr_ty(expr);
+                                let expr_ty = cx.typeck_results.expr_ty(expr);
                                 let mut ret_ty = cx
                                     .tcx
                                     .fn_sig(item.owner_id)
@@ -219,7 +219,7 @@ fn is_operator_overridden(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 
             // reference: rust/compiler/rustc_middle/src/ty/typeck_results.rs: `is_method_call`.
             // use this function to check whether operator is overridden in `ExprKind::{Binary, Unary}`.
-            cx.typeck_results().is_method_call(expr)
+            cx.typeck_results.is_method_call(expr)
         },
         _ => false,
     }
@@ -227,7 +227,7 @@ fn is_operator_overridden(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 
 /// Checks if dropping `expr` might have a visible side effect.
 fn expr_ty_has_significant_drop(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    let ty = cx.typeck_results().expr_ty(expr);
+    let ty = cx.typeck_results.expr_ty(expr);
     ty.has_significant_drop(cx.tcx, cx.typing_env())
 }
 
@@ -253,7 +253,7 @@ fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         },
         ExprKind::Call(callee, args) => {
             if let ExprKind::Path(ref qpath) = callee.kind {
-                if cx.typeck_results().type_dependent_def(expr.hir_id).is_some() {
+                if cx.typeck_results.type_dependent_def(expr.hir_id).is_some() {
                     // type-dependent function call like `impl FnOnce for X`
                     return false;
                 }
@@ -353,7 +353,7 @@ fn reduce_expression<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<Vec
             reduce_expression(cx, inner).or_else(|| Some(vec![inner]))
         },
         ExprKind::Struct(_, fields, ref base) => {
-            if has_drop(cx, cx.typeck_results().expr_ty(expr)) {
+            if has_drop(cx, cx.typeck_results.expr_ty(expr)) {
                 None
             } else {
                 let base = match base {
@@ -365,14 +365,14 @@ fn reduce_expression<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<Vec
         },
         ExprKind::Call(callee, args) => {
             if let ExprKind::Path(ref qpath) = callee.kind {
-                if cx.typeck_results().type_dependent_def(expr.hir_id).is_some() {
+                if cx.typeck_results.type_dependent_def(expr.hir_id).is_some() {
                     // type-dependent function call like `impl FnOnce for X`
                     return None;
                 }
                 let res = cx.qpath_res(qpath, callee.hir_id);
                 match res {
                     Res::Def(DefKind::Struct | DefKind::Variant | DefKind::Ctor(..), ..)
-                        if !has_drop(cx, cx.typeck_results().expr_ty(expr)) =>
+                        if !has_drop(cx, cx.typeck_results.expr_ty(expr)) =>
                     {
                         Some(args.iter().collect())
                     },
