@@ -89,6 +89,7 @@ trivially_parameterized_over_tcx! {
     rustc_crate_store::ForeignModule,
     rustc_crate_store::LinkagePreference,
     rustc_crate_store::NativeLib,
+    rustc_data_structures::fingerprint::Fingerprint,
     rustc_hir::Attribute,
     rustc_hir::ConstStability,
     rustc_hir::Constness,
