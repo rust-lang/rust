@@ -1,4 +1,5 @@
 use core::iter::Iterator;
+use std::cell::RefCell;
 use std::fmt;
 
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -669,7 +670,7 @@ impl ReachabilityGraphHashes {
             }
             Node::ExpnId(id) => self.expn.entry(id.expect_local()).or_insert(Fingerprint::ZERO),
             Node::SyntaxContext(id) => self.syntax.entry(*id).or_insert(Fingerprint::ZERO),
-            Node::Span(_) => todo!(),
+            Node::Span(_) => unimplemented!(),
             Node::Ty(_) => unimplemented!(),
             Node::Predicate(_) => unimplemented!(),
             Node::AllocId(_) => unimplemented!(),
@@ -699,7 +700,15 @@ impl ReachabilityGraphHashes {
                 }
             }
             Node::SyntaxContext(id) => self.syntax.get(id).copied(),
-            Node::Span(_) => todo!(),
+            Node::Span(span) => tcx.with_stable_hashing_context(|hcx| {
+                let hcx = RefCell::new(hcx);
+                tcx.sess
+                    .source_map()
+                    .span_to_source(*span, |source, start, end| {
+                        Ok(stable_hash(&mut hcx.borrow_mut(), &source[start..end]))
+                    })
+                    .ok()
+            }),
             Node::Ty(_) => None,
             Node::Predicate(_) => None,
             Node::AllocId(id) => Some(tcx.with_stable_hashing_context(|mut hcx| {
@@ -910,7 +919,7 @@ fn build_public_hashes<'tcx>(
             Node::SyntaxContext(_) => (),
             Node::Ty(_) => (),
             Node::Predicate(_) => (),
-            Node::Span(_) => todo!(),
+            Node::Span(_) => (),
             Node::AllocId(_) => (),
         }
     }

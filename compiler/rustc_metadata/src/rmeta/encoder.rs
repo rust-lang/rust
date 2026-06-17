@@ -318,6 +318,7 @@ impl<'a, 'tcx, M: MetadataEncoder<'tcx>> SpanEncoder for EncodeContext<'a, 'tcx,
     }
 
     fn encode_span(&mut self, span: Span) {
+        self.record_encoded_index(span);
         match self.span_shorthands.entry(span) {
             Entry::Occupied(o) => {
                 // If an offset is smaller than the absolute position, we encode with the offset.
@@ -346,7 +347,9 @@ impl<'a, 'tcx, M: MetadataEncoder<'tcx>> SpanEncoder for EncodeContext<'a, 'tcx,
                 let position = self.opaque.position();
                 v.insert(position);
                 // Data is encoded with a SpanTag prefix (see below).
-                span.data().encode(self);
+                self.with_record_mode(RecordMode::From(span.into()), |this| {
+                    span.data().encode(this)
+                });
             }
         }
     }
@@ -406,6 +409,8 @@ impl<'a, 'tcx, M: MetadataEncoder<'tcx>> Encodable<EncodeContext<'a, 'tcx, M>> f
             tag.encode(s);
             if tag.context().is_none() {
                 ctxt.encode(s);
+            } else {
+                s.record_encoded_index(ctxt);
             }
             return;
         }
@@ -429,6 +434,8 @@ impl<'a, 'tcx, M: MetadataEncoder<'tcx>> Encodable<EncodeContext<'a, 'tcx, M>> f
             tag.encode(s);
             if tag.context().is_none() {
                 ctxt.encode(s);
+            } else {
+                s.record_encoded_index(ctxt);
             }
             return;
         }
@@ -494,6 +501,8 @@ impl<'a, 'tcx, M: MetadataEncoder<'tcx>> Encodable<EncodeContext<'a, 'tcx, M>> f
         tag.encode(s);
         if tag.context().is_none() {
             ctxt.encode(s);
+        } else {
+            s.record_encoded_index(ctxt);
         }
         lo.encode(s);
         if tag.length().is_none() {
