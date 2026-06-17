@@ -558,7 +558,7 @@ fn evaluate_host_effect_for_fn_goal<'tcx>(
         // but they don't really need to right now.
         ty::CoroutineClosure(_, _) => return Err(EvaluationFailure::NoSolution),
 
-        ty::Closure(def, args) => (def, args),
+        ty::Closure(def, args) => (def, ty::Binder::dummy(args)),
 
         // Everything else needs explicit impls or cannot have an impl
         _ => return Err(EvaluationFailure::NoSolution),
@@ -569,7 +569,7 @@ fn evaluate_host_effect_for_fn_goal<'tcx>(
         hir::Constness::Const { always: true } => Err(EvaluationFailure::NoSolution),
         hir::Constness::Const { always: false } => Ok(tcx
             .const_conditions(def)
-            .instantiate(tcx, args)
+            .instantiate(tcx, args.no_bound_vars().unwrap())
             .into_iter()
             .map(|(c, span)| {
                 let code = ObligationCauseCode::WhereClause(def, span);

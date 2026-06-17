@@ -550,6 +550,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let (fn_sig, def_id, callee_generic_args) = match *callee_ty.kind() {
             ty::FnDef(def_id, args) => {
+                let args = args.no_bound_vars().unwrap();
                 self.enforce_context_effects(Some(call_expr.hir_id), call_expr.span, def_id, args);
                 let fn_sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, args).skip_norm_wip();
 

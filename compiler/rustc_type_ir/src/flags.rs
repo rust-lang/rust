@@ -360,7 +360,7 @@ impl<I: Interner> FlagComputation<I> {
             }
 
             ty::FnDef(_, args) => {
-                self.add_args(args.as_slice());
+                self.add_args(args.no_bound_vars().unwrap().as_slice());
             }
 
             ty::FnPtr(sig_tys, _) => self.bound_computation(sig_tys, |computation, sig_tys| {

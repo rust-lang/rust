@@ -2582,7 +2582,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .map(|(field_def, arg)| {
                 self.lower_const_arg(
                     arg,
-                    tcx.type_of(field_def.did).instantiate(tcx, adt_args).skip_norm_wip(),
+                    tcx.type_of(field_def.did)
+                        .instantiate(tcx, adt_args.no_bound_vars().unwrap())
+                        .skip_norm_wip(),
                 )
             })
             .collect::<Vec<_>>();
@@ -2595,7 +2597,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         };
 
         let valtree = ty::ValTree::from_branches(tcx, opt_discr_const.into_iter().chain(fields));
-        let adt_ty = Ty::new_adt(tcx, adt_def, adt_args);
+        let adt_ty = Ty::new_adt(tcx, adt_def, adt_args.no_bound_vars().unwrap());
         ty::Const::new_value(tcx, valtree, adt_ty)
     }
 

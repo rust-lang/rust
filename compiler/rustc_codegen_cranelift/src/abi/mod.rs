@@ -421,7 +421,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             fx.tcx,
             ty::TypingEnv::fully_monomorphized(),
             def_id,
-            fn_args,
+            fn_args.no_bound_vars().unwrap(),
             source_info.span,
         );
 

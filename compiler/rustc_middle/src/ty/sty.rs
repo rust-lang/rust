@@ -744,7 +744,7 @@ impl<'tcx> Ty<'tcx> {
             DefKind::AssocFn | DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn)
         );
         let args = tcx.check_and_mk_args(def_id, args);
-        Ty::new(tcx, FnDef(def_id, args))
+        Ty::new(tcx, FnDef(def_id, ty::Binder::dummy(args)))
     }
 
     #[inline]

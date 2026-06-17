@@ -95,6 +95,7 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
         }
 
         if let &ty::FnDef(did, args) = ty.kind() {
+            let args = args.no_bound_vars().unwrap();
             // Closures in thir look something akin to
             // `for<'a> extern "rust-call" fn(&'a [closure@...], ()) -> <[closure@...] as FnOnce<()>>::Output {<[closure@...] as Fn<()>>::call}`
             // So we have to check for them in this weird way...

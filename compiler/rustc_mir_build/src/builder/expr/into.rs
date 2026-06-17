@@ -403,6 +403,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     && let Some(intrinsic) = this.tcx.intrinsic(def_id)
                     && matches!(intrinsic.name, sym::write_via_move | sym::write_box_via_move) =>
             {
+                let generic_args = generic_args.no_bound_vars().unwrap();
                 // We still have to evaluate the callee expression as normal (but we don't care
                 // about its result).
                 let _fun = unpack!(block = this.as_local_operand(block, fun));
