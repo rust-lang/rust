@@ -663,8 +663,8 @@ impl ReachabilityGraphHashes {
             Node::ExpnId(id) => self.expn.entry(id.expect_local()).or_insert(Fingerprint::ZERO),
             Node::SyntaxContext(id) => self.syntax.entry(*id).or_insert(Fingerprint::ZERO),
             Node::Span(_) => todo!(),
-            Node::Ty(_) => todo!(),
-            Node::Predicate(_) => todo!(),
+            Node::Ty(_) => unimplemented!(),
+            Node::Predicate(_) => unimplemented!(),
             Node::AllocId(_) => todo!(),
         };
         *current_hash = hash.combine_commutative(hash);
@@ -693,8 +693,8 @@ impl ReachabilityGraphHashes {
             }
             Node::SyntaxContext(id) => self.syntax.get(id).copied(),
             Node::Span(_) => todo!(),
-            Node::Ty(_) => todo!(),
-            Node::Predicate(_) => todo!(),
+            Node::Ty(_) => None,
+            Node::Predicate(_) => None,
             Node::AllocId(_) => todo!(),
         }
     }
@@ -899,8 +899,8 @@ fn build_public_hashes<'tcx>(
                 }
             }
             Node::SyntaxContext(_) => (),
-            Node::Ty(_) => todo!(),
-            Node::Predicate(_) => todo!(),
+            Node::Ty(_) => (),
+            Node::Predicate(_) => (),
             Node::Span(_) => todo!(),
             Node::AllocId(_) => todo!(),
         }

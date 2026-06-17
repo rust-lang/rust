@@ -28,7 +28,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
-use rustc_middle::ty::{AssocContainer, Visibility};
+use rustc_middle::ty::{AssocContainer, PredicateKind, Visibility};
 use rustc_middle::{bug, span_bug};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
@@ -526,12 +526,30 @@ impl<'a, 'tcx, M: MetadataEncoder<'tcx>> TyEncoder<'tcx> for EncodeContext<'a, '
         self.opaque.position()
     }
 
+    fn type_encode_begin(&mut self, ty: Ty<'tcx>) {
+        self.spec_encoder_data.record_encoded_index(Node::Ty(ty));
+        self.spec_encoder_data.push_record_mode(RecordMode::From(Node::Ty(ty)));
+    }
+
+    fn type_encode_end(&mut self) {
+        self.spec_encoder_data.pop_record_mode();
+    }
+
     fn type_shorthands(&mut self) -> &mut FxHashMap<Ty<'tcx>, usize> {
         &mut self.type_shorthands
     }
 
     fn predicate_shorthands(&mut self) -> &mut FxHashMap<ty::PredicateKind<'tcx>, usize> {
         &mut self.predicate_shorthands
+    }
+
+    fn predicate_encode_begin(&mut self, pred: PredicateKind<'tcx>) {
+        self.spec_encoder_data.record_encoded_index(Node::Predicate(pred));
+        self.spec_encoder_data.push_record_mode(RecordMode::From(Node::Predicate(pred)));
+    }
+
+    fn predicate_encode_end(&mut self) {
+        self.spec_encoder_data.pop_record_mode();
     }
 
     fn encode_alloc_id(&mut self, alloc_id: &rustc_middle::mir::interpret::AllocId) {
