@@ -2510,15 +2510,13 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(strip_circumfix)]
-    ///
     /// assert_eq!("bar:hello:foo".strip_circumfix("bar:", ":foo"), Some("hello"));
     /// assert_eq!("bar:foo".strip_circumfix("foo", "foo"), None);
     /// assert_eq!("foo:bar;".strip_circumfix("foo:", ';'), Some("bar"));
     /// ```
     #[must_use = "this returns the remaining substring as a new slice, \
                   without modifying the original"]
-    #[unstable(feature = "strip_circumfix", issue = "147946")]
+    #[stable(feature = "strip_circumfix", since = "CURRENT_RUSTC_VERSION")]
     pub fn strip_circumfix<P: Pattern, S: Pattern>(&self, prefix: P, suffix: S) -> Option<&str>
     where
         for<'a> S::Searcher<'a>: ReverseSearcher<'a>,
