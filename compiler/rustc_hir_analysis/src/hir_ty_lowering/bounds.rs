@@ -193,11 +193,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         );
                     } else {
                         predicates.insert((
-                        ty::Binder::bind_with_vars(
-                            ty::ClauseKind::ConstArgHasType(ct, ct_ty),
-                            ty::List::empty(),
-                        )
-                        .upcast(tcx),
+                            ty::Binder::bind_with_vars(
+                                ty::ClauseKind::ConstArgHasType(ct, ct_ty),
+                                ty::List::empty(),
+                            )
+                            .upcast(tcx),
                             param.span,
                         ));
                     }
