@@ -1,8 +1,9 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    // Pin GitHub Actions to their commit SHA digests
-    "helpers:pinGitHubActionDigests"
+    // Pin GitHub Actions to their commit SHA digests, resolving floating tags
+    // (e.g. `v4`) to the full SemVer version (e.g. `v4.1.2`)
+    "helpers:pinGitHubActionDigestsToSemver"
   ],
   // Let Renovatebot keep an opened issue that tracks our dependencies
   "dependencyDashboard": true,
