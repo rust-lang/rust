@@ -9,8 +9,8 @@ LL |     async fn ft1() {}
 error: async functions are not allowed in `const` trait impls
   --> $DIR/const-trait-async-assoc-fn.rs:14:5
    |
-LL | impl const Tr2 for () {
-   |      ----- associated functions of `const` cannot be declared `async`
+LL | const impl Tr2 for () {
+   | ----- associated functions of `const` cannot be declared `async`
 LL |     async fn f() {}
    |     ^^^^^
 

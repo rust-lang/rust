@@ -24,13 +24,13 @@ impl Bar for NonConst {
 
 impl Foo for NonConst {}
 
-impl const Bar for Const {
+const impl Bar for Const {
     fn bar() -> u8 {
         4
     }
 }
 
-impl const Foo for Const {}
+const impl Foo for Const {}
 
 fn main() {
     const ANS1: u8 = Const::foo();

@@ -11,7 +11,10 @@ pub const trait Foo {
 pub const trait Bar {}
 
 struct A<T>(T);
-impl<T> const Foo for A<T> where A<T>: [const] Bar {
+const impl<T> Foo for A<T>
+where
+    A<T>: [const] Bar,
+{
     fn method(self) -> impl [const] Bar {
         self
     }

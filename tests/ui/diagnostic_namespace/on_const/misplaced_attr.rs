@@ -7,7 +7,7 @@ pub struct Foo;
 
 #[diagnostic::on_const(message = "tadaa", note = "boing")]
 //~^ ERROR: `#[diagnostic::on_const]` can only be applied to non-const trait implementations
-impl const PartialEq for Foo {
+const impl PartialEq for Foo {
     fn eq(&self, _other: &Foo) -> bool {
         true
     }
