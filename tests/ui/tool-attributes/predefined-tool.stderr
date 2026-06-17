@@ -1,0 +1,62 @@
+error: tool `rustc` is reserved and cannot be registered
+  --> $DIR/predefined-tool.rs:10:18
+   |
+LL | #![register_tool(rustc)]
+   |                  ^^^^^
+
+error: tool `clippy` is predefined and cannot be registered
+  --> $DIR/predefined-tool.rs:3:18
+   |
+LL | #![register_tool(clippy)]
+   |                  ^^^^^^
+
+error: tool `diagnostic` is predefined and cannot be registered
+  --> $DIR/predefined-tool.rs:7:18
+   |
+LL | #![register_tool(diagnostic)]
+   |                  ^^^^^^^^^^
+
+error: tool `miri` is predefined and cannot be registered
+  --> $DIR/predefined-tool.rs:5:28
+   |
+LL | #![register_attribute_tool(miri)]
+   |                            ^^^^
+
+error: tool `rust_analyzer` is predefined and cannot be registered
+  --> $DIR/predefined-tool.rs:9:28
+   |
+LL | #![register_attribute_tool(rust_analyzer)]
+   |                            ^^^^^^^^^^^^^
+
+error: tool `rustc` is reserved and cannot be registered
+  --> $DIR/predefined-tool.rs:10:18
+   |
+LL | #![register_tool(rustc)]
+   |                  ^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: tool `clippy` is predefined and cannot be registered
+  --> $DIR/predefined-tool.rs:3:18
+   |
+LL | #![register_tool(clippy)]
+   |                  ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: tool `rustfmt` is predefined and cannot be registered
+  --> $DIR/predefined-tool.rs:6:23
+   |
+LL | #![register_lint_tool(rustfmt)]
+   |                       ^^^^^^^
+
+error: tool `diagnostic` is predefined and cannot be registered
+  --> $DIR/predefined-tool.rs:7:18
+   |
+LL | #![register_tool(diagnostic)]
+   |                  ^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 9 previous errors
+

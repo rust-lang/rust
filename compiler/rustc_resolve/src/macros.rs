@@ -137,36 +137,34 @@ pub fn registered_tools_ast(
     if let Some(Attribute::Parsed(AttributeKind::RegisterTool { kind: _, tools })) =
         AttributeParser::parse_limited(sess, pre_configured_attrs, &[sym])
     {
-        for tool in tools {
-            if let Some(old_tool) = registered_tools.replace(tool) {
-                dcx.emit_err(errors::ToolWasAlreadyRegistered {
-                    span: tool.span,
-                    tool,
-                    old_ident_span: old_tool.span,
-                });
-            }
-        }
+        registered_tools.extend(tools);
     }
 
     if let Some(Attribute::Parsed(AttributeKind::RegisterTool { kind: _, tools })) =
         AttributeParser::parse_limited(sess, pre_configured_attrs, &[sym::register_tool])
     {
-        for tool in tools {
-            if let Some(old_tool) = registered_tools.replace(tool) {
-                dcx.emit_err(diagnostics::ToolWasAlreadyRegistered {
-                    span: tool.span,
-                    tool,
-                    old_ident_span: old_tool.span,
-                });
-            }
-        }
+        registered_tools.extend(tools);
+    }
+
+    // `rustc` is reserved and is an error if registered.
+    // Tools with `rustc` prefix is reserved but is not an error if registered.
+    let rustc = Ident::with_dummy_span(sym::rustc);
+    if let Some((_, tool)) = registered_tools.shift_remove_full(&rustc) {
+        dcx.emit_err(diagnostics::ToolReserved { span: tool.span, tool });
     }
 
     // We implicitly add `rustfmt`, `clippy`, `diagnostic`, `miri` and `rust_analyzer` to known
-    // tools, but it's not an error to register them explicitly.
+    // tools.
     let predefined_tools =
         [sym::clippy, sym::rustfmt, sym::diagnostic, sym::miri, sym::rust_analyzer];
-    registered_tools.extend(predefined_tools.iter().cloned().map(Ident::with_dummy_span));
+
+    for sym in predefined_tools {
+        let tool = Ident::with_dummy_span(sym);
+        if let Some(old_tool) = registered_tools.replace(tool) {
+            dcx.emit_err(diagnostics::ToolPredefined { span: old_tool.span, tool: old_tool });
+        }
+    }
+
     registered_tools
 }
 
