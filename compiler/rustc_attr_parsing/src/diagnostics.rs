@@ -826,11 +826,10 @@ pub(crate) struct UnknownExternLangItem {
 }
 
 #[derive(Diagnostic)]
-#[diag("tool `{$tool}` was already registered")]
-pub(crate) struct ToolWasAlreadyRegistered {
+#[diag("tool `{$tool}` is {$reason} and cannot be registered")]
+pub(crate) struct ToolReserved {
     #[primary_span]
     pub(crate) span: Span,
     pub(crate) tool: Ident,
-    #[label("already registered here")]
-    pub(crate) old_ident_span: Span,
+    pub(crate) reason: &'static str,
 }

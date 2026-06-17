@@ -139,7 +139,7 @@ pub(crate) fn registered_attr_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools 
             Default::default()
         };
 
-    // We implicitly add predefined tools, but it's not an error to register them explicitly.
+    // Implicitly add predefined tools.
     registered_tools.extend(PREDEFINED_TOOLS.iter().cloned().map(Ident::with_dummy_span));
     registered_tools
 }
@@ -165,7 +165,7 @@ pub fn registered_lint_tools_ast(
             Default::default()
         };
 
-    // We implicitly add predefined tools, but it's not an error to register them explicitly.
+    // Implicitly add predefined tools.
     registered_tools.extend(PREDEFINED_TOOLS.iter().cloned().map(Ident::with_dummy_span));
     registered_tools
 }
