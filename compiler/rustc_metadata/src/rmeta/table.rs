@@ -1,10 +1,13 @@
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hash::StableHash;
 use rustc_hir::def::CtorOf;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::Idx;
 
 use crate::rmeta::decoder::MetaBlob;
-use crate::rmeta::encoder::public_api_hasher::{Hashed, PublicApiHashState, TablePublicApiHasher};
+use crate::rmeta::encoder::public_api_hasher::{
+    GraphHashed, PublicApiHashState, TableIndex, TablePublicApiHasher,
+};
 use crate::rmeta::*;
 
 pub(super) trait IsDefault: Default {
@@ -73,6 +76,31 @@ impl FixedSizeEncoding for u64 {
     #[inline]
     fn write_to_bytes(self, b: &mut [u8; 8]) {
         *b = self.to_le_bytes();
+    }
+}
+
+impl FixedSizeEncoding for Option<Fingerprint> {
+    type ByteArray = [u8; 17];
+
+    fn from_bytes(b: &Self::ByteArray) -> Self {
+        if b[0] == 0 {
+            None
+        } else {
+            Some(Fingerprint::from_le_bytes(b[1..17].try_into().unwrap()))
+        }
+    }
+
+    fn write_to_bytes(self, b: &mut Self::ByteArray) {
+        match self {
+            Some(fingerprint) => {
+                b[0] = 1;
+                let buf: &mut [u8; 16] = (&mut b[1..17]).try_into().unwrap();
+                *buf = fingerprint.to_le_bytes();
+            }
+            None => {
+                b[0] = 0;
+            }
+        }
     }
 }
 
@@ -485,7 +513,7 @@ where
     #[inline(always)]
     pub(crate) fn set_some_hashed<'a, HashedT>(
         &mut self,
-        i: I,
+        i: impl TableIndex<Encoded = I>,
         value: T,
         hashed: HashedT,
         hcx: &mut impl PublicApiHashState<'a>,
@@ -493,7 +521,7 @@ where
         HashedT: StableHash,
     {
         self.hasher.digest(i, hashed, hcx);
-        self.set(i, Some(value));
+        self.set(i.into_encoded(), Some(value));
     }
 }
 
@@ -562,7 +590,7 @@ impl<H: TablePublicApiHasher<I>, I: Idx, const N: usize, T: FixedSizeEncoding<By
     #[inline(always)]
     pub(super) fn set_hashed<'a, HashedT>(
         &mut self,
-        i: I,
+        i: impl TableIndex<Encoded = I>,
         value: T,
         hashed: HashedT,
         hcx: &mut impl PublicApiHashState<'a>,
@@ -570,7 +598,7 @@ impl<H: TablePublicApiHasher<I>, I: Idx, const N: usize, T: FixedSizeEncoding<By
         HashedT: StableHash,
     {
         self.hasher.digest(i, hashed, hcx);
-        self.set(i, value);
+        self.set(i.into_encoded(), value);
     }
 
     /// Sets the table value if it is not default.
@@ -602,11 +630,7 @@ impl<H: TablePublicApiHasher<I>, I: Idx, const N: usize, T: FixedSizeEncoding<By
         }
     }
 
-    pub(crate) fn encode<'a>(
-        &self,
-        buf: &mut FileEncoder<'_>,
-        hcx: &mut impl PublicApiHashState<'a>,
-    ) -> Hashed<LazyTable<I, T>> {
+    pub(crate) fn encode(&self, buf: &mut FileEncoder<'_>) -> GraphHashed<LazyTable<I, T>> {
         let pos = buf.position();
 
         let width = self.width;
@@ -616,14 +640,11 @@ impl<H: TablePublicApiHasher<I>, I: Idx, const N: usize, T: FixedSizeEncoding<By
                 width
             });
         }
-        Hashed {
-            value: LazyTable::from_position_and_encoded_size(
-                NonZero::new(pos).unwrap(),
-                width,
-                self.blocks.len(),
-            ),
-            hash: self.hasher.finish(hcx),
-        }
+        GraphHashed(LazyTable::from_position_and_encoded_size(
+            NonZero::new(pos).unwrap(),
+            width,
+            self.blocks.len(),
+        ))
     }
 }
 

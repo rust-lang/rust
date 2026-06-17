@@ -146,7 +146,7 @@ pub(super) fn meta_encodable_derive(
         s.add_impl_generic(parse_quote! { 'tcx });
     }
     s.add_impl_generic(parse_quote! { '__a });
-    s.add_impl_generic(parse_quote! { M: crate::rmeta::encoder::MetadataEncoder });
+    s.add_impl_generic(parse_quote! { M: crate::rmeta::encoder::MetadataEncoder<'tcx> });
     let encoder_ty = quote! { EncodeContext<'__a, 'tcx, M> };
     s.add_bounds(synstructure::AddBounds::Generics);
 

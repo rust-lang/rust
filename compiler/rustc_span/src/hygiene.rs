@@ -338,6 +338,11 @@ impl ExpnId {
         }
         last_macro
     }
+
+    #[inline]
+    pub fn is_local(&self) -> bool {
+        self.krate == LOCAL_CRATE
+    }
 }
 
 #[derive(Debug)]

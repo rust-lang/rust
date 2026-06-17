@@ -3,6 +3,7 @@ use std::mem;
 use std::sync::Arc;
 
 use rustc_crate_store::{CrateStore, ExternCrate};
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::attrs::Deprecation;
 use rustc_hir::def::{CtorKind, DefKind};
@@ -190,11 +191,13 @@ macro_rules! provide {
 // small trait to work around different signature queries all being defined via
 // the macro above.
 trait IntoArgs {
+    type This;
     type Other;
-    fn into_args(self) -> (DefId, Self::Other);
+    fn into_args(self) -> (Self::This, Self::Other);
 }
 
 impl IntoArgs for DefId {
+    type This = DefId;
     type Other = ();
     fn into_args(self) -> (DefId, ()) {
         (self, ())
@@ -202,13 +205,23 @@ impl IntoArgs for DefId {
 }
 
 impl IntoArgs for ModId {
+    type This = DefId;
     type Other = ();
     fn into_args(self) -> (DefId, ()) {
         (self.to_def_id(), ())
     }
 }
 
+impl IntoArgs for ExpnId {
+    type This = ExpnId;
+    type Other = ();
+    fn into_args(self) -> (ExpnId, ()) {
+        (self, ())
+    }
+}
+
 impl IntoArgs for CrateNum {
+    type This = DefId;
     type Other = ();
     fn into_args(self) -> (DefId, ()) {
         (self.as_def_id(), ())
@@ -216,6 +229,7 @@ impl IntoArgs for CrateNum {
 }
 
 impl IntoArgs for (CrateNum, DefId) {
+    type This = DefId;
     type Other = DefId;
     fn into_args(self) -> (DefId, DefId) {
         (self.0.as_def_id(), self.1)
@@ -223,6 +237,7 @@ impl IntoArgs for (CrateNum, DefId) {
 }
 
 impl<'tcx> IntoArgs for ty::InstanceKind<'tcx> {
+    type This = DefId;
     type Other = ();
     fn into_args(self) -> (DefId, ()) {
         (self.def_id(), ())
@@ -230,6 +245,7 @@ impl<'tcx> IntoArgs for ty::InstanceKind<'tcx> {
 }
 
 impl IntoArgs for (CrateNum, SimplifiedType) {
+    type This = DefId;
     type Other = SimplifiedType;
     fn into_args(self) -> (DefId, SimplifiedType) {
         (self.0.as_def_id(), self.1)
@@ -468,6 +484,33 @@ provide! { tcx, def_id, other, cdata,
     anon_const_kind => { table }
     const_of_item => { table }
     args_known_to_outlive_alias_params => { table }
+    extern_def_public_hash => {
+        if let Some(rdr_hashes) = cdata.root.rdr_hashes.as_ref() {
+            rdr_hashes
+                .local
+                .get(cdata, def_id.index)
+                .unwrap_or_else(|| bug!("Trying to read public hash of definition {def_id:?}, categoriazed as private!"))
+        } else {
+            Fingerprint::from_le_bytes(cdata.root.header.hashes.public_hash.as_u128().to_le_bytes())
+        }
+    }
+    extern_expn_public_hash => {
+        if let Some(rdr_hashes) = cdata.root.rdr_hashes.as_ref() {
+            rdr_hashes
+                .expn
+                .get(cdata, def_id.local_id)
+                .unwrap_or_else(|| bug!("Trying to read public hash of expnasion {def_id:?}, categoriazed as private!"))
+        } else {
+            Fingerprint::from_le_bytes(cdata.root.header.hashes.public_hash.as_u128().to_le_bytes())
+        }
+    }
+    public_global_hash => {
+        if let Some(rdr_hashes) = cdata.root.rdr_hashes.as_ref() {
+            rdr_hashes.public_global_hash
+        } else {
+            Fingerprint::from_le_bytes(cdata.root.header.hashes.public_hash.as_u128().to_le_bytes())
+        }
+    }
 }
 
 pub(in crate::rmeta) fn provide(providers: &mut Providers) {
