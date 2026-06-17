@@ -14,7 +14,7 @@ pub(super) fn check<'tcx>(
     radix: &'tcx Expr<'_>,
     msrv: Msrv,
 ) {
-    if !cx.typeck_results().expr_ty_adjusted(self_arg).peel_refs().is_char() {
+    if !cx.typeck_results.expr_ty_adjusted(self_arg).peel_refs().is_char() {
         return;
     }
 

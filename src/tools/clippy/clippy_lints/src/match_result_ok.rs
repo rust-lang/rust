@@ -56,7 +56,7 @@ impl<'tcx> LateLintPass<'tcx> for MatchResultOk {
 
         if let ExprKind::MethodCall(ok_path, recv, [], ..) = let_expr.kind //check is expr.ok() has type Result<T,E>.ok(, _)
             && ok_path.ident.name == sym::ok
-            && cx.typeck_results().expr_ty(recv).is_diag_item(cx, sym::Result)
+            && cx.typeck_results.expr_ty(recv).is_diag_item(cx, sym::Result)
             && let Some([ok_pat]) = as_some_pattern(cx, let_pat) //get operation
             && let ctxt = expr.span.ctxt()
             && let_expr.span.ctxt() == ctxt

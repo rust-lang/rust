@@ -113,8 +113,8 @@ impl<'tcx> ClampSuggestion<'tcx> {
     /// This function will return true if and only if you can demonstrate at compile time that min
     /// is less than max.
     fn min_less_than_max(&self, cx: &LateContext<'tcx>) -> bool {
-        let max_type = cx.typeck_results().expr_ty(self.params.max);
-        let min_type = cx.typeck_results().expr_ty(self.params.min);
+        let max_type = cx.typeck_results.expr_ty(self.params.max);
+        let min_type = cx.typeck_results.expr_ty(self.params.min);
         if max_type != min_type {
             return false;
         }
@@ -293,13 +293,13 @@ fn is_if_elseif_else_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx
 /// ```
 fn is_max_min_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<ClampSuggestion<'tcx>> {
     if let ExprKind::MethodCall(seg_second, receiver, [arg_second], _) = expr.kind
-        && (cx.typeck_results().expr_ty_adjusted(receiver).is_floating_point()
+        && (cx.typeck_results.expr_ty_adjusted(receiver).is_floating_point()
             || cx.ty_based_def(expr).assoc_fn_parent(cx).is_diag_item(cx, sym::Ord))
         && let ExprKind::MethodCall(seg_first, input, [arg_first], _) = &receiver.kind
-        && (cx.typeck_results().expr_ty_adjusted(input).is_floating_point()
+        && (cx.typeck_results.expr_ty_adjusted(input).is_floating_point()
             || cx.ty_based_def(receiver).assoc_fn_parent(cx).is_diag_item(cx, sym::Ord))
     {
-        let is_float = cx.typeck_results().expr_ty_adjusted(input).is_floating_point();
+        let is_float = cx.typeck_results.expr_ty_adjusted(input).is_floating_point();
         let (min, max) = match (seg_first.ident.name, seg_second.ident.name) {
             (sym::min, sym::max) => (arg_second, arg_first),
             (sym::max, sym::min) => (arg_first, arg_second),
@@ -372,7 +372,7 @@ fn is_call_max_min_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>)
                 (false, true) => (first, second),
                 _ => return None,
             };
-            let is_float = cx.typeck_results().expr_ty_adjusted(input).is_floating_point();
+            let is_float = cx.typeck_results.expr_ty_adjusted(input).is_floating_point();
             let (min, max) = match (inner_seg, outer_seg) {
                 (FunctionType::CmpMin, FunctionType::CmpMax) => (outer_arg, inner_arg),
                 (FunctionType::CmpMax, FunctionType::CmpMin) => (inner_arg, outer_arg),
@@ -693,7 +693,7 @@ fn is_clamp_meta_pattern<'tcx>(
         first_expr,
         second_expr,
     ];
-    let clampability = TypeClampability::is_clampable(cx, cx.typeck_results().expr_ty(first_expr))?;
+    let clampability = TypeClampability::is_clampable(cx, cx.typeck_results.expr_ty(first_expr))?;
     let is_float = clampability.is_float();
     if exprs.iter().any(|e| peel_blocks(e).can_have_side_effects()) {
         return None;

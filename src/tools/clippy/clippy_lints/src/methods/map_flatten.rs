@@ -49,7 +49,7 @@ fn try_get_caller_ty_name_and_method_name(
             Some(("Iterator", "flat_map"))
         }
     } else {
-        if let ty::Adt(adt, _) = cx.typeck_results().expr_ty(caller_expr).kind() {
+        if let ty::Adt(adt, _) = cx.typeck_results.expr_ty(caller_expr).kind() {
             match cx.tcx.get_diagnostic_name(adt.did()) {
                 Some(sym::Option) => return Some(("Option", "and_then")),
                 Some(sym::Result) => return Some(("Result", "and_then")),
@@ -61,7 +61,7 @@ fn try_get_caller_ty_name_and_method_name(
 }
 
 fn is_map_to_option(cx: &LateContext<'_>, map_arg: &Expr<'_>) -> bool {
-    let map_closure_ty = cx.typeck_results().expr_ty(map_arg);
+    let map_closure_ty = cx.typeck_results.expr_ty(map_arg);
     match map_closure_ty.kind() {
         ty::Closure(_, _) | ty::FnDef(_, _) | ty::FnPtr(..) => {
             let map_closure_sig = match map_closure_ty.kind() {

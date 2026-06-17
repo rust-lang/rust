@@ -24,7 +24,7 @@ pub(super) fn check<'tcx>(
 ) {
     let arg_root = get_arg_root(cx, arg);
     if contains_call(cx, arg_root) && !contains_return(arg_root) {
-        let receiver_type = cx.typeck_results().expr_ty_adjusted(receiver);
+        let receiver_type = cx.typeck_results.expr_ty_adjusted(receiver);
         let closure_args = match receiver_type.opt_diag_name(cx) {
             Some(sym::Option) => "||",
             Some(sym::Result) => "|_|",
@@ -76,7 +76,7 @@ fn get_arg_root<'a>(cx: &LateContext<'_>, arg: &'a hir::Expr<'a>) -> &'a hir::Ex
     loop {
         arg_root = match &arg_root.kind {
             hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, expr) => {
-                let expr_ty = cx.typeck_results().expr_ty(expr);
+                let expr_ty = cx.typeck_results.expr_ty(expr);
                 if expr_ty.is_str() {
                     break;
                 }
@@ -84,7 +84,7 @@ fn get_arg_root<'a>(cx: &LateContext<'_>, arg: &'a hir::Expr<'a>) -> &'a hir::Ex
             },
             hir::ExprKind::MethodCall(method_name, receiver, [], ..) => {
                 if (method_name.ident.name == sym::as_str || method_name.ident.name == sym::as_ref) && {
-                    let arg_type = cx.typeck_results().expr_ty(receiver);
+                    let arg_type = cx.typeck_results.expr_ty(receiver);
                     let base_type = arg_type.peel_refs();
                     base_type.is_str() || base_type.is_lang_item(cx, hir::LangItem::String)
                 } {

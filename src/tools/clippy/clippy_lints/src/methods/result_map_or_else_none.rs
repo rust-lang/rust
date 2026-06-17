@@ -19,7 +19,7 @@ pub(super) fn check<'tcx>(
     map_arg: &'tcx hir::Expr<'_>,
 ) {
     // lint if the caller of `map_or_else()` is a `Result`
-    if cx.typeck_results().expr_ty(recv).is_diag_item(cx, sym::Result)
+    if cx.typeck_results.expr_ty(recv).is_diag_item(cx, sym::Result)
         // We check that it is mapped as `Some`.
         && map_arg.res(cx).ctor_parent(cx).is_lang_item(cx, OptionSome)
         && let hir::ExprKind::Closure(&hir::Closure { body, .. }) = def_arg.kind

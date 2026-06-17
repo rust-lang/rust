@@ -28,7 +28,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Ms
         _ => return,
     };
 
-    if !cx.typeck_results().expr_ty_adjusted(recv).is_raw_ptr() {
+    if !cx.typeck_results.expr_ty_adjusted(recv).is_raw_ptr() {
         return;
     }
 

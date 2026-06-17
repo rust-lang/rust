@@ -17,7 +17,7 @@ fn peel_non_expn_blocks<'tcx>(expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>
 }
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, map_arg: &Expr<'_>, map_span: Span) {
-    if cx.typeck_results().expr_ty(expr).is_lang_item(cx, LangItem::String)
+    if cx.typeck_results.expr_ty(expr).is_lang_item(cx, LangItem::String)
         && let ExprKind::Closure(closure) = map_arg.kind
         && let body = cx.tcx.hir_body(closure.body)
         && let Some(value) = peel_non_expn_blocks(body.value)

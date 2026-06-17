@@ -16,5 +16,5 @@ pub(super) fn check(cx: &rustc_lint::LateContext<'_>, condition: &rustc_hir::Exp
 }
 
 fn is_float_type(cx: &rustc_lint::LateContext<'_>, expr: &rustc_hir::Expr<'_>) -> bool {
-    cx.typeck_results().expr_ty(expr).is_floating_point()
+    cx.typeck_results.expr_ty(expr).is_floating_point()
 }

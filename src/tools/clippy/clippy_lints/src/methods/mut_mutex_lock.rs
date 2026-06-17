@@ -11,8 +11,8 @@ use super::MUT_MUTEX_LOCK;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, ex: &'tcx Expr<'tcx>, recv: &'tcx Expr<'tcx>, name_span: Span) {
     if matches!(expr_custom_deref_adjustment(cx, recv), None | Some(Mutability::Mut))
-        && let (_, _, Some(Mutability::Mut)) = peel_and_count_ty_refs(cx.typeck_results().expr_ty(recv))
-        && let Some(method_id) = cx.typeck_results().type_dependent_def_id(ex.hir_id)
+        && let (_, _, Some(Mutability::Mut)) = peel_and_count_ty_refs(cx.typeck_results.expr_ty(recv))
+        && let Some(method_id) = cx.typeck_results.type_dependent_def_id(ex.hir_id)
         && let Some(impl_id) = cx.tcx.impl_of_assoc(method_id)
         && cx.tcx.type_of(impl_id).is_diag_item(cx, sym::Mutex)
     {

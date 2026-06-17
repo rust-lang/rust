@@ -110,7 +110,7 @@ impl<'tcx> UnsafeExprCollector<'tcx> {
     fn collect_unsafe_exprs(cx: &LateContext<'tcx>, block: &'tcx hir::Block<'tcx>) -> Vec<(&'static str, Span)> {
         let mut collector = Self {
             tcx: cx.tcx,
-            typeck_results: cx.typeck_results(),
+            typeck_results: cx.typeck_results,
             unsafe_ops: FxHashMap::default(),
         };
         collector.visit_block(block);

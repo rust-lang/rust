@@ -50,7 +50,7 @@ is a specific type, such as `char` type, so we could write the following:
 impl LateLintPass<'_> for MyStructLint {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         // Get type of `expr`
-        let ty = cx.typeck_results().expr_ty(expr);
+        let ty = cx.typeck_results.expr_ty(expr);
 
         // Check if the `Ty` of this expression is of character type
         if ty.is_char() {
@@ -92,7 +92,7 @@ For instance, if we want to check for a `struct`, we could examine if the
 impl LateLintPass<'_> for MyStructLint {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         // Get type of `expr`
-        let ty = cx.typeck_results().expr_ty(expr);
+        let ty = cx.typeck_results.expr_ty(expr);
         // Match its kind to enter the type
         match ty.kind() {
             ty::Adt(adt_def, _) if adt_def.is_struct() => println!("Our `expr` is a struct!"),

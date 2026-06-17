@@ -21,7 +21,7 @@ pub(crate) fn peel_casts<'tcx>(
             expr
         // <expr>.cast(), <expr>.cast_mut() or <expr>.cast_const()
         } else if let ExprKind::MethodCall(_, expr, [], _) = e.kind
-            && let Some(def_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
+            && let Some(def_id) = cx.typeck_results.type_dependent_def_id(e.hir_id)
             && matches!(
                 cx.tcx.get_diagnostic_name(def_id),
                 Some(sym::ptr_cast | sym::const_ptr_cast | sym::ptr_cast_mut | sym::ptr_cast_const)

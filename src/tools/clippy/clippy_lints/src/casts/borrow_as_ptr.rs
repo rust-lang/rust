@@ -62,7 +62,7 @@ pub(super) fn check_implicit_cast(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if !expr.span.from_expansion()
         && let ExprKind::AddrOf(BorrowKind::Ref, _, pointee) = expr.kind
         && !matches!(get_parent_expr(cx, expr).map(|e| e.kind), Some(ExprKind::Cast(..)))
-        && let [deref, borrow] = cx.typeck_results().expr_adjustments(expr)
+        && let [deref, borrow] = cx.typeck_results.expr_adjustments(expr)
         && matches!(deref.kind, Adjust::Deref(..))
         && let Adjust::Borrow(AutoBorrow::RawPtr(mutability)) = borrow.kind
         // Do not suggest taking a raw pointer to a temporary value

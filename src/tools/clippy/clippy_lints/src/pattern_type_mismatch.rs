@@ -183,7 +183,7 @@ fn find_first_mismatch(cx: &LateContext<'_>, pat: &Pat<'_>) -> Option<(Span, Mut
             PatKind::Or([p, ..]) => p,
             _ => p,
         };
-        if let Some(adjustments) = cx.typeck_results().pat_adjustments().get(adjust_pat.hir_id)
+        if let Some(adjustments) = cx.typeck_results.pat_adjustments().get(adjust_pat.hir_id)
             && let [first, ..] = **adjustments
             && let ty::Ref(.., mutability) = *first.source.kind()
         {

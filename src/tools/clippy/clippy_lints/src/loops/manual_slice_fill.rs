@@ -52,13 +52,13 @@ pub(super) fn check<'tcx>(
         && switch_to_eager_eval(cx, assignval)
         // The `fill` method requires that the slice's element type implements the `Clone` trait.
         && let Some(clone_trait) = cx.tcx.lang_items().clone_trait()
-        && implements_trait(cx, cx.typeck_results().expr_ty(slice), clone_trait, &[])
+        && implements_trait(cx, cx.typeck_results.expr_ty(slice), clone_trait, &[])
         // https://github.com/rust-lang/rust-clippy/issues/14192
         && let ExprKind::Path(Resolved(_, idx_path)) = idx.kind
         && let Res::Local(idx_hir) = idx_path.res
         && !is_local_used(cx, assignval, idx_hir)
         && msrv.meets(cx, msrvs::SLICE_FILL)
-        && let slice_ty = cx.typeck_results().expr_ty(slice).peel_refs()
+        && let slice_ty = cx.typeck_results.expr_ty(slice).peel_refs()
         && is_slice_like(cx, slice_ty)
     {
         sugg(cx, body, expr, slice.span, assignval.span);
@@ -79,7 +79,7 @@ pub(super) fn check<'tcx>(
         && !is_local_used(cx, assignval, local)
         // The `fill` method cannot be used if the slice's element type does not implement the `Clone` trait.
         && let Some(clone_trait) = cx.tcx.lang_items().clone_trait()
-        && implements_trait(cx, cx.typeck_results().expr_ty(recv), clone_trait, &[])
+        && implements_trait(cx, cx.typeck_results.expr_ty(recv), clone_trait, &[])
         && msrv.meets(cx, msrvs::SLICE_FILL)
     {
         sugg(cx, body, expr, recv_path.span, assignval.span);

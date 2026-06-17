@@ -61,7 +61,7 @@ impl<'tcx> LateLintPass<'tcx> for ByteCharSlice {
                         slice.push('"');
                         Cow::Owned(slice)
                     });
-                    if !has_ref && !cx.typeck_results().expr_ty_adjusted(expr).is_array_slice() {
+                    if !has_ref && !cx.typeck_results.expr_ty_adjusted(expr).is_array_slice() {
                         sugg = sugg.deref();
                     }
 

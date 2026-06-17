@@ -49,7 +49,7 @@ impl<'tcx> LateLintPass<'tcx> for PartialeqToNone {
 
         // If the expression is of type `Option`
         let is_ty_option = |expr: &Expr<'_>| {
-            cx.typeck_results()
+            cx.typeck_results
                 .expr_ty(expr)
                 .peel_refs()
                 .is_diag_item(cx, sym::Option)

@@ -9,7 +9,7 @@ use rustc_span::Span;
 use super::MANUAL_CLEAR;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg: &Expr<'_>, method_span: Span) {
-    let ty = cx.typeck_results().expr_ty_adjusted(recv);
+    let ty = cx.typeck_results.expr_ty_adjusted(recv);
     let ty = ty.peel_refs();
 
     let diag_name = ty.ty_adt_def().and_then(|def| cx.tcx.get_diagnostic_name(def.did()));

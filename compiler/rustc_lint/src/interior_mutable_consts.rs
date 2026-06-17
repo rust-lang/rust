@@ -50,7 +50,7 @@ declare_lint_pass!(InteriorMutableConsts => [CONST_ITEM_INTERIOR_MUTATIONS]);
 
 impl<'tcx> LateLintPass<'tcx> for InteriorMutableConsts {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        let typeck = cx.typeck_results();
+        let typeck = cx.typeck_results;
 
         let (method_did, receiver) = match expr.kind {
             // matching on `<receiver>.method(..)`
@@ -80,7 +80,7 @@ impl<'tcx> LateLintPass<'tcx> for InteriorMutableConsts {
             // Don't consider derefs as those can do arbitrary things
             // like using thread local (see rust-lang/rust#150157)
             && !cx
-                .typeck_results()
+                .typeck_results
                 .expr_adjustments(receiver)
                 .into_iter()
                 .any(|adj| matches!(adj.kind, Adjust::Deref(_)))

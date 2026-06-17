@@ -54,7 +54,7 @@ impl LateLintPass<'_> for IterOverHashType {
 
         if let Some(for_loop) = ForLoop::hir(expr)
             && !for_loop.body.span.from_expansion()
-            && let ty = cx.typeck_results().expr_ty(for_loop.arg).peel_refs()
+            && let ty = cx.typeck_results.expr_ty(for_loop.arg).peel_refs()
             && hash_iter_tys.into_iter().any(|sym| ty.is_diag_item(cx, sym))
         {
             span_lint(

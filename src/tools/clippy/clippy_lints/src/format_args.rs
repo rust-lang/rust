@@ -435,7 +435,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
                     let name = self.cx.tcx.item_name(self.macro_call.def_id);
                     self.check_unnecessary_debug_formatting(name, arg_expr);
                     if let Some(span) = placeholder.span
-                        && self.has_pointer_debug(self.cx.typeck_results().expr_ty(arg_expr), 0)
+                        && self.has_pointer_debug(self.cx.typeck_results.expr_ty(arg_expr), 0)
                     {
                         span_lint(self.cx, POINTER_FORMAT, span, "pointer formatting detected");
                     }
@@ -466,7 +466,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
             && let peeled_expr = peel_hir_expr_while(arg_expr, |e| {
                 // Need to handle `&&&T` to `&T` when a single ref is still required
                 if let ExprKind::AddrOf(BorrowKind::Ref, m, e) = e.kind
-                    && let ty = self.cx.typeck_results().expr_ty(e)
+                    && let ty = self.cx.typeck_results.expr_ty(e)
                     && implements_trait(self.cx, ty, sized_trait, &[])
                     && implements_trait(self.cx, ty, fmt_trait, &[])
                 {
@@ -505,7 +505,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
 
         if let Some(placeholder_span) = placeholder.span
             && *options != FormatOptions::default()
-            && let ty = self.cx.typeck_results().expr_ty(arg).peel_refs()
+            && let ty = self.cx.typeck_results.expr_ty(arg).peel_refs()
             && ty.is_lang_item(self.cx, LangItem::FormatArguments)
         {
             span_lint_and_then(
@@ -684,14 +684,14 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
         if !value.span.from_expansion()
             && let ExprKind::MethodCall(_, receiver, [], to_string_span) = value.kind
             && cx
-                .typeck_results()
+                .typeck_results
                 .type_dependent_def_id(value.hir_id)
                 .opt_parent(cx)
                 .is_diag_item(cx, sym::ToString)
-            && let receiver_ty = cx.typeck_results().expr_ty(receiver)
+            && let receiver_ty = cx.typeck_results.expr_ty(receiver)
             && let Some(display_trait_id) = cx.tcx.get_diagnostic_item(sym::Display)
             && let (n_needed_derefs, target) =
-                count_needed_derefs(receiver_ty, cx.typeck_results().expr_adjustments(receiver).iter())
+                count_needed_derefs(receiver_ty, cx.typeck_results.expr_adjustments(receiver).iter())
             && implements_trait(cx, target, display_trait_id, &[])
             && let Some(sized_trait_id) = cx.tcx.lang_items().sized_trait()
             && let Some(receiver_snippet) = receiver.span.source_callsite().get_source_text(cx)
@@ -730,7 +730,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
         if !is_in_test(cx.tcx, value.hir_id)
             && !value.span.from_expansion()
             && !is_from_proc_macro(cx, value)
-            && let ty = cx.typeck_results().expr_ty(value)
+            && let ty = cx.typeck_results.expr_ty(value)
             && self.can_display_format(ty)
         {
             // If the parent function is a method of `Debug`, we don't want to lint

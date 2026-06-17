@@ -110,7 +110,7 @@ fn get_const_signed_int_eval<'cx>(
     expr: &Expr<'_>,
     ty: impl Into<Option<Ty<'cx>>>,
 ) -> Option<i128> {
-    let ty = ty.into().unwrap_or_else(|| cx.typeck_results().expr_ty(expr));
+    let ty = ty.into().unwrap_or_else(|| cx.typeck_results.expr_ty(expr));
 
     if let Constant::Int(n) = ConstEvalCtxt::new(cx).eval(expr)?
         && let ty::Int(ity) = *ty.kind()
@@ -125,7 +125,7 @@ fn get_const_unsigned_int_eval<'cx>(
     expr: &Expr<'_>,
     ty: impl Into<Option<Ty<'cx>>>,
 ) -> Option<u128> {
-    let ty = ty.into().unwrap_or_else(|| cx.typeck_results().expr_ty(expr));
+    let ty = ty.into().unwrap_or_else(|| cx.typeck_results.expr_ty(expr));
 
     if let Constant::Int(n) = ConstEvalCtxt::new(cx).eval(expr)?
         && let ty::Uint(_ity) = *ty.kind()

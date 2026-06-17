@@ -110,7 +110,7 @@ fn is_ref_iterable<'tcx>(
     enforce_iter_loop_reborrow: bool,
     msrv: Msrv,
 ) -> Option<(AdjustKind, Ty<'tcx>)> {
-    let typeck = cx.typeck_results();
+    let typeck = cx.typeck_results;
     if let Some(trait_id) = cx.tcx.get_diagnostic_item(sym::IntoIterator)
         && let Some(fn_id) = typeck.type_dependent_def_id(call_expr.hir_id)
         && let sig = cx

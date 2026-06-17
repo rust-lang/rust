@@ -159,7 +159,7 @@ impl<'tcx> intravisit::Visitor<'tcx> for MutVisitor<'_, 'tcx> {
                         );
                     },
                 );
-            } else if let ty::Ref(_, ty, Mutability::Mut) = self.cx.typeck_results().expr_ty(e).kind()
+            } else if let ty::Ref(_, ty, Mutability::Mut) = self.cx.typeck_results.expr_ty(e).kind()
                 && ty.peel_refs().is_sized(self.cx.tcx, self.cx.typing_env())
             {
                 let mut applicability = Applicability::MaybeIncorrect;

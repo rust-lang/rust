@@ -241,7 +241,7 @@ fn mapping_of_mirrored_pats(a_pat: &Pat<'_>, b_pat: &Pat<'_>) -> Option<BindingM
 }
 
 fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>) -> Option<LintTrigger> {
-    if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+    if let Some(method_id) = cx.typeck_results.type_dependent_def_id(expr.hir_id)
         && let Some(impl_id) = cx.tcx.impl_of_assoc(method_id)
         && cx
             .tcx
@@ -283,12 +283,12 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>) -> Option<
         {
             if let PatKind::Binding(_, _, left_ident, _) = l_pat.kind
                 && *left_name == left_ident
-                && implements_trait(cx, cx.typeck_results().expr_ty(left_expr), ord_trait, &[])
+                && implements_trait(cx, cx.typeck_results.expr_ty(left_expr), ord_trait, &[])
             {
                 return Some(LintTrigger::Sort);
             }
 
-            let mut left_expr_ty = cx.typeck_results().expr_ty(left_expr);
+            let mut left_expr_ty = cx.typeck_results.expr_ty(left_expr);
             let left_ident_n_refs = binding_map
                 .get(&BindingKey {
                     ident: *left_name,
@@ -315,7 +315,7 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>) -> Option<
             }
         }
 
-        let left_expr_ty = cx.typeck_results().expr_ty(left_expr);
+        let left_expr_ty = cx.typeck_results.expr_ty(left_expr);
         if !expr_borrows(left_expr_ty)
             // Don't lint if the closure is accessing non-Copy fields
             && (!expr_is_field_access(left_expr) || is_copy(cx, left_expr_ty))

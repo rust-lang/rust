@@ -66,7 +66,7 @@ impl<'tcx> LateLintPass<'tcx> for PanickingOverflowChecks {
                 },
                 _ => return,
             }
-            && let typeck = cx.typeck_results()
+            && let typeck = cx.typeck_results
             && let ty = typeck.expr_ty(op_lhs)
             && matches!(ty.kind(), ty::Uint(_))
             && ty == typeck.expr_ty(op_rhs)

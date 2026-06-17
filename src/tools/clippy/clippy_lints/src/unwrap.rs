@@ -271,7 +271,7 @@ fn collect_unwrap_info<'tcx>(
             ExprKind::Unary(UnOp::Not, expr) => inner(cx, if_expr, expr, branch, !invert, false, out),
             ExprKind::MethodCall(method_name, receiver, [], _)
                 if let Some(local) = extract_local(cx, receiver)
-                    && let ty = cx.typeck_results().expr_ty(receiver)
+                    && let ty = cx.typeck_results.expr_ty(receiver)
                     && let name = method_name.ident.name
                     && let Some((kind, unwrappable)) = option_or_result_call(cx, ty, name) =>
             {
@@ -303,7 +303,7 @@ fn extract_local(cx: &LateContext<'_>, mut expr: &Expr<'_>) -> Option<Local> {
     let span = expr.span;
     let mut field_indices = vec![];
     while let ExprKind::Field(recv, _) = expr.kind
-        && let Some(field_idx) = cx.typeck_results().opt_field_index(expr.hir_id)
+        && let Some(field_idx) = cx.typeck_results.opt_field_index(expr.hir_id)
     {
         field_indices.push(field_idx);
         expr = recv;

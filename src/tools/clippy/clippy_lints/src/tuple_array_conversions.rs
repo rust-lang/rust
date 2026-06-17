@@ -67,7 +67,7 @@ impl LateLintPass<'_> for TupleArrayConversions {
 }
 
 fn check_array<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, elements: &'tcx [Expr<'tcx>]) {
-    let Some(ty) = cx.typeck_results().expr_ty(expr).builtin_index() else {
+    let Some(ty) = cx.typeck_results.expr_ty(expr).builtin_index() else {
         unreachable!("`expr` must be an array or slice due to `ExprKind::Array`");
     };
 
@@ -101,7 +101,7 @@ fn check_array<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, elements: &
 }
 
 fn check_tuple<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, elements: &'tcx [Expr<'tcx>]) {
-    if let ty::Tuple(tys) = cx.typeck_results().expr_ty(expr).kind()
+    if let ty::Tuple(tys) = cx.typeck_results.expr_ty(expr).kind()
         && let [first, ..] = elements
         // Fix #11100
         && tys.iter().all_equal()
@@ -192,7 +192,7 @@ fn all_bindings_are_for_conv<'tcx>(
                 Node::LetStmt(l) => Some(l.hir_id),
                 _ => None,
             }
-            .map(|hir_id| cx.typeck_results().node_type(hir_id)) else {
+            .map(|hir_id| cx.typeck_results.node_type(hir_id)) else {
                 return false;
             };
             match (kind, ty.kind()) {

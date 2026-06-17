@@ -253,12 +253,12 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
         // Stop processing sub expressions when a macro call is seen
         if expr.span.from_expansion() {
             if let Some((state, data)) = self.state.take() {
-                self.report(cx, expr, state, data, cx.typeck_results());
+                self.report(cx, expr, state, data, cx.typeck_results);
             }
             return;
         }
 
-        let typeck = cx.typeck_results();
+        let typeck = cx.typeck_results;
         let Some((kind, sub_expr, skip_expr)) = try_parse_ref_op(cx.tcx, typeck, expr) else {
             // The whole chain of reference operations has been seen
             if let Some((state, data)) = self.state.take() {
@@ -270,7 +270,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
 
         if is_from_proc_macro(cx, expr) {
             if let Some((state, data)) = self.state.take() {
-                self.report(cx, expr, state, data, cx.typeck_results());
+                self.report(cx, expr, state, data, cx.typeck_results);
             }
             return;
         }
@@ -671,7 +671,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
             }
 
             if !pat.span.from_expansion()
-                && let ty::Ref(_, tam, _) = *cx.typeck_results().pat_ty(pat).kind()
+                && let ty::Ref(_, tam, _) = *cx.typeck_results.pat_ty(pat).kind()
                 // only lint immutable refs, because borrowed `&mut T` cannot be moved out
                 && let ty::Ref(_, _, Mutability::Not) = *tam.kind()
             {
@@ -1023,7 +1023,7 @@ impl<'tcx> Dereferencing<'tcx> {
             && let Some(pat) = outer_pat
             // Check for auto-deref
             && !matches!(
-                cx.typeck_results().expr_adjustments(e),
+                cx.typeck_results.expr_adjustments(e),
                 [
                     Adjustment {
                         kind: Adjust::Deref(_),
@@ -1145,7 +1145,7 @@ impl<'tcx> Dereferencing<'tcx> {
                 // as this may make rustc trigger its `dangerous_implicit_autorefs` lint.
                 if let ExprKind::AddrOf(BorrowKind::Ref, _, subexpr) = data.first_expr.kind
                     && let ExprKind::Unary(UnOp::Deref, subsubexpr) = subexpr.kind
-                    && cx.typeck_results().expr_ty_adjusted(subsubexpr).is_raw_ptr()
+                    && cx.typeck_results.expr_ty_adjusted(subsubexpr).is_raw_ptr()
                 {
                     return;
                 }

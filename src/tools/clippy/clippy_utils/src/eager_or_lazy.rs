@@ -109,7 +109,7 @@ fn res_has_significant_drop(res: Res, cx: &LateContext<'_>, e: &Expr<'_>) -> boo
     | Res::SelfCtor(_)
     | Res::SelfTyAlias { .. } = res
     {
-        cx.typeck_results()
+        cx.typeck_results
             .expr_ty(e)
             .has_significant_drop(cx.tcx, cx.typing_env())
     } else {
@@ -135,7 +135,7 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
             // so don't suggest changing it.
             if self
                 .cx
-                .typeck_results()
+                .typeck_results
                 .expr_adjustments(e)
                 .iter()
                 .any(|adj| matches!(adj.kind, Adjust::Deref(DerefAdjustKind::Overloaded(_))))
@@ -197,12 +197,12 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 ExprKind::MethodCall(name, ..) => {
                     self.eagerness |= self
                         .cx
-                        .typeck_results()
+                        .typeck_results
                         .type_dependent_def_id(e.hir_id)
                         .map_or(Lazy, |id| fn_eagerness(self.cx, id, name.ident.name, true));
                 },
                 ExprKind::Index(_, e, _) => {
-                    let ty = self.cx.typeck_results().expr_ty_adjusted(e);
+                    let ty = self.cx.typeck_results.expr_ty_adjusted(e);
                     if is_copy(self.cx, ty) && !ty.is_ref() {
                         self.eagerness |= NoChange;
                     } else {
@@ -217,16 +217,16 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
 
                 // Custom `Deref` impl might have side effects
                 ExprKind::Unary(UnOp::Deref, e)
-                    if self.cx.typeck_results().expr_ty(e).builtin_deref(true).is_none() =>
+                    if self.cx.typeck_results.expr_ty(e).builtin_deref(true).is_none() =>
                 {
                     self.eagerness |= NoChange;
                 },
                 // Dereferences should be cheap, but dereferencing a raw pointer earlier may not be safe.
-                ExprKind::Unary(UnOp::Deref, e) if !self.cx.typeck_results().expr_ty(e).is_raw_ptr() => (),
+                ExprKind::Unary(UnOp::Deref, e) if !self.cx.typeck_results.expr_ty(e).is_raw_ptr() => (),
                 ExprKind::Unary(UnOp::Deref, _) => self.eagerness |= NoChange,
                 ExprKind::Unary(_, e)
                     if matches!(
-                        self.cx.typeck_results().expr_ty(e).kind(),
+                        self.cx.typeck_results.expr_ty(e).kind(),
                         ty::Bool | ty::Int(_) | ty::Uint(_),
                     ) => {},
 
@@ -244,7 +244,7 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
 
                 ExprKind::Binary(op, left, right)
                     if matches!(op.node, BinOpKind::Div | BinOpKind::Rem)
-                        && let right_ty = self.cx.typeck_results().expr_ty(right)
+                        && let right_ty = self.cx.typeck_results.expr_ty(right)
                         && let ecx = ConstEvalCtxt::new(self.cx)
                         && let left = ecx.eval(left)
                         && let right = ecx.eval(right).and_then(|c| c.int_value(self.cx.tcx, right_ty))
@@ -265,7 +265,7 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 // error and it's good to have the eagerness warning up front when the user fixes the logic error.
                 ExprKind::Binary(op, left, right)
                     if matches!(op.node, BinOpKind::Add | BinOpKind::Sub | BinOpKind::Mul)
-                        && !self.cx.typeck_results().expr_ty(e).is_floating_point()
+                        && !self.cx.typeck_results.expr_ty(e).is_floating_point()
                         && let ecx = ConstEvalCtxt::new(self.cx)
                         && (ecx.eval(left).is_none() || ecx.eval(right).is_none()) =>
                 {
@@ -273,8 +273,8 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 },
 
                 ExprKind::Binary(_, lhs, rhs)
-                    if self.cx.typeck_results().expr_ty(lhs).is_primitive()
-                        && self.cx.typeck_results().expr_ty(rhs).is_primitive() => {},
+                    if self.cx.typeck_results.expr_ty(lhs).is_primitive()
+                        && self.cx.typeck_results.expr_ty(rhs).is_primitive() => {},
 
                 // Can't be moved into a closure
                 ExprKind::Break(..)

@@ -16,7 +16,7 @@ pub(super) fn check(
     err_span: Span,
     msrv: Msrv,
 ) {
-    let result_ty = cx.typeck_results().expr_ty(recv);
+    let result_ty = cx.typeck_results.expr_ty(recv);
     // Grabs the `Result<T, E>` type
     if let Some(data_type) = get_data_type(cx, result_ty)
         // Tests if the T type in a `Result<T, E>` implements Debug

@@ -48,8 +48,8 @@ impl<'tcx> LateLintPass<'tcx> for ArcWithNonSendSync {
             && let ExprKind::Path(QPath::TypeRelative(func_ty, func_name)) = func.kind
             && func_name.ident.name == sym::new
             && !expr.span.from_expansion()
-            && cx.typeck_results().node_type(func_ty.hir_id).is_diag_item(cx, sym::Arc)
-            && let arg_ty = cx.typeck_results().expr_ty(arg)
+            && cx.typeck_results.node_type(func_ty.hir_id).is_diag_item(cx, sym::Arc)
+            && let arg_ty = cx.typeck_results.expr_ty(arg)
             // make sure that the type is not and does not contain any type parameters
             && arg_ty.walk().all(|arg| {
                 !matches!(arg.kind(), GenericArgKind::Type(ty) if matches!(ty.kind(), ty::Param(_)))

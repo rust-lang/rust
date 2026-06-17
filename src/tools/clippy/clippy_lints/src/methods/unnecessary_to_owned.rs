@@ -32,7 +32,7 @@ pub fn check<'tcx>(
     args: &'tcx [Expr<'_>],
     msrv: Msrv,
 ) {
-    if let Some(method_parent_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id).opt_parent(cx)
+    if let Some(method_parent_id) = cx.typeck_results.type_dependent_def_id(expr.hir_id).opt_parent(cx)
         && args.is_empty()
     {
         if is_cloned_or_copied(cx, method_name, method_parent_id) {
@@ -73,7 +73,7 @@ fn check_addr_of_expr(
 ) -> bool {
     if let Some(parent) = get_parent_expr(cx, expr)
         && let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, _) = parent.kind
-        && let adjustments = cx.typeck_results().expr_adjustments(parent).iter().collect::<Vec<_>>()
+        && let adjustments = cx.typeck_results.expr_adjustments(parent).iter().collect::<Vec<_>>()
         && let
             // For matching uses of `Cow::from`
             [
@@ -116,7 +116,7 @@ fn check_addr_of_expr(
                     target: target_ty,
                 },
             ] = adjustments[..]
-        && let receiver_ty = cx.typeck_results().expr_ty(receiver)
+        && let receiver_ty = cx.typeck_results.expr_ty(receiver)
         && let (target_ty, n_target_refs, _) = peel_and_count_ty_refs(*target_ty)
         && let (receiver_ty, n_receiver_refs, _) = peel_and_count_ty_refs(receiver_ty)
         // Only flag cases satisfying at least one of the following three conditions:
@@ -157,7 +157,7 @@ fn check_addr_of_expr(
             // Make sure that it's actually calling the right `.to_string()`, (#10033)
             // *or* this is a `Cow::into_owned()` call (which would be the wrong into_owned receiver (str != Cow)
             // but that's ok for Cow::into_owned specifically)
-            && (cx.typeck_results().expr_ty_adjusted(receiver).peel_refs() == target_ty
+            && (cx.typeck_results.expr_ty_adjusted(receiver).peel_refs() == target_ty
                 || is_cow_into_owned(cx, method_name, method_parent_id))
         {
             if n_receiver_refs > 0 {
@@ -214,12 +214,12 @@ fn check_into_iter_call_arg(
         && let Some(callee_def_id) = fn_def_id(cx, parent)
         && is_into_iter(cx, callee_def_id)
         && let Some(iterator_trait_id) = cx.tcx.get_diagnostic_item(sym::Iterator)
-        && let parent_ty = cx.typeck_results().expr_ty(parent)
+        && let parent_ty = cx.typeck_results.expr_ty(parent)
         && implements_trait(cx, parent_ty, iterator_trait_id, &[])
         && let Some(item_ty) = get_iterator_item_ty(cx, parent_ty)
         && let Some(receiver_snippet) = receiver.span.get_source_text(cx)
         // If the receiver is a `Cow`, we can't remove the `into_owned` generally, see https://github.com/rust-lang/rust-clippy/issues/13624.
-        && !cx.typeck_results().expr_ty(receiver).is_diag_item(cx, sym::Cow)
+        && !cx.typeck_results.expr_ty(receiver).is_diag_item(cx, sym::Cow)
         // Calling `iter()` on a temporary object can lead to false positives. #14242
         && !is_expr_temporary_value(cx, receiver)
     {
@@ -261,7 +261,7 @@ fn check_string_from_utf8<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, 
         && matches!(unwrap_method_name.ident.name, sym::unwrap | sym::expect)
         && let Some(ref_string) = get_parent_expr(cx, unwrap_call)
         && let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, _) = ref_string.kind
-        && let adjusted_ty = cx.typeck_results().expr_ty_adjusted(ref_string)
+        && let adjusted_ty = cx.typeck_results.expr_ty_adjusted(ref_string)
         // `&...` creates a `&String`, so only actually lint if this coerces to a `&str`
         && matches!(adjusted_ty.kind(), ty::Ref(_, ty, _) if ty.is_str())
     {
@@ -274,7 +274,7 @@ fn check_string_from_utf8<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, 
                 let arg_suggestion = format!(
                     "{borrow}{recv_snippet}",
                     recv_snippet = snippet(cx, receiver.span.source_callsite(), ".."),
-                    borrow = if cx.typeck_results().expr_ty(receiver).is_ref() {
+                    borrow = if cx.typeck_results.expr_ty(receiver).is_ref() {
                         ""
                     } else {
                         // If not already a reference, prefix with a borrow so that it can coerce to one
@@ -319,9 +319,9 @@ fn check_split_call_arg(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symb
         // We may end-up here because of an expression like `x.to_string().split(…)` where the type of `x`
         // implements `AsRef<str>` but does not implement `Deref<Target = str>`. In this case, we have to
         // add `.as_ref()` to the suggestion.
-        let as_ref = if cx.typeck_results().expr_ty(expr).is_lang_item(cx, LangItem::String)
+        let as_ref = if cx.typeck_results.expr_ty(expr).is_lang_item(cx, LangItem::String)
             && let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
-            && cx.get_associated_type(cx.typeck_results().expr_ty(receiver), deref_trait_id, sym::Target)
+            && cx.get_associated_type(cx.typeck_results.expr_ty(receiver), deref_trait_id, sym::Target)
                 != Some(cx.tcx.types.str_)
         {
             ".as_ref()"
@@ -360,7 +360,7 @@ fn get_fn_name_and_arg<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Optio
             // Only return Fn-like DefIds, not the DefIds of statics/consts/etc that contain or
             // deref to fn pointers, dyn Fn, impl Fn - #8850
             if let Res::Def(DefKind::Fn | DefKind::Ctor(..) | DefKind::AssocFn, def_id) =
-                cx.typeck_results().qpath_res(qpath, *path_hir_id)
+                cx.typeck_results.qpath_res(qpath, *path_hir_id)
                 && let Some(fn_name) = cx.tcx.opt_item_name(def_id)
             {
                 Some((fn_name, *arg_expr))
@@ -397,7 +397,7 @@ fn check_other_call_arg<'tcx>(
         && let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
         && let Some(as_ref_trait_id) = cx.tcx.get_diagnostic_item(sym::AsRef)
         && (trait_predicate.def_id() == deref_trait_id || trait_predicate.def_id() == as_ref_trait_id)
-        && let receiver_ty = cx.typeck_results().expr_ty(receiver)
+        && let receiver_ty = cx.typeck_results.expr_ty(receiver)
         // We can't add an `&` when the trait is `Deref` because `Target = &T` won't match
         // `Target = T`.
         && let Some((n_refs, receiver_ty)) = if n_refs > 0 || is_copy(cx, receiver_ty) {
@@ -457,16 +457,16 @@ fn get_callee_generic_args_and_args<'tcx>(
     &'tcx [Expr<'tcx>],
 )> {
     if let ExprKind::Call(callee, args) = expr.kind
-        && let callee_ty = cx.typeck_results().expr_ty(callee)
+        && let callee_ty = cx.typeck_results.expr_ty(callee)
         && let ty::FnDef(callee_def_id, _) = callee_ty.kind()
     {
-        let generic_args = cx.typeck_results().node_args(callee.hir_id);
+        let generic_args = cx.typeck_results.node_args(callee.hir_id);
         return Some((*callee_def_id, generic_args, None, args));
     }
     if let ExprKind::MethodCall(_, recv, args, _) = expr.kind
-        && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+        && let Some(method_def_id) = cx.typeck_results.type_dependent_def_id(expr.hir_id)
     {
-        let generic_args = cx.typeck_results().node_args(expr.hir_id);
+        let generic_args = cx.typeck_results.node_args(expr.hir_id);
         return Some((method_def_id, generic_args, Some(recv), args));
     }
     None
@@ -649,7 +649,7 @@ fn is_to_string_on_string_like<'a>(
         return false;
     }
 
-    if let Some(args) = cx.typeck_results().node_args_opt(call_expr.hir_id)
+    if let Some(args) = cx.typeck_results.node_args_opt(call_expr.hir_id)
         && let [generic_arg] = args.as_slice()
         && let GenericArgKind::Type(ty) = generic_arg.kind()
         && let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
@@ -693,7 +693,7 @@ fn is_slice_and_vec(cx: &LateContext<'_>, arg_ty: Ty<'_>, original_arg_ty: Ty<'_
 fn check_if_applicable_to_argument<'tcx>(cx: &LateContext<'tcx>, arg: &Expr<'tcx>) {
     if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, expr) = arg.kind
         && let ExprKind::MethodCall(method_path, caller, &[], _) = expr.kind
-        && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+        && let Some(method_def_id) = cx.typeck_results.type_dependent_def_id(expr.hir_id)
         && let method_name = method_path.ident.name
         && match method_name {
             sym::to_owned => cx.tcx.is_diagnostic_item(sym::to_owned_method, method_def_id),
@@ -704,8 +704,8 @@ fn check_if_applicable_to_argument<'tcx>(cx: &LateContext<'tcx>, arg: &Expr<'tcx
                 .is_some_and(|impl_did| cx.tcx.type_of(impl_did).instantiate_identity().skip_norm_wip().is_slice()),
             _ => false,
         }
-        && let original_arg_ty = cx.typeck_results().node_type(caller.hir_id).peel_refs()
-        && let arg_ty = cx.typeck_results().expr_ty(arg)
+        && let original_arg_ty = cx.typeck_results.node_type(caller.hir_id).peel_refs()
+        && let arg_ty = cx.typeck_results.expr_ty(arg)
         && let ty::Ref(_, arg_ty, Mutability::Not) = arg_ty.kind()
         // FIXME: try to fix `can_change_type` to make it work in this case.
         // && can_change_type(cx, caller, *arg_ty)
@@ -738,7 +738,7 @@ fn check_if_applicable_to_argument<'tcx>(cx: &LateContext<'tcx>, arg: &Expr<'tcx
 // 4. The key to the "map type" is not a reference.
 fn check_borrow_predicate<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
     if let ExprKind::MethodCall(_, caller, &[arg], _) = expr.kind
-        && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+        && let Some(method_def_id) = cx.typeck_results.type_dependent_def_id(expr.hir_id)
         && cx.tcx.trait_of_assoc(method_def_id).is_none()
         && let Some(borrow_id) = cx.tcx.get_diagnostic_item(sym::Borrow)
         && cx.tcx.predicates_of(method_def_id).predicates.iter().any(|(pred, _)| {
@@ -751,7 +751,7 @@ fn check_borrow_predicate<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
                 false
             }
         })
-        && let caller_ty = cx.typeck_results().expr_ty(caller)
+        && let caller_ty = cx.typeck_results.expr_ty(caller)
         // For now we limit it to "map types".
         && let Some(key_ty) = std_map_key(cx, caller_ty)
         // We need to check that the key type is not a reference.

@@ -176,7 +176,7 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedMethods {
         }
         let (id, span) = match &expr.kind {
             ExprKind::Path(path) if let Res::Def(_, id) = cx.qpath_res(path, expr.hir_id) => (id, expr.span),
-            ExprKind::MethodCall(name, ..) if let Some(id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) => {
+            ExprKind::MethodCall(name, ..) if let Some(id) = cx.typeck_results.type_dependent_def_id(expr.hir_id) => {
                 (id, name.ident.span)
             },
             _ => return,

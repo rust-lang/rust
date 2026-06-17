@@ -99,7 +99,7 @@ fn is_unit_type(ty: Ty<'_>) -> bool {
 }
 
 fn is_unit_function(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
-    let ty = cx.typeck_results().expr_ty(expr);
+    let ty = cx.typeck_results.expr_ty(expr);
 
     if let ty::FnDef(id, _) = *ty.kind()
         && let Some(fn_type) = cx.tcx.fn_sig(id).instantiate_identity().skip_norm_wip().no_bound_vars()
@@ -110,7 +110,7 @@ fn is_unit_function(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
 }
 
 fn is_unit_expression(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
-    is_unit_type(cx.typeck_results().expr_ty(expr))
+    is_unit_type(cx.typeck_results.expr_ty(expr))
 }
 
 /// The expression inside a closure may or may not have surrounding braces and
@@ -207,9 +207,9 @@ fn lint_map_unit_fn(
 ) {
     let var_arg = &map_args.0;
 
-    let (article, map_type, variant, lint) = if cx.typeck_results().expr_ty(var_arg).is_diag_item(cx, sym::Option) {
+    let (article, map_type, variant, lint) = if cx.typeck_results.expr_ty(var_arg).is_diag_item(cx, sym::Option) {
         ("an", "Option", "Some", OPTION_MAP_UNIT_FN)
-    } else if cx.typeck_results().expr_ty(var_arg).is_diag_item(cx, sym::Result) {
+    } else if cx.typeck_results.expr_ty(var_arg).is_diag_item(cx, sym::Result) {
         ("a", "Result", "Ok", RESULT_MAP_UNIT_FN)
     } else {
         return;

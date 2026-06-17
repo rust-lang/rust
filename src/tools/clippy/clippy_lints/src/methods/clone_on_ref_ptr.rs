@@ -10,7 +10,7 @@ use rustc_span::symbol::sym;
 use super::CLONE_ON_REF_PTR;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, receiver: &hir::Expr<'_>) {
-    let receiver_ty = cx.typeck_results().expr_ty(receiver);
+    let receiver_ty = cx.typeck_results.expr_ty(receiver);
     let (receiver_ty_peeled, n_refs, _) = peel_and_count_ty_refs(receiver_ty);
 
     if let ty::Adt(adt, subst) = receiver_ty_peeled.kind()

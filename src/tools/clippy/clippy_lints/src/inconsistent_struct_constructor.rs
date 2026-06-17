@@ -94,7 +94,7 @@ impl<'tcx> LateLintPass<'tcx> for InconsistentStructConstructor {
             return;
         };
         if !expr.span.from_expansion()
-            && let ty = cx.typeck_results().expr_ty(expr)
+            && let ty = cx.typeck_results.expr_ty(expr)
             && let Some(adt_def) = ty.ty_adt_def()
             && adt_def.is_struct()
             && let Some(local_def_id) = adt_def.did().as_local()

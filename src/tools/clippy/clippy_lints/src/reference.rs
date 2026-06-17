@@ -99,7 +99,7 @@ fn is_manually_drop_through_union(
     addrof_target: &Expr<'_>,
 ) -> ManuallyDropThroughUnion {
     if is_reached_through_union(cx, addrof_target) {
-        let typeck = cx.typeck_results();
+        let typeck = cx.typeck_results;
         for (idx, id) in std::iter::once(expr_id)
             .chain(cx.tcx.hir_parent_id_iter(expr_id))
             .enumerate()
@@ -123,7 +123,7 @@ fn is_manually_drop_through_union(
 /// Checks whether `expr` denotes an object reached through a union
 fn is_reached_through_union(cx: &LateContext<'_>, mut expr: &Expr<'_>) -> bool {
     while let ExprKind::Field(parent, _) | ExprKind::Index(parent, _, _) = expr.kind {
-        if cx.typeck_results().expr_ty_adjusted(parent).is_union() {
+        if cx.typeck_results.expr_ty_adjusted(parent).is_union() {
             return true;
         }
         expr = parent;

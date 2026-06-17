@@ -277,7 +277,7 @@ fn try_parse_contains<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Optio
         } = arg
         && key_span.eq_ctxt(expr.span)
     {
-        let id = cx.typeck_results().type_dependent_def_id(expr.hir_id)?;
+        let id = cx.typeck_results.type_dependent_def_id(expr.hir_id)?;
         let expr = ContainsExpr {
             negated,
             map,
@@ -318,7 +318,7 @@ struct InsertExpr<'tcx> {
 /// If the given expression is not an `insert` call into a `BTreeMap` or a `HashMap`, return `None`.
 fn try_parse_insert<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<InsertExpr<'tcx>> {
     if let ExprKind::MethodCall(_, map, [key, value], _) = expr.kind {
-        let id = cx.typeck_results().type_dependent_def_id(expr.hir_id)?;
+        let id = cx.typeck_results.type_dependent_def_id(expr.hir_id)?;
         if let Some(insert) = cx.tcx.get_diagnostic_name(id)
             && matches!(insert, sym::btreemap_insert | sym::hashmap_insert)
         {
@@ -743,7 +743,7 @@ fn find_insert_calls<'tcx>(
         map_is_mutex_guard: false,
     };
     // Check if the map is a non-async-aware `MutexGuard`
-    if let rustc_middle::ty::Adt(adt, _) = cx.typeck_results().expr_ty(contains_expr.map).kind()
+    if let rustc_middle::ty::Adt(adt, _) = cx.typeck_results.expr_ty(contains_expr.map).kind()
         && is_mutex_guard(cx, adt.did())
     {
         s.map_is_mutex_guard = true;
@@ -754,7 +754,7 @@ fn find_insert_calls<'tcx>(
         return None;
     }
 
-    let is_key_used_and_no_copy = s.is_key_used && !is_copy(cx, cx.typeck_results().expr_ty(contains_expr.key));
+    let is_key_used_and_no_copy = s.is_key_used && !is_copy(cx, cx.typeck_results.expr_ty(contains_expr.key));
     Some(InsertSearchResults {
         edits: s.edits,
         allow_insert_closure: s.allow_insert_closure,

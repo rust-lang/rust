@@ -103,7 +103,7 @@ pub(crate) fn check_and_then_method<'tcx>(
     call_span: Span,
     expr: &'tcx Expr<'_>,
 ) {
-    let ty = cx.typeck_results().expr_ty(scrutinee);
+    let ty = cx.typeck_results.expr_ty(scrutinee);
     if ty.is_diag_item(cx, sym::Option)
         && let ExprKind::Closure(closure) = arg.kind
         && let body = cx.tcx.hir_body(closure.body)
@@ -158,7 +158,7 @@ pub(super) fn check_match<'tcx>(
     arms: &'tcx [Arm<'_>],
     expr: &'tcx Expr<'_>,
 ) {
-    let ty = cx.typeck_results().expr_ty(expr);
+    let ty = cx.typeck_results.expr_ty(expr);
     if ty.is_diag_item(cx, sym::Option)
         && let [first_arm, second_arm] = arms
         && first_arm.guard.is_none()

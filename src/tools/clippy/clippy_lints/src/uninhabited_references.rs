@@ -44,7 +44,7 @@ impl LateLintPass<'_> for UninhabitedReferences {
         }
 
         if let ExprKind::Unary(UnOp::Deref, _) = expr.kind {
-            let ty = cx.typeck_results().expr_ty_adjusted(expr);
+            let ty = cx.typeck_results.expr_ty_adjusted(expr);
             if ty.is_privately_uninhabited(cx.tcx, cx.typing_env()) {
                 span_lint(
                     cx,

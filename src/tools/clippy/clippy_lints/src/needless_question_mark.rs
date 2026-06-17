@@ -108,8 +108,8 @@ fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
         && let ExprKind::Path(qpath) = called.kind
         && cx.tcx.qpath_is_lang_item(qpath, LangItem::TryTraitBranch)
         && expr.span.eq_ctxt(inner_expr.span)
-        && let expr_ty = cx.typeck_results().expr_ty(expr)
-        && let inner_ty = cx.typeck_results().expr_ty(inner_expr)
+        && let expr_ty = cx.typeck_results.expr_ty(expr)
+        && let inner_ty = cx.typeck_results.expr_ty(inner_expr)
         && expr_ty == inner_ty
     {
         span_lint_hir_and_then(

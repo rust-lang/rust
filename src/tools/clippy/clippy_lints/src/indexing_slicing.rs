@@ -112,7 +112,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Index(array, index, _) = &expr.kind
             && (!self.suppress_restriction_lint_in_const || !cx.tcx.hir_is_inside_const_context(expr.hir_id))
-            && let expr_ty = cx.typeck_results().expr_ty(array)
+            && let expr_ty = cx.typeck_results.expr_ty(array)
             && let mut deref = deref_chain(cx, expr_ty)
             && deref.any(|l| {
                 l.peel_refs().is_slice()
@@ -122,7 +122,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
             && !is_from_proc_macro(cx, expr)
         {
             let note = "the suggestion might not be applicable in constant blocks";
-            let ty = cx.typeck_results().expr_ty(array).peel_refs();
+            let ty = cx.typeck_results.expr_ty(array).peel_refs();
             let allowed_in_tests = self.allow_indexing_slicing_in_tests && is_in_test(cx.tcx, expr.hir_id);
             if let Some(range) = higher::Range::hir(cx, index) {
                 // Ranged indexes, i.e., &x[n..m], &x[n..], &x[..n] and &x[..]
@@ -197,7 +197,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
                         // leave other type to rustc
                         if let Constant::Int(off) = constant
                             && off <= usize::MAX as u128
-                            && let ty::Uint(utype) = cx.typeck_results().expr_ty(index).kind()
+                            && let ty::Uint(utype) = cx.typeck_results.expr_ty(index).kind()
                             && *utype == ty::UintTy::Usize
                             && let ty::Array(_, s) = ty.kind()
                             && let Some(size) = s.try_to_target_usize(cx.tcx)
@@ -279,7 +279,7 @@ fn ty_has_applicable_get_function<'tcx>(
         && let Some(option_generic_param) = args.first()
         && let generic_ty = option_generic_param.expect_ty().peel_refs()
         // FIXME: ideally this would handle type params and projections properly, for now just assume it's the same type
-        && (cx.typeck_results().expr_ty(index_expr).peel_refs() == generic_ty.peel_refs()
+        && (cx.typeck_results.expr_ty(index_expr).peel_refs() == generic_ty.peel_refs()
             || matches!(generic_ty.peel_refs().kind(), ty::Param(_) | ty::Alias(_)))
     {
         true

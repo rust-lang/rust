@@ -11,7 +11,7 @@ use rustc_span::symbol::{Symbol, sym};
 use super::INTO_ITER_ON_REF;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_span: Span, receiver: &hir::Expr<'_>) {
-    let self_ty = cx.typeck_results().expr_ty_adjusted(receiver);
+    let self_ty = cx.typeck_results.expr_ty_adjusted(receiver);
     if let ty::Ref(..) = self_ty.kind()
         && cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::IntoIterator)
         && let Some((kind, method_name)) = ty_has_iter_method(cx, self_ty)

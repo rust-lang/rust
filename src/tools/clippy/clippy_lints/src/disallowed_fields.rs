@@ -84,7 +84,7 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedFields {
                 // Very round-about way to get the field `DefId` from the expr: first we get its
                 // parent `Ty`. Then we go through all its fields to find the one with the expected
                 // name and get the `DefId` from it.
-                if let Some(parent_ty) = cx.typeck_results().expr_ty_adjusted_opt(e)
+                if let Some(parent_ty) = cx.typeck_results.expr_ty_adjusted_opt(e)
                     && let Some(field_def_id) = get_field_def_id_by_name(parent_ty, ident.name)
                 {
                     (field_def_id, ident.span)
@@ -109,7 +109,7 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedFields {
         let PatKind::Struct(struct_path, pat_fields, _) = pat.kind else {
             return;
         };
-        match cx.typeck_results().qpath_res(&struct_path, pat.hir_id) {
+        match cx.typeck_results.qpath_res(&struct_path, pat.hir_id) {
             Res::Def(DefKind::Struct, struct_def_id) => {
                 let adt_def = cx.tcx.adt_def(struct_def_id);
                 for field in pat_fields {

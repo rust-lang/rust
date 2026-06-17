@@ -75,7 +75,7 @@ impl<'tcx> LateLintPass<'tcx> for ShadowedIntoIter {
 
         // Check if the method call actually calls the libcore
         // `IntoIterator::into_iter`.
-        let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) else {
+        let Some(method_def_id) = cx.typeck_results.type_dependent_def_id(expr.hir_id) else {
             return;
         };
         if !cx.tcx.is_lang_item(method_def_id, LangItem::IntoIterIntoIter) {
@@ -83,8 +83,8 @@ impl<'tcx> LateLintPass<'tcx> for ShadowedIntoIter {
         }
 
         // As this is a method call expression, we have at least one argument.
-        let receiver_ty = cx.typeck_results().expr_ty(receiver_arg);
-        let adjustments = cx.typeck_results().expr_adjustments(receiver_arg);
+        let receiver_ty = cx.typeck_results.expr_ty(receiver_arg);
+        let adjustments = cx.typeck_results.expr_adjustments(receiver_arg);
 
         let adjusted_receiver_tys: Vec<_> =
             [receiver_ty].into_iter().chain(adjustments.iter().map(|adj| adj.target)).collect();

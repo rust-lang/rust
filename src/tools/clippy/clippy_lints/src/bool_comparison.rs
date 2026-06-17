@@ -44,8 +44,8 @@ impl<'tcx> LateLintPass<'tcx> for BoolComparison {
         if let ExprKind::Binary(Spanned { node, .. }, left_side, right_side) = e.kind
             && is_expn_of(left_side.span, sym::cfg).is_none()
             && is_expn_of(right_side.span, sym::cfg).is_none()
-            && cx.typeck_results().expr_ty(left_side).is_bool()
-            && cx.typeck_results().expr_ty(right_side).is_bool()
+            && cx.typeck_results.expr_ty(left_side).is_bool()
+            && cx.typeck_results.expr_ty(right_side).is_bool()
         {
             let ignore_case = None::<(fn(_) -> _, &str)>;
             let ignore_no_literal = None::<(fn(_, _) -> _, &str)>;

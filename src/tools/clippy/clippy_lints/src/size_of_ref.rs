@@ -59,7 +59,7 @@ impl LateLintPass<'_> for SizeOfRef {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {
         if let ExprKind::Call(path, [arg]) = expr.kind
             && path.basic_res().is_diag_item(cx, sym::mem_size_of_val)
-            && let arg_ty = cx.typeck_results().expr_ty(arg)
+            && let arg_ty = cx.typeck_results.expr_ty(arg)
             && peel_and_count_ty_refs(arg_ty).1 > 1
         {
             span_lint_and_help(

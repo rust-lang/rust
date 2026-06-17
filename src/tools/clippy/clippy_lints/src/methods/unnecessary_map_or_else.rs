@@ -19,7 +19,7 @@ pub(super) fn check(
     map_arg: &Expr<'_>,
     call_span: Span,
 ) {
-    let (symbol, lint) = match cx.typeck_results().expr_ty(recv).opt_diag_name(cx) {
+    let (symbol, lint) = match cx.typeck_results.expr_ty(recv).opt_diag_name(cx) {
         Some(x @ sym::Result) => (x, UNNECESSARY_RESULT_MAP_OR_ELSE),
         Some(x @ sym::Option) => (x, UNNECESSARY_OPTION_MAP_OR_ELSE),
         _ => return,

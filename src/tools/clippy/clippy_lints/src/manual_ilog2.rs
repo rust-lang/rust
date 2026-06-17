@@ -64,7 +64,7 @@ impl LateLintPass<'_> for ManualIlog2 {
                     && let LitKind::Int(Pu128(val), _) = lit.node
                     && let ExprKind::MethodCall(leading_zeros, recv, [], _) = right.kind
                     && leading_zeros.ident.name == sym::leading_zeros
-                    && let ty = cx.typeck_results().expr_ty(recv)
+                    && let ty = cx.typeck_results.expr_ty(recv)
                     && let Some(bit_width) = match ty.kind() {
                         ty::Uint(uint_ty) => uint_ty.bit_width(),
                         ty::Int(_) => {
@@ -88,7 +88,7 @@ impl LateLintPass<'_> for ManualIlog2 {
                     && ilog.ident.name == sym::ilog
                     && let ExprKind::Lit(lit) = two.kind
                     && let LitKind::Int(Pu128(2), _) = lit.node
-                    && cx.typeck_results().expr_ty_adjusted(recv).is_integral()
+                    && cx.typeck_results.expr_ty_adjusted(recv).is_integral()
                     /* no need to check MSRV here, as `ilog` and `ilog2` were introduced simultaneously */
                     && !is_from_proc_macro(cx, expr) =>
             {

@@ -11,10 +11,10 @@ use rustc_span::Symbol;
 use super::IMPLICIT_CLONE;
 
 pub fn check(cx: &LateContext<'_>, method_name: Symbol, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>) {
-    if let Some(method_parent_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id).opt_parent(cx)
+    if let Some(method_parent_id) = cx.typeck_results.type_dependent_def_id(expr.hir_id).opt_parent(cx)
         && is_clone_like(cx, method_name, method_parent_id)
-        && let return_type = cx.typeck_results().expr_ty(expr)
-        && let input_type = cx.typeck_results().expr_ty(recv)
+        && let return_type = cx.typeck_results.expr_ty(expr)
+        && let input_type = cx.typeck_results.expr_ty(recv)
         && let (input_type, ref_count, _) = peel_and_count_ty_refs(input_type)
         && !(ref_count > 0 && method_parent_id.is_diag_item(cx, sym::ToOwned))
         && let Some(ty_name) = input_type.ty_adt_def().map(|adt_def| cx.tcx.item_name(adt_def.did()))

@@ -130,13 +130,13 @@ fn is_needless_clone_or_equivalent<'tcx>(
         return None;
     }
 
-    let method_ret_ty = cx.typeck_results().node_type(hir_id);
-    let method_recv_ty = cx.typeck_results().expr_ty_adjusted(method_recv);
+    let method_ret_ty = cx.typeck_results.node_type(hir_id);
+    let method_recv_ty = cx.typeck_results.expr_ty_adjusted(method_recv);
     let ty::Ref(_, method_recv_ty_inner, Mutability::Not) = method_recv_ty.kind() else {
         return None;
     };
 
-    let method_recv_adjustments = cx.typeck_results().expr_adjustments(method_recv);
+    let method_recv_adjustments = cx.typeck_results.expr_adjustments(method_recv);
 
     // The return type of the clone-like method should be the same as the inner type of the reference
     // being cloned, except for the following special cases:
@@ -157,7 +157,7 @@ fn is_needless_clone_or_equivalent<'tcx>(
         && matches!(last_borrow.kind, Adjust::Borrow(_))
         && special_case.target.is_diag_item(cx, after_special_case_ty_name)
         && let before_special_case_ty = preceeding_derefs
-            .last().map_or_else(|| cx.typeck_results().expr_ty(method_recv), |a| a.target)
+            .last().map_or_else(|| cx.typeck_results.expr_ty(method_recv), |a| a.target)
         && matches!(
             (before_special_case_ty.opt_diag_name(cx)?, after_special_case_ty_name),
             (sym::OsString, sym::OsStr) | (sym::PathBuf, sym::Path))
@@ -168,7 +168,7 @@ fn is_needless_clone_or_equivalent<'tcx>(
     };
 
     // Find the number of adjustments required until `method_recv_ty_source` becomes `adjust_target_ty`
-    let method_recv_ty_source = cx.typeck_results().expr_ty(method_recv);
+    let method_recv_ty_source = cx.typeck_results.expr_ty(method_recv);
     let adjust_count = method_recv_adjustments
         .iter()
         .enumerate()

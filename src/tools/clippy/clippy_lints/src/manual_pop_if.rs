@@ -118,7 +118,7 @@ impl ManualPopIfKind {
     }
 
     fn is_diag_item(self, cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-        let ty = cx.typeck_results().expr_ty(expr).peel_refs();
+        let ty = cx.typeck_results.expr_ty(expr).peel_refs();
         match self {
             ManualPopIfKind::Vec => ty.is_diag_item(cx, sym::Vec),
             ManualPopIfKind::VecDequeBack | ManualPopIfKind::VecDequeFront => ty.is_diag_item(cx, sym::VecDeque),
@@ -370,7 +370,7 @@ fn check_map_unwrap_or_pattern<'tcx>(
         && kind.is_diag_item(cx, collection_expr)
         && let ExprKind::Closure(closure) = closure_arg.kind
         && let body = cx.tcx.hir_body(closure.body)
-        && cx.typeck_results().expr_ty(body.value).is_bool()
+        && cx.typeck_results.expr_ty(body.value).is_bool()
         && let Some((pop_collection, pop_span, suggestable)) = check_pop_unwrap(cx, then_block, pop_method)
         && eq_expr_value(cx, if_expr_span.ctxt(), collection_expr, pop_collection)
         && let Some(param) = body.params.first()

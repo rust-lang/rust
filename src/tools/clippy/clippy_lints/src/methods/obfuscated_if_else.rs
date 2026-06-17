@@ -18,7 +18,7 @@ pub(super) fn check<'tcx>(
     then_method_name: Symbol,
     unwrap: Unwrap<'tcx>,
 ) {
-    let recv_ty = cx.typeck_results().expr_ty(then_recv);
+    let recv_ty = cx.typeck_results.expr_ty(then_recv);
 
     if recv_ty.is_bool() {
         let then_eager = switch_to_eager_eval(cx, then_arg);

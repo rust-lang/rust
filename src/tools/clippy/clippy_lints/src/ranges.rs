@@ -226,7 +226,7 @@ fn check_possible_range_contains(
         if l.id != r.id || l.ord == r.ord {
             return;
         }
-        let ord = Constant::partial_cmp(cx.tcx, cx.typeck_results().expr_ty(l.expr), &l.val, &r.val);
+        let ord = Constant::partial_cmp(cx.tcx, cx.typeck_results.expr_ty(l.expr), &l.val, &r.val);
         if combine_and && ord == Some(r.ord) {
             // order lower bound and upper bound
             let (l_span, u_span, l_inc, u_inc) = if r.ord == Ordering::Less {
@@ -260,7 +260,7 @@ fn check_possible_range_contains(
         } else if !combine_and && ord == Some(l.ord) {
             // For floating-point types, `q < lo || q > hi` evaluates to `false` for NaN,
             // but `!(lo..=hi).contains(&q)` evaluates to `true` for NaN, so not linting.
-            if matches!(cx.typeck_results().expr_ty(l.expr).kind(), ty::Float(_)) {
+            if matches!(cx.typeck_results.expr_ty(l.expr).kind(), ty::Float(_)) {
                 return;
             }
             // `!_.contains(_)`
@@ -373,7 +373,7 @@ fn can_switch_ranges<'tcx>(
     original: RangeLimits,
     inner_ty: Ty<'tcx>,
 ) -> bool {
-    let use_site = get_expr_use_site(cx.tcx, cx.typeck_results(), ctxt, expr);
+    let use_site = get_expr_use_site(cx.tcx, cx.typeck_results, ctxt, expr);
     let (Node::Expr(parent_expr), false) = (use_site.node, use_site.is_ty_unified) else {
         return false;
     };
@@ -392,7 +392,7 @@ fn can_switch_ranges<'tcx>(
     // or `RangeBounds` traits.
     if let ExprKind::MethodCall(_, receiver, _, _) = parent_expr.kind
         && receiver.hir_id == use_site.child_id
-        && let Some(method_did) = cx.typeck_results().type_dependent_def_id(parent_expr.hir_id)
+        && let Some(method_did) = cx.typeck_results.type_dependent_def_id(parent_expr.hir_id)
         && let Some(trait_did) = cx.tcx.trait_of_assoc(method_did)
         && matches!(
             cx.tcx.get_diagnostic_name(trait_did),
@@ -464,7 +464,7 @@ fn can_switch_ranges<'tcx>(
             .skip_norm_wip()
         // Check that the switched range type can be used for indexing the original expression
         // through the `Index` or `IndexMut` trait.
-        && let ty::Ref(_, outer_ty, mutability) = cx.typeck_results().expr_ty_adjusted(outer_expr).kind()
+        && let ty::Ref(_, outer_ty, mutability) = cx.typeck_results.expr_ty_adjusted(outer_expr).kind()
         && let Some(index_def_id) = match mutability {
             Mutability::Not => cx.tcx.lang_items().index_trait(),
             Mutability::Mut => cx.tcx.lang_items().index_mut_trait(),
@@ -527,7 +527,7 @@ fn check_range_switch<'tcx>(
         && span.can_be_used_for_suggestions()
         && limits == kind
         && let Some(y) = predicate(end)
-        && can_switch_ranges(cx, span.ctxt(), expr, kind, cx.typeck_results().expr_ty(y))
+        && can_switch_ranges(cx, span.ctxt(), expr, kind, cx.typeck_results.expr_ty(y))
     {
         span_lint_and_then(cx, lint, span, msg, |diag| {
             let mut app = Applicability::MachineApplicable;
@@ -586,7 +586,7 @@ fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>) {
         limits,
         span,
     }) = higher::Range::hir(cx, expr)
-        && let ty = cx.typeck_results().expr_ty(start)
+        && let ty = cx.typeck_results.expr_ty(start)
         && let ty::Int(_) | ty::Uint(_) = ty.kind()
         && let ecx = ConstEvalCtxt::new(cx)
         && let Some(start_idx) = ecx.eval(start)

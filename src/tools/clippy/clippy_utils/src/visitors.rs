@@ -350,17 +350,17 @@ pub fn is_const_evaluatable<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> 
                 ExprKind::MethodCall(..)
                     if self
                         .cx
-                        .typeck_results()
+                        .typeck_results
                         .type_dependent_def_id(e.hir_id)
                         .is_some_and(|id| is_stable_const_fn(self.cx, id, Msrv::default())) => {},
                 ExprKind::Binary(_, lhs, rhs)
-                    if self.cx.typeck_results().expr_ty(lhs).peel_refs().is_primitive_ty()
-                        && self.cx.typeck_results().expr_ty(rhs).peel_refs().is_primitive_ty() => {},
-                ExprKind::Unary(UnOp::Deref, e) if self.cx.typeck_results().expr_ty(e).is_raw_ptr() => (),
-                ExprKind::Unary(_, e) if self.cx.typeck_results().expr_ty(e).peel_refs().is_primitive_ty() => (),
+                    if self.cx.typeck_results.expr_ty(lhs).peel_refs().is_primitive_ty()
+                        && self.cx.typeck_results.expr_ty(rhs).peel_refs().is_primitive_ty() => {},
+                ExprKind::Unary(UnOp::Deref, e) if self.cx.typeck_results.expr_ty(e).is_raw_ptr() => (),
+                ExprKind::Unary(_, e) if self.cx.typeck_results.expr_ty(e).peel_refs().is_primitive_ty() => (),
                 ExprKind::Index(base, _, _)
                     if matches!(
-                        self.cx.typeck_results().expr_ty(base).peel_refs().kind(),
+                        self.cx.typeck_results.expr_ty(base).peel_refs().kind(),
                         ty::Slice(_) | ty::Array(..)
                     ) => {},
                 ExprKind::Path(ref p)
@@ -421,19 +421,19 @@ pub fn is_expr_unsafe<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
         }
         fn visit_expr(&mut self, e: &'tcx Expr<'_>) -> Self::Result {
             match e.kind {
-                ExprKind::Unary(UnOp::Deref, e) if self.cx.typeck_results().expr_ty(e).is_raw_ptr() => {
+                ExprKind::Unary(UnOp::Deref, e) if self.cx.typeck_results.expr_ty(e).is_raw_ptr() => {
                     ControlFlow::Break(())
                 },
                 ExprKind::MethodCall(..)
                     if self
                         .cx
-                        .typeck_results()
+                        .typeck_results
                         .type_dependent_def_id(e.hir_id)
                         .is_some_and(|id| self.cx.tcx.fn_sig(id).skip_binder().safety().is_unsafe()) =>
                 {
                     ControlFlow::Break(())
                 },
-                ExprKind::Call(func, _) => match *self.cx.typeck_results().expr_ty(func).peel_refs().kind() {
+                ExprKind::Call(func, _) => match *self.cx.typeck_results.expr_ty(func).peel_refs().kind() {
                     ty::FnDef(id, _) if self.cx.tcx.fn_sig(id).skip_binder().safety().is_unsafe() => {
                         ControlFlow::Break(())
                     },
@@ -705,7 +705,7 @@ pub fn for_each_unconsumed_temporary<'tcx, B>(
         }
         ControlFlow::Continue(())
     }
-    helper(cx.typeck_results(), true, e, &mut f)
+    helper(cx.typeck_results, true, e, &mut f)
 }
 
 pub fn any_temporaries_need_ordered_drop<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> bool {

@@ -166,7 +166,7 @@ impl<'tcx> LateLintPass<'tcx> for RepeatedIsDiagnosticItem {
                 && eq_expr_value(cx, ctxt, recv1, recv2)
             {
                 let recv_ty =
-                    with_forced_trimmed_paths!(format!("{}", cx.typeck_results().expr_ty_adjusted(recv1).peel_refs()));
+                    with_forced_trimmed_paths!(format!("{}", cx.typeck_results.expr_ty_adjusted(recv1).peel_refs()));
                 let recv_ty = recv_ty.trim_end_matches("<'_>");
                 span_lint_and_then(
                     cx,
@@ -274,7 +274,7 @@ fn check_ors(cx: &LateContext<'_>, span: Span, left: &Expr<'_>, right: &Expr<'_>
         && eq_expr_value(cx, ctxt, recv1, recv2)
     {
         let recv_ty =
-            with_forced_trimmed_paths!(format!("{}", cx.typeck_results().expr_ty_adjusted(recv1).peel_refs()));
+            with_forced_trimmed_paths!(format!("{}", cx.typeck_results.expr_ty_adjusted(recv1).peel_refs()));
         let recv_ty = recv_ty.trim_end_matches("<'_>");
         span_lint_and_then(
             cx,
@@ -340,7 +340,7 @@ fn check_ands(cx: &LateContext<'_>, span: Span, left: &Expr<'_>, right: &Expr<'_
         && eq_expr_value(cx, ctxt, recv1, recv2)
     {
         let recv_ty =
-            with_forced_trimmed_paths!(format!("{}", cx.typeck_results().expr_ty_adjusted(recv1).peel_refs()));
+            with_forced_trimmed_paths!(format!("{}", cx.typeck_results.expr_ty_adjusted(recv1).peel_refs()));
         let recv_ty = recv_ty.trim_end_matches("<'_>");
         span_lint_and_then(
             cx,
@@ -413,7 +413,7 @@ fn check_if_chains<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, conds: Vec<&'t
         && results.len() > 1
     {
         let recv_ty =
-            with_forced_trimmed_paths!(format!("{}", cx.typeck_results().expr_ty_adjusted(recv1).peel_refs()));
+            with_forced_trimmed_paths!(format!("{}", cx.typeck_results.expr_ty_adjusted(recv1).peel_refs()));
         let recv_ty = recv_ty.trim_end_matches("<'_>");
         span_lint_and_then(
             cx,
