@@ -132,7 +132,7 @@ use unused::must_use::*;
 use unused::*;
 
 #[rustfmt::skip]
-pub use builtin::{MissingDoc, SoftLints};
+pub use builtin::MissingDoc;
 pub use context::{CheckLintNameResult, EarlyContext, LateContext, LintContext, LintStore};
 pub use early::diagnostics::DiagAndSess;
 pub use early::{EarlyCheckNode, check_ast_node};
@@ -281,11 +281,11 @@ fn register_builtins(store: &mut LintStore) {
         )
     }
 
-    store.register_lints(&BuiltinCombinedPreExpansionLintPass::get_lints());
-    store.register_lints(&BuiltinCombinedEarlyLintPass::get_lints());
-    store.register_lints(&BuiltinCombinedModuleLateLintPass::get_lints());
-    store.register_lints(&foreign_modules::get_lints());
-    store.register_lints(&HardwiredLints::lint_vec());
+    store.register_lints(&BuiltinCombinedPreExpansionLintPass::lint_vec());
+    store.register_lints(&BuiltinCombinedEarlyLintPass::lint_vec());
+    store.register_lints(&BuiltinCombinedModuleLateLintPass::lint_vec());
+    store.register_lints(&foreign_modules::lint_vec());
+    store.register_lints(&hardwired::lint_vec());
 
     add_lint_group!(
         "nonstandard_style",
@@ -665,6 +665,10 @@ fn register_builtins(store: &mut LintStore) {
 fn register_internals(store: &mut LintStore) {
     store.register_lints(&LintPassImpl::lint_vec());
     store.register_early_pass(|| Box::new(LintPassImpl));
+    store.register_lints(&ImplicitSysrootCrateImport::lint_vec());
+    store.register_early_pass(|| Box::new(ImplicitSysrootCrateImport));
+    store.register_lints(&BadUseOfFindAttr::lint_vec());
+    store.register_early_pass(|| Box::new(BadUseOfFindAttr));
     store.register_lints(&DefaultHashTypes::lint_vec());
     store.register_late_mod_pass(|_| Box::new(DefaultHashTypes));
     store.register_lints(&QueryStability::lint_vec());
@@ -681,10 +685,6 @@ fn register_internals(store: &mut LintStore) {
     store.register_late_mod_pass(|_| Box::new(SpanUseEqCtxt));
     store.register_lints(&SymbolInternStringLiteral::lint_vec());
     store.register_late_mod_pass(|_| Box::new(SymbolInternStringLiteral));
-    store.register_lints(&ImplicitSysrootCrateImport::lint_vec());
-    store.register_early_pass(|| Box::new(ImplicitSysrootCrateImport));
-    store.register_lints(&BadUseOfFindAttr::lint_vec());
-    store.register_early_pass(|| Box::new(BadUseOfFindAttr));
     store.register_lints(&RustcMustMatchExhaustively::lint_vec());
     store.register_late_pass(|_| Box::new(RustcMustMatchExhaustively));
     store.register_group(
@@ -692,21 +692,39 @@ fn register_internals(store: &mut LintStore) {
         "rustc::internal",
         None,
         vec![
+            // Early pass: LintPassImpl
+            LintId::of(LINT_PASS_IMPL_WITHOUT_MACRO),
+            // Early pass: ImplicitSysrootCrateImport
+            LintId::of(IMPLICIT_SYSROOT_CRATE_IMPORT),
+            // Early pass: BadUseOfFindAttr
+            LintId::of(BAD_USE_OF_FIND_ATTR),
+            // Late pass: DefaultHashTypes
             LintId::of(DEFAULT_HASH_TYPES),
+            // Late pass: QueryStability
             LintId::of(POTENTIAL_QUERY_INSTABILITY),
             LintId::of(UNTRACKED_QUERY_INFORMATION),
+            // Late pass: TyTyKind
             LintId::of(USAGE_OF_TY_TYKIND),
-            LintId::of(DISALLOWED_PASS_BY_REF),
-            LintId::of(LINT_PASS_IMPL_WITHOUT_MACRO),
             LintId::of(USAGE_OF_QUALIFIED_TY),
+            // Late pass: TypeIr
+            LintId::of(DIRECT_USE_OF_RUSTC_TYPE_IR),
             LintId::of(NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT),
             LintId::of(USAGE_OF_TYPE_IR_INHERENT),
             LintId::of(USAGE_OF_TYPE_IR_TRAITS),
+            // Late pass: BadOptAccess
             LintId::of(BAD_OPT_ACCESS),
+            // Late pass: DisallowedPassByRef
+            LintId::of(DISALLOWED_PASS_BY_REF),
+            // Late pass: SpanUseEqCtxt
             LintId::of(SPAN_USE_EQ_CTXT),
-            LintId::of(DIRECT_USE_OF_RUSTC_TYPE_IR),
-            LintId::of(IMPLICIT_SYSROOT_CRATE_IMPORT),
-            LintId::of(BAD_USE_OF_FIND_ATTR),
+            // Late pass: SymbolInternStringLiteral
+            // Note: this one is not included in rustc::internal because rustc_driver crates
+            // outside the compiler can't/shouldn't add preinterned symbols. For rustc itself,
+            // bootstrap enables this lint manually. For rustdoc,
+            // `warn(symbol_intern_string_literal)` is used.
+            // LintId::of(SYMBOL_INTERN_STRING_LITERAL),
+            //
+            // Late pass: RustcMustMatchExhaustively
             LintId::of(RUSTC_MUST_MATCH_EXHAUSTIVELY),
         ],
     );

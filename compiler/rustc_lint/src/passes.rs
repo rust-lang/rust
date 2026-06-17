@@ -1,5 +1,4 @@
 use rustc_session::lint::LintPass;
-use rustc_session::lint::builtin::HardwiredLints;
 
 use crate::context::{EarlyContext, LateContext};
 
@@ -71,8 +70,6 @@ macro_rules! declare_late_lint_pass {
 // for all the `check_*` methods.
 late_lint_methods!(declare_late_lint_pass, []);
 
-impl LateLintPass<'_> for HardwiredLints {}
-
 #[macro_export]
 macro_rules! expand_combined_late_lint_pass_method {
     ([$($pass:ident),*], $self: ident, $name: ident, $params:tt) => ({
@@ -109,7 +106,7 @@ macro_rules! declare_combined_late_lint_pass {
                 }
             }
 
-            $v fn get_lints() -> $crate::LintVec {
+            $v fn lint_vec() -> $crate::LintVec {
                 let mut lints = Vec::new();
                 $(lints.extend_from_slice(&$pass::lint_vec());)*
                 lints
@@ -126,7 +123,7 @@ macro_rules! declare_combined_late_lint_pass {
                 stringify!($name)
             }
             fn get_lints(&self) -> LintVec {
-                $name::get_lints()
+                $name::lint_vec()
             }
         }
     )
@@ -226,7 +223,7 @@ macro_rules! declare_combined_early_lint_pass {
                 }
             }
 
-            $v fn get_lints() -> $crate::LintVec {
+            $v fn lint_vec() -> $crate::LintVec {
                 let mut lints = Vec::new();
                 $(lints.extend_from_slice(&$pass::lint_vec());)*
                 lints
