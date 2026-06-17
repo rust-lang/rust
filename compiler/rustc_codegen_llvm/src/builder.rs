@@ -636,7 +636,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             load
         };
         if let Some(tt) = tt {
-            crate::typetree::add_tt(self.cx().llmod, self.cx().llcx, load, self.tcx, tt);
+            //crate::typetree::add_tt(self.cx().llmod, self.cx().llcx, load, self.tcx, tt);
         }
         load
     }
@@ -668,10 +668,6 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     #[instrument(level = "trace", skip(self))]
     fn load_operand(&mut self, place: PlaceRef<'tcx, &'ll Value>) -> OperandRef<'tcx, &'ll Value> {
-        //dbg!("load_operand");
-        //use rustc_middle::ty::print::with_no_trimmed_paths;
-        //eprintln!("place = {}", with_no_trimmed_paths!(format!("{place:#?}")));
-
         if place.layout.is_unsized() {
             let tail = self.tcx.struct_tail_for_codegen(place.layout.ty, self.typing_env());
             if matches!(tail.kind(), ty::Foreign(..)) {
@@ -743,14 +739,22 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
             let llval = const_llval.unwrap_or_else(|| {
                 let load = self.load(llty, place.val.llval, place.val.align);
+                //let layout = place.layout.ty_and_layout_pointee_info_at(self.cx(), Size::ZERO).unwrap();
                 let ty = place.layout.ty;
                 let tt = rustc_middle::ty::typetree_from_ty(self.tcx, ty);
-                dbg!(&tt);
-                let fnc_tree = FncTree {
-                    args: vec![TypeTree::new(), TypeTree::new()],
-                    ret: tt,
-                };
-                crate::typetree::add_tt(self.cx().llmod, self.cx().llcx, load, self.tcx, fnc_tree);
+                if tt != rustc_ast::expand::typetree::TypeTree::new() {
+                    use rustc_middle::ty::print::with_no_trimmed_paths;
+                    dbg!("add_tt start!");
+                    dbg!(&load);
+                    dbg!(&tt);
+                    eprintln!("general load of place = {}", with_no_trimmed_paths!(format!("{place:#?}")));
+                    let fnc_tree = FncTree {
+                        args: vec![TypeTree::new(), TypeTree::new()],
+                        ret: tt,
+                    };
+                    crate::typetree::add_tt(self.cx().llmod, self.cx().llcx, load, self.tcx, fnc_tree);
+                    dbg!("add_tt done!");
+                }
                 //eprintln!("general load of place = {}", with_no_trimmed_paths!(format!("{place:#?}")));
                 //       25 general load of place = PlaceRef {
                 //       24     val: PlaceValue {
@@ -798,7 +802,6 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 //       18     },
                 //       19 }
 
-                dbg!(&load);
                 if let abi::BackendRepr::Scalar(scalar) = place.layout.backend_repr {
                     scalar_load_metadata(self, load, scalar, place.layout, Size::ZERO);
                     self.to_immediate_scalar(load, scalar)

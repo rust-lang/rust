@@ -90,7 +90,7 @@ pub(crate) fn add_tt<'ll>(
     for (i, input) in inputs.iter().enumerate() {
         unsafe {
             if *input == rustc_ast::expand::typetree::TypeTree::new() {
-                dbg!("skipping empty input tt");
+                //dbg!("skipping empty input tt");
                 continue;
             }
             let enzyme_tt = to_enzyme_typetree(input.clone(), llvm_data_layout, llcx);
@@ -125,12 +125,30 @@ pub(crate) fn add_tt<'ll>(
 
     unsafe {
         if ret_tt == rustc_ast::expand::typetree::TypeTree::new() {
-            dbg!("skipping empty return tt");
+            //dbg!("skipping empty return tt");
             return;
         }
         let enzyme_tt = to_enzyme_typetree(ret_tt, llvm_data_layout, llcx);
         let enzyme_wrapper = EnzymeWrapper::get_instance();
         let c_str = enzyme_wrapper.tree_to_string(enzyme_tt.inner);
+        // just printing
+        //let ptr = wrapper.tree_to_string(self.inner);
+        let cstr = unsafe { std::ffi::CStr::from_ptr(c_str) };
+        use std::io::Write as _;
+        let mut stderr = std::io::stderr().lock();
+
+        match cstr.to_str() {
+            Ok(x) => {
+                writeln!(stderr, "parsed: {:?}", x).ok();
+            }
+            Err(err) => {
+                writeln!(stderr, "could not parse: {}", err).ok();
+            }
+        }
+
+        // delete C string pointer
+        //wrapper.tree_to_string_free(ptr);
+        // done printing
         let c_str = std::ffi::CStr::from_ptr(c_str);
 
         let ret_attr = llvm::LLVMCreateStringAttribute(
@@ -148,7 +166,6 @@ pub(crate) fn add_tt<'ll>(
             attributes::apply_to_callsite(fn_def, llvm::AttributePlace::ReturnValue, &[ret_attr]);
         } else if LLVMRustIsPtrLoad(fn_def) {
             dbg!("hiii");
-            //dbg!(&enzyme_tt);
             let val = enzyme_wrapper.tree_to_md(enzyme_tt.inner, llcx);
             LLVMRustSetEnzymeTypeMetadata(fn_def, val.unwrap());
         } else {
