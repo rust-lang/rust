@@ -22,8 +22,7 @@ use rustc_hir::{PreciseCapturingArgKind, attrs};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_macros::{
-    BlobDecodable, Decodable, Encodable, LazyDecodable, MetadataEncodable, StableHash, TyDecodable,
-    TyEncodable,
+    BlobDecodable, Decodable, Encodable, LazyDecodable, MetadataEncodable, TyDecodable, TyEncodable,
 };
 use rustc_middle::metadata::{AmbigModChild, ModChild};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -49,7 +48,7 @@ use table::TableBuilder;
 
 use crate::eii::EiiMapEncodedKeyValue;
 use crate::rmeta::encoder::public_api_hasher::{
-    Hashed, PublicApiHashState, PublicApiHasher, RDRHashAll, RDRHashNone,
+    GraphHashed, ItemPublicHashes, RDRHashAll, RDRHashNone,
 };
 
 mod decoder;
@@ -303,6 +302,7 @@ pub(crate) struct CrateRoot {
 
     specialization_enabled_in: bool,
     public_api_hash_opt_enabled: bool,
+    rdr_hashes: Option<ItemPublicHashes>,
 }
 
 /// All hashes here are equal to the hash from the crate header (the `crate_hash` query) when the public-api-hash unstable feature is disabled.
@@ -350,7 +350,7 @@ impl RawDefId {
     }
 }
 
-#[derive(Encodable, BlobDecodable, StableHash)]
+#[derive(Encodable, BlobDecodable)]
 pub(crate) struct CrateDep {
     pub name: Symbol,
     pub hash: Svh,
@@ -409,32 +409,22 @@ macro_rules! define_tables {
         }
 
         impl TableBuilders {
-            fn encode<'a>(
+            fn encode(
                 &self,
                 buf: &mut FileEncoder,
-                hcx: &mut impl PublicApiHashState<'a>
-            ) -> Hashed<LazyTables>
+            ) -> GraphHashed<LazyTables>
             {
-                let mut hasher = PublicApiHasher::default();
                 let tables = LazyTables {
                     $($name1: {
-                        let table = self.$name1.encode(buf, hcx);
-                        if let Some(hash) = table.hash {
-                            tracing::debug!("{}: {hash:x?}", stringify!($name1));
-                        }
-                        hasher.digest(&table, hcx);
-                        table.value
+                        let table = self.$name1.encode(buf);
+                        table.0
                     },)+
                     $($name2: {
-                        let table = self.$name2.encode(buf, hcx);
-                        if let Some(hash) = table.hash {
-                            tracing::debug!("{}: {hash:x?}", stringify!($name2));
-                        }
-                        hasher.digest(&table, hcx);
-                        table.value
+                        let table = self.$name2.encode(buf);
+                        table.0
                     },)+
                 };
-                Hashed { hash: hasher.finish(hcx), value: tables }
+                GraphHashed(tables)
             }
         }
     }
@@ -598,7 +588,7 @@ define_tables! {
     // We don't need to include this in the hash since we are saving DefIndex as its stable hash
     def_keys: Table<RDRHashNone, DefIndex, LazyValue<DefKey>>,
     // FIXME do we need to hash this?
-    proc_macro_quoted_spans: Table<RDRHashAll, usize, LazyValue<Span>>,
+    proc_macro_quoted_spans: Table<RDRHashNone, usize, LazyValue<Span>>,
     // FIXME do we need to hash this?
     variant_data: Table<RDRHashAll, DefIndex, LazyValue<VariantData>>,
     // FIXME do we need to hash this?

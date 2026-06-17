@@ -55,6 +55,7 @@ use rustc_arena::TypedArena;
 use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::tokenstream::TokenStream;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::steal::Steal;
@@ -77,7 +78,7 @@ use rustc_session::cstore::{
 };
 use rustc_session::lint::StableLintExpectationId;
 use rustc_span::def_id::LOCAL_CRATE;
-use rustc_span::{DUMMY_SP, LocalExpnId, Span, Spanned, Symbol};
+use rustc_span::{DUMMY_SP, ExpnId, LocalExpnId, Span, Spanned, Symbol};
 use rustc_target::spec::PanicStrategy;
 
 use crate::hir::Crate;
@@ -2022,6 +2023,35 @@ rustc_queries! {
 
     /// Returns the public api hash from a dependency metadata. Does not work for the local crate.
     query public_api_hash(_: CrateNum) -> Svh {
+        eval_always
+        desc { "looking up the hash a crate" }
+        separate_provide_extern
+    }
+
+    /// Returns the public api hash of an extern DefId, panics for the local crate
+    query extern_def_public_hash(def_id: DefId) -> Fingerprint {
+        eval_always
+        desc { "looking up public hash of {}", tcx.def_path_str(def_id) }
+        separate_provide_extern
+    }
+
+    /// Returns the public api hash of an extern ExpnId, panics for the local crate
+    query extern_expn_public_hash(_: ExpnId) -> Fingerprint {
+        eval_always
+        desc { "looking up public hash of an expansion" }
+        separate_provide_extern
+    }
+
+    /// Returns the global part of the public api hash. This covers the items in the rmeta which
+    /// requires a recompile of all downstream crates.
+    ///
+    /// For example adding lang items requires all downstream crates to check that there are no
+    /// conflicting implementations for that lang item. But adding a regular public item only
+    /// requires the direct downstream crates to recompile, since those need to reexport it for
+    /// the change to be visible to their dependents.
+    ///
+    /// Panics for the local crate.
+    query public_global_hash(_: CrateNum) -> Fingerprint {
         eval_always
         desc { "looking up the hash a crate" }
         separate_provide_extern

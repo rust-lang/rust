@@ -28,7 +28,7 @@ impl DefPathHashMapRef<'_> {
     }
 }
 
-impl<'a, 'tcx, M: MetadataEncoder> Encodable<EncodeContext<'a, 'tcx, M>>
+impl<'a, 'tcx, M: MetadataEncoder<'tcx>> Encodable<EncodeContext<'a, 'tcx, M>>
     for DefPathHashMapRef<'tcx>
 {
     fn encode(&self, e: &mut EncodeContext<'a, 'tcx, M>) {
