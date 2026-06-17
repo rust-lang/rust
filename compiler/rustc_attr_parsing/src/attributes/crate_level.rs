@@ -6,9 +6,7 @@ use rustc_span::Symbol;
 use rustc_span::edit_distance::find_best_match_for_name_with_substrings;
 
 use super::prelude::*;
-use crate::diagnostics::{
-    ToolWasAlreadyRegistered, UnknownCrateTypes, UnknownCrateTypesSuggestion,
-};
+use crate::diagnostics::{ToolReserved, UnknownCrateTypes, UnknownCrateTypesSuggestion};
 
 pub(crate) struct CrateNameParser;
 
@@ -355,14 +353,14 @@ fn parse_register_tool(
             continue;
         };
 
+        if ident.name == sym::rustc {
+            cx.should_emit
+                .emit_err(cx.dcx().create_err(ToolReserved { span: ident.span, tool: ident }));
+            continue;
+        }
+
         for tools in tools.iter_mut() {
-            if let Some(old_ident) = tools.replace(ident) {
-                cx.dcx().emit_err(ToolWasAlreadyRegistered {
-                    span: ident.span,
-                    tool: ident,
-                    old_ident_span: old_ident.span,
-                });
-            }
+            tools.insert(ident);
         }
     }
 }
