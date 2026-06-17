@@ -86,9 +86,9 @@ impl LateLintPass<'_> for TupleArrayConversions {
                         }
                     }).collect::<Option<ArrayVec<_, MAX_CVT_COUNT>>>()
                     // Check that the source and destination types are the same and copyable.
-                    && let ty::Tuple(src_tys) = *cx.typeck_results().expr_ty_adjusted(first_base).kind()
+                    && let ty::Tuple(src_tys) = *cx.typeck_results.expr_ty_adjusted(first_base).kind()
                     && src_tys.len() == rest.len() + 1
-                    && let ty::Array(dst_ty, _) = *cx.typeck_results().expr_ty(e).kind()
+                    && let ty::Array(dst_ty, _) = *cx.typeck_results.expr_ty(e).kind()
                     && src_tys.iter().all(|ty| ty == dst_ty)
                     && cx.tcx.type_is_copy_modulo_regions(cx.typing_env(), dst_ty)
                     // Check that all accesses are to the same base last as that can be a complex check.
@@ -132,9 +132,9 @@ impl LateLintPass<'_> for TupleArrayConversions {
                         }
                     }).collect::<Option<ArrayVec<_, MAX_CVT_COUNT>>>()
                     // Check that the source and destination types are the same and copyable.
-                    && let ty::Array(src_ty, src_len) = *cx.typeck_results().expr_ty_adjusted(first_base).kind()
+                    && let ty::Array(src_ty, src_len) = *cx.typeck_results.expr_ty_adjusted(first_base).kind()
                     && src_len.try_to_target_usize(cx.tcx) == Some((rest.len() + 1) as u64)
-                    && let ty::Tuple(dst_tys) = *cx.typeck_results().expr_ty(e).kind()
+                    && let ty::Tuple(dst_tys) = *cx.typeck_results.expr_ty(e).kind()
                     && dst_tys.iter().all(|ty| ty == src_ty)
                     && cx.tcx.type_is_copy_modulo_regions(cx.typing_env(), src_ty)
                     // Check that all accesses are to the same base last as that can be a complex check.
@@ -183,7 +183,7 @@ impl LateLintPass<'_> for TupleArrayConversions {
                     && iter::zip(&ids, rest_pats)
                         .all(|(&id, pat)| id == pat.hir_id && matches!(pat.kind, PatKind::Binding(.., None)))
                     // Check that the source and destination types are the same.
-                    && let Some(src_ty) = match *cx.typeck_results().node_type(id_parent).kind() {
+                    && let Some(src_ty) = match *cx.typeck_results.node_type(id_parent).kind() {
                         ty::Array(src_ty, src_len)
                             if matches!(e.kind, ExprKind::Tup(_))
                                 && src_len.try_to_target_usize(cx.tcx) == Some((rest.len() + 1) as u64) =>
@@ -200,7 +200,7 @@ impl LateLintPass<'_> for TupleArrayConversions {
                         },
                         _ => None,
                     }
-                    && match *cx.typeck_results().expr_ty(e).kind() {
+                    && match *cx.typeck_results.expr_ty(e).kind() {
                         ty::Array(dst_ty, _) => dst_ty == src_ty,
                         ty::Tuple(dst_tys) => dst_tys.iter().all(|ty| src_ty == ty),
                         __ => false,

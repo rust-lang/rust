@@ -15,7 +15,7 @@ pub(super) fn check(cx: &LateContext<'_>, e: &Expr<'_>, op: BinOpKind, lhs: &Exp
     if matches!(
         rhs.kind,
         ExprKind::Call(..) | ExprKind::MethodCall(..) | ExprKind::Binary(..) | ExprKind::Unary(..)
-    ) && cx.typeck_results().expr_ty(e).is_bool()
+    ) && cx.typeck_results.expr_ty(e).is_bool()
         && !rhs.can_have_side_effects()
     {
         span_lint_and_then(

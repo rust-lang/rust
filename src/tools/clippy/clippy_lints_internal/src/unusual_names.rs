@@ -49,7 +49,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusualNames {
         if let StmtKind::Let(let_stmt) = stmt.kind
             && let Some(init_expr) = let_stmt.init
         {
-            check_pat_name_for_ty(cx, let_stmt.pat, cx.typeck_results().expr_ty(init_expr), "variable");
+            check_pat_name_for_ty(cx, let_stmt.pat, cx.typeck_results.expr_ty(init_expr), "variable");
         }
     }
 

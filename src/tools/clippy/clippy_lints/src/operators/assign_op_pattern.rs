@@ -25,8 +25,8 @@ pub(super) fn check<'tcx>(
 ) {
     if let hir::ExprKind::Binary(op, l, r) = &e.kind {
         let lint = |assignee: &hir::Expr<'_>, rhs: &hir::Expr<'_>| {
-            let ty = cx.typeck_results().expr_ty(assignee);
-            let rty = cx.typeck_results().expr_ty(rhs);
+            let ty = cx.typeck_results.expr_ty(assignee);
+            let rty = cx.typeck_results.expr_ty(rhs);
             if let Some((_, lang_item)) = binop_traits(op.node)
                 && let Some(trait_id) = cx.tcx.lang_items().get(lang_item)
                 && let parent_fn = cx.tcx.hir_get_parent_item(e.hir_id)
@@ -109,7 +109,7 @@ pub(super) fn check<'tcx>(
             }
             // a = b commutative_op a
             // Limited to primitive type as these ops are know to be commutative
-            if eq_expr_value(cx, ctxt, assignee, r) && cx.typeck_results().expr_ty(assignee).is_primitive_ty() {
+            if eq_expr_value(cx, ctxt, assignee, r) && cx.typeck_results.expr_ty(assignee).is_primitive_ty() {
                 match op.node {
                     hir::BinOpKind::Add
                     | hir::BinOpKind::Mul

@@ -99,7 +99,7 @@ fn get_size_of_ty<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<
         && let Some(def_id) = cx.qpath_res(count_func_qpath, count_func.hir_id).opt_def_id()
         && cx.tcx.is_diagnostic_item(sym::mem_size_of, def_id)
     {
-        cx.typeck_results()
+        cx.typeck_results
             .node_args(count_func.hir_id)
             .types()
             .next()

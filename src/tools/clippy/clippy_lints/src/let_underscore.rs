@@ -141,7 +141,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
             && let Some(init) = local.init
             && !local.span.in_external_macro(cx.tcx.sess.source_map())
         {
-            let init_ty = cx.typeck_results().expr_ty(init);
+            let init_ty = cx.typeck_results.expr_ty(init);
             let contains_sync_guard = init_ty.walk().any(|inner| match inner.kind() {
                 GenericArgKind::Type(inner_ty) => inner_ty
                     .ty_adt_def()
@@ -164,7 +164,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                 );
             } else if local.ty.is_none()
                 && let Some(future_trait_def_id) = cx.tcx.lang_items().future_trait()
-                && implements_trait(cx, cx.typeck_results().expr_ty(init), future_trait_def_id, &[])
+                && implements_trait(cx, cx.typeck_results.expr_ty(init), future_trait_def_id, &[])
             {
                 #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
                 span_lint_and_then(
@@ -176,7 +176,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                         diag.help("consider awaiting the future or dropping explicitly with `std::mem::drop`");
                     },
                 );
-            } else if let Some(must_use_path) = opt_must_use_path(cx, cx.typeck_results().expr_ty(init)) {
+            } else if let Some(must_use_path) = opt_must_use_path(cx, cx.typeck_results.expr_ty(init)) {
                 span_lint_and_then(
                     cx,
                     LET_UNDERSCORE_MUST_USE,
@@ -209,7 +209,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
 
                 // Ignore unnameable types
                 if let Some(init) = local.init
-                    && !cx.typeck_results().expr_ty(init).is_suggestable(cx.tcx, true)
+                    && !cx.typeck_results.expr_ty(init).is_suggestable(cx.tcx, true)
                 {
                     return;
                 }

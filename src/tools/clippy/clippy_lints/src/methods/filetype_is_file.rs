@@ -8,7 +8,7 @@ use rustc_span::Span;
 use super::FILETYPE_IS_FILE;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>) {
-    let ty = cx.typeck_results().expr_ty(recv);
+    let ty = cx.typeck_results.expr_ty(recv);
 
     if !ty.is_diag_item(cx, sym::FileType) {
         return;

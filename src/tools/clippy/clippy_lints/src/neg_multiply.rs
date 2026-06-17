@@ -66,14 +66,14 @@ fn check_mul(cx: &LateContext<'_>, mul_expr: &Expr<'_>, lit: &Expr<'_>, exp: &Ex
     const F128_ONE: u128 = 1.0_f128.to_bits();
     if let ExprKind::Lit(l) = lit.kind
         && matches!(
-            consts::lit_to_mir_constant(&l.node, cx.typeck_results().expr_ty_opt(lit)),
+            consts::lit_to_mir_constant(&l.node, cx.typeck_results.expr_ty_opt(lit)),
             Constant::Int(1)
                 | Constant::F16(F16_ONE)
                 | Constant::F32(1.0)
                 | Constant::F64(1.0)
                 | Constant::F128(F128_ONE)
         )
-        && cx.typeck_results().expr_ty(exp).is_numeric()
+        && cx.typeck_results.expr_ty(exp).is_numeric()
     {
         let mut applicability = Applicability::MachineApplicable;
         let (snip, from_macro) = snippet_with_context(cx, exp.span, mul_expr.span.ctxt(), "..", &mut applicability);

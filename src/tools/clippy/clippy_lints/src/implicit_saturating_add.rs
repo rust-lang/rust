@@ -62,7 +62,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingAdd {
                 ..
             } = block
             && let ExprKind::AssignOp(op1, target, value) = ex.kind
-            && let ty = cx.typeck_results().expr_ty(target)
+            && let ty = cx.typeck_results.expr_ty(target)
             && Some(c) == get_int_max(ty)
             && let ctxt = expr.span.ctxt()
             && ex.span.ctxt() == ctxt

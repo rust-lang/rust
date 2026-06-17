@@ -58,7 +58,7 @@ impl<'tcx> LateLintPass<'tcx> for BoolToIntWithIf {
             && then_lit != else_lit
             && !is_in_const_context(cx)
         {
-            let ty = cx.typeck_results().expr_ty(then);
+            let ty = cx.typeck_results.expr_ty(then);
             let mut applicability = if span_contains_comment(cx, expr.span) {
                 Applicability::MaybeIncorrect
             } else {

@@ -10,7 +10,7 @@ use rustc_span::Span;
 use super::SUSPICIOUS_COMMAND_ARG_SPACE;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, recv: &'tcx hir::Expr<'_>, arg: &'tcx hir::Expr<'_>, span: Span) {
-    let ty = cx.typeck_results().expr_ty(recv).peel_refs();
+    let ty = cx.typeck_results.expr_ty(recv).peel_refs();
 
     if ty.is_diag_item(cx, sym::Command)
         && let hir::ExprKind::Lit(lit) = &arg.kind

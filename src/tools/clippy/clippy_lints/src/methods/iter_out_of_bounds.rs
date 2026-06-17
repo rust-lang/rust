@@ -21,7 +21,7 @@ fn expr_as_u128(cx: &LateContext<'_>, e: &Expr<'_>) -> Option<u128> {
 
 /// Attempts to extract the length out of an iterator expression.
 fn get_iterator_length<'tcx>(cx: &LateContext<'tcx>, iter: &'tcx Expr<'tcx>) -> Option<u128> {
-    let ty::Adt(adt, substs) = cx.typeck_results().expr_ty(iter).kind() else {
+    let ty::Adt(adt, substs) = cx.typeck_results.expr_ty(iter).kind() else {
         return None;
     };
 
@@ -32,7 +32,7 @@ fn get_iterator_length<'tcx>(cx: &LateContext<'tcx>, iter: &'tcx Expr<'tcx>) -> 
             substs.const_at(1).try_to_target_usize(cx.tcx).map(u128::from)
         },
         Some(sym::SliceIter) if let ExprKind::MethodCall(_, recv, ..) = iter.kind => {
-            if let ty::Array(_, len) = cx.typeck_results().expr_ty(recv).peel_refs().kind() {
+            if let ty::Array(_, len) = cx.typeck_results.expr_ty(recv).peel_refs().kind() {
                 // For slice::Iter<'_, T>, the receiver might be an array literal: [1,2,3].iter().skip(..)
                 len.try_to_target_usize(cx.tcx).map(u128::from)
             } else {

@@ -42,7 +42,7 @@ impl<'tcx> LateLintPass<'tcx> for OuterExpnDataPass {
         if let [sym::expn_data, sym::outer_expn] = method_names.as_slice()
             && let (self_arg, args) = arg_lists[1]
             && args.is_empty()
-            && let self_ty = cx.typeck_results().expr_ty(self_arg).peel_refs()
+            && let self_ty = cx.typeck_results.expr_ty(self_arg).peel_refs()
             && internal_paths::SYNTAX_CONTEXT.matches_ty(cx, self_ty)
         {
             span_lint_and_sugg(

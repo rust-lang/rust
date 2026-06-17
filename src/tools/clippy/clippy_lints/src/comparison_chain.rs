@@ -110,7 +110,7 @@ impl<'tcx> LateLintPass<'tcx> for ComparisonChain {
                 }
 
                 // Check that the type being compared implements `core::cmp::Ord`
-                let ty = cx.typeck_results().expr_ty(lhs1);
+                let ty = cx.typeck_results.expr_ty(lhs1);
                 let is_ord = cx
                     .tcx
                     .get_diagnostic_item(sym::Ord)

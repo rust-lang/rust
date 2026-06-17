@@ -10,7 +10,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
     // Lint if the `.bytes()` call is from the `Read` trait and the implementor is not buffered.
     if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::IoRead)
         && let Some(buf_read) = cx.tcx.get_diagnostic_item(sym::IoBufRead)
-        && let ty = cx.typeck_results().expr_ty_adjusted(recv)
+        && let ty = cx.typeck_results.expr_ty_adjusted(recv)
         && !implements_trait(cx, ty, buf_read, &[])
     {
         span_lint_and_help(

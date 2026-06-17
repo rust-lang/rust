@@ -198,7 +198,7 @@ impl AssertionKind {
 /// output. Returns `None` for unsupported collection types and for element types that cannot be
 /// printed and compared by the replacement assertion.
 fn assertion_suggestion<'tcx>(cx: &LateContext<'tcx>, receiver: &'tcx Expr<'tcx>) -> Option<(&'static str, String)> {
-    let receiver_ty = cx.typeck_results().expr_ty(receiver);
+    let receiver_ty = cx.typeck_results.expr_ty(receiver);
     let suggestion = suggestion_for_type(cx, receiver_ty)?;
     if type_is_printable_and_comparable(cx, receiver_ty.peel_refs()) {
         Some(suggestion)

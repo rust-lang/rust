@@ -135,7 +135,7 @@ fn check_unwrap_or_default(
         _ => return false,
     };
 
-    let receiver_ty = cx.typeck_results().expr_ty_adjusted(receiver).peel_refs();
+    let receiver_ty = cx.typeck_results.expr_ty_adjusted(receiver).peel_refs();
 
     // Check MSRV, but only for `Result::unwrap_or_default`
     if receiver_ty.is_diag_item(cx, sym::Result) && !msrv.meets(cx, msrvs::RESULT_UNWRAP_OR_DEFAULT) {
@@ -147,7 +147,7 @@ fn check_unwrap_or_default(
     // tests against a precompiled `std` — removing this breaks no test, but does bring the false
     // positive back for build-std users.
     if let Some(call_expr) = call_expr
-        && cx.typeck_results().expr_ty(call_expr).is_raw_ptr()
+        && cx.typeck_results.expr_ty(call_expr).is_raw_ptr()
         && !msrv.meets(cx, msrvs::RAW_PTR_DEFAULT)
     {
         return false;
@@ -167,7 +167,7 @@ fn check_unwrap_or_default(
     };
 
     let output_type_implements_default = |fun| {
-        let fun_ty = cx.typeck_results().expr_ty(fun);
+        let fun_ty = cx.typeck_results.expr_ty(fun);
         if let ty::FnDef(def_id, args) = *fun_ty.kind() {
             let output_ty = cx
                 .tcx
@@ -272,7 +272,7 @@ fn check_or_fn_call<'tcx>(
     if KNOW_TYPES.iter().any(|k| k.2.contains(&name))
         && switch_to_lazy_eval(cx, arg)
         && !contains_return(arg)
-        && let self_ty = cx.typeck_results().expr_ty(self_expr)
+        && let self_ty = cx.typeck_results.expr_ty(self_expr)
         && let Some(&(_, fn_has_arguments, _, suffix)) = KNOW_TYPES
             .iter()
             .find(|&&i| self_ty.is_diag_item(cx, i.0) && i.2.contains(&name))

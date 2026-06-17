@@ -103,7 +103,7 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
         let mut applicability = Applicability::MaybeIncorrect;
         let suggestion = match (range.start, range.end, range.ty.limits()) {
             (Some(start), Some(end), limits) => {
-                let element_ty = cx.typeck_results().expr_ty(start);
+                let element_ty = cx.typeck_results.expr_ty(start);
                 let (start_snippet, _) = snippet_with_context(cx, start.span, span.ctxt(), "..", &mut applicability);
                 let (end_snippet, _) = snippet_with_context(cx, end.span, span.ctxt(), "..", &mut applicability);
 
@@ -149,7 +149,7 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
             span,
             format!(
                 "{suggested_type} of `{}` that is only one element",
-                cx.typeck_results()
+                cx.typeck_results
                     .expr_ty(inner_expr)
                     .ty_adt_def()
                     .map_or(sym::Range, |adt_def| cx.tcx.item_name(adt_def.did()))

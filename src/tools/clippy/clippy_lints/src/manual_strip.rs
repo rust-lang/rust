@@ -72,7 +72,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
         if let Some(higher::If { cond, then, .. }) = higher::If::hir(expr)
             && let ExprKind::MethodCall(_, target_arg, [pattern], _) = cond.kind
             && let ExprKind::Path(target_path) = &target_arg.kind
-            && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(cond.hir_id)
+            && let Some(method_def_id) = cx.typeck_results.type_dependent_def_id(cond.hir_id)
         {
             let strip_kind = match cx.tcx.get_diagnostic_name(method_def_id) {
                 Some(sym::str_starts_with) => StripKind::Prefix,
@@ -155,7 +155,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
 // Returns `Some(arg)` if `expr` matches `arg.len()` and `None` otherwise.
 fn len_arg<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     if let ExprKind::MethodCall(_, arg, [], _) = expr.kind
-        && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+        && let Some(method_def_id) = cx.typeck_results.type_dependent_def_id(expr.hir_id)
         && cx.tcx.is_diagnostic_item(sym::str_len, method_def_id)
     {
         Some(arg)
@@ -194,7 +194,7 @@ fn eq_pattern_length<'tcx>(
 
 // Tests if `expr` is a `&str`.
 fn is_ref_str(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    match cx.typeck_results().expr_ty_adjusted(expr).kind() {
+    match cx.typeck_results.expr_ty_adjusted(expr).kind() {
         ty::Ref(_, ty, _) => ty.is_str(),
         _ => false,
     }

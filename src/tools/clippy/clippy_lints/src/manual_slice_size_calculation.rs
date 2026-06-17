@@ -102,7 +102,7 @@ fn simplify_half<'tcx>(
         // expr1 is `[T1].len()`?
         && let ExprKind::MethodCall(method_path, receiver, [], _) = expr1.kind
         && method_path.ident.name == sym::len
-        && let receiver_ty = cx.typeck_results().expr_ty(receiver)
+        && let receiver_ty = cx.typeck_results.expr_ty(receiver)
         && let (receiver_ty, refs_count, _) = peel_and_count_ty_refs(receiver_ty)
         && let ty::Slice(ty1) = receiver_ty.kind()
         // expr2 is `size_of::<T2>()`?
@@ -110,7 +110,7 @@ fn simplify_half<'tcx>(
         && let ExprKind::Path(ref func_qpath) = func.kind
         && let Some(def_id) = cx.qpath_res(func_qpath, func.hir_id).opt_def_id()
         && cx.tcx.is_diagnostic_item(sym::mem_size_of, def_id)
-        && let Some(ty2) = cx.typeck_results().node_args(func.hir_id).types().next()
+        && let Some(ty2) = cx.typeck_results.node_args(func.hir_id).types().next()
         // T1 == T2?
         && *ty1 == ty2
     {

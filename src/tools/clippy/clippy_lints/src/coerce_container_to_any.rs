@@ -52,13 +52,13 @@ declare_lint_pass!(CoerceContainerToAny => [COERCE_CONTAINER_TO_ANY]);
 impl<'tcx> LateLintPass<'tcx> for CoerceContainerToAny {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         // If this expression was coerced to `&dyn Any` ...
-        if !cx.typeck_results().expr_adjustments(e).last().is_some_and(|adj| {
+        if !cx.typeck_results.expr_adjustments(e).last().is_some_and(|adj| {
             matches!(adj.kind, Adjust::Pointer(PointerCoercion::Unsize)) && is_ref_dyn_any(cx.tcx, adj.target)
         }) {
             return;
         }
 
-        let expr_ty = cx.typeck_results().expr_ty(e);
+        let expr_ty = cx.typeck_results.expr_ty(e);
         let ty::Ref(_, expr_ref_ty, _) = *expr_ty.kind() else {
             return;
         };
@@ -80,7 +80,7 @@ impl<'tcx> LateLintPass<'tcx> for CoerceContainerToAny {
             ExprKind::AddrOf(_, _, referent) => (referent, depth),
             _ => (e, depth + 1),
         };
-        let ty::Ref(_, _, mutability) = *cx.typeck_results().expr_ty_adjusted(e).kind() else {
+        let ty::Ref(_, _, mutability) = *cx.typeck_results.expr_ty_adjusted(e).kind() else {
             return;
         };
         let sugg = sugg::make_unop(

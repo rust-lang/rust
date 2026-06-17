@@ -43,7 +43,7 @@ fn get_size_of_ty<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, inverted: 
                     Some(sym::mem_size_of | sym::mem_size_of_val)
                 )
             {
-                cx.typeck_results().node_args(count_func.hir_id).types().next()
+                cx.typeck_results.node_args(count_func.hir_id).types().next()
             } else {
                 None
             }
@@ -92,7 +92,7 @@ fn get_pointee_ty_and_count_expr<'tcx>(
         ))
 
         // Get the pointee type
-        && let Some(pointee_ty) = cx.typeck_results().node_args(func.hir_id).types().next()
+        && let Some(pointee_ty) = cx.typeck_results.node_args(func.hir_id).types().next()
     {
         return Some((pointee_ty, count));
     }
@@ -103,7 +103,7 @@ fn get_pointee_ty_and_count_expr<'tcx>(
 
         // Get the pointee type
         && let ty::RawPtr(pointee_ty, _) =
-            cx.typeck_results().expr_ty(ptr_self).kind()
+            cx.typeck_results.expr_ty(ptr_self).kind()
     {
         return Some((*pointee_ty, count));
     }

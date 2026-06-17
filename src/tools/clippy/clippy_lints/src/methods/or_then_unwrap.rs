@@ -16,7 +16,7 @@ pub(super) fn check<'tcx>(
     or_arg: &'tcx Expr<'_>,
     or_span: Span,
 ) {
-    let ty = cx.typeck_results().expr_ty(recv); // get type of x (we later check if it's Option or Result)
+    let ty = cx.typeck_results.expr_ty(recv); // get type of x (we later check if it's Option or Result)
     let title;
     let or_arg_content: Span;
 

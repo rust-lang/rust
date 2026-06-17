@@ -25,7 +25,7 @@ pub(super) fn check<'tcx>(
         return;
     }
 
-    let recv_type = cx.typeck_results().expr_ty(recv);
+    let recv_type = cx.typeck_results.expr_ty(recv);
     if !matches!(recv_type.opt_diag_name(cx), Some(sym::Option | sym::Result)) {
         return;
     }

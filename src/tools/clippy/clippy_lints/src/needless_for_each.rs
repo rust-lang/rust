@@ -80,7 +80,7 @@ fn check_expr(cx: &LateContext<'_>, expr: &Expr<'_>, outer_span: Span) {
             && method_name.ident.name == sym::for_each
             && cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator)
             // Checks the type of the `iter` method receiver is NOT a user defined type.
-            && has_iter_method(cx, cx.typeck_results().expr_ty(iter_recv)).is_some()
+            && has_iter_method(cx, cx.typeck_results.expr_ty(iter_recv)).is_some()
             // Skip the lint if the body is not block because this is simpler than `for` loop.
             // e.g. `v.iter().for_each(f)` is simpler and clearer than using `for` loop.
             && let ExprKind::Closure(&Closure { body, fn_decl, .. }) = for_each_arg.kind

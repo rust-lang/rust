@@ -27,7 +27,7 @@ fn check_parent_is_suffix_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> ParentI
             // (*x).func() is useless, x.clone().func() can work in case func borrows self
             ExprKind::MethodCall(_, self_arg, ..)
                 if expr.hir_id == self_arg.hir_id
-                    && cx.typeck_results().expr_ty(expr) != cx.typeck_results().expr_ty_adjusted(expr) =>
+                    && cx.typeck_results.expr_ty(expr) != cx.typeck_results.expr_ty_adjusted(expr) =>
             {
                 ParentIsSuffixExpr::Return
             },
@@ -60,7 +60,7 @@ fn check_parent_is_suffix_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> ParentI
 /// Checks for the `CLONE_ON_COPY` lint.
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>) {
     if cx
-        .typeck_results()
+        .typeck_results
         .type_dependent_def_id(expr.hir_id)
         .and_then(|id| cx.tcx.trait_of_assoc(id))
         .zip(cx.tcx.lang_items().clone_trait())
@@ -68,12 +68,12 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>) 
     {
         return;
     }
-    let arg_adjustments = cx.typeck_results().expr_adjustments(receiver);
+    let arg_adjustments = cx.typeck_results.expr_adjustments(receiver);
     let arg_ty = arg_adjustments
         .last()
-        .map_or_else(|| cx.typeck_results().expr_ty(receiver), |a| a.target);
+        .map_or_else(|| cx.typeck_results.expr_ty(receiver), |a| a.target);
 
-    let ty = cx.typeck_results().expr_ty(expr);
+    let ty = cx.typeck_results.expr_ty(expr);
     if let ty::Ref(_, inner, _) = arg_ty.kind()
         && let ty::Ref(..) = inner.kind()
     {
@@ -120,10 +120,10 @@ pub(super) fn check_function(cx: &LateContext<'_>, expr: &Expr<'_>) {
     let ExprKind::Call(func, args) = expr.kind else { return };
 
     if let ExprKind::Path(qpath) = func.kind
-        && let Some(def_id) = cx.typeck_results().qpath_res(&qpath, func.hir_id).opt_def_id()
+        && let Some(def_id) = cx.typeck_results.qpath_res(&qpath, func.hir_id).opt_def_id()
         && cx.tcx.trait_of_assoc(def_id) == cx.tcx.lang_items().clone_trait()
         && let [arg] = args
-        && let ty = cx.typeck_results().expr_ty(expr)
+        && let ty = cx.typeck_results.expr_ty(expr)
     {
         if !is_copy(cx, ty) {
             return;
@@ -140,7 +140,7 @@ pub(super) fn check_function(cx: &LateContext<'_>, expr: &Expr<'_>) {
         let mut app = Applicability::MachineApplicable;
         let snip = snippet_with_context(cx, peeled_arg.span, func.span.ctxt(), "_", &mut app).0;
 
-        let arg_adjustments = cx.typeck_results().expr_adjustments(arg);
+        let arg_adjustments = cx.typeck_results.expr_adjustments(arg);
         let deref_count = arg_adjustments
             .iter()
             .take_while(|adj| matches!(adj.kind, Adjust::Deref(_)))

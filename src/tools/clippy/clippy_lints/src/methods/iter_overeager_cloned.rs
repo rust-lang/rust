@@ -42,7 +42,7 @@ pub(super) fn check<'tcx>(
     op: Op<'tcx>,
     needs_into_iter: bool,
 ) {
-    let typeck = cx.typeck_results();
+    let typeck = cx.typeck_results;
     if let Some(iter_id) = cx.tcx.get_diagnostic_item(sym::Iterator)
         && let Some(method_id) = typeck.type_dependent_def_id(expr.hir_id)
         && cx.tcx.trait_of_assoc(method_id) == Some(iter_id)

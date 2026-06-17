@@ -19,7 +19,7 @@ pub fn check_unwrap_or(
     unwrap_arg: &Expr<'_>,
     arith: Symbol,
 ) {
-    let ty = cx.typeck_results().expr_ty(arith_lhs);
+    let ty = cx.typeck_results.expr_ty(arith_lhs);
     if !ty.is_integral() {
         return;
     }
@@ -41,7 +41,7 @@ pub(super) fn check_sub_unwrap_or_default(
     arith_lhs: &Expr<'_>,
     arith_rhs: &Expr<'_>,
 ) {
-    let ty = cx.typeck_results().expr_ty(arith_lhs);
+    let ty = cx.typeck_results.expr_ty(arith_lhs);
     if !ty.is_integral() {
         return;
     }
@@ -149,7 +149,7 @@ fn is_min_or_max(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<MinMax> {
         }
     }
 
-    let ty = cx.typeck_results().expr_ty(expr);
+    let ty = cx.typeck_results.expr_ty(expr);
 
     // `T::MAX` and `T::MIN` constants
     if let hir::ExprKind::Path(hir::QPath::TypeRelative(base, seg)) = expr.kind

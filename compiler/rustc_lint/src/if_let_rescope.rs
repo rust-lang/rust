@@ -424,7 +424,7 @@ impl<'tcx> FindSignificantDropper<'_, 'tcx> {
     ) -> ControlFlow<(Span, SmallVec<[Ty<'tcx>; 4]>)> {
         if expr.is_place_expr(|base| {
             self.cx
-                .typeck_results()
+                .typeck_results
                 .adjustments()
                 .get(base.hir_id)
                 .is_some_and(|x| x.iter().any(|adj| matches!(adj.kind, Adjust::Deref(_))))
@@ -435,7 +435,7 @@ impl<'tcx> FindSignificantDropper<'_, 'tcx> {
         let drop_tys = extract_component_with_significant_dtor(
             self.cx.tcx,
             self.cx.typing_env(),
-            self.cx.typeck_results().expr_ty(expr),
+            self.cx.typeck_results.expr_ty(expr),
         );
         if drop_tys.is_empty() {
             return ControlFlow::Continue(());
@@ -459,7 +459,7 @@ impl<'tcx> Visitor<'tcx> for FindSignificantDropper<'_, 'tcx> {
         // Check for promoted temporaries from autoref, e.g.
         // `if let None = TypeWithDrop.as_ref() {} else {}`
         // where `fn as_ref(&self) -> Option<...>`.
-        for adj in self.cx.typeck_results().expr_adjustments(expr) {
+        for adj in self.cx.typeck_results.expr_adjustments(expr) {
             match adj.kind {
                 // Skip when we hit the first deref expr.
                 Adjust::Deref(_) => break,

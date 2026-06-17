@@ -84,7 +84,7 @@ pub(crate) fn check<'tcx>(
 }
 
 fn expr_is_erased_ref(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    match cx.typeck_results().expr_ty(expr).kind() {
+    match cx.typeck_results.expr_ty(expr).kind() {
         ty::Ref(r, ..) => r.is_erased(),
         _ => false,
     }
@@ -180,8 +180,8 @@ fn is_allowed<'tcx>(
     }
 
     // This lint applies to integers and their references
-    cx.typeck_results().expr_ty(left).peel_refs().is_integral()
-    && cx.typeck_results().expr_ty(right).peel_refs().is_integral()
+    cx.typeck_results.expr_ty(left).peel_refs().is_integral()
+    && cx.typeck_results.expr_ty(right).peel_refs().is_integral()
         // `1 << 0` is a common pattern in bit manipulation code
         && !(cmp == BinOpKind::Shl
             && is_zero_integer_const(cx, right, expr.span.ctxt())
@@ -202,7 +202,7 @@ fn check_remainder(cx: &LateContext<'_>, left: &Expr<'_>, right: &Expr<'_>, span
 
 fn is_redundant_op(cx: &LateContext<'_>, e: &Expr<'_>, m: i8, ctxt: SyntaxContext) -> bool {
     if let Some(Constant::Int(v)) = ConstEvalCtxt::new(cx).eval_local(e, ctxt).map(Constant::peel_refs) {
-        let check = match *cx.typeck_results().expr_ty(e).peel_refs().kind() {
+        let check = match *cx.typeck_results.expr_ty(e).peel_refs().kind() {
             ty::Int(ity) => unsext(cx.tcx, -1_i128, ity),
             ty::Uint(uty) => clip(cx.tcx, !0, uty),
             _ => return false,
@@ -250,7 +250,7 @@ fn span_ineffective_operation(
 }
 
 fn is_expr_used_with_type_annotation<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
-    match get_expr_use_site(cx.tcx, cx.typeck_results(), expr.span.ctxt(), expr).use_node(cx) {
+    match get_expr_use_site(cx.tcx, cx.typeck_results, expr.span.ctxt(), expr).use_node(cx) {
         ExprUseNode::LetStmt(letstmt) => letstmt.ty.is_some(),
         ExprUseNode::Return(_) => true,
         _ => false,

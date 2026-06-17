@@ -12,7 +12,7 @@ pub(super) fn check<'tcx>(
     rev_call: &'tcx Expr<'_>,
     rev_recv: &'tcx Expr<'_>,
 ) {
-    let rev_recv_ty = cx.typeck_results().expr_ty(rev_recv);
+    let rev_recv_ty = cx.typeck_results.expr_ty(rev_recv);
 
     // check that the receiver of `rev` implements `DoubleEndedIterator` and
     // that `rev` and `next` come from `Iterator`

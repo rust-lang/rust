@@ -108,7 +108,7 @@ impl<'a> Sugg<'a> {
         if expr.span.ctxt() == ctxt {
             if let ExprKind::Unary(op, inner) = expr.kind
                 && matches!(op, UnOp::Neg | UnOp::Not)
-                && cx.typeck_results().expr_ty(expr) == cx.typeck_results().expr_ty(inner)
+                && cx.typeck_results.expr_ty(expr) == cx.typeck_results.expr_ty(inner)
             {
                 Sugg::UnOp(
                     op,
@@ -891,7 +891,7 @@ impl<'tcx> DerefDelegate<'_, 'tcx> {
             ExprKind::MethodCall(_, receiver, call_args, _) => {
                 if let Some(sig) = self
                     .cx
-                    .typeck_results()
+                    .typeck_results
                     .type_dependent_def_id(parent_expr.hir_id)
                     .map(|did| {
                         self.cx
@@ -981,7 +981,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                         // i.e.: `Call`: `|x| please(x)` or `MethodCall`: `|x| [1, 2, 3].contains(x)`
                         ExprKind::Call(_, call_args) | ExprKind::MethodCall(_, _, call_args, _) => {
                             let expr = self.cx.tcx.hir_expect_expr(cmt.hir_id);
-                            let arg_ty_kind = self.cx.typeck_results().expr_ty(expr).kind();
+                            let arg_ty_kind = self.cx.typeck_results.expr_ty(expr).kind();
 
                             if matches!(arg_ty_kind, ty::Ref(_, _, Mutability::Not)) {
                                 // suggest ampersand if call function is taking args by double reference

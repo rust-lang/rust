@@ -301,7 +301,7 @@ impl<'tcx> VarVisitor<'_, 'tcx> {
                     if index_used_directly {
                         self.indexed_directly.insert(
                             seqvar.segments[0].ident.name,
-                            (Some(extent), self.cx.typeck_results().node_type(seqexpr.hir_id)),
+                            (Some(extent), self.cx.typeck_results.node_type(seqexpr.hir_id)),
                         );
                     } else {
                         self.indexed_indirectly
@@ -313,7 +313,7 @@ impl<'tcx> VarVisitor<'_, 'tcx> {
                     if index_used_directly {
                         self.indexed_directly.insert(
                             seqvar.segments[0].ident.name,
-                            (None, self.cx.typeck_results().node_type(seqexpr.hir_id)),
+                            (None, self.cx.typeck_results.node_type(seqexpr.hir_id)),
                         );
                     } else {
                         self.indexed_indirectly.insert(seqvar.segments[0].ident.name, None);
@@ -339,7 +339,7 @@ impl<'tcx> Visitor<'tcx> for VarVisitor<'_, 'tcx> {
         if let ExprKind::MethodCall(meth, args_0, [args_1, ..], _) = &expr.kind
             && let Some(trait_id) = self
                 .cx
-                .typeck_results()
+                .typeck_results
                 .type_dependent_def_id(expr.hir_id)
                 .and_then(|def_id| self.cx.tcx.trait_of_assoc(def_id))
             && ((meth.ident.name == sym::index && self.cx.tcx.lang_items().index_trait() == Some(trait_id))
@@ -385,7 +385,7 @@ impl<'tcx> Visitor<'tcx> for VarVisitor<'_, 'tcx> {
             ExprKind::Call(f, args) => {
                 self.visit_expr(f);
                 for expr in args {
-                    let ty = self.cx.typeck_results().expr_ty_adjusted(expr);
+                    let ty = self.cx.typeck_results.expr_ty_adjusted(expr);
                     self.prefer_mutable = false;
                     if let ty::Ref(_, _, mutbl) = *ty.kind()
                         && mutbl == Mutability::Mut
@@ -396,7 +396,7 @@ impl<'tcx> Visitor<'tcx> for VarVisitor<'_, 'tcx> {
                 }
             },
             ExprKind::MethodCall(_, receiver, args, _) => {
-                let def_id = self.cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
+                let def_id = self.cx.typeck_results.type_dependent_def_id(expr.hir_id).unwrap();
                 for (ty, expr) in iter::zip(
                     self.cx
                         .tcx

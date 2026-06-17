@@ -55,7 +55,7 @@ struct OperandInfo {
 
 fn analyze_operand(operand: &Expr<'_>, cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<OperandInfo> {
     match ConstEvalCtxt::new(cx).eval(operand)? {
-        Constant::Int(v) => match *cx.typeck_results().expr_ty(expr).kind() {
+        Constant::Int(v) => match *cx.typeck_results.expr_ty(expr).kind() {
             ty::Int(ity) => {
                 let value: i128 = sext(cx.tcx, v, ity);
                 Some(OperandInfo {
@@ -117,7 +117,7 @@ fn check_const_operands<'tcx>(
 }
 
 fn check_non_const_operands<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, operand: &Expr<'_>) {
-    let operand_type = cx.typeck_results().expr_ty(operand);
+    let operand_type = cx.typeck_results.expr_ty(operand);
     if might_have_negative_value(operand_type) {
         span_lint_and_then(
             cx,

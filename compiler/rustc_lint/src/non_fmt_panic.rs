@@ -50,7 +50,7 @@ declare_lint_pass!(NonPanicFmt => [NON_FMT_PANICS]);
 impl<'tcx> LateLintPass<'tcx> for NonPanicFmt {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
         if let hir::ExprKind::Call(f, [arg]) = &expr.kind
-            && let &ty::FnDef(def_id, _) = cx.typeck_results().expr_ty(f).kind()
+            && let &ty::FnDef(def_id, _) = cx.typeck_results.expr_ty(f).kind()
         {
             let f_diagnostic_name = cx.tcx.get_diagnostic_name(def_id);
 
@@ -122,7 +122,7 @@ impl<'a, 'b, 'tcx> Diagnostic<'a, ()> for PanicMessageNotLiteral<'b, 'tcx> {
                 );
             }
         } else {
-            let ty = cx.typeck_results().expr_ty(arg);
+            let ty = cx.typeck_results.expr_ty(arg);
             // If this is a &str or String, we can confidently give the `"{}", ` suggestion.
             let is_str = matches!(
                 ty.kind(),

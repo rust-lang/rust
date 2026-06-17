@@ -34,8 +34,8 @@ pub(super) fn check<'tcx>(
 
 fn numeric_cast_precast_bounds(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<(FullInt, FullInt)> {
     if let ExprKind::Cast(cast_exp, _) = expr.kind {
-        let pre_cast_ty = cx.typeck_results().expr_ty(cast_exp);
-        let cast_ty = cx.typeck_results().expr_ty(expr);
+        let pre_cast_ty = cx.typeck_results.expr_ty(cast_exp);
+        let cast_ty = cx.typeck_results.expr_ty(expr);
         // if it's a cast from i32 to u32 wrapping will invalidate all these checks
         if cx.layout_of(pre_cast_ty).ok().map(|l| l.size) == cx.layout_of(cast_ty).ok().map(|l| l.size) {
             return None;

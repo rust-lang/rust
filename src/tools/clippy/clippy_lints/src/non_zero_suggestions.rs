@@ -55,7 +55,7 @@ impl<'tcx> LateLintPass<'tcx> for NonZeroSuggestions {
             // `Div<NonZero<T>>` and `Rem<NonZero<T>>` are only implemented for unsigned
             // integer types; signed integer types do not have these impls, so suggesting
             // `NonZeroI*::from(x)` as the divisor produces code that won't compile.
-            let rhs_ty = cx.typeck_results().expr_ty(rhs);
+            let rhs_ty = cx.typeck_results.expr_ty(rhs);
             if matches!(rhs_ty.kind(), ty::Uint(_)) {
                 check_non_zero_conversion(cx, rhs, Applicability::MachineApplicable);
             }
@@ -81,8 +81,8 @@ fn check_non_zero_conversion(cx: &LateContext<'_>, expr: &Expr<'_>, applicabilit
         && rcv_path.ident.name == sym::get
     {
         let fn_name = cx.tcx.item_name(def_id);
-        let target_ty = cx.typeck_results().expr_ty(expr);
-        let receiver_ty = cx.typeck_results().expr_ty(receiver);
+        let target_ty = cx.typeck_results.expr_ty(expr);
+        let receiver_ty = cx.typeck_results.expr_ty(receiver);
 
         // Check if the receiver type is a NonZero type
         if let ty::Adt(adt_def, _) = receiver_ty.kind()

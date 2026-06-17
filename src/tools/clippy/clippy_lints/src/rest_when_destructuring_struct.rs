@@ -89,8 +89,8 @@ declare_lint_pass!(RestWhenDestructuringStruct => [
 impl<'tcx> LateLintPass<'tcx> for RestWhenDestructuringStruct {
     fn check_pat(&mut self, cx: &rustc_lint::LateContext<'tcx>, pat: &'tcx rustc_hir::Pat<'tcx>) {
         if let rustc_hir::PatKind::Struct(path, fields, Some(dotdot)) = pat.kind
-            && let qty = cx.typeck_results().qpath_res(&path, pat.hir_id)
-            && let ty = cx.typeck_results().pat_ty(pat)
+            && let qty = cx.typeck_results.qpath_res(&path, pat.hir_id)
+            && let ty = cx.typeck_results.pat_ty(pat)
             && let ty::Adt(a, _) = ty.kind()
             && let Some(vid) = qty.opt_def_id().map(|x| a.variant_index_with_id(x))
             && let Some(variant) = a.variants().get(vid)

@@ -136,7 +136,7 @@ impl<'tcx> LateLintPass<'tcx> for PathbufThenPush<'tcx> {
         if let Some(init_expr) = local.init
             && let PatKind::Binding(BindingMode::MUT, id, name, None) = local.pat.kind
             && !local.span.in_external_macro(cx.sess().source_map())
-            && let ty = cx.typeck_results().pat_ty(local.pat)
+            && let ty = cx.typeck_results.pat_ty(local.pat)
             && ty.is_diag_item(cx, sym::PathBuf)
         {
             self.searcher = Some(PathbufPushSearcher {
@@ -157,7 +157,7 @@ impl<'tcx> LateLintPass<'tcx> for PathbufThenPush<'tcx> {
             && let [name] = &path.segments
             && let Res::Local(id) = path.res
             && !expr.span.in_external_macro(cx.sess().source_map())
-            && let ty = cx.typeck_results().expr_ty(left)
+            && let ty = cx.typeck_results.expr_ty(left)
             && ty.is_diag_item(cx, sym::PathBuf)
         {
             self.searcher = Some(PathbufPushSearcher {

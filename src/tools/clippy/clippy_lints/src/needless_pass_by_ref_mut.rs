@@ -239,7 +239,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         // #11182; do not lint if mutability is required elsewhere
         if let ExprKind::Path(..) = expr.kind
-            && let ty::FnDef(def_id, _) = cx.typeck_results().expr_ty(expr).kind()
+            && let ty::FnDef(def_id, _) = cx.typeck_results.expr_ty(expr).kind()
             && let Some(def_id) = def_id.as_local()
         {
             if let Node::Expr(e) = cx.tcx.parent_hir_node(expr.hir_id)

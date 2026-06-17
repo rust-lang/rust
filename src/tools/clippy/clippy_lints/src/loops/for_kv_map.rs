@@ -25,15 +25,15 @@ pub(super) fn check<'tcx>(
         let arg_span = arg.span;
         let (arg, arg_ty) = match arg.kind {
             // `for x in &expr` or `for x in &mut expr`
-            ExprKind::AddrOf(BorrowKind::Ref, _, expr) => (expr, cx.typeck_results().expr_ty(arg)),
+            ExprKind::AddrOf(BorrowKind::Ref, _, expr) => (expr, cx.typeck_results.expr_ty(arg)),
             // `for x in receiver.iter()` or `for x in receiver.iter_mut()`
             ExprKind::MethodCall(path, receiver, [], ..)
                 if path.ident.name == sym::iter || path.ident.name == sym::iter_mut =>
             {
                 // Use `expr_ty_adjusted` because `.iter()` / `.iter_mut()` may introduce auto deferences
-                (receiver, cx.typeck_results().expr_ty_adjusted(receiver))
+                (receiver, cx.typeck_results.expr_ty_adjusted(receiver))
             },
-            _ => (arg, cx.typeck_results().expr_ty(arg)),
+            _ => (arg, cx.typeck_results.expr_ty(arg)),
         };
 
         let (new_pat_span, kind, ty, mutbl) = match *arg_ty.kind() {

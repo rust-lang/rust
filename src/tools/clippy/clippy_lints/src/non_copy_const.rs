@@ -852,7 +852,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if let ExprKind::Path(qpath) = &e.kind
-            && let typeck = cx.typeck_results()
+            && let typeck = cx.typeck_results
             && let Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, did) = typeck.qpath_res(qpath, e.hir_id)
             // As of `1.80` constant contexts can't borrow any type with interior mutability
             && !is_in_const_context(cx)

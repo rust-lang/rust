@@ -31,7 +31,7 @@ fn parse_fails_on_trailing_newline(ty: Ty<'_>) -> bool {
 }
 
 pub fn check(cx: &LateContext<'_>, call: &Expr<'_>, recv: &Expr<'_>, arg: &Expr<'_>) {
-    let recv_ty = cx.typeck_results().expr_ty(recv);
+    let recv_ty = cx.typeck_results.expr_ty(recv);
     if recv_ty.is_diag_item(cx, sym::Stdin)
         && let ExprKind::Path(QPath::Resolved(_, path)) = arg.peel_borrows().kind
         && let Res::Local(local_id) = path.res
@@ -44,7 +44,7 @@ pub fn check(cx: &LateContext<'_>, call: &Expr<'_>, recv: &Expr<'_>, arg: &Expr<
                 let data = if let ExprKind::MethodCall(segment, recv, args, span) = parent.kind {
                     if args.is_empty()
                         && segment.ident.name == sym::parse
-                        && let parse_result_ty = cx.typeck_results().expr_ty(parent)
+                        && let parse_result_ty = cx.typeck_results.expr_ty(parent)
                         && parse_result_ty.is_diag_item(cx, sym::Result)
                         && let ty::Adt(_, substs) = parse_result_ty.kind()
                         && let Some(ok_ty) = substs[0].as_type()

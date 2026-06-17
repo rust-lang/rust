@@ -21,7 +21,7 @@ pub(super) fn check<'tcx>(
         && let ExprKind::Call(_, [repeat_arg]) = repeat_expr.kind
         && let Some(def_id) = fn_def_id(cx, repeat_expr)
         && cx.tcx.is_diagnostic_item(sym::iter_repeat, def_id)
-        && !get_expr_use_site(cx.tcx, cx.typeck_results(), expr.span.ctxt(), expr).is_ty_unified
+        && !get_expr_use_site(cx.tcx, cx.typeck_results, expr.span.ctxt(), expr).is_ty_unified
         && let Some(std_or_core) = std_or_core(cx)
         && msrv.meets(cx, msrvs::REPEAT_N)
     {

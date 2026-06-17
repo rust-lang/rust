@@ -18,7 +18,7 @@ pub(super) fn check<'tcx>(
     name_span: Span,
 ) {
     // Get receiver type
-    let ty = cx.typeck_results().expr_ty(recv).peel_refs();
+    let ty = cx.typeck_results.expr_ty(recv).peel_refs();
 
     if is_expr_used_or_unified(cx.tcx, expr) {
         return;

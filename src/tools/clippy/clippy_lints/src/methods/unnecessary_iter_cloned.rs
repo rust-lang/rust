@@ -94,11 +94,11 @@ pub fn check_for_loop_iter(
         let snippet = if let ExprKind::MethodCall(maybe_iter_method_name, collection, [], _) = receiver.kind
             && maybe_iter_method_name.ident.name == sym::iter
             && let Some(iterator_trait_id) = cx.tcx.get_diagnostic_item(sym::Iterator)
-            && let receiver_ty = cx.typeck_results().expr_ty(receiver)
+            && let receiver_ty = cx.typeck_results.expr_ty(receiver)
             && implements_trait(cx, receiver_ty, iterator_trait_id, &[])
             && let Some(iter_item_ty) = get_iterator_item_ty(cx, receiver_ty)
             && let Some(into_iterator_trait_id) = cx.tcx.get_diagnostic_item(sym::IntoIterator)
-            && let collection_ty = cx.typeck_results().expr_ty(collection)
+            && let collection_ty = cx.typeck_results.expr_ty(collection)
             && implements_trait(cx, collection_ty, into_iterator_trait_id, &[])
             && let Some(into_iter_item_ty) = cx.get_associated_type(collection_ty, into_iterator_trait_id, sym::Item)
             && iter_item_ty == into_iter_item_ty
