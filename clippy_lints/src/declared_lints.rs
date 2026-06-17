@@ -367,6 +367,7 @@ pub static LINTS: &[&::declare_clippy_lint::LintInfo] = &[
     crate::methods::CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS_INFO,
     crate::methods::CHARS_LAST_CMP_INFO,
     crate::methods::CHARS_NEXT_CMP_INFO,
+    crate::methods::CHUNKS_EXACT_TO_AS_CHUNKS_INFO,
     crate::methods::CLEAR_WITH_DRAIN_INFO,
     crate::methods::CLONE_ON_COPY_INFO,
     crate::methods::CLONE_ON_REF_PTR_INFO,

@@ -10,6 +10,7 @@ mod chars_last_cmp;
 mod chars_last_cmp_with_unwrap;
 mod chars_next_cmp;
 mod chars_next_cmp_with_unwrap;
+mod chunks_exact_to_as_chunks;
 mod clear_with_drain;
 mod clone_on_copy;
 mod clone_on_ref_ptr;
@@ -361,6 +362,32 @@ declare_clippy_lint! {
     pub CHARS_NEXT_CMP,
     style,
     "using `.chars().next()` to check if a string starts with a char"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `chunks_exact` or `chunks_exact_mut` with a constant chunk size.
+    ///
+    /// ### Why is this bad?
+    /// `as_chunks` provides better ergonomics and type safety by returning arrays instead of slices.
+    /// It was stabilized in Rust 1.88.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let slice = [1, 2, 3, 4, 5, 6];
+    /// let mut it = slice.chunks_exact(2);
+    /// for chunk in it {}
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let slice = [1, 2, 3, 4, 5, 6];
+    /// let (chunks, remainder) = slice.as_chunks::<2>();
+    /// for chunk in chunks {}
+    /// ```
+    #[clippy::version = "1.93.0"]
+    pub CHUNKS_EXACT_TO_AS_CHUNKS,
+    style,
+    "using `chunks_exact` with constant when `as_chunks` is more ergonomic"
 }
 
 declare_clippy_lint! {
@@ -4873,6 +4900,7 @@ impl_lint_pass!(Methods => [
     CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS,
     CHARS_LAST_CMP,
     CHARS_NEXT_CMP,
+    CHUNKS_EXACT_TO_AS_CHUNKS,
     CLEAR_WITH_DRAIN,
     CLONED_INSTEAD_OF_COPIED,
     CLONE_ON_COPY,
@@ -5232,6 +5260,9 @@ impl Methods {
                         },
                         _ => {},
                     }
+                },
+                (name @ (sym::chunks_exact | sym::chunks_exact_mut), [arg]) => {
+                    chunks_exact_to_as_chunks::check(cx, recv, arg, expr, call_span, name, self.msrv);
                 },
                 (sym::and_then, [arg]) => {
                     manual_option_zip::check(cx, expr, recv, arg, self.msrv);

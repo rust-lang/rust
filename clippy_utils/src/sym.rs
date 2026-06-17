@@ -175,6 +175,8 @@ generate! {
     checked_sub,
     child_id,
     child_kill,
+    chunks_exact,
+    chunks_exact_mut,
     clamp,
     clippy_utils,
     clone_into,
