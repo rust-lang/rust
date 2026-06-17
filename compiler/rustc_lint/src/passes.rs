@@ -109,7 +109,7 @@ macro_rules! declare_combined_late_lint_pass {
                 }
             }
 
-            $v fn get_lints() -> $crate::LintVec {
+            $v fn lint_vec() -> $crate::LintVec {
                 let mut lints = Vec::new();
                 $(lints.extend_from_slice(&$pass::lint_vec());)*
                 lints
@@ -126,7 +126,7 @@ macro_rules! declare_combined_late_lint_pass {
                 stringify!($name)
             }
             fn get_lints(&self) -> LintVec {
-                $name::get_lints()
+                $name::lint_vec()
             }
         }
     )
@@ -226,7 +226,7 @@ macro_rules! declare_combined_early_lint_pass {
                 }
             }
 
-            $v fn get_lints() -> $crate::LintVec {
+            $v fn lint_vec() -> $crate::LintVec {
                 let mut lints = Vec::new();
                 $(lints.extend_from_slice(&$pass::lint_vec());)*
                 lints
