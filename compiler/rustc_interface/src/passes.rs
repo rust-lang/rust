@@ -87,7 +87,7 @@ fn pre_expansion_lint<'a>(
     sess: &Session,
     features: &Features,
     lint_store: &LintStore,
-    registered_tools: &RegisteredTools,
+    registered_lint_tools: &RegisteredTools,
     check_node: EarlyCheckNode<'a>,
     node_name: Symbol,
 ) {
@@ -98,7 +98,7 @@ fn pre_expansion_lint<'a>(
                 features,
                 true,
                 lint_store,
-                registered_tools,
+                registered_lint_tools,
                 None,
                 check_node,
             );
@@ -114,14 +114,14 @@ impl LintStoreExpand for LintStoreExpandImpl<'_> {
         &self,
         sess: &Session,
         features: &Features,
-        registered_tools: &RegisteredTools,
+        registered_lint_tools: &RegisteredTools,
         node_id: ast::NodeId,
         attrs: &[ast::Attribute],
         items: &[Box<ast::Item>],
         name: Symbol,
     ) {
         let check_node = EarlyCheckNode::LoadedMod(node_id, attrs, items);
-        pre_expansion_lint(sess, features, self.0, registered_tools, check_node, name);
+        pre_expansion_lint(sess, features, self.0, registered_lint_tools, check_node, name);
     }
 }
 
@@ -144,7 +144,7 @@ fn configure_and_expand(
         sess,
         features,
         lint_store,
-        tcx.registered_tools(()),
+        tcx.registered_lint_tools(()),
         EarlyCheckNode::CrateRoot(&krate, pre_configured_attrs),
         crate_name,
     );
@@ -475,7 +475,7 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
         tcx.features(),
         false,
         lint_store,
-        tcx.registered_tools(()),
+        tcx.registered_lint_tools(()),
         Some(lint_buffer),
         EarlyCheckNode::CrateRoot(&*krate, &*krate.attrs),
     )
@@ -791,7 +791,8 @@ fn resolver_for_lowering_raw<'tcx>(
     &'tcx ty::ResolverGlobalCtxt,
 ) {
     let arenas = WorkerLocal::new(|_| Resolver::arenas());
-    let _ = tcx.registered_tools(()); // Uses `crate_for_resolver`.
+    let _ = tcx.registered_attr_tools(()); // Uses `crate_for_resolver`.
+    let _ = tcx.registered_lint_tools(()); // Uses `crate_for_resolver`.
     let (krate, pre_configured_attrs) = tcx.crate_for_resolver(()).steal();
     let mut resolver = Resolver::new(
         tcx,
