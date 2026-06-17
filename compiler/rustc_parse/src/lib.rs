@@ -15,7 +15,7 @@ use std::sync::Arc;
 
 use rustc_ast as ast;
 use rustc_ast::token;
-use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Diag, EmissionGuarantee, FatalError, PResult, pluralize};
 pub use rustc_lexer::UNICODE_VERSION;
@@ -251,10 +251,95 @@ pub fn parse_in<'a, T>(
     Ok(result)
 }
 
-pub fn fake_token_stream_for_item(psess: &ParseSess, item: &ast::Item) -> TokenStream {
+pub fn fake_token_stream_for_item(
+    psess: &ParseSess,
+    item: &ast::Item,
+    attr_to_exclude: Option<&ast::Attribute>,
+) -> TokenStream {
+    if let Some(tokens) = fake_token_stream_for_file_mod(psess, item, attr_to_exclude) {
+        return tokens;
+    }
+
     let source = pprust::item_to_string(item);
     let filename = FileName::macro_expansion_source_code(&source);
     unwrap_or_emit_fatal(source_str_to_stream(psess, filename, source, Some(item.span)))
+}
+
+fn fake_token_stream_for_file_mod(
+    psess: &ParseSess,
+    item: &ast::Item,
+    attr_to_exclude: Option<&ast::Attribute>,
+) -> Option<TokenStream> {
+    let ast::ItemKind::Mod(safety, ident, ast::ModKind::Loaded(_, ast::Inline::No { .. }, spans)) =
+        &item.kind
+    else {
+        return None;
+    };
+
+    let attrs_hi = item
+        .attrs
+        .iter()
+        .filter(|attr| attr.style == ast::AttrStyle::Inner)
+        .map(|attr| attr.span.hi())
+        .chain(
+            attr_to_exclude
+                .filter(|attr| attr.style == ast::AttrStyle::Inner)
+                .map(|attr| attr.span.hi()),
+        )
+        .max()
+        .unwrap_or(spans.inject_use_span.lo());
+    let body_span = spans.inner_span.with_lo(attrs_hi);
+    let body_src = psess.source_map().span_to_snippet(body_span).ok()?;
+    let body_stream = unwrap_or_emit_fatal(lexer::lex_token_trees(
+        psess,
+        &body_src,
+        body_span.lo(),
+        None,
+        StripTokens::Nothing,
+    ));
+
+    let mut body_tts = Vec::new();
+    for attr in item.attrs.iter().filter(|attr| attr.style == ast::AttrStyle::Inner) {
+        body_tts.extend(attr.token_trees());
+    }
+    body_tts.extend(body_stream.iter().cloned());
+
+    // Synthesize only the `mod name { ... }` wrapper. The body tokens come from
+    // the loaded file so diagnostics inside the module keep their real spans.
+    let wrapper = ast::Item {
+        attrs: item
+            .attrs
+            .iter()
+            .filter(|attr| attr.style == ast::AttrStyle::Outer)
+            .cloned()
+            .collect(),
+        id: item.id,
+        span: item.span,
+        vis: item.vis.clone(),
+        kind: ast::ItemKind::Mod(
+            *safety,
+            *ident,
+            ast::ModKind::Loaded(Default::default(), ast::Inline::Yes, ast::ModSpans::default()),
+        ),
+        tokens: None,
+    };
+
+    let source = pprust::item_to_string(&wrapper);
+    let filename = FileName::macro_expansion_source_code(&source);
+    let wrapper_stream =
+        unwrap_or_emit_fatal(source_str_to_stream(psess, filename, source, Some(item.span)));
+    let mut wrapper_tts: Vec<_> = wrapper_stream.iter().cloned().collect();
+
+    let Some(TokenTree::Delimited(_, _, token::Delimiter::Brace, stream)) =
+        wrapper_tts.iter_mut().rev().find(
+            |tt| matches!(tt, TokenTree::Delimited(_, _, token::Delimiter::Brace, _)),
+        )
+    else {
+        return None;
+    };
+    *stream = TokenStream::new(body_tts);
+
+    Some(TokenStream::new(wrapper_tts))
 }
 
 pub fn fake_token_stream_for_foreign_item(
