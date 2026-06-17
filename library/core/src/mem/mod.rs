@@ -439,6 +439,8 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 ///       call, but may panic or otherwise return the wrong value, as the
 ///       extern type's layout is not known. This is the same behavior as
 ///       [`size_of_val`] on a reference to a type with an extern type tail.
+///       Since extern types are unstable, the requirements and behavior for this case may change
+///       in the future.
 ///     - No other kind of unsized tail currently exists. If more kinds of unsized tails get
 ///       introduced in the future, the documentation of this function will have to be extended
 ///       before it can be used for such types.
@@ -620,6 +622,8 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 ///       call, but may panic or otherwise return the wrong value, as the
 ///       extern type's layout is not known. This is the same behavior as
 ///       [`align_of_val`] on a reference to a type with an extern type tail.
+///       Since extern types are unstable, the requirements and behavior for this case may change
+///       in the future.
 ///     - No other kind of unsized tail currently exists. If more kinds of unsized tails get
 ///       introduced in the future, the documentation of this function will have to be extended
 ///       before it can be used for such types.
