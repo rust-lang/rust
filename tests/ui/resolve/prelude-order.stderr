@@ -1,9 +1,3 @@
-error[E0433]: cannot find `inner` in `type_ns`
-  --> $DIR/prelude-order.rs:62:12
-   |
-LL | #[type_ns::inner]
-   |            ^^^^^ could not find `inner` in `type_ns`
-
 error[E0433]: cannot find `inner` in `usize`
   --> $DIR/prelude-order.rs:74:10
    |
@@ -20,6 +14,54 @@ help: consider importing this enum instead
    |
 LL + use std::option::Option;
    |
+
+error[E0659]: `type_ns` is ambiguous
+  --> $DIR/prelude-order.rs:62:3
+   |
+LL | #[type_ns::inner]
+   |   ^^^^^^^ ambiguous name
+   |
+   = note: ambiguous because of a name conflict with a tool attribute
+note: `type_ns` could refer to the tool module defined here
+  --> $DIR/prelude-order.rs:46:18
+   |
+LL | #![register_tool(type_ns)] // extern prelude. type.
+   |                  ^^^^^^^
+note: `type_ns` could also refer to the crate imported here
+  --> $DIR/prelude-order.rs:51:1
+   |
+LL | extern crate macro_helpers as type_ns; // tool prelude. type.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: use `crate::type_ns` to refer to this crate unambiguously
+
+error[E0659]: `i8` is ambiguous
+  --> $DIR/prelude-order.rs:66:3
+   |
+LL | #[i8::inner]
+   |   ^^ ambiguous name
+   |
+   = note: ambiguous because of a name conflict with a tool attribute
+   = note: `i8` could refer to a builtin type
+note: `i8` could also refer to the tool module defined here
+  --> $DIR/prelude-order.rs:47:18
+   |
+LL | #![register_tool(i8)]      // lang   prelude. type.
+   |                  ^^
+
+error[E0659]: `Sync` is ambiguous
+  --> $DIR/prelude-order.rs:70:3
+   |
+LL | #[Sync::not_real]
+   |   ^^^^ ambiguous name
+   |
+   = note: ambiguous because of a name conflict with a tool attribute
+note: `Sync` could refer to the tool module defined here
+  --> $DIR/prelude-order.rs:48:18
+   |
+LL | #![register_tool(Sync)]    // libs   prelude. type.
+   |                  ^^^^
+note: `Sync` could also refer to a trait from prelude
+  --> $SRC_DIR/std/src/prelude/mod.rs:LL:COL
 
 error[E0308]: mismatched types
   --> $DIR/prelude-order.rs:83:1
@@ -41,7 +83,7 @@ LL | #[global_allocator]
    |
    = note: this error originates in the attribute macro `global_allocator` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 5 previous errors
+error: aborting due to 7 previous errors
 
-Some errors have detailed explanations: E0308, E0433, E0573.
+Some errors have detailed explanations: E0308, E0433, E0573, E0659.
 For more information about an error, try `rustc --explain E0308`.

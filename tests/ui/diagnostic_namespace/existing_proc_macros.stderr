@@ -1,0 +1,20 @@
+error[E0659]: `diagnostic` is ambiguous
+  --> $DIR/existing_proc_macros.rs:18:7
+   |
+LL |     #[diagnostic::on_unimplemented(message = "")]
+   |       ^^^^^^^^^^ ambiguous name
+   |
+   = note: ambiguous because of a name conflict with a tool attribute
+   = note: `diagnostic` could refer to a tool module
+note: `diagnostic` could also refer to the module defined here
+  --> $DIR/existing_proc_macros.rs:14:5
+   |
+LL | /     mod diagnostic {
+LL | |         pub use proc_macro_helper::diagnostic as on_unimplemented;
+LL | |     }
+   | |_____^
+   = help: use `self::diagnostic` to refer to this module unambiguously
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0659`.

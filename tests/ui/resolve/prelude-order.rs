@@ -13,10 +13,10 @@
 Type:
 | ...... |  tool  | extern | macro  | lang   | libs |
 |   tool |    N/A |                   mirror
-| extern | extern |    N/A |             universe
+| extern |      † |    N/A |             universe
 |  macro |    N/A |    N/A |    N/A |
-|   lang |   tool | extern |    N/A |   N/A  |
-|   libs |   tool | extern |    N/A |   X    |  N/A |
+|   lang |      † | extern |    N/A |   N/A  |
+|   libs |      † | extern |    N/A |   X    |  N/A |
 
 Macro:
 | ...... |  tool  | extern | macro  | lang   | libs |
@@ -28,7 +28,7 @@ Macro:
 
 Value: N/A. Only libs has items in the value namespace.
 
-† ambiguous
+† ambiguous if used as attributes
 X don't care (controlled namespace with no overlap)
 
 * Types are tested with `#[name::inner]`. Macros are tested with `#[name]`.
@@ -59,15 +59,15 @@ extern crate macro_helpers as _;
 /* lang and libs implicitly in scope */
 
 // tool/extern -> extern
-#[type_ns::inner] //~ ERROR cannot find `inner` in `type_ns`
+#[type_ns::inner] //~ ERROR ambiguous
 fn t1() {}
 
 // tool/lang -> tool
-#[i8::inner] // ok
+#[i8::inner] //~ ERROR ambiguous
 fn t2() {}
 
 // tool/libs -> tool
-#[Sync::not_real] // ok
+#[Sync::not_real] //~ ERROR ambiguous
 fn t3() {}
 
 // extern/lang -> extern

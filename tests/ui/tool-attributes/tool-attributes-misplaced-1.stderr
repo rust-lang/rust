@@ -24,31 +24,35 @@ error: cannot find macro `rustfmt` in this scope
 LL |     rustfmt!();
    |     ^^^^^^^
 
-error[E0573]: expected type, found tool module `rustfmt`
+error[E0425]: cannot find type `rustfmt` in this scope
   --> $DIR/tool-attributes-misplaced-1.rs:1:10
    |
 LL | type A = rustfmt;
-   |          ^^^^^^^ not a type
+   |          ^^^^^^^ not found in this scope
 
-error[E0573]: expected type, found tool attribute `rustfmt::skip`
-  --> $DIR/tool-attributes-misplaced-1.rs:2:10
-   |
-LL | type B = rustfmt::skip;
-   |          ^^^^^^^^^^^^^ not a type
-
-error[E0423]: expected value, found tool module `rustfmt`
+error[E0425]: cannot find value `rustfmt` in this scope
   --> $DIR/tool-attributes-misplaced-1.rs:14:5
    |
 LL |     rustfmt;
-   |     ^^^^^^^ not a value
+   |     ^^^^^^^ not found in this scope
 
-error[E0423]: expected value, found tool attribute `rustfmt::skip`
+error[E0433]: cannot find module or crate `rustfmt` in this scope
   --> $DIR/tool-attributes-misplaced-1.rs:17:5
    |
 LL |     rustfmt::skip;
-   |     ^^^^^^^^^^^^^ not a value
+   |     ^^^^^^^ use of unresolved module or unlinked crate `rustfmt`
+   |
+   = help: you might be missing a crate named `rustfmt`
+
+error[E0433]: cannot find module or crate `rustfmt` in this scope
+  --> $DIR/tool-attributes-misplaced-1.rs:2:10
+   |
+LL | type B = rustfmt::skip;
+   |          ^^^^^^^ use of unresolved module or unlinked crate `rustfmt`
+   |
+   = help: you might be missing a crate named `rustfmt`
 
 error: aborting due to 8 previous errors
 
-Some errors have detailed explanations: E0423, E0573.
-For more information about an error, try `rustc --explain E0423`.
+Some errors have detailed explanations: E0425, E0433.
+For more information about an error, try `rustc --explain E0425`.

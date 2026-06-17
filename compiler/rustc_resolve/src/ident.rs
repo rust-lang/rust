@@ -109,7 +109,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ScopeSet::All(ns)
             | ScopeSet::Module(ns, _)
             | ScopeSet::ModuleAndExternPrelude(ns, _) => (ns, None),
-            ScopeSet::ExternPrelude => (TypeNS, None),
+            ScopeSet::AttrParent | ScopeSet::ExternPrelude => (TypeNS, None),
             ScopeSet::Macro(macro_kind) => (MacroNS, Some(macro_kind)),
         };
         let module = match scope_set {
@@ -124,6 +124,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut scope = match ns {
             _ if module_only || module_and_extern_prelude => Scope::ModuleNonGlobs(module, None),
             _ if extern_prelude => Scope::ExternPreludeItems,
+            _ if matches!(scope_set, ScopeSet::AttrParent) => Scope::ToolPrelude,
             TypeNS | ValueNS => Scope::ModuleNonGlobs(module, None),
             MacroNS => Scope::DeriveHelpers(parent_scope.expansion),
         };
@@ -156,7 +157,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 Scope::ExternPreludeItems | Scope::ExternPreludeFlags => {
                     use_prelude || module_and_extern_prelude || extern_prelude
                 }
-                Scope::ToolPrelude => use_prelude,
+                Scope::ToolPrelude => true,
                 Scope::StdLibPrelude => use_prelude || ns == MacroNS,
                 Scope::BuiltinTypes => true,
             };
@@ -222,8 +223,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 Scope::BuiltinAttrs => break, // nowhere else to search
                 Scope::ExternPreludeItems => Scope::ExternPreludeFlags,
                 Scope::ExternPreludeFlags if module_and_extern_prelude || extern_prelude => break,
-                Scope::ExternPreludeFlags => Scope::ToolPrelude,
-                Scope::ToolPrelude => Scope::StdLibPrelude,
+                Scope::ExternPreludeFlags => Scope::StdLibPrelude,
+                Scope::ToolPrelude => Scope::ModuleNonGlobs(module, None),
                 Scope::StdLibPrelude => match ns {
                     TypeNS => Scope::BuiltinTypes,
                     ValueNS => break, // nowhere else to search
@@ -424,7 +425,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ScopeSet::All(ns)
             | ScopeSet::Module(ns, _)
             | ScopeSet::ModuleAndExternPrelude(ns, _) => (ns, None),
-            ScopeSet::ExternPrelude => (TypeNS, None),
+            ScopeSet::AttrParent | ScopeSet::ExternPrelude => (TypeNS, None),
             ScopeSet::Macro(macro_kind) => (MacroNS, Some(macro_kind)),
         };
         let derive_fallback_lint_id = match finalize {
@@ -720,7 +721,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     None => Err(Determinacy::Determined),
                 }
             }
-            Scope::ToolPrelude => match self.registered_tool_decls.get(&ident) {
+            Scope::ToolPrelude => match self.registered_tool_decls.get(&ident.name) {
                 Some(decl) => Ok(*decl),
                 None => Err(Determinacy::Determined),
             },
@@ -839,6 +840,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let ambiguity_error_kind = if is_builtin(innermost_res) || is_builtin(res) {
             Some(AmbiguityKind::BuiltinAttr)
+        } else if matches!(innermost_scope, Scope::ToolPrelude)
+            || matches!(scope, Scope::ToolPrelude)
+        {
+            Some(AmbiguityKind::ToolAttr)
         } else if innermost_res == derive_helper_compat {
             Some(AmbiguityKind::DeriveHelper)
         } else if res == derive_helper_compat && innermost_res != derive_helper {
@@ -1947,7 +1952,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             } else {
                 self.reborrow().resolve_ident_in_scope_set(
                     ident,
-                    ScopeSet::All(ns),
+                    if opt_ns == Some(MacroNS) && !is_last {
+                        // Resolving parent scope for MacroNS (where all attributes belong to, even
+                        // for tool or built-in macros).
+                        ScopeSet::AttrParent
+                    } else {
+                        ScopeSet::All(ns)
+                    },
                     parent_scope,
                     finalize,
                     ignore_decl,
