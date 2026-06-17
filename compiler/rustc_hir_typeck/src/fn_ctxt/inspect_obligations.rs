@@ -21,7 +21,7 @@ pub(crate) enum UseSubtyping {
     No,
 
     /// Use subtyping. [`FnCtxt::obligations_for_self_ty`] will return obligations
-    /// where the self type is a subtype or a supertype of the provided vid.
+    /// where the self type is related to the provided vid via subtyping.
     ///
     /// Using this requires extra care, as traits holding for a subtype or a supertype, does not
     /// necessarily imply that they hold for the respective supertype or subtype.
