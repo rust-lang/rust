@@ -959,20 +959,11 @@ impl<'ra> ExternModule<'ra> {
         span: Span,
         no_implicit_prelude: bool,
         arenas: &'ra ResolverArenas<'ra>,
-        on_unknown_attr: Option<OnUnknownData>,
     ) -> ExternModule<'ra> {
         assert!(!kind.is_local());
         let parent = parent.map(|m| m.to_module());
-        let data = ModuleData::new(
-            parent,
-            kind,
-            expn_id,
-            span,
-            no_implicit_prelude,
-            vis,
-            arenas,
-            on_unknown_attr,
-        );
+        let data =
+            ModuleData::new(parent, kind, expn_id, span, no_implicit_prelude, vis, arenas, None);
         ExternModule(Interned::new_unchecked(arenas.modules.alloc(data)))
     }
 
@@ -1948,7 +1939,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         expn_id: ExpnId,
         span: Span,
         no_implicit_prelude: bool,
-        on_unknown_attr: Option<OnUnknownData>,
     ) -> ExternModule<'ra> {
         let def_id = kind.def_id();
         let module = ExternModule::new(
@@ -1959,7 +1949,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             span,
             no_implicit_prelude,
             self.arenas,
-            on_unknown_attr,
         );
         self.extern_module_map.borrow_mut().insert(def_id, module);
         module

@@ -204,9 +204,19 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .iter()
             .map(|(import, import_error)| {
                 if let Some(ModuleOrUniformRoot::Module(module_data)) = import.imported_module.get()
-                    && let Some(on_unknown_attr) = &module_data.on_unknown_attr
-                    && let ModuleKind::Def(DefKind::Mod, _, _, name) = module_data.kind
+                    && let ModuleKind::Def(DefKind::Mod, def_id, _, name) = module_data.kind
                 {
+                    let directive = if let Some(on_unknown_attr) = &module_data.on_unknown_attr {
+                        &*on_unknown_attr.directive
+                    } else if !def_id.is_local()
+                        && let Some(d) =
+                            find_attr!(self.tcx, def_id, OnUnknown{ directive: Some(d) } => &**d)
+                    {
+                        d
+                    } else {
+                        return CustomDiagnostic::default();
+                    };
+
                     let this = if let Some(name) = name {
                         name.to_string()
                     } else if let Some(crate_name) = &self.tcx.sess.opts.crate_name {
@@ -217,10 +227,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     let unresolved = import_error.segment.map(|s| s.name).unwrap_or(kw::Underscore);
                     let args = FormatArgs { this, unresolved: unresolved.to_string(), .. };
 
-                    on_unknown_attr.directive.eval(None, &args)
+                    directive.eval(None, &args)
                 } else {
-                    // It's possible we're here because an attribute was on the wrong item,
-                    // as we don't do target checking when doing early parsing.
                     CustomDiagnostic::default()
                 }
             })
