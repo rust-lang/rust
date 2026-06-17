@@ -35,7 +35,7 @@ use crate::abi::FnAbiLlvmExt;
 use crate::builder::Builder;
 use crate::builder::autodiff::{adjust_activity_to_abi, generate_enzyme_call};
 use crate::builder::gpu_offload::{
-    OffloadKernelDims, gen_call_handling, gen_define_handling, register_offload,
+    OffloadKernelDims, gen_call_handling, gen_define_handling, register_offload, generate_decl,
 };
 use crate::context::CodegenCx;
 use crate::declare::declare_raw_fn;
@@ -243,6 +243,13 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 // offload *has* a return type, but somehow works without mentioning the place
                 return IntrinsicResult::WroteIntoPlace;
             }
+            sym::offload_get_num_devices => {
+                let (fn_decl, fn_ty) = generate_decl(self.cx);
+
+                let llval = self.call(fn_ty, None, None, fn_decl, &[], None, None);
+
+                return IntrinsicResult::Operand(OperandValue::Immediate(llval));
+            },
             sym::is_val_statically_known => {
                 if let OperandValue::Immediate(imm) = args[0].val {
                     self.call_intrinsic(
