@@ -3,9 +3,9 @@
 //! Check that we don't try to generate assembly for comptime
 //! fns, even when link-dead-code is active.
 
-#![feature(rustc_attrs)]
+#![feature(comptime)]
 
-#[rustc_comptime]
+#[comptime]
 fn f() {}
 
 fn main() {}

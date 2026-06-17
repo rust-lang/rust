@@ -3,7 +3,7 @@
 
 #![feature(rustc_attrs)]
 
-#[rustc_comptime]
+#[comptime]
 fn comptime() {}
 
 fn from_runtime() {

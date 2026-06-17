@@ -31,7 +31,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         match closure.coroutine_marker {
             Some(coroutine_marker) => self.lower_expr_coroutine_closure_with_move_exprs(
                 expr_hir_id,
-                attrs,
                 &closure.binder,
                 closure.capture_clause,
                 e.id,
@@ -63,7 +62,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_expr_coroutine_closure_with_move_exprs(
         &mut self,
         expr_hir_id: HirId,
-        attrs: &[rustc_attr_ir::Attribute],
         binder: &ClosureBinder,
         capture_clause: CaptureBy,
         closure_id: NodeId,
@@ -88,7 +86,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     body,
                     fn_decl_span,
                     fn_arg_span,
-                    attrs,
                 )
             });
         let Some(move_expr_state) = move_expr_state else {
@@ -232,7 +229,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             fn_decl_span: self.lower_span(fn_decl_span),
             fn_arg_span: Some(self.lower_span(fn_arg_span)),
             kind: closure_kind,
-            constness: self.lower_constness(attrs, constness),
+            constness: self.lower_constness(constness),
             explicit_captures,
         });
 
@@ -300,7 +297,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: &Expr,
         fn_decl_span: Span,
         fn_arg_span: Span,
-        attrs: &[rustc_attr_ir::Attribute],
     ) -> hir::ExprKind<'hir> {
         let closure_def_id = self.local_def_id(closure_id);
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
@@ -378,7 +374,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // knows that a `FnDecl` output type like `-> &str` actually means
             // "coroutine that returns &str", rather than directly returning a `&str`.
             kind: hir::ClosureKind::CoroutineClosure(coroutine_desugaring),
-            constness: self.lower_constness(attrs, constness),
+            constness: self.lower_constness(constness),
             explicit_captures,
         });
         hir::ExprKind::Closure(c)

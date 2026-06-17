@@ -1,14 +1,6 @@
 error: a function cannot be both `comptime` and `const`
   --> $DIR/const_comptime.rs:4:1
    |
-LL | #[rustc_comptime]
-   | ----------------- `comptime` because of this
-LL | const fn foo() {}
-   | ^^^^^ help: remove the `const`
-   |
-note: `const` implies the function can be called at runtime, too
-  --> $DIR/const_comptime.rs:4:1
-   |
 LL | const fn foo() {}
    | ^^^^^
 

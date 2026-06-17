@@ -29,6 +29,7 @@ mod cfg_accessible;
 mod cfg_eval;
 mod cfg_select;
 mod compile_error;
+mod comptime;
 mod concat;
 mod concat_bytes;
 mod define_opaque;
@@ -118,6 +119,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         bench: test::expand_bench,
         cfg_accessible: cfg_accessible::Expander,
         cfg_eval: cfg_eval::expand,
+        comptime: comptime::expand,
         define_opaque: define_opaque::expand,
         derive: derive::Expander { is_const: false },
         derive_const: derive::Expander { is_const: true },
