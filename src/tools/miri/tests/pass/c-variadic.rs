@@ -106,6 +106,20 @@ fn various_types() {
     }
 }
 
+fn equal_up_to_free_lifetime() {
+    // Types are considered equal up to free lifetimes: `*const &'static str`
+    // is the same as `*const &'a str`.
+    // Bound lifetimes (using e.g. `for<'_>`) are different.
+    #[expect(improper_ctypes_definitions)]
+    pub unsafe extern "C" fn foo(mut args: ...) -> &'static str {
+        unsafe { *args.next_arg::<*const &'static str>() }
+    }
+
+    let data = String::from("abc");
+    let x: &str = data.as_str();
+    assert_eq!(unsafe { foo(&raw const x) }, "abc");
+}
+
 fn clone() {
     if cfg!(force_intrinsic_fallback) {
         // Skip this test when we use the fallback bodies. The fallback body does
@@ -170,6 +184,7 @@ fn main() {
     forward_by_ref();
     nested();
     various_types();
+    equal_up_to_free_lifetime();
     clone();
     clone_and_advance();
 }
