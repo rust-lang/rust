@@ -310,7 +310,9 @@ impl<'tcx> InstanceKind<'tcx> {
 
     pub fn requires_caller_location(&self, tcx: TyCtxt<'_>) -> bool {
         match *self {
-            InstanceKind::Item(def_id) | InstanceKind::Virtual(def_id, _) => {
+            InstanceKind::Item(def_id)
+            | InstanceKind::Virtual(def_id, _)
+            | InstanceKind::VTableShim(def_id) => {
                 tcx.body_codegen_attrs(def_id).flags.contains(CodegenFnAttrFlags::TRACK_CALLER)
             }
             InstanceKind::ClosureOnceShim { call_once: _, closure: _, track_caller } => {
