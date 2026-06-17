@@ -1459,6 +1459,7 @@ fn check_impl_constness(
         suggestion_pre,
         marking: (),
         adding: (),
+        constness: constness.to_string(),
     });
 }
 

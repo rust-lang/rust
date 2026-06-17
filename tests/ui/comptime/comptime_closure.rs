@@ -1,8 +1,8 @@
-#![feature(rustc_attrs, stmt_expr_attributes)]
+#![feature(stmt_expr_attributes, comptime)]
 
 const _: () = {
-    let f = #[rustc_comptime]
-    //~^ ERROR: the `rustc_comptime` attribute cannot be used on closures
+    let f = #[comptime]
+    //~^ ERROR: only functions, trait impls, and methods may be comptime
     || ();
 
     // FIXME(comptime): closures should work, too.

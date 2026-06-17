@@ -1,4 +1,4 @@
-#![feature(rustc_attrs, const_trait_impl)]
+#![feature(const_trait_impl, comptime)]
 
 const trait Foo {
     fn foo(&self);
@@ -8,20 +8,19 @@ const trait Foo {
 
 struct Bar;
 
-#[rustc_comptime]
+#[comptime]
 impl Bar {
     fn boo(&self) {}
 }
 
-#[rustc_comptime]
-//~^ ERROR: cannot be used on trait impl
+#[comptime]
 impl Foo for Bar {
     fn foo(&self) {
         comptime_fn();
     }
 }
 
-#[rustc_comptime]
+#[comptime]
 fn comptime_fn() {}
 
 const _: () = {

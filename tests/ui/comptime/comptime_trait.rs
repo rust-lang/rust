@@ -1,30 +1,35 @@
-#![feature(rustc_attrs, const_trait_impl, trait_alias)]
+#![feature(const_trait_impl, trait_alias, comptime)]
 
-#[rustc_comptime]
-//~^ ERROR: the `rustc_comptime` attribute cannot be used on traits
+#[comptime]
+//~^ ERROR: only functions, trait impls, and methods may be comptime
 trait Trait {
     fn method(&self) {}
 }
 
 const impl Trait for () {}
+//~^ ERROR: const `impl` for trait `Trait` which is not `const`
 
-#[rustc_comptime]
-//~^ ERROR: the `rustc_comptime` attribute cannot be used on trait impl
+#[comptime]
 impl Trait for u32 {
+    //~^ ERROR: comptime `impl` for trait `Trait` which is not `const`
     fn method(&self) {
         comptime_fn();
     }
 }
 
-#[rustc_comptime]
+#[comptime]
 fn comptime_fn() {}
 
-#[rustc_comptime]
-//~^ ERROR: the `rustc_comptime` attribute cannot be used on trait aliases
+#[comptime]
+//~^ ERROR: only functions, trait impls, and methods may be comptime
 trait TraitAlias = const Trait;
+//~^ ERROR: `const` can only be applied to `const` traits
+//~| ERROR: `const` can only be applied to `const` traits
+//~| ERROR: `const` can only be applied to `const` traits
 
-#[rustc_comptime]
+#[comptime]
 fn func<T: const TraitAlias>(t: &T) {
+    //~^ ERROR: `const` can only be applied to `const` traits
     t.method()
     //~^ ERROR: cannot call non-const method `<T as Trait>::method` in constants
 }

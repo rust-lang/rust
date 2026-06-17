@@ -318,7 +318,7 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_trait_fn_not_const(&self, constness: Const, parent: &TraitOrImpl) {
-        let Const::Yes(span) = constness else {
+        let (Const::Yes(span) | Const::Always(span)) = constness else {
             return;
         };
 
@@ -362,6 +362,7 @@ impl<'a> AstValidator<'a> {
                 || make_trait_const_sugg.is_some(),
             make_impl_const_sugg,
             make_trait_const_sugg,
+            constness: constness.descr(),
         });
     }
 
@@ -874,7 +875,7 @@ impl<'a> AstValidator<'a> {
             None => (),
         }
         match constness {
-            Const::Always(span) => report_err(span, "rustc_comptime"),
+            Const::Always(span) => report_err(span, "comptime"),
             Const::Yes(span) => report_err(span, "const"),
             Const::No => (),
         }

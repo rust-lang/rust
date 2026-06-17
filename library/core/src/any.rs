@@ -785,7 +785,7 @@ impl TypeId {
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    #[rustc_comptime]
+    #[comptime]
     pub fn trait_info_of<'a, T: TryAsDynCompatible<'a> + ?Sized>(self) -> Option<TraitImpl<T>> {
         // SAFETY: The vtable was obtained for `T`, so it is guaranteed to be `DynMetadata<T>`.
         // The intrinsic can't infer this because it is designed to work with arbitrary TypeIds.
@@ -809,7 +809,7 @@ impl TypeId {
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    #[rustc_comptime]
+    #[comptime]
     pub fn trait_info_of_trait_type_id(
         self,
         trait_represented_by_type_id: TypeId,

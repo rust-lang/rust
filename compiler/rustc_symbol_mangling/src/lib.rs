@@ -88,6 +88,7 @@
 //! DefPaths which are much more robust in the face of changes to the code base.
 
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mono::{InstantiationMode, MonoItem};
