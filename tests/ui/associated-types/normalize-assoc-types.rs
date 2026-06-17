@@ -1,8 +1,9 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/22629>.
+//! Test transitive analysis for associated types. Collected types
+//! should be normalized and new obligations generated.
+
 //@ run-pass
 #![allow(unused_imports)]
-// Test transitive analysis for associated types. Collected types
-// should be normalized and new obligations generated.
-
 
 use std::borrow::{ToOwned, Cow};
 

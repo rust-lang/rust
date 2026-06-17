@@ -1,3 +1,4 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/22603>.
 //@ check-pass
 
 #![feature(unboxed_closures, fn_traits)]

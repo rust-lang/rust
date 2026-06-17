@@ -1,5 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/22471>.
+
 //@ check-pass
-#![allow(dead_code)]
 #![allow(type_alias_bounds)]
 
 type Foo<T> where T: Copy = Box<T>;

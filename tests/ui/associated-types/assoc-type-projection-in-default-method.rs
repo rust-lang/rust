@@ -1,3 +1,4 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/22036>.
 //@ run-pass
 
 trait DigitCollection: Sized {
