@@ -720,7 +720,8 @@ fn register_internals(store: &mut LintStore) {
             // Late pass: SymbolInternStringLiteral
             // Note: this one is not included in rustc::internal because rustc_driver crates
             // outside the compiler can't/shouldn't add preinterned symbols. For rustc itself,
-            // bootstrap enables this lint manually.
+            // bootstrap enables this lint manually. For rustdoc,
+            // `warn(symbol_intern_string_literal)` is used.
             // LintId::of(SYMBOL_INTERN_STRING_LITERAL),
             //
             // Late pass: RustcMustMatchExhaustively
