@@ -767,7 +767,7 @@ pub struct InferenceResult<'db> {
     pub(crate) type_of_pat: ArenaMap<PatId, StoredTy>,
     pub(crate) type_of_binding: ArenaMap<BindingId, StoredTy>,
     pub(crate) type_of_type_placeholder: FxHashMap<TypeRefId, StoredTy>,
-    pub(crate) type_of_opaque: FxHashMap<InternedOpaqueTyId, StoredTy>,
+    pub(crate) type_of_opaque: FxHashMap<InternedOpaqueTyId<'db>, StoredTy>,
 
     /// Whether there are any type-mismatching errors in the result.
     // FIXME: This isn't as useful as initially thought due to us falling back placeholders to

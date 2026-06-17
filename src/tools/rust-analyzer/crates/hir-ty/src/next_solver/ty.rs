@@ -176,7 +176,7 @@ impl<'db> Ty<'db> {
 
     pub fn new_opaque(
         interner: DbInterner<'db>,
-        def_id: InternedOpaqueTyId,
+        def_id: InternedOpaqueTyId<'db>,
         args: GenericArgs<'db>,
     ) -> Self {
         Ty::new_alias(

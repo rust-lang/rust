@@ -43,7 +43,7 @@ pub enum SolverDefId<'db> {
     InternedClosureId(InternedClosureId<'db>),
     InternedCoroutineId(InternedCoroutineId<'db>),
     InternedCoroutineClosureId(InternedCoroutineClosureId<'db>),
-    InternedOpaqueTyId(InternedOpaqueTyId),
+    InternedOpaqueTyId(InternedOpaqueTyId<'db>),
     EnumVariantId(EnumVariantId),
     Ctor(Ctor),
 }
@@ -136,7 +136,7 @@ impl_from!(
     InternedClosureId<'db>,
     InternedCoroutineId<'db>,
     InternedCoroutineClosureId<'db>,
-    InternedOpaqueTyId,
+    InternedOpaqueTyId<'db>,
     EnumVariantId,
     Ctor
     for SolverDefId<'db>
@@ -457,7 +457,7 @@ declare_id_wrapper_with_lt!(ClosureIdWrapper, InternedClosureId);
 declare_id_wrapper_with_lt!(CoroutineIdWrapper, InternedCoroutineId);
 declare_id_wrapper_with_lt!(CoroutineClosureIdWrapper, InternedCoroutineClosureId);
 declare_id_wrapper!(AdtIdWrapper, AdtId);
-declare_id_wrapper!(OpaqueTyIdWrapper, InternedOpaqueTyId, OpaqueTyIdWrapper);
+declare_id_wrapper_with_lt!(OpaqueTyIdWrapper, InternedOpaqueTyId, OpaqueTyIdWrapper<'db>);
 
 macro_rules! declare_ty_const_pair {
     ( $ty_id_name:ident, $const_id_name:ident, $term_id_name:ident ) => {
