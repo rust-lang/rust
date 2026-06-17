@@ -1128,6 +1128,9 @@ impl<'db> Interner for DbInterner<'db> {
             SolverDefId::ConstId(def_id) => {
                 AliasTermKind::UnevaluatedConst { def_id: GeneralConstIdWrapper(def_id.into()) }
             }
+            SolverDefId::StaticId(def_id) => {
+                AliasTermKind::UnevaluatedConst { def_id: GeneralConstIdWrapper(def_id.into()) }
+            }
             SolverDefId::AnonConstId(def_id) => {
                 AliasTermKind::UnevaluatedConst { def_id: GeneralConstIdWrapper(def_id.into()) }
             }
