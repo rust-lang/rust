@@ -1770,6 +1770,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// Whether `comptime` is allowed here is checked by the `comptime` attribute parser.
     pub(super) fn lower_constness(&mut self, attrs: &[hir::Attribute], c: Const) -> hir::Constness {
         let mut constness = match c {
+            Const::Always(_) => hir::Constness::Const { always: true },
             Const::Yes(_) => hir::Constness::Const { always: false },
             Const::No => hir::Constness::NotConst,
         };

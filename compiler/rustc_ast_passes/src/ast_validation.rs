@@ -874,6 +874,7 @@ impl<'a> AstValidator<'a> {
             None => (),
         }
         match constness {
+            Const::Always(span) => report_err(span, "rustc_comptime"),
             Const::Yes(span) => report_err(span, "const"),
             Const::No => (),
         }
