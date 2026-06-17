@@ -1,5 +1,5 @@
 error: function items cannot be used as const arguments
-  --> $DIR/trait-assoc-fn-as-const-arg.rs:4:26
+  --> $DIR/trait-assoc-fn-as-const-arg.rs:6:26
    |
 LL |     fn x(&self) -> [i32; Bar::x];
    |                          ^^^^^^
