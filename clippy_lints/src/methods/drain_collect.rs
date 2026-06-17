@@ -1,10 +1,10 @@
 use crate::methods::DRAIN_COLLECT;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::snippet;
-use clippy_utils::{is_range_full, std_or_core, sym};
+use clippy_utils::{is_full_collection_range, std_or_core, sym};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, QPath};
+use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 
@@ -21,13 +21,7 @@ pub(super) fn check(cx: &LateContext<'_>, arg: Option<&Expr<'_>>, expr: &Expr<'_
                 ty.opt_diag_name(cx),
                 Some(sym::HashMap | sym::HashSet | sym::BinaryHeap | sym::Vec | sym::VecDeque)
             ))
-        && arg.is_none_or(|arg| {
-            if let ExprKind::Path(QPath::Resolved(None, path)) = recv.kind {
-                is_range_full(cx, arg, Some(path))
-            } else {
-                false
-            }
-        })
+        && arg.is_none_or(|arg| is_full_collection_range(cx, recv.res_local_id(), arg))
         && let Some(exec_context) = std_or_core(cx)
     {
         let recv = snippet(cx, recv.span, "<expr>");

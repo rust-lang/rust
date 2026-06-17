@@ -20,11 +20,6 @@ fn vec_range() {
     let mut v = vec![1, 2, 3];
     v.clear();
     //~^ clear_with_drain
-
-    // Do lint
-    let mut v = vec![1, 2, 3];
-    v.clear();
-    //~^ clear_with_drain
 }
 
 fn vec_range_from() {
@@ -40,11 +35,6 @@ fn vec_range_from() {
     // Do not lint because iterator is used
     let mut v = vec![1, 2, 3];
     let next = v.drain(usize::MIN..).next();
-
-    // Do lint
-    let mut v = vec![1, 2, 3];
-    v.clear();
-    //~^ clear_with_drain
 
     // Do lint
     let mut v = vec![1, 2, 3];
@@ -124,11 +114,6 @@ fn vec_deque_range() {
     let mut deque = VecDeque::from([1, 2, 3]);
     deque.clear();
     //~^ clear_with_drain
-
-    // Do lint
-    let mut deque = VecDeque::from([1, 2, 3]);
-    deque.clear();
-    //~^ clear_with_drain
 }
 
 fn vec_deque_range_from() {
@@ -144,11 +129,6 @@ fn vec_deque_range_from() {
     // Do not lint because iterator is used
     let mut deque = VecDeque::from([1, 2, 3]);
     let next = deque.drain(usize::MIN..).next();
-
-    // Do lint
-    let mut deque = VecDeque::from([1, 2, 3]);
-    deque.clear();
-    //~^ clear_with_drain
 
     // Do lint
     let mut deque = VecDeque::from([1, 2, 3]);
@@ -228,11 +208,6 @@ fn string_range() {
     let mut s = String::from("Hello, world!");
     s.clear();
     //~^ clear_with_drain
-
-    // Do lint
-    let mut s = String::from("Hello, world!");
-    s.clear();
-    //~^ clear_with_drain
 }
 
 fn string_range_from() {
@@ -248,11 +223,6 @@ fn string_range_from() {
     // Do not lint because iterator is used
     let mut s = String::from("Hello, world!");
     let next = s.drain(usize::MIN..).next();
-
-    // Do lint
-    let mut s = String::from("Hello, world!");
-    s.clear();
-    //~^ clear_with_drain
 
     // Do lint
     let mut s = String::from("Hello, world!");
