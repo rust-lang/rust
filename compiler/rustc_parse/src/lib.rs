@@ -330,10 +330,10 @@ fn fake_token_stream_for_file_mod(
         unwrap_or_emit_fatal(source_str_to_stream(psess, filename, source, Some(item.span)));
     let mut wrapper_tts: Vec<_> = wrapper_stream.iter().cloned().collect();
 
-    let Some(TokenTree::Delimited(_, _, token::Delimiter::Brace, stream)) =
-        wrapper_tts.iter_mut().rev().find(
-            |tt| matches!(tt, TokenTree::Delimited(_, _, token::Delimiter::Brace, _)),
-        )
+    let Some(TokenTree::Delimited(_, _, token::Delimiter::Brace, stream)) = wrapper_tts
+        .iter_mut()
+        .rev()
+        .find(|tt| matches!(tt, TokenTree::Delimited(_, _, token::Delimiter::Brace, _)))
     else {
         return None;
     };
