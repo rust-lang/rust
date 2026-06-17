@@ -387,160 +387,75 @@ macro_rules! declare_id_wrapper {
     };
 }
 
+/// This is similar to [`declare_id_wrapper`], but handles ids which have the `'db` lifetime.
+macro_rules! declare_id_wrapper_with_lt {
+    ($name:ident, $wraps:ident) => {
+        declare_id_wrapper_with_lt!($name, $wraps, SolverDefId<'db>);
+    };
+
+    ($name:ident, $wraps:ident, $local:ty) => {
+        declare_id_wrapper_with_lt!($name, $wraps, $local, no_try_from);
+
+        impl<'db> TryFrom<SolverDefId<'db>> for $name<'db> {
+            type Error = ();
+
+            #[inline]
+            fn try_from(value: SolverDefId<'db>) -> Result<Self, Self::Error> {
+                match value {
+                    SolverDefId::$wraps(it) => Ok(Self(it)),
+                    _ => Err(()),
+                }
+            }
+        }
+    };
+
+    ($name:ident, $wraps:ident, $local:ty, no_try_from) => {
+        #[derive(Clone, Copy, PartialEq, Eq, Hash)]
+        pub struct $name<'db>(pub $wraps<'db>);
+
+        impl std::fmt::Debug for $name<'_> {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                std::fmt::Debug::fmt(&SolverDefId::from(self.0), f)
+            }
+        }
+
+        impl<'db> From<$name<'db>> for $wraps<'db> {
+            #[inline]
+            fn from(value: $name<'db>) -> $wraps<'db> {
+                value.0
+            }
+        }
+
+        impl<'db> From<$wraps<'db>> for $name<'db> {
+            #[inline]
+            fn from(value: $wraps<'db>) -> $name<'db> {
+                Self(value)
+            }
+        }
+
+        impl<'db> From<$name<'db>> for SolverDefId<'db> {
+            #[inline]
+            fn from(value: $name<'db>) -> SolverDefId<'db> {
+                value.0.into()
+            }
+        }
+
+        impl<'db> inherent::DefId<DbInterner<'db>, $local> for $name<'db> {
+            fn as_local(self) -> Option<$local> {
+                Some(self.into())
+            }
+            fn is_local(self) -> bool {
+                true
+            }
+        }
+    };
+}
+
 declare_id_wrapper!(TraitIdWrapper, TraitId);
 declare_id_wrapper!(TypeAliasIdWrapper, TypeAliasId);
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ClosureIdWrapper<'db>(pub InternedClosureId<'db>);
-
-impl std::fmt::Debug for ClosureIdWrapper<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Debug::fmt(&SolverDefId::from(self.0), f)
-    }
-}
-
-impl<'db> From<ClosureIdWrapper<'db>> for InternedClosureId<'db> {
-    #[inline]
-    fn from(value: ClosureIdWrapper<'db>) -> InternedClosureId<'db> {
-        value.0
-    }
-}
-
-impl<'db> From<InternedClosureId<'db>> for ClosureIdWrapper<'db> {
-    #[inline]
-    fn from(value: InternedClosureId<'db>) -> ClosureIdWrapper<'db> {
-        Self(value)
-    }
-}
-
-impl<'db> From<ClosureIdWrapper<'db>> for SolverDefId<'db> {
-    #[inline]
-    fn from(value: ClosureIdWrapper<'db>) -> SolverDefId<'db> {
-        value.0.into()
-    }
-}
-
-impl<'db> TryFrom<SolverDefId<'db>> for ClosureIdWrapper<'db> {
-    type Error = ();
-
-    #[inline]
-    fn try_from(value: SolverDefId<'db>) -> Result<Self, Self::Error> {
-        match value {
-            SolverDefId::InternedClosureId(it) => Ok(Self(it)),
-            _ => Err(()),
-        }
-    }
-}
-
-impl<'db> inherent::DefId<DbInterner<'db>, SolverDefId<'db>> for ClosureIdWrapper<'db> {
-    fn as_local(self) -> Option<SolverDefId<'db>> {
-        Some(self.into())
-    }
-    fn is_local(self) -> bool {
-        true
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct CoroutineIdWrapper<'db>(pub InternedCoroutineId<'db>);
-
-impl std::fmt::Debug for CoroutineIdWrapper<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Debug::fmt(&SolverDefId::from(self.0), f)
-    }
-}
-
-impl<'db> From<CoroutineIdWrapper<'db>> for InternedCoroutineId<'db> {
-    #[inline]
-    fn from(value: CoroutineIdWrapper<'db>) -> InternedCoroutineId<'db> {
-        value.0
-    }
-}
-
-impl<'db> From<InternedCoroutineId<'db>> for CoroutineIdWrapper<'db> {
-    #[inline]
-    fn from(value: InternedCoroutineId<'db>) -> CoroutineIdWrapper<'db> {
-        Self(value)
-    }
-}
-
-impl<'db> From<CoroutineIdWrapper<'db>> for SolverDefId<'db> {
-    #[inline]
-    fn from(value: CoroutineIdWrapper<'db>) -> SolverDefId<'db> {
-        value.0.into()
-    }
-}
-
-impl<'db> TryFrom<SolverDefId<'db>> for CoroutineIdWrapper<'db> {
-    type Error = ();
-
-    #[inline]
-    fn try_from(value: SolverDefId<'db>) -> Result<Self, Self::Error> {
-        match value {
-            SolverDefId::InternedCoroutineId(it) => Ok(Self(it)),
-            _ => Err(()),
-        }
-    }
-}
-
-impl<'db> inherent::DefId<DbInterner<'db>, SolverDefId<'db>> for CoroutineIdWrapper<'db> {
-    fn as_local(self) -> Option<SolverDefId<'db>> {
-        Some(self.into())
-    }
-    fn is_local(self) -> bool {
-        true
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct CoroutineClosureIdWrapper<'db>(pub InternedCoroutineClosureId<'db>);
-
-impl std::fmt::Debug for CoroutineClosureIdWrapper<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Debug::fmt(&SolverDefId::from(self.0), f)
-    }
-}
-
-impl<'db> From<CoroutineClosureIdWrapper<'db>> for InternedCoroutineClosureId<'db> {
-    #[inline]
-    fn from(value: CoroutineClosureIdWrapper<'db>) -> InternedCoroutineClosureId<'db> {
-        value.0
-    }
-}
-
-impl<'db> From<InternedCoroutineClosureId<'db>> for CoroutineClosureIdWrapper<'db> {
-    #[inline]
-    fn from(value: InternedCoroutineClosureId<'db>) -> CoroutineClosureIdWrapper<'db> {
-        Self(value)
-    }
-}
-
-impl<'db> From<CoroutineClosureIdWrapper<'db>> for SolverDefId<'db> {
-    #[inline]
-    fn from(value: CoroutineClosureIdWrapper<'db>) -> SolverDefId<'db> {
-        value.0.into()
-    }
-}
-
-impl<'db> TryFrom<SolverDefId<'db>> for CoroutineClosureIdWrapper<'db> {
-    type Error = ();
-
-    #[inline]
-    fn try_from(value: SolverDefId<'db>) -> Result<Self, Self::Error> {
-        match value {
-            SolverDefId::InternedCoroutineClosureId(it) => Ok(Self(it)),
-            _ => Err(()),
-        }
-    }
-}
-
-impl<'db> inherent::DefId<DbInterner<'db>, SolverDefId<'db>> for CoroutineClosureIdWrapper<'db> {
-    fn as_local(self) -> Option<SolverDefId<'db>> {
-        Some(self.into())
-    }
-    fn is_local(self) -> bool {
-        true
-    }
-}
+declare_id_wrapper_with_lt!(ClosureIdWrapper, InternedClosureId);
+declare_id_wrapper_with_lt!(CoroutineIdWrapper, InternedCoroutineId);
+declare_id_wrapper_with_lt!(CoroutineClosureIdWrapper, InternedCoroutineClosureId);
 declare_id_wrapper!(AdtIdWrapper, AdtId);
 declare_id_wrapper!(OpaqueTyIdWrapper, InternedOpaqueTyId, OpaqueTyIdWrapper);
 
