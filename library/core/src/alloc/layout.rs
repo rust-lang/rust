@@ -243,13 +243,9 @@ impl Layout {
     ///       to a valid vtable for `Trait`, and the size
     ///       of the *entire value* (dynamic tail length + statically sized prefix)
     ///       must fit in `isize`.
-    ///     - an (unstable) [extern type], then this function is always safe to
-    ///       call, but may panic or otherwise return the wrong value, as the
-    ///       extern type's layout is not known. This is the same behavior as
-    ///       [`Layout::for_value`] on a reference to an extern type tail.
-    ///     - No other kind of unsized tail currently exists. If more kinds of unsized tails get
-    ///       introduced in the future, the documentation of this function will have to be extended
-    ///       before it can be used for such types.
+    ///     - No other kind of unsized tail currently exists that satisfies the trait bounds for this
+    ///       function. If more kinds of unsized tails get introduced in the future, the documentation
+    ///       of this function will have to be extended before it can be used for such types.
     ///
     /// Here, *unsized tail* refers to the type obtained by recursively descending through the last
     /// field of a tuple or struct until we arrived at a built-in unsized type.
