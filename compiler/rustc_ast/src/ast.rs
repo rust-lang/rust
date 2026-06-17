@@ -3151,6 +3151,7 @@ impl CoroutineMarker {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable, Debug)]
 #[derive(StableHash, Walkable)]
 pub enum Const {
+    Always(Span),
     Yes(Span),
     No,
 }

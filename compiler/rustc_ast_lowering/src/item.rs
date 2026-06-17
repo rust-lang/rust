@@ -1680,6 +1680,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         c: Const,
     ) -> hir::Constness {
         let mut constness = match c {
+            Const::Always(_) => hir::Constness::Const { always: true },
             Const::Yes(_) => hir::Constness::Const { always: false },
             Const::No => hir::Constness::NotConst,
         };
