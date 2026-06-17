@@ -62,7 +62,7 @@ use table::TableBuilder;
 use crate::eii::EiiMapEncodedKeyValue;
 use crate::rmeta::encoder::MetadataEncoder;
 use crate::rmeta::encoder::public_api_hasher::{
-    Hashed, PublicApiHashState, PublicApiHasher, RDRHashAll, RDRHashNone,
+    GraphHashed, ItemPublicHashes, PublicApiHashState, RDRHashAll, RDRHashNone,
 };
 use crate::rmeta::parameterized::EncodeFrom;
 use crate::rmeta::remapped_def_id::{RemappedRawDefId, RemappedWideRawDefId};
@@ -345,6 +345,7 @@ pub(crate) struct CrateRoot {
 
     specialization_enabled_in: bool,
     public_api_hash_opt_enabled: bool,
+    rdr_hashes: Option<ItemPublicHashes>,
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
@@ -355,7 +356,10 @@ impl TableIdx for OnDiskSourceFileIdx {
     type Encoded = Self;
 
     #[inline(always)]
-    fn to_encoded<M: MetadataEncoder>(self, _encoder: &EncodeContext<'_, '_, M>) -> Self::Encoded {
+    fn to_encoded<'tcx, M: MetadataEncoder<'tcx>>(
+        self,
+        _encoder: &EncodeContext<'_, 'tcx, M>,
+    ) -> Self::Encoded {
         self
     }
 }
@@ -378,7 +382,10 @@ impl TableIdx for ProcMacroQuotedSpansIdx {
     type Encoded = Self;
 
     #[inline(always)]
-    fn to_encoded<M: MetadataEncoder>(self, _encoder: &EncodeContext<'_, '_, M>) -> Self::Encoded {
+    fn to_encoded<'tcx, M: MetadataEncoder<'tcx>>(
+        self,
+        _encoder: &EncodeContext<'_, 'tcx, M>,
+    ) -> Self::Encoded {
         self
     }
 }
@@ -663,7 +670,7 @@ pub(crate) mod remapped_def_id {
 ///
 /// Note the absence of the dependency's `-C extra-filename`: it lives in
 /// [`CrateRootUnhashed::dep_extra_filenames`] instead, deliberately outside the hash.
-#[derive(Encodable, BlobDecodable, StableHash)]
+#[derive(Encodable, BlobDecodable)]
 pub(crate) struct CrateDep {
     pub name: Symbol,
     pub hash: Svh,
@@ -721,42 +728,29 @@ macro_rules! define_tables {
         }
 
         impl TableBuilders {
-            fn encode<'a>(
+            fn encode(
                 &self,
                 buf: &mut FileEncoder<'_>,
-                hcx: &mut impl PublicApiHashState<'a>
-            ) -> Hashed<LazyTables>
+            ) -> GraphHashed<LazyTables>
             {
-                let mut hasher = PublicApiHasher::default();
                 let tables = LazyTables {
                     $($name1: {
-                        let table = self.$name1.encode(buf, hcx);
-                        if let Some(hash) = table.hash {
-                            tracing::debug!("{}: {hash:x?}", stringify!($name1));
-                        }
-                        hasher.digest(&table, hcx);
-                        table.value
+                        let table = self.$name1.encode(buf);
+                        table.0
                     },)+
                     $($name2: {
-                        let table = self.$name2.encode(buf, hcx);
-                        if let Some(hash) = table.hash {
-                            tracing::debug!("{}: {hash:x?}", stringify!($name2));
-                        }
-                        hasher.digest(&table, hcx);
-                        table.value
+                        let table = self.$name2.encode(buf);
+                        table.0
                     },)+
                 };
-                Hashed {
-                    hash: hasher.finish(hcx),
-                    value: tables,
-                }
+                GraphHashed(tables)
             }
         }
 
         impl<'a, 'tcx, 'h, 'b, 'c, 'd, H, M> TableWriter<'a, 'tcx, 'h, 'b, 'c, 'd, H, M>
         where
             H: PublicApiHashState<'h>,
-            M: MetadataEncoder,
+            M: MetadataEncoder<'tcx>,
         {
             $(
                 /// Records a value into the corresponding `TableBuilders` field, encoding it in
@@ -787,7 +781,7 @@ macro_rules! define_tables {
 struct TableWriter<'a, 'tcx, 'h, 'b, 'c, 'd, H, M>
 where
     H: PublicApiHashState<'h>,
-    M: MetadataEncoder,
+    M: MetadataEncoder<'tcx>,
 {
     encoder: &'b mut EncodeContext<'a, 'tcx, M>,
     hcx: &'c mut H,

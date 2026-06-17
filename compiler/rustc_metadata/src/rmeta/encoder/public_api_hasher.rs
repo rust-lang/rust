@@ -1,31 +1,41 @@
+use core::iter::Iterator;
 use std::fmt;
 
 use rustc_attr_ir::StrippedCfgItem;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_crate_store::{ForeignModule, LinkagePreference, NativeLib};
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::graph::scc::Sccs;
+use rustc_data_structures::graph::{DirectedGraph, Successors};
+use rustc_data_structures::indexmap::map::Entry;
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_data_structures::svh::Svh;
-use rustc_hir::def_id::LocalDefId;
-use rustc_macros::StableHash;
+use rustc_data_structures::unord::UnordMap;
+use rustc_index::IndexVec;
+use rustc_macros::{LazyDecodable, MetadataEncodable, StableHash};
 use rustc_middle::ich::StableHashState;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use rustc_middle::middle::lib_features::FeatureStability;
+use rustc_middle::mir::interpret::AllocId;
+use rustc_middle::ty::data_structures::IndexMap;
+use rustc_middle::ty::{PredicateKind, Ty, TyCtxt};
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_session::config::{SymbolManglingVersion, TargetModifier};
-use rustc_span::def_id::StableCrateId;
+use rustc_span::def_id::{DefId, LocalDefId, StableCrateId};
 use rustc_span::edition::Edition;
-use rustc_span::{SourceFile, Symbol};
+use rustc_span::{ExpnId, LocalExpnId, SourceFile, Span, Symbol, SyntaxContext};
 use rustc_target::spec::PanicStrategy;
 use tracing::debug;
 
 use super::{CrateDep, CrateHeader, CrateRoot, TargetTuple};
+use crate::rmeta::encoder::{DefPathHashDefIdEncoder, MetadataEncoder};
 use crate::rmeta::table::TableIdx;
 use crate::rmeta::{
     DefPathHashMapRef, EiiMapEncodedKeyValue, EncodeContext, EncodeFrom, EncodedTraitImpls,
-    ExpnDataTable, ExpnHashTable, IncoherentImpls, LazyArray, LazyTable, LazyTables, LazyValue,
-    MetadataEncoder, OnDiskSourceFileIdx, ProcMacroData, SyntaxContextTable,
+    ExpnDataTable, ExpnHashTable, IncoherentImpls, LazyArray, LazyDecoder, LazyTable, LazyTables,
+    LazyValue, OnDiskSourceFileIdx, ProcMacroData, SyntaxContextTable, TableBuilder,
 };
 
 #[derive(Default)]
@@ -50,7 +60,7 @@ impl PublicApiHasher {
 }
 
 pub(crate) trait TablePublicApiHasher<I>: Default {
-    fn digest<'a, 'tcx, T, V, M: MetadataEncoder>(
+    fn digest<'a, 'tcx, T, V, M: MetadataEncoder<'tcx>>(
         &mut self,
         index: I,
         value: V,
@@ -58,19 +68,17 @@ pub(crate) trait TablePublicApiHasher<I>: Default {
         hcx: &mut impl PublicApiHashState<'a>,
     ) -> (I::Encoded, T)
     where
-        I: TableIdx,
+        I: TableIdx + Into<Node<'tcx>>,
         T: EncodeFrom<'tcx, V, M>;
-    fn finish<'a>(&self, hcx: &mut impl PublicApiHashState<'a>) -> Option<Fingerprint>;
 }
 
 pub(crate) struct RDRHashAll<I> {
-    hash: Fingerprint,
     _marker: std::marker::PhantomData<I>,
 }
 
 impl<I> Default for RDRHashAll<I> {
     fn default() -> Self {
-        Self { hash: Fingerprint::ZERO, _marker: Default::default() }
+        Self { _marker: Default::default() }
     }
 }
 
@@ -78,6 +86,12 @@ pub(crate) trait PublicApiHashState<'a> {
     fn enabled(&self) -> bool;
 
     fn hcx_mut(&mut self) -> &mut StableHashState<'a, true>;
+
+    fn add_node_hash<'tcx>(&mut self, node: &Node<'tcx>, hash: Fingerprint);
+
+    fn hcx_with_def_id_hashes(
+        &mut self,
+    ) -> (&mut StableHashState<'a, true>, &ReachabilityGraphHashes);
 }
 
 impl<'a, const ENABLED: bool> PublicApiHashState<'a> for PublicApiHashingContext<'a, ENABLED> {
@@ -90,21 +104,35 @@ impl<'a, const ENABLED: bool> PublicApiHashState<'a> for PublicApiHashingContext
     fn hcx_mut(&mut self) -> &mut StableHashState<'a, true> {
         &mut self.hcx
     }
+
+    #[inline(always)]
+    fn add_node_hash<'tcx>(&mut self, node: &Node<'tcx>, hash: Fingerprint) {
+        if self.enabled() {
+            self.def_id_hashes.add_node_hash(node, hash);
+        }
+    }
+
+    fn hcx_with_def_id_hashes(
+        &mut self,
+    ) -> (&mut StableHashState<'a, true>, &ReachabilityGraphHashes) {
+        (&mut self.hcx, &self.def_id_hashes)
+    }
 }
 
 pub(crate) struct PublicApiHashingContext<'a, const ENABLED: bool> {
     pub(crate) hcx: StableHashState<'a, true>,
+    def_id_hashes: ReachabilityGraphHashes,
 }
 
 impl<'a, const ENABLED: bool> PublicApiHashingContext<'a, ENABLED> {
     pub(crate) fn new(hcx: StableHashState<'a, false>) -> Self {
-        Self { hcx: hcx.hash_spans_as_parentless() }
+        Self { hcx: hcx.hash_spans_as_parentless(), def_id_hashes: Default::default() }
     }
 }
 
 impl<I: StableHash> TablePublicApiHasher<I> for RDRHashAll<I> {
     #[inline(always)]
-    fn digest<'a, 'tcx, T, V, M: MetadataEncoder>(
+    fn digest<'a, 'tcx, T, V, M: MetadataEncoder<'tcx>>(
         &mut self,
         index: I,
         value: V,
@@ -112,7 +140,7 @@ impl<I: StableHash> TablePublicApiHasher<I> for RDRHashAll<I> {
         hcx: &mut impl PublicApiHashState<'a>,
     ) -> (I::Encoded, T)
     where
-        I: TableIdx,
+        I: TableIdx + Into<Node<'tcx>>,
         T: EncodeFrom<'tcx, V, M>,
     {
         if !hcx.enabled() {
@@ -125,14 +153,9 @@ impl<I: StableHash> TablePublicApiHasher<I> for RDRHashAll<I> {
                 T::encode_from_hashed(encoder, value, hcx, &mut hasher),
             );
             let hash: Fingerprint = hasher.finish(hcx).unwrap();
-            self.hash = self.hash.combine_commutative(hash);
+            hcx.add_node_hash(&index.into(), hash);
             res
         }
-    }
-
-    #[inline(always)]
-    fn finish<'a>(&self, hcx: &mut impl PublicApiHashState<'a>) -> Option<Fingerprint> {
-        hcx.enabled().then_some(self.hash)
     }
 }
 
@@ -146,7 +169,7 @@ impl<I> Default for RDRHashNone<I> {
 
 impl<I> TablePublicApiHasher<I> for RDRHashNone<I> {
     #[inline(always)]
-    fn digest<'a, 'tcx, T, V, M: MetadataEncoder>(
+    fn digest<'a, 'tcx, T, V, M: MetadataEncoder<'tcx>>(
         &mut self,
         index: I,
         value: V,
@@ -154,15 +177,22 @@ impl<I> TablePublicApiHasher<I> for RDRHashNone<I> {
         _hcx: &mut impl PublicApiHashState<'a>,
     ) -> (I::Encoded, T)
     where
-        I: TableIdx,
+        I: TableIdx + Into<Node<'tcx>>,
         T: EncodeFrom<'tcx, V, M>,
     {
         (index.to_encoded(encoder), T::encode_from(encoder, value))
     }
+}
 
-    #[inline(always)]
-    fn finish<'a>(&self, hcx: &mut impl PublicApiHashState<'a>) -> Option<Fingerprint> {
-        hcx.enabled().then_some(Fingerprint::ZERO)
+/// Map structs where the hashing took place for each item and stored into the [`ReachabilityGraphHashes`]
+pub(crate) struct GraphHashed<T>(pub(crate) T);
+impl<T> StableHash for GraphHashed<T> {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, _hcx: &mut Hcx, _hasher: &mut StableHasher) {}
+}
+
+impl<T> fmt::Debug for GraphHashed<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "GraphHashed")
     }
 }
 
@@ -214,38 +244,76 @@ impl<T> StableHash for NoneIfHashed<T> {
 
 #[derive(StableHash, Debug)]
 pub(crate) struct HashableCrateHeader {
-    // FIXME do we need to hash this?
     pub(crate) triple: TargetTuple,
-    // FIXME do we need to hash this?
     pub(crate) name: Symbol,
-    // FIXME do we need to hash this?
     pub(crate) is_proc_macro_crate: bool,
-    // FIXME do we need to hash this?
     pub(crate) is_stub: bool,
 }
 
 #[derive(StableHash, Debug)]
 pub(crate) struct HashableCrateRoot {
-    // FIXME do we need to hash this?
+    // =========== not reviewed ============
+    // These are were not reviewed for public api hashing, so they are included in the global hash
+    // for now. Any change in these fields will cause a recompile of all downstream dependencies.
     pub(crate) header: HashableCrateHeader,
-
-    // FIXME do we need to hash this?
-    pub(crate) stable_crate_id: StableCrateId,
-    // FIXME do we need to hash this?
     pub(crate) required_panic_strategy: Option<PanicStrategy>,
-    // FIXME do we need to hash this?
     pub(crate) panic_in_drop_strategy: PanicStrategy,
-    // FIXME do we need to hash this?
-    pub(crate) edition: Edition,
-    // FIXME do we need to hash this?
+    pub(crate) stripped_cfg_items: Hashed<LazyArray<StrippedCfgItem<LocalDefId>>>,
+    pub(crate) dylib_dependency_formats: Hashed<LazyArray<Option<LinkagePreference>>>,
+    pub(crate) lib_features: Hashed<LazyArray<(Symbol, FeatureStability)>>,
+    pub(crate) stability_implications: Hashed<LazyArray<(Symbol, Symbol)>>,
+    // I think this is mostly used in the std, so it doesn't matter much whether we include it
+    pub(crate) diagnostic_items: Hashed<LazyArray<(Symbol, LocalDefId)>>,
+    pub(crate) canonical_symbols: Hashed<LazyArray<(Symbol, LocalDefId)>>,
+    pub(crate) fake_doc_items: Hashed<LazyArray<LocalDefId>>,
+    pub(crate) native_libraries: Hashed<LazyArray<NativeLib>>,
+    pub(crate) foreign_modules: Hashed<LazyArray<ForeignModule>>,
+    pub(crate) traits: Hashed<LazyArray<LocalDefId>>,
+    pub(crate) incoherent_impls: Hashed<LazyArray<IncoherentImpls>>,
+    pub(crate) debugger_visualizers: Hashed<LazyArray<DebuggerVisualizerFile>>,
+    pub(crate) exportable_items: Hashed<LazyArray<LocalDefId>>,
+    pub(crate) stable_order_of_exportable_impls: Hashed<LazyArray<(LocalDefId, usize)>>,
+    pub(crate) exported_non_generic_symbols:
+        Hashed<LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>>,
+    pub(crate) exported_generic_symbols:
+        Hashed<LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>>,
+    pub(crate) target_modifiers: Hashed<LazyArray<TargetModifier>>,
+    pub(crate) denied_partial_mitigations: Hashed<LazyArray<DeniedPartialMitigation>>,
+    pub(crate) compiler_builtins: bool,
+    pub(crate) needs_allocator: bool,
+    pub(crate) needs_panic_runtime: bool,
+    pub(crate) no_builtins: bool,
+    pub(crate) panic_runtime: bool,
+    pub(crate) profiler_runtime: bool,
+    pub(crate) symbol_mangling_version: SymbolManglingVersion,
+
+    pub(crate) specialization_enabled_in: bool,
+    pub(crate) public_api_hash_opt_enabled: bool,
+
+    pub(crate) impls: Hashed<EncodedTraitImpls>,
+    pub(crate) interpret_alloc_index: Hashed<LazyArray<u64>>,
+
+    // =========== global hash  ============
+    // Any change in these fields will cause a recompile of all downstream dependencies
+
+    // For the next 4, there can only be a single one globally
     pub(crate) has_global_allocator: bool,
-    // FIXME do we need to hash this?
     pub(crate) has_alloc_error_handler: bool,
-    // FIXME do we need to hash this?
     pub(crate) has_panic_handler: bool,
-    // FIXME do we need to hash this?
     pub(crate) has_default_lib_allocator: bool,
-    // Changing externally implementable items should cause recompiles in all downstream crates.
+
+    // stable_crate_id must be in the global hash it is needed to differentiate between different
+    // version of the same crate. Different versions might have the same public api, but we must
+    // keep them separate, as the user might be using different versions exactly because their
+    // private implementations differ.
+    pub(crate) stable_crate_id: StableCrateId,
+
+    // macro expansion in downstream crates uses it, only relevant for publicly reachable macros,
+    // FIXME: This is left here as it is unlikely to change much between compilations. But we
+    // could move this to macro hashes and remove it from the global hash.
+    pub(crate) edition: Edition,
+    // Changing externally implementable items should cause recompiles in all downstream crates as
+    // there can only be a single one of each eii globally.
     // FIXME EiiDecl and EiiImpl contain spans. Should changing the span of these items cause
     // recompiles?
     // FIXME eii-s are collected in `rustc_metadata::eii::collect`. We should probably stable sort
@@ -253,123 +321,76 @@ pub(crate) struct HashableCrateRoot {
     // should be sensitive to span changes)
     pub(crate) externally_implementable_items: Hashed<LazyArray<EiiMapEncodedKeyValue>>,
 
-    // FIXME do we need to hash this?
-    pub(crate) crate_deps: Hashed<LazyArray<CrateDep>>,
-    // FIXME do we need to hash this?
-    pub(crate) dylib_dependency_formats: Hashed<LazyArray<Option<LinkagePreference>>>,
-    // FIXME do we need to hash this?
-    pub(crate) lib_features: Hashed<LazyArray<(Symbol, FeatureStability)>>,
-    // FIXME do we need to hash this?
-    pub(crate) stability_implications: Hashed<LazyArray<(Symbol, Symbol)>>,
-    // FIXME do we need to hash this?
+    // lang items are checked for uniqueness globally
     pub(crate) lang_items: Hashed<LazyArray<(LocalDefId, LangItem)>>,
-    // FIXME do we need to hash this?
+    // FIXME: Should we exclude this? `lang_items` of this crate and the global hash of
+    // dependencies should already cover it
     pub(crate) lang_items_missing: Hashed<LazyArray<LangItem>>,
-    // FIXME do we need to hash this?
-    pub(crate) stripped_cfg_items: Hashed<LazyArray<StrippedCfgItem<LocalDefId>>>,
-    // FIXME do we need to hash this?
-    pub(crate) diagnostic_items: Hashed<LazyArray<(Symbol, LocalDefId)>>,
-    // FIXME do we need to hash this?
-    pub(crate) canonical_symbols: Hashed<LazyArray<(Symbol, LocalDefId)>>,
-    // FIXME do we need to hash this?
-    pub(crate) fake_doc_items: Hashed<LazyArray<LocalDefId>>,
-    // FIXME do we need to hash this?
-    pub(crate) native_libraries: Hashed<LazyArray<NativeLib>>,
-    // FIXME do we need to hash this?
-    pub(crate) foreign_modules: Hashed<LazyArray<ForeignModule>>,
-    // FIXME do we need to hash this?
-    pub(crate) traits: Hashed<LazyArray<LocalDefId>>,
-    // the traits impls in this crate. Definitely not needed in everything_downstream as is
-    // how is it needed?
-    //
-    // this is exposed as a full query with `trait_impls_of_crate`. Which is only used in
-    // rustc_public. Otherwise the `implementations_of_trait` is the only other consumer of this
-    // field. `implementations_of_trait` works as a map. You need to provide a trait DefId to get
-    // its impls, so this should be intergrated into the IndexGraph.
-    //
-    // When a trait is local:
-    //      if it isn't reachable, the impls can should be left out from the hash
-    // When a trait is from another crate:
-    //      even if this crate does not reexport that trait, a downstream dependency can import it
-    //      from another crate, then invoke its methods. So all of those impls must be included, but
-    //      only the ones that can be applied to publicly reachable types
-    pub(crate) impls: Hashed<EncodedTraitImpls>,
-    // FIXME do we need to hash this?
-    pub(crate) incoherent_impls: Hashed<LazyArray<IncoherentImpls>>,
-    // FIXME do we need to hash this?
-    pub(crate) interpret_alloc_index: Hashed<LazyArray<u64>>,
-    // FIXME do we need to hash this?
+
+    // We need the global hashes from the dependencies included in the global hash of this
+    // crate
+    pub(crate) crate_deps: Hashed<LazyArray<CrateDep>>,
+
+    // =========== graph hashed ============
+
+    // See the tables definition for what is hashed. Hashed tables are interpreted as
+    // `LocalDefId -> data` maps and are included in the reachability graph
+    pub(crate) tables: GraphHashed<LazyTables>,
+
+    // The relevant parts of the source code are hashed when the spans are hashed as reachability
+    // graph nodes.
+    pub(crate) source_map:
+        GraphHashed<LazyTable<OnDiskSourceFileIdx, Option<LazyValue<SourceFile>>>>,
+
+    // Macro expansion data
+    pub(crate) syntax_contexts: GraphHashed<SyntaxContextTable>,
+    pub(crate) expn_data: GraphHashed<ExpnDataTable>,
+    pub(crate) expn_hashes: GraphHashed<ExpnHashTable>,
+
+    // =========== not needed in the public hash ==============
+    // proc macro, ignored. We use the full crate hash as public hash for proc macros
     pub(crate) proc_macro_data: NoneIfHashed<ProcMacroData>,
-
-    // FIXME do we need to hash this?
-    pub(crate) tables: Hashed<LazyTables>,
-    // FIXME do we need to hash this?
-    pub(crate) debugger_visualizers: Hashed<LazyArray<DebuggerVisualizerFile>>,
-
-    // FIXME do we need to hash this?
-    pub(crate) exportable_items: Hashed<LazyArray<LocalDefId>>,
-    // FIXME do we need to hash this?
-    pub(crate) stable_order_of_exportable_impls: Hashed<LazyArray<(LocalDefId, usize)>>,
-    // FIXME do we need to hash this?
-    pub(crate) exported_non_generic_symbols:
-        Hashed<LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>>,
-    // FIXME do we need to hash this?
-    pub(crate) exported_generic_symbols:
-        Hashed<LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>>,
-
-    // FIXME do we need to hash this?
-    pub(crate) syntax_contexts: Hashed<SyntaxContextTable>,
-    // FIXME do we need to hash this?
-    pub(crate) expn_data: Hashed<ExpnDataTable>,
-    // FIXME do we need to hash this?
-    pub(crate) expn_hashes: Hashed<ExpnHashTable>,
-
     // The introduction of the option to store the DefIndex part of DefId-s as DefPathHash in the
     // metadata was done to remove this from the public hash.
     pub(crate) def_path_hash_map: Unhashed<LazyValue<DefPathHashMapRef<'static>>>,
+}
 
-    // FIXME do we need to hash this?
-    pub(crate) source_map: Hashed<LazyTable<OnDiskSourceFileIdx, Option<LazyValue<SourceFile>>>>,
-    // FIXME do we need to hash this?
-    pub(crate) target_modifiers: Hashed<LazyArray<TargetModifier>>,
-    // FIXME do we need to hash this?
-    pub(crate) denied_partial_mitigations: Hashed<LazyArray<DeniedPartialMitigation>>,
+pub(super) fn crate_hashes<'tcx, 'h>(
+    ecx: &mut EncodeContext<'_, 'tcx, DefPathHashDefIdEncoder<'tcx>>,
+    hcx: &mut impl PublicApiHashState<'h>,
+    root: &HashableCrateRoot,
+) -> Option<(Svh, ItemPublicHashes)> {
+    assert!(!root.header.is_proc_macro_crate);
+    let graph = std::mem::take(&mut ecx.spec_encoder_data.reachability_graph_builder)
+        .build_graph(hcx.hcx_mut());
+    debug!("Hash graph {graph:?}");
+    let (hcx_mut, def_id_hashes) = hcx.hcx_with_def_id_hashes();
+    let public_hashes = build_public_hashes(&graph, def_id_hashes, ecx, hcx_mut);
 
-    // FIXME do we need to hash this?
-    pub(crate) compiler_builtins: bool,
-    // FIXME do we need to hash this?
-    pub(crate) needs_allocator: bool,
-    // FIXME do we need to hash this?
-    pub(crate) needs_panic_runtime: bool,
-    // FIXME do we need to hash this?
-    pub(crate) no_builtins: bool,
-    // FIXME do we need to hash this?
-    pub(crate) panic_runtime: bool,
-    // FIXME do we need to hash this?
-    pub(crate) profiler_runtime: bool,
-    // FIXME do we need to hash this?
-    pub(crate) symbol_mangling_version: SymbolManglingVersion,
-
-    // FIXME do we need to hash this?
-    pub(crate) specialization_enabled_in: bool,
-    pub(crate) public_api_hash_opt_enabled: bool,
+    let mut hasher = StableHasher::default();
+    let public_global_hash = stable_hash(hcx.hcx_mut(), root);
+    public_global_hash.stable_hash(hcx.hcx_mut(), &mut hasher);
+    public_hashes.stable_hash(hcx.hcx_mut(), &mut hasher);
+    let rdr_hashes = public_hashes.value.encode(ecx, public_global_hash);
+    let public_hash = Svh::new(hasher.finish());
+    debug!("Hashed crate root: {root:#x?}");
+    debug!("public api hash: {}", public_hash);
+    Some((public_hash, rdr_hashes))
 }
 
 impl HashableCrateRoot {
-    pub(super) fn into_crate_root<'a>(
+    pub(super) fn into_crate_root<'h, 'tcx, M>(
         self,
-        hcx: &mut impl PublicApiHashState<'a>,
-    ) -> (CrateRoot, Option<Svh>) {
-        let hashes = if hcx.enabled() {
-            assert!(!self.header.is_proc_macro_crate);
-            let mut hasher = StableHasher::default();
-            self.stable_hash(hcx.hcx_mut(), &mut hasher);
-            let public_api_hash = Svh::new(hasher.finish());
-            debug!("Hashed crate root: {self:#x?}");
-            debug!("public api hash: {}", public_api_hash);
-            Some(public_api_hash)
-        } else {
-            None
+        ecx: &mut EncodeContext<'_, 'tcx, M>,
+        hcx: &mut impl PublicApiHashState<'h>,
+    ) -> (CrateRoot, Option<Svh>)
+    where
+        M: MetadataEncoder<'tcx>,
+    {
+        let hashes = M::crate_hashes(ecx, hcx, &self);
+        let (public_api_hash, rdr_hashes) = match hashes {
+            Some((public_api_hash, rdr_hashes)) => (Some(public_api_hash), Some(rdr_hashes)),
+            None => (None, None),
         };
         let header = self.header;
         let header = CrateHeader {
@@ -409,7 +430,7 @@ impl HashableCrateRoot {
             interpret_alloc_index: self.interpret_alloc_index.value,
             proc_macro_data: self.proc_macro_data.value,
 
-            tables: self.tables.value,
+            tables: self.tables.0,
             debugger_visualizers: self.debugger_visualizers.value,
 
             exportable_items: self.exportable_items.value,
@@ -417,13 +438,13 @@ impl HashableCrateRoot {
             exported_non_generic_symbols: self.exported_non_generic_symbols.value,
             exported_generic_symbols: self.exported_generic_symbols.value,
 
-            syntax_contexts: self.syntax_contexts.value,
-            expn_data: self.expn_data.value,
-            expn_hashes: self.expn_hashes.value,
+            syntax_contexts: self.syntax_contexts.0,
+            expn_data: self.expn_data.0,
+            expn_hashes: self.expn_hashes.0,
 
             def_path_hash_map: self.def_path_hash_map.0,
 
-            source_map: self.source_map.value,
+            source_map: self.source_map.0,
             target_modifiers: self.target_modifiers.value,
             denied_partial_mitigations: self.denied_partial_mitigations.value,
 
@@ -436,8 +457,405 @@ impl HashableCrateRoot {
             symbol_mangling_version: self.symbol_mangling_version,
 
             specialization_enabled_in: self.specialization_enabled_in,
+            rdr_hashes,
             public_api_hash_opt_enabled: self.public_api_hash_opt_enabled,
         };
-        (root, hashes)
+        (root, public_api_hash)
     }
+}
+
+pub(crate) enum RecordMode<'tcx> {
+    From(Node<'tcx>),
+    None,
+}
+
+struct ReachabilityGraph<'tcx> {
+    nodes: IndexMap<Node<'tcx>, Fingerprint>,
+    edges: IndexVec<NodeIdx, Vec<NodeIdx>>,
+    roots: Vec<NodeIdx>,
+}
+
+impl fmt::Debug for ReachabilityGraph<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let node = |idx| self.nodes.get_index(idx).unwrap().0;
+        let fingerprint = |idx| self.nodes.get_index(idx).unwrap().1;
+        let reachable = self.reachable_set();
+        writeln!(f, "roots:")?;
+        for root in &self.roots {
+            writeln!(f, "   {:?}", node(*root))?;
+        }
+        writeln!(f, "nodes:")?;
+        for (from, edges) in self.edges.iter_enumerated() {
+            writeln!(
+                f,
+                "{:?}: {:x?} reachable: {}",
+                node(from),
+                fingerprint(from),
+                reachable[from]
+            )?;
+            for to in edges {
+                writeln!(f, "   {:?}", node(*to))?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl<'tcx> ReachabilityGraph<'tcx> {
+    fn reachable_set(&self) -> IndexVec<NodeIdx, bool> {
+        let mut reachable = IndexVec::from_elem_n(false, self.edges.len());
+        let mut stack = self.roots.clone();
+
+        while let Some(node) = stack.pop() {
+            if reachable[node] {
+                continue;
+            }
+            reachable[node] = true;
+            stack.extend_from_slice(&self.edges[node]);
+        }
+
+        reachable
+    }
+}
+
+pub(super) struct ReachabilityGraphBuilder<'tcx> {
+    pub(super) record_mode: Vec<RecordMode<'tcx>>,
+    edges: FxHashMap<Node<'tcx>, FxHashSet<Node<'tcx>>>,
+    roots: FxHashSet<Node<'tcx>>,
+}
+
+impl Default for ReachabilityGraphBuilder<'_> {
+    fn default() -> Self {
+        Self {
+            record_mode: Default::default(),
+            edges: Default::default(),
+            roots: [Node::DefId(rustc_hir::def_id::CRATE_DEF_ID.into())].into_iter().collect(),
+        }
+    }
+}
+
+fn stable_hash<'a, T: StableHash + ?Sized, const HASH_SPANS_AS_PARENTLESS: bool>(
+    hcx: &mut StableHashState<'a, HASH_SPANS_AS_PARENTLESS>,
+    val: &T,
+) -> Fingerprint {
+    let mut hasher = StableHasher::new();
+    val.stable_hash(hcx, &mut hasher);
+    hasher.finish()
+}
+
+impl<'tcx> ReachabilityGraphBuilder<'tcx> {
+    fn build_graph(self, hcx: &mut StableHashState<'_, true>) -> ReachabilityGraph<'tcx> {
+        let mut hashes = IndexMap::default();
+        // iterating over FxHashSet and FxHashMap is fine here, as it is only used to build the
+        // hashes map, which is never returned or iterated
+        #[allow(rustc::potential_query_instability)]
+        for node in self
+            .edges
+            .iter()
+            .flat_map(|(node, edges)| std::iter::once(*node).chain(edges.iter().copied()))
+            .chain(self.roots.iter().copied())
+        {
+            match hashes.entry(node) {
+                Entry::Vacant(v) => {
+                    let hash = stable_hash(hcx, &node);
+                    v.insert(hash);
+                }
+                Entry::Occupied(_o) => {}
+            }
+        }
+        hashes.sort_by_key(|_, v| *v);
+
+        // iterating here is fine, as we stable sort right after
+        #[allow(rustc::potential_query_instability)]
+        let mut roots: Vec<_> =
+            self.roots.into_iter().map(|node| hashes.get_index_of(&node).unwrap()).collect();
+        roots.sort();
+        let mut edges = IndexVec::from_elem_n(Vec::default(), hashes.len());
+        // iterating here is fine, as we stable when saving to `edges`
+        #[allow(rustc::potential_query_instability)]
+        for (node, node_edges) in self.edges {
+            let node_idx = hashes.get_index_of(&node).unwrap();
+            // iterating here is fine, as we stable sort right after
+            #[allow(rustc::potential_query_instability)]
+            let mut node_edges: Vec<_> =
+                node_edges.into_iter().map(|node| hashes.get_index_of(&node).unwrap()).collect();
+            node_edges.sort();
+            edges[node_idx] = node_edges;
+        }
+
+        ReachabilityGraph { roots, edges, nodes: hashes }
+    }
+
+    pub(super) fn record(&mut self, to: Node<'tcx>) {
+        match self.record_mode.last() {
+            Some(RecordMode::From(from)) => {
+                self.edges.entry(*from).or_insert(Default::default()).insert(to);
+            }
+            Some(RecordMode::None) => (),
+            None => {
+                self.roots.insert(to);
+            }
+        }
+    }
+}
+
+#[derive(Default)]
+pub(crate) struct ReachabilityGraphHashes {
+    local: UnordMap<LocalDefId, Fingerprint>,
+    non_local: UnordMap<DefId, Fingerprint>,
+    expn: UnordMap<LocalExpnId, Fingerprint>,
+    syntax: UnordMap<SyntaxContext, Fingerprint>,
+}
+
+impl ReachabilityGraphHashes {
+    fn add_node_hash(&mut self, node: &Node<'_>, hash: Fingerprint) {
+        let current_hash = match node {
+            Node::DefId(id) => {
+                if let Some(local) = id.as_local() {
+                    self.local.entry(local).or_insert(Fingerprint::ZERO)
+                } else {
+                    self.non_local.entry(*id).or_insert(Fingerprint::ZERO)
+                }
+            }
+            Node::ExpnId(id) => self.expn.entry(id.expect_local()).or_insert(Fingerprint::ZERO),
+            Node::SyntaxContext(id) => self.syntax.entry(*id).or_insert(Fingerprint::ZERO),
+            Node::Span(_) => todo!(),
+            Node::Ty(_) => todo!(),
+            Node::Predicate(_) => todo!(),
+            Node::AllocId(_) => todo!(),
+        };
+        *current_hash = hash.combine_commutative(hash);
+    }
+
+    fn get_node(&self, node: &Node<'_>, tcx: TyCtxt<'_>) -> Option<Fingerprint> {
+        match node {
+            Node::DefId(id) => {
+                if let Some(local) = id.as_local() {
+                    self.local.get(&local).copied()
+                } else {
+                    let extern_hash = tcx.extern_def_public_hash(*id);
+                    Some(if let Some(local_hash) = self.non_local.get(id) {
+                        local_hash.combine_commutative(extern_hash)
+                    } else {
+                        extern_hash
+                    })
+                }
+            }
+            Node::ExpnId(id) => {
+                if let Some(local) = id.as_local() {
+                    self.expn.get(&local).copied()
+                } else {
+                    Some(tcx.extern_expn_public_hash(*id))
+                }
+            }
+            Node::SyntaxContext(id) => self.syntax.get(id).copied(),
+            Node::Span(_) => todo!(),
+            Node::Ty(_) => todo!(),
+            Node::Predicate(_) => todo!(),
+            Node::AllocId(_) => todo!(),
+        }
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Hash, StableHash, Debug)]
+pub(crate) enum Node<'tcx> {
+    DefId(DefId),
+    ExpnId(ExpnId),
+    SyntaxContext(SyntaxContext),
+    Span(Span),
+    Ty(Ty<'tcx>),
+    Predicate(PredicateKind<'tcx>),
+    AllocId(AllocId),
+}
+
+impl From<AllocId> for Node<'_> {
+    fn from(value: AllocId) -> Self {
+        Self::AllocId(value)
+    }
+}
+impl From<Span> for Node<'_> {
+    fn from(value: Span) -> Self {
+        Self::Span(value)
+    }
+}
+impl<'tcx> From<Ty<'tcx>> for Node<'tcx> {
+    fn from(value: Ty<'tcx>) -> Self {
+        Self::Ty(value)
+    }
+}
+impl<'tcx> From<PredicateKind<'tcx>> for Node<'tcx> {
+    fn from(value: PredicateKind<'tcx>) -> Self {
+        Self::Predicate(value)
+    }
+}
+impl From<LocalDefId> for Node<'_> {
+    fn from(value: LocalDefId) -> Self {
+        Self::DefId(value.into())
+    }
+}
+impl From<DefId> for Node<'_> {
+    fn from(value: DefId) -> Self {
+        Self::DefId(value)
+    }
+}
+impl From<LocalExpnId> for Node<'_> {
+    fn from(value: LocalExpnId) -> Self {
+        Self::ExpnId(value.to_expn_id())
+    }
+}
+impl From<ExpnId> for Node<'_> {
+    fn from(value: ExpnId) -> Self {
+        Self::ExpnId(value)
+    }
+}
+impl From<SyntaxContext> for Node<'_> {
+    fn from(value: SyntaxContext) -> Self {
+        Self::SyntaxContext(value)
+    }
+}
+
+impl DirectedGraph for ReachabilityGraph<'_> {
+    type Node = NodeIdx;
+
+    fn num_nodes(&self) -> usize {
+        self.nodes.len()
+    }
+}
+
+impl Successors for ReachabilityGraph<'_> {
+    fn successors(&self, node: Self::Node) -> impl Iterator<Item = Self::Node> {
+        self.edges[node].iter().copied()
+    }
+}
+
+type NodeIdx = usize;
+type SccIdx = u32;
+
+/// The fingerprint of a single node: its identity hash combined with the hash
+/// of the data encoded for it (if any).
+fn node_fingerprint(
+    graph: &ReachabilityGraph<'_>,
+    hashes: &ReachabilityGraphHashes,
+    tcx: TyCtxt<'_>,
+    node_index: NodeIdx,
+) -> Fingerprint {
+    let (node_key, base_hash) = graph.nodes.get_index(node_index).unwrap();
+    match hashes.get_node(node_key, tcx) {
+        Some(encoded_data_hash) => base_hash.combine_commutative(encoded_data_hash),
+        None => *base_hash,
+    }
+}
+
+/// Aggregate the per-node fingerprints into one fingerprint per SCC that
+/// captures everything the SCC (transitively) reaches.
+///
+/// We deliberately do *not* use [`Sccs::new_with_annotation`] for this. That
+/// machinery propagates annotations along the DFS as it discovers cycles, which
+/// double-counts the cycle's entry node (and re-counts SCCs reached along
+/// multiple paths). With an idempotent merge (`min`/`max`/set-union, as in
+/// borrowck) that's invisible, but our merge is `Fingerprint::combine_commutative`
+/// (128-bit wrapping addition), which is *not* idempotent, so the result would
+/// depend on the DFS entry order — and therefore on unreachable nodes, which act
+/// as extra DFS roots.
+///
+/// Instead we compute the fingerprints purely from the (DFS-order-independent)
+/// condensation topology:
+///   * `base(scc)` = sum of its member nodes' fingerprints, each counted once;
+///   * `fingerprint(scc)` = `base(scc)` plus the fingerprint of every successor
+///     SCC.
+///
+/// [`Sccs::all_sccs`] yields the condensation in dependency order (successors
+/// before predecessors), so a single pass sees each successor's fingerprint
+/// already finished.
+fn scc_fingerprints(
+    graph: &ReachabilityGraph<'_>,
+    hashes: &ReachabilityGraphHashes,
+    tcx: TyCtxt<'_>,
+    sccs: &Sccs<NodeIdx, SccIdx>,
+) -> IndexVec<SccIdx, Fingerprint> {
+    let mut fingerprints: IndexVec<SccIdx, Fingerprint> =
+        IndexVec::from_elem_n(Fingerprint::ZERO, sccs.num_sccs());
+    for node_index in 0..graph.nodes.len() {
+        let scc = sccs.scc(node_index);
+        fingerprints[scc] =
+            fingerprints[scc].combine_commutative(node_fingerprint(graph, hashes, tcx, node_index));
+    }
+    for scc in sccs.all_sccs() {
+        for &succ in sccs.successors(scc) {
+            fingerprints[scc] = fingerprints[scc].combine_commutative(fingerprints[succ]);
+        }
+    }
+    fingerprints
+}
+
+fn build_public_hashes<'tcx>(
+    graph: &ReachabilityGraph<'tcx>,
+    hashes: &ReachabilityGraphHashes,
+    encoder: &mut EncodeContext<'_, 'tcx, DefPathHashDefIdEncoder<'tcx>>,
+    hcx: &mut StableHashState<'_, true>,
+) -> Hashed<ItemPublicHashesBuilder> {
+    let sccs = Sccs::<_, SccIdx>::new(graph);
+    let scc_fingerprints = scc_fingerprints(graph, hashes, encoder.tcx(), &sccs);
+    let reachable = graph.reachable_set();
+
+    let mut public_hashes = ItemPublicHashesBuilder::default();
+    let mut hasher = StableHasher::new();
+    for (node_index, reachable) in reachable.iter_enumerated() {
+        if !reachable {
+            continue;
+        }
+        match graph.nodes.get_index(node_index).unwrap().0 {
+            Node::DefId(id) => {
+                if let Some(local) = id.as_local() {
+                    let fingerprint = scc_fingerprints[sccs.scc(node_index)];
+                    public_hashes.local.set_some_unhashed(local, fingerprint, encoder);
+                }
+            }
+            Node::ExpnId(id) => {
+                if let Some(local) = id.as_local() {
+                    let fingerprint = scc_fingerprints[sccs.scc(node_index)];
+                    public_hashes.expn.set_some_unhashed(local, fingerprint, encoder);
+                }
+            }
+            Node::SyntaxContext(_) => (),
+            Node::Ty(_) => todo!(),
+            Node::Predicate(_) => todo!(),
+            Node::Span(_) => todo!(),
+            Node::AllocId(_) => todo!(),
+        }
+    }
+    for &node_index in &graph.roots {
+        let fingerprint = scc_fingerprints[sccs.scc(node_index)];
+        fingerprint.stable_hash(hcx, &mut hasher);
+    }
+    let roots_hash = hasher.finish::<Fingerprint>();
+    debug!("build_public_hashes: roots fingerprint hash = {roots_hash:?}");
+    Hashed { value: public_hashes, hash: Some(roots_hash) }
+}
+
+#[derive(Default)]
+pub(crate) struct ItemPublicHashesBuilder {
+    local: TableBuilder<RDRHashNone<LocalDefId>, LocalDefId, Option<Fingerprint>>,
+    expn: TableBuilder<RDRHashNone<LocalExpnId>, LocalExpnId, Option<Fingerprint>>,
+}
+
+impl ItemPublicHashesBuilder {
+    fn encode<'a, 'tcx, M: MetadataEncoder<'tcx>>(
+        &self,
+        ecx: &mut EncodeContext<'a, 'tcx, M>,
+        public_global_hash: Fingerprint,
+    ) -> ItemPublicHashes {
+        ItemPublicHashes {
+            local: self.local.encode(&mut ecx.opaque).0,
+            expn: self.expn.encode(&mut ecx.opaque).0,
+            public_global_hash,
+        }
+    }
+}
+
+#[derive(LazyDecodable, MetadataEncodable)]
+pub(crate) struct ItemPublicHashes {
+    pub(crate) local: LazyTable<LocalDefId, Option<Fingerprint>>,
+    pub(crate) expn: LazyTable<LocalExpnId, Option<Fingerprint>>,
+    pub(crate) public_global_hash: Fingerprint,
 }

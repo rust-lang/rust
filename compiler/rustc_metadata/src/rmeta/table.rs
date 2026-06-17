@@ -1,11 +1,13 @@
-use rustc_data_structures::stable_hash::StableHash;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_hir::def::CtorOf;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::Idx;
 use rustc_span::{LocalExpnId, SyntaxContext};
 
 use crate::rmeta::decoder::MetaBlob;
-use crate::rmeta::encoder::public_api_hasher::{Hashed, PublicApiHashState, TablePublicApiHasher};
+use crate::rmeta::encoder::public_api_hasher::{
+    GraphHashed, Node, PublicApiHashState, TablePublicApiHasher,
+};
 use crate::rmeta::remapped_def_id::RemappedWideRawDefId;
 use crate::rmeta::*;
 
@@ -78,6 +80,31 @@ impl FixedSizeEncoding for u64 {
     #[inline]
     fn write_to_bytes(self, b: &mut [u8; 8]) {
         *b = self.to_le_bytes();
+    }
+}
+
+impl FixedSizeEncoding for Option<Fingerprint> {
+    type ByteArray = [u8; 17];
+
+    fn from_bytes(b: &Self::ByteArray) -> Self {
+        if b[0] == 0 {
+            None
+        } else {
+            Some(Fingerprint::from_le_bytes(b[1..17].try_into().unwrap()))
+        }
+    }
+
+    fn write_to_bytes(self, b: &mut Self::ByteArray) {
+        match self {
+            Some(fingerprint) => {
+                b[0] = 1;
+                let buf: &mut [u8; 16] = (&mut b[1..17]).try_into().unwrap();
+                *buf = fingerprint.to_le_bytes();
+            }
+            None => {
+                b[0] = 0;
+            }
+        }
     }
 }
 
@@ -459,13 +486,19 @@ pub(crate) trait TableIdx: Copy {
     type Encoded: Idx;
     type Decoded: Idx;
 
-    fn to_encoded<M: MetadataEncoder>(self, encoder: &EncodeContext<'_, '_, M>) -> Self::Encoded;
+    fn to_encoded<'tcx, M: MetadataEncoder<'tcx>>(
+        self,
+        encoder: &EncodeContext<'_, 'tcx, M>,
+    ) -> Self::Encoded;
 }
 
 impl TableIdx for LocalDefId {
     type Encoded = RemappedLocalDefId;
     type Decoded = DefIndex;
-    fn to_encoded<M: MetadataEncoder>(self, encoder: &EncodeContext<'_, '_, M>) -> Self::Encoded {
+    fn to_encoded<'tcx, M: MetadataEncoder<'tcx>>(
+        self,
+        encoder: &EncodeContext<'_, 'tcx, M>,
+    ) -> Self::Encoded {
         encoder.local_defs_remapping.map_local_def_id(self)
     }
 }
@@ -474,7 +507,10 @@ impl TableIdx for SyntaxContext {
     type Encoded = RemappedSyntaxContext;
     type Decoded = DecodedSyntaxContext;
 
-    fn to_encoded<M: MetadataEncoder>(self, encoder: &EncodeContext<'_, '_, M>) -> Self::Encoded {
+    fn to_encoded<'tcx, M: MetadataEncoder<'tcx>>(
+        self,
+        encoder: &EncodeContext<'_, 'tcx, M>,
+    ) -> Self::Encoded {
         encoder.syntax_context_remapping.map_id(self)
     }
 }
@@ -483,7 +519,10 @@ impl TableIdx for LocalExpnId {
     type Encoded = RemappedLocalExpnIndex;
     type Decoded = ExpnIndex;
 
-    fn to_encoded<M: MetadataEncoder>(self, encoder: &EncodeContext<'_, '_, M>) -> Self::Encoded {
+    fn to_encoded<'tcx, M: MetadataEncoder<'tcx>>(
+        self,
+        encoder: &EncodeContext<'_, 'tcx, M>,
+    ) -> Self::Encoded {
         encoder.local_expn_id_remapping.map_id(self)
     }
 }
@@ -513,13 +552,13 @@ impl<H: TablePublicApiHasher<I>, I: TableIdx, const N: usize, T> TableBuilder<H,
 where
     Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
 {
-    pub(crate) fn set_some(&mut self, i: I::Encoded, value: T) {
+    fn set_some(&mut self, i: I::Encoded, value: T) {
         self.set(i, Some(value))
     }
 }
 impl<
     H: TablePublicApiHasher<I>,
-    I: TableIdx + StableHash,
+    I: TableIdx + for<'tcx> Into<Node<'tcx>>,
     const N: usize,
     T: FixedSizeEncoding<ByteArray = [u8; N]>,
 > TableBuilder<H, I, T>
@@ -533,7 +572,7 @@ impl<
         hcx: &mut impl PublicApiHashState<'a>,
     ) where
         T: EncodeFrom<'tcx, V, M>,
-        M: MetadataEncoder,
+        M: MetadataEncoder<'tcx>,
     {
         let (encoded_i, encoded_value) = self.hasher.digest(i, value, encoder, hcx);
         self.set(encoded_i, encoded_value);
@@ -542,7 +581,7 @@ impl<
 impl<H, I, const N: usize, T> TableBuilder<H, I, Option<T>>
 where
     H: TablePublicApiHasher<I>,
-    I: TableIdx + StableHash,
+    I: TableIdx + for<'tcx> Into<Node<'tcx>>,
     Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
 {
     #[inline(always)]
@@ -554,7 +593,7 @@ where
         hcx: &mut impl PublicApiHashState<'a>,
     ) where
         T: EncodeFrom<'tcx, V, M>,
-        M: MetadataEncoder,
+        M: MetadataEncoder<'tcx>,
     {
         let (encoded_i, encoded_value) = self.hasher.digest(i, value, encoder, hcx);
         self.set_some(encoded_i, encoded_value);
@@ -573,7 +612,7 @@ impl<
     /// right now metadata tables never need to reset non-default values to default. If such need
     /// arises in the future then a new method (e.g. `clear` or `reset`) will need to be introduced
     /// for doing that explicitly.
-    pub(crate) fn set(&mut self, i: I::Encoded, value: T) {
+    fn set(&mut self, i: I::Encoded, value: T) {
         #[cfg(debug_assertions)]
         {
             debug_assert!(
@@ -591,11 +630,7 @@ impl<
         }
     }
 
-    pub(crate) fn encode<'a>(
-        &self,
-        buf: &mut FileEncoder<'_>,
-        hcx: &mut impl PublicApiHashState<'a>,
-    ) -> Hashed<LazyTable<I, T>> {
+    pub(crate) fn encode(&self, buf: &mut FileEncoder<'_>) -> GraphHashed<LazyTable<I, T>> {
         let pos = buf.position();
 
         let width = self.width;
@@ -661,7 +696,7 @@ impl<
             (width << 1) | usize::from(sparse),
             len,
         );
-        Hashed { value: encoded, hash: self.hasher.finish(hcx) }
+        GraphHashed(encoded)
     }
 }
 
@@ -724,5 +759,22 @@ where
     /// Size of the table in entries, including possible gaps.
     pub(super) fn size(&self) -> usize {
         self.len
+    }
+}
+
+impl<I: TableIdx, const N: usize, T> TableBuilder<RDRHashNone<I>, I, Option<T>>
+where
+    Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
+{
+    pub(crate) fn set_some_unhashed<'tcx, V, M>(
+        &mut self,
+        i: I,
+        value: V,
+        encoder: &mut EncodeContext<'_, 'tcx, M>,
+    ) where
+        T: EncodeFrom<'tcx, V, M>,
+        M: MetadataEncoder<'tcx>,
+    {
+        self.set(i.to_encoded(encoder), Some(T::encode_from(encoder, value)))
     }
 }

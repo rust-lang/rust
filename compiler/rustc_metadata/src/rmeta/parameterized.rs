@@ -106,6 +106,7 @@ trivially_parameterized_over_tcx! {
     rustc_crate_store::ForeignModule,
     rustc_crate_store::LinkagePreference,
     rustc_crate_store::NativeLib,
+    rustc_data_structures::fingerprint::Fingerprint,
     rustc_hir::Constness,
     rustc_hir::CoroutineKind,
     rustc_hir::Defaultness,
@@ -186,7 +187,7 @@ parameterized_over_tcx! {
 }
 
 /// Converts values from `TyCtxt` stored form into metadata table stored form
-pub(super) trait EncodeFrom<'tcx, T, M: MetadataEncoder> {
+pub(super) trait EncodeFrom<'tcx, T, M: MetadataEncoder<'tcx>> {
     /// When a `T` is trivial to encode, it has a fixed size, no pointers inside, this can be
     /// just a no-op. For more complex types this usually creates a `LazyValue<T>` or `LazyArray<T>`
     /// encoding `value` with `encoder` in the process
@@ -205,7 +206,7 @@ macro_rules! trivial_encode_from {
         $($ty:ty,)+
     ) => {
         $(
-            impl<'tcx, M: MetadataEncoder> EncodeFrom<'tcx, $ty, M> for $ty {
+            impl<'tcx, M: MetadataEncoder<'tcx>> EncodeFrom<'tcx, $ty, M> for $ty {
                 fn encode_from<'a>(
                     _encoder: &mut EncodeContext<'a, 'tcx, M>,
                     value: $ty,
@@ -237,7 +238,7 @@ macro_rules! lazy_encode_from {
             where
                 B: std::borrow::Borrow<<$ty as ParameterizedOverTcx>::Value<'tcx>>,
                 <$ty as ParameterizedOverTcx>::Value<'tcx>: StableHash,
-                M: MetadataEncoder,
+                M: MetadataEncoder<'tcx>,
             {
                 fn encode_from<'a>(
                     encoder: &mut EncodeContext<'a, 'tcx, M>,
@@ -269,7 +270,7 @@ macro_rules! lazy_encode_from_unhashed {
             impl<'tcx, B, M> EncodeFrom<'tcx, B, M> for LazyValue<$ty>
             where
                 B: std::borrow::Borrow<<$ty as ParameterizedOverTcx>::Value<'tcx>>,
-                M: MetadataEncoder,
+                M: MetadataEncoder<'tcx>,
             {
                 fn encode_from<'a>(
                     encoder: &mut EncodeContext<'a, 'tcx, M>,
@@ -292,7 +293,7 @@ macro_rules! lazy_encode_from_unhashed {
     };
 }
 
-impl<'tcx, M: MetadataEncoder> EncodeFrom<'tcx, DefId, M> for RemappedWideRawDefId {
+impl<'tcx, M: MetadataEncoder<'tcx>> EncodeFrom<'tcx, DefId, M> for RemappedWideRawDefId {
     fn encode_from<'a>(encoder: &mut EncodeContext<'a, 'tcx, M>, value: DefId) -> Self {
         M::into_remapped_wide_raw_def_id(encoder.tcx(), &encoder.local_defs_remapping, value)
     }
@@ -314,6 +315,7 @@ trivial_encode_from! {
     u64,
     // tidy-alphabetical-start
     crate::rmeta::AttrFlags,
+    rustc_data_structures::fingerprint::Fingerprint,
     rustc_hir::Constness,
     rustc_hir::CoroutineKind,
     rustc_hir::Defaultness,
@@ -326,6 +328,7 @@ trivial_encode_from! {
 lazy_encode_from! {
     // tidy-alphabetical-start
     (rustc_middle::mir::ConstValue, Ty<'static>),
+    (rustc_span::hygiene::SyntaxContext, rustc_span::ExpnId, rustc_span::hygiene::Transparency),
     crate::rmeta::VariantData,
     rustc_abi::ReprOptions,
     rustc_ast::DelimArgs,
@@ -364,6 +367,8 @@ lazy_encode_from! {
     rustc_middle::ty::Visibility<rustc_span::def_id::LocalDefId>,
     rustc_middle::ty::adjustment::CoerceUnsizedInfo,
     rustc_middle::ty::trait_def::TraitDef,
+    rustc_span::ExpnData,
+    rustc_span::ExpnHash,
     rustc_span::ExpnId,
     rustc_span::Span,
     std::option::Option<rustc_middle::ty::EarlyBinder<'static, rustc_middle::ty::Const<'static>>>,
@@ -374,14 +379,15 @@ lazy_encode_from! {
 
 lazy_encode_from_unhashed! {
     rustc_hir::definitions::DefKey,
+    rustc_span::SourceFile,
 }
 
-impl<'tcx, T, B, M: MetadataEncoder> EncodeFrom<'tcx, Option<B>, M> for Option<LazyValue<T>>
+impl<'tcx, T, B, M: MetadataEncoder<'tcx>> EncodeFrom<'tcx, Option<B>, M> for Option<LazyValue<T>>
 where
     T: ParameterizedOverTcx,
     T::Value<'tcx>: for<'b> Encodable<EncodeContext<'b, 'tcx, M>>,
     B: std::borrow::Borrow<T::Value<'tcx>> + StableHash,
-    M: MetadataEncoder,
+    M: MetadataEncoder<'tcx>,
 {
     fn encode_from<'a>(
         encoder: &mut EncodeContext<'a, 'tcx, M>,
@@ -408,7 +414,7 @@ where
     I: IntoIterator<Item = B>,
     B: std::borrow::Borrow<T::Value<'tcx>> + StableHash,
     T::Value<'tcx>: for<'a> Encodable<EncodeContext<'a, 'tcx, M>>,
-    M: MetadataEncoder,
+    M: MetadataEncoder<'tcx>,
 {
     fn encode_from<'a>(encoder: &mut EncodeContext<'a, 'tcx, M>, values: I) -> Self {
         encoder.lazy_array(values)
