@@ -162,7 +162,7 @@ pub(crate) trait TypeOpInfo<'tcx> {
 
         let placeholder_region = ty::Region::new_placeholder(
             tcx,
-            ty::PlaceholderRegion::new(adjusted_universe.into(), placeholder.bound),
+            placeholder.with_updated_universe(adjusted_universe.into()),
         );
 
         // FIXME: one day this should just be error_element,
@@ -170,10 +170,7 @@ pub(crate) trait TypeOpInfo<'tcx> {
         let error_region = error_element.and_then(|e| {
             let adjusted_universe = e.universe.as_u32().checked_sub(base_universe.as_u32());
             adjusted_universe.map(|adjusted| {
-                ty::Region::new_placeholder(
-                    tcx,
-                    ty::PlaceholderRegion::new(adjusted.into(), e.bound),
-                )
+                ty::Region::new_placeholder(tcx, e.with_updated_universe(adjusted.into()))
             })
         });
 
