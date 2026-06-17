@@ -60,6 +60,13 @@
 //!     [`CoverageKind`]`::TvBitmapUpdate` instructions in MIR, and generate
 //!     the [`Mapping`]s we'll be passing to LLVM.
 //!
+//! 3. Codegen. Happens in `rustc_codegen_ssa` and `rustc_codegen_llvm`.
+//!     At this step, `CoverageInfoBuilderMethods::init_coverage` generates
+//!     the required temporary variables, and
+//!     `CoverageInfoBuilderMethods::add_coverage` is then responsible for
+//!     translating the [`CoverageKind`] statements from MIR into their
+//!     corresponding LLVM instruction.
+//!
 
 use std::collections::BTreeSet;
 
