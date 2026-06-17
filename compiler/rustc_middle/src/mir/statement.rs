@@ -620,7 +620,7 @@ impl<'tcx> Operand<'tcx> {
     pub fn function_handle(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
-        args: impl IntoIterator<Item = GenericArg<'tcx>>,
+        args: ty::Binder<'tcx, impl IntoIterator<Item = GenericArg<'tcx>>>,
         span: Span,
     ) -> Self {
         let ty = Ty::new_fn_def(tcx, def_id, args);
@@ -707,7 +707,11 @@ impl<'tcx> Operand<'tcx> {
     /// find as the `func` in a [`TerminatorKind::Call`].
     pub fn const_fn_def(&self) -> Option<(DefId, GenericArgsRef<'tcx>)> {
         let const_ty = self.constant()?.const_.ty();
-        if let ty::FnDef(def_id, args) = *const_ty.kind() { Some((def_id, args)) } else { None }
+        if let ty::FnDef(def_id, args) = *const_ty.kind() {
+            Some((def_id, args.no_bound_vars().unwrap()))
+        } else {
+            None
+        }
     }
 
     pub fn ty<D>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> Ty<'tcx>

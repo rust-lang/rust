@@ -985,6 +985,8 @@ impl<'tcx> BorrowedContentSource<'tcx> {
             ty::FnDef(def_id, args) => {
                 let trait_id = tcx.trait_of_assoc(def_id)?;
 
+                let args = args.no_bound_vars().unwrap();
+
                 if tcx.is_lang_item(trait_id, LangItem::Deref)
                     || tcx.is_lang_item(trait_id, LangItem::DerefMut)
                 {

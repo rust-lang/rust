@@ -384,7 +384,7 @@ fn def_id_of_type_cached<'a>(ty: Ty<'a>, visited: &mut SsoHashSet<Ty<'a>>) -> Op
             return None;
         }),
 
-        ty::FnDef(def_id, _)
+        ty::FnDef(def_id, ..)
         | ty::Closure(def_id, _)
         | ty::CoroutineClosure(def_id, _)
         | ty::Coroutine(def_id, _)

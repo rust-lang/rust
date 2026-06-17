@@ -216,6 +216,20 @@ impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for &[T] {
     }
 }
 
+impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for [T] {
+    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
+        walk_visitable_list!(visitor, self.iter());
+        V::Result::output()
+    }
+}
+
+impl<const N: usize, I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for [T; N] {
+    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
+        walk_visitable_list!(visitor, self.iter());
+        V::Result::output()
+    }
+}
+
 impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Box<[T]> {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         walk_visitable_list!(visitor, self.iter());

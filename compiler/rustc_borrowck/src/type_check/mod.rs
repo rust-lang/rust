@@ -1831,6 +1831,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
 
             if let ty::FnDef(def_id, args) = *constant.const_.ty().kind() {
+                let args = args.no_bound_vars().unwrap();
                 let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, args);
                 self.normalize_and_prove_instantiated_predicates(
                     def_id,

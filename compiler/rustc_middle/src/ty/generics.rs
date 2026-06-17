@@ -59,6 +59,7 @@ pub struct GenericParamDef {
     /// `'a`/`T` won't be accessed during the parent type's `Drop` impl.
     pub pure_wrt_drop: bool,
 
+    pub is_late_bound: bool,
     pub kind: GenericParamDefKind,
 }
 
@@ -147,7 +148,7 @@ impl std::fmt::Debug for Generics {
 
 impl<'tcx> rustc_type_ir::inherent::GenericsOf<TyCtxt<'tcx>> for &'tcx Generics {
     fn count(&self) -> usize {
-        self.parent_count + self.own_params.len()
+        Generics::count(self)
     }
 }
 

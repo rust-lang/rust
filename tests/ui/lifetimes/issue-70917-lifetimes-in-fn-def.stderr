@@ -1,0 +1,14 @@
+error: lifetime may not live long enough
+  --> $DIR/issue-70917-lifetimes-in-fn-def.rs:10:5
+   |
+LL | fn test_lifetime<'a>() {
+   |                  -- lifetime `'a` defined here
+LL |     assert_static(capture_lifetime::<'a>);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'a` must outlive `'static`
+   |
+   = note: requirement occurs because of the function item type defined by `capture_lifetime`
+   = note: the function `capture_lifetime` is invariant over the parameter `'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: aborting due to 1 previous error
+

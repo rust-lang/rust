@@ -4,7 +4,7 @@ error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetim
 LL |     S::late::<'static>(S, &0, &0);
    |               ^^^^^^^
    |
-note: the late bound lifetime parameter is introduced here
+note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
   --> $DIR/method-call-lifetime-args.rs:4:13
    |
 LL |     fn late<'a, 'b>(self, _: &'a u8, _: &'b u8) {}
@@ -16,7 +16,7 @@ error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetim
 LL |     S::late_implicit::<'static>(S, &0, &0);
    |                        ^^^^^^^
    |
-note: the late bound lifetime parameter is introduced here
+note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
   --> $DIR/method-call-lifetime-args.rs:5:31
    |
 LL |     fn late_implicit(self, _: &u8, _: &u8) {}

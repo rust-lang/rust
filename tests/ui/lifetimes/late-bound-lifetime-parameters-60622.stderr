@@ -1,9 +1,6 @@
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/late-bound-lifetime-parameters-60622.rs:11:11
    |
-LL |     fn a(&self) {}
-   |          - the late bound lifetime parameter is introduced here
-...
 LL |     b.a::<'_, T>();
    |           ^^
    |

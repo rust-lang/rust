@@ -508,13 +508,30 @@ pub(crate) fn encode_ty<'tcx>(
         }
 
         // Function types
-        ty::FnDef(def_id, args) | ty::Closure(def_id, args) => {
+        ty::Closure(def_id, args) => {
             // u<length><name>[I<element-type1..element-typeN>E], where <element-type> is <subst>,
             // as vendor extended type.
             let mut s = String::new();
             let name = encode_ty_name(tcx, *def_id);
             let _ = write!(s, "u{}{}", name.len(), name);
             s.push_str(&encode_args(tcx, args, *def_id, false, dict, options));
+            compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
+            typeid.push_str(&s);
+        }
+
+        // FIXME: could stand to merge this and the prior match arm
+        ty::FnDef(def_id, args) => {
+            let mut s = String::new();
+            let name = encode_ty_name(tcx, *def_id);
+            let _ = write!(s, "u{}{}", name.len(), name);
+            s.push_str(&encode_args(
+                tcx,
+                args.no_bound_vars().unwrap(),
+                *def_id,
+                false,
+                dict,
+                options,
+            ));
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             typeid.push_str(&s);
         }

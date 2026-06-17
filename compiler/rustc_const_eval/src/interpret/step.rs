@@ -483,7 +483,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 (fn_val, self.fn_abi_of_fn_ptr(fn_sig_binder, extra_args)?, false)
             }
             ty::FnDef(def_id, args) => {
-                let instance = self.resolve(def_id, args)?;
+                let instance = self.resolve(def_id, args.no_bound_vars().unwrap())?;
                 (
                     FnVal::Instance(instance),
                     self.fn_abi_of_instance_no_deduced_attrs(instance, extra_args)?,
