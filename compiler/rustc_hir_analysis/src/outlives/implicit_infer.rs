@@ -56,7 +56,7 @@ pub(super) fn infer_predicates(
                     }
                 }
 
-                DefKind::TyAlias if tcx.type_alias_is_lazy(item_did) => {
+                DefKind::TyAlias => {
                     insert_required_predicates_to_be_wf(
                         tcx,
                         tcx.type_of(item_did).instantiate_identity().skip_norm_wip(),

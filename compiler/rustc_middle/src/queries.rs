@@ -332,19 +332,7 @@ rustc_queries! {
         }
     }
 
-    /// Returns whether the type alias given by `DefId` is lazy.
-    ///
-    /// I.e., if the type alias expands / ought to expand to a [free] [alias type]
-    /// instead of the underlying aliased type.
-    ///
-    /// Relevant for features `lazy_type_alias` and `type_alias_impl_trait`.
-    ///
-    /// # Panics
-    ///
-    /// This query *may* panic if the given definition is not a type alias.
-    ///
-    /// [free]: rustc_middle::ty::Free
-    /// [alias type]: rustc_middle::ty::AliasTy
+    // NOTE: Whether this is a **checked** LTA.
     query type_alias_is_lazy(key: DefId) -> bool {
         desc {
             "computing whether the type alias `{path}` is lazy",

@@ -610,7 +610,24 @@ pub(super) fn explicit_predicates_of<'tcx>(
                 predicates: { tcx.arena.alloc_from_iter(filtered_predicates) },
             };
         }
-        gather_explicit_predicates_of(tcx, def_id)
+
+        let predicates = gather_explicit_predicates_of(tcx, def_id);
+
+        // // FIXME: FIXME: FIXME: MAJOR HACK: SAD.
+        // if let DefKind::TyAlias = def_kind
+        //     && !tcx.type_alias_is_lazy(def_id)
+        // {
+        //     return GenericPredicates {
+        //         parent: None,
+        //         predicates: tcx.arena.alloc_from_iter(
+        //             predicates.predicates.iter().copied().filter(|(clause, _)| {
+        //                 matches!(clause.kind().skip_binder(), ty::ClauseKind::ConstArgHasType(..))
+        //             }),
+        //         ),
+        //     };
+        // }
+
+        predicates
     }
 }
 

@@ -214,15 +214,31 @@ where
                     );
                 }
             }
+
             ty::Alias(
                 data @ ty::AliasTy {
                     kind:
                         kind @ (ty::Inherent { def_id }
                         | ty::Free { def_id }
                         | ty::Projection { def_id }),
+                    args,
                     ..
                 },
             ) => {
+                if let ty::Free { def_id } = kind
+                    && !tcx.type_alias_is_lazy(def_id)
+                {
+                    // FIXME: Stack overflows may surface by using `type_of`!
+                    //        However, we can't use `expand_free_alias_tys` since that would also
+                    //        "expand away" LTAs that are meant to be checked.
+                    //        We need intro a 2nd version that only expands unchecked free alias tys.
+                    return tcx
+                        .type_of(def_id)
+                        .instantiate(tcx, args)
+                        .skip_normalization()
+                        .visit_with(self);
+                }
+
                 if self.def_id_visitor.skip_assoc_tys() {
                     // Visitors searching for minimal visibility/reachability want to
                     // conservatively approximate associated types like `Type::Alias`
