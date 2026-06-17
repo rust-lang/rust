@@ -5,7 +5,7 @@ pub use core::random::*;
 
 use crate::sys::random as sys;
 
-/// The default random source.
+/// The system random number generator.
 ///
 /// This asks the system for random data suitable for cryptographic purposes
 /// such as key generation. If security is a concern, consult the platform
@@ -16,7 +16,7 @@ use crate::sys::random as sys;
 /// security is not a concern,  consider using an alternative random number
 /// generator (potentially seeded from this one).
 ///
-/// If you need to fill a buffer with random bytes, use `DefaultRandomSource.fill_bytes(&mut buf)`.
+/// If you need to fill a buffer with random bytes, use `SystemRng.fill_bytes(&mut buf)`.
 ///
 /// # Underlying sources
 ///
@@ -62,10 +62,10 @@ use crate::sys::random as sys;
 #[doc(alias = "getrandom", alias = "getentropy", alias = "arc4random")]
 #[derive(Default, Debug, Clone, Copy)]
 #[unstable(feature = "random", issue = "130703")]
-pub struct DefaultRandomSource;
+pub struct SystemRng;
 
 #[unstable(feature = "random", issue = "130703")]
-impl RandomSource for DefaultRandomSource {
+impl Rng for SystemRng {
     fn fill_bytes(&mut self, bytes: &mut [u8]) {
         sys::fill_bytes(bytes)
     }
@@ -73,9 +73,9 @@ impl RandomSource for DefaultRandomSource {
 
 /// Generates a random value from a distribution, using the default random source.
 ///
-/// This is a convenience function for `dist.sample(&mut DefaultRandomSource)` and will sample
-/// according to the same distribution as the underlying [`Distribution`] trait implementation. See
-/// [`DefaultRandomSource`] for more information about how randomness is sourced.
+/// This is a convenience function for `dist.sample(&mut SystemRng)` and will sample according to
+/// the same distribution as the underlying [`Distribution`] trait implementation. See [`SystemRng`]
+/// for more information about how randomness is sourced.
 ///
 /// # Examples
 ///
@@ -98,5 +98,5 @@ impl RandomSource for DefaultRandomSource {
 /// [version 4/variant 1 UUID]: https://en.wikipedia.org/wiki/Universally_unique_identifier#Version_4_(random)
 #[unstable(feature = "random", issue = "130703")]
 pub fn random<T>(dist: impl Distribution<T>) -> T {
-    dist.sample(&mut DefaultRandomSource)
+    dist.sample(&mut SystemRng)
 }
