@@ -395,6 +395,16 @@ fn main() {
 }
 
 #[test]
+fn static_as_array_len_does_not_panic() {
+    check_no_mismatches(
+        r#"
+static S: usize = 8;
+const A: [u8; S] = [0; 8];
+    "#,
+    );
+}
+
+#[test]
 fn another_20654_case() {
     check_no_mismatches(
         r#"
