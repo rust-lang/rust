@@ -9,7 +9,7 @@ use super::AS_UNDERSCORE;
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, ty: &'tcx Ty<'_>) {
     if matches!(ty.kind, TyKind::Infer(())) {
         span_lint_and_then(cx, AS_UNDERSCORE, expr.span, "using `as _` conversion", |diag| {
-            let ty_resolved = cx.typeck_results().expr_ty(expr);
+            let ty_resolved = cx.typeck_results.expr_ty(expr);
             if ty_resolved.is_suggestable(cx.tcx, true) {
                 diag.span_suggestion(
                     ty.span,

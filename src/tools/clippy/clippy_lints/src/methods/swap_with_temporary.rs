@@ -44,7 +44,7 @@ impl<'tcx> ArgKind<'tcx> {
     /// `ArgKind::RefMutToTemp` variant, as this may cause a spurious lint to be emitted.
     fn new(cx: &LateContext<'tcx>, arg: &'tcx Expr<'tcx>) -> Self {
         if let ExprKind::AddrOf(BorrowKind::Ref, _, target) = arg.kind
-            && let adjustments = cx.typeck_results().expr_adjustments(arg)
+            && let adjustments = cx.typeck_results.expr_adjustments(arg)
             && adjustments
                 .first()
                 .is_some_and(|adj| matches!(adj.kind, Adjust::Deref(DerefAdjustKind::Builtin)))

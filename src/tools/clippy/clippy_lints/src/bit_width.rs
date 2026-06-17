@@ -111,9 +111,9 @@ impl LateLintPass<'_> for ManualBitWidth {
                     && leading_zeros.ident.name == sym::leading_zeros
                     && let ExprKind::Path(QPath::TypeRelative(hir_ty, segment)) = left.kind
                     && segment.ident.name == sym::BITS
-                    && let right_ty = cx.typeck_results().expr_ty(recv)
+                    && let right_ty = cx.typeck_results.expr_ty(recv)
                     && let Some(right_int_kind) = get_int_kind(cx, right_ty)
-                    && let left_ty = cx.typeck_results().node_type(hir_ty.hir_id)
+                    && let left_ty = cx.typeck_results.node_type(hir_ty.hir_id)
                     && let Some(left_int_kind) = get_int_kind(cx, left_ty)
                     && self.msrv.meets(cx, msrvs::BIT_WIDTH)
                     && left.span.eq_ctxt(right.span)

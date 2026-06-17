@@ -61,7 +61,7 @@ pub(super) fn check_map_unwrap_or_default(
     }
 
     // 2. the caller of `map()` is neither `Option` nor `Result`
-    let Some(flavor) = (cx.typeck_results())
+    let Some(flavor) = (cx.typeck_results)
         .expr_ty(map_recv)
         .opt_def_id()
         .and_then(|did| Flavor::new(cx, did))
@@ -70,7 +70,7 @@ pub(super) fn check_map_unwrap_or_default(
     };
 
     // 3. the caller of `unwrap_or_default` is neither `Option<bool>` nor `Result<bool, _>`
-    if !cx.typeck_results().expr_ty(expr).is_bool() {
+    if !cx.typeck_results.expr_ty(expr).is_bool() {
         return;
     }
 
@@ -225,11 +225,11 @@ pub(super) fn check_map(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: Msrv) {
                 && let ExprKind::Path(QPath::Resolved(_, path)) = call.kind
                 && let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Fn), _) = path.res
                 && let ExprKind::MethodCall(_, recv, [map_expr], _) = expr2.kind
-                && let ty = cx.typeck_results().expr_ty(expr1)
+                && let ty = cx.typeck_results.expr_ty(expr1)
                 && let ty::Adt(adt, args) = ty.kind()
                 && let Some(flavor) = Flavor::new(cx, adt.did())
                 && args.type_at(0).is_bool()
-                && cx.typeck_results().expr_ty(recv).is_diag_item(cx, flavor.diag_sym())
+                && cx.typeck_results.expr_ty(recv).is_diag_item(cx, flavor.diag_sym())
                 && let Ok(map_func) = MapFunc::try_from(map_expr)
             {
                 emit_lint(cx, parent_expr.span, op, flavor, bool_cst, map_func, recv, msrv);
@@ -257,12 +257,12 @@ pub(super) fn check_or<'tcx>(
         && none_path.ident.name == sym::is_none
         && some_path.ident.name == sym::is_some_and
         && cx
-            .typeck_results()
+            .typeck_results
             .expr_ty_adjusted(none_recv)
             .peel_refs()
             .is_diag_item(cx, sym::Option)
         && cx
-            .typeck_results()
+            .typeck_results
             .expr_ty_adjusted(some_recv)
             .peel_refs()
             .is_diag_item(cx, sym::Option)
@@ -310,7 +310,7 @@ pub(super) fn check_is_some_is_none<'tcx>(
     msrv: Msrv,
 ) {
     if cx
-        .typeck_results()
+        .typeck_results
         .expr_ty_adjusted(recv)
         .peel_refs()
         .is_diag_item(cx, sym::Option)

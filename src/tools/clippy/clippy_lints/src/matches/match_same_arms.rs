@@ -277,7 +277,7 @@ impl<'a> NormalizedPat<'a> {
                 Self::Struct(cx.qpath_res(path, pat.hir_id).opt_def_id(), fields)
             },
             PatKind::TupleStruct(ref path, pats, wild_idx) => {
-                let Some(adt) = cx.typeck_results().pat_ty(pat).ty_adt_def() else {
+                let Some(adt) = cx.typeck_results.pat_ty(pat).ty_adt_def() else {
                     return Self::Wild;
                 };
                 let (var_id, variant) = if adt.is_enum() {
@@ -308,7 +308,7 @@ impl<'a> NormalizedPat<'a> {
                 ..
             }) => Self::Path(cx.qpath_res(path, *hir_id).opt_def_id()),
             PatKind::Tuple(pats, wild_idx) => {
-                let field_count = match cx.typeck_results().pat_ty(pat).kind() {
+                let field_count = match cx.typeck_results.pat_ty(pat).kind() {
                     ty::Tuple(subs) => subs.len(),
                     _ => return Self::Wild,
                 };

@@ -23,7 +23,7 @@ pub(super) fn check<'tcx>(
         && let ExprKind::Binary(ref op, l, r) = body.value.kind
         && op.node == BinOpKind::Eq
         && cx
-            .typeck_results()
+            .typeck_results
             .expr_ty(filter_recv)
             .peel_refs()
             .is_diag_item(cx, sym::SliceIter)
@@ -38,7 +38,7 @@ pub(super) fn check<'tcx>(
         } else {
             return;
         }
-        && ty::Uint(UintTy::U8) == *cx.typeck_results().expr_ty(needle).peel_refs().kind()
+        && ty::Uint(UintTy::U8) == *cx.typeck_results.expr_ty(needle).peel_refs().kind()
         && !is_local_used(cx, needle, arg_id)
     {
         let haystack = if let ExprKind::MethodCall(path, receiver, [], _) = filter_recv.kind {

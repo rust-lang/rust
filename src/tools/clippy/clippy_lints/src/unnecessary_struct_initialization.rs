@@ -100,7 +100,7 @@ fn base_is_suitable(cx: &LateContext<'_>, expr: &Expr<'_>, base: &Expr<'_>) -> b
     // TODO: do not propose to replace *XX if XX is not Copy
     if let ExprKind::Unary(UnOp::Deref, target) = base.kind
         && matches!(target.kind, ExprKind::Path(..))
-        && !is_copy(cx, cx.typeck_results().expr_ty(expr))
+        && !is_copy(cx, cx.typeck_results.expr_ty(expr))
     {
         // `*base` cannot be used instead of the struct in the general case if it is not Copy.
         return false;
@@ -123,7 +123,7 @@ fn same_path_in_all_fields<'tcx>(
     expr: &Expr<'_>,
     fields: &[ExprField<'tcx>],
 ) -> Option<&'tcx Path<'tcx>> {
-    let ty = cx.typeck_results().expr_ty(expr);
+    let ty = cx.typeck_results.expr_ty(expr);
 
     let mut found = None;
 
@@ -131,7 +131,7 @@ fn same_path_in_all_fields<'tcx>(
         // fields are assigned from expression
         if let ExprKind::Field(src_expr, ident) = f.expr.kind
             // expression type matches
-            && ty == cx.typeck_results().expr_ty(src_expr)
+            && ty == cx.typeck_results.expr_ty(src_expr)
             // field name matches
             && ident_without_range_desugaring(f.ident) == ident
             // assigned from a path expression
@@ -163,10 +163,10 @@ fn same_path_in_all_fields<'tcx>(
 
 fn check_references(cx: &LateContext<'_>, expr_a: &Expr<'_>, expr_b: &Expr<'_>) -> bool {
     if let Some(parent) = get_parent_expr(cx, expr_a)
-        && let parent_ty = cx.typeck_results().expr_ty_adjusted(parent)
+        && let parent_ty = cx.typeck_results.expr_ty_adjusted(parent)
         && parent_ty.is_any_ptr()
     {
-        if is_copy(cx, cx.typeck_results().expr_ty(expr_a)) && expr_b.res_local_id().is_some() {
+        if is_copy(cx, cx.typeck_results.expr_ty(expr_a)) && expr_b.res_local_id().is_some() {
             // When the type implements `Copy`, a reference to the new struct works on the
             // copy. Using the original would borrow it.
             return false;

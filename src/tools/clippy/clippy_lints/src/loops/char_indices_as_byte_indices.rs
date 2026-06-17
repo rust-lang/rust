@@ -38,10 +38,10 @@ const CONTINUE: ControlFlow<!, ()> = ControlFlow::Continue(());
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'_>, iterable: &Expr<'_>, body: &'tcx Expr<'tcx>) {
     if let ExprKind::MethodCall(_, enumerate_recv, _, enumerate_span) = iterable.kind
-        && let Some(method_id) = cx.typeck_results().type_dependent_def_id(iterable.hir_id)
+        && let Some(method_id) = cx.typeck_results.type_dependent_def_id(iterable.hir_id)
         && cx.tcx.is_diagnostic_item(sym::enumerate_method, method_id)
         && let ExprKind::MethodCall(_, chars_recv, _, chars_span) = enumerate_recv.kind
-        && let Some(method_id) = cx.typeck_results().type_dependent_def_id(enumerate_recv.hir_id)
+        && let Some(method_id) = cx.typeck_results.type_dependent_def_id(enumerate_recv.hir_id)
         && cx.tcx.is_diagnostic_item(sym::str_chars, method_id)
     {
         if let PatKind::Tuple([pat, _], _) = pat.kind
@@ -87,14 +87,14 @@ fn check_index_usage<'tcx>(
             // We currently only lint `str` methods (which `String` can deref to), so a `.is_str()` check is sufficient here
             // (contrary to the `ExprKind::Index` case which needs to handle both with `is_string_like` because `String` implements
             // `Index` directly and no deref to `str` would happen in that case).
-            if cx.typeck_results().expr_ty_adjusted(recv).peel_refs().is_str()
+            if cx.typeck_results.expr_ty_adjusted(recv).peel_refs().is_str()
                 && BYTE_INDEX_METHODS.contains(&segment.ident.name)
                 && eq_expr_value(cx, expr.span.ctxt(), chars_recv, recv) =>
         {
             "passing a character position to a method that expects a byte index"
         },
         ExprKind::Index(target, ..)
-            if is_string_like(cx.typeck_results().expr_ty_adjusted(target).peel_refs())
+            if is_string_like(cx.typeck_results.expr_ty_adjusted(target).peel_refs())
                 && eq_expr_value(cx, expr.span.ctxt(), chars_recv, target) =>
         {
             "indexing into a string with a character position where a byte index is expected"

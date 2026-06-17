@@ -15,7 +15,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, from: &Expr<'_>, to: 
         let init_expr = expr_or_init(cx, from);
         if is_expr_const_aligned(cx, init_expr, ptr_ty.ty)
             && let Some(std_or_core) = std_or_core(cx)
-            && let pointee_ty = cx.typeck_results().node_type(ptr_ty.ty.hir_id)
+            && let pointee_ty = cx.typeck_results.node_type(ptr_ty.ty.hir_id)
             && pointee_ty.is_sized(cx.tcx, cx.typing_env())
         {
             let sugg_fn = match ptr_ty.mutbl {
@@ -60,7 +60,7 @@ fn is_align_of_call(cx: &LateContext<'_>, fun: &Expr<'_>, to: &Ty<'_>) -> bool {
         && let Some(args) = path.segments.last().and_then(|seg| seg.args)
         && let [GenericArg::Type(generic_ty)] = args.args
     {
-        let typeck = cx.typeck_results();
+        let typeck = cx.typeck_results;
         return typeck.node_type(generic_ty.hir_id) == typeck.node_type(to.hir_id);
     }
     false
@@ -71,7 +71,7 @@ fn is_literal_aligned(cx: &LateContext<'_>, lit: &Spanned<LitKind>, to: &Ty<'_>)
     if val == 0 {
         return false;
     }
-    let to_mid_ty = cx.typeck_results().node_type(to.hir_id);
+    let to_mid_ty = cx.typeck_results.node_type(to.hir_id);
     cx.tcx
         .layout_of(cx.typing_env().as_query_input(to_mid_ty))
         .is_ok_and(|layout| {

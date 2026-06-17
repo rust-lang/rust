@@ -48,7 +48,7 @@ pub(super) fn check(
     unwrap_allowed_aliases: &[rustc_hir::def_id::DefId],
     variant: Variant,
 ) {
-    let ty = cx.typeck_results().expr_ty(recv).peel_refs();
+    let ty = cx.typeck_results.expr_ty(recv).peel_refs();
 
     let (kind, none_value, none_prefix) = match ty.opt_diag_name(cx) {
         Some(sym::Option) if !is_err => ("an `Option`", "None", ""),
@@ -144,7 +144,7 @@ pub(super) fn check_call(
     let Some(recv) = args.first() else {
         return;
     };
-    let Some((DefKind::AssocFn, def_id)) = cx.typeck_results().type_dependent_def(func.hir_id) else {
+    let Some((DefKind::AssocFn, def_id)) = cx.typeck_results.type_dependent_def(func.hir_id) else {
         return;
     };
 

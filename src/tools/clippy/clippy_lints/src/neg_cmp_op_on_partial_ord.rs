@@ -49,7 +49,7 @@ impl<'tcx> LateLintPass<'tcx> for NoNegCompOpForPartialOrd {
             && let BinOpKind::Le | BinOpKind::Ge | BinOpKind::Lt | BinOpKind::Gt = op.node
             && !expr.span.in_external_macro(cx.sess().source_map())
         {
-            let ty = cx.typeck_results().expr_ty(left);
+            let ty = cx.typeck_results.expr_ty(left);
 
             let implements_ord = {
                 if let Some(id) = cx.tcx.get_diagnostic_item(sym::Ord) {

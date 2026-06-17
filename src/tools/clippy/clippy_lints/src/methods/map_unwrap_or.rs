@@ -27,14 +27,14 @@ pub(super) fn check<'tcx>(
     map_span: Span,
     msrv: Msrv,
 ) {
-    let recv_ty = cx.typeck_results().expr_ty(recv).peel_refs();
+    let recv_ty = cx.typeck_results.expr_ty(recv).peel_refs();
     let recv_ty_kind = match recv_ty.opt_diag_name(cx) {
         Some(sym::Option) => sym::Option,
         Some(sym::Result) if msrv.meets(cx, msrvs::RESULT_MAP_OR) => sym::Result,
         _ => return,
     };
 
-    let unwrap_arg_ty = cx.typeck_results().expr_ty(unwrap_arg);
+    let unwrap_arg_ty = cx.typeck_results.expr_ty(unwrap_arg);
     if !is_copy(cx, unwrap_arg_ty) {
         // Replacing `.map(<f>).unwrap_or(<a>)` with `.map_or(<a>, <f>)` can sometimes lead to
         // borrowck errors, see #10579 for one such instance.
@@ -128,7 +128,7 @@ pub(super) fn check<'tcx>(
                     (SuggestedKind::AndThen, _) => "and_then",
                     (SuggestedKind::IsVariantAnd, sym::Result) => "is_ok_and",
                     (SuggestedKind::IsVariantAnd, sym::Option) => "is_some_and",
-                    (SuggestedKind::Other, _) if unwrap_arg_ty != cx.typeck_results().expr_ty_adjusted(unwrap_arg) => {
+                    (SuggestedKind::Other, _) if unwrap_arg_ty != cx.typeck_results.expr_ty_adjusted(unwrap_arg) => {
                         // If the `unwrap_or` argument needs an adjustment, moving it into `map_or`'s
                         // first argument can make type inference pick the unadjusted type and reject
                         // the closure return type. Keep the lint, but don't emit a rustfix.

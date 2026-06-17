@@ -104,7 +104,7 @@ struct CastChainInfo<'tcx> {
 /// Returns None if the expr is not a Cast
 fn expr_cast_chain_tys<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<CastChainInfo<'tcx>> {
     if let ExprKind::Cast(cast_expr, _cast_to_hir_ty) = expr.peel_blocks().kind {
-        let cast_to = cx.typeck_results().expr_ty(expr);
+        let cast_to = cx.typeck_results.expr_ty(expr);
         let to_slice_ty = get_raw_slice_ty_mut(cast_to)?;
 
         // If the expression that makes up the source of this cast is itself a cast, recursively
@@ -116,7 +116,7 @@ fn expr_cast_chain_tys<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Optio
                 ..prev_info
             })
         } else {
-            let cast_from = cx.typeck_results().expr_ty(cast_expr);
+            let cast_from = cx.typeck_results.expr_ty(cast_expr);
             let from_slice_ty = get_raw_slice_ty_mut(cast_from)?;
             Some(CastChainInfo {
                 left_cast: cast_expr,

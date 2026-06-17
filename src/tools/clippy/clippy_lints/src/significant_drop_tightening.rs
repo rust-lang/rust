@@ -274,7 +274,7 @@ impl<'tcx> Visitor<'tcx> for StmtsChecker<'_, '_, '_, '_, 'tcx> {
             apa.has_expensive_expr_after_last_attr = false;
         };
         let mut ac = AttrChecker::new(self.cx, self.type_cache);
-        if ac.has_sig_drop_attr(self.cx.typeck_results().expr_ty(expr), 0) {
+        if ac.has_sig_drop_attr(self.cx.typeck_results.expr_ty(expr), 0) {
             if let hir::StmtKind::Let(local) = self.ap.curr_stmt.kind
                 && let hir::PatKind::Binding(_, hir_id, ident, _) = local.pat.kind
                 && !self.ap.apas.contains_key(&hir_id)

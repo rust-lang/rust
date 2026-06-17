@@ -88,7 +88,7 @@ fn contains_type_mismatch(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
             _ => p,
         };
 
-        if let Some(adjustments) = cx.typeck_results().pat_adjustments().get(adjust_pat.hir_id)
+        if let Some(adjustments) = cx.typeck_results.pat_adjustments().get(adjust_pat.hir_id)
             && adjustments.first().is_some_and(|first| first.source.is_ref())
         {
             result = true;
@@ -109,8 +109,8 @@ impl<'tcx> LateLintPass<'tcx> for PatternEquality {
             && !let_expr.pat.span.from_expansion()
             && !let_expr.init.span.from_expansion()
         {
-            let exp_ty = cx.typeck_results().expr_ty(let_expr.init);
-            let pat_ty = cx.typeck_results().pat_ty(let_expr.pat);
+            let exp_ty = cx.typeck_results.expr_ty(let_expr.init);
+            let pat_ty = cx.typeck_results.pat_ty(let_expr.pat);
 
             let mut app = Applicability::MachineApplicable;
             let ctxt = expr.span.ctxt();

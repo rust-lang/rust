@@ -35,7 +35,7 @@ Example of use:
 impl LateLintPass<'_> for MyStructLint {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         // Get type of `expr`
-        let ty = cx.typeck_results().expr_ty(expr);
+        let ty = cx.typeck_results.expr_ty(expr);
         // Match its kind to enter its type
         match ty.kind() {
             ty::Adt(adt_def, _) if adt_def.is_struct() => println!("Our `expr` is a struct!"),
@@ -92,7 +92,7 @@ use rustc_hir::LangItem;
 impl LateLintPass<'_> for MyStructLint {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         // Getting the expression type
-        let ty = cx.typeck_results().expr_ty(expr);
+        let ty = cx.typeck_results.expr_ty(expr);
 
         // 1. Using diagnostic items
         // The last argument is the diagnostic item to check for
@@ -135,7 +135,7 @@ impl LateLintPass<'_> for MyStructLint {
         let trait_id = cx.tcx.get_diagnostic_item(sym::Eq);
 
         // 2. Check for the trait implementation via the `implements_trait` util.
-        let ty = cx.typeck_results().expr_ty(expr);
+        let ty = cx.typeck_results.expr_ty(expr);
         if trait_id.is_some_and(|id| implements_trait(cx, ty, id, &[])) {
             // `ty` implements the trait.
         }

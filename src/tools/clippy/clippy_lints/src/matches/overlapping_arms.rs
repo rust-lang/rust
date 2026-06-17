@@ -9,8 +9,8 @@ use rustc_span::Span;
 use super::MATCH_OVERLAPPING_ARM;
 
 pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, ex: &'tcx Expr<'_>, arms: &'tcx [Arm<'_>]) {
-    if arms.len() >= 2 && cx.typeck_results().expr_ty(ex).is_integral() {
-        let ranges = all_ranges(cx, arms, cx.typeck_results().expr_ty(ex));
+    if arms.len() >= 2 && cx.typeck_results.expr_ty(ex).is_integral() {
+        let ranges = all_ranges(cx, arms, cx.typeck_results.expr_ty(ex));
         if !ranges.is_empty()
             && let Some((start, end)) = overlapping(&ranges)
         {
@@ -57,7 +57,7 @@ fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>)
                 if let PatKind::Expr(value) = pat.kind {
                     let value = ConstEvalCtxt::new(cx)
                         .eval_pat_expr(value)?
-                        .int_value(cx.tcx, cx.typeck_results().node_type(pat.hir_id))?;
+                        .int_value(cx.tcx, cx.typeck_results.node_type(pat.hir_id))?;
                     return Some(SpannedRange {
                         span: pat.span,
                         node: (value, EndBound::Included(value)),

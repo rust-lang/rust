@@ -17,7 +17,7 @@ pub(super) fn check<'tcx>(
 ) {
     // Note: we don't want to lint `get_mut().unwrap` for `HashMap` or `BTreeMap`,
     // because they do not implement `IndexMut`
-    let expr_ty = cx.typeck_results().expr_ty(recv);
+    let expr_ty = cx.typeck_results.expr_ty(recv);
     let caller_type = if derefs_to_slice(cx, recv, expr_ty).is_some() {
         "slice"
     } else {

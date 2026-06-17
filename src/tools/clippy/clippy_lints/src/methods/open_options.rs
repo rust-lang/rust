@@ -16,7 +16,7 @@ fn is_open_options(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
 }
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, recv: &'tcx Expr<'_>) {
-    if let Some(method_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
+    if let Some(method_id) = cx.typeck_results.type_dependent_def_id(e.hir_id)
         && let Some(impl_id) = cx.tcx.impl_of_assoc(method_id)
         && is_open_options(cx, cx.tcx.type_of(impl_id).instantiate_identity().skip_norm_wip())
     {
@@ -64,7 +64,7 @@ fn get_open_options(
     options: &mut Vec<(OpenOption, Argument, Span)>,
 ) -> bool {
     if let ExprKind::MethodCall(path, receiver, arguments, span) = argument.kind {
-        let obj_ty = cx.typeck_results().expr_ty(receiver).peel_refs();
+        let obj_ty = cx.typeck_results.expr_ty(receiver).peel_refs();
 
         // Only proceed if this is a call on some object of type std::fs::OpenOptions
         if !arguments.is_empty() && is_open_options(cx, obj_ty) {
@@ -109,7 +109,7 @@ fn get_open_options(
                     // Avoid linting altogether if this method is from a trait.
                     // This might be a user defined extension trait with a method like `truncate_write`
                     // which would be a false positive
-                    if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(argument.hir_id)
+                    if let Some(method_def_id) = cx.typeck_results.type_dependent_def_id(argument.hir_id)
                         && cx.tcx.trait_of_assoc(method_def_id).is_some()
                     {
                         return false;

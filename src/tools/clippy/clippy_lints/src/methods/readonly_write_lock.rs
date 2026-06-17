@@ -13,7 +13,7 @@ fn is_unwrap_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if let ExprKind::MethodCall(path, receiver, [], _) = expr.kind
         && path.ident.name == sym::unwrap
     {
-        cx.typeck_results()
+        cx.typeck_results
             .expr_ty(receiver)
             .peel_refs()
             .is_diag_item(cx, sym::Result)
@@ -23,7 +23,7 @@ fn is_unwrap_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 }
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, receiver: &Expr<'_>) {
-    if cx.typeck_results().expr_ty(receiver).peel_refs().is_diag_item(cx, sym::RwLock)
+    if cx.typeck_results.expr_ty(receiver).peel_refs().is_diag_item(cx, sym::RwLock)
         && let Node::Expr(unwrap_call_expr) = cx.tcx.parent_hir_node(expr.hir_id)
         && is_unwrap_call(cx, unwrap_call_expr)
         && let parent = cx.tcx.parent_hir_node(unwrap_call_expr.hir_id)

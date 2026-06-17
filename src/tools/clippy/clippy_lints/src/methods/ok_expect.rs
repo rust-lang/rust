@@ -10,7 +10,7 @@ use super::OK_EXPECT;
 
 /// lint use of `ok().expect()` for `Result`s
 pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>, recv_inner: &hir::Expr<'_>) {
-    let result_ty = cx.typeck_results().expr_ty(recv_inner);
+    let result_ty = cx.typeck_results.expr_ty(recv_inner);
     // lint if the caller of `ok()` is a `Result`
     if let Some(error_type) = get_error_type(cx, result_ty)
         && has_debug_impl(cx, error_type)

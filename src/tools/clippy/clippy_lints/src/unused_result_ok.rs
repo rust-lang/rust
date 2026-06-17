@@ -38,7 +38,7 @@ impl LateLintPass<'_> for UnusedResultOk {
         if let StmtKind::Semi(expr) = stmt.kind
             && let ExprKind::MethodCall(ok_path, recv, [], ..) = expr.kind //check is expr.ok() has type Result<T,E>.ok(, _)
             && ok_path.ident.name == sym::ok
-            && cx.typeck_results().expr_ty(recv).is_diag_item(cx, sym::Result)
+            && cx.typeck_results.expr_ty(recv).is_diag_item(cx, sym::Result)
             && !stmt.span.in_external_macro(cx.sess().source_map())
         {
             let ctxt = expr.span.ctxt();

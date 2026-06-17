@@ -60,7 +60,7 @@ declare_lint_pass!(ZombieProcesses => [ZOMBIE_PROCESSES]);
 impl<'tcx> LateLintPass<'tcx> for ZombieProcesses {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if let ExprKind::Call(..) | ExprKind::MethodCall(..) = expr.kind
-            && let child_ty = cx.typeck_results().expr_ty(expr)
+            && let child_ty = cx.typeck_results.expr_ty(expr)
             && child_ty.is_diag_item(cx, sym::Child)
         {
             match cx.tcx.parent_hir_node(expr.hir_id) {

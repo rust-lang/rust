@@ -53,7 +53,7 @@ impl<'tcx> LateLintPass<'tcx> for WithCapacityZero {
             && cx.tcx.item_name(def_id) == sym::with_capacity
             && is_integer_literal(arg, 0)
             && let ExprKind::Path(ref qpath) = func.kind
-            && let ty = cx.typeck_results().expr_ty(expr)
+            && let ty = cx.typeck_results.expr_ty(expr)
             && is_target_type(cx, ty)
         {
             let last_seg = last_path_segment(qpath);

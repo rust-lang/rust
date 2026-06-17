@@ -159,15 +159,15 @@ impl ArithmeticSideEffects {
         if let hir::BinOpKind::Sub = op
             && let hir::ExprKind::MethodCall(method, receiver, [], _) = actual_lhs.kind
             && method.ident.name == sym::get
-            && let receiver_ty = cx.typeck_results().expr_ty(receiver).peel_refs()
+            && let receiver_ty = cx.typeck_results.expr_ty(receiver).peel_refs()
             && is_non_zero_u(cx, receiver_ty)
             && literal_integer(cx, actual_rhs) == Some(1)
         {
             return;
         }
 
-        let lhs_ty = cx.typeck_results().expr_ty(actual_lhs).peel_refs();
-        let rhs_ty = cx.typeck_results().expr_ty_adjusted(actual_rhs).peel_refs();
+        let lhs_ty = cx.typeck_results.expr_ty(actual_lhs).peel_refs();
+        let rhs_ty = cx.typeck_results.expr_ty_adjusted(actual_rhs).peel_refs();
         if self.has_allowed_binary(lhs_ty, rhs_ty)
             | has_specific_allowed_type_and_operation(cx, lhs_ty, op, rhs_ty)
             | is_safe_due_to_smaller_source_type(cx, op, (actual_lhs, lhs_ty), actual_rhs)
@@ -225,7 +225,7 @@ impl ArithmeticSideEffects {
         if ConstEvalCtxt::new(cx).eval_local(receiver, expr.span.ctxt()).is_some() {
             return;
         }
-        let instance_ty = cx.typeck_results().expr_ty_adjusted(receiver);
+        let instance_ty = cx.typeck_results.expr_ty_adjusted(receiver);
         if !is_integer(instance_ty) {
             return;
         }
@@ -253,7 +253,7 @@ impl ArithmeticSideEffects {
         if ConstEvalCtxt::new(cx).eval(un_expr).is_some() {
             return;
         }
-        let ty = cx.typeck_results().expr_ty_adjusted(expr).peel_refs();
+        let ty = cx.typeck_results.expr_ty_adjusted(expr).peel_refs();
         if self.has_allowed_unary(ty) {
             return;
         }
@@ -332,9 +332,9 @@ impl<'tcx> LateLintPass<'tcx> for ArithmeticSideEffects {
 fn find_original_primitive_ty<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>) -> Option<Ty<'tcx>> {
     match &expr.kind {
         hir::ExprKind::Call(path, [arg]) if path.res(cx).opt_def_id().is_diag_item(&cx.tcx, sym::from_fn) => {
-            Some(cx.typeck_results().expr_ty(arg))
+            Some(cx.typeck_results.expr_ty(arg))
         },
-        hir::ExprKind::Cast(arg, _) => Some(cx.typeck_results().expr_ty(arg)),
+        hir::ExprKind::Cast(arg, _) => Some(cx.typeck_results.expr_ty(arg)),
         _ => None,
     }
 }

@@ -88,7 +88,7 @@ fn get_args_to_check<'tcx>(
     partial_ord_trait: Option<DefId>,
 ) -> Vec<(usize, Symbol)> {
     let mut args_to_check = Vec::new();
-    if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
+    if let Some(def_id) = cx.typeck_results.type_dependent_def_id(expr.hir_id) {
         let fn_sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
         let generics = cx.tcx.predicates_of(def_id);
         let [fn_mut_preds, ord_preds, partial_ord_preds] =
@@ -138,7 +138,7 @@ fn get_args_to_check<'tcx>(
 
 fn check_arg<'tcx>(cx: &LateContext<'tcx>, arg: &'tcx Expr<'tcx>) -> Option<(Span, Option<Span>)> {
     if let ExprKind::Closure(&Closure { body, fn_decl_span, .. }) = arg.kind
-        && let ty::Closure(_def_id, args) = &cx.typeck_results().node_type(arg.hir_id).kind()
+        && let ty::Closure(_def_id, args) = &cx.typeck_results.node_type(arg.hir_id).kind()
         && let ret_ty = args.as_closure().sig().output()
         && let ty = cx.tcx.instantiate_bound_regions_with_erased(ret_ty)
         && ty.is_unit()

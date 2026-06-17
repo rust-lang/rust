@@ -23,10 +23,10 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, clos
         && let ExprKind::Binary(op, lhs, rhs) = value.kind
         && let (peeled_ref_pat, _) = peel_hir_pat_refs(param.pat)
         && let Some((snip,snip_expr)) = can_replace_with_contains(cx, op, lhs, rhs, peeled_ref_pat.hir_id, &mut app)
-        && let ref_type = cx.typeck_results().expr_ty_adjusted(recv)
+        && let ref_type = cx.typeck_results.expr_ty_adjusted(recv)
         && let ty::Ref(_, inner_type, _) = ref_type.kind()
         && let ty::Slice(slice_type) = inner_type.kind()
-        && *slice_type == cx.typeck_results().expr_ty(snip_expr)
+        && *slice_type == cx.typeck_results.expr_ty(snip_expr)
     {
         span_lint_and_sugg(
             cx,

@@ -44,14 +44,14 @@ fn get_enum_ty(enum_ty: Ty<'_>) -> Option<Ty<'_>> {
 pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: Symbol, recvr: &hir::Expr<'_>) {
     // when we get here, we've already checked that the call name is "as_ref" or "as_mut"
     // check if the call is to the actual `AsRef` or `AsMut` trait
-    let Some(def) = cx.typeck_results().type_dependent_def_id(expr.hir_id) else {
+    let Some(def) = cx.typeck_results.type_dependent_def_id(expr.hir_id) else {
         return;
     };
 
     if def.opt_parent(cx).is_diag_item(cx, sym::AsRef) || def.opt_parent(cx).is_diag_item(cx, sym::AsMut) {
         // check if the type after `as_ref` or `as_mut` is the same as before
-        let rcv_ty = cx.typeck_results().expr_ty(recvr);
-        let res_ty = cx.typeck_results().expr_ty(expr);
+        let rcv_ty = cx.typeck_results.expr_ty(recvr);
+        let res_ty = cx.typeck_results.expr_ty(expr);
         let (base_res_ty, res_depth, _) = peel_and_count_ty_refs(res_ty);
         let (base_rcv_ty, rcv_depth, _) = peel_and_count_ty_refs(rcv_ty);
         if base_rcv_ty == base_res_ty && rcv_depth >= res_depth {
@@ -108,8 +108,8 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: Symbo
         def.opt_parent(cx).opt_impl_ty(cx).opt_diag_name(cx),
         Some(sym::Option | sym::Result)
     ) {
-        let rcv_ty = cx.typeck_results().expr_ty(recvr).peel_refs();
-        let res_ty = cx.typeck_results().expr_ty(expr).peel_refs();
+        let rcv_ty = cx.typeck_results.expr_ty(recvr).peel_refs();
+        let res_ty = cx.typeck_results.expr_ty(expr).peel_refs();
 
         if let Some(rcv_ty) = get_enum_ty(rcv_ty)
             && let Some(res_ty) = get_enum_ty(res_ty)
@@ -127,7 +127,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: Symbo
             && !should_call_clone_as_function(cx, rcv_ty)
             // https://github.com/rust-lang/rust-clippy/issues/12357
             && let Some(clone_trait) = cx.tcx.lang_items().clone_trait()
-            && implements_trait(cx, cx.typeck_results().expr_ty(recvr), clone_trait, &[])
+            && implements_trait(cx, cx.typeck_results.expr_ty(recvr), clone_trait, &[])
         {
             lint_as_ref_clone(cx, expr.span.with_hi(parent.span.hi()), recvr, call_name);
         }
@@ -155,12 +155,12 @@ fn is_calling_clone(cx: &LateContext<'_>, arg: &hir::Expr<'_>) -> bool {
             match closure_expr.kind {
                 hir::ExprKind::MethodCall(method, obj, [], _) => {
                     if method.ident.name == sym::clone
-                        && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id)
+                        && let Some(fn_id) = cx.typeck_results.type_dependent_def_id(closure_expr.hir_id)
                         && let Some(trait_id) = cx.tcx.trait_of_assoc(fn_id)
                         // We check it's the `Clone` trait.
                         && cx.tcx.lang_items().clone_trait().is_some_and(|id| id == trait_id)
                         // no autoderefs
-                        && !cx.typeck_results().expr_adjustments(obj).iter()
+                        && !cx.typeck_results.expr_adjustments(obj).iter()
                             .any(|a| matches!(a.kind, Adjust::Deref(DerefAdjustKind::Overloaded(..))))
                         && obj.res_local_id() == Some(local_id)
                     {

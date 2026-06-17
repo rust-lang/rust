@@ -124,7 +124,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                 return;
             }
 
-            let ty = cx.typeck_results().pat_ty(pat);
+            let ty = cx.typeck_results.pat_ty(pat);
 
             // If the type has a trivial Drop implementation, then it doesn't
             // matter that we drop the value immediately.

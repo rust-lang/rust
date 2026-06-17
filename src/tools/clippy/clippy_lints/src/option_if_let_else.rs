@@ -128,7 +128,7 @@ fn try_get_option_occurrence<'tcx>(
 ) -> Option<OptionOccurrence> {
     let cond_expr = match expr.kind {
         ExprKind::AddrOf(_, _, inner_expr) => inner_expr,
-        ExprKind::Unary(UnOp::Deref, inner_expr) if !cx.typeck_results().expr_ty(inner_expr).is_raw_ptr() => inner_expr,
+        ExprKind::Unary(UnOp::Deref, inner_expr) if !cx.typeck_results.expr_ty(inner_expr).is_raw_ptr() => inner_expr,
         _ => expr,
     };
     let (inner_pat, is_result) = try_get_inner_pat_and_is_result(cx, pat)?;
@@ -156,7 +156,7 @@ fn try_get_option_occurrence<'tcx>(
         let (as_ref, as_mut) = match &expr.kind {
             ExprKind::AddrOf(_, Mutability::Not, _) => (true, false),
             ExprKind::AddrOf(_, Mutability::Mut, _) => (false, true),
-            _ if let Some(mutb) = cx.typeck_results().expr_ty(expr).ref_mutability() => {
+            _ if let Some(mutb) = cx.typeck_results.expr_ty(expr).ref_mutability() => {
                 (mutb == Mutability::Not, mutb == Mutability::Mut)
             },
             _ => (
@@ -191,7 +191,7 @@ fn try_get_option_occurrence<'tcx>(
                     Some(CaptureKind::Ref(Mutability::Not)) | None => (),
                 }
             }
-        } else if !is_copy(cx, cx.typeck_results().expr_ty(expr))
+        } else if !is_copy(cx, cx.typeck_results.expr_ty(expr))
         // TODO: Cover more match cases
             && matches!(
                 expr.kind,
@@ -213,8 +213,8 @@ fn try_get_option_occurrence<'tcx>(
             }
         }
 
-        let some_body_ty = cx.typeck_results().expr_ty(some_body);
-        let none_body_ty = cx.typeck_results().expr_ty(none_body);
+        let some_body_ty = cx.typeck_results.expr_ty(some_body);
+        let none_body_ty = cx.typeck_results.expr_ty(none_body);
         // Check if coercion is needed for the `None` arm. If so, we cannot suggest because it will
         // introduce a type mismatch. A special case is when both arms have the same type, then
         // coercion is fine.
@@ -337,7 +337,7 @@ fn detect_option_if_let_else<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) ->
         if_else: Some(if_else),
         ..
     }) = higher::IfLet::hir(cx, expr)
-        && !cx.typeck_results().expr_ty(expr).is_unit()
+        && !cx.typeck_results.expr_ty(expr).is_unit()
         && !is_else_clause(cx.tcx, expr)
     {
         try_get_option_occurrence(cx, expr.span.ctxt(), let_pat, let_expr, if_then, if_else)
@@ -348,7 +348,7 @@ fn detect_option_if_let_else<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) ->
 
 fn detect_option_match<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<OptionOccurrence> {
     if let ExprKind::Match(ex, arms, MatchSource::Normal) = expr.kind
-        && !cx.typeck_results().expr_ty(expr).is_unit()
+        && !cx.typeck_results.expr_ty(expr).is_unit()
         && let Some((let_pat, if_then, if_else)) = try_convert_match(cx, arms)
     {
         try_get_option_occurrence(cx, expr.span.ctxt(), let_pat, ex, if_then, if_else)

@@ -20,13 +20,13 @@ pub(super) fn check<'tcx>(
     method_name: Symbol,
     msrv: Msrv,
 ) {
-    let recv_ty = cx.typeck_results().expr_ty_adjusted(recv);
+    let recv_ty = cx.typeck_results.expr_ty_adjusted(recv);
     if !matches!(recv_ty.kind(), ty::Ref(_, inner, _) if inner.is_slice()) {
         return;
     }
 
-    if is_const_param_evaluatable(cx.tcx, cx.typeck_results(), arg) {
-        let use_ctxt = get_expr_use_site(cx.tcx, cx.typeck_results(), expr.span.ctxt(), expr);
+    if is_const_param_evaluatable(cx.tcx, cx.typeck_results, arg) {
+        let use_ctxt = get_expr_use_site(cx.tcx, cx.typeck_results, expr.span.ctxt(), expr);
 
         if use_ctxt.is_ty_unified || !msrv.meets(cx, msrvs::AS_CHUNKS) {
             return;

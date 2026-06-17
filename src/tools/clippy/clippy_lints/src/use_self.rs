@@ -232,7 +232,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if !expr.span.from_expansion()
             && let Some(&StackItem::Check { impl_id, .. }) = self.stack.last()
-            && cx.typeck_results().expr_ty(expr) == cx.tcx.type_of(impl_id).instantiate_identity().skip_norm_wip()
+            && cx.typeck_results.expr_ty(expr) == cx.tcx.type_of(impl_id).instantiate_identity().skip_norm_wip()
             && self.msrv.meets(cx, msrvs::TYPE_ALIAS_ENUM_VARIANTS)
         {
             match expr.kind {
@@ -255,7 +255,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             && let PatKind::Expr(&PatExpr { kind: PatExprKind::Path(QPath::Resolved(_, path)), .. })
                  | PatKind::TupleStruct(QPath::Resolved(_, path), _, _)
                  | PatKind::Struct(QPath::Resolved(_, path), _, _) = pat.kind
-            && cx.typeck_results().pat_ty(pat) == cx.tcx.type_of(impl_id).instantiate_identity().skip_norm_wip()
+            && cx.typeck_results.pat_ty(pat) == cx.tcx.type_of(impl_id).instantiate_identity().skip_norm_wip()
             && self.msrv.meets(cx, msrvs::TYPE_ALIAS_ENUM_VARIANTS)
         {
             check_path(cx, path);

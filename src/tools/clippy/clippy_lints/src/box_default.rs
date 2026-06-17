@@ -128,7 +128,7 @@ fn given_type(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
                 && let Some(input) = sig.input(index)
                 && let Some(input_ty) = input.no_bound_vars()
             {
-                input_ty == cx.typeck_results().expr_ty_adjusted(expr)
+                input_ty == cx.typeck_results.expr_ty_adjusted(expr)
             } else {
                 false
             }

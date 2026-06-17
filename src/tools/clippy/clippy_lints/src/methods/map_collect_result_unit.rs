@@ -11,7 +11,7 @@ use super::MAP_COLLECT_RESULT_UNIT;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, iter: &hir::Expr<'_>, map_fn: &hir::Expr<'_>) {
     // return of collect `Result<(),_>`
-    let collect_ret_ty = cx.typeck_results().expr_ty(expr);
+    let collect_ret_ty = cx.typeck_results.expr_ty(expr);
     if collect_ret_ty.is_diag_item(cx, sym::Result)
         && let ty::Adt(_, args) = collect_ret_ty.kind()
         && let Some(result_t) = args.types().next()

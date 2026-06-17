@@ -88,7 +88,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitAutorefs {
             _ => return,
         };
 
-        let typeck = cx.typeck_results();
+        let typeck = cx.typeck_results;
         let adjustments_table = typeck.adjustments();
 
         if let Some(adjustments) = adjustments_table.get(inner.hir_id)
@@ -104,7 +104,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitAutorefs {
             && typeck.expr_ty(dereferenced).is_raw_ptr()
             && let method_did = match expr.kind {
                 // PERF: 5. b. A method call annotated with `#[rustc_no_implicit_refs]`
-                ExprKind::MethodCall(..) => cx.typeck_results().type_dependent_def_id(expr.hir_id),
+                ExprKind::MethodCall(..) => cx.typeck_results.type_dependent_def_id(expr.hir_id),
                 _ => None,
             }
             && method_did.map(|did| find_attr!(cx.tcx, did, RustcNoImplicitAutorefs)).unwrap_or(true)

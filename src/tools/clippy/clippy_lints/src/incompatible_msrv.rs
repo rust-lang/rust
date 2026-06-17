@@ -221,7 +221,7 @@ impl<'tcx> LateLintPass<'tcx> for IncompatibleMsrv {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         match expr.kind {
             ExprKind::MethodCall(_, _, _, span) => {
-                if let Some(method_did) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
+                if let Some(method_did) = cx.typeck_results.type_dependent_def_id(expr.hir_id) {
                     self.emit_lint_if_under_msrv(cx, is_in_const_context(cx), method_did, expr.hir_id, span);
                 }
             },
@@ -230,7 +230,7 @@ impl<'tcx> LateLintPass<'tcx> for IncompatibleMsrv {
                 let needs_const = is_in_const_context(cx);
                 let def_id = if let Some(def_id) = cx.qpath_res(&qpath, callee.hir_id).opt_def_id() {
                     def_id
-                } else if needs_const && let ty::FnDef(def_id, _) = *cx.typeck_results().expr_ty(callee).kind() {
+                } else if needs_const && let ty::FnDef(def_id, _) = *cx.typeck_results.expr_ty(callee).kind() {
                     // Edge case where a function is first assigned then called.
                     // We previously would have warned for the non-const MSRV, when
                     // checking the path, but now that it's called the const MSRV

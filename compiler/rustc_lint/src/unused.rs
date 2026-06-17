@@ -44,7 +44,7 @@ impl<'tcx> LateLintPass<'tcx> for PathStatements {
         if let hir::StmtKind::Semi(expr) = s.kind
             && let hir::ExprKind::Path(_) = expr.kind
         {
-            let ty = cx.typeck_results().expr_ty(expr);
+            let ty = cx.typeck_results.expr_ty(expr);
             if ty.needs_drop(cx.tcx, cx.typing_env()) {
                 let sub = if let Ok(snippet) = cx.sess().source_map().span_to_snippet(expr.span) {
                     PathStatementDropSub::Suggestion { span: s.span, snippet }
@@ -1304,7 +1304,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAllocation {
             _ => return,
         }
 
-        for adj in cx.typeck_results().expr_adjustments(e) {
+        for adj in cx.typeck_results.expr_adjustments(e) {
             if let adjustment::Adjust::Borrow(adjustment::AutoBorrow::Ref(m)) = adj.kind {
                 if let ty::Ref(_, inner_ty, _) = adj.target.kind()
                     && inner_ty.is_box()

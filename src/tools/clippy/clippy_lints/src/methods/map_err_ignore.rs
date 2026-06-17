@@ -7,7 +7,7 @@ use rustc_span::sym;
 use super::MAP_ERR_IGNORE;
 
 pub(super) fn check(cx: &LateContext<'_>, e: &Expr<'_>, arg: &Expr<'_>) {
-    if let Some(method_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
+    if let Some(method_id) = cx.typeck_results.type_dependent_def_id(e.hir_id)
         && let Some(impl_id) = cx.tcx.impl_of_assoc(method_id)
         && cx
             .tcx

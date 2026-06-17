@@ -150,7 +150,7 @@ fn used_underscore_items<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
             }
         },
         ExprKind::MethodCall(path, ..) => {
-            if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
+            if let Some(def_id) = cx.typeck_results.type_dependent_def_id(expr.hir_id) {
                 (def_id, path.ident)
             } else {
                 return;
@@ -201,7 +201,7 @@ fn used_underscore_binding<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
             }
         },
         ExprKind::Field(recv, ident) => {
-            if let Some(adt_def) = cx.typeck_results().expr_ty_adjusted(recv).ty_adt_def()
+            if let Some(adt_def) = cx.typeck_results.expr_ty_adjusted(recv).ty_adt_def()
                 && let Some(field) = adt_def.all_fields().find(|field| field.name == ident.name)
                 && let Some(local_did) = field.did.as_local()
                 && !cx.tcx.type_of(field.did).skip_binder().is_phantom_data()

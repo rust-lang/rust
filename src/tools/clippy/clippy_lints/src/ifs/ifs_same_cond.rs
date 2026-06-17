@@ -13,7 +13,7 @@ fn method_caller_is_mutable<'tcx>(
     caller_expr: &Expr<'_>,
     interior_mut: &mut InteriorMut<'tcx>,
 ) -> bool {
-    let caller_ty = cx.typeck_results().expr_ty(caller_expr);
+    let caller_ty = cx.typeck_results.expr_ty(caller_expr);
 
     interior_mut.is_interior_mut_ty(cx, caller_ty)
         || caller_ty.is_mutable_ptr()
