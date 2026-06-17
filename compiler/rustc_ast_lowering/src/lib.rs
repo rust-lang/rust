@@ -56,9 +56,9 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::PerParentDisambiguatorState;
 use rustc_hir::lints::DelayedLint;
 use rustc_hir::{
-    self as hir, AngleBrackets, ConstArg, GenericArg, HirId, IsAnonInPath, ItemLocalMap, LangItem,
-    LifetimeSource, LifetimeSyntax, MissingLifetimeKind, ParamName, PredicateOrigin, Target,
-    TraitCandidate, find_attr,
+    self as hir, AngleBrackets, ConstArg, GenericArg, HirId, ItemLocalMap, LifetimeSource,
+    LifetimeSyntax, MissingLifetimeKind, ParamName, PredicateOrigin, Target, TraitCandidate,
+    find_attr,
 };
 use rustc_index::{Idx, IndexVec};
 use rustc_macros::extension;
