@@ -129,7 +129,6 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
         DefKind::Variant
         | DefKind::TyParam
         | DefKind::ConstParam
-        | DefKind::Ctor(_, _)
         | DefKind::Field
         | DefKind::LifetimeParam => {
             span_bug!(
@@ -144,7 +143,8 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
         | DefKind::Macro(_)
         | DefKind::GlobalAsm
         | DefKind::Mod
-        | DefKind::Use => {}
+        | DefKind::Use
+        | DefKind::Ctor(_, _) => {}
     }
     V::Result::output()
 }

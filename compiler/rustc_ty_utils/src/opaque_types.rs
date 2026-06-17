@@ -338,19 +338,21 @@ fn opaque_types_defined_by<'tcx>(
         DefKind::Closure | DefKind::InlineConst | DefKind::SyntheticCoroutineBody => {
             collector.opaques.extend(tcx.opaque_types_defined_by(tcx.local_parent(item)));
         }
-        DefKind::AssocTy | DefKind::TyAlias | DefKind::GlobalAsm => {}
+        DefKind::AssocTy
+        | DefKind::TyAlias
+        | DefKind::GlobalAsm
+        | DefKind::Ctor(_, _)
+        | DefKind::Variant => {}
         DefKind::OpaqueTy
         | DefKind::Mod
         | DefKind::Struct
         | DefKind::Union
         | DefKind::Enum
-        | DefKind::Variant
         | DefKind::Trait
         | DefKind::ForeignTy
         | DefKind::TraitAlias
         | DefKind::TyParam
         | DefKind::ConstParam
-        | DefKind::Ctor(_, _)
         | DefKind::Macro(_)
         | DefKind::ExternCrate
         | DefKind::Use
