@@ -132,7 +132,7 @@ use unused::must_use::*;
 use unused::*;
 
 #[rustfmt::skip]
-pub use builtin::{MissingDoc, SoftLints};
+pub use builtin::MissingDoc;
 pub use context::{CheckLintNameResult, EarlyContext, LateContext, LintContext, LintStore};
 pub use early::diagnostics::DiagAndSess;
 pub use early::{EarlyCheckNode, check_ast_node};
@@ -285,7 +285,7 @@ fn register_builtins(store: &mut LintStore) {
     store.register_lints(&BuiltinCombinedEarlyLintPass::lint_vec());
     store.register_lints(&BuiltinCombinedModuleLateLintPass::lint_vec());
     store.register_lints(&foreign_modules::lint_vec());
-    store.register_lints(&HardwiredLints::lint_vec());
+    store.register_lints(&hardwired::lint_vec());
 
     add_lint_group!(
         "nonstandard_style",

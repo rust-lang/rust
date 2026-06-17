@@ -1,5 +1,4 @@
 use rustc_session::lint::LintPass;
-use rustc_session::lint::builtin::HardwiredLints;
 
 use crate::context::{EarlyContext, LateContext};
 
@@ -70,8 +69,6 @@ macro_rules! declare_late_lint_pass {
 // Declare the `LateLintPass` trait, which contains empty default definitions
 // for all the `check_*` methods.
 late_lint_methods!(declare_late_lint_pass, []);
-
-impl LateLintPass<'_> for HardwiredLints {}
 
 #[macro_export]
 macro_rules! expand_combined_late_lint_pass_method {
