@@ -333,8 +333,8 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             debug!("Operand::from_immediate_or_packed_pair: unpacking {:?} @ {:?}", llval, layout);
 
             // Deconstruct the immediate aggregate.
-            let a_llval = bx.extract_value(llval, 0);
-            let b_llval = bx.extract_value(llval, 1);
+            let a_llval = bx.extract_value(llval, 0, None);
+            let b_llval = bx.extract_value(llval, 1, None);
             OperandValue::Pair(a_llval, b_llval)
         } else {
             OperandValue::Immediate(llval)

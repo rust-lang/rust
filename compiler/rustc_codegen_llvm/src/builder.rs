@@ -2,7 +2,7 @@ use std::borrow::{Borrow, Cow};
 use std::iter;
 use std::ops::Deref;
 
-use rustc_ast::expand::typetree::FncTree;
+use rustc_ast::expand::typetree::{TypeTree, FncTree};
 pub(crate) mod autodiff;
 pub(crate) mod gpu_offload;
 
@@ -586,7 +586,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let name = format!("llvm.{}{oop_str}.with.overflow", if signed { 's' } else { 'u' });
 
         let res = self.call_intrinsic(name, &[self.type_ix(width)], &[lhs, rhs]);
-        (self.extract_value(res, 0), self.extract_value(res, 1))
+        (self.extract_value(res, 0, None), self.extract_value(res, 1, None))
     }
 
     fn from_immediate(&mut self, val: Self::Value) -> Self::Value {
@@ -668,6 +668,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     #[instrument(level = "trace", skip(self))]
     fn load_operand(&mut self, place: PlaceRef<'tcx, &'ll Value>) -> OperandRef<'tcx, &'ll Value> {
+        //dbg!("load_operand");
+        //use rustc_middle::ty::print::with_no_trimmed_paths;
+        //eprintln!("place = {}", with_no_trimmed_paths!(format!("{place:#?}")));
+
         if place.layout.is_unsized() {
             let tail = self.tcx.struct_tail_for_codegen(place.layout.ty, self.typing_env());
             if matches!(tail.kind(), ty::Foreign(..)) {
@@ -739,6 +743,62 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
             let llval = const_llval.unwrap_or_else(|| {
                 let load = self.load(llty, place.val.llval, place.val.align);
+                let ty = place.layout.ty;
+                let tt = rustc_middle::ty::typetree_from_ty(self.tcx, ty);
+                dbg!(&tt);
+                let fnc_tree = FncTree {
+                    args: vec![TypeTree::new(), TypeTree::new()],
+                    ret: tt,
+                };
+                crate::typetree::add_tt(self.cx().llmod, self.cx().llcx, load, self.tcx, fnc_tree);
+                //eprintln!("general load of place = {}", with_no_trimmed_paths!(format!("{place:#?}")));
+                //       25 general load of place = PlaceRef {
+                //       24     val: PlaceValue {
+                //       23         llval: (ptr:  %3 = alloca [8 x i8], align 8),
+                //       22         llextra: None,
+                //       21         align: Align(8 bytes),
+                //       20     },
+                //       19     layout: TyAndLayout {
+                //       18         ty: &([f64; 3], [f64; 3]),
+                //       17         layout: Layout {
+                //       16             size: Size(8 bytes),
+                //       15             align: AbiAlign {
+                //       14                 abi: Align(8 bytes),
+                //       13             },
+                //       12             backend_repr: Scalar(
+                //       11                 Initialized {
+                //       10                     value: Pointer(
+                //        9                         AddressSpace(
+                //        8                             0,
+                //        7                         ),
+                //        6                     ),
+                //        5                     valid_range: 1..=18446744073709551615,
+                //        4                 },
+                //        3             ),
+                //        2             fields: Primitive,
+                //        1             largest_niche: Some(
+                //   259                    Niche {
+                //        1                     offset: Size(0 bytes),
+                //        2                     value: Pointer(
+                //        3                         AddressSpace(
+                //        4                             0,
+                //        5                         ),
+                //        6                     ),
+                //        7                     valid_range: 1..=18446744073709551615,
+                //        8                 },
+                //        9             ),
+                //       10             uninhabited: false,
+                //       11             variants: Single {
+                //       12                 index: 0,
+                //       13             },
+                //       14             max_repr_align: None,
+                //       15             unadjusted_abi_align: Align(8 bytes),
+                //       16             randomization_seed: 281492156579847,
+                //       17         },
+                //       18     },
+                //       19 }
+
+                dbg!(&load);
                 if let abi::BackendRepr::Scalar(scalar) = place.layout.backend_repr {
                     scalar_load_metadata(self, load, scalar, place.layout, Size::ZERO);
                     self.to_immediate_scalar(load, scalar)
@@ -1204,7 +1264,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn extract_value(&mut self, agg_val: &'ll Value, idx: u64) -> &'ll Value {
+    fn extract_value(&mut self, agg_val: &'ll Value, idx: u64, tt: Option<FncTree>) -> &'ll Value {
         assert_eq!(idx as c_uint as u64, idx);
         unsafe { llvm::LLVMBuildExtractValue(self.llbuilder, agg_val, idx as c_uint, UNNAMED) }
     }
@@ -1226,7 +1286,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe {
             llvm::LLVMSetCleanup(landing_pad, llvm::TRUE);
         }
-        (self.extract_value(landing_pad, 0), self.extract_value(landing_pad, 1))
+        (self.extract_value(landing_pad, 0, None), self.extract_value(landing_pad, 1, None))
     }
 
     fn filter_landing_pad(&mut self, pers_fn: &'ll Value) {
@@ -1327,8 +1387,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 llvm::FALSE, // SingleThreaded
             );
             llvm::LLVMSetWeak(value, weak.to_llvm_bool());
-            let val = self.extract_value(value, 0);
-            let success = self.extract_value(value, 1);
+            let val = self.extract_value(value, 0, None);
+            let success = self.extract_value(value, 1, None);
             (val, success)
         }
     }

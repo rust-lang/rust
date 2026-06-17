@@ -65,7 +65,11 @@ unsafe extern "C" {
         name: *const c_char,
         NameLen: libc::size_t,
     ) -> Option<&Value>;
-
+    pub(crate) fn LLVMRustIsPtrLoad(v: &Value) -> bool;
+    pub(crate) fn LLVMRustSetEnzymeTypeMetadata(
+        v: &Value,
+        md: &Value,
+    );
 }
 
 unsafe extern "C" {
@@ -90,6 +94,7 @@ pub(crate) use self::Enzyme_AD::*;
 pub(crate) mod Enzyme_AD {
     use std::ffi::{c_char, c_void};
     use std::sync::{Mutex, MutexGuard, OnceLock};
+    use super::Value;
 
     use rustc_middle::bug;
     use rustc_session::config::{Sysroot, host_tuple};
@@ -114,6 +119,7 @@ pub(crate) mod Enzyme_AD {
         unsafe extern "C" fn(CTypeTreeRef, *const i64, usize, CConcreteType, &Context);
     type EnzymeTypeTreeToStringFn = unsafe extern "C" fn(CTypeTreeRef) -> *const c_char;
     type EnzymeTypeTreeToStringFreeFn = unsafe extern "C" fn(*const c_char);
+    type EnzymeTypeTreeToMDFn = unsafe extern "C" fn(CTypeTreeRef, &Context) -> Option<&Value>;
 
     #[allow(non_snake_case)]
     pub(crate) struct EnzymeWrapper {
@@ -127,6 +133,7 @@ pub(crate) mod Enzyme_AD {
         EnzymeTypeTreeShiftIndiciesEq: EnzymeTypeTreeShiftIndiciesEqFn,
         EnzymeTypeTreeInsertEq: EnzymeTypeTreeInsertEqFn,
         EnzymeTypeTreeToString: EnzymeTypeTreeToStringFn,
+        EnzymeTypeTreeToMD: EnzymeTypeTreeToMDFn,
         EnzymeTypeTreeToStringFree: EnzymeTypeTreeToStringFreeFn,
 
         EnzymePrintPerf: *mut c_void,
@@ -292,6 +299,10 @@ pub(crate) mod Enzyme_AD {
             unsafe { (self.EnzymeTypeTreeToString)(tree) }
         }
 
+        pub(crate) fn tree_to_md<'a>(&'a self, tree: *mut EnzymeTypeTree, ctx: &'a Context) -> Option<&'a Value> {
+            unsafe { (self.EnzymeTypeTreeToMD)(tree, ctx) }
+        }
+
         pub(crate) fn tree_to_string_free(&self, ch: *const c_char) {
             unsafe { (self.EnzymeTypeTreeToStringFree)(ch) }
         }
@@ -381,6 +392,7 @@ pub(crate) mod Enzyme_AD {
                 EnzymeTypeTreeToStringFree: EnzymeTypeTreeToStringFreeFn,
                 EnzymeSetCLBool: EnzymeSetCLBoolFn,
                 EnzymeSetCLString: EnzymeSetCLStringFn,
+                EnzymeTypeTreeToMD: EnzymeTypeTreeToMDFn,
             );
 
             load_ptrs_by_symbols_mut_void!(
@@ -422,6 +434,7 @@ pub(crate) mod Enzyme_AD {
                 looseTypeAnalysis,
                 EnzymeSetCLBool,
                 EnzymeSetCLString,
+                EnzymeTypeTreeToMD,
                 registerEnzymeAndPassPipeline,
                 lib,
             })

@@ -1,7 +1,8 @@
 use std::ffi::{CString, c_char, c_uint};
 
 use rustc_ast::expand::typetree::{FncTree, TypeTree as RustTypeTree};
-
+use crate::llvm::LLVMRustSetEnzymeTypeMetadata;
+use crate::llvm::LLVMRustIsPtrLoad;
 use crate::attributes;
 use crate::llvm::{self, EnzymeWrapper, TypeTree, Value};
 
@@ -76,7 +77,7 @@ pub(crate) fn add_tt<'ll>(
     let inputs = tt.args;
     let ret_tt: RustTypeTree = tt.ret;
 
-    dbg!("getting DataLayout");
+    //dbg!("getting DataLayout");
     let llvm_data_layout: *const c_char = unsafe { llvm::LLVMGetDataLayoutStr(&*llmod) };
     let llvm_data_layout =
         std::str::from_utf8(unsafe { std::ffi::CStr::from_ptr(llvm_data_layout) }.to_bytes())
@@ -84,10 +85,14 @@ pub(crate) fn add_tt<'ll>(
 
     let attr_name = "enzyme_type";
     let c_attr_name = CString::new(attr_name).unwrap();
-    dbg!("going to iter over inputs");
+    //dbg!("going to iter over inputs");
 
     for (i, input) in inputs.iter().enumerate() {
         unsafe {
+            if *input == rustc_ast::expand::typetree::TypeTree::new() {
+                dbg!("skipping empty input tt");
+                continue;
+            }
             let enzyme_tt = to_enzyme_typetree(input.clone(), llvm_data_layout, llcx);
             let enzyme_wrapper = EnzymeWrapper::get_instance();
             let c_str = enzyme_wrapper.tree_to_string(enzyme_tt.inner);
@@ -100,19 +105,23 @@ pub(crate) fn add_tt<'ll>(
                 c_str.as_ptr(),
                 c_str.to_bytes().len() as c_uint,
             );
-            dbg!("adding attribute for argument {}", i);
-            dbg!("attribute string: {:?}", c_str);
-            dbg!(&fn_def);
+            //dbg!("adding attribute for argument {}", i);
+            //dbg!("attribute string: {:?}", c_str);
+            //dbg!(&fn_def);
 
             if llvm::LLVMRustIsIntrinsicCall(fn_def) {
+                //dbg!("intrinsic");
                 attributes::apply_to_callsite(fn_def, llvm::AttributePlace::Argument(i as u32), &[attr]);
+            } else if LLVMRustIsPtrLoad(fn_def) {
+                //dbg!("skipping input args for instr");
             } else {
+                //dbg!("fn call");
                 attributes::apply_to_llfn(fn_def, llvm::AttributePlace::Argument(i as u32), &[attr]);
             }
             enzyme_wrapper.tree_to_string_free(c_str.as_ptr());
         }
     }
-    dbg!("finished to iter over inputs");
+    //dbg!("finished to iter over inputs");
 
     unsafe {
         if ret_tt == rustc_ast::expand::typetree::TypeTree::new() {
@@ -135,8 +144,15 @@ pub(crate) fn add_tt<'ll>(
         dbg!(&fn_def);
 
         if llvm::LLVMRustIsIntrinsicCall(fn_def) {
+            dbg!("intrinsic call");
             attributes::apply_to_callsite(fn_def, llvm::AttributePlace::ReturnValue, &[ret_attr]);
+        } else if LLVMRustIsPtrLoad(fn_def) {
+            dbg!("hiii");
+            //dbg!(&enzyme_tt);
+            let val = enzyme_wrapper.tree_to_md(enzyme_tt.inner, llcx);
+            LLVMRustSetEnzymeTypeMetadata(fn_def, val.unwrap());
         } else {
+            dbg!("fn call");
             attributes::apply_to_llfn(fn_def, llvm::AttributePlace::ReturnValue, &[ret_attr]);
         }
         enzyme_wrapper.tree_to_string_free(c_str.as_ptr());
