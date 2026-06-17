@@ -34,32 +34,36 @@ pub fn bounds_indexer_with_range_bounds(buf: &[u8]) -> Option<&[u8]> {
     if buf.len() < 4 { None } else { Some(index(buf, 4..)) }
 }
 
-/*
-pub mod bounds_indexer_with_range_bounds_manual_map {
-    #[no_mangle]
-    pub fn test(buf: &[u8]) -> Option<&[u8]> {
-        if buf.len() < 4 { None } else { Some(index(buf, 4..)) }
+#[no_mangle]
+pub fn bounds_indexer_with_range_bounds_manual_map(buf: &[u8]) -> Option<&[u8]> {
+    // CHECK-LABEL: @bounds_indexer_with_range_bounds_manual_map(
+    // CHECK-NOT: slice_index_fail
+    // CHECK-NOT: br {{.*}}
+    // CHECK: ret
+    fn index(buf: &[u8], range: impl RangeBounds<usize>) -> &[u8] {
+        &buf[(
+            match range.start_bound() {
+                Bound::Included(&i) => Bound::Included(i),
+                Bound::Excluded(&i) => Bound::Excluded(i),
+                Bound::Unbounded => Bound::Unbounded,
+            },
+            match range.end_bound() {
+                Bound::Included(&i) => Bound::Included(i),
+                Bound::Excluded(&i) => Bound::Excluded(i),
+                Bound::Unbounded => Bound::Unbounded,
+            },
+        )]
     }
 
-    fn index(buf: &[u8], range: impl RangeBounds<usize>) -> &[u8] {
-        &buf[(match range.start_bound() {
-            Bound::Included(&i) => Bound::Included(i),
-            Bound::Excluded(&i) => Bound::Excluded(i),
-            Bound::Unbounded => Bound::Unbounded,
-        }, match range.end_bound() {
-            Bound::Included(&i) => Bound::Included(i),
-            Bound::Excluded(&i) => Bound::Excluded(i),
-            Bound::Unbounded => Bound::Unbounded,
-        })]
-    }
+    if buf.len() < 4 { None } else { Some(index(buf, 4..)) }
 }
 
-pub mod bounds_indexer_with_range_bounds_manually_mapped {
-    #[no_mangle]
-    pub fn bounds_indexer_with_range_boundS_manually_mapped(buf: &[u8]) -> Option<&[u8]> {
-        if buf.len() < 4 { None } else { Some(manually_index(buf, 4..)) }
-    }
-
+#[no_mangle]
+pub fn bounds_indexer_with_range_bounds_manually_mapped(buf: &[u8]) -> Option<&[u8]> {
+    // CHECK-LABEL: @bounds_indexer_with_range_bounds_manually_mapped(
+    // CHECK-NOT: slice_index_fail
+    // CHECK-NOT: br {{.*}}
+    // CHECK: ret
     fn index(buf: &[u8], range: impl RangeBounds<usize>) -> &[u8] {
         &buf[match range.start_bound() {
             Bound::Included(&i) => i,
@@ -71,5 +75,6 @@ pub mod bounds_indexer_with_range_bounds_manually_mapped {
             Bound::Unbounded => buf.len(),
         }]
     }
+
+    if buf.len() < 4 { None } else { Some(index(buf, 4..)) }
 }
-*/
