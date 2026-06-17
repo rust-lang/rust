@@ -3122,6 +3122,9 @@ impl<'a> Parser<'a> {
                     // that the keyword is already present and the second instance should be removed.
                     let wrong_kw = if self.check_keyword(exp!(Const)) {
                         match constness {
+                            Const::Always(_) => {
+                                unreachable!("can only be set from the rustc_comptime builtin attr")
+                            }
                             Const::Yes(sp) => Some(WrongKw::Duplicated(sp)),
                             Const::No => {
                                 recover_constness = Const::Yes(self.token.span);

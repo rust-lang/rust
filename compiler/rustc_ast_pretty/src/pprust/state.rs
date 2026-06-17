@@ -2297,6 +2297,8 @@ impl<'a> State<'a> {
         match s {
             ast::Const::No => {}
             ast::Const::Yes(_) => self.word_nbsp("const"),
+            // Can only be set via an attribute, which we'll also print
+            ast::Const::Always(_) => {}
         }
     }
 
