@@ -743,6 +743,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 write!(self, ")")?;
             }
             ty::FnDef(def_id, args) => {
+                let args = args.no_bound_vars().unwrap();
                 if with_reduced_queries() {
                     self.print_def_path(def_id, args)?;
                 } else {
@@ -2031,7 +2032,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
             (_, ty::FnDef(def_id, args)) => {
                 // Never allowed today, but we still encounter them in invalid const args.
-                self.pretty_print_value_path(def_id, args)?;
+                // FIXME(addiesh): fix wrt late-bound stuff
+                self.pretty_print_value_path(def_id, args.no_bound_vars().unwrap())?;
                 return Ok(());
             }
             // FIXME(oli-obk): also pretty print arrays and other aggregate constants by reading

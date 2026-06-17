@@ -603,7 +603,9 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     ty::CoroutineClosure(def_id, args) => {
                         DefiningTy::CoroutineClosure(def_id, args)
                     }
-                    ty::FnDef(def_id, args) => DefiningTy::FnDef(def_id, args),
+                    ty::FnDef(def_id, args) => {
+                        DefiningTy::FnDef(def_id, args.no_bound_vars().unwrap())
+                    }
                     _ => span_bug!(
                         tcx.def_span(self.mir_def),
                         "expected defining type for `{:?}`: `{:?}`",

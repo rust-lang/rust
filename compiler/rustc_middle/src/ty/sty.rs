@@ -737,13 +737,14 @@ impl<'tcx> Ty<'tcx> {
     pub fn new_fn_def(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
-        args: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
+        args: ty::Binder<'tcx, impl IntoIterator<Item: Into<GenericArg<'tcx>>>>,
     ) -> Ty<'tcx> {
         debug_assert_matches!(
             tcx.def_kind(def_id),
             DefKind::AssocFn | DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn)
         );
-        let args = tcx.check_and_mk_args(def_id, args);
+        // FIXME(156581): check that the binder is being used correctly (turbofishing/fndef changes)
+        let args = args.map_bound(|args| tcx.check_and_mk_args(def_id, args));
         Ty::new(tcx, FnDef(def_id, args))
     }
 
@@ -1115,7 +1116,11 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         Ty::from_coroutine_closure_kind(interner, kind)
     }
 
-    fn new_fn_def(interner: TyCtxt<'tcx>, def_id: DefId, args: ty::GenericArgsRef<'tcx>) -> Self {
+    fn new_fn_def(
+        interner: TyCtxt<'tcx>,
+        def_id: DefId,
+        args: ty::Binder<'tcx, ty::GenericArgsRef<'tcx>>,
+    ) -> Self {
         Ty::new_fn_def(interner, def_id, args)
     }
 

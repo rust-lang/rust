@@ -1701,6 +1701,8 @@ pub fn find_self_call<'tcx>(
         && let [Spanned { node: Operand::Move(self_place) | Operand::Copy(self_place), .. }, ..] =
             **args
     {
+        let fn_args = fn_args.no_bound_vars().unwrap();
+
         if self_place.as_local() == Some(local) {
             return Some((def_id, fn_args));
         }

@@ -680,7 +680,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             hir::ExprKind::Call(callee, _)
                 if let &ty::FnDef(_, args) = typeck.node_type(callee.hir_id).kind() =>
             {
-                args
+                args.no_bound_vars().unwrap()
             }
             _ => return None,
         };

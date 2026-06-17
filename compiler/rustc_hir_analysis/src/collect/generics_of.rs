@@ -253,8 +253,9 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         let generics = tcx.generics_of(def_id);
         assert!(!has_self);
         parent_has_self = generics.has_self;
-        own_start = generics.count() as u32;
-        generics.parent_count + generics.own_params.len()
+        let count = generics.count();
+        own_start = count as u32;
+        count
     });
 
     let mut own_params: Vec<_> = Vec::with_capacity(hir_generics.params.len() + has_self as usize);

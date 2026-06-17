@@ -824,6 +824,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
             }
 
             ty::FnDef(did, args) => {
+                let args = args.no_bound_vars().unwrap();
                 // HACK: Check the return type of function definitions for
                 // well-formedness to mostly fix #84533. This is still not
                 // perfect and there may be ways to abuse the fact that we
