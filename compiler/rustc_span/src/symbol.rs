@@ -1677,6 +1677,8 @@ symbols! {
         reg_ptr,
         reg_upper,
         register_attr,
+        register_attribute_tool,
+        register_lint_tool,
         register_tool,
         relaxed_adts,
         relaxed_struct_unsize,

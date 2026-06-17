@@ -347,13 +347,13 @@ impl LintStore {
         &self,
         lint_name: &str,
         tool_name: Option<Symbol>,
-        registered_tools: &RegisteredTools,
+        registered_lint_tools: &RegisteredTools,
     ) -> CheckLintNameResult<'_> {
         if let Some(tool_name) = tool_name {
             // FIXME: rustc and rustdoc are considered tools for lints, but not for attributes.
             if tool_name != sym::rustc
                 && tool_name != sym::rustdoc
-                && !registered_tools.contains(&Ident::with_dummy_span(tool_name))
+                && !registered_lint_tools.contains(&Ident::with_dummy_span(tool_name))
             {
                 return CheckLintNameResult::NoTool;
             }
@@ -573,7 +573,7 @@ impl<'a> EarlyContext<'a> {
         features: &'a Features,
         lint_added_lints: bool,
         lint_store: &'a LintStore,
-        registered_tools: &'a RegisteredTools,
+        registered_lint_tools: &'a RegisteredTools,
         buffered: LintBuffer,
     ) -> EarlyContext<'a> {
         EarlyContext {
@@ -582,7 +582,7 @@ impl<'a> EarlyContext<'a> {
                 features,
                 lint_added_lints,
                 lint_store,
-                registered_tools,
+                registered_lint_tools,
             ),
             buffered,
         }

@@ -283,7 +283,7 @@ impl AttributeParser for NakedParser {
 
         let span = self.span?;
 
-        let Some(tools) = cx.tools else {
+        let Some(tools) = cx.attribute_tools else {
             unreachable!("tools required while parsing attributes");
         };
 

@@ -59,7 +59,7 @@ use rustc_session::lint::{Lint, LintId};
 use rustc_session::output::invalid_output_for_target;
 use rustc_session::{EarlyDiagCtxt, Session, config};
 use rustc_span::def_id::LOCAL_CRATE;
-use rustc_span::{DUMMY_SP, FileName};
+use rustc_span::{DUMMY_SP, FileName, sym};
 use rustc_target::json::ToJson;
 use rustc_target::spec::{Target, TargetTuple};
 use tracing::trace;
@@ -713,13 +713,18 @@ fn print_crate_info(
                 let crate_name = passes::get_crate_name(sess, attrs);
                 let lint_store = crate::unerased_lint_store(sess);
                 let features = rustc_expand::config::features(sess, attrs, crate_name);
-                let registered_tools = rustc_resolve::registered_tools_ast(sess.dcx(), attrs, sess);
+                let registered_lint_tools = rustc_resolve::registered_tools_ast(
+                    sess.dcx(),
+                    attrs,
+                    sess,
+                    sym::register_lint_tool,
+                );
                 let builder = rustc_lint::LintLevelsBuilder::crate_root(
                     sess,
                     &features,
                     true,
                     lint_store,
-                    &registered_tools,
+                    &registered_lint_tools,
                     attrs,
                 );
                 for lint in lint_store.get_lints() {

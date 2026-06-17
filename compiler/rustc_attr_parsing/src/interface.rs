@@ -37,7 +37,7 @@ pub struct EmitAttribute(
 /// Context created once, for example as part of the ast lowering
 /// context, through which all attributes can be lowered.
 pub struct AttributeParser<'sess> {
-    pub(crate) tools: Option<&'sess RegisteredTools>,
+    pub(crate) attribute_tools: Option<&'sess RegisteredTools>,
     pub(crate) features: Option<&'sess Features>,
     pub(crate) sess: &'sess Session,
     pub(crate) should_emit: ShouldEmit,
@@ -45,7 +45,7 @@ pub struct AttributeParser<'sess> {
     /// *Only* parse attributes with this symbol.
     ///
     /// Used in cases where we want the lowering infrastructure for parse just a single attribute.
-    parse_only: Option<&'static [Symbol]>,
+    parse_only: Option<&'sess [Symbol]>,
 }
 
 impl<'sess> AttributeParser<'sess> {
@@ -68,7 +68,7 @@ impl<'sess> AttributeParser<'sess> {
     pub fn parse_limited(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
-        sym: &'static [Symbol],
+        sym: &'sess [Symbol],
     ) -> Option<Attribute> {
         Self::parse_limited_should_emit(
             sess,
@@ -90,7 +90,7 @@ impl<'sess> AttributeParser<'sess> {
     pub fn parse_limited_should_emit(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
-        sym: &'static [Symbol],
+        sym: &'sess [Symbol],
         target_span: Span,
         target_node_id: NodeId,
         target: Target,
@@ -122,15 +122,15 @@ impl<'sess> AttributeParser<'sess> {
     pub fn parse_limited_all(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
-        parse_only: Option<&'static [Symbol]>,
+        parse_only: Option<&'sess [Symbol]>,
         target: Target,
         target_span: Span,
         target_node_id: NodeId,
         features: Option<&'sess Features>,
         should_emit: ShouldEmit,
-        tools: Option<&'sess RegisteredTools>,
+        attribute_tools: Option<&'sess RegisteredTools>,
     ) -> Vec<Attribute> {
-        let mut p = Self { features, tools, parse_only, sess, should_emit };
+        let mut p = Self { features, attribute_tools, parse_only, sess, should_emit };
         p.parse_attribute_list(
             attrs,
             target_span,
@@ -212,7 +212,8 @@ impl<'sess> AttributeParser<'sess> {
         parse_fn: fn(cx: &mut AcceptContext<'_, '_>, item: &I) -> T,
         template: &AttributeTemplate,
     ) -> T {
-        let mut parser = Self { features, tools: None, parse_only: None, sess, should_emit };
+        let mut parser =
+            Self { features, attribute_tools: None, parse_only: None, sess, should_emit };
         let mut emit_lint = |lint_id: LintId, span: MultiSpan, kind: EmitAttribute| {
             sess.psess.dyn_buffer_lint_sess(lint_id.lint, span, target_node_id, kind.0)
         };
@@ -252,10 +253,16 @@ impl<'sess> AttributeParser<'sess> {
     pub fn new(
         sess: &'sess Session,
         features: &'sess Features,
-        tools: &'sess RegisteredTools,
+        attribute_tools: &'sess RegisteredTools,
         should_emit: ShouldEmit,
     ) -> Self {
-        Self { features: Some(features), tools: Some(tools), parse_only: None, sess, should_emit }
+        Self {
+            features: Some(features),
+            attribute_tools: Some(attribute_tools),
+            parse_only: None,
+            sess,
+            should_emit,
+        }
     }
 
     pub(crate) fn sess(&self) -> &'sess Session {

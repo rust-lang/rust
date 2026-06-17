@@ -121,19 +121,34 @@ fn fast_print_path(path: &ast::Path) -> Symbol {
     }
 }
 
-pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
+pub(crate) fn registered_tools(tcx: TyCtxt<'_>, sym: Symbol) -> RegisteredTools {
     let (_, pre_configured_attrs) = &*tcx.crate_for_resolver(()).borrow();
-    registered_tools_ast(tcx.dcx(), pre_configured_attrs, tcx.sess)
+    registered_tools_ast(tcx.dcx(), pre_configured_attrs, tcx.sess, sym)
 }
 
 pub fn registered_tools_ast(
     dcx: DiagCtxtHandle<'_>,
     pre_configured_attrs: &[ast::Attribute],
     sess: &Session,
+    sym: Symbol,
 ) -> RegisteredTools {
     let mut registered_tools = RegisteredTools::default();
 
-    if let Some(Attribute::Parsed(AttributeKind::RegisterTool(tools))) =
+    if let Some(Attribute::Parsed(AttributeKind::RegisterTool { kind: _, tools })) =
+        AttributeParser::parse_limited(sess, pre_configured_attrs, &[sym])
+    {
+        for tool in tools {
+            if let Some(old_tool) = registered_tools.replace(tool) {
+                dcx.emit_err(errors::ToolWasAlreadyRegistered {
+                    span: tool.span,
+                    tool,
+                    old_ident_span: old_tool.span,
+                });
+            }
+        }
+    }
+
+    if let Some(Attribute::Parsed(AttributeKind::RegisterTool { kind: _, tools })) =
         AttributeParser::parse_limited(sess, pre_configured_attrs, &[sym::register_tool])
     {
         for tool in tools {
@@ -518,8 +533,12 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         });
     }
 
-    fn registered_tools(&self) -> &RegisteredTools {
-        self.registered_tools
+    fn registered_attribute_tools(&self) -> &RegisteredTools {
+        self.registered_attribute_tools
+    }
+
+    fn registered_lint_tools(&self) -> &RegisteredTools {
+        self.registered_lint_tools
     }
 
     fn register_glob_delegation(&mut self, invoc_id: LocalExpnId) {
