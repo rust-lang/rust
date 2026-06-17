@@ -37,7 +37,7 @@ pub struct EmitAttribute(
 /// Context created once, for example as part of the ast lowering
 /// context, through which all attributes can be lowered.
 pub struct AttributeParser<'sess> {
-    pub(crate) tools: Option<&'sess RegisteredTools>,
+    pub(crate) attr_tools: Option<&'sess RegisteredTools>,
     pub(crate) features: Option<&'sess Features>,
     pub(crate) sess: &'sess Session,
     pub(crate) should_emit: ShouldEmit,
@@ -154,9 +154,9 @@ impl<'sess> AttributeParser<'sess> {
         target_node_id: NodeId,
         features: Option<&'sess Features>,
         should_emit: ShouldEmit,
-        tools: Option<&'sess RegisteredTools>,
+        attr_tools: Option<&'sess RegisteredTools>,
     ) -> Vec<Attribute> {
-        let mut p = AttributeParser { features, tools, parse_filter, sess, should_emit };
+        let mut p = AttributeParser { features, attr_tools, parse_filter, sess, should_emit };
         p.parse_attribute_list(
             attrs,
             target_span,
@@ -238,7 +238,7 @@ impl<'sess> AttributeParser<'sess> {
         parse_fn: fn(cx: &mut AcceptContext<'_, '_>, item: &I) -> T,
         template: &AttributeTemplate,
     ) -> T {
-        let mut parser = Self { features, tools: None, parse_filter: None, sess, should_emit };
+        let mut parser = Self { features, attr_tools: None, parse_filter: None, sess, should_emit };
         let mut emit_lint = |lint_id: LintId, span: MultiSpan, kind: EmitAttribute| {
             sess.psess.dyn_buffer_lint_sess(lint_id.lint, span, target_node_id, kind.0)
         };
@@ -278,10 +278,16 @@ impl<'sess> AttributeParser<'sess> {
     pub fn new(
         sess: &'sess Session,
         features: &'sess Features,
-        tools: &'sess RegisteredTools,
+        attr_tools: &'sess RegisteredTools,
         should_emit: ShouldEmit,
     ) -> Self {
-        Self { features: Some(features), tools: Some(tools), parse_filter: None, sess, should_emit }
+        Self {
+            features: Some(features),
+            attr_tools: Some(attr_tools),
+            parse_filter: None,
+            sess,
+            should_emit,
+        }
     }
 
     pub(crate) fn sess(&self) -> &'sess Session {

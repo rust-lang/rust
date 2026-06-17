@@ -36,7 +36,7 @@ use late::{
     ForwardGenericParamBanReason, HasGenericParams, PathSource, PatternSource,
     UnnecessaryQualification,
 };
-pub use macros::registered_tools_ast;
+pub use macros::registered_lint_tools_ast;
 use macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::node_id::NodeMap;
@@ -134,8 +134,8 @@ enum Scope<'ra> {
     ExternPreludeItems,
     /// Extern prelude names introduced by `--extern` flags.
     ExternPreludeFlags,
-    /// Tool modules introduced with `#![register_tool]`.
-    ToolPrelude,
+    /// Tool modules introduced with `#![register_tool]` or `#![register_attribute_tool]`.
+    ToolAttributePrelude,
     /// Standard library prelude introduced with an internal `#[prelude_import]` import.
     StdLibPrelude,
     /// Built-in types.
@@ -1392,10 +1392,11 @@ pub struct Resolver<'ra, 'tcx> {
     dummy_decl: Decl<'ra>,
     builtin_type_decls: FxHashMap<Symbol, Decl<'ra>>,
     builtin_attr_decls: FxHashMap<Symbol, Decl<'ra>>,
-    registered_tool_decls: FxHashMap<IdentKey, Decl<'ra>>,
+    registered_attr_tool_decls: FxHashMap<IdentKey, Decl<'ra>>,
     macro_names: FxHashSet<IdentKey> = default::fx_hash_set(),
     builtin_macros: FxHashMap<Symbol, SyntaxExtensionKind> = default::fx_hash_map(),
-    registered_tools: &'tcx RegisteredTools,
+    registered_attr_tools: &'tcx RegisteredTools,
+    registered_lint_tools: &'tcx RegisteredTools,
     macro_use_prelude: FxIndexMap<Symbol, Decl<'ra>>,
     /// Eagerly populated map of all local macro definitions.
     local_macro_map: FxHashMap<LocalDefId, &'ra Arc<SyntaxExtension>> = default::fx_hash_map(),
@@ -1777,7 +1778,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         invocation_parents.insert(LocalExpnId::ROOT, InvocationParent::ROOT);
 
         let extern_prelude = build_extern_prelude(tcx, attrs);
-        let registered_tools = tcx.registered_tools(());
+        let registered_attr_tools = tcx.registered_attr_tools(());
+        let registered_lint_tools = tcx.registered_lint_tools(());
         let edition = tcx.sess.edition();
 
         let mut resolver = Resolver {
@@ -1815,7 +1817,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     (*builtin_attr, decl)
                 })
                 .collect(),
-            registered_tool_decls: registered_tools
+            registered_attr_tool_decls: registered_attr_tools
                 .iter()
                 .map(|&ident| {
                     let res = Res::ToolMod;
@@ -1823,7 +1825,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     (IdentKey::new(ident), decl)
                 })
                 .collect(),
-            registered_tools,
+            registered_attr_tools,
+            registered_lint_tools,
             macro_use_prelude: Default::default(),
             extern_macro_map: Default::default(),
             dummy_ext_bang: arenas.alloc_macro(SyntaxExtension::dummy_bang(edition)),
@@ -2104,7 +2107,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
                 Scope::ExternPreludeItems
                 | Scope::ExternPreludeFlags
-                | Scope::ToolPrelude
+                | Scope::ToolAttributePrelude
                 | Scope::BuiltinTypes => {}
                 _ => unreachable!(),
             }
@@ -2790,7 +2793,8 @@ impl Finalize {
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.registered_tools = macros::registered_tools;
+    providers.registered_attr_tools = macros::registered_attr_tools;
+    providers.registered_lint_tools = macros::registered_lint_tools;
 }
 
 /// A wrapper around `&mut Resolver` that may be mutable or immutable, depending on a conditions.

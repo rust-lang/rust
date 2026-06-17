@@ -7,7 +7,7 @@ use std::sync::Arc;
 use rustc_ast::{self as ast, Crate, DelegationSuffixes, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::AttributeParser;
-use rustc_errors::{Applicability, DiagCtxtHandle, StashKey};
+use rustc_errors::{Applicability, StashKey};
 use rustc_expand::base::{
     Annotatable, DeriveResolution, Indeterminate, ResolverExpand, SyntaxExtension,
     SyntaxExtensionKind,
@@ -121,29 +121,52 @@ fn fast_print_path(path: &ast::Path) -> Symbol {
     }
 }
 
-pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
+const PREDEFINED_TOOLS: &[Symbol] =
+    &[sym::clippy, sym::rustfmt, sym::diagnostic, sym::miri, sym::rust_analyzer];
+
+pub(crate) fn registered_attr_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
     let (_, pre_configured_attrs) = &*tcx.crate_for_resolver(()).borrow();
-    registered_tools_ast(tcx.dcx(), pre_configured_attrs, tcx.sess)
+
+    let mut registered_tools =
+        if let Some(Attribute::Parsed(AttributeKind::RegisterTool { attr_tools, .. })) =
+            AttributeParser::parse_limited(tcx.sess, pre_configured_attrs, &|attr| {
+                attr.path_matches(&[sym::register_tool])
+                    || attr.path_matches(&[sym::register_attribute_tool])
+            })
+        {
+            attr_tools
+        } else {
+            Default::default()
+        };
+
+    // We implicitly add predefined tools, but it's not an error to register them explicitly.
+    registered_tools.extend(PREDEFINED_TOOLS.iter().cloned().map(Ident::with_dummy_span));
+    registered_tools
 }
 
-pub fn registered_tools_ast(
-    _dcx: DiagCtxtHandle<'_>,
-    pre_configured_attrs: &[ast::Attribute],
-    sess: &Session,
-) -> RegisteredTools {
-    let mut registered_tools = if let Some(Attribute::Parsed(AttributeKind::RegisterTool(tools))) =
-        AttributeParser::parse_limited_sym(sess, pre_configured_attrs, &[sym::register_tool])
-    {
-        tools
-    } else {
-        Default::default()
-    };
+pub(crate) fn registered_lint_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
+    let (_, pre_configured_attrs) = &*tcx.crate_for_resolver(()).borrow();
+    registered_lint_tools_ast(tcx.sess, pre_configured_attrs)
+}
 
-    // We implicitly add `rustfmt`, `clippy`, `diagnostic`, `miri` and `rust_analyzer` to known
-    // tools, but it's not an error to register them explicitly.
-    let predefined_tools =
-        [sym::clippy, sym::rustfmt, sym::diagnostic, sym::miri, sym::rust_analyzer];
-    registered_tools.extend(predefined_tools.iter().cloned().map(Ident::with_dummy_span));
+pub fn registered_lint_tools_ast(
+    sess: &Session,
+    pre_configured_attrs: &[ast::Attribute],
+) -> RegisteredTools {
+    let mut registered_tools =
+        if let Some(Attribute::Parsed(AttributeKind::RegisterTool { lint_tools, .. })) =
+            AttributeParser::parse_limited(sess, pre_configured_attrs, &|attr| {
+                attr.path_matches(&[sym::register_tool])
+                    || attr.path_matches(&[sym::register_lint_tool])
+            })
+        {
+            lint_tools
+        } else {
+            Default::default()
+        };
+
+    // We implicitly add predefined tools, but it's not an error to register them explicitly.
+    registered_tools.extend(PREDEFINED_TOOLS.iter().cloned().map(Ident::with_dummy_span));
     registered_tools
 }
 
@@ -510,8 +533,12 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         });
     }
 
-    fn registered_tools(&self) -> &RegisteredTools {
-        self.registered_tools
+    fn registered_attr_tools(&self) -> &RegisteredTools {
+        self.registered_attr_tools
+    }
+
+    fn registered_lint_tools(&self) -> &RegisteredTools {
+        self.registered_lint_tools
     }
 
     fn register_glob_delegation(&mut self, invoc_id: LocalExpnId) {

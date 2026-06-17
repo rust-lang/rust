@@ -322,11 +322,12 @@ impl CombineAttributeParser for FeatureParser {
 
 #[derive(Default)]
 pub(crate) struct RegisterToolParser {
-    tools: FxIndexSet<Ident>,
+    attr_tools: FxIndexSet<Ident>,
+    lint_tools: FxIndexSet<Ident>,
 }
 
 fn parse_register_tool(
-    tools: &mut FxIndexSet<Ident>,
+    tools: &mut [&mut FxIndexSet<Ident>],
     cx: &mut AcceptContext<'_, '_>,
     args: &ArgParser,
 ) {
@@ -354,27 +355,52 @@ fn parse_register_tool(
             continue;
         };
 
-        if let Some(old_ident) = tools.replace(ident) {
-            cx.dcx().emit_err(ToolWasAlreadyRegistered {
-                span: ident.span,
-                tool: ident,
-                old_ident_span: old_ident.span,
-            });
+        for tools in tools.iter_mut() {
+            if let Some(old_ident) = tools.replace(ident) {
+                cx.dcx().emit_err(ToolWasAlreadyRegistered {
+                    span: ident.span,
+                    tool: ident,
+                    old_ident_span: old_ident.span,
+                });
+            }
         }
     }
 }
 
 impl AttributeParser for RegisterToolParser {
-    const ATTRIBUTES: AcceptMapping<Self> = &[(
-        &[sym::register_tool],
-        template!(List: &["tool1, tool2, ..."]),
-        unstable!(register_tool),
-        |this, cx, args| parse_register_tool(&mut this.tools, cx, args),
-    )];
+    const ATTRIBUTES: AcceptMapping<Self> = &[
+        (
+            &[sym::register_tool],
+            template!(List: &["tool1, tool2, ..."]),
+            unstable!(register_tool),
+            |this, cx, args| {
+                parse_register_tool(&mut [&mut this.attr_tools, &mut this.lint_tools], cx, args)
+            },
+        ),
+        (
+            &[sym::register_attribute_tool],
+            template!(List: &["tool1, tool2, ..."]),
+            unstable!(register_tool),
+            |this, cx, args| parse_register_tool(&mut [&mut this.attr_tools], cx, args),
+        ),
+        (
+            &[sym::register_lint_tool],
+            template!(List: &["tool1, tool2, ..."]),
+            unstable!(register_tool),
+            |this, cx, args| parse_register_tool(&mut [&mut this.lint_tools], cx, args),
+        ),
+    ];
 
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
-        if self.tools.is_empty() { None } else { Some(AttributeKind::RegisterTool(self.tools)) }
+        if self.attr_tools.is_empty() && self.lint_tools.is_empty() {
+            None
+        } else {
+            Some(AttributeKind::RegisterTool {
+                attr_tools: self.attr_tools,
+                lint_tools: self.lint_tools,
+            })
+        }
     }
 }
