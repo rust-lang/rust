@@ -11,6 +11,7 @@ use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{DynSend, DynSync, try_par_for_each_in};
+use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap, LocalModDefId};
 use rustc_hir::lints::DelayedLints;
@@ -403,6 +404,8 @@ pub struct ProjectedOwnerInfo<'tcx> {
 
     #[stable_hash(ignore)]
     delayed_lints: &'tcx Steal<DelayedLints>,
+    #[stable_hash(ignore)]
+    pub children: &'tcx UnordMap<LocalDefId, MaybeOwner<'tcx>>,
 }
 
 impl<'tcx> ProjectedOwnerInfo<'tcx> {
@@ -411,8 +414,9 @@ impl<'tcx> ProjectedOwnerInfo<'tcx> {
         parenting: &'tcx LocalDefIdMap<ItemLocalId>,
         trait_map: &'tcx ItemLocalMap<&'tcx [TraitCandidate<'tcx>]>,
         delayed_lints: &'tcx Steal<DelayedLints>,
+        children: &'tcx UnordMap<LocalDefId, MaybeOwner<'tcx>>,
     ) -> ProjectedOwnerInfo<'tcx> {
-        ProjectedOwnerInfo { nodes, parenting, trait_map, delayed_lints }
+        ProjectedOwnerInfo { nodes, parenting, trait_map, delayed_lints, children }
     }
 }
 
@@ -430,6 +434,7 @@ impl<'tcx> ProjectedMaybeOwner<'tcx> {
                 parenting: &o.parenting,
                 trait_map: &o.trait_map,
                 delayed_lints: &o.delayed_lints,
+                children: &o.children,
             }),
             MaybeOwner::NonOwner(hir_id) => ProjectedMaybeOwner::NonOwner(hir_id),
         }
@@ -442,8 +447,8 @@ impl<'tcx> ProjectedMaybeOwner<'tcx> {
         }
     }
 
-    pub fn unwrap(&'tcx self) -> &'tcx ProjectedOwnerInfo<'tcx> {
-        self.as_owner().unwrap_or_else(|| panic!("Not a HIR owner"))
+    pub fn unwrap(&self) -> ProjectedOwnerInfo<'tcx> {
+        self.as_owner().copied().unwrap_or_else(|| panic!("Not a HIR owner"))
     }
 }
 
@@ -451,9 +456,6 @@ pub fn provide(providers: &mut Providers) {
     providers.hir_crate_items = map::hir_crate_items;
     providers.crate_hash = map::crate_hash;
     providers.hir_module_items = map::hir_module_items;
-    providers.hir_attr_map =
-        |tcx, id| tcx.lower_to_hir(id).as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs);
-    providers.hir_owner = |tcx, def_id| ProjectedMaybeOwner::new(tcx.lower_to_hir(def_id));
     providers.hir_owner_parent_q = |tcx, owner_id| tcx.hir_owner_parent_impl(owner_id);
     providers.def_span = |tcx, def_id| tcx.hir_span(tcx.local_def_id_to_hir_id(def_id));
     providers.def_ident_span = |tcx, def_id| {
