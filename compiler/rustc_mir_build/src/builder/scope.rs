@@ -488,11 +488,11 @@ impl<'tcx> Scopes<'tcx> {
         }
     }
 
-    fn push_scope(&mut self, region_scope: (region::Scope, SourceInfo), vis_scope: SourceScope) {
+    fn push_scope(&mut self, region_scope: region::Scope, vis_scope: SourceScope) {
         debug!("push_scope({:?})", region_scope);
         self.scopes.push(Scope {
             source_scope: vis_scope,
-            region_scope: region_scope.0,
+            region_scope,
             drops: vec![],
             moved_locals: vec![],
             cached_unwind_block: None,
@@ -500,13 +500,13 @@ impl<'tcx> Scopes<'tcx> {
         });
     }
 
-    fn pop_scope(&mut self, region_scope: (region::Scope, SourceInfo)) -> Scope {
+    fn pop_scope(&mut self, region_scope: region::Scope) {
         let scope = self.scopes.pop().unwrap();
-        assert_eq!(scope.region_scope, region_scope.0);
-        scope
+        assert_eq!(scope.region_scope, region_scope);
     }
 
-    fn scope_index(&self, region_scope: region::Scope, span: Span) -> usize {
+    /// Returns the position in the scope stack of `region_scope`.
+    fn stack_index(&self, region_scope: region::Scope, span: Span) -> usize {
         self.scopes
             .iter()
             .rposition(|scope| scope.region_scope == region_scope)
@@ -681,7 +681,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     #[instrument(skip(self, f), level = "debug")]
     pub(crate) fn in_scope<F, R>(
         &mut self,
-        region_scope: (region::Scope, SourceInfo),
+        (region_scope, source_info): (region::Scope, SourceInfo),
         lint_level: LintLevel,
         f: F,
     ) -> BlockAnd<R>
@@ -692,7 +692,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         if let LintLevel::Explicit(current_hir_id) = lint_level {
             let parent_id =
                 self.source_scopes[source_scope].local_data.as_ref().unwrap_crate_local().lint_root;
-            self.maybe_new_source_scope(region_scope.1.span, current_hir_id, parent_id);
+            self.maybe_new_source_scope(source_info.span, current_hir_id, parent_id);
         }
         self.push_scope(region_scope);
         let mut block;
@@ -721,7 +721,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// scope and call `pop_scope` afterwards. Note that these two
     /// calls must be paired; using `in_scope` as a convenience
     /// wrapper maybe preferable.
-    pub(crate) fn push_scope(&mut self, region_scope: (region::Scope, SourceInfo)) {
+    pub(crate) fn push_scope(&mut self, region_scope: region::Scope) {
         self.scopes.push_scope(region_scope, self.source_scope);
     }
 
@@ -730,13 +730,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// This must match 1-to-1 with `push_scope`.
     pub(crate) fn pop_scope(
         &mut self,
-        region_scope: (region::Scope, SourceInfo),
+        region_scope: region::Scope,
         mut block: BasicBlock,
     ) -> BlockAnd<()> {
         debug!("pop_scope({:?}, {:?})", region_scope, block);
 
         block = self.leave_top_scope(block);
-
         self.scopes.pop_scope(region_scope);
 
         block.unit()
@@ -804,7 +803,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         let region_scope = self.scopes.breakable_scopes[break_index].region_scope;
-        let scope_index = self.scopes.scope_index(region_scope, span);
+        let stack_index = self.scopes.stack_index(region_scope, span);
         let drops = if destination.is_some() {
             &mut self.scopes.breakable_scopes[break_index].break_drops
         } else {
@@ -822,7 +821,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         };
 
         let mut drop_idx = ROOT_NODE;
-        for scope in &self.scopes.scopes[scope_index + 1..] {
+        for scope in &self.scopes.scopes[stack_index + 1..] {
             for drop in &scope.drops {
                 drop_idx = drops.add_drop(*drop, drop_idx);
             }
@@ -1007,9 +1006,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.block_context.pop();
 
         let discr = self.temp(discriminant_ty, source_info.span);
-        let scope_index = self
+        let stack_index = self
             .scopes
-            .scope_index(self.scopes.const_continuable_scopes[break_index].region_scope, span);
+            .stack_index(self.scopes.const_continuable_scopes[break_index].region_scope, span);
         let scope = &mut self.scopes.const_continuable_scopes[break_index];
         self.cfg.push_assign(block, source_info, discr, rvalue);
         let drop_and_continue_block = self.cfg.start_new_block();
@@ -1022,7 +1021,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let drops = &mut scope.const_continue_drops;
 
-        let drop_idx = self.scopes.scopes[scope_index + 1..]
+        let drop_idx = self.scopes.scopes[stack_index + 1..]
             .iter()
             .flat_map(|scope| &scope.drops)
             .fold(ROOT_NODE, |drop_idx, &drop| drops.add_drop(drop, drop_idx));
@@ -1032,10 +1031,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.terminate(imaginary_target, source_info, TerminatorKind::UnwindResume);
 
         let region_scope = scope.region_scope;
-        let scope_index = self.scopes.scope_index(region_scope, span);
+        let stack_index = self.scopes.stack_index(region_scope, span);
         let mut drops = DropTree::new();
 
-        let drop_idx = self.scopes.scopes[scope_index + 1..]
+        let drop_idx = self.scopes.scopes[stack_index + 1..]
             .iter()
             .flat_map(|scope| &scope.drops)
             .fold(ROOT_NODE, |drop_idx, &drop| drops.add_drop(drop, drop_idx));
@@ -1066,14 +1065,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .unwrap_or_else(|| span_bug!(source_info.span, "no if-then scope found"));
 
         let target = if_then_scope.region_scope;
-        let scope_index = self.scopes.scope_index(target, source_info.span);
+        let stack_index = self.scopes.stack_index(target, source_info.span);
 
         // Upgrade `if_then_scope` to `&mut`.
         let if_then_scope = self.scopes.if_then_scope.as_mut().expect("upgrading & to &mut");
 
         let mut drop_idx = ROOT_NODE;
         let drops = &mut if_then_scope.else_drops;
-        for scope in &self.scopes.scopes[scope_index + 1..] {
+        for scope in &self.scopes.scopes[stack_index + 1..] {
             for drop in &scope.drops {
                 drop_idx = drops.add_drop(*drop, drop_idx);
             }
@@ -1596,7 +1595,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// It is possible to unwind to some ancestor scope if some drop panics as
     /// the program breaks out of a if-then scope.
     fn diverge_cleanup_target(&mut self, target_scope: region::Scope, span: Span) -> DropIdx {
-        let target = self.scopes.scope_index(target_scope, span);
+        let target = self.scopes.stack_index(target_scope, span);
         let (uncached_scope, mut cached_drop) = self.scopes.scopes[..=target]
             .iter()
             .enumerate()
@@ -1659,7 +1658,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.coroutine.is_some(),
             "diverge_dropline_target is valid only for coroutine"
         );
-        let target = self.scopes.scope_index(target_scope, span);
+        let target = self.scopes.stack_index(target_scope, span);
         let (uncached_scope, mut cached_drop) = self.scopes.scopes[..=target]
             .iter()
             .enumerate()
