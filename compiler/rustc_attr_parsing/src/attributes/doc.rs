@@ -22,7 +22,7 @@ use crate::diagnostics::{
 use crate::parser::{ArgParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser};
 use crate::session_diagnostics::{
     DocAliasBadChar, DocAliasEmpty, DocAliasMalformed, DocAliasStartEnd, DocAttrNotCrateLevel,
-    DocAttributeNotAttribute, DocKeywordNotKeyword,
+    DocAttributeNotAttribute, DocKeywordNotKeyword, UnusedDuplicate,
 };
 
 fn check_keyword(cx: &mut AcceptContext<'_, '_>, keyword: Symbol, span: Span) -> bool {
@@ -159,11 +159,7 @@ impl DocParser {
                     let unused_span = path.span();
                     cx.emit_lint(
                         rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                        rustc_errors::lints::UnusedDuplicate {
-                            this: unused_span,
-                            other: used_span,
-                            warning: true,
-                        },
+                        UnusedDuplicate { this: unused_span, other: used_span, warning: true },
                         unused_span,
                     );
                     return;
