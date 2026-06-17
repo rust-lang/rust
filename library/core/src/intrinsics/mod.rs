@@ -2882,7 +2882,7 @@ pub const unsafe fn size_of_val<T: ?Sized>(ptr: *const T) -> usize;
 pub const unsafe fn align_of_val<T: ?Sized>(ptr: *const T) -> usize;
 
 #[rustc_intrinsic]
-#[rustc_comptime]
+#[comptime]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 /// Check if a type represented by a `TypeId` implements a trait represented by a `TypeId`.
 /// It can only be called at compile time, the backends do
@@ -2931,7 +2931,7 @@ pub const fn type_name<T: ?Sized>() -> &'static str;
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
-#[rustc_comptime]
+#[comptime]
 pub fn type_id<T: ?Sized>() -> crate::any::TypeId;
 
 /// Tests (at compile-time) if two [`crate::any::TypeId`] instances identify the
@@ -2954,7 +2954,7 @@ pub const fn type_id_eq(a: crate::any::TypeId, b: crate::any::TypeId) -> bool {
 /// The more user-friendly version of this intrinsic is [`core::any::TypeId::size`].
 #[rustc_intrinsic]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_comptime]
+#[comptime]
 pub fn size_of_type_id(_id: crate::any::TypeId) -> Option<usize> {
     panic!("`TypeId::size` can only be called at compile-time")
 }
@@ -2964,7 +2964,7 @@ pub fn size_of_type_id(_id: crate::any::TypeId) -> Option<usize> {
 /// The more user-friendly version of this intrinsic is [`core::any::TypeId::variants`].
 #[rustc_intrinsic]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_comptime]
+#[comptime]
 pub fn type_id_variants(_id: crate::any::TypeId) -> usize {
     panic!("`TypeId::variants` can only be called at compile-time")
 }
@@ -2974,7 +2974,7 @@ pub fn type_id_variants(_id: crate::any::TypeId) -> usize {
 /// The more user-friendly version of this intrinsic is [`core::any::TypeId::fields`].
 #[rustc_intrinsic]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_comptime]
+#[comptime]
 pub fn type_id_fields(_id: crate::any::TypeId, _variant_index: usize) -> usize {
     panic!("`TypeId::fields` can only be called at compile-time")
 }
@@ -2986,7 +2986,7 @@ pub fn type_id_fields(_id: crate::any::TypeId, _variant_index: usize) -> usize {
 /// [`FieldRepresentingType`]: crate::field::FieldRepresentingType
 #[rustc_intrinsic]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_comptime]
+#[comptime]
 pub fn type_id_field_representing_type(
     _id: crate::any::TypeId,
     _variant_index: usize,
@@ -3002,7 +3002,7 @@ pub fn type_id_field_representing_type(
 /// [`FieldRepresentingType`]: crate::field::FieldRepresentingType
 #[rustc_intrinsic]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_comptime]
+#[comptime]
 pub fn field_representing_type_actual_type_id(
     _frt_type_id: crate::any::TypeId,
 ) -> crate::any::TypeId {

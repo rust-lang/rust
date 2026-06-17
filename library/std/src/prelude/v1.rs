@@ -165,6 +165,13 @@ pub use core::prelude::v1::deref;
 )]
 pub use core::prelude::v1::define_opaque;
 
+#[unstable(
+    feature = "comptime",
+    issue = "146922",
+    reason = "`comptime` has open design concerns"
+)]
+pub use core::prelude::v1::comptime;
+
 #[unstable(feature = "extern_item_impls", issue = "125418")]
 pub use core::prelude::v1::{eii, unsafe_eii};
 

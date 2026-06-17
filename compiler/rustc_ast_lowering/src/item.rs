@@ -26,7 +26,6 @@ use super::{
     FnDeclKind, GenericArgsMode, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
     RelaxedBoundForbiddenReason, RelaxedBoundPolicy, ResolverAstLoweringExt,
 };
-use crate::diagnostics::ConstComptimeFn;
 
 pub(super) struct ItemLowerer<'a, 'hir> {
     pub(super) tcx: TyCtxt<'hir>,
@@ -1704,21 +1703,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             safety.into()
         };
 
-        let mut constness = self.lower_constness(h.constness);
-        if let Some(&attr_span) = find_attr!(attrs, RustcComptime(span) => span) {
-            match std::mem::replace(&mut constness, rustc_hir::Constness::Const { always: true }) {
-                rustc_hir::Constness::Const { always: true } => {
-                    unreachable!("lower_constness cannot produce comptime")
-                }
-                // A function can't be `const` and `comptime` at the same time
-                rustc_hir::Constness::Const { always: false } => {
-                    let Const::Yes(span) = h.constness else { unreachable!() };
-                    self.dcx().emit_err(ConstComptimeFn { span, attr_span });
-                }
-                // Good
-                rustc_hir::Constness::NotConst => {}
-            }
-        }
+        let constness = self.lower_constness(h.constness);
 
         hir::FnHeader { safety, asyncness, constness, abi: self.lower_extern(h.ext) }
     }

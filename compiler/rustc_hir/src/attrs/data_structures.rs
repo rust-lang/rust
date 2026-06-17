@@ -1336,9 +1336,6 @@ pub enum AttributeKind {
     /// Represents `#[rustc_coinductive]`.
     RustcCoinductive,
 
-    /// Represents `#[rustc_comptime]`
-    RustcComptime(Span),
-
     /// Represents `#[rustc_confusables]`.
     RustcConfusables {
         confusables: ThinVec<Symbol>,

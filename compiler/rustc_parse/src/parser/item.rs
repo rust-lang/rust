@@ -3123,7 +3123,7 @@ impl<'a> Parser<'a> {
                     let wrong_kw = if self.check_keyword(exp!(Const)) {
                         match constness {
                             Const::Always(_) => {
-                                unreachable!("can only be set from the rustc_comptime builtin attr")
+                                unreachable!("can only be set from the comptime builtin attr")
                             }
                             Const::Yes(sp) => Some(WrongKw::Duplicated(sp)),
                             Const::No => {

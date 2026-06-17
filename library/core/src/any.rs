@@ -785,7 +785,7 @@ impl TypeId {
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    #[rustc_comptime]
+    #[comptime]
     pub fn trait_info_of<T: ptr::Pointee<Metadata = ptr::DynMetadata<T>> + ?Sized + 'static>(
         self,
     ) -> Option<TraitImpl<T>> {
@@ -811,7 +811,7 @@ impl TypeId {
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    #[rustc_comptime]
+    #[comptime]
     pub fn trait_info_of_trait_type_id(
         self,
         trait_represented_by_type_id: TypeId,

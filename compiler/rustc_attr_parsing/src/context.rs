@@ -57,7 +57,7 @@ use crate::attributes::repr::*;
 use crate::attributes::rustc_allocator::*;
 use crate::attributes::rustc_dump::*;
 use crate::attributes::rustc_internal::*;
-use crate::attributes::semantics::{ComptimeParser, *};
+use crate::attributes::semantics::*;
 use crate::attributes::splat::*;
 use crate::attributes::stability::*;
 use crate::attributes::test_attrs::*;
@@ -240,7 +240,6 @@ attribute_parsers!(
         Single<WithoutArgs<AutomaticallyDerivedParser>>,
         Single<WithoutArgs<ColdParser>>,
         Single<WithoutArgs<CompilerBuiltinsParser>>,
-        Single<WithoutArgs<ComptimeParser>>,
         Single<WithoutArgs<ConstContinueParser>>,
         Single<WithoutArgs<CoroutineParser>>,
         Single<WithoutArgs<DefaultLibAllocatorParser>>,

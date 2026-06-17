@@ -1898,6 +1898,19 @@ pub(crate) mod builtin {
         /* compiler built-in */
     }
 
+    /// Mark a function as only being evaluable at compile time.
+    /// Calling the function at runtime will cause an error.
+    /// Can only be applied to functions and methods
+    #[unstable(
+        feature = "comptime",
+        issue = "146922",
+        reason = "`comptime` has open design concerns"
+    )]
+    #[rustc_builtin_macro]
+    pub macro comptime($item:item) {
+        /* compiler built-in */
+    }
+
     /// Unstable placeholder for type ascription.
     #[allow_internal_unstable(builtin_syntax)]
     #[unstable(

@@ -3160,6 +3160,16 @@ pub enum Const {
     No,
 }
 
+impl Const {
+    pub fn descr(&self) -> &'static str {
+        match self {
+            Const::Always(_) => "#[comptime]",
+            Const::Yes(_) => "const",
+            Const::No => "",
+        }
+    }
+}
+
 /// Item defaultness.
 /// For details see the [RFC #2532](https://github.com/rust-lang/rfcs/pull/2532).
 #[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, StableHash, Walkable)]
