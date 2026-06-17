@@ -1,10 +1,8 @@
 error[E0559]: variant `E::S` has no field named `x`
-  --> $DIR/adt_expr_unit_enum_extra_field.rs:11:12
+  --> $DIR/adt_expr_unit_enum_extra_field.rs:11:19
    |
-LL |     E::S { x: const { 1 } };
-   |            ^ `E::S` does not have this field
-   |
-   = note: all struct fields are already assigned
+LL |     foo::<{E::S { x: const { 1 } }}>();
+   |                   ^ `E::S` does not have this field
 
 error: aborting due to 1 previous error
 

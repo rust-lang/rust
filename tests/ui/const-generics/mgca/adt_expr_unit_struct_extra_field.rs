@@ -7,5 +7,5 @@ fn foo<const N: Foo>() {}
 
 fn main() {
     foo::<{ Foo { field: const { 1 } } }>();
-    //~^ ERROR struct `Foo` has no field named `field`
+    //~^ ERROR struct `Foo` has no field named `field` [E0560]
 }

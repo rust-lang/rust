@@ -2593,10 +2593,37 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         for init in inits {
             if !variant_def.fields.iter().any(|field_def| field_def.name == init.field.name) {
-                let err = tcx.dcx().struct_span_err(
-                    init.field.span,
-                    format!("struct `{}` has no field named `{}`", variant_def.name, init.field),
-                );
+                let mut err = if adt_def.is_enum() {
+                    struct_span_code_err!(
+                        tcx.dcx(),
+                        init.field.span,
+                        E0559,
+                        "variant `{}::{}` has no field named `{}`",
+                        ty,
+                        variant_def.name,
+                        init.field
+                    )
+                } else {
+                    struct_span_code_err!(
+                        tcx.dcx(),
+                        init.field.span,
+                        E0560,
+                        "struct `{}` has no field named `{}`",
+                        variant_def.name,
+                        init.field
+                    )
+                };
+                if adt_def.is_enum() {
+                    err.span_label(
+                        init.field.span,
+                        format!("`{}::{}` does not have this field", ty, variant_def.name),
+                    );
+                } else {
+                    err.span_label(
+                        init.field.span,
+                        format!("`{}` does not have this field", variant_def.name),
+                    );
+                }
                 return ty::Const::new_error(tcx, err.emit());
             }
         }
