@@ -143,6 +143,14 @@ pub enum InstructionSetAttr {
     ArmT32,
 }
 
+#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, Eq, StableHash, PrintAttribute)]
+pub enum InstrumentFnAttr {
+    /// `#[instrument_fn = "on"]`
+    On,
+    /// `#[instrument_fn = "off"]`
+    Off,
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default, PrintAttribute)]
 #[derive(Encodable, Decodable, StableHash)]
 pub enum OptimizeAttr {
@@ -1067,6 +1075,9 @@ pub enum AttributeKind {
 
     /// Represents `#[instruction_set]`
     InstructionSet(InstructionSetAttr),
+
+    /// Represents `#[instrument_fn]`
+    InstrumentFn(InstrumentFnAttr),
 
     /// Represents `#[lang]`
     Lang(LangItem),

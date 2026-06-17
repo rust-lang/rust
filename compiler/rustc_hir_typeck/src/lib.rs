@@ -317,33 +317,11 @@ fn extend_err_with_const_context(
         // FIXME: support method calls too.
         hir::Node::AnonConst(anon)
             if let hir::Node::ConstArg(parent) = tcx.parent_hir_node(anon.hir_id)
-                && let hir::Node::Expr(expr) = tcx.parent_hir_node(parent.hir_id)
-                && let hir::ExprKind::Path(path) = expr.kind
+                && let Some(path) = tcx.parent_hir_node(parent.hir_id).path()
                 && let hir::QPath::Resolved(_, path) = path
                 && let Res::Def(_, def_id) = path.res =>
         {
-            // `foo<N>()` in expression context, point at `foo`'s const parameter.
-            if let Some(i) =
-                path.segments.iter().last().and_then(|segment| segment.args).and_then(|args| {
-                    args.args.iter().position(|arg| {
-                        matches!(arg, hir::GenericArg::Const(arg) if arg.hir_id == parent.hir_id)
-                    })
-                })
-            {
-                let generics = tcx.generics_of(def_id);
-                let param = &generics.param_at(i, tcx);
-                let sp = tcx.def_span(param.def_id);
-                err.span_note(sp, "expected because of the type of the const parameter");
-            }
-        }
-        hir::Node::AnonConst(anon)
-            if let hir::Node::ConstArg(parent) = tcx.parent_hir_node(anon.hir_id)
-                && let hir::Node::Ty(ty) = tcx.parent_hir_node(parent.hir_id)
-                && let hir::TyKind::Path(path) = ty.kind
-                && let hir::QPath::Resolved(_, path) = path
-                && let Res::Def(_, def_id) = path.res =>
-        {
-            // `Foo<N>` in type context, point at `Foo`'s const parameter.
+            // `foo<N>()`, point at the const parameter in the definition of `foo`.
             if let Some(i) =
                 path.segments.iter().last().and_then(|segment| segment.args).and_then(|args| {
                     args.args.iter().position(|arg| {
