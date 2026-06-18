@@ -210,6 +210,9 @@ fn split_attrs(
             Some(sym::track_caller) => {
                 foreign_item_attributes.push(attr);
             }
+            Some(sym::rustc_diagnostic_item) => {
+                macro_attributes.push(attr.clone());
+            }
             // Doc attributes should be forwarded to the macro and the foreign item, since those are
             // the two items you interact with as a user.
             // FIXME: idk yet how EIIs show up in docs, might want to customize

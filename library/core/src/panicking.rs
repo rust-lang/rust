@@ -43,6 +43,7 @@ compile_error!(
 
 /// The user defined `#[panic_handler]` function.
 #[eii(panic_handler)]
+#[rustc_diagnostic_item = "panic_handler"]
 fn panic_impl(pi: &PanicInfo<'_>) -> !;
 
 // First we define the two main entry points that all panics go through.
