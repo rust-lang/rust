@@ -1,6 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
+    "config:recommended",
     // Refresh lock files on the first day of each month
     // (still gated by dashboard approval for now)
     ":maintainLockFilesMonthly",
@@ -8,8 +9,6 @@
     // (e.g. `v4`) to the full SemVer version (e.g. `v4.1.2`)
     "helpers:pinGitHubActionDigestsToSemver"
   ],
-  // Let Renovatebot keep an opened issue that tracks our dependencies
-  "dependencyDashboard": true,
   // Require manual approval from the Dependency Dashboard before opening PRs
   "dependencyDashboardApproval": true,
   "packageRules": [
