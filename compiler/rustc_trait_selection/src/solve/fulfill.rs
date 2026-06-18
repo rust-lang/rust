@@ -209,12 +209,6 @@ where
         loop {
             let mut any_changed = false;
             for (mut obligation, stalled_on) in self.obligations.drain_pending(|_, _| true) {
-                if !infcx.tcx.recursion_limit().value_within_limit(obligation.recursion_depth) {
-                    self.obligations.on_fulfillment_overflow(infcx);
-                    // Only return true errors that we have accumulated while processing.
-                    return errors;
-                }
-
                 let goal = obligation.as_goal();
                 let delegate = <&SolverDelegate<'tcx>>::from(infcx);
                 if !delegate.disable_trait_solver_fast_paths()
@@ -261,7 +255,14 @@ where
                     // approximation and should only result in fulfillment overflow in
                     // pathological cases.
                     obligation.recursion_depth += 1;
-                    any_changed = true;
+
+                    if !infcx.tcx.recursion_limit().value_within_limit(obligation.recursion_depth) {
+                        self.obligations.on_fulfillment_overflow(infcx);
+                        // Only return true errors that we have accumulated while processing.
+                        return errors;
+                    } else {
+                        any_changed = true;
+                    }
                 }
 
                 match certainty {
