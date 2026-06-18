@@ -61,10 +61,10 @@ pub struct LintStore {
     ///
     /// * See [rust#69838](https://github.com/rust-lang/rust/pull/69838)
     /// * See [rust-clippy#5518](https://github.com/rust-lang/rust-clippy/pull/5518)
-    pub pre_expansion_lint_passes: Vec<EarlyLintPassFactory>,
+    pub(crate) pre_expansion_lint_passes: Vec<EarlyLintPassFactory>,
 
     /// These lint passes run on AST nodes.
-    pub early_lint_passes: Vec<EarlyLintPassFactory>,
+    pub(crate) early_lint_passes: Vec<EarlyLintPassFactory>,
 
     /// These lint passes run on HIR nodes. Each one processes an entire crate. They don't benefit
     /// from incremental compilation. `late_lint_mod_passes` should be used in preference where
@@ -74,11 +74,11 @@ pub struct LintStore {
     /// The exception is Clippy, which uses `late_lint_passes` for all late lint passes. It needs
     /// `check_crate`/`check_crate_post` for some of its lints and uses late lint passes throughout
     /// for consistency. This is ok because Clippy isn't wired for incremental compilation.
-    pub late_lint_passes: Vec<LateLintPassFactory>,
+    pub(crate) late_lint_passes: Vec<LateLintPassFactory>,
 
     /// These lint passes run on HIR nodes, and are constructed per-module (i.e. multiple times).
     /// They benefit from incremental compilation.
-    pub late_lint_mod_passes: Vec<LateLintPassFactory>,
+    pub(crate) late_lint_mod_passes: Vec<LateLintPassFactory>,
 
     /// Lints indexed by name.
     by_name: UnordMap<String, TargetLint>,
