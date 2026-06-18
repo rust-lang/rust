@@ -342,8 +342,6 @@ pub(crate) struct HashableCrateRoot {
     pub(crate) specialization_enabled_in: bool,
     pub(crate) public_api_hash_opt_enabled: bool,
 
-    pub(crate) impls: Hashed<EncodedTraitImpls>,
-
     // =========== global hash  ============
     // Any change in these fields will cause a recompile of all downstream dependencies
 
@@ -405,6 +403,19 @@ pub(crate) struct HashableCrateRoot {
     // need for the reachability graph? We might not need to include these explicitly as
     // reachability graph nodes.
     pub(crate) interpret_alloc_index: GraphHashed<LazyArray<u64>>,
+
+    // this is exposed as a full query with `trait_impls_of_crate`. Which is only used in
+    // rustc_public. Otherwise the `implementations_of_trait` is the only other consumer of this
+    // field. `implementations_of_trait` works as a map. You need to provide a trait DefId to get
+    // its impls, so this is integrated into the ReachabilityGraph.
+    //
+    // When a trait is local:
+    //      if it isn't reachable, the impls should be left out from the hash
+    // When a trait is from another crate:
+    //      even if this crate does not reexport that trait, a downstream dependency can import it
+    //      from another crate, then invoke its methods. So all of those impls must be included,
+    //      but only the ones that can be applied to publicly reachable types
+    pub(crate) impls: GraphHashed<EncodedTraitImpls>,
 
     // =========== not needed in the public hash ==============
     // proc macro, ignored. We use the full crate hash as public hash for proc macros
@@ -477,7 +488,7 @@ impl HashableCrateRoot {
             native_libraries: self.native_libraries.value,
             foreign_modules: self.foreign_modules.value,
             traits: self.traits.value,
-            impls: self.impls.value,
+            impls: self.impls.0,
             incoherent_impls: self.incoherent_impls.value,
             interpret_alloc_index: self.interpret_alloc_index.0,
             proc_macro_data: self.proc_macro_data.value,
