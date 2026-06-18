@@ -10,7 +10,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{Instance, Ty};
 use rustc_middle::{bug, mir, ty};
-use rustc_session::config::DebugInfo;
+use rustc_session::config::{DebugInfo, OptLevel};
 use rustc_span::{BytePos, DUMMY_SP, Span, Symbol, hygiene, sym};
 
 use super::operand::{OperandRef, OperandValue};
@@ -455,6 +455,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // FIXME(eddyb) add debuginfo for unsized places too.
             LocalRef::UnsizedPlace(_) => return,
         };
+
+        // FIXME(arm-maintainers): LLVM uses GlobalISel with -O0 that doesn't support scalable
+        // vectors. It normally falls back to SDAG which does support scalable vectors, but there's
+        // a bug that means that isn't happening for debuginfo - so temporarily don't emit debuginfo
+        // for scalable vector locals when there are no optimisations until that bug is
+        // fixed. See <https://github.com/llvm/llvm-project/issues/204585>.
+        if base.layout.peel_transparent_wrappers(bx).ty.is_scalable_vector()
+            && bx.tcx().backend_optimization_level(()) == OptLevel::No
+            && bx.sess().opts.debuginfo != DebugInfo::None
+        {
+            return;
+        }
 
         let vars = vars.iter().cloned().chain(fallback_var);
 
