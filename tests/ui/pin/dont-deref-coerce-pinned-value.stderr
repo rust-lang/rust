@@ -6,16 +6,11 @@ LL | fn wrong_pin<T>(data: &mut T, callback: impl FnOnce(Pin<&mut T>)) {
 LL |     callback(pin!(data));
    |              ^^^^^^^^^^
    |              |
-   |              expected type parameter `T`, found `&mut T`
+   |              expected `&mut PinMacroHelper<T>`, found `&mut PinMacroHelper<&mut T>`
    |              arguments to this function are incorrect
    |
-   = note: expected type parameter `_`
-           found mutable reference `&mut _`
-help: the return type of this call is `&mut T` due to the type of the argument passed
-  --> $DIR/dont-deref-coerce-pinned-value.rs:9:14
-   |
-LL |     callback(pin!(data));
-   |              ^^^^^^^^^^ this argument influences the return type of `unreachable_pin_macro_type_constraint`
+   = note: expected mutable reference `&mut std::pin::PinMacroHelper<_>`
+              found mutable reference `&mut std::pin::PinMacroHelper<&mut _>`
 note: function defined here
   --> $SRC_DIR/core/src/pin.rs:LL:COL
 
