@@ -673,13 +673,14 @@ pub fn source_span_for_markdown_range_inner(
                 break;
             } else {
                 // Since this is a source line that doesn't include a markdown line,
-                // we have to count the newline that we split from earlier.
+                // we have to count it and its newline as non-markdown bytes.
                 if line_no <= starting_line {
                     start_bytes += source_line.len() + 1;
                 } else if source_line.chars().any(|c| !c.is_whitespace()) {
-                    // If we're past the first line, but haven't found the last line,
-                    // we can only return a contiguous span if every line is either
-                    // part of the doc comment or blank.
+                    // We're past the first line, but haven't found the last line,
+                    // but we found a non-empty non-markdown line.
+                    // This could be an attribute, and we don't want a diagnostic
+                    // suggesting to delete that attribute, so we return None to be safe.
                     return None;
                 } else {
                     end_bytes += source_line.len() + 1;
