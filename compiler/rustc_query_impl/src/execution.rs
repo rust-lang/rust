@@ -283,7 +283,7 @@ fn wait_for_query<'tcx, C: QueryCache>(
 
 /// Shared main part of both [`execute_query_incr_inner`] and [`execute_query_non_incr_inner`].
 #[inline(never)]
-fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
+fn try_execute_query<'tcx, C: QueryCache, const INCR: bool, const NO_HASH_EVAL_ALWAYS: bool>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
     span: Span,
@@ -327,7 +327,7 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
             let (value, dep_node_index) = if INCR {
                 execute_job_incr(query, tcx, key, dep_node.unwrap(), id)
             } else {
-                execute_job_non_incr(query, tcx, key, id)
+                execute_job_non_incr::<C, NO_HASH_EVAL_ALWAYS>(query, tcx, key, id)
             };
 
             if query.feedable {
@@ -409,18 +409,23 @@ fn check_feedable_consistency<'tcx, C: QueryCache>(
 
 // Fast path for when incr. comp. is off.
 #[inline(always)]
-fn execute_job_non_incr<'tcx, C: QueryCache>(
+fn execute_job_non_incr<'tcx, C: QueryCache, const NO_HASH_EVAL_ALWAYS: bool>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
     key: C::Key,
     job_id: QueryJobId,
 ) -> (C::Value, DepNodeIndex) {
-    debug_assert!(!tcx.dep_graph.is_fully_enabled());
+    debug_assert!(NO_HASH_EVAL_ALWAYS || !tcx.dep_graph.is_fully_enabled());
 
     let prof_timer = tcx.prof.query_provider();
     // Call the query provider.
     let value = start_query(job_id, query.depth_limit, || (query.invoke_provider_fn)(tcx, key));
-    let dep_node_index = tcx.dep_graph.next_virtual_depnode_index();
+    let dep_node_index = if NO_HASH_EVAL_ALWAYS {
+        DepNodeIndex::FOREVER_RED_NODE
+    } else {
+        tcx.dep_graph.next_virtual_depnode_index()
+    };
+
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
     // Sanity: Fingerprint the key and the result to assert they don't contain anything unhashable.
@@ -613,7 +618,17 @@ pub(super) fn execute_query_non_incr_inner<'tcx, C: QueryCache>(
     span: Span,
     key: C::Key,
 ) -> C::Value {
-    ensure_sufficient_stack(|| try_execute_query::<C, false>(query, tcx, span, key, None).0)
+    ensure_sufficient_stack(|| try_execute_query::<C, false, false>(query, tcx, span, key, None).0)
+}
+
+#[inline(always)]
+pub(super) fn execute_query_non_incr_no_hash_eval_always_inner<'tcx, C: QueryCache>(
+    query: &'tcx QueryVTable<'tcx, C>,
+    tcx: TyCtxt<'tcx>,
+    span: Span,
+    key: C::Key,
+) -> C::Value {
+    ensure_sufficient_stack(|| try_execute_query::<C, false, true>(query, tcx, span, key, None).0)
 }
 
 /// Called by a macro-generated impl of [`QueryVTable::execute_query_fn`],
@@ -636,7 +651,7 @@ pub(super) fn execute_query_incr_inner<'tcx, C: QueryCache>(
     }
 
     let (result, dep_node_index) = ensure_sufficient_stack(|| {
-        try_execute_query::<C, true>(query, tcx, span, key, Some(dep_node))
+        try_execute_query::<C, true, false>(query, tcx, span, key, Some(dep_node))
     });
     if let Some(dep_node_index) = dep_node_index {
         tcx.dep_graph.read_index(dep_node_index)
@@ -660,7 +675,7 @@ pub(crate) fn force_query_dep_node<'tcx, C: QueryCache>(
     };
 
     ensure_sufficient_stack(|| {
-        try_execute_query::<C, true>(query, tcx, DUMMY_SP, key, Some(dep_node))
+        try_execute_query::<C, true, false>(query, tcx, DUMMY_SP, key, Some(dep_node))
     });
 
     // We did manage to recover a key and force the node, though it's up to

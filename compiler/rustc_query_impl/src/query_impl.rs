@@ -58,13 +58,23 @@ macro_rules! define_queries {
                     ) -> Option<Erased<Value<'tcx>>> {
                         #[cfg(debug_assertions)]
                         let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
-                        crate::execution::execute_query_incr_inner(
-                            &tcx.query_system.query_vtables.$name,
-                            tcx,
-                            span,
-                            key,
-                            mode
-                        )
+
+                        if cfg!(all($no_hash, $eval_always)) {
+                            Some(crate::execution::execute_query_non_incr_no_hash_eval_always_inner(
+                                &tcx.query_system.query_vtables.$name,
+                                tcx,
+                                span,
+                                key,
+                            ))
+                        } else {
+                            crate::execution::execute_query_incr_inner(
+                                &tcx.query_system.query_vtables.$name,
+                                tcx,
+                                span,
+                                key,
+                                mode
+                            )
+                        }
                     }
                 }
 
