@@ -38,7 +38,7 @@ fn fn_sig_for_fn_abi<'tcx>(
     instance: ty::Instance<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
 ) -> ty::FnSig<'tcx> {
-    if let InstanceKind::Shim(ShimKind::ThreadLocalShim(..)) = instance.def {
+    if let InstanceKind::Shim(ShimKind::ThreadLocal(..)) = instance.def {
         return tcx.mk_fn_sig_safe_rust_abi([], tcx.thread_local_ptr_ty(instance.def_id()));
     }
 
@@ -50,7 +50,7 @@ fn fn_sig_for_fn_abi<'tcx>(
             );
 
             // Modify `fn(self, ...)` to `fn(self: *mut Self, ...)`.
-            if let ty::InstanceKind::Shim(ty::ShimKind::VTableShim(..)) = instance.def {
+            if let ty::InstanceKind::Shim(ty::ShimKind::VTable(..)) = instance.def {
                 let mut inputs_and_output = sig.inputs_and_output.to_vec();
                 inputs_and_output[0] = Ty::new_mut_ptr(tcx, inputs_and_output[0]);
                 sig.inputs_and_output = tcx.mk_type_list(&inputs_and_output);
@@ -82,7 +82,7 @@ fn fn_sig_for_fn_abi<'tcx>(
             // a separate def-id for these bodies.
             let mut coroutine_kind = args.as_coroutine_closure().kind();
 
-            let env_ty = if let InstanceKind::Shim(ShimKind::ConstructCoroutineInClosureShim {
+            let env_ty = if let InstanceKind::Shim(ShimKind::ConstructCoroutineInClosure {
                 receiver_by_ref,
                 ..
             }) = instance.def
@@ -266,7 +266,7 @@ impl<'tcx> FnAbiDesc<'tcx> {
         let ty::PseudoCanonicalInput { typing_env, value: (instance, extra_args) } = query;
         let is_virtual_call = matches!(instance.def, ty::InstanceKind::Virtual(..));
         let is_tls_shim_call =
-            matches!(instance.def, ty::InstanceKind::Shim(ty::ShimKind::ThreadLocalShim(_)));
+            matches!(instance.def, ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(_)));
         Self {
             layout_cx: LayoutCx::new(tcx, typing_env),
             sig: tcx.normalize_erasing_regions(

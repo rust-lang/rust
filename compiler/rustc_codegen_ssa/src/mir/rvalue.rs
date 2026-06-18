@@ -665,7 +665,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let static_ = if !def_id.is_local() && bx.cx().tcx().needs_thread_local_shim(def_id)
                 {
                     let instance = ty::Instance {
-                        def: ty::InstanceKind::Shim(ty::ShimKind::ThreadLocalShim(def_id)),
+                        def: ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(def_id)),
                         args: ty::GenericArgs::empty(),
                     };
                     let fn_ptr = bx.get_fn_addr(instance);

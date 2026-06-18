@@ -63,8 +63,8 @@ pub(super) fn mangle<'tcx>(
     p.print_def_path(
         def_id,
         if let ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, _))
-        | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtorShim(_, _))
-        | ty::InstanceKind::Shim(ty::ShimKind::FutureDropPollShim(_, _, _)) = instance.def
+        | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtor(_, _))
+        | ty::InstanceKind::Shim(ty::ShimKind::FutureDropPoll(_, _, _)) = instance.def
         {
             // Add the name of the dropped type to the symbol name
             &*instance.args
@@ -81,13 +81,13 @@ pub(super) fn mangle<'tcx>(
     .unwrap();
 
     match instance.def {
-        ty::InstanceKind::Shim(ty::ShimKind::ThreadLocalShim(..)) => {
+        ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(..)) => {
             p.write_str("{{tls-shim}}").unwrap();
         }
-        ty::InstanceKind::Shim(ty::ShimKind::VTableShim(..)) => {
+        ty::InstanceKind::Shim(ty::ShimKind::VTable(..)) => {
             p.write_str("{{vtable-shim}}").unwrap();
         }
-        ty::InstanceKind::Shim(ty::ShimKind::ReifyShim(_, reason)) => {
+        ty::InstanceKind::Shim(ty::ShimKind::Reify(_, reason)) => {
             p.write_str("{{reify-shim").unwrap();
             match reason {
                 Some(ReifyReason::FnPtr) => p.write_str("-fnptr").unwrap(),
@@ -98,7 +98,7 @@ pub(super) fn mangle<'tcx>(
         }
         // FIXME(async_closures): This shouldn't be needed when we fix
         // `Instance::ty`/`Instance::def_id`.
-        ty::InstanceKind::Shim(ty::ShimKind::ConstructCoroutineInClosureShim {
+        ty::InstanceKind::Shim(ty::ShimKind::ConstructCoroutineInClosure {
             receiver_by_ref,
             ..
         }) => {
@@ -108,7 +108,7 @@ pub(super) fn mangle<'tcx>(
         _ => {}
     }
 
-    if let ty::InstanceKind::Shim(ty::ShimKind::FutureDropPollShim(..)) = instance.def {
+    if let ty::InstanceKind::Shim(ty::ShimKind::FutureDropPoll(..)) = instance.def {
         let _ = p.write_str("{{drop-shim}}");
     }
 

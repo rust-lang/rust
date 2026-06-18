@@ -96,7 +96,7 @@ pub enum ShimKind<'tcx> {
     ///
     /// The generated shim will take `Self` via `*mut Self` - conceptually this is `&owned Self` -
     /// and dereference the argument to call the original function.
-    VTableShim(DefId),
+    VTable(DefId),
 
     /// `fn()` pointer where the function itself cannot be turned into a pointer.
     ///
@@ -115,12 +115,12 @@ pub enum ShimKind<'tcx> {
     ///
     /// This field will only be populated if we are compiling in a mode that needs these shims
     /// to be separable, currently only when KCFI is enabled.
-    ReifyShim(DefId, Option<ReifyReason>),
+    Reify(DefId, Option<ReifyReason>),
 
     /// `<fn() as FnTrait>::call_*` (generated `FnTrait` implementation for `fn()` pointers).
     ///
     /// `DefId` is `FnTrait::call_*`.
-    FnPtrShim(DefId, Ty<'tcx>),
+    FnPtr(DefId, Ty<'tcx>),
 
     /// `<[FnMut/Fn closure] as FnOnce>::call_once`.
     ///
@@ -128,14 +128,14 @@ pub enum ShimKind<'tcx> {
     ///
     /// This generates a body that will just borrow the (owned) self type,
     /// and dispatch to the `FnMut::call_mut` instance for the closure.
-    ClosureOnceShim { call_once: DefId, closure: DefId, track_caller: bool },
+    ClosureOnce { call_once: DefId, closure: DefId, track_caller: bool },
 
     /// `<[FnMut/Fn coroutine-closure] as FnOnce>::call_once`
     ///
     /// The body generated here differs significantly from the `ClosureOnceShim`,
     /// since we need to generate a distinct coroutine type that will move the
     /// closure's upvars *out* of the closure.
-    ConstructCoroutineInClosureShim {
+    ConstructCoroutineInClosure {
         coroutine_closure_def_id: DefId,
         // Whether the generated MIR body takes the coroutine by-ref. This is
         // because the signature of `<{async fn} as FnMut>::call_mut` is:
@@ -148,10 +148,10 @@ pub enum ShimKind<'tcx> {
     /// Compiler-generated accessor for thread locals which returns a reference to the thread local
     /// the `DefId` defines. This is used to export thread locals from dylibs on platforms lacking
     /// native support.
-    ThreadLocalShim(DefId),
+    ThreadLocal(DefId),
 
     /// Proxy shim for async drop of future (def_id, proxy_cor_ty, impl_cor_ty)
-    FutureDropPollShim(DefId, Ty<'tcx>, Ty<'tcx>),
+    FutureDropPoll(DefId, Ty<'tcx>, Ty<'tcx>),
 
     /// `core::ptr::drop_glue::<T>`.
     ///
@@ -168,20 +168,20 @@ pub enum ShimKind<'tcx> {
     /// Additionally, arrays, tuples, and closures get a `Clone` shim even if they aren't `Copy`.
     ///
     /// The `DefId` is for `Clone::clone`, the `Ty` is the type `T` with the builtin `Clone` impl.
-    CloneShim(DefId, Ty<'tcx>),
+    Clone(DefId, Ty<'tcx>),
 
     /// Compiler-generated `<T as FnPtr>::addr` implementation.
     ///
     /// Automatically generated for all potentially higher-ranked `fn(I) -> R` types.
     ///
     /// The `DefId` is for `FnPtr::addr`, the `Ty` is the type `T`.
-    FnPtrAddrShim(DefId, Ty<'tcx>),
+    FnPtrAddr(DefId, Ty<'tcx>),
 
     /// `core::future::async_drop::async_drop_in_place::<'_, T>`.
     ///
     /// The `DefId` is for `core::future::async_drop::async_drop_in_place`, the `Ty`
     /// is the type `T`.
-    AsyncDropGlueCtorShim(DefId, Ty<'tcx>),
+    AsyncDropGlueCtor(DefId, Ty<'tcx>),
 
     /// `core::future::async_drop::async_drop_in_place::<'_, T>::{closure}`.
     ///
@@ -238,8 +238,8 @@ impl<'tcx> Instance<'tcx> {
                 tcx.upstream_drop_glue_for(self.args)
             }
             InstanceKind::Shim(ShimKind::AsyncDropGlue(_, _)) => None,
-            InstanceKind::Shim(ShimKind::FutureDropPollShim(_, _, _)) => None,
-            InstanceKind::Shim(ShimKind::AsyncDropGlueCtorShim(_, _)) => {
+            InstanceKind::Shim(ShimKind::FutureDropPoll(_, _, _)) => None,
+            InstanceKind::Shim(ShimKind::AsyncDropGlueCtor(_, _)) => {
                 tcx.upstream_async_drop_glue_for(self.args)
             }
             _ => None,
@@ -288,10 +288,10 @@ impl<'tcx> InstanceKind<'tcx> {
         match *self {
             InstanceKind::Item(def_id)
             | InstanceKind::Virtual(def_id, _)
-            | InstanceKind::Shim(ShimKind::VTableShim(def_id)) => {
+            | InstanceKind::Shim(ShimKind::VTable(def_id)) => {
                 tcx.body_codegen_attrs(def_id).flags.contains(CodegenFnAttrFlags::TRACK_CALLER)
             }
-            InstanceKind::Shim(ShimKind::ClosureOnceShim {
+            InstanceKind::Shim(ShimKind::ClosureOnce {
                 call_once: _,
                 closure: _,
                 track_caller,
@@ -318,21 +318,21 @@ impl<'tcx> ShimKind<'tcx> {
     #[inline]
     pub fn def_id(self) -> DefId {
         match self {
-            ShimKind::VTableShim(def_id)
-            | ShimKind::ReifyShim(def_id, _)
-            | ShimKind::FnPtrShim(def_id, _)
-            | ShimKind::ThreadLocalShim(def_id)
-            | ShimKind::ClosureOnceShim { call_once: def_id, closure: _, track_caller: _ }
-            | ShimKind::ConstructCoroutineInClosureShim {
+            ShimKind::VTable(def_id)
+            | ShimKind::Reify(def_id, _)
+            | ShimKind::FnPtr(def_id, _)
+            | ShimKind::ThreadLocal(def_id)
+            | ShimKind::ClosureOnce { call_once: def_id, closure: _, track_caller: _ }
+            | ShimKind::ConstructCoroutineInClosure {
                 coroutine_closure_def_id: def_id,
                 receiver_by_ref: _,
             }
             | ShimKind::DropGlue(def_id, _)
-            | ShimKind::CloneShim(def_id, _)
-            | ShimKind::FnPtrAddrShim(def_id, _)
-            | ShimKind::FutureDropPollShim(def_id, _, _)
+            | ShimKind::Clone(def_id, _)
+            | ShimKind::FnPtrAddr(def_id, _)
+            | ShimKind::FutureDropPoll(def_id, _, _)
             | ShimKind::AsyncDropGlue(def_id, _)
-            | ShimKind::AsyncDropGlueCtorShim(def_id, _) => def_id,
+            | ShimKind::AsyncDropGlueCtor(def_id, _) => def_id,
         }
     }
 
@@ -340,47 +340,47 @@ impl<'tcx> ShimKind<'tcx> {
     pub fn def_id_if_not_guaranteed_local_codegen(self) -> Option<DefId> {
         match self {
             ShimKind::DropGlue(def_id, Some(_))
-            | ShimKind::AsyncDropGlueCtorShim(def_id, _)
+            | ShimKind::AsyncDropGlueCtor(def_id, _)
             | ShimKind::AsyncDropGlue(def_id, _)
-            | ShimKind::FutureDropPollShim(def_id, ..)
-            | ShimKind::ThreadLocalShim(def_id) => Some(def_id),
-            ShimKind::VTableShim(..)
-            | ShimKind::ReifyShim(..)
-            | ShimKind::FnPtrShim(..)
-            | ShimKind::ClosureOnceShim { .. }
-            | ShimKind::ConstructCoroutineInClosureShim { .. }
+            | ShimKind::FutureDropPoll(def_id, ..)
+            | ShimKind::ThreadLocal(def_id) => Some(def_id),
+            ShimKind::VTable(..)
+            | ShimKind::Reify(..)
+            | ShimKind::FnPtr(..)
+            | ShimKind::ClosureOnce { .. }
+            | ShimKind::ConstructCoroutineInClosure { .. }
             | ShimKind::DropGlue(..)
-            | ShimKind::CloneShim(..)
-            | ShimKind::FnPtrAddrShim(..) => None,
+            | ShimKind::Clone(..)
+            | ShimKind::FnPtrAddr(..) => None,
         }
     }
 
     pub fn requires_inline(&self) -> bool {
         match self {
             ShimKind::DropGlue(_, Some(ty)) => ty.is_array(),
-            ShimKind::AsyncDropGlueCtorShim(_, ty) => ty.is_coroutine(),
-            ShimKind::FutureDropPollShim(_, _, _) => false,
+            ShimKind::AsyncDropGlueCtor(_, ty) => ty.is_coroutine(),
+            ShimKind::FutureDropPoll(_, _, _) => false,
             ShimKind::AsyncDropGlue(_, _) => false,
-            ShimKind::ThreadLocalShim(_) => false,
+            ShimKind::ThreadLocal(_) => false,
             _ => true,
         }
     }
 
     pub fn has_polymorphic_mir_body(&self) -> bool {
         match *self {
-            ShimKind::CloneShim(..)
-            | ShimKind::ThreadLocalShim(..)
-            | ShimKind::FnPtrAddrShim(..)
-            | ShimKind::FnPtrShim(..)
+            ShimKind::Clone(..)
+            | ShimKind::ThreadLocal(..)
+            | ShimKind::FnPtrAddr(..)
+            | ShimKind::FnPtr(..)
             | ShimKind::DropGlue(_, Some(_))
-            | ShimKind::FutureDropPollShim(..)
+            | ShimKind::FutureDropPoll(..)
             | ShimKind::AsyncDropGlue(_, _) => false,
-            ShimKind::AsyncDropGlueCtorShim(_, _) => false,
-            ShimKind::ClosureOnceShim { .. }
-            | ShimKind::ConstructCoroutineInClosureShim { .. }
+            ShimKind::AsyncDropGlueCtor(_, _) => false,
+            ShimKind::ClosureOnce { .. }
+            | ShimKind::ConstructCoroutineInClosure { .. }
             | ShimKind::DropGlue(..)
-            | ShimKind::ReifyShim(..)
-            | ShimKind::VTableShim(..) => true,
+            | ShimKind::Reify(..)
+            | ShimKind::VTable(..) => true,
         }
     }
 }
@@ -451,7 +451,7 @@ fn resolve_async_drop_poll<'tcx>(mut cor_ty: Ty<'tcx>) -> Instance<'tcx> {
                 continue;
             } else {
                 return Instance {
-                    def: ty::InstanceKind::Shim(ShimKind::FutureDropPollShim(
+                    def: ty::InstanceKind::Shim(ShimKind::FutureDropPoll(
                         poll_def_id,
                         first_cor,
                         cor_ty,
@@ -465,7 +465,7 @@ fn resolve_async_drop_poll<'tcx>(mut cor_ty: Ty<'tcx>) -> Instance<'tcx> {
             };
             if first_cor != cor_ty {
                 return Instance {
-                    def: ty::InstanceKind::Shim(ShimKind::FutureDropPollShim(
+                    def: ty::InstanceKind::Shim(ShimKind::FutureDropPoll(
                         poll_def_id,
                         first_cor,
                         cor_ty,
@@ -642,11 +642,11 @@ impl<'tcx> Instance<'tcx> {
             match resolved.def {
                 InstanceKind::Item(def) if resolved.def.requires_caller_location(tcx) => {
                     debug!(" => fn pointer created for function with #[track_caller]");
-                    resolved.def = InstanceKind::Shim(ShimKind::ReifyShim(def, reason));
+                    resolved.def = InstanceKind::Shim(ShimKind::Reify(def, reason));
                 }
                 InstanceKind::Virtual(def_id, _) => {
                     debug!(" => fn pointer created for virtual call");
-                    resolved.def = InstanceKind::Shim(ShimKind::ReifyShim(def_id, reason));
+                    resolved.def = InstanceKind::Shim(ShimKind::Reify(def_id, reason));
                 }
                 _ if tcx.sess.is_sanitizer_kcfi_enabled() => {
                     // Reify `::call`-like method implementations
@@ -655,7 +655,7 @@ impl<'tcx> Instance<'tcx> {
                         // be directly reified because it's closure-like. The reify can handle the
                         // unresolved instance.
                         resolved = Instance {
-                            def: InstanceKind::Shim(ShimKind::ReifyShim(def_id, reason)),
+                            def: InstanceKind::Shim(ShimKind::Reify(def_id, reason)),
                             args,
                         }
                     // Reify `Trait::method` implementations if the trait is dyn-compatible.
@@ -667,7 +667,7 @@ impl<'tcx> Instance<'tcx> {
                         // If this function could also go in a vtable, we need to `ReifyShim` it with
                         // KCFI because it can only attach one type per function.
                         resolved.def =
-                            InstanceKind::Shim(ShimKind::ReifyShim(resolved.def_id(), reason))
+                            InstanceKind::Shim(ShimKind::Reify(resolved.def_id(), reason))
                     }
                 }
                 _ => {}
@@ -692,7 +692,7 @@ impl<'tcx> Instance<'tcx> {
 
         if is_vtable_shim {
             debug!(" => associated item with unsizeable self: Self");
-            return Instance { def: InstanceKind::Shim(ShimKind::VTableShim(def_id)), args };
+            return Instance { def: InstanceKind::Shim(ShimKind::VTable(def_id)), args };
         }
 
         let mut resolved = Instance::expect_resolve(tcx, typing_env, def_id, args, span);
@@ -736,7 +736,7 @@ impl<'tcx> Instance<'tcx> {
                         // - unlike functions, invoking a closure always goes through a
                         // trait.
                         resolved = Instance {
-                            def: InstanceKind::Shim(ShimKind::ReifyShim(def_id, reason)),
+                            def: InstanceKind::Shim(ShimKind::Reify(def_id, reason)),
                             args,
                         };
                     } else {
@@ -744,13 +744,13 @@ impl<'tcx> Instance<'tcx> {
                             " => vtable fn pointer created for function with #[track_caller]: {:?}",
                             def
                         );
-                        resolved.def = InstanceKind::Shim(ShimKind::ReifyShim(def, reason));
+                        resolved.def = InstanceKind::Shim(ShimKind::Reify(def, reason));
                     }
                 }
             }
             InstanceKind::Virtual(def_id, _) => {
                 debug!(" => vtable fn pointer created for virtual call");
-                resolved.def = InstanceKind::Shim(ShimKind::ReifyShim(def_id, reason))
+                resolved.def = InstanceKind::Shim(ShimKind::Reify(def_id, reason))
             }
             _ => {}
         }
@@ -820,7 +820,7 @@ impl<'tcx> Instance<'tcx> {
             .def_id;
         let track_caller =
             tcx.codegen_fn_attrs(closure_did).flags.contains(CodegenFnAttrFlags::TRACK_CALLER);
-        let def = ty::InstanceKind::Shim(ShimKind::ClosureOnceShim {
+        let def = ty::InstanceKind::Shim(ShimKind::ClosureOnce {
             call_once,
             closure: closure_did,
             track_caller,

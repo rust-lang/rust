@@ -75,7 +75,7 @@ impl<'tcx> ExportedSymbol<'tcx> {
                 tcx.symbol_name(ty::Instance::resolve_async_drop_in_place_poll(tcx, def_id, ty))
             }
             ExportedSymbol::ThreadLocalShim(def_id) => tcx.symbol_name(ty::Instance {
-                def: ty::InstanceKind::Shim(ty::ShimKind::ThreadLocalShim(def_id)),
+                def: ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(def_id)),
                 args: ty::GenericArgs::empty(),
             }),
             ExportedSymbol::NoDefId(symbol_name) => symbol_name,

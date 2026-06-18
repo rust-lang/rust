@@ -83,10 +83,10 @@ fn resolve_instance_raw<'tcx>(
                     _ => return Ok(None),
                 }
                 debug!(" => nontrivial async drop glue ctor");
-                ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtorShim(def_id, ty))
+                ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtor(def_id, ty))
             } else {
                 debug!(" => trivial async drop glue ctor");
-                ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtorShim(def_id, ty))
+                ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtor(def_id, ty))
             }
         } else if tcx.is_async_drop_in_place_coroutine(def_id) {
             let ty = args.type_at(0);
@@ -280,10 +280,7 @@ fn resolve_associated_item<'tcx>(
                     };
 
                     Some(Instance {
-                        def: ty::InstanceKind::Shim(ty::ShimKind::CloneShim(
-                            trait_item_id,
-                            self_ty,
-                        )),
+                        def: ty::InstanceKind::Shim(ty::ShimKind::Clone(trait_item_id, self_ty)),
                         args: rcvr_args,
                     })
                 } else {
@@ -300,7 +297,7 @@ fn resolve_associated_item<'tcx>(
                         return Ok(None);
                     }
                     Some(Instance {
-                        def: ty::InstanceKind::Shim(ty::ShimKind::FnPtrAddrShim(
+                        def: ty::InstanceKind::Shim(ty::ShimKind::FnPtrAddr(
                             trait_item_id,
                             self_ty,
                         )),
@@ -333,7 +330,7 @@ fn resolve_associated_item<'tcx>(
                         Some(Instance::resolve_closure(tcx, closure_def_id, args, target_kind))
                     }
                     ty::FnDef(..) | ty::FnPtr(..) => Some(Instance {
-                        def: ty::InstanceKind::Shim(ty::ShimKind::FnPtrShim(
+                        def: ty::InstanceKind::Shim(ty::ShimKind::FnPtr(
                             trait_item_id,
                             rcvr_args.type_at(0),
                         )),
@@ -350,7 +347,7 @@ fn resolve_associated_item<'tcx>(
                         } else {
                             Some(Instance {
                                 def: ty::InstanceKind::Shim(
-                                    ty::ShimKind::ConstructCoroutineInClosureShim {
+                                    ty::ShimKind::ConstructCoroutineInClosure {
                                         coroutine_closure_def_id,
                                         receiver_by_ref: target_kind != ty::ClosureKind::FnOnce,
                                     },
@@ -375,7 +372,7 @@ fn resolve_associated_item<'tcx>(
                             // construct a new body that has the right return types.
                             Some(Instance {
                                 def: ty::InstanceKind::Shim(
-                                    ty::ShimKind::ConstructCoroutineInClosureShim {
+                                    ty::ShimKind::ConstructCoroutineInClosure {
                                         coroutine_closure_def_id,
                                         receiver_by_ref: false,
                                     },
@@ -390,7 +387,7 @@ fn resolve_associated_item<'tcx>(
                         Some(Instance::resolve_closure(tcx, closure_def_id, args, target_kind))
                     }
                     ty::FnDef(..) | ty::FnPtr(..) => Some(Instance {
-                        def: ty::InstanceKind::Shim(ty::ShimKind::FnPtrShim(
+                        def: ty::InstanceKind::Shim(ty::ShimKind::FnPtr(
                             trait_item_id,
                             rcvr_args.type_at(0),
                         )),

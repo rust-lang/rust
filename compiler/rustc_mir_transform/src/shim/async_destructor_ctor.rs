@@ -175,7 +175,7 @@ pub(super) fn build_future_drop_poll_shim<'tcx>(
     proxy_ty: Ty<'tcx>,
     impl_ty: Ty<'tcx>,
 ) -> Body<'tcx> {
-    let shim = ty::ShimKind::FutureDropPollShim(def_id, proxy_ty, impl_ty);
+    let shim = ty::ShimKind::FutureDropPoll(def_id, proxy_ty, impl_ty);
     let ty::Coroutine(coroutine_def_id, _) = impl_ty.kind() else {
         bug!("build_future_drop_poll_shim not for coroutine impl type: ({:?})", shim);
     };

@@ -746,14 +746,14 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
             return Err("implementation limitation -- HACK for dropping polymorphic type");
         }
         InstanceKind::Shim(ShimKind::AsyncDropGlue(_, ty))
-        | InstanceKind::Shim(ShimKind::AsyncDropGlueCtorShim(_, ty)) => {
+        | InstanceKind::Shim(ShimKind::AsyncDropGlueCtor(_, ty)) => {
             return if ty.still_further_specializable() {
                 Err("still needs substitution")
             } else {
                 Ok(())
             };
         }
-        InstanceKind::Shim(ShimKind::FutureDropPollShim(_, ty, ty2)) => {
+        InstanceKind::Shim(ShimKind::FutureDropPoll(_, ty, ty2)) => {
             return if ty.still_further_specializable() || ty2.still_further_specializable() {
                 Err("still needs substitution")
             } else {
@@ -765,15 +765,15 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
         // not get any optimizations run on it. Any subsequent inlining may cause cycles, but we
         // do not need to catch this here, we can wait until the inliner decides to continue
         // inlining a second time.
-        InstanceKind::Shim(ShimKind::VTableShim(_))
-        | InstanceKind::Shim(ShimKind::ReifyShim(..))
-        | InstanceKind::Shim(ShimKind::FnPtrShim(..))
-        | InstanceKind::Shim(ShimKind::ClosureOnceShim { .. })
-        | InstanceKind::Shim(ShimKind::ConstructCoroutineInClosureShim { .. })
+        InstanceKind::Shim(ShimKind::VTable(_))
+        | InstanceKind::Shim(ShimKind::Reify(..))
+        | InstanceKind::Shim(ShimKind::FnPtr(..))
+        | InstanceKind::Shim(ShimKind::ClosureOnce { .. })
+        | InstanceKind::Shim(ShimKind::ConstructCoroutineInClosure { .. })
         | InstanceKind::Shim(ShimKind::DropGlue(..))
-        | InstanceKind::Shim(ShimKind::CloneShim(..))
-        | InstanceKind::Shim(ShimKind::ThreadLocalShim(..))
-        | InstanceKind::Shim(ShimKind::FnPtrAddrShim(..)) => return Ok(()),
+        | InstanceKind::Shim(ShimKind::Clone(..))
+        | InstanceKind::Shim(ShimKind::ThreadLocal(..))
+        | InstanceKind::Shim(ShimKind::FnPtrAddr(..)) => return Ok(()),
     }
 
     if inliner.tcx().is_constructor(callee_def_id) {
@@ -1374,7 +1374,7 @@ fn try_instance_mir<'tcx>(
     instance: InstanceKind<'tcx>,
 ) -> Result<&'tcx Body<'tcx>, &'static str> {
     if let ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, Some(ty)))
-    | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtorShim(_, ty)) = instance
+    | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtor(_, ty)) = instance
         && let ty::Adt(def, args) = ty.kind()
     {
         let fields = def.all_fields();

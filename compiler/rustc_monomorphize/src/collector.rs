@@ -447,7 +447,7 @@ fn collect_items_rec<'tcx>(
                     used_items.push(respan(
                         starting_item.span,
                         MonoItem::Fn(Instance {
-                            def: InstanceKind::Shim(ShimKind::ThreadLocalShim(def_id)),
+                            def: InstanceKind::Shim(ShimKind::ThreadLocal(def_id)),
                             args: GenericArgs::empty(),
                         }),
                     ));
@@ -1013,7 +1013,7 @@ fn visit_instance_use<'tcx>(
                 bug!("{:?} being reified", instance);
             }
         }
-        ty::InstanceKind::Shim(ty::ShimKind::ThreadLocalShim(..)) => {
+        ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(..)) => {
             bug!("{:?} being reified", instance);
         }
         ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, None)) => {
@@ -1027,16 +1027,16 @@ fn visit_instance_use<'tcx>(
         }
         ty::InstanceKind::Item(..)
         | ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, Some(_)))
-        | ty::InstanceKind::Shim(ty::ShimKind::FutureDropPollShim(..))
+        | ty::InstanceKind::Shim(ty::ShimKind::FutureDropPoll(..))
         | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(_, _))
-        | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtorShim(_, _))
-        | ty::InstanceKind::Shim(ty::ShimKind::VTableShim(..))
-        | ty::InstanceKind::Shim(ty::ShimKind::ReifyShim(..))
-        | ty::InstanceKind::Shim(ty::ShimKind::ClosureOnceShim { .. })
-        | ty::InstanceKind::Shim(ty::ShimKind::ConstructCoroutineInClosureShim { .. })
-        | ty::InstanceKind::Shim(ty::ShimKind::FnPtrShim(..))
-        | ty::InstanceKind::Shim(ty::ShimKind::CloneShim(..))
-        | ty::InstanceKind::Shim(ty::ShimKind::FnPtrAddrShim(..)) => {
+        | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtor(_, _))
+        | ty::InstanceKind::Shim(ty::ShimKind::VTable(..))
+        | ty::InstanceKind::Shim(ty::ShimKind::Reify(..))
+        | ty::InstanceKind::Shim(ty::ShimKind::ClosureOnce { .. })
+        | ty::InstanceKind::Shim(ty::ShimKind::ConstructCoroutineInClosure { .. })
+        | ty::InstanceKind::Shim(ty::ShimKind::FnPtr(..))
+        | ty::InstanceKind::Shim(ty::ShimKind::Clone(..))
+        | ty::InstanceKind::Shim(ty::ShimKind::FnPtrAddr(..)) => {
             output.push(create_fn_mono_item(tcx, instance, source));
         }
     }

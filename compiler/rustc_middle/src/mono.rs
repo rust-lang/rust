@@ -525,18 +525,18 @@ impl<'tcx> CodegenUnit<'tcx> {
                     InstanceKind::Item(def) => def.as_local().map(|_| def),
                     InstanceKind::Intrinsic(..)
                     | InstanceKind::Virtual(..)
-                    | InstanceKind::Shim(ShimKind::VTableShim(..))
-                    | InstanceKind::Shim(ShimKind::ReifyShim(..))
-                    | InstanceKind::Shim(ShimKind::FnPtrShim(..))
-                    | InstanceKind::Shim(ShimKind::ClosureOnceShim { .. })
-                    | InstanceKind::Shim(ShimKind::ConstructCoroutineInClosureShim { .. })
+                    | InstanceKind::Shim(ShimKind::VTable(..))
+                    | InstanceKind::Shim(ShimKind::Reify(..))
+                    | InstanceKind::Shim(ShimKind::FnPtr(..))
+                    | InstanceKind::Shim(ShimKind::ClosureOnce { .. })
+                    | InstanceKind::Shim(ShimKind::ConstructCoroutineInClosure { .. })
                     | InstanceKind::Shim(ShimKind::DropGlue(..))
-                    | InstanceKind::Shim(ShimKind::CloneShim(..))
-                    | InstanceKind::Shim(ShimKind::ThreadLocalShim(..))
-                    | InstanceKind::Shim(ShimKind::FnPtrAddrShim(..))
+                    | InstanceKind::Shim(ShimKind::Clone(..))
+                    | InstanceKind::Shim(ShimKind::ThreadLocal(..))
+                    | InstanceKind::Shim(ShimKind::FnPtrAddr(..))
                     | InstanceKind::Shim(ShimKind::AsyncDropGlue(..))
-                    | InstanceKind::Shim(ShimKind::FutureDropPollShim(..))
-                    | InstanceKind::Shim(ShimKind::AsyncDropGlueCtorShim(..)) => None,
+                    | InstanceKind::Shim(ShimKind::FutureDropPoll(..))
+                    | InstanceKind::Shim(ShimKind::AsyncDropGlueCtor(..)) => None,
                 },
                 MonoItem::Static(def_id) => def_id.as_local().map(|_| def_id),
                 MonoItem::GlobalAsm(item_id) => Some(item_id.owner_id.def_id.to_def_id()),

@@ -364,7 +364,7 @@ pub(crate) fn transform_instance<'tcx>(
             tcx.types.unit
         };
         instance.args = tcx.mk_args_trait(self_ty, instance.args.into_iter().skip(1));
-    } else if let ty::InstanceKind::Shim(ty::ShimKind::VTableShim(def_id)) = instance.def
+    } else if let ty::InstanceKind::Shim(ty::ShimKind::VTable(def_id)) = instance.def
         && let Some(trait_id) = tcx.trait_of_assoc(def_id)
     {
         // Adjust the type ids of VTableShims to the type id expected in the call sites for the
@@ -461,8 +461,7 @@ pub(crate) fn transform_instance<'tcx>(
 
 fn default_or_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Option<DefId> {
     match instance.def {
-        ty::InstanceKind::Item(def_id)
-        | ty::InstanceKind::Shim(ty::ShimKind::FnPtrShim(def_id, _)) => {
+        ty::InstanceKind::Item(def_id) | ty::InstanceKind::Shim(ty::ShimKind::FnPtr(def_id, _)) => {
             tcx.opt_associated_item(def_id).map(|item| item.def_id)
         }
         _ => None,

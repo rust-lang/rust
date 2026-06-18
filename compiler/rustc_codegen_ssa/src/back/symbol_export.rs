@@ -361,7 +361,7 @@ fn exported_generic_symbols_provider_local<'tcx>(
                     }
                 }
                 MonoItem::Fn(Instance {
-                    def: InstanceKind::Shim(ShimKind::AsyncDropGlueCtorShim(_, ty)),
+                    def: InstanceKind::Shim(ShimKind::AsyncDropGlueCtor(_, ty)),
                     args,
                 }) => {
                     // A little sanity-check
@@ -586,7 +586,7 @@ pub(crate) fn symbol_name_for_instance_in_crate<'tcx>(
             rustc_symbol_mangling::symbol_name_for_instance_in_crate(
                 tcx,
                 ty::Instance {
-                    def: ty::InstanceKind::Shim(ty::ShimKind::ThreadLocalShim(def_id)),
+                    def: ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(def_id)),
                     args: ty::GenericArgs::empty(),
                 },
                 instantiating_crate,

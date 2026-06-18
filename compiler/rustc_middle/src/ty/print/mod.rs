@@ -381,29 +381,27 @@ impl<'tcx, P: Printer<'tcx> + std::fmt::Write> Print<P> for ty::Instance<'tcx> {
 impl<'tcx, P: Printer<'tcx> + std::fmt::Write> Print<P> for ty::ShimKind<'tcx> {
     fn print(&self, cx: &mut P) -> Result<(), PrintError> {
         match self {
-            ty::ShimKind::VTableShim(_) => cx.write_str("shim(vtable)"),
-            ty::ShimKind::ReifyShim(_, None) => cx.write_str("shim(reify)"),
-            ty::ShimKind::ReifyShim(_, Some(ty::ReifyReason::FnPtr)) => {
+            ty::ShimKind::VTable(_) => cx.write_str("shim(vtable)"),
+            ty::ShimKind::Reify(_, None) => cx.write_str("shim(reify)"),
+            ty::ShimKind::Reify(_, Some(ty::ReifyReason::FnPtr)) => {
                 cx.write_str("shim(reify-fnptr)")
             }
-            ty::ShimKind::ReifyShim(_, Some(ty::ReifyReason::Vtable)) => {
+            ty::ShimKind::Reify(_, Some(ty::ReifyReason::Vtable)) => {
                 cx.write_str("shim(reify-vtable)")
             }
-            ty::ShimKind::ThreadLocalShim(_) => cx.write_str("shim(tls)"),
-            ty::ShimKind::FnPtrShim(_, ty) => cx.write_str(&format!("shim({ty})")),
-            ty::ShimKind::ClosureOnceShim { .. } => cx.write_str("shim"),
-            ty::ShimKind::ConstructCoroutineInClosureShim { .. } => cx.write_str("shim"),
+            ty::ShimKind::ThreadLocal(_) => cx.write_str("shim(tls)"),
+            ty::ShimKind::FnPtr(_, ty) => cx.write_str(&format!("shim({ty})")),
+            ty::ShimKind::ClosureOnce { .. } => cx.write_str("shim"),
+            ty::ShimKind::ConstructCoroutineInClosure { .. } => cx.write_str("shim"),
             ty::ShimKind::DropGlue(_, None) => cx.write_str("shim(None)"),
             ty::ShimKind::DropGlue(_, Some(ty)) => cx.write_str(&format!("shim(Some({ty}))")),
-            ty::ShimKind::CloneShim(_, ty) => cx.write_str(&format!("shim({ty})")),
-            ty::ShimKind::FnPtrAddrShim(_, ty) => cx.write_str(&format!("shim({ty})")),
-            ty::ShimKind::FutureDropPollShim(_, proxy_ty, impl_ty) => {
+            ty::ShimKind::Clone(_, ty) => cx.write_str(&format!("shim({ty})")),
+            ty::ShimKind::FnPtrAddr(_, ty) => cx.write_str(&format!("shim({ty})")),
+            ty::ShimKind::FutureDropPoll(_, proxy_ty, impl_ty) => {
                 cx.write_str(&format!("dropshim({proxy_ty}-{impl_ty})"))
             }
             ty::ShimKind::AsyncDropGlue(_, ty) => cx.write_str(&format!("shim({ty})")),
-            ty::ShimKind::AsyncDropGlueCtorShim(_, ty) => {
-                cx.write_str(&format!("shim(Some({ty}))"))
-            }
+            ty::ShimKind::AsyncDropGlueCtor(_, ty) => cx.write_str(&format!("shim(Some({ty}))")),
         }
     }
 }

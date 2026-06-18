@@ -33,7 +33,7 @@ impl<'tcx> TyCtxt<'tcx> {
         //
         // A `ClosureOnceShim` with the track_caller attribute does not have a symbol,
         // and therefore can be skipped here.
-        if let InstanceKind::Shim(ShimKind::ReifyShim(_, _)) = instance_kind
+        if let InstanceKind::Shim(ShimKind::Reify(_, _)) = instance_kind
             && attrs.flags.contains(CodegenFnAttrFlags::TRACK_CALLER)
         {
             if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
@@ -54,7 +54,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         // Ensure closure shims have the optimization properties of their closure applied to them.
-        if let InstanceKind::Shim(ShimKind::ClosureOnceShim {
+        if let InstanceKind::Shim(ShimKind::ClosureOnce {
             call_once: _,
             closure,
             track_caller: _,

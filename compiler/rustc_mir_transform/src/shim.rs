@@ -35,11 +35,11 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
     debug!("make_shim({:?})", shim);
 
     let mut result = match shim {
-        ty::ShimKind::VTableShim(def_id) => {
+        ty::ShimKind::VTable(def_id) => {
             let adjustment = Adjustment::Deref { source: DerefSource::MutPtr };
             build_call_shim(tcx, shim, Some(adjustment), CallKind::Direct(def_id))
         }
-        ty::ShimKind::FnPtrShim(def_id, ty) => {
+        ty::ShimKind::FnPtr(def_id, ty) => {
             let trait_ = tcx.parent(def_id);
             // Supports `Fn` or `async Fn` traits.
             let adjustment = match tcx
@@ -59,10 +59,10 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
         // a virtual call, or a direct call to a function for which
         // indirect calls must be codegen'd differently than direct ones
         // (such as `#[track_caller]`).
-        ty::ShimKind::ReifyShim(def_id, _) => {
+        ty::ShimKind::Reify(def_id, _) => {
             build_call_shim(tcx, shim, None, CallKind::Direct(def_id))
         }
-        ty::ShimKind::ClosureOnceShim { call_once: _, closure: _, track_caller: _ } => {
+        ty::ShimKind::ClosureOnce { call_once: _, closure: _, track_caller: _ } => {
             let fn_mut = tcx.require_lang_item(LangItem::FnMut, DUMMY_SP);
             let call_mut = tcx
                 .associated_items(fn_mut)
@@ -74,10 +74,9 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
             build_call_shim(tcx, shim, Some(Adjustment::RefMut), CallKind::Direct(call_mut))
         }
 
-        ty::ShimKind::ConstructCoroutineInClosureShim {
-            coroutine_closure_def_id,
-            receiver_by_ref,
-        } => build_construct_coroutine_by_move_shim(tcx, coroutine_closure_def_id, receiver_by_ref),
+        ty::ShimKind::ConstructCoroutineInClosure { coroutine_closure_def_id, receiver_by_ref } => {
+            build_construct_coroutine_by_move_shim(tcx, coroutine_closure_def_id, receiver_by_ref)
+        }
 
         ty::ShimKind::DropGlue(def_id, ty) => {
             // FIXME(#91576): Drop shims for coroutines aren't subject to the MIR passes at the end
@@ -128,10 +127,10 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
 
             build_drop_shim(tcx, def_id, ty, ty::TypingEnv::post_analysis(tcx, def_id))
         }
-        ty::ShimKind::ThreadLocalShim(..) => build_thread_local_shim(tcx, shim),
-        ty::ShimKind::CloneShim(def_id, ty) => build_clone_shim(tcx, def_id, ty),
-        ty::ShimKind::FnPtrAddrShim(def_id, ty) => build_fn_ptr_addr_shim(tcx, def_id, ty),
-        ty::ShimKind::FutureDropPollShim(def_id, proxy_ty, impl_ty) => {
+        ty::ShimKind::ThreadLocal(..) => build_thread_local_shim(tcx, shim),
+        ty::ShimKind::Clone(def_id, ty) => build_clone_shim(tcx, def_id, ty),
+        ty::ShimKind::FnPtrAddr(def_id, ty) => build_fn_ptr_addr_shim(tcx, def_id, ty),
+        ty::ShimKind::FutureDropPoll(def_id, proxy_ty, impl_ty) => {
             let mut body =
                 async_destructor_ctor::build_future_drop_poll_shim(tcx, def_id, proxy_ty, impl_ty);
 
@@ -173,7 +172,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
             return body;
         }
 
-        ty::ShimKind::AsyncDropGlueCtorShim(def_id, ty) => {
+        ty::ShimKind::AsyncDropGlueCtor(def_id, ty) => {
             let body = async_destructor_ctor::build_async_destructor_ctor_shim(tcx, def_id, ty);
             debug!("make_shim({:?}) = {:?}", shim, body);
             return body;
@@ -555,10 +554,8 @@ impl<'tcx> CloneShimBuilder<'tcx> {
     }
 
     fn into_mir(self) -> Body<'tcx> {
-        let source = MirSource::from_shim(ty::ShimKind::CloneShim(
-            self.def_id,
-            self.sig.inputs_and_output[0],
-        ));
+        let source =
+            MirSource::from_shim(ty::ShimKind::Clone(self.def_id, self.sig.inputs_and_output[0]));
         new_body(source, self.blocks, self.local_decls, self.sig.inputs().len(), self.span)
     }
 
@@ -773,7 +770,7 @@ fn build_call_shim<'tcx>(
     // `FnPtrShim` contains the fn pointer type that a call shim is being built for - this is used
     // to instantiate into the signature of the shim. It is not necessary for users of this
     // MIR body to perform further instantiations (see `InstanceKind::has_polymorphic_mir_body`).
-    let (sig_args, untuple_args) = if let ty::ShimKind::FnPtrShim(_, ty) = shim {
+    let (sig_args, untuple_args) = if let ty::ShimKind::FnPtr(_, ty) = shim {
         let sig = tcx.instantiate_bound_regions_with_erased(ty.fn_sig(tcx));
 
         let untuple_args = sig.inputs();
@@ -827,7 +824,7 @@ fn build_call_shim<'tcx>(
 
     // FIXME: Avoid having to adjust the signature both here and in
     // `fn_sig_for_fn_abi`.
-    if let ty::ShimKind::VTableShim(..) = shim {
+    if let ty::ShimKind::VTable(..) = shim {
         // Modify fn(self, ...) to fn(self: *mut Self, ...)
         let mut inputs_and_output = sig.inputs_and_output.to_vec();
         let self_arg = &mut inputs_and_output[0];
@@ -1109,7 +1106,7 @@ fn build_fn_ptr_addr_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'t
         Some(Terminator { source_info, kind: TerminatorKind::Return, attributes: ThinVec::new() }),
         false,
     );
-    let source = MirSource::from_shim(ty::ShimKind::FnPtrAddrShim(def_id, self_ty));
+    let source = MirSource::from_shim(ty::ShimKind::FnPtrAddr(def_id, self_ty));
     new_body(source, IndexVec::from_elem_n(start_block, 1), locals, sig.inputs().len(), span)
 }
 
@@ -1208,7 +1205,7 @@ fn build_construct_coroutine_by_move_shim<'tcx>(
         false,
     );
 
-    let source = MirSource::from_shim(ty::ShimKind::ConstructCoroutineInClosureShim {
+    let source = MirSource::from_shim(ty::ShimKind::ConstructCoroutineInClosure {
         coroutine_closure_def_id,
         receiver_by_ref,
     });

@@ -26,24 +26,24 @@ fn should_recurse<'tcx>(tcx: TyCtxt<'tcx>, callee: ty::Instance<'tcx>) -> bool {
         // These have MIR and if that MIR is inlined, instantiated and then inlining is run
         // again, a function item can end up getting inlined. Thus we'll be able to cause
         // a cycle that way
-        InstanceKind::Shim(ShimKind::VTableShim(_))
-        | InstanceKind::Shim(ShimKind::ReifyShim(..))
-        | InstanceKind::Shim(ShimKind::FnPtrShim(..))
-        | InstanceKind::Shim(ShimKind::ClosureOnceShim { .. })
-        | InstanceKind::Shim(ShimKind::ConstructCoroutineInClosureShim { .. })
-        | InstanceKind::Shim(ShimKind::ThreadLocalShim { .. })
-        | InstanceKind::Shim(ShimKind::CloneShim(..)) => {}
+        InstanceKind::Shim(ShimKind::VTable(_))
+        | InstanceKind::Shim(ShimKind::Reify(..))
+        | InstanceKind::Shim(ShimKind::FnPtr(..))
+        | InstanceKind::Shim(ShimKind::ClosureOnce { .. })
+        | InstanceKind::Shim(ShimKind::ConstructCoroutineInClosure { .. })
+        | InstanceKind::Shim(ShimKind::ThreadLocal { .. })
+        | InstanceKind::Shim(ShimKind::Clone(..)) => {}
 
         // This shim does not call any other functions, thus there can be no recursion.
-        InstanceKind::Shim(ShimKind::FnPtrAddrShim(..)) => return false,
+        InstanceKind::Shim(ShimKind::FnPtrAddr(..)) => return false,
 
         // FIXME: A not fully instantiated drop shim can cause ICEs if one attempts to
         // have its MIR built. Likely oli-obk just screwed up the `ParamEnv`s, so this
         // needs some more analysis.
         InstanceKind::Shim(ShimKind::DropGlue(..))
-        | InstanceKind::Shim(ShimKind::FutureDropPollShim(..))
+        | InstanceKind::Shim(ShimKind::FutureDropPoll(..))
         | InstanceKind::Shim(ShimKind::AsyncDropGlue(..))
-        | InstanceKind::Shim(ShimKind::AsyncDropGlueCtorShim(..)) => {
+        | InstanceKind::Shim(ShimKind::AsyncDropGlueCtor(..)) => {
             if callee.has_param() {
                 return false;
             }
