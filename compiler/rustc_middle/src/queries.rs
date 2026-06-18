@@ -2161,6 +2161,15 @@ rustc_queries! {
         desc { "fetching what a crate is named" }
         separate_provide_extern
     }
+
+    /// Iterates over all named children of the given module,
+    /// including both proper items and reexports.
+    /// Module here is understood in name resolution sense - it can be a `mod` item,
+    /// or a crate root, or an enum, or a trait.
+    ///
+    /// # Panics
+    ///
+    /// May panic if the provided `id` does not refer to a module.
     query module_children(def_id: DefId) -> &'tcx [ModChild] {
         desc { "collecting child items of module `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
