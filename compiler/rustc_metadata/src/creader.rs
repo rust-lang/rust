@@ -1390,7 +1390,7 @@ impl CStore {
     }
 
     pub fn maybe_process_path_extern(&mut self, tcx: TyCtxt<'_>, name: Symbol) -> Option<CrateNum> {
-        self.maybe_resolve_crate(tcx, name, CrateDepKind::Unconditional, CrateOrigin::Extern).ok()
+        self.maybe_resolve_crate(tcx, name, CrateDepKind::Conditional, CrateOrigin::Extern).ok()
     }
 }
 
