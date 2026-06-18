@@ -26,7 +26,7 @@ use rustc_session::lint::builtin::{DEAD_CODE, DEAD_CODE_PUB_IN_BINARY};
 use rustc_session::lint::{self, Lint, StableLintExpectationId};
 use rustc_span::{Symbol, kw};
 
-use crate::errors::{
+use crate::diagnostics::{
     ChangeFields, DeadCodePubInBinaryNote, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo,
     UselessAssignment,
 };
@@ -1233,7 +1233,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                             && let Some(variant) =
                                 maybe_enum.variants().iter().find(|i| i.name == dead_item.name)
                         {
-                            Some(crate::errors::EnumVariantSameName {
+                            Some(crate::diagnostics::EnumVariantSameName {
                                 dead_descr: tcx.def_descr(dead_item.def_id.to_def_id()),
                                 dead_name: dead_item.name,
                                 variant_span: tcx.def_span(variant.def_id),

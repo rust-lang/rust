@@ -32,6 +32,7 @@ pub enum CandidateSource {
 pub fn compute_applicable_impls_for_diagnostics<'tcx>(
     infcx: &InferCtxt<'tcx>,
     obligation: &PolyTraitObligation<'tcx>,
+    ignore_predicates_of_impls: bool,
 ) -> Vec<CandidateSource> {
     let tcx = infcx.tcx;
     let param_env = obligation.param_env;
@@ -71,26 +72,28 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
                 _ => return false,
             }
 
-            let obligations = tcx
-                .predicates_of(impl_def_id)
-                .instantiate(tcx, impl_args)
-                .into_iter()
-                .map(|(predicate, _)| {
-                    Obligation::new(
-                        tcx,
-                        ObligationCause::dummy(),
-                        param_env,
-                        predicate.skip_norm_wip(),
-                    )
-                })
-                // Kinda hacky, but let's just throw away obligations that overflow.
-                // This may reduce the accuracy of this check (if the obligation guides
-                // inference or it actually resulted in error after others are processed)
-                // ... but this is diagnostics code.
-                .filter(|obligation| {
-                    infcx.next_trait_solver() || infcx.evaluate_obligation(obligation).is_ok()
-                });
-            ocx.register_obligations(obligations);
+            if !ignore_predicates_of_impls {
+                let obligations = tcx
+                    .predicates_of(impl_def_id)
+                    .instantiate(tcx, impl_args)
+                    .into_iter()
+                    .map(|(predicate, _)| {
+                        Obligation::new(
+                            tcx,
+                            ObligationCause::dummy(),
+                            param_env,
+                            predicate.skip_norm_wip(),
+                        )
+                    })
+                    // Kinda hacky, but let's just throw away obligations that overflow.
+                    // This may reduce the accuracy of this check (if the obligation guides
+                    // inference or it actually resulted in error after others are processed)
+                    // ... but this is diagnostics code.
+                    .filter(|obligation| {
+                        infcx.next_trait_solver() || infcx.evaluate_obligation(obligation).is_ok()
+                    });
+                ocx.register_obligations(obligations);
+            }
 
             ocx.try_evaluate_obligations().is_empty()
         })
@@ -306,6 +309,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let mut ambiguities = compute_applicable_impls_for_diagnostics(
                     self.infcx,
                     &obligation.with(self.tcx, trait_pred),
+                    false,
                 );
                 let has_non_region_infer = trait_pred
                     .skip_binder()
@@ -577,8 +581,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     return e;
                 }
 
-                if let Err(guar) =
-                    self.tcx.ensure_result().coherent_trait(self.tcx.parent(data.def_id()))
+                if data.projection_term.kind.is_trait_projection()
+                    && let Err(guar) =
+                        self.tcx.ensure_result().coherent_trait(self.tcx.parent(data.def_id()))
                 {
                     // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
                     // other `Foo` impls are incoherent.

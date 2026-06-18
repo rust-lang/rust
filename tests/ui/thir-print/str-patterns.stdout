@@ -3,6 +3,7 @@ Thir {
     body_type: Fn(
         fn(&'{erased} str),
     ),
+    attributes: {},
     arms: [
         Arm {
             pattern: Pat {
@@ -291,6 +292,7 @@ Thir {
     body_type: Const(
         &'{erased} str,
     ),
+    attributes: {},
     arms: [],
     blocks: [],
     exprs: [

@@ -41,7 +41,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.type_matches_expected_vid(data.self_ty(), expected_vid)
             }
             ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) => {
-                self.type_matches_expected_vid(data.projection_term.self_ty(), expected_vid)
+                if data.projection_term.kind.is_trait_projection() {
+                    self.type_matches_expected_vid(data.self_ty(), expected_vid)
+                } else {
+                    false
+                }
             }
             ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
             | ty::PredicateKind::Subtype(..)

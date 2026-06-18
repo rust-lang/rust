@@ -31,9 +31,9 @@ where
     allowed_lints.extend(lint_opts.iter().map(|(lint, _)| lint).cloned());
 
     let lints = || {
-        lint::builtin::HardwiredLints::lint_vec()
+        lint::builtin::hardwired::lint_vec()
             .into_iter()
-            .chain(rustc_lint::SoftLints::lint_vec())
+            .chain(rustc_lint::builtin::soft::lint_vec())
     };
 
     let lint_opts = lints()

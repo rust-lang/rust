@@ -173,7 +173,8 @@ macro_rules! declare_features {
             pub fn incomplete(&self, feature: Symbol) -> bool {
                 match feature {
                     $(
-                        sym::$feature => status_to_enum!($status) == FeatureStatus::Incomplete,
+                        // Match guard to avoid duplicating `cannot find $feature in module sym` error.
+                        f if f == sym::$feature => status_to_enum!($status) == FeatureStatus::Incomplete,
                     )*
                     _ if self.enabled_features.contains(&feature) => {
                         // Accepted/removed features and library features aren't in this file but
@@ -189,7 +190,8 @@ macro_rules! declare_features {
             pub fn internal(&self, feature: Symbol) -> bool {
                 match feature {
                     $(
-                        sym::$feature => status_to_enum!($status) == FeatureStatus::Internal,
+                       // Match guard to avoid duplicating `cannot find $feature in module sym` error.
+                       f if f == sym::$feature => status_to_enum!($status) == FeatureStatus::Internal,
                     )*
                     _ if self.enabled_features.contains(&feature) => {
                         // This could be accepted/removed, or a libs feature.
@@ -595,6 +597,8 @@ declare_features! (
     (unstable, import_trait_associated_functions, "1.86.0", Some(134691)),
     /// Allows associated types in inherent impls.
     (incomplete, inherent_associated_types, "1.52.0", Some(8995)),
+    /// Enable #[instrument_fn] on function.
+    (unstable, instrument_fn, "CURRENT_RUSTC_VERSION", Some(157081)),
     /// Allows using `pointer` and `reference` in intra-doc links
     (unstable, intra_doc_pointers, "1.51.0", Some(80896)),
     /// lahfsahf target feature on x86.
@@ -608,6 +612,8 @@ declare_features! (
     (unstable, link_arg_attribute, "1.76.0", Some(99427)),
     /// Target features on loongarch.
     (unstable, loongarch_target_feature, "1.73.0", Some(150252)),
+    /// Allows use of loop optimization hints via attributes.
+    (unstable, loop_hints, "CURRENT_RUSTC_VERSION", Some(156874)),
     /// Allows fused `loop`/`match` for direct intraprocedural jumps.
     (incomplete, loop_match, "1.90.0", Some(132306)),
     /// Target features on m68k.

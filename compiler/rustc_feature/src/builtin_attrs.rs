@@ -214,6 +214,17 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     // - https://github.com/rust-lang/rust/issues/153629
     sym::splat,
 
+    // The `#[unroll]` attribute.
+    //
+    // - https://github.com/rust-lang/rust/pull/156816
+    sym::unroll,
+
+    // `#[instrument_fn = "on|off"]` to insert or inhibit instrumentation function
+    // calls inside a function, usually around the prologue.
+    //
+    // - https://github.com/rust-lang/rust/issues/157081
+    sym::instrument_fn,
+
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================

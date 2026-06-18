@@ -91,6 +91,7 @@ pub(super) fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
             Terminator {
                 source_info,
                 kind: TerminatorKind::Drop { place, target, unwind, replace: _, drop },
+                ..
             } => {
                 if let Some(local) = place.as_local()
                     && local == SELF_ARG
@@ -357,7 +358,8 @@ pub(super) fn create_coroutine_drop_shim_proxy_async<'tcx>(
         replace: false,
         drop: None,
     };
-    body.basic_blocks_mut()[call_bb].terminator = Some(Terminator { source_info, kind });
+    body.basic_blocks_mut()[call_bb].terminator =
+        Some(Terminator { source_info, kind, attributes: ThinVec::new() });
 
     // Run derefer to fix Derefs that are not in the first place
     deref_finder(tcx, &mut body, false);

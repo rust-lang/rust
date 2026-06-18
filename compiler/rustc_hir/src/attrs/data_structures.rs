@@ -129,10 +129,26 @@ impl InlineAttr {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, StableHash, PrintAttribute)]
+pub enum UnrollAttr {
+    Hint,
+    Full,
+    Never,
+    Count(u32),
+}
+
 #[derive(Copy, Clone, Encodable, Decodable, Debug, PartialEq, Eq, StableHash, PrintAttribute)]
 pub enum InstructionSetAttr {
     ArmA32,
     ArmT32,
+}
+
+#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, Eq, StableHash, PrintAttribute)]
+pub enum InstrumentFnAttr {
+    /// `#[instrument_fn = "on"]`
+    On,
+    /// `#[instrument_fn = "off"]`
+    Off,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default, PrintAttribute)]
@@ -1060,6 +1076,9 @@ pub enum AttributeKind {
     /// Represents `#[instruction_set]`
     InstructionSet(InstructionSetAttr),
 
+    /// Represents `#[instrument_fn]`
+    InstrumentFn(InstrumentFnAttr),
+
     /// Represents `#[lang]`
     Lang(LangItem),
 
@@ -1626,6 +1645,9 @@ pub enum AttributeKind {
     TypeLengthLimit {
         limit: Limit,
     },
+
+    /// Represents `#[unroll]`
+    Unroll(UnrollAttr),
 
     /// Represents `#[unstable_feature_bound]`.
     UnstableFeatureBound(ThinVec<(Symbol, Span)>),

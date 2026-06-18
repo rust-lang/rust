@@ -2481,6 +2481,14 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         );
     }
 
+    if unstable_opts.staticlib_rename_internal_symbols
+        && !crate_types.contains(&CrateType::StaticLib)
+    {
+        early_dcx.early_warn(
+            "-Zstaticlib-rename-internal-symbols has no effect without `--crate-type staticlib`",
+        );
+    }
+
     let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(early_dcx, matches);
 
     if !unstable_opts.unstable_options && json_timings {
@@ -3059,6 +3067,7 @@ pub(crate) mod dep_tracking {
     use std::path::PathBuf;
 
     use rustc_abi::Align;
+    use rustc_ast::attr::version::RustcVersion;
     use rustc_data_structures::fx::FxIndexMap;
     use rustc_data_structures::stable_hash::StableHasher;
     use rustc_errors::LanguageIdentifier;
@@ -3184,7 +3193,8 @@ pub(crate) mod dep_tracking {
         InliningThreshold,
         FunctionReturn,
         Align,
-        CodegenRetagOptions
+        CodegenRetagOptions,
+        RustcVersion,
     );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)

@@ -50,6 +50,7 @@ impl AttributeKind {
             Ignore { .. } => No,
             Inline(..) => No,
             InstructionSet(..) => No,
+            InstrumentFn(..) => No,
             Lang(..) => Yes,
             Link(..) => No,
             LinkName { .. } => Yes, // Needed for rustdoc
@@ -200,6 +201,7 @@ impl AttributeKind {
             ThreadLocal => No,
             TrackCaller(..) => Yes,
             TypeLengthLimit { .. } => No,
+            Unroll(..) => No,
             UnstableFeatureBound(..) => No,
             UnstableRemoved(..) => Yes,
             Used { .. } => No,

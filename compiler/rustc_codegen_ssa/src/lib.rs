@@ -263,6 +263,7 @@ pub struct CrateInfo {
     pub natvis_debugger_visualizers: BTreeSet<DebuggerVisualizerFile>,
     pub lint_level_specs: CodegenLintLevelSpecs,
     pub metadata_symbol: String,
+    pub symbol_rename_suffix: String,
     pub each_linked_rlib_file_for_lto: Vec<PathBuf>,
     pub exported_symbols_for_lto: Vec<String>,
 }

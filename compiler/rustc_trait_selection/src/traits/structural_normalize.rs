@@ -41,20 +41,20 @@ impl<'tcx> At<'_, 'tcx> {
 
         if self.infcx.next_trait_solver() {
             let term = term.skip_normalization();
-            if let None = term.to_alias_term() {
+            let Some(alias) = term.to_alias_term() else {
                 return Ok(term);
-            }
+            };
 
             let new_infer = self.infcx.next_term_var_of_kind(term, self.cause.span);
 
-            // We simply emit an `alias-eq` goal here, since that will take care of
+            // We simply emit an `Projection` goal here, since that will take care of
             // normalizing the LHS of the projection until it is a rigid projection
             // (or a not-yet-defined opaque in scope).
             let obligation = Obligation::new(
                 self.infcx.tcx,
                 self.cause.clone(),
                 self.param_env,
-                ty::PredicateKind::AliasRelate(term, new_infer, ty::AliasRelationDirection::Equate),
+                ty::ProjectionPredicate { projection_term: alias, term: new_infer },
             );
 
             fulfill_cx.register_predicate_obligation(self.infcx, obligation);

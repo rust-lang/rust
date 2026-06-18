@@ -17,7 +17,7 @@ pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { clashing_extern_declarations, ..*providers };
 }
 
-pub(crate) fn get_lints() -> LintVec {
+pub(crate) fn lint_vec() -> LintVec {
     vec![CLASHING_EXTERN_DECLARATIONS]
 }
 

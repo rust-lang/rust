@@ -63,6 +63,7 @@ use crate::attributes::stability::*;
 use crate::attributes::test_attrs::*;
 use crate::attributes::traits::*;
 use crate::attributes::transparency::*;
+use crate::attributes::unroll::*;
 use crate::attributes::{AttributeParser as _, AttributeSafety, Combine, Single, WithoutArgs};
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, NameValueParser,
@@ -70,7 +71,7 @@ use crate::parser::{
 };
 use crate::session_diagnostics::{
     AttributeParseError, AttributeParseErrorReason, AttributeParseErrorSuggestions,
-    ParsedDescription,
+    ParsedDescription, UnusedDuplicate,
 };
 use crate::target_checking::AllowedTargets;
 use crate::{AttrSuggestionStyle, AttributeParser, AttributeTemplate, EmitAttribute};
@@ -188,6 +189,7 @@ attribute_parsers!(
         Single<IgnoreParser>,
         Single<InlineParser>,
         Single<InstructionSetParser>,
+        Single<InstrumentFnParser>,
         Single<LangParser>,
         Single<LinkNameParser>,
         Single<LinkOrdinalParser>,
@@ -232,6 +234,7 @@ attribute_parsers!(
         Single<ShouldPanicParser>,
         Single<TestRunnerParser>,
         Single<TypeLengthLimitParser>,
+        Single<UnrollParser>,
         Single<WindowsSubsystemParser>,
         Single<WithoutArgs<AllowInternalUnsafeParser>>,
         Single<WithoutArgs<AutomaticallyDerivedParser>>,
@@ -433,11 +436,7 @@ impl<'f, 'sess: 'f> SharedContext<'f, 'sess> {
     pub(crate) fn warn_unused_duplicate(&mut self, used_span: Span, unused_span: Span) {
         self.emit_lint(
             rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
-            rustc_errors::lints::UnusedDuplicate {
-                this: unused_span,
-                other: used_span,
-                warning: false,
-            },
+            UnusedDuplicate { this: unused_span, other: used_span, warning: false },
             unused_span,
         )
     }
@@ -449,11 +448,7 @@ impl<'f, 'sess: 'f> SharedContext<'f, 'sess> {
     ) {
         self.emit_lint(
             rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
-            rustc_errors::lints::UnusedDuplicate {
-                this: unused_span,
-                other: used_span,
-                warning: true,
-            },
+            UnusedDuplicate { this: unused_span, other: used_span, warning: true },
             unused_span,
         )
     }

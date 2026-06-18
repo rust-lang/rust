@@ -1070,10 +1070,6 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         self.call_intrinsic("llvm.va_start", &[self.val_ty(va_list)], &[va_list]);
     }
 
-    fn va_end(&mut self, va_list: &'ll Value) {
-        self.call_intrinsic("llvm.va_end", &[self.val_ty(va_list)], &[va_list]);
-    }
-
     fn retag_reg(&mut self, ptr: Self::Value, info: &RetagInfo<Self::Value>) -> Self::Value {
         codegen_retag_inner(self, "__rust_retag_reg", ptr, info)
     }

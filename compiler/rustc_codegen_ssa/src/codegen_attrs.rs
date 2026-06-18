@@ -1,13 +1,14 @@
 use rustc_abi::{Align, ExternAbi};
 use rustc_hir::attrs::{
-    AttributeKind, EiiImplResolution, InlineAttr, Linkage, RtsanSetting, UsedBy,
+    AttributeKind, EiiImplResolution, InlineAttr, InstrumentFnAttr as HirInstrumentFnAttr, Linkage,
+    RtsanSetting, UsedBy,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{self as hir, Attribute, find_attr};
 use rustc_macros::Diagnostic;
 use rustc_middle::middle::codegen_fn_attrs::{
-    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, SanitizerFnAttrs,
+    CodegenFnAttrFlags, CodegenFnAttrs, InstrumentFnAttr, PatchableFunctionEntry, SanitizerFnAttrs,
 };
 use rustc_middle::mono::Visibility;
 use rustc_middle::query::Providers;
@@ -292,6 +293,12 @@ fn process_builtin_attrs(
             AttributeKind::PatchableFunctionEntry { prefix, entry } => {
                 codegen_fn_attrs.patchable_function_entry =
                     Some(PatchableFunctionEntry::from_prefix_and_entry(*prefix, *entry));
+            }
+            AttributeKind::InstrumentFn(instrument_fn) => {
+                codegen_fn_attrs.instrument_fn = match instrument_fn {
+                    HirInstrumentFnAttr::On => InstrumentFnAttr::On,
+                    HirInstrumentFnAttr::Off => InstrumentFnAttr::Off,
+                };
             }
             _ => {}
         }

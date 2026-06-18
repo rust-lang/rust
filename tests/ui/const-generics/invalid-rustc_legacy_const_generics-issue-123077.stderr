@@ -67,9 +67,10 @@ LL |         struct F();
 help: try using a const generic argument instead
    |
 LL ~     std::arch::x86_64::_mm_blend_ps::<{ {
-LL +     struct F();
-LL +     1
-LL ~ } }>(loop {}, loop {});
+LL +         struct F();
+LL +
+LL +         1
+LL ~     } }>(loop {}, loop {});
    |
 
 error: invalid argument to a legacy const generic: cannot have const blocks, closures, async blocks or items

@@ -6,6 +6,7 @@ use std::num::NonZero;
 use rustc_index::bit_set::{self, DenseBitSet};
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use smallvec::SmallVec;
+use thin_vec::ThinVec;
 
 #[cfg(test)]
 mod tests;
@@ -402,6 +403,13 @@ impl<A, const N: usize> StableHash for SmallVec<[A; N]>
 where
     A: StableHash,
 {
+    #[inline]
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self[..].stable_hash(hcx, hasher);
+    }
+}
+
+impl<T: StableHash> StableHash for ThinVec<T> {
     #[inline]
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self[..].stable_hash(hcx, hasher);

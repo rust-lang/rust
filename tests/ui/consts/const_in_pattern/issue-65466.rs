@@ -11,7 +11,7 @@ const C: &[O<B>] = &[O::None];
 fn main() {
     let x = O::None;
     match &[x][..] {
-        C => (), //~ ERROR constant of non-structural type `&[O<B>]` in a pattern
+        C => (), //~ ERROR constant of non-structural type `O<B>` in a pattern
         _ => (),
     }
 }

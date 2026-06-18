@@ -1,16 +1,16 @@
-error[E0271]: type mismatch resolving `X3 normalizes-to _`
+error[E0271]: type mismatch resolving `_ == X1`
   --> $DIR/infinite-type-alias-mutual-recursion.rs:12:1
    |
 LL | type X1 = X2;
    | ^^^^^^^ types differ
 
-error[E0271]: type mismatch resolving `X1 normalizes-to _`
+error[E0271]: type mismatch resolving `_ == X2`
   --> $DIR/infinite-type-alias-mutual-recursion.rs:16:1
    |
 LL | type X2 = X3;
    | ^^^^^^^ types differ
 
-error[E0271]: type mismatch resolving `X2 normalizes-to _`
+error[E0271]: type mismatch resolving `_ == X3`
   --> $DIR/infinite-type-alias-mutual-recursion.rs:19:1
    |
 LL | type X3 = X1;

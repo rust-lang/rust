@@ -34,8 +34,8 @@ use rustc_middle::ty::print::{
 use rustc_middle::ty::{self, GenericArgKind, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::def_id::DefIdSet;
 use rustc_span::{
-    DUMMY_SP, ErrorGuaranteed, ExpnKind, FileName, Ident, MacroKind, Span, Symbol, edit_distance,
-    kw, sym,
+    DUMMY_SP, DesugaringKind, ErrorGuaranteed, ExpnKind, FileName, Ident, MacroKind, Span, Symbol,
+    edit_distance, kw, sym,
 };
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -1840,6 +1840,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let pred = bound_predicate.rebind(pred);
                     // `<Foo as Iterator>::Item = String`.
                     let projection_term = pred.skip_binder().projection_term;
+                    if !projection_term.kind.is_trait_projection() {
+                        return None;
+                    }
+
                     let quiet_projection_term = projection_term
                         .with_replaced_self_ty(tcx, Ty::new_var(tcx, ty::TyVid::ZERO));
 
@@ -1948,8 +1952,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             _ => false,
                         }
                     });
-                    for param in generics.params {
-                        if param.span == cause_span && sized_pred {
+                    if sized_pred && let Some(DesugaringKind::DefaultBound { def }) = cause_span.desugaring_kind() {
+                        if let Some(param) = generics.params.iter().find(|p| p.def_id.to_def_id() == def) {
                             let (sp, sugg) = match param.colon_span {
                                 Some(sp) => (sp.shrink_to_hi(), " ?Sized +"),
                                 None => (param.span.shrink_to_hi(), ": ?Sized"),

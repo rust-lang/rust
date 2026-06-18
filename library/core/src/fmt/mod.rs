@@ -36,8 +36,10 @@ pub enum Alignment {
     Center,
 }
 
-#[unstable(feature = "int_format_into", issue = "138215")]
-pub use num_buffer::{NumBuffer, NumBufferTrait};
+#[stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
+pub use num_buffer::NumBuffer;
+#[unstable(feature = "fmt_internals", issue = "none")]
+pub use num_buffer::NumBufferTrait;
 
 #[stable(feature = "debug_builders", since = "1.2.0")]
 pub use self::builders::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
@@ -3000,7 +3002,7 @@ impl<T: PointeeSized> Pointer for *const T {
         // metadata type to reduce the amount of codegen work needed for each distinct type.
         let ptr: *const T = *self;
         let ptr_addr = ptr.expose_provenance();
-        if <<T as core::ptr::Pointee>::Metadata as core::unit::IsUnit>::is_unit() {
+        if <<T as core::ptr::Pointee>::Metadata as core::unit::IsUnit>::IS_UNIT {
             pointer_fmt_inner(ptr_addr, f)
         } else {
             wide_pointer_fmt_inner(ptr_addr, &core::ptr::metadata(ptr), f)
