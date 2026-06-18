@@ -656,10 +656,10 @@ impl<T> From<T> for OnceLock<T> {
     /// ```
     #[inline]
     fn from(value: T) -> Self {
-        let cell = Self::new();
-        match cell.set(value) {
-            Ok(()) => cell,
-            Err(_) => unreachable!(),
+        OnceLock {
+            once: Once::new_complete(),
+            value: UnsafeCell::new(MaybeUninit::new(value)),
+            _marker: PhantomData,
         }
     }
 }
