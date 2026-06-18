@@ -1070,8 +1070,11 @@ pub fn is_entrypoint_fn(cx: &LateContext<'_>, def_id: DefId) -> bool {
 
 /// Returns `true` if the expression is in the program's `#[panic_handler]`.
 pub fn is_in_panic_handler(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
-    let parent = cx.tcx.hir_get_parent_item(e.hir_id);
-    Some(parent.to_def_id()) == cx.tcx.lang_items().panic_impl()
+    let parent = cx.tcx.hir_get_parent_item(e.hir_id).to_def_id();
+    cx.tcx
+        .externally_implementable_items(parent.krate)
+        .get(&cx.tcx.get_diagnostic_item(sym::panic_handler).unwrap())
+        .map_or(false, |(_, impls)| impls.keys().any(|&impl_| impl_ == parent))
 }
 
 /// Gets the name of the item the expression is in, if available.
