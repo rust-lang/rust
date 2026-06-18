@@ -833,23 +833,15 @@ impl Builder<'_> {
             rustflags.arg("-Zrandomize-layout");
         }
 
-        // Enable compile-time checking of `cfg` names, values and Cargo `features`.
-        //
-        // Note: `std`, `alloc` and `core` imports some dependencies by #[path] (like
-        // backtrace, core_simd, std_float, ...), those dependencies have their own
-        // features but cargo isn't involved in the #[path] process and so cannot pass the
-        // complete list of features, so for that reason we don't enable checking of
-        // features for std crates.
-        if mode.is_std() {
-            rustflags.arg("--check-cfg=cfg(feature,values(any()))");
-        }
-
         // Add extra cfg not defined in/by rustc
         //
-        // Note: Although it would seems that "-Zunstable-options" to `rustflags` is useless as
-        // cargo would implicitly add it, it was discover that sometimes bootstrap only use
-        // `rustflags` without `cargo` making it required.
-        rustflags.arg("-Zunstable-options");
+        // Note: Although it would seem that "-Zunstable-options" to `rustflags` is useless as
+        // cargo would implicitly add it, it was discovered that sometimes bootstrap uses
+        // `rustflags` that require it without `cargo` requiring it.
+        // The library profile sets this for std.
+        if !mode.is_std() {
+            rustflags.arg("-Zunstable-options");
+        }
 
         // Add parallel frontend threads configuration
         if let Some(threads) = self.config.rust_parallel_frontend_threads {
@@ -1427,19 +1419,6 @@ impl Builder<'_> {
             if self.config.rust_randomize_layout {
                 rustflags.arg("--cfg=randomized_layouts");
             }
-            // Always enable inlining MIR when building the standard library.
-            // Without this flag, MIR inlining is disabled when incremental compilation is enabled.
-            // That causes some mir-opt tests which inline functions from the standard library to
-            // break when incremental compilation is enabled. So this overrides the "no inlining
-            // during incremental builds" heuristic for the standard library.
-            rustflags.arg("-Zinline-mir");
-
-            // Similarly, we need to keep debug info for functions inlined into other std functions,
-            // even if we're not going to output debuginfo for the crate we're currently building,
-            // so that it'll be available when downstream consumers of std try to use it.
-            rustflags.arg("-Zinline-mir-preserve-debug");
-
-            rustflags.arg("-Zmir_strip_debuginfo=locals-in-tiny-functions");
         }
 
         // take target-specific extra rustflags if any otherwise take `rust.rustflags`
