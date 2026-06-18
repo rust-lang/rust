@@ -688,13 +688,6 @@ struct ModuleData<'ra> {
     /// Declaration for implicitly declared names that come with a module,
     /// like `self` (not yet used), or `crate`/`$crate` (for root modules).
     self_decl: Option<Decl<'ra>>,
-
-    /// A `#[diagnostic::on_unknown]` attribute applied to this module, if it is an actual
-    /// `mod x;` or `mod { }`. This customizes the error if an item cannot be found inside
-    /// it.
-    ///
-    /// This is `None` if the feature flag for `diagnostic::on_unknown` is disabled.
-    on_unknown_attr: Option<OnUnknownData>,
 }
 
 /// All modules are unique and allocated on a same arena,
@@ -735,7 +728,6 @@ impl<'ra> ModuleData<'ra> {
         no_implicit_prelude: bool,
         vis: Visibility<DefId>,
         arenas: &'ra ResolverArenas<'ra>,
-        on_unknown_attr: Option<OnUnknownData>,
     ) -> Self {
         let is_foreign = !kind.is_local();
         let self_decl = match kind {
@@ -759,7 +751,6 @@ impl<'ra> ModuleData<'ra> {
             span,
             expansion,
             self_decl,
-            on_unknown_attr,
         }
     }
 
@@ -927,21 +918,11 @@ impl<'ra> LocalModule<'ra> {
         expn_id: ExpnId,
         span: Span,
         no_implicit_prelude: bool,
-        on_unknown_attr: Option<OnUnknownData>,
         arenas: &'ra ResolverArenas<'ra>,
     ) -> LocalModule<'ra> {
         assert!(kind.is_local());
         let parent = parent.map(|m| m.to_module());
-        let data = ModuleData::new(
-            parent,
-            kind,
-            expn_id,
-            span,
-            no_implicit_prelude,
-            vis,
-            arenas,
-            on_unknown_attr,
-        );
+        let data = ModuleData::new(parent, kind, expn_id, span, no_implicit_prelude, vis, arenas);
         LocalModule(Interned::new_unchecked(arenas.modules.alloc(data)))
     }
 
@@ -962,8 +943,7 @@ impl<'ra> ExternModule<'ra> {
     ) -> ExternModule<'ra> {
         assert!(!kind.is_local());
         let parent = parent.map(|m| m.to_module());
-        let data =
-            ModuleData::new(parent, kind, expn_id, span, no_implicit_prelude, vis, arenas, None);
+        let data = ModuleData::new(parent, kind, expn_id, span, no_implicit_prelude, vis, arenas);
         ExternModule(Interned::new_unchecked(arenas.modules.alloc(data)))
     }
 
@@ -1568,6 +1548,9 @@ pub struct Resolver<'ra, 'tcx> {
     // that were encountered during resolution. These names are used to generate item names
     // for APITs, so we don't want to leak details of resolution into these names.
     impl_trait_names: FxHashMap<NodeId, Symbol> = default::fx_hash_map(),
+
+    /// Stores `#[diagnostic::on_unknown]` attributes placed on module declarations.
+    on_unknown_data: FxHashMap<LocalDefId, OnUnknownData>,
 }
 
 /// This provides memory for the rest of the crate. The `'ra` lifetime that is
@@ -1797,7 +1780,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ExpnId::root(),
             crate_span,
             attr::contains_name(attrs, sym::no_implicit_prelude),
-            OnUnknownData::from_attrs(tcx, attrs),
             arenas,
         );
         let local_modules = vec![graph_root];
@@ -1809,7 +1791,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ExpnId::root(),
             DUMMY_SP,
             true,
-            OnUnknownData::from_attrs(tcx, attrs),
             arenas,
         );
 
@@ -1826,6 +1807,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let extern_prelude = build_extern_prelude(tcx, attrs);
         let registered_tools = tcx.registered_tools(());
         let edition = tcx.sess.edition();
+
+        let mut on_unknown_data = default::fx_hash_map();
+        if let Some(directive) = OnUnknownData::from_attrs(tcx, attrs) {
+            on_unknown_data.insert(CRATE_DEF_ID, directive);
+        }
 
         let mut resolver = Resolver {
             tcx,
@@ -1894,6 +1880,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             current_crate_outer_attr_insert_span,
             disambiguators: Default::default(),
             delegation_infos: Default::default(),
+            on_unknown_data,
             ..
         };
 
@@ -1911,20 +1898,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         expn_id: ExpnId,
         span: Span,
         no_implicit_prelude: bool,
-        on_unknown_attr: Option<OnUnknownData>,
     ) -> LocalModule<'ra> {
         let vis =
             kind.opt_def_id().map_or(Visibility::Public, |def_id| self.tcx.visibility(def_id));
-        let module = LocalModule::new(
-            parent,
-            kind,
-            vis,
-            expn_id,
-            span,
-            no_implicit_prelude,
-            on_unknown_attr,
-            self.arenas,
-        );
+        let module =
+            LocalModule::new(parent, kind, vis, expn_id, span, no_implicit_prelude, self.arenas);
         self.local_modules.push(module);
         if let Some(def_id) = module.opt_def_id() {
             self.local_module_map.insert(def_id.expect_local(), module);

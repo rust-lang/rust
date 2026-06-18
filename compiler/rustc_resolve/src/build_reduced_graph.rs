@@ -861,9 +861,11 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     item.span,
                     parent.no_implicit_prelude
                         || ast::attr::contains_name(&item.attrs, sym::no_implicit_prelude),
-                    OnUnknownData::from_attrs(self.r.tcx, &item.attrs),
                 );
                 self.parent_scope.module = module.to_module();
+                if let Some(directive) = OnUnknownData::from_attrs(self.r.tcx, &item.attrs) {
+                    self.r.on_unknown_data.insert(local_def_id, directive);
+                }
             }
 
             // These items live in the value namespace.
@@ -895,7 +897,6 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     expansion.to_expn_id(),
                     item.span,
                     parent.no_implicit_prelude,
-                    None,
                 );
                 self.parent_scope.module = module.to_module();
             }
@@ -1115,7 +1116,6 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 expansion.to_expn_id(),
                 block.span,
                 parent.no_implicit_prelude,
-                None,
             );
             self.r.block_map.insert(block.id, module);
             self.parent_scope.module = module.to_module(); // Descend into the block.

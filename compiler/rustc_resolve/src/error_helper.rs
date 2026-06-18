@@ -206,14 +206,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 if let Some(ModuleOrUniformRoot::Module(module_data)) = import.imported_module.get()
                     && let ModuleKind::Def(DefKind::Mod, def_id, _, name) = module_data.kind
                 {
-                    let directive = if let Some(on_unknown_attr) = &module_data.on_unknown_attr {
-                        &*on_unknown_attr.directive
-                    } else if !def_id.is_local()
-                        && let Some(d) =
-                            find_attr!(self.tcx, def_id, OnUnknown{ directive: Some(d) } => &**d)
-                    {
-                        d
-                    } else {
+                    let Some(directive) = self.on_unknown_data(def_id) else {
                         return CustomDiagnostic::default();
                     };
 
@@ -3606,6 +3599,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     StructCtor { res, vis, field_visibilities }
                 })
             }
+        }
+    }
+
+    /// Gets the `#[diagnostic::on_unknown]` attribute data associated with this `DefId`.
+    fn on_unknown_data(&self, def_id: DefId) -> Option<&Directive> {
+        match def_id.as_local() {
+            Some(local) => Some(self.on_unknown_data.get(&local)?.directive.as_ref()),
+            None => find_attr!(self.tcx, def_id, OnUnknown{ directive } => directive)?.as_deref(),
         }
     }
 }
