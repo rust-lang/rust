@@ -16,7 +16,7 @@ use crate::expand::{AstFragmentKind, parse_ast_fragment};
 use crate::mbe::macro_parser::ParseResult::*;
 use crate::mbe::macro_parser::{MatcherLoc, NamedParseResult, TtParser};
 use crate::mbe::macro_rules::{
-    Tracker, try_match_macro, try_match_macro_attr, try_match_macro_derive,
+    Tracker, WhichMatcher, try_match_macro, try_match_macro_attr, try_match_macro_derive,
 };
 
 pub(super) enum FailedMacro<'a> {
@@ -153,13 +153,21 @@ struct CollectTrackerAndEmitter<'dcx, 'matcher> {
 
 struct BestFailure {
     token: Token,
-    position_in_tokenstream: (bool, u32),
+
+    /// A comparable approximate position.
+    ///
+    /// [`MacroRule::Attr`] has two matchers (args and body). Failures can occur across the arms,
+    /// and we want to prioritize earlier failures over later ones, so we use [`WhichMatcher`].
+    ///
+    /// The second element is the approximate parser position.
+    position_in_tokenstream: (WhichMatcher, u32),
+
     msg: &'static str,
     remaining_matcher: MatcherLoc,
 }
 
 impl BestFailure {
-    fn is_better_position(&self, position: (bool, u32)) -> bool {
+    fn is_better_position(&self, position: (WhichMatcher, u32)) -> bool {
         position > self.position_in_tokenstream
     }
 }
@@ -179,7 +187,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
         }
     }
 
-    fn after_arm(&mut self, in_body: bool, result: &NamedParseResult<Self::Failure>) {
+    fn after_arm(&mut self, which_matcher: WhichMatcher, result: &NamedParseResult<Self::Failure>) {
         match result {
             Success(_) => {
                 // Nonterminal parser recovery might turn failed matches into successful ones,
@@ -192,7 +200,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
             Failure((token, approx_position, msg)) => {
                 debug!(?token, ?msg, "a new failure of an arm");
 
-                let position_in_tokenstream = (in_body, *approx_position);
+                let position_in_tokenstream = (which_matcher, *approx_position);
                 if self
                     .best_failure
                     .as_ref()
