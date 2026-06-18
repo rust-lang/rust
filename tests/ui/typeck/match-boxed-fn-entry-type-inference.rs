@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/22781>.
+
 //@ check-pass
 #![allow(unused_variables)]
 use std::collections::HashMap;

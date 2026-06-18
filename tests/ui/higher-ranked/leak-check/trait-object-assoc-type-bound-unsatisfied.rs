@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/22872>.
+
 trait Wrap<'b> {
     fn foo(&'b mut self);
 }

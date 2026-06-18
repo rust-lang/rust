@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/issue-23041.rs:6:22
+  --> $DIR/downcast-fn-ptr-placeholder.rs:9:22
    |
 LL |     b.downcast_ref::<fn(_)->_>();
    |                      ^^^^^^^^ cannot infer type of the type parameter `T` declared on the method `downcast_ref`

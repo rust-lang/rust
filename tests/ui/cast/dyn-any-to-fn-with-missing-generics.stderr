@@ -1,5 +1,5 @@
 error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
-  --> $DIR/issue-23024.rs:8:39
+  --> $DIR/dyn-any-to-fn-with-missing-generics.rs:9:39
    |
 LL |     println!("{:?}",(vfnfer[0] as dyn Fn)(3));
    |                                       ^^ help: use parenthetical notation instead: `Fn() -> ()`
@@ -9,7 +9,7 @@ LL |     println!("{:?}",(vfnfer[0] as dyn Fn)(3));
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0107]: missing generics for trait `Fn`
-  --> $DIR/issue-23024.rs:8:39
+  --> $DIR/dyn-any-to-fn-with-missing-generics.rs:9:39
    |
 LL |     println!("{:?}",(vfnfer[0] as dyn Fn)(3));
    |                                       ^^ expected 1 generic argument

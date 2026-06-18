@@ -1,5 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/23261>.
+//! Matching on a DST struct should not trigger an LLVM assertion.
 //@ run-pass
-// Matching on a DST struct should not trigger an LLVM assertion.
 
 struct Foo<T: ?Sized> {
     a: i32,
