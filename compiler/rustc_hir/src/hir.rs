@@ -1738,9 +1738,6 @@ pub struct OwnerInfo<'hir> {
     /// WARNING: The delayed lints are not hashed as a part of the `OwnerInfo`, and therefore
     ///          should only be accessed in `eval_always` queries.
     pub delayed_lints: Steal<DelayedLints>,
-
-    // Only present when the crate hash is needed.
-    pub opt_hash: Option<Fingerprint>,
 }
 
 impl<'tcx> OwnerInfo<'tcx> {
@@ -1750,7 +1747,7 @@ impl<'tcx> OwnerInfo<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, StableHash)]
+#[derive(Copy, Clone, Debug)]
 pub enum MaybeOwner<'tcx> {
     Owner(&'tcx OwnerInfo<'tcx>),
     NonOwner(HirId),

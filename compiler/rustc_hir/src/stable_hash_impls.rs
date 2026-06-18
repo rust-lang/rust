@@ -1,7 +1,7 @@
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 
 use crate::HashIgnoredAttrId;
-use crate::hir::{AttributeMap, OwnerInfo, OwnerNodes};
+use crate::hir::{AttributeMap, OwnerNodes};
 
 // The following implementations of StableHash for `ItemId`, `TraitItemId`, and
 // `ImplItemId` deserve special attention. Normally we do not hash `NodeId`s within
@@ -24,15 +24,6 @@ impl<'tcx> StableHash for AttributeMap<'tcx> {
         // We ignore the `map` since it refers to information included in `opt_hash` which is
         // hashed in the collector and used for the crate hash.
         let AttributeMap { opt_hash, define_opaque: _, map: _ } = *self;
-        opt_hash.unwrap().stable_hash(hcx, hasher);
-    }
-}
-
-impl<'tcx> StableHash for OwnerInfo<'tcx> {
-    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        // We ignore the other fields since these refer to information included in
-        // `opt_hash` which is hashed in the collector and used for the crate hash.
-        let OwnerInfo { opt_hash, .. } = *self;
         opt_hash.unwrap().stable_hash(hcx, hasher);
     }
 }

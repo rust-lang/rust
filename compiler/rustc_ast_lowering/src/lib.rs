@@ -45,7 +45,6 @@ use rustc_ast::{self as ast, *};
 use rustc_attr_parsing::{AttributeParser, OmitDoc, Recovery, ShouldEmit};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_data_structures::unord::ExtendUnord;
@@ -884,21 +883,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let nodes = hir::OwnerNodes { opt_hash: bodies_hash, nodes, bodies };
         let attrs = hir::AttributeMap { map: attrs, opt_hash: attrs_hash, define_opaque };
 
-        let opt_hash = self.tcx.needs_hir_hash().then(|| {
-            self.tcx.with_stable_hashing_context(|mut hcx| {
-                let mut stable_hasher = StableHasher::new();
-                bodies_hash.unwrap().stable_hash(&mut hcx, &mut stable_hasher);
-                attrs_hash.unwrap().stable_hash(&mut hcx, &mut stable_hasher);
-                // Do not hash delayed_lints.
-                parenting.stable_hash(&mut hcx, &mut stable_hasher);
-                trait_map.stable_hash(&mut hcx, &mut stable_hasher);
-                children.stable_hash(&mut hcx, &mut stable_hasher);
-                stable_hasher.finish()
-            })
-        });
-
         self.arena.alloc(hir::OwnerInfo {
-            opt_hash,
             nodes,
             parenting,
             attrs,
