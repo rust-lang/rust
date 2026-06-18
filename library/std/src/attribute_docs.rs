@@ -85,3 +85,117 @@
 /// [`unused_must_use`]: ../rustc/lints/listing/warn-by-default.html#unused-must-use
 /// [the `must_use` attribute]: ../reference/attributes/diagnostics.html#the-must_use-attribute
 mod must_use_attribute {}
+
+#[doc(attribute = "allow")]
+//
+/// Suppress compiler warnings for unused code.
+///
+/// The `allow` attribute suppresses compiler warnings for unused functions,
+/// variables or imports.
+///
+/// ```rust
+/// #[allow(dead_code)]
+/// fn unused_function() {
+/// }
+/// fn main() {
+///   // unused_function does not generate a compiler warning.
+/// }
+/// ```
+///
+/// Without `#[allow(dead_code)]`, the example above would emit:
+///
+/// ```text
+/// warning: function `unused_function` is never used
+///  --> main.rs:1:4
+///   |
+/// 1 | fn unused_function() {
+///   |    ^^^^^^^^^^^^^^^
+///   |
+///   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+///
+///   warning: 1 warning emitted
+///
+/// ```
+///
+/// Multiple warnings can be suppressed at once by separating names with commas:
+///
+/// ```rust
+/// #[allow(unused_variables, unused_mut)]
+/// fn main() {
+///     let mut x: u32 = 42;
+/// }
+///
+/// ```
+///
+/// To apply `allow` to an entire module or crate, use the inner attribute syntax
+/// `#![allow(...)]` instead.
+///
+/// ```rust
+/// #![allow(dead_code)]
+/// fn unused_foo() {
+/// }
+/// fn unused_bar() {
+/// }
+/// fn main() {
+/// }
+///
+/// ```
+///
+/// This is mostly used to prevent warnings for unused code while still under development.
+/// It's also important to consider that overusing `allow` could make code harder to maintain
+/// and possibly hide issues.
+///
+/// For more information, see the Reference on [the `allow` attribute].
+///
+/// [the `allow` attribute]: ../reference/attributes/diagnostics.html#lint-check-attributes
+mod allow_attribute {}
+
+#[doc(attribute = "cfg")]
+//
+/// Used for conditional compilation.
+///
+/// The `cfg` attribute includes or removes the code below it based on a condition,
+/// like target OS, target architecture or custom flag. If the condition is true the code
+/// stays (and the `cfg` attribute is removed). If it's false the code is not compiled at all.
+///
+/// ```rust
+/// #[cfg(target_os = "linux")]
+/// fn platform_specific() {
+///     println!("Running on Linux");
+/// }
+///
+/// #[cfg(not(target_os = "linux"))]
+/// fn platform_specific() {
+///     println!("Running on something else");
+/// }
+///
+/// ```
+///
+/// Only one of these two functions is compiled depending on the target, while the other is removed
+/// before compilation.
+///
+/// Common conditions include `target_os`, `target_arch`, `target_endian`, `unix`, `windows`,
+/// `macos`, `test` (set when running tests), and custom flags set with `--cfg` or
+/// Cargo features (`feature = "..."`).
+///
+/// Conditions can also be combined with `all(...)`, `any(...)`, `not(...)`.
+///
+/// ```rust
+/// #[cfg(all(unix, target_pointer_width = "64"))]
+/// fn unix_64bit() {
+/// }
+///
+/// ```
+///
+/// You can also use `cfg` more than once on the same item. The item is only
+/// kept if all the conditions are true, same as combining them with `all(...)`.
+///
+/// For a check you can use inside a function, see the [`cfg!`] macro. To
+/// conditionally apply a different attribute, see [`cfg_attr`].
+///
+/// For more information, see the Reference on [the `cfg` attribute].
+///
+/// [`cfg!`]: ../reference/conditional-compilation.html#the-cfg-macro
+/// [`cfg_attr`]: ../reference/conditional-compilation.html#the-cfg_attr-attribute
+/// [the `cfg` attribute]: ../reference/conditional-compilation.html#the-cfg-attribute
+mod cfg_attribute {}
