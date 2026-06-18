@@ -9,8 +9,18 @@ use run_make_support::{bare_rustc, diff, rfs, rustc};
 fn main() {
     // Check that relative paths are preserved in the diagnostic
     rfs::create_dir("mylibs");
-    rustc().input("crateresolve1-1.rs").out_dir("mylibs").extra_filename("-1").run();
-    rustc().input("crateresolve1-2.rs").out_dir("mylibs").extra_filename("-2").run();
+    rustc()
+        .edition("2015")
+        .input("crateresolve1-1.rs")
+        .out_dir("mylibs")
+        .extra_filename("-1")
+        .run();
+    rustc()
+        .edition("2015")
+        .input("crateresolve1-2.rs")
+        .out_dir("mylibs")
+        .extra_filename("-2")
+        .run();
     check("./mylibs");
 
     // Check that symlinks aren't followed when printing the diagnostic
@@ -21,6 +31,7 @@ fn main() {
 
 fn check(library_path: &str) {
     let out = rustc()
+        .edition("2015")
         .input("multiple-candidates.rs")
         .library_search_path(library_path)
         .ui_testing()
