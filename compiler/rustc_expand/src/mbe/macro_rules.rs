@@ -162,6 +162,32 @@ pub(crate) enum MacroRule {
     Derive { body: Vec<MatcherLoc>, body_span: Span, rhs: mbe::TokenTree },
 }
 
+/// A selection of a matcher in a [`MacroRule`].
+///
+/// [`MacroRule::Attr`] has two different matchers (args and body). This enum allows distinguishing
+/// between them, even when used for other kinds of rules.
+///
+/// This type implements [`Ord`]. The arms within a rule come in a fixed order and this type is
+/// consistent with that ordering.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum WhichMatcher {
+    /// The arguments of an attr macro ([`MacroRule::Attr::args`]).
+    Args,
+
+    /// The body of an attr macro ([`MacroRule::Attr::body`]), **or** the only arm of the rule.
+    ///
+    /// This is also used to express the only arm in a [`MacroRule::Func`] or [`MacroRule::Derive`].
+    Body,
+}
+
+impl WhichMatcher {
+    /// The [`WhichMatcher`] for [`MacroRule::Func`].
+    pub(crate) const FOR_FUNC: Self = Self::Body;
+
+    /// The [`WhichMatcher`] for [`MacroRule::Derive`].
+    pub(crate) const FOR_DERIVE: Self = Self::Body;
+}
+
 pub struct MacroRulesMacroExpander {
     node_id: NodeId,
     name: Ident,
@@ -346,7 +372,12 @@ pub(super) trait Tracker<'matcher> {
 
     /// This is called after an arm has been parsed, either successfully or unsuccessfully. When
     /// this is called, `before_match_loc` was called at least once (with a `MatcherLoc::Eof`).
-    fn after_arm(&mut self, _in_body: bool, _result: &NamedParseResult<Self::Failure>) {}
+    fn after_arm(
+        &mut self,
+        _which_matcher: WhichMatcher,
+        _result: &NamedParseResult<Self::Failure>,
+    ) {
+    }
 
     /// For tracing.
     fn description() -> &'static str;
@@ -585,7 +616,7 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
 
         let result = tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs, track);
 
-        track.after_arm(true, &result);
+        track.after_arm(WhichMatcher::FOR_FUNC, &result);
 
         match result {
             Success(named_matches) => {
@@ -642,7 +673,7 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
         let mut gated_spans_snapshot = mem::take(&mut *psess.gated_spans.spans.borrow_mut());
 
         let result = tt_parser.parse_tt(&mut Cow::Borrowed(&args_parser), args, track);
-        track.after_arm(false, &result);
+        track.after_arm(WhichMatcher::Args, &result);
 
         let mut named_matches = match result {
             Success(named_matches) => named_matches,
@@ -655,7 +686,7 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
         };
 
         let result = tt_parser.parse_tt(&mut Cow::Borrowed(&body_parser), body, track);
-        track.after_arm(true, &result);
+        track.after_arm(WhichMatcher::Body, &result);
 
         match result {
             Success(body_named_matches) => {
@@ -695,7 +726,7 @@ pub(super) fn try_match_macro_derive<'matcher, T: Tracker<'matcher>>(
         let mut gated_spans_snapshot = mem::take(&mut *psess.gated_spans.spans.borrow_mut());
 
         let result = tt_parser.parse_tt(&mut Cow::Borrowed(&body_parser), body, track);
-        track.after_arm(true, &result);
+        track.after_arm(WhichMatcher::FOR_DERIVE, &result);
 
         match result {
             Success(named_matches) => {
