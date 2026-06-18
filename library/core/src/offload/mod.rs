@@ -1,6 +1,7 @@
 // offload module
 #[unstable(feature = "gpu_offload", issue = "131513")]
 pub use crate::macros::builtin::offload_kernel;
+use crate::marker::PhantomData;
 #[unstable(feature = "gpu_offload", issue = "131513")]
 pub use crate::offload;
 
@@ -124,4 +125,93 @@ macro_rules! offload {
         );
         device
     } };
+}
+
+// Region & Partitioning Strategy
+
+/// Defines how execution units access memory regions.
+///
+/// # Safety
+///
+/// Implementations must guarantee that generated views are disjoint.
+#[unstable(feature = "offload", issue = "124509")]
+pub unsafe trait PartitioningStrategy {
+    /// Read-only view type for the partitioned memory region.
+    type View<'a, T: 'a>;
+
+    /// Mutable view type for the partitioned memory region.
+    type ViewMut<'a, T: 'a>;
+
+    /// Returns the execution index of the current unit.
+    fn index() -> usize;
+
+    /// Returns a read-only view of the region for the current execution context.
+    ///
+    /// # Safety
+    ///
+    /// `ptr` must point to `len` valid, initialized elements of type `T`.
+    /// The memory must stay valid for lifetime `'a`.
+    unsafe fn get<'a, T>(ptr: *const T, len: usize) -> Option<Self::View<'a, T>>;
+
+    /// Returns a mutable view of the region for the current execution context.
+    ///
+    /// # Safety
+    ///
+    /// `ptr` must point to `len` valid, initialized elements of type `T`.
+    /// The memory must stay valid for lifetime `'a`.
+    /// The returned view must be disjoint from all other active views.
+    unsafe fn get_mut<'a, T>(ptr: *mut T, len: usize) -> Option<Self::ViewMut<'a, T>>;
+}
+
+/// A memory region bound to a partitioning strategy.
+#[derive(Copy, Clone)]
+#[unstable(feature = "offload", issue = "124509")]
+pub struct Region<'a, T, S: PartitioningStrategy> {
+    ptr: *mut T,
+    len: usize,
+    _marker: core::marker::PhantomData<(&'a mut [T], S)>,
+}
+
+/// Raw representation used to build a [`Region`] from common aggregate types.
+struct RawRegion<'a, T> {
+    pub ptr: *mut T,
+    pub len: usize,
+    _marker: core::marker::PhantomData<&'a mut [T]>,
+}
+
+impl<'a, T> From<&'a mut [T]> for RawRegion<'a, T> {
+    fn from(data: &'a mut [T]) -> Self {
+        Self { ptr: data.as_mut_ptr(), len: data.len(), _marker: core::marker::PhantomData }
+    }
+}
+
+impl<'a, T, const N: usize> From<&'a mut [T; N]> for RawRegion<'a, T> {
+    fn from(data: &'a mut [T; N]) -> Self {
+        Self { ptr: data.as_mut_ptr(), len: N, _marker: core::marker::PhantomData }
+    }
+}
+
+#[unstable(feature = "offload", issue = "124509")]
+impl<'a, T, S: PartitioningStrategy> Region<'a, T, S> {
+    /// Creates a new partitioned region from data convertible into a [`RawRegion`].
+    pub fn new<D>(data: D) -> Self
+    where
+        D: Into<RawRegion<'a, T>>,
+    {
+        let raw = data.into();
+        Self { ptr: raw.ptr, len: raw.len, _marker: core::marker::PhantomData }
+    }
+
+    /// Returns a read-only view for the current execution context.
+    pub fn get(&self) -> Option<S::View<'_, T>> {
+        // SAFETY: `self.ptr` points to `self.len` valid elements for lifetime `'a`.
+        unsafe { S::get(self.ptr as *const T, self.len) }
+    }
+
+    /// Returns a mutable view for the current execution context.
+    pub fn get_mut(&mut self) -> Option<S::ViewMut<'_, T>> {
+        // SAFETY: `self.ptr` points to `self.len` valid elements for lifetime `'a`.
+        // The strategy guarantees that the returned view is disjoint.
+        unsafe { S::get_mut(self.ptr, self.len) }
+    }
 }
