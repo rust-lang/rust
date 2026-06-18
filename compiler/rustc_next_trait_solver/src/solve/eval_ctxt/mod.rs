@@ -992,6 +992,9 @@ where
     ) -> Result<Option<Certainty>, NoSolutionOrRerunNonErased> {
         // If this loop did not result in any progress, what's our final certainty.
         let mut unchanged_certainty = Some(Certainty::Yes);
+        // This mem::take seems super inefficient, given that we push to it again later.
+        // Despite that, replacing it has no effect on performance. We tried.
+        // (https://github.com/rust-lang/rust/pull/158126)
         for (source, goal, stalled_on) in mem::take(&mut self.nested_goals) {
             // We never handle `NormalizesTo` as a nested goal
             debug_assert!(!matches!(
