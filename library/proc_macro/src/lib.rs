@@ -197,6 +197,7 @@ impl fmt::Display for EscapeError {
 /// Errors returned when trying to retrieve a literal unescaped value.
 #[unstable(feature = "proc_macro_value", issue = "136652")]
 #[derive(Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ConversionErrorKind {
     /// The literal failed to be escaped, take a look at [`EscapeError`] for more information.
     FailedToUnescape(EscapeError),
