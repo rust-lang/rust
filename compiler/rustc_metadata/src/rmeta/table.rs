@@ -2,9 +2,11 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_hir::def::CtorOf;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::Idx;
+use rustc_middle::ty::codec::TyEncoder;
 use rustc_span::{LocalExpnId, SyntaxContext};
 
 use crate::rmeta::decoder::MetaBlob;
+use crate::rmeta::encoder::MetadataEncoder;
 use crate::rmeta::encoder::public_api_hasher::{
     GraphHashed, Node, PublicApiHashState, RecordMode, TablePublicApiHasher,
 };
@@ -630,7 +632,10 @@ impl<
         }
     }
 
-    pub(crate) fn encode(&self, buf: &mut FileEncoder<'_>) -> GraphHashed<LazyTable<I, T>> {
+    pub(crate) fn encode<'tcx, M: MetadataEncoder<'tcx>>(
+        &self,
+        buf: &mut EncodeContext<'_, 'tcx, M>,
+    ) -> GraphHashed<LazyTable<I, T>> {
         let pos = buf.position();
 
         let width = self.width;

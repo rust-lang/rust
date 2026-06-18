@@ -760,6 +760,19 @@ impl<'a, 'tcx, M> EncodeContext<'a, 'tcx, M>
 where
     M: MetadataEncoder<'tcx>,
 {
+    #[inline]
+    pub(super) fn write_with<const N: usize>(
+        &mut self,
+        visitor: impl FnOnce(&mut [u8; N]) -> usize,
+    ) {
+        self.opaque.write_with(visitor);
+    }
+
+    #[inline]
+    pub(super) fn write_array<const N: usize>(&mut self, buf: [u8; N]) {
+        self.opaque.write_array(buf);
+    }
+
     fn is_proc_macro(&self) -> bool {
         self.is_proc_macro
     }
@@ -1037,7 +1050,7 @@ where
             );
         }
 
-        adapted.encode(&mut self.encoder.opaque)
+        adapted.encode(self.encoder)
     }
 
     fn encode_crate_root(
@@ -1176,7 +1189,7 @@ where
             }
         }
 
-        let tables = stat!("tables", || self.tables.encode(&mut self.encoder.opaque));
+        let tables = stat!("tables", || self.tables.encode(self.encoder));
 
         // Encode the hygiene data.
         // IMPORTANT: this *must* be the last thing that we encode (other than `SourceMap`). The
@@ -2581,9 +2594,9 @@ where
         );
 
         (
-            syntax_contexts.encode(&mut self.encoder.opaque),
-            expn_data_table.encode(&mut self.encoder.opaque),
-            expn_hash_table.encode(&mut self.encoder.opaque),
+            syntax_contexts.encode(self.encoder),
+            expn_data_table.encode(self.encoder),
+            expn_hash_table.encode(self.encoder),
         )
     }
 
@@ -2674,8 +2687,7 @@ where
                 );
             }
 
-            let proc_macro_quoted_spans =
-                proc_macro_quoted_spans.encode(&mut self.encoder.opaque).0;
+            let proc_macro_quoted_spans = proc_macro_quoted_spans.encode(self.encoder).0;
 
             Some(ProcMacroData {
                 proc_macro_decls_static,

@@ -47,7 +47,6 @@ use rustc_middle::mir::ConstValue;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util::Providers;
-use rustc_serialize::opaque::FileEncoder;
 use rustc_serialize::{Encodable, Encoder};
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_session::config::{SymbolManglingVersion, TargetModifier};
@@ -729,9 +728,9 @@ macro_rules! define_tables {
         }
 
         impl TableBuilders {
-            fn encode(
+            fn encode<'tcx, M: MetadataEncoder<'tcx>>(
                 &self,
-                buf: &mut FileEncoder<'_>,
+                buf: &mut EncodeContext<'_, 'tcx, M>,
             ) -> GraphHashed<LazyTables>
             {
                 let tables = LazyTables {
