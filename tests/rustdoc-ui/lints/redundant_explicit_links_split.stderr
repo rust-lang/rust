@@ -1,12 +1,10 @@
 error: redundant explicit link target
-  --> $DIR/redundant_explicit_links_split.rs:33:25
+  --> $DIR/redundant_explicit_links_split.rs:4:1
    |
-LL |   /// [std::clone::Clone](
-   |  ______-----------------__^
-   | |      |
-   | |      because label contains path that resolves to same destination
-LL | | /// std::clone::Clone)
-   | |_____________________^ explicit target is redundant
+LL | / /// [Clone](
+LL | | pub fn split_outer_inner() {
+LL | |     //! std::clone::Clone)
+   | |__________________________^ explicit target `std::clone::Clone` is redundant because label `Clone` resolves to same destination
    |
    = note: when a link's destination is not specified,
            the label is used to resolve intra-doc links
@@ -15,18 +13,64 @@ note: the lint level is defined here
    |
 LL | #![deny(rustdoc::redundant_explicit_links)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: redundant explicit link target
+  --> $DIR/redundant_explicit_links_split.rs:10:1
+   |
+LL | / /// [Clone](std::clone::Clone
+LL | | pub fn split_outer_inner_b() {
+LL | |     //! )
+   | |_________^ explicit target `std::clone::Clone` is redundant because label `Clone` resolves to same destination
+   |
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
+
+error: redundant explicit link target
+  --> $DIR/redundant_explicit_links_split.rs:16:1
+   |
+LL | / /// [Clone](
+LL | | #[inline]
+LL | | /// std::clone::Clone)
+   | |______________________^ explicit target `std::clone::Clone` is redundant because label `Clone` resolves to same destination
+   |
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
+
+error: redundant explicit link target
+  --> $DIR/redundant_explicit_links_split.rs:23:1
+   |
+LL | / /// [Clone](std::clone::Clone
+LL | | #[inline]
+LL | | /// )
+   | |_____^ explicit target `std::clone::Clone` is redundant because label `Clone` resolves to same destination
+   |
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
+
+error: redundant explicit link target
+  --> $DIR/redundant_explicit_links_split.rs:30:13
+   |
+LL |   /// [Clone](
+   |  ______-----__^
+   | |      |
+   | |      because label contains path that resolves to same destination
+LL | | /// std::clone::Clone)
+   | |_____________________^ explicit target is redundant
+   |
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
 help: remove explicit link target
    |
-LL - /// [std::clone::Clone](
+LL - /// [Clone](
 LL - /// std::clone::Clone)
-LL + /// [std::clone::Clone]
+LL + /// [Clone]
    |
 
 error: redundant explicit link target
-  --> $DIR/redundant_explicit_links_split.rs:39:25
+  --> $DIR/redundant_explicit_links_split.rs:37:13
    |
-LL |   /// [std::clone::Clone](std::clone::Clone
-   |  ______-----------------__^
+LL |   /// [Clone](std::clone::Clone
+   |  ______-----__^
    | |      |
    | |      because label contains path that resolves to same destination
 LL | | /// )
@@ -36,10 +80,10 @@ LL | | /// )
            the label is used to resolve intra-doc links
 help: remove explicit link target
    |
-LL - /// [std::clone::Clone](std::clone::Clone
+LL - /// [Clone](std::clone::Clone
 LL - /// )
-LL + /// [std::clone::Clone]
+LL + /// [Clone]
    |
 
-error: aborting due to 2 previous errors
+error: aborting due to 6 previous errors
 

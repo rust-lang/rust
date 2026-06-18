@@ -1,43 +1,42 @@
 #![deny(rustdoc::redundant_explicit_links)]
+use std::clone::Clone;
 
-// Right now, redundant_explicit_links won't produce a warning at all if
-// rustdoc isn't able to calculate an accurate span for the link.
-//
-// If that changes and this test starts to fail, you should add the
-// appropriate annotations, and, also, make sure that it doesn't
-// suggest a correction that wipes out the `fn` formal signature
-// or the `#[inline]` attribute.
-
-/// [std::clone::Clone](
+/// [Clone](
 pub fn split_outer_inner() {
     //! std::clone::Clone)
+//~^^^ ERROR redundant_explicit_links
 }
 
-/// [std::clone::Clone](std::clone::Clone
+/// [Clone](std::clone::Clone
 pub fn split_outer_inner_b() {
     //! )
+//~^^^ ERROR redundant_explicit_links
 }
 
-/// [std::clone::Clone](
+/// [Clone](
 #[inline]
 /// std::clone::Clone)
+//~^^^ ERROR redundant_explicit_links
 pub fn split_attr() {
 }
 
-/// [std::clone::Clone](std::clone::Clone
+/// [Clone](std::clone::Clone
 #[inline]
 /// )
+//~^^^ ERROR redundant_explicit_links
 pub fn split_attr_b() {
 }
 
-/// [std::clone::Clone](
+/// [Clone](
 /// std::clone::Clone)
 //~^^ ERROR redundant_explicit_links
+//~| SUGGESTION [Clone]
 pub fn not_split() {
 }
 
-/// [std::clone::Clone](std::clone::Clone
+/// [Clone](std::clone::Clone
 /// )
 //~^^ ERROR redundant_explicit_links
+//~| SUGGESTION [Clone]
 pub fn not_split_b() {
 }
