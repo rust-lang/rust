@@ -464,12 +464,12 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     {
         let format_args = format_args_storage.clone();
         let attrs = attr_storage.clone();
-        store.early_lint_passes.push(Box::new(move || {
+        store.register_early_lint_pass(Box::new(move || {
             Box::new(CombinedEarlyLintPass::new(conf, format_args.clone(), attrs.clone()))
         }));
     }
 
-    store.late_lint_passes.push(Box::new(move |tcx: TyCtxt<'_>| {
+    store.register_late_lint_pass(Box::new(move |tcx: TyCtxt<'_>| {
         let skippable_lints = tcx.skippable_lints(());
         let is_active = |lints: &rustc_lint::LintVec| is_lint_pass_required(skippable_lints, lints);
         Box::new(CombinedLateLintPass::new(
