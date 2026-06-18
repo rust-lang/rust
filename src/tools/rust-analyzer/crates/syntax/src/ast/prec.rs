@@ -264,6 +264,14 @@ impl Expr {
             return false;
         }
 
+        // Special-case `cond && <let-chain>`
+        if let ast::Expr::BinExpr(parent) = parent
+            && parent.op_kind() == Some(ast::BinaryOp::LogicOp(ast::LogicOp::And))
+            && self.contains_let_expr()
+        {
+            return false;
+        }
+
         let (left, right, inv) = match self.is_ordered_before_parent_in_place_of(parent, place_of) {
             true => (self, parent, false),
             false => (parent, self, true),
@@ -549,6 +557,21 @@ impl Expr {
                 .unwrap_or(false),
 
             ForExpr(_) | IfExpr(_) | MatchExpr(_) | WhileExpr(_) | IncludeBytesExpr(_) => true,
+        }
+    }
+
+    fn contains_let_expr(&self) -> bool {
+        use Expr::*;
+
+        match self {
+            LetExpr(_) => true,
+            BinExpr(e) => {
+                // if we find something other than a `&&`, then this can't be a let chain
+                e.op_kind() == Some(ast::BinaryOp::LogicOp(ast::LogicOp::And))
+                    && (e.lhs().is_none_or(|it| it.contains_let_expr())
+                        || e.rhs().is_none_or(|it| it.contains_let_expr()))
+            }
+            _ => false,
         }
     }
 }
