@@ -592,6 +592,15 @@ where
             ));
         }
 
+        if !self.delegate.disable_trait_solver_fast_paths()
+            && let Some(certainty) = self.delegate.compute_goal_fast_path(goal, self.origin_span)
+        {
+            return Ok((
+                NestedNormalizationGoals::empty(),
+                GoalEvaluation { goal, certainty, has_changed: HasChanged::No, stalled_on: None },
+            ));
+        }
+
         self.evaluate_goal_cold(source, goal, increase_depth_for_nested)
     }
 
@@ -989,20 +998,6 @@ where
                 goal.predicate.kind().skip_binder(),
                 PredicateKind::NormalizesTo(_)
             ));
-
-            if !self.delegate.disable_trait_solver_fast_paths()
-                && let Some(certainty) =
-                    self.delegate.compute_goal_fast_path(goal, self.origin_span)
-            {
-                match certainty {
-                    Certainty::Yes => {}
-                    Certainty::Maybe { .. } => {
-                        self.nested_goals.push((source, goal, None));
-                        unchanged_certainty = unchanged_certainty.map(|c| c.and(certainty));
-                    }
-                }
-                continue;
-            }
 
             let GoalEvaluation { goal, certainty, has_changed, stalled_on } =
                 self.evaluate_goal(source, goal, stalled_on)?;
