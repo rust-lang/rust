@@ -986,7 +986,9 @@ impl Builder<'_> {
             cargo.env("MIRI_HOST_SYSROOT", &host_sysroot);
         }
 
-        cargo.env(profile_var("STRIP"), self.config.rust_strip.to_string());
+        if mode != Mode::DistStd {
+            cargo.env(profile_var("STRIP"), self.config.rust_strip.to_string());
+        }
 
         if let Some(stack_protector) = &self.config.rust_stack_protector {
             rustflags.arg(&format!("-Zstack-protector={stack_protector}"));
@@ -1001,7 +1003,9 @@ impl Builder<'_> {
             Mode::DistStd => None,
         };
         debuginfo_level.map(|value| cargo.env(profile_var("DEBUG"), value.to_string()));
-        if let Some(opt_level) = &self.config.rust_optimize.get_opt_level() {
+        if let Some(opt_level) = &self.config.rust_optimize.get_opt_level()
+            && mode != Mode::DistStd
+        {
             cargo.env(profile_var("OPT_LEVEL"), opt_level);
         }
         let debug_assertions = match mode {
@@ -1013,14 +1017,16 @@ impl Builder<'_> {
             Mode::DistStd => None,
         };
         debug_assertions.map(|value| cargo.env(profile_var("DEBUG_ASSERTIONS"), value.to_string()));
-        cargo.env(
-            profile_var("OVERFLOW_CHECKS"),
-            if mode == Mode::Std {
-                self.config.rust_overflow_checks_std.to_string()
-            } else {
-                self.config.rust_overflow_checks.to_string()
-            },
-        );
+        if mode != Mode::DistStd {
+            cargo.env(
+                profile_var("OVERFLOW_CHECKS"),
+                if mode == Mode::Std {
+                    self.config.rust_overflow_checks_std.to_string()
+                } else {
+                    self.config.rust_overflow_checks.to_string()
+                },
+            );
+        }
 
         match self.config.split_debuginfo(target) {
             SplitDebuginfo::Packed => rustflags.arg("-Csplit-debuginfo=packed"),
@@ -1360,7 +1366,10 @@ impl Builder<'_> {
         }
 
         match (mode, self.config.rust_codegen_units_std, self.config.rust_codegen_units) {
-            (Mode::Std, Some(n), _) | (_, _, Some(n)) => {
+            (Mode::Std, Some(n), _) => {
+                cargo.env(profile_var("CODEGEN_UNITS"), n.to_string());
+            }
+            (m, _, Some(n)) if m != Mode::DistStd => {
                 cargo.env(profile_var("CODEGEN_UNITS"), n.to_string());
             }
             _ => {
@@ -1486,7 +1495,9 @@ impl Builder<'_> {
 pub fn cargo_profile_var(name: &str, config: &Config, mode: Mode) -> String {
     let profile = match (mode, config.rust_optimize.is_release()) {
         // Some std configuration exists in its own profile
-        (Mode::DistStd, _) => "DIST",
+        (Mode::DistStd, _) => {
+            panic!("Attempted to override the distributed std's profile with {name}")
+        }
         (_, true) => "RELEASE",
         (_, false) => "DEV",
     };
