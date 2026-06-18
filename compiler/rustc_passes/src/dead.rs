@@ -9,7 +9,7 @@ use std::sync::atomic::Ordering;
 
 use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
 use rustc_abi::FieldIdx;
-use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
@@ -112,6 +112,11 @@ struct WorkItem {
     id: LocalDefId,
     propagated: ComesFromAllowExpect,
     own: ComesFromAllowExpect,
+}
+
+enum ImplItemCheckResult {
+    Live(ComesFromAllowExpect),
+    Dead { require: LocalDefId },
 }
 
 struct MarkSymbolVisitor<'tcx> {
@@ -551,7 +556,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         &self,
         local_def_id: LocalDefId,
         defer_seeds_come_from_allow: bool,
-    ) -> Option<ComesFromAllowExpect> {
+    ) -> ImplItemCheckResult {
         let (impl_block_id, trait_def_id) = match self.tcx.def_kind(local_def_id) {
             // assoc impl items of traits are live if the corresponding trait items are live
             DefKind::AssocConst { .. } | DefKind::AssocTy | DefKind::AssocFn => {
@@ -570,14 +575,17 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         if let Some(trait_def_id) = trait_def_id {
             if defer_seeds_come_from_allow {
                 if !self.live_symbols.contains(&trait_def_id) {
-                    return None;
+                    return ImplItemCheckResult::Dead { require: trait_def_id };
                 }
             } else {
-                if !self.live_symbols.contains(&trait_def_id) {
-                    return has_allow_dead_code_or_lang_attr(self.tcx, trait_def_id);
-                }
-
                 trait_comes_from_allow = has_allow_dead_code_or_lang_attr(self.tcx, trait_def_id);
+
+                if !self.live_symbols.contains(&trait_def_id) {
+                    return match trait_comes_from_allow {
+                        Some(comes_from_allow) => ImplItemCheckResult::Live(comes_from_allow),
+                        None => ImplItemCheckResult::Dead { require: trait_def_id },
+                    };
+                }
             }
         }
 
@@ -588,36 +596,43 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             && !self.live_symbols.contains(&adt_def_id)
         {
             if defer_seeds_come_from_allow {
-                return None;
+                return ImplItemCheckResult::Dead { require: adt_def_id };
             } else {
-                return trait_comes_from_allow
+                let comes_from_allow = trait_comes_from_allow
                     .or_else(|| has_allow_dead_code_or_lang_attr(self.tcx, adt_def_id));
+
+                return match comes_from_allow {
+                    Some(comes_from_allow) => ImplItemCheckResult::Live(comes_from_allow),
+                    None => ImplItemCheckResult::Dead { require: adt_def_id },
+                };
             }
         }
 
-        Some(ComesFromAllowExpect::No)
+        ImplItemCheckResult::Live(ComesFromAllowExpect::No)
     }
 
     fn collect_live_items_from_unsolved_items(
         &mut self,
         defer_seeds_come_from_allow: bool,
+        unsolved_items: Vec<LocalDefId>,
+        unsolved_map: &mut FxHashMap<LocalDefId, Vec<LocalDefId>>,
     ) -> Vec<(LocalDefId, ComesFromAllowExpect)> {
-        let mut unsolved_items = std::mem::take(&mut self.unsolved_items);
         let mut items_to_check = vec![];
-        unsolved_items.retain(|&def_id| {
-            let Some(comes_from_allow) =
-                self.check_impl_or_impl_item_live(def_id, defer_seeds_come_from_allow)
-            else {
-                return true;
-            };
 
-            items_to_check.push((def_id, comes_from_allow));
-            false
-        });
-        self.unsolved_items = unsolved_items;
+        for def_id in unsolved_items {
+            match self.check_impl_or_impl_item_live(def_id, defer_seeds_come_from_allow) {
+                ImplItemCheckResult::Live(comes_from_allow) => {
+                    items_to_check.push((def_id, comes_from_allow));
+                }
+                ImplItemCheckResult::Dead { require } => {
+                    unsolved_map.entry(require).or_default().push(def_id);
+                }
+            }
+        }
         items_to_check
     }
 
+    #[allow(rustc::potential_query_instability)]
     fn mark_live_symbols_and_ignored_derived_traits(
         &mut self,
         defer_seeds_come_from_allow: bool,
@@ -628,8 +643,13 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
         // We have marked the primary seeds as live. We now need to process unsolved items from traits
         // and trait impls: add them to the work list if the trait or the implemented type is live.
-        let mut items_to_check =
-            self.collect_live_items_from_unsolved_items(defer_seeds_come_from_allow);
+        let unsolved_items = std::mem::take(&mut self.unsolved_items);
+        let mut unsolved_map = FxHashMap::default();
+        let mut items_to_check = self.collect_live_items_from_unsolved_items(
+            defer_seeds_come_from_allow,
+            unsolved_items,
+            &mut unsolved_map,
+        );
 
         while !items_to_check.is_empty() {
             self.worklist.extend(items_to_check.into_iter().map(|(id, comes_from_allow)| {
@@ -646,9 +666,20 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 return Err(guar);
             }
 
-            items_to_check =
-                self.collect_live_items_from_unsolved_items(defer_seeds_come_from_allow);
+            let unsolved_items = unsolved_map
+                .extract_if(|require, _| self.live_symbols.contains(require))
+                .map(|(_, items)| items)
+                .flatten()
+                .collect();
+
+            items_to_check = self.collect_live_items_from_unsolved_items(
+                defer_seeds_come_from_allow,
+                unsolved_items,
+                &mut unsolved_map,
+            );
         }
+
+        self.unsolved_items = unsolved_map.values().into_iter().cloned().flatten().collect();
 
         Ok(())
     }
