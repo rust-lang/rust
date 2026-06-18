@@ -89,10 +89,15 @@
 -         _6 = copy (_1.1: u32);
 +         _6 = copy _31;
           _7 = discriminant(_5);
-          switchInt(move _7) -> [0: bb2, otherwise: bb7];
+          switchInt(move _7) -> [0: bb3, otherwise: bb2];
       }
   
       bb2: {
+          _0 = const ();
+          goto -> bb9;
+      }
+  
+      bb3: {
           StorageLive(_8);
           _8 = move ((_5 as Ok).0: std::boxed::Box<dyn std::fmt::Display>);
           StorageLive(_9);
@@ -118,20 +123,20 @@
 -         _24 = no_retag copy (_12.0: &std::boxed::Box<dyn std::fmt::Display>);
 +         _24 = no_retag copy _32;
           _17 = &(*_24);
-          _16 = core::fmt::rt::Argument::<'_>::new_display::<Box<dyn std::fmt::Display>>(move _17) -> [return: bb3, unwind unreachable];
+          _16 = core::fmt::rt::Argument::<'_>::new_display::<Box<dyn std::fmt::Display>>(move _17) -> [return: bb4, unwind unreachable];
       }
   
-      bb3: {
+      bb4: {
           StorageDead(_17);
           StorageLive(_18);
           StorageLive(_19);
 -         _25 = no_retag copy (_12.1: &u32);
 +         _25 = no_retag copy _33;
           _19 = &(*_25);
-          _18 = core::fmt::rt::Argument::<'_>::new_display::<u32>(move _19) -> [return: bb4, unwind unreachable];
+          _18 = core::fmt::rt::Argument::<'_>::new_display::<u32>(move _19) -> [return: bb5, unwind unreachable];
       }
   
-      bb4: {
+      bb5: {
           StorageDead(_19);
           _15 = [move _16, move _18];
           StorageDead(_18);
@@ -144,18 +149,18 @@
           StorageLive(_23);
           _23 = &_15;
           _22 = &(*_23);
-          _11 = Arguments::<'_>::new::<7, 2>(move _20, move _22) -> [return: bb5, unwind unreachable];
+          _11 = Arguments::<'_>::new::<7, 2>(move _20, move _22) -> [return: bb6, unwind unreachable];
       }
   
-      bb5: {
+      bb6: {
           StorageDead(_23);
           StorageDead(_22);
           StorageDead(_21);
           StorageDead(_20);
-          _10 = std::io::_eprint(move _11) -> [return: bb6, unwind unreachable];
+          _10 = std::io::_eprint(move _11) -> [return: bb7, unwind unreachable];
       }
   
-      bb6: {
+      bb7: {
           StorageDead(_11);
           StorageDead(_15);
 -         StorageDead(_12);
@@ -167,11 +172,6 @@
           StorageDead(_9);
           _0 = const ();
           drop(_8) -> [return: bb8, unwind unreachable];
-      }
-  
-      bb7: {
-          _0 = const ();
-          goto -> bb9;
       }
   
       bb8: {

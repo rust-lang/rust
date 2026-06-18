@@ -47,26 +47,44 @@ fn partial_init::{closure#0}(_1: &mut {async fn body of partial_init()}) -> () {
 
     bb0: {
         _27 = discriminant((*_1));
-        switchInt(move _27) -> [0: bb11, 3: bb12, otherwise: bb13];
+        switchInt(move _27) -> [0: bb9, 3: bb10, otherwise: bb11];
     }
 
     bb1: {
         StorageDead(_25);
         StorageDead(_24);
-        drop((((*_1) as variant#3).2: {async block@$DIR/async_fn.rs:80:50: 80:55})) -> [return: bb2, unwind: bb7];
+        drop((((*_1) as variant#3).2: {async block@$DIR/async_fn.rs:80:50: 80:55})) -> [return: bb2, unwind: bb6];
     }
 
     bb2: {
         nop;
-        drop((((*_1) as variant#3).1: std::string::String)) -> [return: bb3, unwind: bb8];
+        drop((((*_1) as variant#3).1: std::string::String)) -> [return: bb3, unwind: bb7];
     }
 
     bb3: {
+        nop;
+        StorageDead(_8);
+        StorageDead(_5);
+        StorageDead(_4);
         nop;
         goto -> bb4;
     }
 
     bb4: {
+        return;
+    }
+
+    bb5 (cleanup): {
+        resume;
+    }
+
+    bb6 (cleanup): {
+        nop;
+        drop((((*_1) as variant#3).1: std::string::String)) -> [return: bb7, unwind terminate(cleanup)];
+    }
+
+    bb7 (cleanup): {
+        nop;
         StorageDead(_8);
         StorageDead(_5);
         StorageDead(_4);
@@ -74,41 +92,15 @@ fn partial_init::{closure#0}(_1: &mut {async fn body of partial_init()}) -> () {
         goto -> bb5;
     }
 
-    bb5: {
+    bb8: {
         return;
     }
 
-    bb6 (cleanup): {
-        resume;
-    }
-
-    bb7 (cleanup): {
-        nop;
-        drop((((*_1) as variant#3).1: std::string::String)) -> [return: bb8, unwind terminate(cleanup)];
-    }
-
-    bb8 (cleanup): {
-        nop;
-        goto -> bb9;
-    }
-
-    bb9 (cleanup): {
-        StorageDead(_8);
-        StorageDead(_5);
-        StorageDead(_4);
-        nop;
-        goto -> bb6;
+    bb9: {
+        goto -> bb8;
     }
 
     bb10: {
-        return;
-    }
-
-    bb11: {
-        goto -> bb10;
-    }
-
-    bb12: {
         StorageLive(_4);
         StorageLive(_5);
         StorageLive(_8);
@@ -117,7 +109,7 @@ fn partial_init::{closure#0}(_1: &mut {async fn body of partial_init()}) -> () {
         goto -> bb1;
     }
 
-    bb13: {
+    bb11: {
         return;
     }
 }

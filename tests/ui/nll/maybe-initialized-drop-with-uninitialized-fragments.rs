@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![allow(warnings)]
 
 struct Wrap<'p> { p: &'p mut i32 }
@@ -17,6 +19,5 @@ fn main() {
     let foo = Foo { a: s, b: wrap };
     std::mem::drop(foo.a);
     std::mem::drop(foo.b);
-    x = 1; //~ ERROR cannot assign to `x` because it is borrowed [E0506]
-    // FIXME ^ This currently errors and it should not.
+    x = 1;
 }

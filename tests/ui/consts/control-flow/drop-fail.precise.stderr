@@ -8,7 +8,7 @@ LL | };
    | - value is dropped here
 
 error[E0493]: destructor of `Option<NotConstDestruct>` cannot be evaluated at compile-time
-  --> $DIR/drop-fail.rs:47:9
+  --> $DIR/drop-fail.rs:45:9
    |
 LL |     let mut tmp = None;
    |         ^^^^^^^ the destructor for this type cannot be evaluated in constants
