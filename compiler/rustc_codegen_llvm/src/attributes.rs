@@ -3,7 +3,8 @@ use rustc_hir::attrs::{InlineAttr, InstructionSetAttr, OptimizeAttr, RtsanSettin
 use rustc_hir::def_id::DefId;
 use rustc_hir::find_attr;
 use rustc_middle::middle::codegen_fn_attrs::{
-    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, SanitizerFnAttrs, TargetFeature,
+    CodegenFnAttrFlags, CodegenFnAttrs, InstrumentFnAttr, PatchableFunctionEntry, SanitizerFnAttrs,
+    TargetFeature,
 };
 use rustc_middle::ty::{self, Instance, TyCtxt};
 use rustc_session::config::{BranchProtection, FunctionReturn, OptLevel, PAuthKey, PacRet};
@@ -210,35 +211,59 @@ fn function_return_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<&'ll 
 fn instrument_function_attr<'ll>(
     cx: &SimpleCx<'ll>,
     sess: &Session,
+    instrument_fn: InstrumentFnAttr,
 ) -> SmallVec<[&'ll Attribute; 4]> {
     let mut attrs = SmallVec::new();
     if sess.opts.unstable_opts.instrument_mcount {
         // Similar to `clang -pg` behavior. Handled by the
         // `post-inline-ee-instrument` LLVM pass.
 
-        // The function name varies on platforms.
-        // See test/CodeGen/mcount.c in clang.
-        let mcount_name = match &sess.target.llvm_mcount_intrinsic {
-            Some(llvm_mcount_intrinsic) => llvm_mcount_intrinsic.as_ref(),
-            None => sess.target.mcount.as_ref(),
+        let instrument_entry = match instrument_fn {
+            InstrumentFnAttr::Default | InstrumentFnAttr::On => true,
+            InstrumentFnAttr::Off => false,
         };
 
-        attrs.push(llvm::CreateAttrStringValue(
-            cx.llcx,
-            "instrument-function-entry-inlined",
-            mcount_name,
-        ));
+        if instrument_entry {
+            // The function name varies on platforms.
+            // See test/CodeGen/mcount.c in clang.
+            let mcount_name = match &sess.target.llvm_mcount_intrinsic {
+                Some(llvm_mcount_intrinsic) => llvm_mcount_intrinsic.as_ref(),
+                None => sess.target.mcount.as_ref(),
+            };
+
+            attrs.push(llvm::CreateAttrStringValue(
+                cx.llcx,
+                "instrument-function-entry-inlined",
+                mcount_name,
+            ));
+        }
     }
     if let Some(options) = &sess.opts.unstable_opts.instrument_xray {
         // XRay instrumentation is similar to __cyg_profile_func_{enter,exit}.
         // Function prologue and epilogue are instrumented with NOP sleds,
         // a runtime library later replaces them with detours into tracing code.
-        if options.always {
-            attrs.push(llvm::CreateAttrStringValue(cx.llcx, "function-instrument", "xray-always"));
+
+        let mut never = options.never;
+        let mut always = options.always;
+
+        // always and never may be overridden by the #[instrument_fn = ...] attribute.
+        match instrument_fn {
+            InstrumentFnAttr::Default => {}
+            InstrumentFnAttr::On => {
+                always = true;
+            }
+            InstrumentFnAttr::Off => {
+                never = true;
+            }
         }
-        if options.never {
+
+        if never {
             attrs.push(llvm::CreateAttrStringValue(cx.llcx, "function-instrument", "xray-never"));
         }
+        if always {
+            attrs.push(llvm::CreateAttrStringValue(cx.llcx, "function-instrument", "xray-always"));
+        }
+
         if options.ignore_loops {
             attrs.push(llvm::CreateAttrString(cx.llcx, "xray-ignore-loops"));
         }
@@ -442,7 +467,7 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     // FIXME: none of these functions interact with source level attributes.
     to_add.extend(frame_pointer_type_attr(cx, sess));
     to_add.extend(function_return_attr(cx, sess));
-    to_add.extend(instrument_function_attr(cx, sess));
+    to_add.extend(instrument_function_attr(cx, sess, codegen_fn_attrs.instrument_fn));
     to_add.extend(nojumptables_attr(cx, sess));
     to_add.extend(probestack_attr(cx, tcx));
     to_add.extend(stackprotector_attr(cx, sess));

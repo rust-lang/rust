@@ -1124,6 +1124,7 @@ symbols! {
         inout,
         inputs,
         instruction_set,
+        instrument_fn,
         integer_: "integer", // underscore to avoid clashing with the function `sym::integer` below
         integral,
         internal,
@@ -1220,6 +1221,7 @@ symbols! {
         loongarch64,
         loongarch_target_feature,
         loop_break_value,
+        loop_hints,
         loop_match,
         lr,
         lt,
@@ -2220,6 +2222,7 @@ symbols! {
         unreachable_display,
         unreachable_macro,
         unrestricted_attribute_tokens,
+        unroll,
         unsafe_attributes,
         unsafe_binders,
         unsafe_block_in_unsafe_fn,

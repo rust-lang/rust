@@ -755,7 +755,10 @@ impl<'a, Ty> FnAbi<'a, Ty> {
 
             if arg_idx.is_none()
                 && arg.layout.size > Primitive::Pointer(AddressSpace::ZERO).size(cx) * 2
-                && !matches!(arg.layout.backend_repr, BackendRepr::SimdVector { .. })
+                && !matches!(
+                    arg.layout.backend_repr,
+                    BackendRepr::SimdVector { .. } | BackendRepr::SimdScalableVector { .. }
+                )
             {
                 // Return values larger than 2 registers using a return area
                 // pointer. LLVM and Cranelift disagree about how to return

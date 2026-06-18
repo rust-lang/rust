@@ -9,7 +9,7 @@ note: trait defined here, with 0 generic parameters
    |
 LL | trait Output<'a> {
    |       ^^^^^^
-help: replace the generic bound with the associated type
+help: turn the generic argument into an associated item binding
    |
 LL |         F: for<'a> FnOnce(<F as Output<Type = i32>>::Type),
    |                                        ++++++

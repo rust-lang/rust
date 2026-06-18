@@ -5,7 +5,7 @@ use super::prelude::*;
 pub(crate) struct LoopMatchParser;
 impl NoArgsAttributeParser for LoopMatchParser {
     const PATH: &[Symbol] = &[sym::loop_match];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Expression)]);
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Loop)]);
     const STABILITY: AttributeStability = unstable!(loop_match);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::LoopMatch;
 }

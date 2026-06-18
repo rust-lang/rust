@@ -17,7 +17,7 @@ use rustc_middle::ty::{
 use rustc_session::config::CrateType;
 use rustc_span::Span;
 
-use crate::errors::UnexportableItem;
+use crate::diagnostics::UnexportableItem;
 
 struct ExportableItemCollector<'tcx> {
     tcx: TyCtxt<'tcx>,

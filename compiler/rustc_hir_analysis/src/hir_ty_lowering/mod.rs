@@ -59,14 +59,17 @@ use crate::{NoVariantNamed, check_c_variadic_abi};
 /// The context in which an implied bound is being added to a item being lowered (i.e. a sizedness
 /// trait or a default trait)
 #[derive(Clone, Copy)]
-pub(crate) enum ImpliedBoundsContext<'tcx> {
+pub(crate) enum ImpliedBoundsContext {
     /// An implied bound is added to a trait definition (i.e. a new supertrait), used when adding
     /// a default `MetaSized` supertrait
     TraitDef(LocalDefId),
     /// An implied bound is added to a type parameter
-    TyParam(LocalDefId, &'tcx [hir::WherePredicate<'tcx>]),
-    /// An implied bound being added in any other context
-    AssociatedTypeOrImplTrait,
+    TyParam(LocalDefId),
+    /// Associated type bounds
+    AssociatedType(LocalDefId),
+    ImplTrait,
+    TraitObject,
+    TraitAscription,
 }
 
 /// A path segment that is semantically allowed to have generic arguments.
@@ -2591,6 +2594,43 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let variant_def = adt_def.variant_with_id(variant_did);
         let variant_idx = adt_def.variant_index_with_id(variant_did).as_u32();
 
+        for init in inits {
+            if !variant_def.fields.iter().any(|field_def| field_def.name == init.field.name) {
+                let mut err = if adt_def.is_enum() {
+                    struct_span_code_err!(
+                        tcx.dcx(),
+                        init.field.span,
+                        E0559,
+                        "variant `{}::{}` has no field named `{}`",
+                        ty,
+                        variant_def.name,
+                        init.field
+                    )
+                } else {
+                    struct_span_code_err!(
+                        tcx.dcx(),
+                        init.field.span,
+                        E0560,
+                        "struct `{}` has no field named `{}`",
+                        variant_def.name,
+                        init.field
+                    )
+                };
+                if adt_def.is_enum() {
+                    err.span_label(
+                        init.field.span,
+                        format!("`{}::{}` does not have this field", ty, variant_def.name),
+                    );
+                } else {
+                    err.span_label(
+                        init.field.span,
+                        format!("`{}` does not have this field", variant_def.name),
+                    );
+                }
+                return ty::Const::new_error(tcx, err.emit());
+            }
+        }
+
         let fields = variant_def
             .fields
             .iter()
@@ -3093,7 +3133,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     &mut bounds,
                     self_ty,
                     hir_bounds,
-                    ImpliedBoundsContext::AssociatedTypeOrImplTrait,
+                    &[],
+                    ImpliedBoundsContext::TraitAscription,
                     hir_ty.span,
                 );
                 self.register_trait_ascription_bounds(bounds, hir_ty.hir_id, hir_ty.span);
@@ -3509,9 +3550,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let fn_ty = tcx.mk_fn_sig(input_tys, output_ty, fn_sig_kind);
         let fn_ptr_ty = ty::Binder::bind_with_vars(fn_ty, bound_vars);
 
-        if let hir::Node::Ty(hir::Ty { kind: hir::TyKind::FnPtr(fn_ptr_ty), span, .. }) =
-            tcx.hir_node(hir_id)
-        {
+        if let Some(hir::Ty { kind: hir::TyKind::FnPtr(fn_ptr_ty), span, .. }) = hir_ty {
             check_abi(tcx, hir_id, *span, fn_ptr_ty.abi);
         }
 

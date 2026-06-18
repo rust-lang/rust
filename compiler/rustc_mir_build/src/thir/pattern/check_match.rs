@@ -13,7 +13,7 @@ use rustc_middle::thir::visit::Visitor;
 use rustc_middle::thir::*;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
-use rustc_pattern_analysis::errors::Uncovered;
+use rustc_pattern_analysis::diagnostics::Uncovered;
 use rustc_pattern_analysis::rustc::{
     Constructor, DeconstructedPat, MatchArm, RedundancyExplanation, RevealedTy,
     RustcPatCtxt as PatCtxt, Usefulness, UsefulnessReport, WitnessPat,

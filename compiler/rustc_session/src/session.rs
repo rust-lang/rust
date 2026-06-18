@@ -1040,6 +1040,10 @@ pub fn build_session(
         dcx = dcx.with_ice_file(ice_file);
     }
 
+    if let Some(msrv) = sopts.unstable_opts.lint_rust_version {
+        dcx = dcx.with_msrv(msrv);
+    }
+
     let host_triple = TargetTuple::from_tuple(config::host_tuple());
     let (host, target_warnings) =
         Target::search(&host_triple, sopts.sysroot.path(), sopts.unstable_opts.unstable_options)

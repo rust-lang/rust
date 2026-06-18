@@ -5,6 +5,28 @@ LL |     reuse UnresolvedTrait::* { self.0 }
    |           ^^^^^^^^^^^^^^^ use of undeclared type `UnresolvedTrait`
 
 error: delegation's target expression is specified for function with no params
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:107:49
+   |
+LL |                 reuse <F as Trait>::static_self { self.0 }
+   |                                                 ^^^^^^^^^^
+...
+LL |     delegation!();
+   |     ------------- in this macro invocation
+   |
+   = note: this error originates in the macro `delegation` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: delegation's target expression is specified for function with no params
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:127:45
+   |
+LL |             reuse <F as Trait>::static_self { self.0 }
+   |                                             ^^^^^^^^^^
+...
+LL |         delegation2!();
+   |         -------------- in this macro invocation
+   |
+   = note: this error originates in the macro `delegation2` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: delegation's target expression is specified for function with no params
   --> $DIR/unused-target-expr-in-glob-or-list.rs:154:45
    |
 LL |     reuse to_reuse::{value, mut_ref, r#ref} { () }
@@ -53,28 +75,6 @@ LL |         reuse to_reuse::{value, mut_ref, r#ref} { 1 + 1 }
    |                                                 ^^^^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: delegation's target expression is specified for function with no params
-  --> $DIR/unused-target-expr-in-glob-or-list.rs:107:49
-   |
-LL |                 reuse <F as Trait>::static_self { self.0 }
-   |                                                 ^^^^^^^^^^
-...
-LL |     delegation!();
-   |     ------------- in this macro invocation
-   |
-   = note: this error originates in the macro `delegation` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: delegation's target expression is specified for function with no params
-  --> $DIR/unused-target-expr-in-glob-or-list.rs:127:45
-   |
-LL |             reuse <F as Trait>::static_self { self.0 }
-   |                                             ^^^^^^^^^^
-...
-LL |         delegation2!();
-   |         -------------- in this macro invocation
-   |
-   = note: this error originates in the macro `delegation2` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: unused target expression is specified for glob or list delegation
   --> $DIR/unused-target-expr-in-glob-or-list.rs:18:25

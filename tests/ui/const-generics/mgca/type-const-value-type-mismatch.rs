@@ -22,7 +22,7 @@ impl Array for A {
     //~^ ERROR mismatched types [E0308]
     //[current]~| ERROR method `arr` has an incompatible type for trait [E0053]
     //[next]~| ERROR type annotations needed
-    //[next]~| ERROR type mismatch resolving `<A as Array>::LEN normalizes-to 0` [E0271]
+    //[next]~| ERROR type mismatch resolving `<A as Array>::LEN == _` [E0271]
 }
 
 fn main() {}

@@ -895,6 +895,16 @@ impl VariantDef {
     pub fn fields(&self) -> Vec<FieldDef> {
         with(|cx| cx.variant_fields(*self))
     }
+
+    /// Returns the variant index.
+    pub fn idx(&self) -> VariantIdx {
+        self.idx
+    }
+
+    /// Returns the `AdtDef` which this variant comes from.
+    pub fn adt_def(&self) -> AdtDef {
+        self.adt_def
+    }
 }
 
 crate_def_with_ty! {

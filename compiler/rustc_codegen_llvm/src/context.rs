@@ -1091,9 +1091,10 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         instruction: &'ll Value,
         kind_id: MetadataKindId,
         md_list: &[&'ll Metadata],
-    ) {
+    ) -> &'ll Metadata {
         let md = self.md_node_in_context(md_list);
         self.set_metadata(instruction, kind_id, md);
+        md
     }
 
     /// Helper method for the sequence of calls:
