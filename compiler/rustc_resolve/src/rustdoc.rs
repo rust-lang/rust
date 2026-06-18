@@ -652,6 +652,8 @@ pub fn source_span_for_markdown_range_inner(
                 span_of_all_fragments.split_at(prev_lines_bytes).1.split_at(source_line_len).0;
             let has_fragment = fragments
                 .iter()
+                // `source_line_span` might contain indentation that `fragment.span` doesn't contain,
+                // so `shrink_to_hi()` removes it
                 .any(|fragment| fragment.span.contains(source_line_span.shrink_to_hi()));
             // Since we're counting bytes, `prev_line_bytes` includes the "\n".
             prev_lines_bytes += source_line_len + 1;
