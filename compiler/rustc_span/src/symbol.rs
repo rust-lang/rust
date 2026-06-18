@@ -1852,6 +1852,7 @@ symbols! {
         rustc_specialization_trait,
         rustc_std_internal_symbol,
         rustc_strict_coherence,
+        rustc_test_entrypoint_marker,
         rustc_test_marker,
         rustc_then_this_would_need,
         rustc_trivial_field_reads,
