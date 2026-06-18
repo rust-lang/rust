@@ -53,6 +53,37 @@ use crate::rmeta::*;
 
 pub(super) mod public_api_hasher;
 
+/// Stable hashes an iterator while encoding it as a LazyArray.
+///
+/// The two forms it accepts are
+/// ```text
+/// hashed_lazy_array!(self, hashed_iterator, hcx)
+/// ```
+/// and
+/// ```text
+/// hashed_lazy_array!(self, hashed_iterator, hcx, map)
+/// ```
+/// `map` maps from hashed value returned from hashed_iterator to the encoded value. This is
+/// mostly used to map `LocalDefId`-s to `DefIndex` in the encoded values.
+macro_rules! hashed_lazy_array {
+    ($self:ident, $values:expr, $hcx:ident, $encode_map:expr) => {{
+        {
+            let mut hasher = PublicApiHasher::default();
+            let array = $self.lazy_array($values.into_iter().map(|v| {
+                hasher.digest(&v, $hcx);
+                $encode_map(v)
+            }));
+            Hashed { value: array, hash: hasher.finish($hcx) }
+        }
+    }};
+    ($self:ident, $values:expr, $hcx:ident) => {
+        hashed_lazy_array!($self, $values, $hcx, |v| v)
+    };
+    ($self:ident, $values:expr, $hcx:ident,) => {
+        hashed_lazy_array!($self, $values, $hcx, |v| v)
+    };
+}
+
 pub(super) trait MetadataEncoder<'tcx>: Sized + Default {
     type EncodedDefIndex: for<'a> Encodable<EncodeContext<'a, 'tcx, Self>>;
     fn encoded_def_index(tcx: TyCtxt<'_>, def_id: DefId) -> Self::EncodedDefIndex;
@@ -650,37 +681,6 @@ macro_rules! record_defaulted_array {
             );
         }
     }};
-}
-
-/// Stable hashes an iterator while encoding it as a LazyArray.
-///
-/// The two forms it accepts are
-/// ```text
-/// hashed_lazy_array!(self, hashed_iterator, hcx)
-/// ```
-/// and
-/// ```text
-/// hashed_lazy_array!(self, hashed_iterator, hcx, map)
-/// ```
-/// `map` maps from hashed value returned from hashed_iterator to the encoded value. This is
-/// mostly used to map `LocalDefId`-s to `DefIndex` in the encoded values.
-macro_rules! hashed_lazy_array {
-    ($self:ident, $values:expr, $hcx:ident, $encode_map:expr) => {{
-        {
-            let mut hasher = PublicApiHasher::default();
-            let array = $self.lazy_array($values.into_iter().map(|v| {
-                hasher.digest(&v, $hcx);
-                $encode_map(v)
-            }));
-            Hashed { value: array, hash: hasher.finish($hcx) }
-        }
-    }};
-    ($self:ident, $values:expr, $hcx:ident) => {
-        hashed_lazy_array!($self, $values, $hcx, |v| v)
-    };
-    ($self:ident, $values:expr, $hcx:ident,) => {
-        hashed_lazy_array!($self, $values, $hcx, |v| v)
-    };
 }
 
 impl<'a, 'tcx, M: MetadataEncoder<'tcx>> EncodeContext<'a, 'tcx, M> {
