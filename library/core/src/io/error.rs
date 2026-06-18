@@ -17,8 +17,14 @@
 )]
 mod repr;
 
-#[cfg_attr(target_has_atomic_load_store = "ptr", path = "error/os_functions_atomic.rs")]
-#[cfg_attr(not(target_has_atomic_load_store = "ptr"), path = "error/os_functions.rs")]
+#[cfg_attr(
+    all(target_has_atomic_load_store = "ptr", not(no_io_statics)),
+    path = "error/os_functions_atomic.rs"
+)]
+#[cfg_attr(
+    not(all(target_has_atomic_load_store = "ptr", not(no_io_statics))),
+    path = "error/os_functions.rs"
+)]
 mod os_functions;
 
 use self::os_functions::{decode_error_kind, format_os_error, is_interrupted, set_functions};
