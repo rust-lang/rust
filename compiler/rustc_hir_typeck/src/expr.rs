@@ -614,7 +614,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
-        if let ty::FnDef(did, _) = *ty.kind() {
+        if let ty::FnDef(did, args) = *ty.kind() {
             let fn_sig = ty.fn_sig(tcx);
 
             if tcx.is_intrinsic(did, sym::transmute) {
@@ -630,6 +630,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // on concrete types, but the output type may not be known yet (it would only
                 // be known if explicitly specified via turbofish).
                 self.deferred_transmute_checks.borrow_mut().push((*from, to, expr.hir_id));
+            }
+            if tcx.is_intrinsic(did, sym::offload) {
+                let f = args.type_at(0);
+                let t = args.type_at(1);
+                let r = args.type_at(2);
+                self.deferred_offload_checks.borrow_mut().push((f, t, r, expr.hir_id));
             }
             if !tcx.features().unsized_fn_params() {
                 // We want to remove some Sized bounds from std functions,
