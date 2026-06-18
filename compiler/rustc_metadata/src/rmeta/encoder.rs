@@ -729,6 +729,14 @@ macro_rules! record_defaulted_array {
 }
 
 impl<'a, 'tcx, M: MetadataEncoder<'tcx>> EncodeContext<'a, 'tcx, M> {
+    #[inline]
+    pub(super) fn write_with<const N: usize>(
+        &mut self,
+        visitor: impl FnOnce(&mut [u8; N]) -> usize,
+    ) {
+        self.opaque.write_with(visitor);
+    }
+
     fn with_record_mode<F, T>(&mut self, mode: RecordMode<'tcx>, f: F) -> T
     where
         F: FnOnce(&mut Self) -> T,
@@ -930,7 +938,7 @@ impl<'a, 'tcx, M: MetadataEncoder<'tcx>> EncodeContext<'a, 'tcx, M> {
             adapted.set_some_unhashed(on_disk_index, self.lazy(&adapted_source_file));
         }
 
-        adapted.encode(&mut self.opaque)
+        adapted.encode(self)
     }
 
     fn encode_crate_root<'h>(
@@ -1059,7 +1067,7 @@ impl<'a, 'tcx, M: MetadataEncoder<'tcx>> EncodeContext<'a, 'tcx, M> {
             }
         }
 
-        let tables = stat!("tables", || self.tables.encode(&mut self.opaque));
+        let tables = stat!("tables", || std::mem::take(&mut self.tables).encode(self));
 
         // Encode the hygiene data.
         // IMPORTANT: this *must* be the last thing that we encode (other than `SourceMap`). The
@@ -2457,11 +2465,7 @@ impl<'a, 'tcx, M: MetadataEncoder<'tcx>> EncodeContext<'a, 'tcx, M> {
             },
         );
 
-        (
-            syntax_contexts.encode(&mut self.opaque),
-            expn_data_table.encode(&mut self.opaque),
-            expn_hash_table.encode(&mut self.opaque),
-        )
+        (syntax_contexts.encode(self), expn_data_table.encode(self), expn_hash_table.encode(self))
     }
 
     fn encode_proc_macros<'h>(

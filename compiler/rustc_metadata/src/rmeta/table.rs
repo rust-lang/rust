@@ -3,8 +3,10 @@ use rustc_data_structures::stable_hash::StableHash;
 use rustc_hir::def::CtorOf;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::Idx;
+use rustc_middle::ty::codec::TyEncoder;
 
 use crate::rmeta::decoder::MetaBlob;
+use crate::rmeta::encoder::MetadataEncoder;
 use crate::rmeta::encoder::public_api_hasher::{
     GraphHashed, PublicApiHashState, TableIndex, TablePublicApiHasher,
 };
@@ -629,7 +631,10 @@ impl<H: TablePublicApiHasher<I>, I: Idx, const N: usize, T: FixedSizeEncoding<By
         }
     }
 
-    pub(crate) fn encode(&self, buf: &mut FileEncoder) -> GraphHashed<LazyTable<I, T>> {
+    pub(crate) fn encode<'tcx, M: MetadataEncoder<'tcx>>(
+        &self,
+        buf: &mut EncodeContext<'_, 'tcx, M>,
+    ) -> GraphHashed<LazyTable<I, T>> {
         let pos = buf.position();
 
         let width = self.width;

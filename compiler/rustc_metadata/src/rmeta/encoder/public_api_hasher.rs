@@ -996,8 +996,8 @@ impl ItemPublicHashesBuilder {
         public_global_hash: Fingerprint,
     ) -> ItemPublicHashes {
         ItemPublicHashes {
-            local: self.local.encode(&mut ecx.opaque).0,
-            expn: self.expn.encode(&mut ecx.opaque).0,
+            local: self.local.encode(ecx).0,
+            expn: self.expn.encode(ecx).0,
             public_global_hash,
         }
     }

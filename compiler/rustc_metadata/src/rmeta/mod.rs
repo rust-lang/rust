@@ -36,7 +36,6 @@ use rustc_middle::mir::ConstValue;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util::Providers;
-use rustc_serialize::opaque::FileEncoder;
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_session::config::{SymbolManglingVersion, TargetModifier};
 use rustc_session::cstore::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
@@ -47,6 +46,7 @@ use rustc_target::spec::{PanicStrategy, TargetTuple};
 use table::TableBuilder;
 
 use crate::eii::EiiMapEncodedKeyValue;
+use crate::rmeta::encoder::MetadataEncoder;
 use crate::rmeta::encoder::public_api_hasher::{
     GraphHashed, ItemPublicHashes, RDRHashAll, RDRHashNone,
 };
@@ -410,9 +410,9 @@ macro_rules! define_tables {
         }
 
         impl TableBuilders {
-            fn encode(
+            fn encode<'tcx, M: MetadataEncoder<'tcx>>(
                 &self,
-                buf: &mut FileEncoder,
+                buf: &mut EncodeContext<'_, 'tcx, M>,
             ) -> GraphHashed<LazyTables>
             {
                 let tables = LazyTables {
