@@ -650,14 +650,50 @@ pub fn source_span_for_markdown_range_inner(
             let source_line_len = u32::try_from(source_line.len()).unwrap();
             let source_line_span =
                 span_of_all_fragments.split_at(prev_lines_bytes).1.split_at(source_line_len).0;
-            let has_fragment = fragments
+            let fragment = fragments
                 .iter()
-                // `source_line_span` might contain indentation that `fragment.span` doesn't contain,
-                // so `shrink_to_hi()` removes it
-                .any(|fragment| fragment.span.contains(source_line_span.shrink_to_hi()));
+                // `source_line_span` might contain indentation that `fragment.span` doesn't contain
+                .find(|fragment| fragment.span.overlaps(source_line_span));
             // Since we're counting bytes, `prev_line_bytes` includes the "\n".
             prev_lines_bytes += source_line_len + 1;
-            if has_fragment && let Some(offset) = source_line.find(md_line) {
+            if let Some(fragment) = fragment
+                && let Some(offset) = source_line.find(md_line)
+            {
+                if fragment.span.lo() > source_line_span.lo()
+                    && source_line
+                        [..usize::try_from(fragment.span.lo().0 - source_line_span.lo().0).unwrap()]
+                        .chars()
+                        .any(|c| !c.is_whitespace())
+                {
+                    // Make sure anything between the start of this line and the fragment itself is just indentation.
+                    // Because source_line is built by splitting the span that covers all fragments, this only finds
+                    // characters *between* doc comments, not characters before or after doc comments.
+                    //
+                    //     1| /** doc */
+                    //     2| #[inline] /** doc2 */
+                    //        ^^^^^^^^^
+                    //        | this
+                    //
+                    //     3| fn foo() {}
+                    return None;
+                }
+                if fragment.span.hi() < source_line_span.hi()
+                    && source_line
+                        [usize::try_from(fragment.span.hi().0 - source_line_span.lo().0).unwrap()..]
+                        .chars()
+                        .any(|c| !c.is_whitespace())
+                {
+                    // Make sure anything between the start of this line and the fragment itself is just indentation.
+                    // Because source_line is built by splitting the span that covers all fragments, this only finds
+                    // characters *between* doc comments, not characters before or after doc comments.
+                    //     1| /** doc */ #[inline]
+                    //                   ^^^^^^^^^
+                    //                   | this
+                    //
+                    //     2| /** doc2 */ fn foo() {}
+                    //     3| fn foo() {}
+                    return None;
+                }
                 if line_no == starting_line {
                     start_bytes += offset;
 

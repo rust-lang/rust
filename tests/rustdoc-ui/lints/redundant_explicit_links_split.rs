@@ -27,6 +27,64 @@ pub fn split_attr() {
 pub fn split_attr_b() {
 }
 
+/** [Clone]( */ #[inline] /** std::clone::Clone) */
+//~^ ERROR redundant_explicit_links
+pub fn split_blockcomment_attr() {
+}
+
+/** [Clone](std::clone::Clone */ #[inline] /** ) */
+//~^ ERROR redundant_explicit_links
+pub fn split_blockcomment_attr_b() {
+}
+
+/** [Clone]( */
+#[inline]
+/** std::clone::Clone) */
+//~^^^ ERROR redundant_explicit_links
+pub fn split_blockcomment_multiline_attr() {
+}
+
+/** [Clone](std::clone::Clone */
+#[inline]
+/** ) */
+//~^^^ ERROR redundant_explicit_links
+pub fn split_blockcomment_multiline_attr_b() {
+}
+
+/** [Clone]( */ #[inline]
+/** std::clone::Clone) */
+//~^^ ERROR redundant_explicit_links
+pub fn split_blockcomment_twoline_attr() {
+}
+
+/** [Clone](std::clone::Clone */ #[inline]
+/** ) */
+//~^^ ERROR redundant_explicit_links
+pub fn split_blockcomment_twoline_attr_b() {
+}
+
+/** [Clone]( */
+#[inline] /** std::clone::Clone) */
+//~^^ ERROR redundant_explicit_links
+pub fn split_blockcomment_secondline_attr() {
+}
+
+/** [Clone](std::clone::Clone */
+#[inline] /** ) */
+//~^^ ERROR redundant_explicit_links
+pub fn split_blockcomment_secondline_attr_b() {
+}
+
+/** [Clone](std::clone::Clone) */ #[inline]
+//~^ ERROR redundant_explicit_links
+//~| SUGGESTION [Clone]
+pub fn split_blockcomment_singleline_attr() {
+}
+
+/** [Clone](std::clone::Clone) */ #[inline] pub fn split_blockcomment_singleline_attr_b() { }
+//~^ ERROR redundant_explicit_links
+//~| SUGGESTION [Clone]
+
 /// [Clone](
 /// std::clone::Clone)
 //~^^ ERROR redundant_explicit_links
