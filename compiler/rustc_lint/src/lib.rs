@@ -686,7 +686,7 @@ fn register_internals(store: &mut LintStore) {
     store.register_lints(&SymbolInternStringLiteral::lint_vec());
     store.register_late_mod_pass(|_| Box::new(SymbolInternStringLiteral));
     store.register_lints(&RustcMustMatchExhaustively::lint_vec());
-    store.register_late_pass(|_| Box::new(RustcMustMatchExhaustively));
+    store.register_late_mod_pass(|_| Box::new(RustcMustMatchExhaustively));
     store.register_group(
         false,
         "rustc::internal",
