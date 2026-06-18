@@ -21,7 +21,9 @@ use rustc_errors::{ColorConfig, DiagCtxtFlags};
 use rustc_feature::UnstableFeatures;
 use rustc_hashes::Hash64;
 use rustc_macros::{BlobDecodable, Decodable, Encodable, StableHash};
-use rustc_span::edition::{DEFAULT_EDITION, EDITION_NAME_LIST, Edition, LATEST_STABLE_EDITION};
+use rustc_span::edition::{
+    DEFAULT_EDITION, EDITION_NAME_LIST, EDITION_NAME_LIST_STABLE, Edition, LATEST_STABLE_EDITION,
+};
 use rustc_span::source_map::FilePathMapping;
 use rustc_span::{
     FileName, RealFileName, RemapPathScopeComponents, SourceFileHashAlgorithm, Symbol, sym,
@@ -2365,22 +2367,35 @@ pub fn parse_error_format(
     error_format
 }
 
-pub fn parse_crate_edition(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> Edition {
+pub fn parse_crate_edition(
+    early_dcx: &EarlyDiagCtxt,
+    matches: &getopts::Matches,
+    has_input: bool,
+) -> Edition {
+    let is_nightly = nightly_options::match_is_nightly_build(matches);
+    let edition_list = if is_nightly { EDITION_NAME_LIST } else { EDITION_NAME_LIST_STABLE };
     let edition = match matches.opt_str("edition") {
         Some(arg) => Edition::from_str(&arg).unwrap_or_else(|_| {
             early_dcx.early_fatal(format!(
-                "argument for `--edition` must be one of: \
-                     {EDITION_NAME_LIST}. (instead was `{arg}`)"
+                "argument for `--edition` must be one of: {edition_list} (instead was `{arg}`)",
             ))
         }),
-        None => DEFAULT_EDITION,
+        None => {
+            if has_input {
+                eprintln!(
+                    "`--edition` is unspecified, defaulting to `{DEFAULT_EDITION}` while the \
+                     latest is `{LATEST_STABLE_EDITION}`; it must be one of: {edition_list}\n",
+                );
+            }
+            DEFAULT_EDITION
+        }
     };
 
     if !edition.is_stable() && !nightly_options::is_unstable_enabled(matches) {
-        let is_nightly = nightly_options::match_is_nightly_build(matches);
         let msg = if !is_nightly {
             format!(
-                "the crate requires edition {edition}, but the latest edition supported by this Rust version is {LATEST_STABLE_EDITION}"
+                "the crate requires edition {edition}, but the latest edition supported by this \
+                 Rust version is {LATEST_STABLE_EDITION}"
             )
         } else {
             format!("edition {edition} is unstable and only available with -Z unstable-options")
@@ -2677,10 +2692,14 @@ fn parse_remap_path_prefix(
 
 // JUSTIFICATION: before wrapper fn is available
 #[allow(rustc::bad_opt_access)]
-pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::Matches) -> Options {
+pub fn build_session_options(
+    early_dcx: &mut EarlyDiagCtxt,
+    matches: &getopts::Matches,
+    has_input: bool,
+) -> Options {
     let color = parse_color(early_dcx, matches);
 
-    let edition = parse_crate_edition(early_dcx, matches);
+    let edition = parse_crate_edition(early_dcx, matches, has_input);
 
     let crate_name = matches.opt_str("crate-name");
     let unstable_features = UnstableFeatures::from_environment(crate_name.as_deref());
@@ -2848,14 +2867,13 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     if !unstable_options_enabled && cg.force_frame_pointers == FramePointer::NonLeaf {
         early_dcx.early_fatal(
             "`-Cforce-frame-pointers=non-leaf` or `always` also requires `-Zunstable-options` \
-                and a nightly compiler",
+             and a nightly compiler",
         )
     }
 
     if !nightly_options::is_unstable_enabled(matches) && !unstable_opts.offload.is_empty() {
         early_dcx.early_fatal(
-            "`-Zoffload=Enable` also requires `-Zunstable-options` \
-                and a nightly compiler",
+            "`-Zoffload=Enable` also requires `-Zunstable-options` and a nightly compiler",
         )
     }
 
@@ -2871,8 +2889,8 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         if let Some(flavor) = cg.linker_flavor {
             if flavor.is_unstable() {
                 early_dcx.early_fatal(format!(
-                    "the linker flavor `{}` is unstable, the `-Z unstable-options` \
-                        flag must also be passed to use the unstable values",
+                    "the linker flavor `{}` is unstable, the `-Z unstable-options` flag must also \
+                     be passed to use the unstable values",
                     flavor.desc()
                 ));
             }
