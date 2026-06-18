@@ -924,7 +924,15 @@ extern "C" LLVMRustResult LLVMRustOptimize(
       MPM.addPass(ThinLTOBitcodeWriterPass(
           ThinLTODataOS, ThinLTOSummaryBufferRef ? &ThinLinkDataOS : nullptr));
     } else {
-      MPM.addPass(BitcodeWriterPass(ThinLTODataOS));
+      // Force Full LTO summary for embedded bitcode under Fat LTO.
+      //
+      // Note the bitcode writer will only emit the full LTO block ID if the "ThinLTO"
+      // metadata is defined and explicitly set to zero. Otherwise, the thin LTO block
+      // ID will be emitted.
+      auto *Zero = ConstantInt::get(Type::getInt32Ty(TheModule->getContext()), 0);
+      TheModule->addModuleFlag(Module::Error, "ThinLTO", Zero);
+      MPM.addPass(BitcodeWriterPass(ThinLTODataOS, /*ShouldPreserveUseListOrder=*/false,
+                                    /*EmitSummaryIndex=*/true));
     }
     *ThinLTOBufferRef = ThinLTOBuffer.release();
     if (ThinLTOSummaryBufferRef) {
@@ -1442,23 +1450,32 @@ extern "C" LLVMRustBuffer *LLVMRustModuleSerialize(LLVMModuleRef M,
   {
     auto OS = raw_string_ostream(Ret->data);
     {
+      PassBuilder PB;
+      LoopAnalysisManager LAM;
+      FunctionAnalysisManager FAM;
+      CGSCCAnalysisManager CGAM;
+      ModuleAnalysisManager MAM;
+      PB.registerModuleAnalyses(MAM);
+      PB.registerCGSCCAnalyses(CGAM);
+      PB.registerFunctionAnalyses(FAM);
+      PB.registerLoopAnalyses(LAM);
+      PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
+
+      ModulePassManager MPM;
       if (is_thin) {
-        PassBuilder PB;
-        LoopAnalysisManager LAM;
-        FunctionAnalysisManager FAM;
-        CGSCCAnalysisManager CGAM;
-        ModuleAnalysisManager MAM;
-        PB.registerModuleAnalyses(MAM);
-        PB.registerCGSCCAnalyses(CGAM);
-        PB.registerFunctionAnalyses(FAM);
-        PB.registerLoopAnalyses(LAM);
-        PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
-        ModulePassManager MPM;
         MPM.addPass(ThinLTOBitcodeWriterPass(OS, nullptr));
-        MPM.run(*unwrap(M), MAM);
       } else {
-        WriteBitcodeToFile(*unwrap(M), OS);
+        // Force Full LTO summary for embedded bitcode under Fat LTO.
+        //
+        // Note the bitcode writer will only emit the full LTO block ID if the "ThinLTO"
+        // metadata is defined and explicitly set to zero. Otherwise, the thin LTO block
+        // ID will be emitted.
+        auto *Zero = ConstantInt::get(Type::getInt32Ty(unwrap(M)->getContext()), 0);
+        unwrap(M)->addModuleFlag(Module::Error, "ThinLTO", Zero);
+        MPM.addPass(BitcodeWriterPass(OS, /*ShouldPreserveUseListOrder=*/false,
+                                      /*EmitSummaryIndex=*/true));
       }
+      MPM.run(*unwrap(M), MAM);
     }
   }
   return Ret.release();
