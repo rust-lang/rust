@@ -226,8 +226,8 @@ use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
-    self, GenericArgs, GenericParamDefKind, Instance, InstanceKind, Ty, TyCtxt, TypeFoldable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor, Unnormalized, VtblEntry,
+    self, GenericArgs, GenericParamDefKind, Instance, InstanceKind, ShimKind, Ty, TyCtxt,
+    TypeFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, Unnormalized, VtblEntry,
 };
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, span_bug};
@@ -447,7 +447,7 @@ fn collect_items_rec<'tcx>(
                     used_items.push(respan(
                         starting_item.span,
                         MonoItem::Fn(Instance {
-                            def: InstanceKind::ThreadLocalShim(def_id),
+                            def: InstanceKind::Shim(ShimKind::ThreadLocalShim(def_id)),
                             args: GenericArgs::empty(),
                         }),
                     ));
@@ -1013,10 +1013,10 @@ fn visit_instance_use<'tcx>(
                 bug!("{:?} being reified", instance);
             }
         }
-        ty::InstanceKind::ThreadLocalShim(..) => {
+        ty::InstanceKind::Shim(ty::ShimKind::ThreadLocalShim(..)) => {
             bug!("{:?} being reified", instance);
         }
-        ty::InstanceKind::DropGlue(_, None) => {
+        ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, None)) => {
             // Don't need to emit noop drop glue if we are calling directly.
             //
             // Note that we also optimize away the call to visit_instance_use in vtable construction
@@ -1025,18 +1025,18 @@ fn visit_instance_use<'tcx>(
                 output.push(create_fn_mono_item(tcx, instance, source));
             }
         }
-        ty::InstanceKind::DropGlue(_, Some(_))
-        | ty::InstanceKind::FutureDropPollShim(..)
-        | ty::InstanceKind::AsyncDropGlue(_, _)
-        | ty::InstanceKind::AsyncDropGlueCtorShim(_, _)
-        | ty::InstanceKind::VTableShim(..)
-        | ty::InstanceKind::ReifyShim(..)
-        | ty::InstanceKind::ClosureOnceShim { .. }
-        | ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
-        | ty::InstanceKind::Item(..)
-        | ty::InstanceKind::FnPtrShim(..)
-        | ty::InstanceKind::CloneShim(..)
-        | ty::InstanceKind::FnPtrAddrShim(..) => {
+        ty::InstanceKind::Item(..)
+        | ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, Some(_)))
+        | ty::InstanceKind::Shim(ty::ShimKind::FutureDropPollShim(..))
+        | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(_, _))
+        | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtorShim(_, _))
+        | ty::InstanceKind::Shim(ty::ShimKind::VTableShim(..))
+        | ty::InstanceKind::Shim(ty::ShimKind::ReifyShim(..))
+        | ty::InstanceKind::Shim(ty::ShimKind::ClosureOnceShim { .. })
+        | ty::InstanceKind::Shim(ty::ShimKind::ConstructCoroutineInClosureShim { .. })
+        | ty::InstanceKind::Shim(ty::ShimKind::FnPtrShim(..))
+        | ty::InstanceKind::Shim(ty::ShimKind::CloneShim(..))
+        | ty::InstanceKind::Shim(ty::ShimKind::FnPtrAddrShim(..)) => {
             output.push(create_fn_mono_item(tcx, instance, source));
         }
     }

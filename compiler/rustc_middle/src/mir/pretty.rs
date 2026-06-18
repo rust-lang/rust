@@ -218,7 +218,7 @@ impl<'a, 'tcx> MirDumper<'a, 'tcx> {
         // All drop shims have the same DefId, so we have to add the type
         // to get unique file names.
         let shim_disambiguator = match source.instance {
-            ty::InstanceKind::DropGlue(_, Some(ty)) => {
+            ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, Some(ty))) => {
                 // Unfortunately, pretty-printed types are not very filename-friendly.
                 // We do some filtering.
                 let mut s = ".".to_owned();
@@ -229,7 +229,7 @@ impl<'a, 'tcx> MirDumper<'a, 'tcx> {
                 }));
                 s
             }
-            ty::InstanceKind::AsyncDropGlueCtorShim(_, ty) => {
+            ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtorShim(_, ty)) => {
                 let mut s = ".".to_owned();
                 s.extend(ty.to_string().chars().filter_map(|c| match c {
                     ' ' => None,
@@ -238,7 +238,7 @@ impl<'a, 'tcx> MirDumper<'a, 'tcx> {
                 }));
                 s
             }
-            ty::InstanceKind::AsyncDropGlue(_, ty) => {
+            ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(_, ty)) => {
                 let ty::Coroutine(_, args) = ty.kind() else {
                     bug!();
                 };
@@ -251,7 +251,7 @@ impl<'a, 'tcx> MirDumper<'a, 'tcx> {
                 }));
                 s
             }
-            ty::InstanceKind::FutureDropPollShim(_, proxy_cor, impl_cor) => {
+            ty::InstanceKind::Shim(ty::ShimKind::FutureDropPollShim(_, proxy_cor, impl_cor)) => {
                 let mut s = ".".to_owned();
                 s.extend(proxy_cor.to_string().chars().filter_map(|c| match c {
                     ' ' => None,

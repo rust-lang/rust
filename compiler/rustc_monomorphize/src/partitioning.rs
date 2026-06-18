@@ -115,7 +115,7 @@ use rustc_middle::mono::{
     MonoItemPartitions, Visibility,
 };
 use rustc_middle::ty::print::{characteristic_def_id_of_type, with_no_trimmed_paths};
-use rustc_middle::ty::{self, InstanceKind, TyCtxt};
+use rustc_middle::ty::{self, InstanceKind, ShimKind, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_session::CodegenUnits;
 use rustc_session::config::{DumpMonoStatsFormat, SwitchWithOptPath};
@@ -630,20 +630,22 @@ fn characteristic_def_id_of_mono_item<'tcx>(
         MonoItem::Fn(instance) => {
             let def_id = match instance.def {
                 ty::InstanceKind::Item(def) => def,
-                ty::InstanceKind::VTableShim(..)
-                | ty::InstanceKind::ReifyShim(..)
-                | ty::InstanceKind::FnPtrShim(..)
-                | ty::InstanceKind::ClosureOnceShim { .. }
-                | ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
-                | ty::InstanceKind::Intrinsic(..)
-                | ty::InstanceKind::DropGlue(..)
+                ty::InstanceKind::Intrinsic(..)
                 | ty::InstanceKind::Virtual(..)
-                | ty::InstanceKind::CloneShim(..)
-                | ty::InstanceKind::ThreadLocalShim(..)
-                | ty::InstanceKind::FnPtrAddrShim(..)
-                | ty::InstanceKind::FutureDropPollShim(..)
-                | ty::InstanceKind::AsyncDropGlue(..)
-                | ty::InstanceKind::AsyncDropGlueCtorShim(..) => return None,
+                | ty::InstanceKind::Shim(ty::ShimKind::VTableShim(..))
+                | ty::InstanceKind::Shim(ty::ShimKind::ReifyShim(..))
+                | ty::InstanceKind::Shim(ty::ShimKind::FnPtrShim(..))
+                | ty::InstanceKind::Shim(ty::ShimKind::ClosureOnceShim { .. })
+                | ty::InstanceKind::Shim(ty::ShimKind::ConstructCoroutineInClosureShim {
+                    ..
+                })
+                | ty::InstanceKind::Shim(ty::ShimKind::DropGlue(..))
+                | ty::InstanceKind::Shim(ty::ShimKind::CloneShim(..))
+                | ty::InstanceKind::Shim(ty::ShimKind::ThreadLocalShim(..))
+                | ty::InstanceKind::Shim(ty::ShimKind::FnPtrAddrShim(..))
+                | ty::InstanceKind::Shim(ty::ShimKind::FutureDropPollShim(..))
+                | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(..))
+                | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtorShim(..)) => return None,
             };
 
             // If this is a method, we want to put it into the same module as
@@ -794,27 +796,27 @@ fn mono_item_visibility<'tcx>(
 
     let def_id = match instance.def {
         InstanceKind::Item(def_id)
-        | InstanceKind::DropGlue(def_id, Some(_))
-        | InstanceKind::FutureDropPollShim(def_id, _, _)
-        | InstanceKind::AsyncDropGlue(def_id, _)
-        | InstanceKind::AsyncDropGlueCtorShim(def_id, _) => def_id,
+        | InstanceKind::Shim(ShimKind::DropGlue(def_id, Some(_)))
+        | InstanceKind::Shim(ShimKind::FutureDropPollShim(def_id, _, _))
+        | InstanceKind::Shim(ShimKind::AsyncDropGlue(def_id, _))
+        | InstanceKind::Shim(ShimKind::AsyncDropGlueCtorShim(def_id, _)) => def_id,
 
         // We match the visibility of statics here
-        InstanceKind::ThreadLocalShim(def_id) => {
+        InstanceKind::Shim(ShimKind::ThreadLocalShim(def_id)) => {
             return static_visibility(tcx, can_be_internalized, def_id);
         }
 
         // These are all compiler glue and such, never exported, always hidden.
-        InstanceKind::VTableShim(..)
-        | InstanceKind::ReifyShim(..)
-        | InstanceKind::FnPtrShim(..)
+        InstanceKind::Shim(ShimKind::VTableShim(..))
+        | InstanceKind::Shim(ShimKind::ReifyShim(..))
+        | InstanceKind::Shim(ShimKind::FnPtrShim(..))
         | InstanceKind::Virtual(..)
         | InstanceKind::Intrinsic(..)
-        | InstanceKind::ClosureOnceShim { .. }
-        | InstanceKind::ConstructCoroutineInClosureShim { .. }
-        | InstanceKind::DropGlue(..)
-        | InstanceKind::CloneShim(..)
-        | InstanceKind::FnPtrAddrShim(..) => return Visibility::Hidden,
+        | InstanceKind::Shim(ShimKind::ClosureOnceShim { .. })
+        | InstanceKind::Shim(ShimKind::ConstructCoroutineInClosureShim { .. })
+        | InstanceKind::Shim(ShimKind::DropGlue(..))
+        | InstanceKind::Shim(ShimKind::CloneShim(..))
+        | InstanceKind::Shim(ShimKind::FnPtrAddrShim(..)) => return Visibility::Hidden,
     };
 
     // Both the `start_fn` lang item and `main` itself should not be exported,
@@ -1331,8 +1333,8 @@ pub(crate) fn provide(providers: &mut Providers) {
             // "Normal" functions size estimate: the number of
             // statements, plus one for the terminator.
             InstanceKind::Item(..)
-            | InstanceKind::DropGlue(..)
-            | InstanceKind::AsyncDropGlueCtorShim(..) => {
+            | InstanceKind::Shim(ShimKind::DropGlue(..))
+            | InstanceKind::Shim(ShimKind::AsyncDropGlueCtorShim(..)) => {
                 let mir = tcx.instance_mir(instance.def);
                 mir.basic_blocks
                     .iter()

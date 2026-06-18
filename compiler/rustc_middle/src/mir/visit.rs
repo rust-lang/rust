@@ -347,27 +347,27 @@ macro_rules! make_mir_visitor {
                         ty::InstanceKind::Item(_def_id) => {}
 
                         ty::InstanceKind::Intrinsic(_def_id)
-                        | ty::InstanceKind::VTableShim(_def_id)
-                        | ty::InstanceKind::ReifyShim(_def_id, _)
+                        | ty::InstanceKind::Shim(ty::ShimKind::VTableShim(_def_id))
+                        | ty::InstanceKind::Shim(ty::ShimKind::ReifyShim(_def_id, _))
                         | ty::InstanceKind::Virtual(_def_id, _)
-                        | ty::InstanceKind::ThreadLocalShim(_def_id)
-                        | ty::InstanceKind::ClosureOnceShim { call_once: _def_id, closure: _, track_caller: _ }
-                        | ty::InstanceKind::ConstructCoroutineInClosureShim {
+                        | ty::InstanceKind::Shim(ty::ShimKind::ThreadLocalShim(_def_id))
+                        | ty::InstanceKind::Shim(ty::ShimKind::ClosureOnceShim { call_once: _def_id, closure: _, track_caller: _ })
+                        | ty::InstanceKind::Shim(ty::ShimKind::ConstructCoroutineInClosureShim {
                             coroutine_closure_def_id: _def_id,
                             receiver_by_ref: _,
-                        }
-                        | ty::InstanceKind::DropGlue(_def_id, None) => {}
+                        })
+                        | ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_def_id, None)) => {}
 
-                        ty::InstanceKind::FnPtrShim(_def_id, ty)
-                        | ty::InstanceKind::DropGlue(_def_id, Some(ty))
-                        | ty::InstanceKind::CloneShim(_def_id, ty)
-                        | ty::InstanceKind::FnPtrAddrShim(_def_id, ty)
-                        | ty::InstanceKind::AsyncDropGlue(_def_id, ty)
-                        | ty::InstanceKind::AsyncDropGlueCtorShim(_def_id, ty) => {
+                        ty::InstanceKind::Shim(ty::ShimKind::FnPtrShim(_def_id, ty))
+                        | ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_def_id, Some(ty)))
+                        | ty::InstanceKind::Shim(ty::ShimKind::CloneShim(_def_id, ty))
+                        | ty::InstanceKind::Shim(ty::ShimKind::FnPtrAddrShim(_def_id, ty))
+                        | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(_def_id, ty))
+                        | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtorShim(_def_id, ty)) => {
                             // FIXME(eddyb) use a better `TyContext` here.
                             self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                         }
-                        ty::InstanceKind::FutureDropPollShim(_def_id, proxy_ty, impl_ty) => {
+                        ty::InstanceKind::Shim(ty::ShimKind::FutureDropPollShim(_def_id, proxy_ty, impl_ty)) => {
                             self.visit_ty($(& $mutability)? *proxy_ty, TyContext::Location(location));
                             self.visit_ty($(& $mutability)? *impl_ty, TyContext::Location(location));
                         }

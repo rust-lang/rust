@@ -11,7 +11,9 @@ use rustc_middle::middle::exported_symbols::{
     ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
 };
 use rustc_middle::query::LocalCrate;
-use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, Instance, SymbolName, Ty, TyCtxt};
+use rustc_middle::ty::{
+    self, GenericArgKind, GenericArgsRef, Instance, ShimKind, SymbolName, Ty, TyCtxt,
+};
 use rustc_middle::util::Providers;
 use rustc_session::config::CrateType;
 use rustc_span::Span;
@@ -332,7 +334,10 @@ fn exported_generic_symbols_provider_local<'tcx>(
                         ));
                     }
                 }
-                MonoItem::Fn(Instance { def: InstanceKind::DropGlue(_, Some(ty)), args }) => {
+                MonoItem::Fn(Instance {
+                    def: InstanceKind::Shim(ShimKind::DropGlue(_, Some(ty))),
+                    args,
+                }) => {
                     // A little sanity-check
                     assert_eq!(args.non_erasable_generics().next(), Some(GenericArgKind::Type(ty)));
 
@@ -356,7 +361,7 @@ fn exported_generic_symbols_provider_local<'tcx>(
                     }
                 }
                 MonoItem::Fn(Instance {
-                    def: InstanceKind::AsyncDropGlueCtorShim(_, ty),
+                    def: InstanceKind::Shim(ShimKind::AsyncDropGlueCtorShim(_, ty)),
                     args,
                 }) => {
                     // A little sanity-check
@@ -371,7 +376,10 @@ fn exported_generic_symbols_provider_local<'tcx>(
                         },
                     ));
                 }
-                MonoItem::Fn(Instance { def: InstanceKind::AsyncDropGlue(def, ty), args: _ }) => {
+                MonoItem::Fn(Instance {
+                    def: InstanceKind::Shim(ShimKind::AsyncDropGlue(def, ty)),
+                    args: _,
+                }) => {
                     symbols.push((
                         ExportedSymbol::AsyncDropGlue(def, ty),
                         SymbolExportInfo {
@@ -578,7 +586,7 @@ pub(crate) fn symbol_name_for_instance_in_crate<'tcx>(
             rustc_symbol_mangling::symbol_name_for_instance_in_crate(
                 tcx,
                 ty::Instance {
-                    def: ty::InstanceKind::ThreadLocalShim(def_id),
+                    def: ty::InstanceKind::Shim(ty::ShimKind::ThreadLocalShim(def_id)),
                     args: ty::GenericArgs::empty(),
                 },
                 instantiating_crate,

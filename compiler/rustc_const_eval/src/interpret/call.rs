@@ -428,7 +428,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Determine whether this is a non-capturing closure. That's relevant as their first
         // argument can be skipped (and that's the only kind of argument skipping we allow).
         let is_non_capturing_closure =
-            (matches!(instance.def, ty::InstanceKind::ClosureOnceShim { .. })
+            (matches!(instance.def, ty::InstanceKind::Shim(ty::ShimKind::ClosureOnceShim { .. }))
                 || self.tcx.is_closure_like(def_id))
                 && {
                     let arg = &callee_fn_abi.args[0];
@@ -652,18 +652,18 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     interp_ok(())
                 }
             }
-            ty::InstanceKind::VTableShim(..)
-            | ty::InstanceKind::ReifyShim(..)
-            | ty::InstanceKind::ClosureOnceShim { .. }
-            | ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
-            | ty::InstanceKind::FnPtrShim(..)
-            | ty::InstanceKind::DropGlue(..)
-            | ty::InstanceKind::CloneShim(..)
-            | ty::InstanceKind::FnPtrAddrShim(..)
-            | ty::InstanceKind::ThreadLocalShim(..)
-            | ty::InstanceKind::AsyncDropGlueCtorShim(..)
-            | ty::InstanceKind::AsyncDropGlue(..)
-            | ty::InstanceKind::FutureDropPollShim(..)
+            ty::InstanceKind::Shim(ty::ShimKind::VTableShim(..))
+            | ty::InstanceKind::Shim(ty::ShimKind::ReifyShim(..))
+            | ty::InstanceKind::Shim(ty::ShimKind::ClosureOnceShim { .. })
+            | ty::InstanceKind::Shim(ty::ShimKind::ConstructCoroutineInClosureShim { .. })
+            | ty::InstanceKind::Shim(ty::ShimKind::FnPtrShim(..))
+            | ty::InstanceKind::Shim(ty::ShimKind::DropGlue(..))
+            | ty::InstanceKind::Shim(ty::ShimKind::CloneShim(..))
+            | ty::InstanceKind::Shim(ty::ShimKind::FnPtrAddrShim(..))
+            | ty::InstanceKind::Shim(ty::ShimKind::ThreadLocalShim(..))
+            | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtorShim(..))
+            | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(..))
+            | ty::InstanceKind::Shim(ty::ShimKind::FutureDropPollShim(..))
             | ty::InstanceKind::Item(_) => {
                 // We need MIR for this fn.
                 // Note that this can be an intrinsic, if we are executing its fallback body.

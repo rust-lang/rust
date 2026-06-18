@@ -62,13 +62,13 @@ pub(super) fn mangle<'tcx>(
     let mut p = LegacySymbolMangler { tcx, path: SymbolPath::new(), keep_within_component: false };
     p.print_def_path(
         def_id,
-        if let ty::InstanceKind::DropGlue(_, _)
-        | ty::InstanceKind::AsyncDropGlueCtorShim(_, _)
-        | ty::InstanceKind::FutureDropPollShim(_, _, _) = instance.def
+        if let ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, _))
+        | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtorShim(_, _))
+        | ty::InstanceKind::Shim(ty::ShimKind::FutureDropPollShim(_, _, _)) = instance.def
         {
             // Add the name of the dropped type to the symbol name
             &*instance.args
-        } else if let ty::InstanceKind::AsyncDropGlue(_, ty) = instance.def {
+        } else if let ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(_, ty)) = instance.def {
             let ty::Coroutine(_, cor_args) = ty.kind() else {
                 bug!();
             };
@@ -81,13 +81,13 @@ pub(super) fn mangle<'tcx>(
     .unwrap();
 
     match instance.def {
-        ty::InstanceKind::ThreadLocalShim(..) => {
+        ty::InstanceKind::Shim(ty::ShimKind::ThreadLocalShim(..)) => {
             p.write_str("{{tls-shim}}").unwrap();
         }
-        ty::InstanceKind::VTableShim(..) => {
+        ty::InstanceKind::Shim(ty::ShimKind::VTableShim(..)) => {
             p.write_str("{{vtable-shim}}").unwrap();
         }
-        ty::InstanceKind::ReifyShim(_, reason) => {
+        ty::InstanceKind::Shim(ty::ShimKind::ReifyShim(_, reason)) => {
             p.write_str("{{reify-shim").unwrap();
             match reason {
                 Some(ReifyReason::FnPtr) => p.write_str("-fnptr").unwrap(),
@@ -98,14 +98,17 @@ pub(super) fn mangle<'tcx>(
         }
         // FIXME(async_closures): This shouldn't be needed when we fix
         // `Instance::ty`/`Instance::def_id`.
-        ty::InstanceKind::ConstructCoroutineInClosureShim { receiver_by_ref, .. } => {
+        ty::InstanceKind::Shim(ty::ShimKind::ConstructCoroutineInClosureShim {
+            receiver_by_ref,
+            ..
+        }) => {
             p.write_str(if receiver_by_ref { "{{by-move-shim}}" } else { "{{by-ref-shim}}" })
                 .unwrap();
         }
         _ => {}
     }
 
-    if let ty::InstanceKind::FutureDropPollShim(..) = instance.def {
+    if let ty::InstanceKind::Shim(ty::ShimKind::FutureDropPollShim(..)) = instance.def {
         let _ = p.write_str("{{drop-shim}}");
     }
 

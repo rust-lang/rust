@@ -32,8 +32,8 @@ use crate::mir::interpret::{AllocRange, Scalar};
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::print::{FmtPrinter, Printer, pretty_print_const, with_no_trimmed_paths};
 use crate::ty::{
-    self, GenericArg, GenericArgsRef, Instance, InstanceKind, List, Ty, TyCtxt, TypeVisitableExt,
-    TypingEnv, UserTypeAnnotationIndex,
+    self, GenericArg, GenericArgsRef, Instance, InstanceKind, List, ShimKind, Ty, TyCtxt,
+    TypeVisitableExt, TypingEnv, UserTypeAnnotationIndex,
 };
 
 mod basic_blocks;
@@ -129,6 +129,10 @@ impl<'tcx> MirSource<'tcx> {
 
     pub fn from_instance(instance: InstanceKind<'tcx>) -> Self {
         MirSource { instance, promoted: None }
+    }
+
+    pub fn from_shim(shim: ShimKind<'tcx>) -> Self {
+        MirSource { instance: InstanceKind::Shim(shim), promoted: None }
     }
 
     #[inline]
