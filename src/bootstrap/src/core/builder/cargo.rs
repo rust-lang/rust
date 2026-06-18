@@ -14,18 +14,18 @@ use crate::{
     RemapScheme, TargetSelection, command, prepare_behaviour_dump_dir, t,
 };
 
-/// Represents flag values in `String` form with whitespace delimiter to pass it to the compiler
-/// later.
+/// Represents flag values passed to the compiler, stored as individual arguments to support
+/// values that contain spaces (such as paths from `llvm-config --libdir`).
 ///
 /// `-Z crate-attr` flags will be applied recursively on the target code using the
 /// `rustc_parse::parser::Parser`. See `rustc_builtin_macros::cmdline_attrs::inject` for more
 /// information.
 #[derive(Debug, Clone)]
-struct Rustflags(String, TargetSelection);
+struct Rustflags(Vec<String>, TargetSelection);
 
 impl Rustflags {
     fn new(target: TargetSelection) -> Rustflags {
-        Rustflags(String::new(), target)
+        Rustflags(Vec::new(), target)
     }
 
     /// By default, cargo will pick up on various variables in the environment. However, bootstrap
@@ -51,11 +51,9 @@ impl Rustflags {
     }
 
     fn arg(&mut self, arg: &str) -> &mut Self {
-        assert_eq!(arg.split(' ').count(), 1);
-        if !self.0.is_empty() {
-            self.0.push(' ');
+        if !arg.is_empty() {
+            self.0.push(arg.to_owned());
         }
-        self.0.push_str(arg);
         self
     }
 
@@ -459,12 +457,14 @@ impl From<Cargo> for BootstrapCommand {
 
         let rustflags = &cargo.rustflags.0;
         if !rustflags.is_empty() {
-            cargo.command.env("RUSTFLAGS", rustflags);
+            // CARGO_ENCODED_RUSTFLAGS uses \x1f (unit separator) as delimiter, which allows
+            // individual flags to contain spaces (e.g. paths from `llvm-config --libdir`).
+            cargo.command.env("CARGO_ENCODED_RUSTFLAGS", rustflags.join("\x1f"));
         }
 
         let rustdocflags = &cargo.rustdocflags.0;
         if !rustdocflags.is_empty() {
-            cargo.command.env("RUSTDOCFLAGS", rustdocflags);
+            cargo.command.env("RUSTDOCFLAGS", rustdocflags.join(" "));
         }
 
         let encoded_hostflags = cargo.hostflags.encode();
@@ -1181,8 +1181,9 @@ impl Builder<'_> {
         if (mode == Mode::ToolRustcPrivate || mode == Mode::Codegen)
             && let Some(llvm_config) = self.llvm_config(target)
         {
-            let llvm_libdir =
+            let llvm_libdir_raw =
                 command(llvm_config).cached().arg("--libdir").run_capture_stdout(self).stdout();
+            let llvm_libdir = llvm_libdir_raw.trim();
             if target.is_msvc() {
                 rustflags.arg(&format!("-Clink-arg=-LIBPATH:{llvm_libdir}"));
             } else {
