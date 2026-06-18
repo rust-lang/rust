@@ -2,6 +2,8 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended",
+    // Open a PR to migrate the config when Renovate deprecates syntax
+    ":configMigration",
     // Refresh lock files on the first day of each month
     // (still gated by dashboard approval for now)
     ":maintainLockFilesMonthly",
