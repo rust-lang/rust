@@ -7,6 +7,7 @@ use run_make_support::{diff, rustc};
 
 fn main() {
     let out = rustc()
+        .edition("2015")
         .input("const-super-trait.rs")
         .env("RUSTC_BOOTSTRAP", "-1")
         .cfg("feature_enabled")
@@ -22,6 +23,7 @@ fn main() {
         .actual_text("(rustc)", &out)
         .run();
     let out = rustc()
+        .edition("2015")
         .input("const-super-trait.rs")
         .cfg("feature_enabled")
         .ui_testing()
@@ -34,6 +36,7 @@ fn main() {
         .actual_text("(rustc)", &out)
         .run();
     let out = rustc()
+        .edition("2015")
         .input("const-super-trait.rs")
         .env("RUSTC_BOOTSTRAP", "-1")
         .run_fail()
@@ -45,6 +48,7 @@ fn main() {
         .actual_text("(rustc)", &out)
         .run();
     let out = rustc()
+        .edition("2015")
         .input("const-super-trait.rs")
         .ui_testing()
         .run_fail()

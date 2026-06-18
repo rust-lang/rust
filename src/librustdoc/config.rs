@@ -789,7 +789,7 @@ impl Options {
             }
         }
 
-        let edition = config::parse_crate_edition(early_dcx, matches);
+        let edition = config::parse_crate_edition(early_dcx, matches, true);
 
         let mut id_map = html::markdown::IdMap::new();
         let Some(external_html) = ExternalHtml::load(
