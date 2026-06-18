@@ -486,8 +486,11 @@ impl char {
             '\r' => EscapeDebug::backslash(ascii::Char::SmallR),
             '\0' => EscapeDebug::backslash(ascii::Char::Digit0),
 
-            // ASCII fast path
-            '\x20'..='\x7E' => EscapeDebug::printable(self),
+            // ASCII fast path,
+            // plus U+FF9E HALFWIDTH KATAKANA VOICED SOUND MARK
+            // and U+FF9F HALFWIDTH KATAKANA SEMI-VOICED SOUND MARK
+            // which should not be escaped despite being grapheme extenders.
+            '\x20'..='\x7E' | '\u{FF9E}' | '\u{FF9F}' => EscapeDebug::printable(self),
 
             _ if self.is_control()
                 || self.is_private_use()
