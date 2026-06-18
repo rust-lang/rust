@@ -7,7 +7,6 @@ use rustc_infer::traits::{
     FromSolverError, PredicateObligation, PredicateObligations, TraitEngine,
 };
 use rustc_middle::ty::{self, TyCtxt, TyVid, TypeVisitableExt, TypingMode};
-use rustc_next_trait_solver::delegate::SolverDelegate as _;
 use rustc_next_trait_solver::solve::{
     GoalEvaluation, GoalStalledOn, HasChanged, MaybeInfo, SolverDelegateEvalExt as _,
     StalledOnCoroutines,
@@ -211,24 +210,6 @@ where
             for (mut obligation, stalled_on) in self.obligations.drain_pending(|_, _| true) {
                 let goal = obligation.as_goal();
                 let delegate = <&SolverDelegate<'tcx>>::from(infcx);
-                if !delegate.disable_trait_solver_fast_paths()
-                    && let Some(certainty) =
-                        delegate.compute_goal_fast_path(goal, obligation.cause.span)
-                {
-                    match certainty {
-                        // This fast path doesn't depend on region identity so it doesn't
-                        // matter if the goal contains inference variables or not, so we
-                        // don't need to call `push_hir_typeck_potentially_region_dependent_goal`
-                        // here.
-                        //
-                        // Only goals proven via the trait solver should be region dependent.
-                        Certainty::Yes => {}
-                        Certainty::Maybe(_) => {
-                            self.obligations.register(obligation, None);
-                        }
-                    }
-                    continue;
-                }
 
                 let result = delegate.evaluate_root_goal(goal, obligation.cause.span, stalled_on);
                 self.inspect_evaluated_obligation(infcx, &obligation, &result);
