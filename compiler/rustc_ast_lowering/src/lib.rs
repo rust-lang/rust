@@ -43,7 +43,6 @@ use rustc_ast::node_id::NodeMap;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, *};
 use rustc_attr_parsing::{AttributeParser, OmitDoc, Recovery, ShouldEmit};
-use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
@@ -62,7 +61,6 @@ use rustc_hir::{
 };
 use rustc_index::{Idx, IndexVec};
 use rustc_macros::extension;
-use rustc_middle::hir::ProjectedMaybeOwner;
 use rustc_middle::queries::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{PerOwnerResolverData, ResolverAstLowering, TyCtxt};
@@ -96,7 +94,7 @@ pub mod stability;
 
 pub fn provide(providers: &mut Providers) {
     providers.index_ast = index_ast;
-    providers.hir_owner = lower_to_hir;
+    providers.lower_to_hir = lower_to_hir;
 }
 
 struct LoweringContext<'a, 'hir> {
@@ -617,7 +615,7 @@ fn index_ast<'tcx>(
 }
 
 #[instrument(level = "trace", skip(tcx))]
-fn lower_to_hir<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ProjectedMaybeOwner<'tcx> {
+fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
     // Queries that borrow `resolver_for_lowering`.
     tcx.ensure_done().output_filenames(());
     tcx.ensure_done().early_lint_checks(());
@@ -630,21 +628,24 @@ fn lower_to_hir<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ProjectedMaybeOw
         // The item did not exist in the AST, it was created while lowering another item.
         // `parent_id` may be different from the direct parent of `def_id`,
         // for instance use-trees are lowered by the first sibling.
-        let mut parent_info = tcx.hir_owner(parent_id);
-        if let ProjectedMaybeOwner::NonOwner(hir_id) = parent_info {
+        let mut parent_info = tcx.lower_to_hir(parent_id);
+        if let hir::MaybeOwner::NonOwner(hir_id) = parent_info {
             // `parent_id` could also not be a owner either.
             // For instance if `def_id` is an enum variant field,
             // the direct parent is the enum variant.
             // In that case `hir_id.owner` point to the actual HIR owner
             // and skips all non-owner parents, so fetch the HIR associated to it.
-            parent_info = tcx.hir_owner(hir_id.owner);
+            parent_info = tcx.lower_to_hir(hir_id.owner);
         }
 
         let parent_info = parent_info.unwrap();
-        let owner = parent_info.children.get(&def_id).unwrap();
-
-        tcx.feed_hir_attr_map(def_id, owner);
-        ProjectedMaybeOwner::new(*owner)
+        *parent_info.children.get(&def_id).unwrap_or_else(|| {
+            panic!(
+                "{:?} does not appear in children of {:?}",
+                def_id,
+                parent_info.nodes.node().def_id()
+            )
+        })
     };
 
     let Some((resolver, node)) = resolver_and_node else {
@@ -658,26 +659,20 @@ fn lower_to_hir<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ProjectedMaybeOw
 
     let item = match &node {
         // The item existed in the AST.
-        AstOwner::Crate(c) => Either::Left(item_lowerer.lower_crate(&c)),
-        AstOwner::Item(item) => Either::Left(item_lowerer.lower_item(&item)),
-        AstOwner::TraitItem(item) => Either::Left(item_lowerer.lower_trait_item(&item)),
-        AstOwner::ImplItem(item) => Either::Left(item_lowerer.lower_impl_item(&item)),
-        AstOwner::ForeignItem(item) => Either::Left(item_lowerer.lower_foreign_item(&item)),
-        AstOwner::NestedUseTree(owner_id) => Either::Right(fallback_to_ancestor(*owner_id)),
+        AstOwner::Crate(c) => item_lowerer.lower_crate(&c),
+        AstOwner::Item(item) => item_lowerer.lower_item(&item),
+        AstOwner::TraitItem(item) => item_lowerer.lower_trait_item(&item),
+        AstOwner::ImplItem(item) => item_lowerer.lower_impl_item(&item),
+        AstOwner::ForeignItem(item) => item_lowerer.lower_foreign_item(&item),
+        AstOwner::NestedUseTree(owner_id) => fallback_to_ancestor(*owner_id),
         // The item existed in the AST, but is not a HIR owner.
         // Fetch the correct information from its parent.
-        AstOwner::NonOwner => Either::Right(fallback_to_ancestor(tcx.local_parent(def_id))),
+        AstOwner::NonOwner => fallback_to_ancestor(tcx.local_parent(def_id)),
     };
 
     tcx.sess.time("drop_ast", || mem::drop(node));
 
-    match item {
-        Either::Left(item) => {
-            tcx.feed_hir_attr_map(def_id, &item);
-            ProjectedMaybeOwner::new(item)
-        }
-        Either::Right(owner) => owner,
-    }
+    item
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]

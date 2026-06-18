@@ -215,6 +215,11 @@ rustc_queries! {
         desc { "getting the source span" }
     }
 
+    query lower_to_hir(def_id: LocalDefId) -> hir::MaybeOwner<'tcx> {
+        eval_always
+        desc { "lowering HIR for `{}`", tcx.def_path_str(def_id) }
+    }
+
     query hir_owner(def_id: LocalDefId) -> rustc_middle::hir::ProjectedMaybeOwner<'tcx> {
         desc { "getting owner for `{}`", tcx.def_path_str(def_id) }
         feedable

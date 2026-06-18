@@ -28,7 +28,6 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{
     self, DynSend, DynSync, FreezeReadGuard, Lock, RwLock, WorkerLocal,
 };
-use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, MultiSpan};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
@@ -622,11 +621,6 @@ impl<'tcx> TyCtxt<'tcx> {
         }
         TyCtxtFeed { tcx: self, key }.visibility(vis.to_def_id())
     }
-
-    pub fn feed_hir_attr_map(self, def_id: LocalDefId, owner: &hir::MaybeOwner<'tcx>) {
-        TyCtxtFeed { tcx: self, key: hir::OwnerId { def_id } }
-            .hir_attr_map(owner.as_owner().map_or(hir::AttributeMap::EMPTY, |o| &o.attrs));
-    }
 }
 
 impl<'tcx, K: Copy> TyCtxtFeed<'tcx, K> {
@@ -654,7 +648,6 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
             self.tcx.arena.alloc(Default::default()),
             self.tcx.arena.alloc(Default::default()),
             self.tcx.arena.alloc(Steal::new(Default::default())),
-            self.tcx.hir_arena.alloc(UnordMap::<LocalDefId, hir::MaybeOwner<'tcx>>::default()),
         )));
 
         self.feed_owner_id().hir_attr_map(hir::AttributeMap::EMPTY);
