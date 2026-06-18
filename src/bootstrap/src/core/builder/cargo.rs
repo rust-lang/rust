@@ -1437,21 +1437,6 @@ impl Builder<'_> {
                 rustflags.arg("--cfg=randomized_layouts");
             }
         }
-        if mode.is_std() {
-            // Always enable inlining MIR when building the standard library.
-            // Without this flag, MIR inlining is disabled when incremental compilation is enabled.
-            // That causes some mir-opt tests which inline functions from the standard library to
-            // break when incremental compilation is enabled. So this overrides the "no inlining
-            // during incremental builds" heuristic for the standard library.
-            rustflags.arg("-Zinline-mir");
-
-            // Similarly, we need to keep debug info for functions inlined into other std functions,
-            // even if we're not going to output debuginfo for the crate we're currently building,
-            // so that it'll be available when downstream consumers of std try to use it.
-            rustflags.arg("-Zinline-mir-preserve-debug");
-
-            rustflags.arg("-Zmir_strip_debuginfo=locals-in-tiny-functions");
-        }
 
         // take target-specific extra rustflags if any otherwise take `rust.rustflags`
         let extra_rustflags = self

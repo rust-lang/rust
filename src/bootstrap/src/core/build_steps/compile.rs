@@ -270,7 +270,7 @@ impl Step for Std {
                 target,
                 Kind::Build,
             );
-            std_cargo(builder, target, &mut cargo, &self.crates);
+            std_cargo(builder, mode, target, &mut cargo, &self.crates);
             cargo
         };
 
@@ -527,6 +527,7 @@ fn compiler_rt_for_profiler(builder: &Builder<'_>) -> PathBuf {
 /// and such.
 pub fn std_cargo(
     builder: &Builder<'_>,
+    mode: Mode,
     target: TargetSelection,
     cargo: &mut Cargo,
     crates: &[String],
@@ -688,7 +689,7 @@ pub fn std_cargo(
         }
     }
 
-    if builder.config.rust_lto == RustcLto::Off {
+    if mode != Mode::DistStd && builder.config.rust_lto == RustcLto::Off {
         cargo.rustflag("-Clto=off");
     }
 

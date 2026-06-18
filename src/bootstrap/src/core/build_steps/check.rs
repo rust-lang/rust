@@ -90,7 +90,7 @@ impl Step for Std {
             builder.config.cmd.kind(),
         );
 
-        std_cargo(builder, target, &mut cargo, &self.crates);
+        std_cargo(builder, Mode::Std, target, &mut cargo, &self.crates);
         if matches!(builder.config.cmd, Subcommand::Fix) {
             // By default, cargo tries to fix all targets. Tell it not to fix tests until we've added `test` to the sysroot.
             cargo.arg("--lib");
@@ -137,7 +137,7 @@ impl Step for Std {
             Kind::Check,
         );
 
-        std_cargo(builder, target, &mut cargo, &self.crates);
+        std_cargo(builder, Mode::Std, target, &mut cargo, &self.crates);
 
         let stamp =
             build_stamp::libstd_stamp(builder, build_compiler, target).with_prefix("check-test");
