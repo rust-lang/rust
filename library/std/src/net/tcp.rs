@@ -878,16 +878,20 @@ impl TcpListener {
     ///
     /// # Errors
     ///
-    /// Some errors returned by this function relate to a single incoming
-    /// connection that failed before it could be accepted, such as one aborted
-    /// by the peer ([`ConnectionAborted`]). Such an error does not indicate a
-    /// problem with the listener itself, which remains usable. Code serving a
-    /// long-lived listener will usually want to log the error and continue
-    /// accepting connections rather than treat it as fatal. Which errors can
-    /// occur this way is platform-specific.
+    /// Some errors this function returns do not indicate a problem with the
+    /// listener itself, and a program serving a long-lived listener will
+    /// usually want to handle them and keep accepting connections rather than
+    /// treat them as fatal. These include, but are not limited to:
     ///
-    /// On Unix, [`Interrupted`] errors are retried internally rather than being
-    /// returned.
+    /// - An error specific to a single incoming connection that failed before
+    ///   it could be accepted, such as one aborted by the peer
+    ///   ([`ConnectionAborted`]). A later call may succeed immediately.
+    /// - An error from reaching the per-process or system-wide open file
+    ///   descriptor limit. The call can be retried once other file descriptors
+    ///   have been closed, typically after a short delay.
+    ///
+    /// Which errors can occur is platform-specific. On Unix, [`Interrupted`]
+    /// errors are retried internally rather than being returned.
     ///
     /// [`ConnectionAborted`]: io::ErrorKind::ConnectionAborted
     /// [`Interrupted`]: io::ErrorKind::Interrupted
