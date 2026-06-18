@@ -698,10 +698,12 @@ fn register_builtins(store: &mut LintStore) {
 
 fn register_internals(store: &mut LintStore) {
     store.register_lints(&InternalCombinedEarlyLintPass::lint_vec());
-    store.register_early_pass(Box::new(|| Box::new(InternalCombinedEarlyLintPass::new())));
+    store.register_early_lint_pass(Box::new(|| Box::new(InternalCombinedEarlyLintPass::new())));
 
     store.register_lints(&InternalCombinedLateLintModPass::lint_vec());
-    store.register_late_mod_pass(Box::new(|_| Box::new(InternalCombinedLateLintModPass::new())));
+    store.register_late_lint_mod_pass(Box::new(|_| {
+        Box::new(InternalCombinedLateLintModPass::new())
+    }));
 
     store.register_group(
         false,
