@@ -317,10 +317,10 @@ pub(crate) struct CrateRoot {
     interpret_alloc_index: LazyArray<u64>,
     proc_macro_data: Option<ProcMacroData>,
 
-    tables: LazyTables,
     debugger_visualizers: LazyArray<DebuggerVisualizerFile>,
 
     exportable_items: LazyArray<LocalDefId>,
+    tables: LazyTables,
     stable_order_of_exportable_impls: LazyArray<(LocalDefId, usize)>,
     exported_non_generic_symbols: LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>,
     exported_generic_symbols: LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>,
@@ -825,6 +825,7 @@ define_tables! {
     safety: Table<RDRHashAll, hir::Safety>,
     defaultness: Table<RDRHashAll, hir::Defaultness>,
     impl_is_fully_generic_for_reflection: Table<RDRHashAll, bool>,
+    is_exportable: Table<RDRHashAll, bool>,
 
 - optional:
     opt_rpitit_info: Table<RDRHashAll, LazyValue<ty::ImplTraitInTraitData>>,
