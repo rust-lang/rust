@@ -159,5 +159,82 @@ LL |             vec.set_len(1);
    |
    = help: initialize the buffer or wrap the content in `MaybeUninit`
 
-error: aborting due to 15 previous errors
+error: calling `set_len()` immediately after reserving a buffer creates uninitialized values
+  --> tests/ui/uninit_vec.rs:222:9
+   |
+LL |         let mut v: Vec<[u8; HUGE]> = Vec::with_capacity(1);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |         unsafe { v.set_len(1) };
+   |                  ^^^^^^^^^^^^
+   |
+   = help: initialize the buffer or wrap the content in `MaybeUninit`
+
+error: calling `set_len()` immediately after reserving a buffer creates uninitialized values
+  --> tests/ui/uninit_vec.rs:240:9
+   |
+LL |         let mut v: Vec<HeavyWrapperUnsafe> = Vec::with_capacity(1);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |         unsafe { v.set_len(1) };
+   |                  ^^^^^^^^^^^^
+   |
+   = help: initialize the buffer or wrap the content in `MaybeUninit`
+
+error: calling `set_len()` immediately after reserving a buffer creates uninitialized values
+  --> tests/ui/uninit_vec.rs:251:9
+   |
+LL |         let mut v: Vec<HeavyEnum> = Vec::with_capacity(1);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |         unsafe { v.set_len(1) };
+   |                  ^^^^^^^^^^^^
+   |
+   = help: initialize the buffer or wrap the content in `MaybeUninit`
+
+error: calling `set_len()` immediately after reserving a buffer creates uninitialized values
+  --> tests/ui/uninit_vec.rs:274:9
+   |
+LL |         let mut v: Vec<OneVariantU8> = Vec::with_capacity(1);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |         unsafe { v.set_len(1) };
+   |                  ^^^^^^^^^^^^
+   |
+   = help: initialize the buffer or wrap the content in `MaybeUninit`
+
+error: calling `set_len()` immediately after reserving a buffer creates uninitialized values
+  --> tests/ui/uninit_vec.rs:288:9
+   |
+LL |         let mut v: Vec<T> = Vec::with_capacity(1);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |         unsafe { v.set_len(1) };
+   |                  ^^^^^^^^^^^^
+   |
+   = help: initialize the buffer or wrap the content in `MaybeUninit`
+
+error: calling `set_len()` immediately after reserving a buffer creates uninitialized values
+  --> tests/ui/uninit_vec.rs:302:9
+   |
+LL |         let mut v: Vec<<T as Assoc>::Item> = Vec::with_capacity(1);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |         unsafe { v.set_len(1) };
+   |                  ^^^^^^^^^^^^
+   |
+   = help: initialize the buffer or wrap the content in `MaybeUninit`
+
+error: calling `set_len()` immediately after reserving a buffer creates uninitialized values
+  --> tests/ui/uninit_vec.rs:325:9
+   |
+LL |         let mut v: Vec<E<u8, (u8, core::convert::Infallible)>> = Vec::with_capacity(1);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |         unsafe { v.set_len(1) };
+   |                  ^^^^^^^^^^^^
+   |
+   = help: initialize the buffer or wrap the content in `MaybeUninit`
+
+error: aborting due to 22 previous errors
 
