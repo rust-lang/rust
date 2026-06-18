@@ -464,7 +464,7 @@ impl From<Cargo> for BootstrapCommand {
 
         let rustdocflags = &cargo.rustdocflags.0;
         if !rustdocflags.is_empty() {
-            cargo.command.env("RUSTDOCFLAGS", rustdocflags.join(" "));
+            cargo.command.env("CARGO_ENCODED_RUSTDOCFLAGS", rustdocflags.join("\x1f"));
         }
 
         let encoded_hostflags = cargo.hostflags.encode();
