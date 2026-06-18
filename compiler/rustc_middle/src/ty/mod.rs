@@ -2076,10 +2076,6 @@ impl<'tcx> TyCtxt<'tcx> {
         self.impl_is_of_trait(def_id).then(|| self.impl_trait_id(def_id))
     }
 
-    pub fn is_exportable(self, def_id: DefId) -> bool {
-        self.exportable_items(def_id.krate).contains(&def_id)
-    }
-
     /// Check if the given `DefId` is `#\[automatically_derived\]`, *and*
     /// whether it was produced by expanding a builtin derive macro.
     pub fn is_builtin_derived(self, def_id: DefId) -> bool {

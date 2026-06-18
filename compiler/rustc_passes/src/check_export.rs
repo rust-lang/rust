@@ -16,6 +16,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::config::CrateType;
 use rustc_span::Span;
+use rustc_span::def_id::LOCAL_CRATE;
 
 use crate::errors::UnexportableItem;
 
@@ -345,6 +346,10 @@ fn exportable_items_provider_local<'tcx>(tcx: TyCtxt<'tcx>, _: LocalCrate) -> &'
     tcx.arena.alloc_from_iter(exportable_items.into_iter())
 }
 
+fn is_exportable_provider_local(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+    tcx.exportable_items(LOCAL_CRATE).contains(&def_id.to_def_id())
+}
+
 struct ImplsOrderVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     order: FxIndexMap<DefId, usize>,
@@ -397,6 +402,7 @@ fn stable_order_of_exportable_impls<'tcx>(
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         exportable_items: exportable_items_provider_local,
+        is_exportable: is_exportable_provider_local,
         stable_order_of_exportable_impls,
         ..*providers
     };

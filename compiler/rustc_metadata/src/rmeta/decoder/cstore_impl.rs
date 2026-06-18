@@ -453,7 +453,17 @@ provide! { tcx, def_id, other, cdata,
     used_crate_source => { Arc::clone(&cdata.source) }
     debugger_visualizers => { cdata.get_debugger_visualizers(tcx) }
 
-    exportable_items => { tcx.arena.alloc_from_iter(cdata.get_exportable_items(tcx)) }
+    exportable_items => {
+        assert!(!cdata.root.public_api_hash_opt_enabled, "exportable_items is not available from rmetas where public_api_hash is enabled!");
+        tcx.arena.alloc_from_iter(cdata.get_exportable_items(tcx))
+    }
+    is_exportable => {
+        if cdata.root.public_api_hash_opt_enabled {
+            cdata.root.tables.is_exportable.get(cdata, def_id.index)
+        } else {
+            tcx.exportable_items(def_id.krate).contains(&def_id)
+        }
+    }
     stable_order_of_exportable_impls => {
         tcx.arena.alloc(cdata.get_stable_order_of_exportable_impls(tcx).collect())
     }

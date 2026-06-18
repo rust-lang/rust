@@ -2387,6 +2387,11 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    query is_exportable(def_id: DefId) -> bool {
+        desc { "checking whether `{}` is exportable", tcx.def_path_str(def_id) }
+        separate_provide_extern
+    }
+
     /// The list of non-generic symbols exported from the given crate.
     ///
     /// This is separate from exported_generic_symbols to avoid having

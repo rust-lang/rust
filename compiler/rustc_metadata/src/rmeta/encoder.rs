@@ -1028,12 +1028,12 @@ impl<'a, 'tcx, M: MetadataEncoder<'tcx>> EncodeContext<'a, 'tcx, M> {
         // encode_def_path_table.
         let proc_macro_data = stat!("proc-macro-data", || self.encode_proc_macros(hcx));
 
-        let tables = stat!("tables", || self.tables.encode(&mut self.opaque));
-
         let debugger_visualizers =
             stat!("debugger-visualizers", || self.encode_debugger_visualizers(hcx));
 
         let exportable_items = stat!("exportable-items", || self.encode_exportable_items(hcx));
+
+        let tables = stat!("tables", || self.tables.encode(&mut self.opaque));
 
         let stable_order_of_exportable_impls =
             stat!("exportable-items", || self.encode_stable_order_of_exportable_impls(hcx));
@@ -2816,14 +2816,18 @@ impl<'a, 'tcx, M: MetadataEncoder<'tcx>> EncodeContext<'a, 'tcx, M> {
     fn encode_exportable_items<'h>(
         &mut self,
         hcx: &mut impl PublicApiHashState<'h>,
-    ) -> Hashed<LazyArray<DefIndex>> {
+    ) -> GraphHashed<LazyArray<DefIndex>> {
         empty_proc_macro!(self);
-        hashed_lazy_array!(
-            self,
-            self.tcx.exportable_items(LOCAL_CRATE).iter().copied(),
-            hcx,
-            |def_id: DefId| { def_id.index }
-        )
+        if hcx.enabled() {
+            for def_id in self.tcx.exportable_items(LOCAL_CRATE) {
+                self.tables.is_exportable.set_local_hashed(def_id.expect_local(), true, hcx);
+            }
+            GraphHashed(Default::default())
+        } else {
+            GraphHashed(self.lazy_array(
+                self.tcx.exportable_items(LOCAL_CRATE).iter().map(|def_id| def_id.index),
+            ))
+        }
     }
 
     fn encode_stable_order_of_exportable_impls<'h>(

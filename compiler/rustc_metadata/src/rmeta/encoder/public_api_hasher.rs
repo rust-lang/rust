@@ -213,6 +213,7 @@ impl<I: Idx> TablePublicApiHasher<I> for RDRHashNone<I> {
 }
 
 /// Map structs where the hashing took place for each item and stored into the [`ReachabilityGraphHashes`]
+#[derive(Default)]
 pub(crate) struct GraphHashed<T>(pub(crate) T);
 impl<T> StableHash for GraphHashed<T> {
     fn stable_hash<Hcx: StableHashCtxt>(&self, _hcx: &mut Hcx, _hasher: &mut StableHasher) {}
@@ -322,7 +323,6 @@ pub(crate) struct HashableCrateRoot {
     pub(crate) foreign_modules: Hashed<LazyArray<ForeignModule>>,
     pub(crate) incoherent_impls: Hashed<LazyArray<IncoherentImpls>>,
     pub(crate) debugger_visualizers: Hashed<LazyArray<DebuggerVisualizerFile>>,
-    pub(crate) exportable_items: Hashed<LazyArray<DefIndex>>,
     pub(crate) stable_order_of_exportable_impls: Hashed<LazyArray<(DefIndex, usize)>>,
     pub(crate) exported_non_generic_symbols:
         Hashed<LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>>,
@@ -416,6 +416,12 @@ pub(crate) struct HashableCrateRoot {
     //      but only the ones that can be applied to publicly reachable types
     pub(crate) impls: GraphHashed<EncodedTraitImpls>,
 
+    // This is used to do symbol mangling in downstream crates. We should only include ones that
+    // are somehow reachable.
+    // While public api hashing is enabled, a table is used in the `is_exportable` field of
+    // `tables` is used to provide this query. This field must be empty.
+    pub(crate) exportable_items: GraphHashed<LazyArray<DefIndex>>,
+
     // =========== not needed in the public hash ==============
     // proc macro, ignored. We use the full crate hash as public hash for proc macros
     pub(crate) proc_macro_data: NoneIfHashed<ProcMacroData>,
@@ -507,7 +513,7 @@ impl HashableCrateRoot {
             tables: self.tables.0,
             debugger_visualizers: self.debugger_visualizers.value,
 
-            exportable_items: self.exportable_items.value,
+            exportable_items: self.exportable_items.0,
             stable_order_of_exportable_impls: self.stable_order_of_exportable_impls.value,
             exported_non_generic_symbols: self.exported_non_generic_symbols.value,
             exported_generic_symbols: self.exported_generic_symbols.value,
