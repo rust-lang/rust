@@ -23,7 +23,7 @@ impl<T> Value for T {
 
 struct FortyTwo;
 
-impl const Value for FortyTwo {
+const impl Value for FortyTwo {
     fn value() -> u32 {
         42
     }

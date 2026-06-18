@@ -5,7 +5,7 @@
 
 struct S;
 
-impl const PartialEq for S {
+const impl PartialEq for S {
     fn eq(&self, _: &S) -> bool {
         true
     }

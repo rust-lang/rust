@@ -1,7 +1,7 @@
 error[E0119]: conflicting implementations of trait `Value` for type `FortyTwo`
   --> $DIR/const-default-impl-non-const-specialized-impl.rs:20:1
    |
-LL | impl<T> const Value for T {
+LL | const impl<T> Value for T {
    | ------------------------- first implementation here
 ...
 LL | impl Value for FortyTwo {
