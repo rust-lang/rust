@@ -127,10 +127,6 @@ impl<'tcx> MirSource<'tcx> {
         MirSource { instance: InstanceKind::Item(def_id), promoted: None }
     }
 
-    pub fn from_instance(instance: InstanceKind<'tcx>) -> Self {
-        MirSource { instance, promoted: None }
-    }
-
     pub fn from_shim(shim: ShimKind<'tcx>) -> Self {
         MirSource { instance: InstanceKind::Shim(shim), promoted: None }
     }
