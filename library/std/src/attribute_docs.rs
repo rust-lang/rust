@@ -88,10 +88,9 @@ mod must_use_attribute {}
 
 #[doc(attribute = "allow")]
 //
-/// Suppress compiler warnings for unused code.
-///
-/// The `allow` attribute suppresses compiler warnings for unused functions,
-/// variables or imports.
+/// The `allow` attribute suppresses lint checks that would otherwise produce
+/// warnings or errors. It can be used on any lint or lint group (except those
+/// set to `forbid`).
 ///
 /// ```rust
 /// #[allow(dead_code)]
@@ -143,7 +142,7 @@ mod must_use_attribute {}
 ///
 /// This is mostly used to prevent warnings for unused code while still under development.
 /// It's also important to consider that overusing `allow` could make code harder to maintain
-/// and possibly hide issues.
+/// and possibly hide issues. It cannot override a lint that has been set to forbid.
 ///
 /// For more information, see the Reference on [the `allow` attribute].
 ///
@@ -195,7 +194,6 @@ mod allow_attribute {}
 ///
 /// For more information, see the Reference on [the `cfg` attribute].
 ///
-/// [`cfg!`]: ../reference/conditional-compilation.html#the-cfg-macro
 /// [`cfg_attr`]: ../reference/conditional-compilation.html#the-cfg_attr-attribute
 /// [the `cfg` attribute]: ../reference/conditional-compilation.html#the-cfg-attribute
 mod cfg_attribute {}
