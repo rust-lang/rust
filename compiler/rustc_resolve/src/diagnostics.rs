@@ -1216,13 +1216,19 @@ pub(crate) struct CannotFindBuiltinMacroWithName {
 }
 
 #[derive(Diagnostic)]
-#[diag("tool `{$tool}` was already registered")]
-pub(crate) struct ToolWasAlreadyRegistered {
+#[diag("tool `{$tool}` is predefined and cannot be registered")]
+pub(crate) struct ToolPredefined {
     #[primary_span]
     pub(crate) span: Span,
     pub(crate) tool: Ident,
-    #[label("already registered here")]
-    pub(crate) old_ident_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("tool `{$tool}` is reserved and cannot be registered")]
+pub(crate) struct ToolReserved {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) tool: Ident,
 }
 
 #[derive(Subdiagnostic)]

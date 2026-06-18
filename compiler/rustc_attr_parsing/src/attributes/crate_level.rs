@@ -317,12 +317,33 @@ impl CombineAttributeParser for FeatureParser {
     }
 }
 
-pub(crate) struct RegisterToolParser;
+pub(crate) struct RegisterAttributeTool;
+pub(crate) struct RegisterLintTool;
+pub(crate) struct RegisterTool;
 
-impl CombineAttributeParser for RegisterToolParser {
-    const PATH: &[Symbol] = &[sym::register_tool];
+pub(crate) trait RegisterToolKind: 'static {
+    const SYMBOL: Symbol;
+}
+
+impl RegisterToolKind for RegisterAttributeTool {
+    const SYMBOL: Symbol = sym::register_attribute_tool;
+}
+
+impl RegisterToolKind for RegisterLintTool {
+    const SYMBOL: Symbol = sym::register_lint_tool;
+}
+
+impl RegisterToolKind for RegisterTool {
+    const SYMBOL: Symbol = sym::register_tool;
+}
+
+pub(crate) struct RegisterToolParser<Kind>(Kind);
+
+impl<K: RegisterToolKind> CombineAttributeParser for RegisterToolParser<K> {
+    const PATH: &[Symbol] = &[K::SYMBOL];
     type Item = Ident;
-    const CONVERT: ConvertFn<Self::Item> = |tools, _span| AttributeKind::RegisterTool(tools);
+    const CONVERT: ConvertFn<Self::Item> =
+        |tools, _span| AttributeKind::RegisterTool { kind: K::SYMBOL, tools };
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(List: &["tool1, tool2, ..."]);
     const STABILITY: AttributeStability = unstable!(register_tool);

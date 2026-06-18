@@ -150,10 +150,16 @@ rustc_queries! {
         desc { "triggering a delayed bug for testing incremental" }
     }
 
-    /// Collects the list of all tools registered using `#![register_tool]`.
-    query registered_tools(_: ()) -> &'tcx ty::RegisteredTools {
+    /// Collects the list of all tools registered using `#![register_tool]` or `#![register_attribute_tool]`.
+    query registered_attribute_tools(_: ()) -> &'tcx ty::RegisteredTools {
         arena_cache
-        desc { "compute registered tools for crate" }
+        desc { "compute registered attribute tools for crate" }
+    }
+
+    /// Collects the list of all tools registered using `#![register_tool]` or `#![register_lint_tool]`.
+    query registered_lint_tools(_: ()) -> &'tcx ty::RegisteredTools {
+        arena_cache
+        desc { "compute registered lint tools for crate" }
     }
 
     query early_lint_checks(_: ()) {

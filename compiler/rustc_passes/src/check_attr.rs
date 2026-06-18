@@ -313,7 +313,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::ProfilerRuntime => (),
             AttributeKind::RecursionLimit { .. } => (),
             AttributeKind::ReexportTestHarnessMain(..) => (),
-            AttributeKind::RegisterTool(..) => (),
+            AttributeKind::RegisterTool { .. } => (),
             // handled below this loop and elsewhere
             AttributeKind::Repr { .. } => (),
             AttributeKind::RustcAbi { .. } => (),

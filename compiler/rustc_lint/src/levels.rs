@@ -171,7 +171,7 @@ fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLe
         },
         lint_added_lints: false,
         store,
-        registered_tools: tcx.registered_tools(()),
+        registered_lint_tools: tcx.registered_lint_tools(()),
     };
 
     if owner == hir::CRATE_OWNER_ID {
@@ -389,7 +389,7 @@ pub struct LintLevelsBuilder<'s, P> {
     provider: P,
     lint_added_lints: bool,
     store: &'s LintStore,
-    registered_tools: &'s RegisteredTools,
+    registered_lint_tools: &'s RegisteredTools,
 }
 
 pub(crate) struct BuilderPush {
@@ -402,7 +402,7 @@ impl<'s> LintLevelsBuilder<'s, TopDown> {
         features: &'s Features,
         lint_added_lints: bool,
         store: &'s LintStore,
-        registered_tools: &'s RegisteredTools,
+        registered_lint_tools: &'s RegisteredTools,
     ) -> Self {
         let mut builder = LintLevelsBuilder {
             sess,
@@ -410,7 +410,7 @@ impl<'s> LintLevelsBuilder<'s, TopDown> {
             provider: TopDown { sets: LintLevelSets::new(), cur: COMMAND_LINE },
             lint_added_lints,
             store,
-            registered_tools,
+            registered_lint_tools,
         };
         builder.process_command_line();
         assert_eq!(builder.provider.sets.list.len(), 1);
@@ -422,10 +422,10 @@ impl<'s> LintLevelsBuilder<'s, TopDown> {
         features: &'s Features,
         lint_added_lints: bool,
         store: &'s LintStore,
-        registered_tools: &'s RegisteredTools,
+        registered_lint_tools: &'s RegisteredTools,
         crate_attrs: &[ast::Attribute],
     ) -> Self {
-        let mut builder = Self::new(sess, features, lint_added_lints, store, registered_tools);
+        let mut builder = Self::new(sess, features, lint_added_lints, store, registered_lint_tools);
         builder.add(crate_attrs, true);
         builder
     }
@@ -503,7 +503,8 @@ where
                     .dcx()
                     .emit_err(UnsupportedGroup { lint_group: crate::WARNINGS.name_lower() });
             }
-            match self.store.check_lint_name(lint_name_only, tool_name, self.registered_tools) {
+            match self.store.check_lint_name(lint_name_only, tool_name, self.registered_lint_tools)
+            {
                 CheckLintNameResult::Renamed(ref replace) => {
                     let name = lint_name.as_str();
                     let suggestion = RenamedLintSuggestion::WithoutSpan { replace };
@@ -768,7 +769,7 @@ where
                 let tool_name = tool_ident.map(|ident| ident.name);
                 let name = pprust::path_to_string(&meta_item.path);
                 let lint_result =
-                    self.store.check_lint_name(&name, tool_name, self.registered_tools);
+                    self.store.check_lint_name(&name, tool_name, self.registered_lint_tools);
 
                 let (ids, name) = match lint_result {
                     CheckLintNameResult::Ok(ids) => {
@@ -837,7 +838,7 @@ where
                         // NOTE: `new_name` already includes the tool name, so we don't
                         // have to add it again.
                         let CheckLintNameResult::Ok(ids) =
-                            self.store.check_lint_name(replace, None, self.registered_tools)
+                            self.store.check_lint_name(replace, None, self.registered_lint_tools)
                         else {
                             panic!("renamed lint does not exist: {replace}");
                         };

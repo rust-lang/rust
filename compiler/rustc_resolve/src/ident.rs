@@ -156,7 +156,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 Scope::ExternPreludeItems | Scope::ExternPreludeFlags => {
                     use_prelude || module_and_extern_prelude || extern_prelude
                 }
-                Scope::ToolPrelude => use_prelude,
+                Scope::ToolAttributePrelude => use_prelude,
                 Scope::StdLibPrelude => use_prelude || ns == MacroNS,
                 Scope::BuiltinTypes => true,
             };
@@ -222,8 +222,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 Scope::BuiltinAttrs => break, // nowhere else to search
                 Scope::ExternPreludeItems => Scope::ExternPreludeFlags,
                 Scope::ExternPreludeFlags if module_and_extern_prelude || extern_prelude => break,
-                Scope::ExternPreludeFlags => Scope::ToolPrelude,
-                Scope::ToolPrelude => Scope::StdLibPrelude,
+                Scope::ExternPreludeFlags => Scope::ToolAttributePrelude,
+                Scope::ToolAttributePrelude => Scope::StdLibPrelude,
                 Scope::StdLibPrelude => match ns {
                     TypeNS => Scope::BuiltinTypes,
                     ValueNS => break, // nowhere else to search
@@ -720,7 +720,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     None => Err(Determinacy::Determined),
                 }
             }
-            Scope::ToolPrelude => match self.registered_tool_decls.get(&ident) {
+            Scope::ToolAttributePrelude => match self.registered_attribute_tool_decls.get(&ident) {
                 Some(decl) => Ok(*decl),
                 None => Err(Determinacy::Determined),
             },

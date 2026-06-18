@@ -314,7 +314,7 @@ pub fn check_ast_node<'a>(
     features: &Features,
     pre_expansion: bool,
     lint_store: &LintStore,
-    registered_tools: &RegisteredTools,
+    registered_lint_tools: &RegisteredTools,
     lint_buffer: Option<LintBuffer>,
     builtin_lints: impl EarlyLintPass + 'static,
     check_node: impl EarlyCheckNode<'a>,
@@ -324,7 +324,7 @@ pub fn check_ast_node<'a>(
         features,
         !pre_expansion,
         lint_store,
-        registered_tools,
+        registered_lint_tools,
         lint_buffer.unwrap_or_default(),
     );
 

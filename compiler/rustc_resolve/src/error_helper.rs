@@ -1334,10 +1334,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }));
                 }
                 Scope::ExternPreludeFlags => {}
-                Scope::ToolPrelude => {
+                Scope::ToolAttributePrelude => {
                     let res = Res::NonMacroAttr(NonMacroAttrKind::Tool);
                     suggestions.extend(
-                        this.registered_tools
+                        this.registered_attribute_tools
                             .iter()
                             .map(|ident| TypoSuggestion::new(ident.name, ident.span, res)),
                     );
