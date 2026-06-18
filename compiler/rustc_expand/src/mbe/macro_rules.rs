@@ -468,6 +468,16 @@ fn expand_macro_attr(
     // whereas macros from an external crate have a dummy id.
     let is_local = node_id != DUMMY_NODE_ID;
 
+    if !is_local && !cx.ecfg.features.macro_attr() {
+        return Err(feature_err(
+            cx.sess,
+            sym::macro_attr,
+            sp,
+            "`macro_rules!` attributes are unstable",
+        )
+        .emit());
+    }
+
     if cx.trace_macros() {
         let msg = format!(
             "expanding `#[{name}({})] {}`",
@@ -752,7 +762,7 @@ pub fn compile_declarative_macro(
         }
         let (args, is_derive) = if p.eat_keyword_noexpect(sym::attr) {
             kinds |= MacroKinds::ATTR;
-            if !features.macro_attr() {
+            if is_defined_in_current_crate(node_id) && !features.macro_attr() {
                 feature_err(sess, sym::macro_attr, span, "`macro_rules!` attributes are unstable")
                     .emit();
             }
