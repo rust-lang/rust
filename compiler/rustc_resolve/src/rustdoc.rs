@@ -641,20 +641,20 @@ pub fn source_span_for_markdown_range_inner(
     let mut start_bytes = 0;
     let mut end_bytes = 0;
 
-    let span_of_all_fragments = span_of_fragments(fragments)?;
+    let span_of_all_fragments: Span = span_of_fragments(fragments)?;
 
     let mut prev_lines_bytes = 0;
     'outer: for (line_no, md_line) in md_lines.enumerate() {
         loop {
             let source_line = src_lines.next()?;
-            // Since we're counting bytes, `source_line_len` includes the "\n".
-            let source_line_len = u32::try_from(source_line.len() + 1).unwrap();
-            let has_fragment = fragments.iter().any(|fragment| {
-                fragment.span.hi().0 >= span_of_all_fragments.lo().0 + prev_lines_bytes
-                    && fragment.span.lo().0
-                        <= span_of_all_fragments.lo().0 + prev_lines_bytes + source_line_len
-            });
-            prev_lines_bytes += source_line_len;
+            let source_line_len = u32::try_from(source_line.len()).unwrap();
+            let source_line_span =
+                span_of_all_fragments.split_at(prev_lines_bytes).1.split_at(source_line_len).0;
+            let has_fragment = fragments
+                .iter()
+                .any(|fragment| fragment.span.contains(source_line_span.shrink_to_hi()));
+            // Since we're counting bytes, `prev_line_bytes` includes the "\n".
+            prev_lines_bytes += source_line_len + 1;
             if has_fragment && let Some(offset) = source_line.find(md_line) {
                 if line_no == starting_line {
                     start_bytes += offset;
