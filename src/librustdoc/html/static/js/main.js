@@ -117,6 +117,7 @@ function getOrCreateSection(id, classes) {
         el = document.createElement("section");
         el.id = id;
         el.className = classes;
+        // MAIN_ID exists, and is not the root
         // @ts-expect-error
         insertAfter(el, document.getElementById(MAIN_ID));
     }
@@ -154,8 +155,7 @@ function switchDisplayedElement(elemToDisplay) {
     const el = getAlternativeDisplayElem();
 
     if (el.children.length > 0) {
-        // @ts-expect-error
-        getNotDisplayedElem().appendChild(el.firstElementChild);
+        getNotDisplayedElem().appendChild(nonnull(el.firstElementChild));
     }
     if (elemToDisplay === null) {
         addClass(el, "hidden");
@@ -202,7 +202,7 @@ function preLoadCss(cssUrl) {
     /**
      * Run a JavaScript file asynchronously.
      * @param {string} url
-     * @param {function(): any} errorCallback
+     * @param {function(): any} [errorCallback]
      */
     function loadScript(url, errorCallback) {
         const script = document.createElement("script");
@@ -224,7 +224,6 @@ function preLoadCss(cssUrl) {
             event.preventDefault();
             // Sending request for the CSS and the JS files at the same time so it will
             // hopefully be loaded when the JS will generate the settings content.
-            // @ts-expect-error
             loadScript(getVar("static-root-path") + getVar("settings-js"));
             // Pre-load all theme CSS files, so that switching feels seamless.
             //
@@ -811,6 +810,7 @@ function preLoadCss(cssUrl) {
         }
         const implementors = implementorsElems("implementors-list");
         const syntheticImplementors = implementorsElems("synthetic-implementors-list");
+        /** @type {Set<string>} */
         const inlined_types = new Set();
 
         const TEXT_IDX = 0;
@@ -829,17 +829,14 @@ function preLoadCss(cssUrl) {
                 if (!aliases) {
                     return;
                 }
-                // @ts-expect-error
-                aliases.split(",").forEach(alias => {
+                aliases.split(",").forEach(/** @param {string} alias */ alias => {
                     inlined_types.add(alias);
                 });
             });
         }
 
-        // @ts-expect-error
-        let currentNbImpls = implementors[0].getElementsByClassName("impl").length;
-        // @ts-expect-error
-        const traitName = document.querySelector(".main-heading h1 > .trait").textContent;
+        let currentNbImpls = nonnull(implementors[0]).getElementsByClassName("impl").length;
+        const traitName = nonnull(document.querySelector(".main-heading h1 > .trait")).textContent;
         const baseIdName = "impl-" + traitName + "-";
         const libs = Object.getOwnPropertyNames(imp);
         // We don't want to include impls from this JS file, when the HTML already has them.
@@ -859,7 +856,8 @@ function preLoadCss(cssUrl) {
 
             struct_loop:
             for (const struct of structs) {
-                const list = struct[SYNTHETIC_IDX] ? syntheticImplementors : implementors;
+                const [impList, negImpMarker] =
+                    struct[SYNTHETIC_IDX] ? syntheticImplementors : implementors;
 
                 // The types list is only used for synthetic impls.
                 // If this changes, `main.js` and `write_shared.rs` both need changed.
@@ -898,11 +896,9 @@ function preLoadCss(cssUrl) {
                 // If this is a negative implementor, we put it into the right location (just
                 // before the negative impl marker).
                 if (struct[IS_NEG_IDX]) {
-                    // @ts-expect-error
-                    list[1].before(display);
+                    nonnull(negImpMarker).before(display);
                 } else {
-                    // @ts-expect-error
-                    list[0].appendChild(display);
+                    nonnull(impList).appendChild(display);
                 }
                 currentNbImpls += 1;
             }
@@ -978,8 +974,7 @@ function preLoadCss(cssUrl) {
             const text = impList[0];
             const traitName = impList[1];
             const isTrait = typeof traitName === "string";
-            // @ts-expect-error
-            if (types.indexOf(selfPath) === -1) {
+            if (selfPath === null || types.indexOf(selfPath) === -1) {
                 continue;
             }
             let outputList = isTrait ? trait_implementations : implementations;
