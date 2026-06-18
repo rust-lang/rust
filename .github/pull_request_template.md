@@ -1,5 +1,9 @@
 <!-- homu-ignore:start -->
 <!--
+Please read our [LLM policy] before opening a PR.
+
+[LLM policy]: https://forge.rust-lang.org/policies/llm-usage.html
+
 If this PR is related to an unstable feature or an otherwise tracked effort,
 please link to the relevant tracking issue here. If you don't know of a related
 tracking issue or there are none, feel free to ignore this.
