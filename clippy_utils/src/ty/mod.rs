@@ -33,7 +33,7 @@ use std::{debug_assert_matches, iter, mem};
 
 use crate::paths::{PathNS, lookup_path_str};
 use crate::res::{MaybeDef, MaybeQPath};
-use crate::sym;
+use crate::{over, sym};
 
 mod type_certainty;
 pub use type_certainty::expr_type_is_certain;
@@ -485,8 +485,8 @@ pub fn peel_n_ty_refs(mut ty: Ty<'_>, n: usize) -> (Ty<'_>, Option<Mutability>) 
 /// and `false` for:
 /// - `Result<u32, String>` and `Result<usize, String>`
 pub fn same_type_modulo_regions<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
-    match (&a.kind(), &b.kind()) {
-        (&ty::Adt(did_a, args_a), &ty::Adt(did_b, args_b)) => {
+    match (a.kind(), b.kind()) {
+        (ty::Adt(did_a, args_a), ty::Adt(did_b, args_b)) => {
             if did_a != did_b {
                 return false;
             }
@@ -499,6 +499,9 @@ pub fn same_type_modulo_regions<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
                 _ => true,
             })
         },
+        (ty::Ref(_, a, mut_a), ty::Ref(_, b, mut_b)) => mut_a == mut_b && same_type_modulo_regions(*a, *b),
+        (ty::Tuple(as_), ty::Tuple(bs)) => over(as_, bs, |a, b| same_type_modulo_regions(*a, *b)),
+        (ty::Array(a, na), ty::Array(b, nb)) => na == nb && same_type_modulo_regions(*a, *b),
         _ => a == b,
     }
 }
@@ -1337,6 +1340,14 @@ pub fn option_arg_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
         {
             Some(arg)
         },
+        _ => None,
+    }
+}
+
+/// Check if `ty` is an `Option<T>` or a `Result<T, E>` and return its argument type (`T`) if it is.
+pub fn option_or_result_arg_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+    match ty.kind() {
+        ty::Adt(adt, args) if matches!(adt.opt_diag_name(cx), Some(sym::Option | sym::Result)) => Some(args.type_at(0)),
         _ => None,
     }
 }

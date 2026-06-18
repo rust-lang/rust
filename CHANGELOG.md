@@ -7459,6 +7459,7 @@ Released 2018-09-13
 [`unnecessary_to_owned`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_to_owned
 [`unnecessary_trailing_comma`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_trailing_comma
 [`unnecessary_unwrap`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_unwrap
+[`unnecessary_unwrap_unchecked`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_unwrap_unchecked
 [`unnecessary_wraps`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_wraps
 [`unneeded_field_pattern`]: https://rust-lang.github.io/rust-clippy/master/index.html#unneeded_field_pattern
 [`unneeded_struct_pattern`]: https://rust-lang.github.io/rust-clippy/master/index.html#unneeded_struct_pattern
