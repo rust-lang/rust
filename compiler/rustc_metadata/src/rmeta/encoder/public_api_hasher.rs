@@ -324,10 +324,6 @@ pub(crate) struct HashableCrateRoot {
     pub(crate) incoherent_impls: Hashed<LazyArray<IncoherentImpls>>,
     pub(crate) debugger_visualizers: Hashed<LazyArray<DebuggerVisualizerFile>>,
     pub(crate) stable_order_of_exportable_impls: Hashed<LazyArray<(DefIndex, usize)>>,
-    pub(crate) exported_non_generic_symbols:
-        Hashed<LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>>,
-    pub(crate) exported_generic_symbols:
-        Hashed<LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>>,
     pub(crate) target_modifiers: Hashed<LazyArray<TargetModifier>>,
     pub(crate) denied_partial_mitigations: Hashed<LazyArray<DeniedPartialMitigation>>,
     pub(crate) compiler_builtins: bool,
@@ -421,6 +417,19 @@ pub(crate) struct HashableCrateRoot {
     // While public api hashing is enabled, a table is used in the `is_exportable` field of
     // `tables` is used to provide this query. This field must be empty.
     pub(crate) exportable_items: GraphHashed<LazyArray<DefIndex>>,
+
+    // =========== used during link time ==============
+    // Only used during linking, so we can put this behind private hash.
+    pub(crate) exported_non_generic_symbols:
+        Hashed<LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>>,
+
+    // Only used during linking, so we can put this behind private hash.
+    //
+    // NOTE: This is also used by upstream_monomorphizations, which we disable when public api
+    // hashing is enabled. If left enabled, adding or removing any private code can change the
+    // available monomorphized generics, which would require a recompile of all downstream deps.
+    pub(crate) exported_generic_symbols:
+        Hashed<LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>>,
 
     // =========== not needed in the public hash ==============
     // proc macro, ignored. We use the full crate hash as public hash for proc macros
