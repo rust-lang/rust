@@ -242,6 +242,7 @@ impl Step for Std {
         }
 
         target_deps.extend(self.copy_extra_objects(builder, &build_compiler, target));
+        let mode = if builder.kind == Kind::Dist { Mode::DistStd } else { Mode::Std };
 
         // We build a sysroot for mir-opt tests using the same trick that Miri does: A check build
         // with -Zalways-encode-mir. This frees us from the need to have a target linker, and the
@@ -251,7 +252,7 @@ impl Step for Std {
             let mut cargo = builder::Cargo::new_for_mir_opt_tests(
                 builder,
                 build_compiler,
-                Mode::Std,
+                mode,
                 SourceType::InTree,
                 target,
                 Kind::Check,
@@ -264,7 +265,7 @@ impl Step for Std {
             let mut cargo = builder::Cargo::new(
                 builder,
                 build_compiler,
-                Mode::Std,
+                mode,
                 SourceType::InTree,
                 target,
                 Kind::Build,
@@ -284,7 +285,7 @@ impl Step for Std {
         let _guard = builder.msg(
             Kind::Build,
             format_args!("library artifacts{}", crate_description(&self.crates)),
-            Mode::Std,
+            mode,
             build_compiler,
             target,
         );

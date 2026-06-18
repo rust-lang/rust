@@ -511,7 +511,7 @@ pub fn prepare_compiler_for_check(
             std_rmeta_sysroot = prepare_std(builder, build_compiler, target);
             build_compiler
         }
-        Mode::Std => {
+        Mode::Std | Mode::DistStd => {
             // When checking std stage N, we want to do it with the stage N compiler
             // Note: we don't need to build the host stdlib here, because when compiling std, the
             // stage 0 stdlib is used to compile build scripts and proc macros.
