@@ -421,6 +421,8 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(
         .and_then(|s| s.checked_add(1024)?.checked_next_multiple_of(DEFAULT_BUF_SIZE))
         .unwrap_or(DEFAULT_BUF_SIZE);
 
+    let mut initialized_len = 0;
+
     const PROBE_SIZE: usize = 32;
 
     fn small_probe_read<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> {
@@ -472,6 +474,12 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(
         spare = &mut spare[..buf_len];
         let mut read_buf: BorrowedBuf<'_, u8> = spare.into();
 
+        let buf_unfilled_len = read_buf.capacity() - read_buf.len();
+        if initialized_len == buf_unfilled_len {
+            // SAFETY: These bytes were initialized but not filled in the previous loop
+            unsafe { read_buf.set_init() };
+        }
+
         // Note that we don't track already initialized bytes here, but this is fine
         // because we explicitly limit the read size
         let mut cursor = read_buf.unfilled();
@@ -484,6 +492,7 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(
             }
         };
 
+        initialized_len = cursor.capacity();
         let bytes_read = cursor.written();
         let is_init = read_buf.is_init();
 
