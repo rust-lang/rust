@@ -88,17 +88,25 @@ pub(super) trait MetadataEncoder<'tcx>: Sized + Default {
     fn encode_trait_impls<'h, H: PublicApiHashState<'h>>(
         ecx: &mut MetadataBuilder<'_, 'tcx, 'h, '_, '_, H, Self>,
         trait_impls_map: &FxIndexMap<DefId, Vec<(LocalDefId, Option<SimplifiedType>)>>,
-    ) -> Hashed<EncodedTraitImpls>
+    ) -> GraphHashed<EncodedTraitImpls>
     where
         TraitImpls<Self::EncodedDefId>:
             for<'l> ParameterizedOverTcx<Value<'l> = TraitImpls<Self::EncodedDefId>>,
         EncodedTraitImpls: From<LazyArray<TraitImpls<Self::EncodedDefId>>>,
     {
-        let mut hasher = PublicApiHasher::default();
+        // we must encode extern traits as root nodes, as their DefId-s can be acquired from other
+        // crates. However, this is not the case for local traits. Those should can only be accessed
+        // if their DefId-s can be reached through the reachability graph we are building for this
+        // crate
+        for (trait_id, _) in trait_impls_map {
+            if !trait_id.is_local() {
+                ecx.encoder.record_encoded_index(*trait_id);
+            }
+        }
         let trait_impls: Vec<_> = trait_impls_map
             .iter()
             .map(|(&trait_id, impls)| {
-                hasher.digest(trait_id, ecx.hcx);
+                let mut hasher = PublicApiHasher::default();
                 hasher.digest(impls, ecx.hcx);
                 TraitImpls {
                     trait_id: Self::encoded_def_id(
@@ -106,13 +114,20 @@ pub(super) trait MetadataEncoder<'tcx>: Sized + Default {
                         &ecx.encoder.local_defs_remapping,
                         trait_id,
                     ),
-                    impls: ecx.lazy_array(impls),
+                    impls: ecx.with_record_mode(RecordMode::From(trait_id.into()), |this| {
+                        let hashed = this.hashed_lazy_array(impls);
+                        this.hcx.add_node_hash(
+                            &trait_id.into(),
+                            hashed.hash.unwrap_or(Fingerprint::ZERO),
+                        );
+                        hashed.value
+                    }),
                 }
             })
             .collect();
         let encoded_trait_impls: LazyArray<TraitImpls<Self::EncodedDefId>> =
             ecx.lazy_array(trait_impls).into();
-        Hashed { value: encoded_trait_impls.into(), hash: hasher.finish(ecx.hcx) }
+        GraphHashed(encoded_trait_impls.into())
     }
 
     fn crate_hashes<'h>(
@@ -2757,7 +2772,7 @@ where
 
     /// Encodes an index, mapping each trait to its (local) implementations.
     #[instrument(level = "debug", skip(self))]
-    fn encode_impls(&mut self) -> Hashed<EncodedTraitImpls>
+    fn encode_impls(&mut self) -> GraphHashed<EncodedTraitImpls>
     where
         TraitImpls<M::EncodedDefId>:
             for<'l> ParameterizedOverTcx<Value<'l> = TraitImpls<M::EncodedDefId>>,
@@ -2765,12 +2780,9 @@ where
     {
         if self.is_proc_macro() {
             return if self.hcx.enabled() {
-                Hashed {
-                    value: EncodedTraitImpls::DefPathHash(Default::default()),
-                    hash: Some(Fingerprint::ZERO),
-                }
+                GraphHashed(EncodedTraitImpls::DefPathHash(Default::default()))
             } else {
-                Hashed { value: EncodedTraitImpls::DefIndex(Default::default()), hash: None }
+                GraphHashed(EncodedTraitImpls::DefIndex(Default::default()))
             };
         }
         let tcx = self.tcx();
