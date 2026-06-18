@@ -60,7 +60,7 @@ pub(crate) fn target() -> Target {
     options.features = "+atomics,+bulk-memory,+mutable-globals".into();
 
     Target {
-        llvm_target: "wasm32-wasi".into(),
+        llvm_target: "wasm32-wasip1-threads".into(),
         metadata: TargetMetadata {
             description: None,
             tier: Some(2),
