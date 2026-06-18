@@ -1207,8 +1207,9 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
         let mut stable_hasher = StableHasher::new();
         // hir_body_hash
         for owner in krate.owners() {
-            if let Some(info) = tcx.lower_to_hir(owner.def_id).as_owner() {
+            if let Some(info) = tcx.hir_owner(owner.def_id).as_owner() {
                 info.stable_hash(&mut hcx, &mut stable_hasher);
+                tcx.hir_attr_map(owner).stable_hash(&mut hcx, &mut stable_hasher);
             }
         }
         upstream_crates.stable_hash(&mut hcx, &mut stable_hasher);

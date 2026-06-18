@@ -217,6 +217,7 @@ rustc_queries! {
 
     query lower_to_hir(def_id: LocalDefId) -> hir::MaybeOwner<'tcx> {
         eval_always
+        no_hash
         desc { "lowering HIR for `{}`", tcx.def_path_str(def_id) }
     }
 
