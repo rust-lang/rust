@@ -1,0 +1,11 @@
+error: implementing `CoerceShared` requires corresponding fields to match, be reborrowable with `CoerceShared`, or coerce a mutable reference field to a shared reference field
+  --> $DIR/coerce-shared-reordered-field.rs:15:5
+   |
+LL |     a: &'a mut u8,
+   |     ------------- source field `a` has type `&'a mut u8`
+...
+LL |     b: &'a u16,
+   |     ^^^^^^^^^^ target field `b` has type `&'a u16`
+
+error: aborting due to 1 previous error
+

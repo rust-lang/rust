@@ -1,5 +1,3 @@
-//@ check-pass
-
 #![feature(reborrow)]
 #![allow(dead_code)]
 
@@ -15,6 +13,7 @@ impl<'a> Reborrow for ReorderMut<'a> {}
 #[derive(Clone, Copy)]
 struct ReorderRef<'a> {
     b: &'a u16,
+    //~^ ERROR
     a: &'a u8,
 }
 

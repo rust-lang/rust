@@ -17,6 +17,7 @@ impl<'a, T> Reborrow for OmitMut<'a, T> {}
 
 struct OmitRef<'a, T> {
     value: &'a T,
+    //~^ ERROR
 }
 
 impl<'a, T> Clone for OmitRef<'a, T> {

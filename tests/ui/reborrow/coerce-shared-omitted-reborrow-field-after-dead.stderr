@@ -1,0 +1,11 @@
+error: implementing `CoerceShared` requires corresponding fields to match, be reborrowable with `CoerceShared`, or coerce a mutable reference field to a shared reference field
+  --> $DIR/coerce-shared-omitted-reborrow-field-after-dead.rs:20:5
+   |
+LL |     extra: ExtraMut<'a, T>,
+   |     ---------------------- source field `extra` has type `ExtraMut<'a, T>`
+...
+LL |     value: &'a T,
+   |     ^^^^^^^^^^^^ target field `value` has type `&'a T`
+
+error: aborting due to 1 previous error
+

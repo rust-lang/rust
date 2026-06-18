@@ -861,6 +861,23 @@ fn validate_coerce_shared_fields<'tcx>(
         }
     };
 
+    // FIXME(CoerceShared): remove this temporary function call once the downstream
+    // CoerceShared implementation can correctly handle types that are not trivially
+    // memcpy-able. Refer to #157489
+    // Also make these test changes:
+    // coerce-shared-omitted-reborrow-field-after-dead.rs -> checkpass
+    // coerce-shared-omitted-reborrow-field-locked.rs -> no error line 20
+    //  coerce-shared-omitted-reborrow-field.rs -> checkpass
+    //  coerce-shared-reordered-field.rs -> checkpass
+    validate_coerce_shared_fields_are_memcpy_compatible(
+        tcx,
+        trait_name,
+        source_def,
+        source_args,
+        target_def,
+        target_args,
+    )?;
+
     for field_pair in field_pairs {
         validate_coerce_shared_field(
             tcx,
@@ -873,6 +890,45 @@ fn validate_coerce_shared_fields<'tcx>(
             field_pair.source,
             field_pair.target,
         )?;
+    }
+
+    Ok(())
+}
+
+fn validate_coerce_shared_fields_are_memcpy_compatible<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_name: &'static str,
+    source_def: ty::AdtDef<'tcx>,
+    source_args: ty::GenericArgsRef<'tcx>,
+    target_def: ty::AdtDef<'tcx>,
+    target_args: ty::GenericArgsRef<'tcx>,
+) -> Result<(), ErrorGuaranteed> {
+    let source_fields = collect_reborrow_data_fields(tcx, source_def, source_args);
+    let target_fields = collect_reborrow_data_fields(tcx, target_def, target_args);
+
+    if source_fields.len() != target_fields.len() {
+        let source =
+            source_fields.get(target_fields.len()).or_else(|| source_fields.last()).copied();
+        let Some(source) = source else {
+            return Ok(());
+        };
+        let target = target_fields
+            .get(source_fields.len())
+            .or_else(|| target_fields.last())
+            .copied()
+            .unwrap_or(source);
+        return Err(emit_coerce_shared_field_mismatch(tcx, trait_name, source, target));
+    }
+
+    if matches!(target_def.non_enum_variant().ctor_kind(), Some(CtorKind::Fn)) {
+        return Ok(());
+    }
+
+    let source_variant = source_def.non_enum_variant();
+    for (&source, &target) in source_fields.iter().zip(&target_fields) {
+        if !tcx.hygienic_eq(target.ident, source.ident, source_variant.def_id) {
+            return Err(emit_coerce_shared_field_mismatch(tcx, trait_name, source, target));
+        }
     }
 
     Ok(())
@@ -929,18 +985,27 @@ fn validate_coerce_shared_field<'tcx>(
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
 
     if !errors.is_empty() {
-        return Err(tcx.dcx().emit_err(diagnostics::CoerceSharedFieldMismatch {
-            span: target.span,
-            source_span: source.span,
-            source_name: source.name,
-            source_ty: source.ty,
-            target_name: target.name,
-            target_ty: target.ty,
-            trait_name,
-        }));
+        return Err(emit_coerce_shared_field_mismatch(tcx, trait_name, source, target));
     }
 
     ocx.resolve_regions_and_report_errors(impl_did, param_env, [])
+}
+
+fn emit_coerce_shared_field_mismatch<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_name: &'static str,
+    source: ReborrowDataField<'tcx>,
+    target: ReborrowDataField<'tcx>,
+) -> ErrorGuaranteed {
+    tcx.dcx().emit_err(diagnostics::CoerceSharedFieldMismatch {
+        span: target.span,
+        source_span: source.span,
+        source_name: source.name,
+        source_ty: source.ty,
+        target_name: target.name,
+        target_ty: target.ty,
+        trait_name,
+    })
 }
 
 enum FieldRelation {
