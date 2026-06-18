@@ -40,7 +40,8 @@ use self::TargetLint::*;
 use crate::levels::LintLevelsBuilder;
 use crate::passes::{EarlyLintPassObject, LateLintPassObject};
 
-type EarlyLintPassFactory = Box<dyn Fn() -> EarlyLintPassObject + sync::DynSend + sync::DynSync>;
+pub(crate) type EarlyLintPassFactory =
+    Box<dyn Fn() -> EarlyLintPassObject + sync::DynSend + sync::DynSync>;
 type LateLintPassFactory =
     Box<dyn for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx> + sync::DynSend + sync::DynSync>;
 

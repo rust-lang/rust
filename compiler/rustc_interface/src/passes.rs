@@ -101,7 +101,6 @@ fn pre_expansion_lint<'a>(
                 lint_store,
                 registered_tools,
                 None,
-                rustc_lint::BuiltinCombinedPreExpansionLintPass::new(),
                 check_node,
             );
         },
@@ -479,7 +478,6 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
         lint_store,
         tcx.registered_tools(()),
         Some(lint_buffer),
-        rustc_lint::BuiltinCombinedEarlyLintPass::new(),
         EarlyCheckNode::CrateRoot(&*krate, &*krate.attrs),
     )
 }

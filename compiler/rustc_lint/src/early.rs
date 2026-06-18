@@ -16,7 +16,7 @@ use rustc_span::{Ident, Span};
 use tracing::debug;
 
 use crate::DiagAndSess;
-use crate::context::{EarlyContext, LintContext, LintStore};
+use crate::context::{EarlyContext, EarlyLintPassFactory, LintContext, LintStore};
 use crate::passes::{EarlyLintPass, EarlyLintPassObject};
 
 pub(super) mod diagnostics;
@@ -316,7 +316,6 @@ pub fn check_ast_node<'a>(
     lint_store: &LintStore,
     registered_tools: &RegisteredTools,
     lint_buffer: Option<LintBuffer>,
-    builtin_lints: impl EarlyLintPass + 'static,
     check_node: EarlyCheckNode<'a>,
 ) {
     let context = EarlyContext::new(
@@ -328,35 +327,20 @@ pub fn check_ast_node<'a>(
         lint_buffer.unwrap_or_default(),
     );
 
-    // Note: `passes` is often empty. In that case, it's faster to run
-    // `builtin_lints` directly rather than bundling it up into the
-    // `RuntimeCombinedEarlyLintPass`.
-    let passes =
-        if pre_expansion { &lint_store.pre_expansion_passes } else { &lint_store.early_passes };
-    if passes.is_empty() {
-        check_ast_node_inner(sess, check_node, context, builtin_lints);
+    let context = if pre_expansion {
+        let builtin_lints = crate::BuiltinCombinedPreExpansionLintPass::new();
+        let passes = &lint_store.pre_expansion_passes;
+        run_passes(check_node, context, builtin_lints, passes)
     } else {
-        let mut passes: Vec<_> = passes.iter().map(|mk_pass| mk_pass()).collect();
-        passes.push(Box::new(builtin_lints));
-        let pass = RuntimeCombinedEarlyLintPass { passes };
-        check_ast_node_inner(sess, check_node, context, pass);
-    }
-}
-
-fn check_ast_node_inner<'a, T: EarlyLintPass>(
-    sess: &Session,
-    check_node: EarlyCheckNode<'a>,
-    context: EarlyContext<'_>,
-    pass: T,
-) {
-    let mut cx = EarlyContextAndPass { context, pass };
-
-    cx.with_lint_attrs(check_node.id(), check_node.attrs(), |cx| check_node.check(cx));
+        let builtin_lints = crate::BuiltinCombinedEarlyLintPass::new();
+        let passes = &lint_store.early_passes;
+        run_passes(check_node, context, builtin_lints, passes)
+    };
 
     // All of the buffered lints should have been emitted at this point.
     // If not, that means that we somehow buffered a lint for a node id
     // that was not lint-checked (perhaps it doesn't exist?). This is a bug.
-    for (id, lints) in cx.context.buffered.map {
+    for (id, lints) in context.buffered.map {
         if !lints.is_empty() {
             assert!(
                 sess.dcx().has_errors().is_some(),
@@ -366,4 +350,33 @@ fn check_ast_node_inner<'a, T: EarlyLintPass>(
             break;
         }
     }
+}
+
+fn run_passes<'a, 'ecx, T: EarlyLintPass + 'static>(
+    check_node: EarlyCheckNode<'a>,
+    context: EarlyContext<'ecx>,
+    builtin_lints: T,
+    passes: &[EarlyLintPassFactory],
+) -> EarlyContext<'ecx> {
+    // Note: `passes` is often empty. In that case, it's faster to run
+    // `builtin_lints` directly rather than bundling it up into the
+    // `RuntimeCombinedEarlyLintPass`.
+    if passes.is_empty() {
+        run_pass(check_node, context, builtin_lints)
+    } else {
+        let mut passes: Vec<_> = passes.iter().map(|mk_pass| mk_pass()).collect();
+        passes.push(Box::new(builtin_lints));
+        let pass = RuntimeCombinedEarlyLintPass { passes };
+        run_pass(check_node, context, pass)
+    }
+}
+
+fn run_pass<'a, 'ecx, T: EarlyLintPass>(
+    check_node: EarlyCheckNode<'a>,
+    context: EarlyContext<'ecx>,
+    pass: T,
+) -> EarlyContext<'ecx> {
+    let mut cx = EarlyContextAndPass { context, pass };
+    cx.with_lint_attrs(check_node.id(), check_node.attrs(), |cx| check_node.check(cx));
+    cx.context
 }
