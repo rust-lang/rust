@@ -80,7 +80,7 @@ fn check_redundant_explicit_link<'md>(
     hir_id: HirId,
     doc: &'md str,
     resolutions: &DocLinkResMap,
-) -> Option<()> {
+) {
     let mut broken_line_callback = |link: BrokenLink<'md>| Some((link.reference, "".into()));
     let mut offset_iter = Parser::new_with_broken_link_callback(
         doc,
@@ -146,8 +146,6 @@ fn check_redundant_explicit_link<'md>(
             }
         }
     }
-
-    None
 }
 
 /// FIXME(ChAoSUnItY): Too many arguments.
