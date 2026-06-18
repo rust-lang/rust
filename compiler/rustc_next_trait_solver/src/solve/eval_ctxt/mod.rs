@@ -590,6 +590,16 @@ where
             ));
         }
 
+        self.evaluate_goal_cold(source, goal)
+    }
+
+    #[cold]
+    #[inline(never)]
+    pub(super) fn evaluate_goal_cold(
+        &mut self,
+        source: GoalSource,
+        goal: Goal<I, I::Predicate>,
+    ) -> Result<(NestedNormalizationGoals<I>, GoalEvaluation<I>), NoSolutionOrRerunNonErased> {
         // We only care about one entry per `OpaqueTypeKey` here,
         // so we only canonicalize the lookup table and ignore
         // duplicate entries.
