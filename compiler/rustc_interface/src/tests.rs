@@ -41,7 +41,7 @@ where
     initialize_checked_jobserver(&early_dcx);
 
     let matches = optgroups().parse(args).unwrap();
-    let sessopts = build_session_options(&mut early_dcx, &matches);
+    let sessopts = build_session_options(&mut early_dcx, &matches, true);
     let target = rustc_session::config::build_target_config(
         &early_dcx,
         &sessopts.target_triple,
@@ -933,6 +933,6 @@ fn test_edition_parsing() {
     let mut early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
     let matches = optgroups().parse(&["--edition=2018".to_string()]).unwrap();
-    let sessopts = build_session_options(&mut early_dcx, &matches);
+    let sessopts = build_session_options(&mut early_dcx, &matches, true);
     assert!(sessopts.edition == Edition::Edition2018)
 }

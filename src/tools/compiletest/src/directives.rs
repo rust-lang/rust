@@ -397,11 +397,10 @@ impl TestProps {
             }
         }
 
-        if let Some(edition) = self.edition.or(config.edition) {
-            // The edition is added at the start, since flags from //@compile-flags must be passed
-            // to rustc last.
-            self.compile_flags.insert(0, format!("--edition={edition}"));
-        }
+        let edition = self.edition.or(config.edition).unwrap_or(Edition::Year(2015));
+        // The edition is added at the start, since flags from //@compile-flags must be passed
+        // to rustc last.
+        self.compile_flags.insert(0, format!("--edition={edition}"));
     }
 
     fn update_pass_fail_mode(&mut self, ln: &DirectiveLine<'_>, config: &Config) {
