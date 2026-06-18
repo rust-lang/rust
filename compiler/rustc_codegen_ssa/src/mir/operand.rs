@@ -21,6 +21,44 @@ use crate::MemFlags;
 use crate::common::IntPredicate;
 use crate::traits::*;
 
+    fn scalar_pair_component_field_ty<'a, 'tcx, Bx, V>(
+        bx: &Bx,
+        layout: TyAndLayout<'tcx>,
+        idx: u64,
+    ) -> Option<Ty<'tcx>>
+    where
+        Bx: BuilderMethods<'a, 'tcx, Value = V>,
+        //Bx: BuilderMethods<'_, 'tcx, Value = V>,
+    {
+        let BackendRepr::ScalarPair(a, b) = layout.backend_repr else {
+            return None;
+        };
+
+        let (want_offset, want_size) = match idx {
+            0 => (Size::ZERO, a.size(bx.cx())),
+            1 => {
+                let off = a.size(bx.cx()).align_to(b.align(bx.cx()).abi);
+                (off, b.size(bx.cx()))
+            }
+            _ => bug!("bad scalar-pair index {idx}"),
+        };
+
+        for i in 0..layout.fields.count() {
+            let field_layout = layout.field(bx.cx(), i);
+            let field_offset = layout.fields.offset(i);
+
+            if field_layout.is_zst() {
+                continue;
+            }
+
+            if field_offset == want_offset && field_layout.size == want_size {
+                return Some(field_layout.ty);
+            }
+        }
+
+        None
+    }
+
 /// The representation of a Rust value. The enum variant is in fact
 /// uniquely determined by the value's type, but is kept as a
 /// safety check.
@@ -330,11 +368,47 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         layout: TyAndLayout<'tcx>,
     ) -> Self {
         let val = if let BackendRepr::ScalarPair(..) = layout.backend_repr {
-            debug!("Operand::from_immediate_or_packed_pair: unpacking {:?} @ {:?}", llval, layout);
+            use rustc_middle::ty::print::with_no_trimmed_paths;
+            let field0_ty = scalar_pair_component_field_ty(bx, layout, 0);
+            let field1_ty = scalar_pair_component_field_ty(bx, layout, 1);
+            let (f1, f2) = if field0_ty.is_none() || field1_ty.is_none() {
+                (None, None)
+            } else {
+                let tt1 = rustc_middle::ty::typetree_from_ty(bx.tcx(), field0_ty.unwrap());
+                let tt2 = rustc_middle::ty::typetree_from_ty(bx.tcx(), field1_ty.unwrap());
+                with_no_trimmed_paths!({
+                    eprintln!(
+                        "from_immediate_or_packed_pair layout {:?}",
+                        layout
+                    );
+                    eprintln!(
+                        "from_immediate_or_packed_pair layout0 {:?}",
+                        field0_ty
+                    );
+                    eprintln!(
+                        "from_immediate_or_packed_pair layout1 {:?}",
+                        field1_ty
+                    );
+                });
+                dbg!(&tt1);
+                dbg!(&tt2);
+                //dbg!(&tt);
+                use rustc_ast::expand::typetree::FncTree;
+                let fnc1 = FncTree {
+                    args: vec![],//TypeTree::new()
+                    ret: tt1,
+                 };
+                let fnc2 = FncTree {
+                    args: vec![],//TypeTree::new()
+                    ret: tt2,
+                 };
+                (Some(fnc1), Some(fnc2))
+            };
 
             // Deconstruct the immediate aggregate.
-            let a_llval = bx.extract_value(llval, 0, None);
-            let b_llval = bx.extract_value(llval, 1, None);
+            let a_llval = bx.extract_value(llval, 0, f1);
+            // TODO: above/below should take the actual subtree, not full tree like now
+            let b_llval = bx.extract_value(llval, 1, f2);
             OperandValue::Pair(a_llval, b_llval)
         } else {
             OperandValue::Immediate(llval)
@@ -342,12 +416,21 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         OperandRef { val, layout, move_annotation: None }
     }
 
+
     pub(crate) fn extract_field<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         &self,
         fx: &mut FunctionCx<'a, 'tcx, Bx>,
         bx: &mut Bx,
         i: usize,
     ) -> Self {
+        use rustc_middle::ty::print::with_no_trimmed_paths;
+
+        with_no_trimmed_paths!({
+            eprintln!(
+                "from_immediate_or_packed_pair layout {:?}",
+                self.layout
+            );
+        });
         let field = self.layout.field(bx.cx(), i);
         let offset = self.layout.fields.offset(i);
 
@@ -925,7 +1008,8 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
         dest: PlaceRef<'tcx, V>,
         flags: MemFlags,
     ) {
-        debug!("OperandRef::store: operand={:?}, dest={:?}", self, dest);
+        //dbg!("store");
+        //debug!("OperandRef::store: operand={:?}, dest={:?}", self, dest);
         match self {
             OperandValue::ZeroSized => {
                 // Avoid generating stores of zero-sized values, because the only way to have a

@@ -65,7 +65,8 @@ unsafe extern "C" {
         name: *const c_char,
         NameLen: libc::size_t,
     ) -> Option<&Value>;
-    pub(crate) fn LLVMRustIsPtrLoad(v: &Value) -> bool;
+   //pub(crate) fn LLVMRustIsPtrLoad(v: &Value) -> bool;
+    pub(crate) fn LLVMRustIsLoadOrExtractValue(v: &Value) -> bool;
     pub(crate) fn LLVMRustSetEnzymeTypeMetadata(
         v: &Value,
         md: &Value,

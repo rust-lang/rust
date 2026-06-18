@@ -2,7 +2,7 @@ use std::ffi::{CString, c_char, c_uint};
 
 use rustc_ast::expand::typetree::{FncTree, TypeTree as RustTypeTree};
 use crate::llvm::LLVMRustSetEnzymeTypeMetadata;
-use crate::llvm::LLVMRustIsPtrLoad;
+use crate::llvm::LLVMRustIsLoadOrExtractValue;
 use crate::attributes;
 use crate::llvm::{self, EnzymeWrapper, TypeTree, Value};
 
@@ -112,7 +112,8 @@ pub(crate) fn add_tt<'ll>(
             if llvm::LLVMRustIsIntrinsicCall(fn_def) {
                 //dbg!("intrinsic");
                 attributes::apply_to_callsite(fn_def, llvm::AttributePlace::Argument(i as u32), &[attr]);
-            } else if LLVMRustIsPtrLoad(fn_def) {
+            //} else if LLVMRustIsPtrLoad(fn_def) {
+            } else if LLVMRustIsLoadOrExtractValue(fn_def) {
                 //dbg!("skipping input args for instr");
             } else {
                 //dbg!("fn call");
@@ -164,8 +165,8 @@ pub(crate) fn add_tt<'ll>(
         if llvm::LLVMRustIsIntrinsicCall(fn_def) {
             dbg!("intrinsic call");
             attributes::apply_to_callsite(fn_def, llvm::AttributePlace::ReturnValue, &[ret_attr]);
-        } else if LLVMRustIsPtrLoad(fn_def) {
-            dbg!("hiii");
+        //} else if LLVMRustIsPtrLoad(fn_def) {
+        } else if LLVMRustIsLoadOrExtractValue(fn_def) {
             let val = enzyme_wrapper.tree_to_md(enzyme_tt.inner, llcx);
             LLVMRustSetEnzymeTypeMetadata(fn_def, val.unwrap());
         } else {

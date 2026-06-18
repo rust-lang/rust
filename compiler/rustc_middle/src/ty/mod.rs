@@ -2431,6 +2431,31 @@ fn typetree_from_ty_impl_inner<'tcx>(
     visited: &mut Vec<Ty<'tcx>>,
     is_reference_target: bool,
 ) -> TypeTree {
+
+    if ty.is_ref() || ty.is_raw_ptr() || ty.is_box() {
+        let Some(inner_ty) = ty.builtin_deref(true) else {
+            bug!("expected reference or pointer type to have a dereferenceable inner type: {}", ty);
+            return TypeTree::new();
+        };
+
+        let child = typetree_from_ty_impl_inner(tcx, inner_ty, depth + 1, visited, true);
+        return TypeTree(vec![Type {
+            offset: -1,
+            size: tcx.data_layout.pointer_size().bytes_usize(),
+            kind: Kind::Pointer,
+            child,
+        }]);
+    }
+    if let Some(inner) = is_ptr_like(tcx, ty) {
+        let child = typetree_from_ty_impl_inner(tcx, inner, depth + 1, visited, true);
+        return TypeTree(vec![Type {
+            offset: -1,
+            size: tcx.data_layout.pointer_size().bytes_usize(),
+            kind: Kind::Pointer,
+            child,
+        }]);
+    }
+
     if ty.is_scalar() {
         let (kind, size) = if ty.is_integral() || ty.is_char() || ty.is_bool() {
             (Kind::Integer, ty.primitive_size(tcx).bytes_usize())
@@ -2450,20 +2475,6 @@ fn typetree_from_ty_impl_inner<'tcx>(
         // Use offset -1 for scalars used directly (like function return types)
         let offset = if is_reference_target && !ty.is_array() { 0 } else { -1 };
         return TypeTree(vec![Type { offset, size, kind, child: TypeTree::new() }]);
-    }
-
-    if ty.is_ref() || ty.is_raw_ptr() || ty.is_box() {
-        let Some(inner_ty) = ty.builtin_deref(true) else {
-            return TypeTree::new();
-        };
-
-        let child = typetree_from_ty_impl_inner(tcx, inner_ty, depth + 1, visited, true);
-        return TypeTree(vec![Type {
-            offset: -1,
-            size: tcx.data_layout.pointer_size().bytes_usize(),
-            kind: Kind::Pointer,
-            child,
-        }]);
     }
 
     if ty.is_array() {
@@ -2573,3 +2584,18 @@ fn typetree_from_ty_impl_inner<'tcx>(
 
     TypeTree::new()
 }
+use rustc_span::sym;
+fn is_ptr_like<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+    ) -> Option<Ty<'tcx>> {
+    if let ty::Adt(def, args) = ty.kind() {
+        if tcx.is_diagnostic_item(sym::NonNull, def.did()) {
+            let inner_ty = args.type_at(0);
+            return Some(inner_ty);
+        }
+    }
+    None
+}
+
+

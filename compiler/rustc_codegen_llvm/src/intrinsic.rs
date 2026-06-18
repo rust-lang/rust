@@ -6,6 +6,7 @@ use rustc_abi::{
     AddressSpace, Align, BackendRepr, CVariadicStatus, Float, HasDataLayout, Integer,
     NumScalableVectors, Primitive, Size, WrappingRange,
 };
+use rustc_ast::expand::typetree::{FncTree, TypeTree};
 use rustc_codegen_ssa::RetagInfo;
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
@@ -2007,8 +2008,18 @@ fn get_args_from_tuple<'ll, 'tcx>(
                         let field = tuple_place.project_field(bx, tuple_index);
                         let llvm_ty = field.layout.llvm_type(bx.cx);
                         let pair_val = bx.load(llvm_ty, field.val.llval, field.val.align);
-                        result.push(bx.extract_value(pair_val, 0, None));
-                        result.push(bx.extract_value(pair_val, 1, None));
+                        let extract_ty = field.layout.ty;
+                        let tt = rustc_middle::ty::typetree_from_ty(bx.tcx(), extract_ty);
+                        dbg!("intrinsic pair");
+                        dbg!(&tt);
+                        let fnc = FncTree {
+                            args: vec![],//TypeTree::new()
+                            ret: tt,
+                        };
+                        //let tt0 = enzyme_type_from_ty /* TypeTree for extracted element 0 */;
+                        //let tt1 = /* TypeTree for extracted element 1 */;
+                        result.push(bx.extract_value(pair_val, 0, Some(fnc.clone())));
+                        result.push(bx.extract_value(pair_val, 1, Some(fnc)));
                         tuple_index += 1;
                     }
                     PassMode::Indirect { .. } => {

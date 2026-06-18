@@ -744,16 +744,16 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 let tt = rustc_middle::ty::typetree_from_ty(self.tcx, ty);
                 if tt != rustc_ast::expand::typetree::TypeTree::new() {
                     use rustc_middle::ty::print::with_no_trimmed_paths;
-                    dbg!("add_tt start!");
-                    dbg!(&load);
-                    dbg!(&tt);
-                    eprintln!("general load of place = {}", with_no_trimmed_paths!(format!("{place:#?}")));
+                    //dbg!("add_tt start!");
+                    //dbg!(&load);
+                    //dbg!(&tt);
+                    //eprintln!("general load of place = {}", with_no_trimmed_paths!(format!("{place:#?}")));
                     let fnc_tree = FncTree {
                         args: vec![TypeTree::new(), TypeTree::new()],
                         ret: tt,
                     };
                     crate::typetree::add_tt(self.cx().llmod, self.cx().llcx, load, self.tcx, fnc_tree);
-                    dbg!("add_tt done!");
+                    //dbg!("add_tt done!");
                 }
                 //eprintln!("general load of place = {}", with_no_trimmed_paths!(format!("{place:#?}")));
                 //       25 general load of place = PlaceRef {
@@ -1269,7 +1269,13 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn extract_value(&mut self, agg_val: &'ll Value, idx: u64, tt: Option<FncTree>) -> &'ll Value {
         assert_eq!(idx as c_uint as u64, idx);
-        unsafe { llvm::LLVMBuildExtractValue(self.llbuilder, agg_val, idx as c_uint, UNNAMED) }
+        let ev = unsafe {
+            llvm::LLVMBuildExtractValue(self.llbuilder, agg_val, idx as c_uint, UNNAMED)
+        };
+        if let Some(tt) = tt {
+            crate::typetree::add_tt(self.cx().llmod, self.cx().llcx, ev, self.tcx, tt);
+        }
+        ev
     }
 
     fn insert_value(&mut self, agg_val: &'ll Value, elt: &'ll Value, idx: u64) -> &'ll Value {

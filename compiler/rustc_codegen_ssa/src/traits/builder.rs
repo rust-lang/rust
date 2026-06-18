@@ -514,20 +514,19 @@ pub trait BuilderMethods<'a, 'tcx>:
             temp.val.store_with_flags(self, dst.with_type(layout), flags);
         } else if !layout.is_zst() {
             let bytes = self.const_usize(layout.size.bytes());
-            dbg!("typed copy, branch3");
+            //dbg!("typed copy, branch3");
             //let ty = self.backend_type(layout);
             let ty = layout.ty;
-            dbg!(&ty);
+            //dbg!(&ty);
             let tt: TypeTree = typetree_from_ty(self.tcx(), ty);
             let tt = tt.add_indirection();
-            dbg!("got tt");
             let fnc_tree = FncTree {
                 args: vec![tt.clone(), tt],
                 ret: TypeTree::new(),
             };
-            dbg!(&fnc_tree);
+            //dbg!(&fnc_tree);
             self.memcpy(dst.llval, dst.align, src.llval, src.align, bytes, flags, Some(fnc_tree));
-            dbg!("done");
+            //dbg!("done");
         }
     }
 

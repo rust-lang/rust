@@ -759,11 +759,13 @@ extern "C" bool LLVMRustInlineAsmVerify(LLVMTypeRef Ty, char *Constraints,
       unwrap<FunctionType>(Ty), StringRef(Constraints, ConstraintsLen)));
 }
 
-
-extern "C" bool LLVMRustIsPtrLoad(LLVMValueRef V) {
-  auto *LI = llvm::dyn_cast<llvm::LoadInst>(llvm::unwrap(V));
-  return LI;
-  //return LI && LI->getType()->isPointerTy();
+//extern "C" bool LLVMRustIsPtrLoad(LLVMValueRef V) {
+//  auto *LI = llvm::dyn_cast<llvm::LoadInst>(llvm::unwrap(V));
+//  return LI;
+//}
+extern "C" bool LLVMRustIsLoadOrExtractValue(LLVMValueRef V) {
+    auto *I = llvm::dyn_cast<llvm::Instruction>(llvm::unwrap(V));
+    return I && (llvm::isa<llvm::LoadInst>(I) || llvm::isa<llvm::ExtractValueInst>(I));
 }
 
 extern "C" void LLVMRustSetEnzymeTypeMetadata(LLVMValueRef V, LLVMValueRef MDV) {
