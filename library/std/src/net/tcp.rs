@@ -889,11 +889,14 @@ impl TcpListener {
     /// - An error from reaching the per-process or system-wide open file
     ///   descriptor limit. The call can be retried once other file descriptors
     ///   have been closed, typically after a short delay.
+    /// - An error from failing to allocate memory while accepting a connection
+    ///   ([`OutOfMemory`]).
     ///
     /// Which errors can occur is platform-specific. On Unix, [`Interrupted`]
     /// errors are retried internally rather than being returned.
     ///
     /// [`ConnectionAborted`]: io::ErrorKind::ConnectionAborted
+    /// [`OutOfMemory`]: io::ErrorKind::OutOfMemory
     /// [`Interrupted`]: io::ErrorKind::Interrupted
     ///
     /// # Examples
