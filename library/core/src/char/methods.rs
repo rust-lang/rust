@@ -2427,6 +2427,10 @@ impl char {
 
 pub(crate) struct EscapeDebugExtArgs {
     /// Escape Grapheme Extender codepoints?
+    /// (Note that this excludes
+    /// U+FF9E HALFWIDTH KATAKANA VOICED SOUND MARK
+    /// and U+FF9F HALFWIDTH KATAKANA SEMI-VOICED SOUND MARK,
+    /// which are never escaped.)
     pub(crate) escape_grapheme_extender: bool,
 
     /// Escape single quotes?
