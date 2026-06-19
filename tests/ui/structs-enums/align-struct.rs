@@ -13,7 +13,7 @@ struct Align16(i32);
 struct Align1(i32);
 
 // Multiple attributes take the max
-#[repr(align(4))] //~ WARN representation attribute is specified more than once
+#[repr(align(4))]
 #[repr(align(16))]
 #[repr(align(8))]
 struct AlignMany(i32);

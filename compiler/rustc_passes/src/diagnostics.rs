@@ -696,7 +696,7 @@ pub(crate) struct TransparentIncompatible {
 }
 
 #[derive(Diagnostic)]
-#[diag("representation attribute is specified more than once")]
+#[diag("`#[repr(..)]` attribute is specified more than once")]
 #[note("for consistency, only specify the representation once")]
 pub(crate) struct RepeatedRepr;
 
