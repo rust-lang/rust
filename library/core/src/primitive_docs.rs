@@ -1847,6 +1847,7 @@ mod prim_ref {}
 ///   - Alignment 1
 ///   - Not `repr(C)`
 ///   - Not a `repr(transparent)` wrapper around a type that fails to satisfy these conditions
+///   - Not an array whose element type fails to satisfy these conditions
 /// - A `repr(transparent)` type is ABI-compatible with its unique field that does not have trivial ABI
 ///   (as defined above). If there is no such field, the type has trivial ABI.
 /// - A `repr(transparent)` type `T` is ABI-compatible with its unique non-trivial field, i.e., the
