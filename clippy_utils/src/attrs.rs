@@ -108,6 +108,11 @@ pub fn has_non_exhaustive_attr(tcx: TyCtxt<'_>, adt: AdtDef<'_>) -> bool {
 /// Checks whether the given span contains a `#[cfg(..)]` attribute
 pub fn span_contains_cfg(cx: &LateContext<'_>, s: Span) -> bool {
     s.check_text(cx, |src| {
+        // PERF: A `#[cfg]` needs a literal `#`, so skip the lexer when the source has none.
+        if !src.contains('#') {
+            return false;
+        }
+
         let mut iter = tokenize_with_text(src);
 
         // Search for the token sequence [`#`, `[`, `cfg`]
