@@ -5,11 +5,11 @@ set -ex
 # This script tests features intended to be stabilized in 2026. We want to
 # ensure they don't regress until then.
 
-# 1. For the new trait solver, we want to:
+# 1. For the next trait solver, we want to:
 # - ensure it can build the standard library
 # - ensure it actually bootstraps
 #
-# We test both by building the _stage 2_ library with the new solver enabled
+# We test both by building the _stage 2_ library with the next solver enabled
 # at stage 1 via rustflags.
 
 RUSTFLAGS_NOT_BOOTSTRAP="-Znext-solver=globally" ../x build library --stage 2
