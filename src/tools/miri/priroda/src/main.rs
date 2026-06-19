@@ -135,6 +135,7 @@ struct PrirodaContext<'tcx> {
 struct LocalDesc {
     name: Option<Symbol>,
     local: Local,
+    ty: String,
 }
 /// Controls when execution returns to the frontend.
 enum ResumeMode {
@@ -364,7 +365,9 @@ impl<'tcx> PrirodaContext<'tcx> {
             .body()
             .local_decls
             .iter_enumerated()
-            .map(|(id, _local_decl)| LocalDesc { name: None, local: id })
+            .map(|(id, local_decl)| {
+                LocalDesc { name: None, local: id, ty: local_decl.ty.to_string() }
+            })
             .collect();
 
         // FIXME: Some debug-info entries do not have a backing MIR local, for example
@@ -452,9 +455,10 @@ impl Cli {
                                     name_str = name.to_string();
                                 }
                                 println!(
-                                    "Name: {}, Id: _{}",
+                                    "Name: {}, Id: _{}, Ty: {}",
                                     name_str,
                                     local_desc.local.index(),
+                                    local_desc.ty,
                                 );
                             }
                         },
