@@ -208,23 +208,20 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.adt_def(adt_def_id)
     }
 
-    fn unevaluated_const_kind_from_def_id(
-        self,
-        def_id: Self::DefId,
-    ) -> ty::UnevaluatedConstKind<'tcx> {
+    fn alias_const_kind_from_def_id(self, def_id: Self::DefId) -> ty::AliasConstKind<'tcx> {
         match self.def_kind(def_id) {
             DefKind::AssocConst { .. } => {
                 if let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(def_id)) {
-                    ty::UnevaluatedConstKind::Inherent { def_id }
+                    ty::AliasConstKind::Inherent { def_id }
                 } else {
-                    ty::UnevaluatedConstKind::Projection { def_id }
+                    ty::AliasConstKind::Projection { def_id }
                 }
             }
-            DefKind::Const { .. } => ty::UnevaluatedConstKind::Free { def_id },
+            DefKind::Const { .. } => ty::AliasConstKind::Free { def_id },
             DefKind::AnonConst | DefKind::InlineConst | DefKind::Ctor(_, CtorKind::Const) => {
-                ty::UnevaluatedConstKind::Anon { def_id }
+                ty::AliasConstKind::Anon { def_id }
             }
-            kind => bug!("unexpected DefKind in UnevaluatedConst: {kind:?}"),
+            kind => bug!("unexpected DefKind in AliasConst: {kind:?}"),
         }
     }
 

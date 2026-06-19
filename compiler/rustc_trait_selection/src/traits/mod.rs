@@ -370,7 +370,7 @@ pub fn normalize_param_env_or_error<'tcx>(
                     // const arguments that have a non-empty param env are array repeat counts. These
                     // do not appear in the type system though.
                     if let ty::ConstKind::Unevaluated(_, uv) = c.kind()
-                        && matches!(uv.kind, ty::UnevaluatedConstKind::Anon { .. })
+                        && matches!(uv.kind, ty::AliasConstKind::Anon { .. })
                     {
                         let infcx = self.0.infer_ctxt().build(TypingMode::non_body_analysis());
                         let c = evaluate_const(&infcx, c, ty::ParamEnv::empty());
@@ -560,7 +560,7 @@ pub enum EvaluateConstErr {
 }
 
 // FIXME(BoxyUwU): Private this once we `generic_const_exprs` isn't doing its own normalization routine
-// FIXME(generic_const_exprs): Consider accepting a `ty::UnevaluatedConst` when we are not rolling our own
+// FIXME(generic_const_exprs): Consider accepting a `ty::AliasConst` when we are not rolling our own
 // normalization scheme
 /// Evaluates a type system constant returning a `ConstKind::Error` in cases where CTFE failed and
 /// returning the passed in constant if it was not fully concrete (i.e. depended on generic parameters
@@ -583,7 +583,7 @@ pub fn evaluate_const<'tcx>(
 }
 
 // FIXME(BoxyUwU): Private this once we `generic_const_exprs` isn't doing its own normalization routine
-// FIXME(generic_const_exprs): Consider accepting a `ty::UnevaluatedConst` when we are not rolling our own
+// FIXME(generic_const_exprs): Consider accepting a `ty::AliasConst` when we are not rolling our own
 // normalization scheme
 /// Evaluates a type system constant making sure to not allow constants that depend on generic parameters
 /// or inference variables to succeed in evaluating.
@@ -610,9 +610,7 @@ pub fn try_evaluate_const<'tcx>(
         | ty::ConstKind::Expr(_) => Err(EvaluateConstErr::HasGenericsOrInfers),
         ty::ConstKind::Unevaluated(_, uv) => {
             let opt_anon_const_kind = match uv.kind {
-                ty::UnevaluatedConstKind::Anon { def_id } => {
-                    Some((def_id, tcx.anon_const_kind(def_id)))
-                }
+                ty::AliasConstKind::Anon { def_id } => Some((def_id, tcx.anon_const_kind(def_id))),
                 _ => None,
             };
 
@@ -721,7 +719,7 @@ pub fn try_evaluate_const<'tcx>(
                 }
             };
 
-            let uv = ty::UnevaluatedConst::new(tcx, uv.kind, args);
+            let uv = ty::AliasConst::new(tcx, uv.kind, args);
             let erased_uv = tcx.erase_and_anonymize_regions(uv);
 
             use rustc_middle::mir::interpret::ErrorHandled;

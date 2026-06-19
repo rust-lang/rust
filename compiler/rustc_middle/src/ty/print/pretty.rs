@@ -1568,14 +1568,14 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         }
 
         match ct.kind() {
-            ty::ConstKind::Unevaluated(_, ty::UnevaluatedConst { kind, args, .. }) => {
+            ty::ConstKind::Unevaluated(_, ty::AliasConst { kind, args, .. }) => {
                 match kind {
-                    ty::UnevaluatedConstKind::Projection { def_id }
-                    | ty::UnevaluatedConstKind::Inherent { def_id }
-                    | ty::UnevaluatedConstKind::Free { def_id } => {
+                    ty::AliasConstKind::Projection { def_id }
+                    | ty::AliasConstKind::Inherent { def_id }
+                    | ty::AliasConstKind::Free { def_id } => {
                         self.pretty_print_value_path(def_id, args)?;
                     }
-                    ty::UnevaluatedConstKind::Anon { def_id } => {
+                    ty::AliasConstKind::Anon { def_id } => {
                         if def_id.is_local()
                             && let span = self.tcx().def_span(def_id)
                             && let Ok(snip) = self.tcx().sess.source_map().span_to_snippet(span)

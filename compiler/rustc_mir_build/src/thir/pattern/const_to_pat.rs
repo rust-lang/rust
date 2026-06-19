@@ -78,16 +78,16 @@ impl<'tcx> ConstToPat<'tcx> {
     /// We errored. Signal that in the pattern, so that follow up errors can be silenced.
     fn mk_err(&self, mut err: Diag<'_>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
         if let ty::ConstKind::Unevaluated(_, uv) = self.c.kind() {
-            if let ty::UnevaluatedConstKind::Projection { def_id }
-            | ty::UnevaluatedConstKind::Inherent { def_id } = uv.kind
+            if let ty::AliasConstKind::Projection { def_id }
+            | ty::AliasConstKind::Inherent { def_id } = uv.kind
                 && let Some(def_id) = def_id.as_local()
             {
                 // Include the container item in the output.
                 err.span_label(self.tcx.def_span(self.tcx.local_parent(def_id)), "");
             }
-            if let ty::UnevaluatedConstKind::Projection { def_id }
-            | ty::UnevaluatedConstKind::Inherent { def_id }
-            | ty::UnevaluatedConstKind::Free { def_id } = uv.kind
+            if let ty::AliasConstKind::Projection { def_id }
+            | ty::AliasConstKind::Inherent { def_id }
+            | ty::AliasConstKind::Free { def_id } = uv.kind
             {
                 err.span_label(self.tcx.def_span(def_id), msg!("constant defined here"));
             }
@@ -95,11 +95,7 @@ impl<'tcx> ConstToPat<'tcx> {
         Box::new(Pat { span: self.span, ty, kind: PatKind::Error(err.emit()), extra: None })
     }
 
-    fn unevaluated_to_pat(
-        &mut self,
-        uv: ty::UnevaluatedConst<'tcx>,
-        ty: Ty<'tcx>,
-    ) -> Box<Pat<'tcx>> {
+    fn unevaluated_to_pat(&mut self, uv: ty::AliasConst<'tcx>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
         // It's not *technically* correct to be revealing opaque types here as borrowcheck has
         // not run yet. However, CTFE itself uses `TypingMode::PostAnalysis` unconditionally even
         // during typeck and not doing so has a lot of (undesirable) fallout (#101478, #119821).
@@ -141,9 +137,9 @@ impl<'tcx> ConstToPat<'tcx> {
                     // We've emitted an error on the original const, it would be redundant to complain
                     // on its use as well.
                     if let ty::ConstKind::Unevaluated(_, uv) = self.c.kind()
-                        && let ty::UnevaluatedConstKind::Projection { .. }
-                        | ty::UnevaluatedConstKind::Inherent { .. }
-                        | ty::UnevaluatedConstKind::Free { .. } = uv.kind
+                        && let ty::AliasConstKind::Projection { .. }
+                        | ty::AliasConstKind::Inherent { .. }
+                        | ty::AliasConstKind::Free { .. } = uv.kind
                     {
                         err.downgrade_to_delayed_bug();
                     }

@@ -1439,7 +1439,7 @@ where
     pub(super) fn evaluate_const(
         &mut self,
         param_env: I::ParamEnv,
-        uv: ty::UnevaluatedConst<I>,
+        uv: ty::AliasConst<I>,
     ) -> Result<Option<I::Const>, RerunNonErased> {
         if self.typing_mode().is_erased_not_coherence() {
             self.opaque_accesses.rerun_always(RerunReason::EvaluateConst)?;
@@ -1453,7 +1453,7 @@ where
         param_env: I::ParamEnv,
         projection_term: ty::AliasTerm<I>,
         expected_term: I::Term,
-        uv: ty::UnevaluatedConst<I>,
+        uv: ty::AliasConst<I>,
     ) -> QueryResultOrRerunNonErased<I> {
         match self.evaluate_const(param_env, uv)? {
             Some(evaluated) => {

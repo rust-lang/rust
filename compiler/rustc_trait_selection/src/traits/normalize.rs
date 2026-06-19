@@ -488,16 +488,14 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
         // if it was marked with `type const`. Using this attribute without the mgca
         // feature gate causes a parse error.
         let ct = match uv.kind {
-            ty::UnevaluatedConstKind::Projection { .. } => {
+            ty::AliasConstKind::Projection { .. } => {
                 self.normalize_trait_projection(uv.into()).expect_const()
             }
-            ty::UnevaluatedConstKind::Inherent { .. } => {
+            ty::AliasConstKind::Inherent { .. } => {
                 self.normalize_inherent_projection(uv.into()).expect_const()
             }
-            ty::UnevaluatedConstKind::Free { .. } => {
-                self.normalize_free_alias(uv.into()).expect_const()
-            }
-            ty::UnevaluatedConstKind::Anon { .. } => {
+            ty::AliasConstKind::Free { .. } => self.normalize_free_alias(uv.into()).expect_const(),
+            ty::AliasConstKind::Anon { .. } => {
                 let ct = ct.super_fold_with(self);
                 super::with_replaced_escaping_bound_vars(
                     self.selcx.infcx,

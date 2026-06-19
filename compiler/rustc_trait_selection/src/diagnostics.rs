@@ -25,7 +25,7 @@ pub(crate) mod note_and_explain;
 pub(crate) struct UnableToConstructConstantValue<'a> {
     #[primary_span]
     pub span: Span,
-    pub unevaluated: ty::UnevaluatedConst<'a>,
+    pub unevaluated: ty::AliasConst<'a>,
 }
 
 pub(crate) struct NegativePositiveConflict<'tcx> {

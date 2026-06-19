@@ -660,9 +660,9 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
         let c = ty::Const::new_unevaluated(
             self.tcx,
             ty::IsRigid::No,
-            ty::UnevaluatedConst::new(
+            ty::AliasConst::new(
                 self.tcx,
-                ty::UnevaluatedConstKind::new_from_def_id(self.tcx, def_id),
+                ty::AliasConstKind::new_from_def_id(self.tcx, def_id),
                 args,
             ),
         );

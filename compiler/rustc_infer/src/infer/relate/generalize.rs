@@ -769,7 +769,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                         self.generalize_alias_term(uv.into()).map(|v| v.expect_const())
                     }
                     _ => {
-                        let ty::UnevaluatedConst { kind, args, .. } = uv;
+                        let ty::AliasConst { kind, args, .. } = uv;
                         let args = self.relate_with_variance(
                             ty::Invariant,
                             ty::VarianceDiagInfo::default(),
@@ -779,7 +779,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                         Ok(ty::Const::new_unevaluated(
                             tcx,
                             ty::IsRigid::No,
-                            ty::UnevaluatedConst::new(tcx, kind, args),
+                            ty::AliasConst::new(tcx, kind, args),
                         ))
                     }
                 }

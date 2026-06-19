@@ -76,9 +76,9 @@ pub use self::closure::{
     place_to_string_for_capture,
 };
 pub use self::consts::{
-    AtomicOrdering, Const, ConstInt, ConstKind, ConstToValTreeResult, Expr, ExprKind,
-    LitToConstInput, ScalarInt, SimdAlign, UnevaluatedConst, UnevaluatedConstKind, ValTree,
-    ValTreeKindExt, Value, const_lit_matches_ty,
+    AliasConst, AliasConstKind, AtomicOrdering, Const, ConstInt, ConstKind, ConstToValTreeResult,
+    Expr, ExprKind, LitToConstInput, ScalarInt, SimdAlign, ValTree, ValTreeKindExt, Value,
+    const_lit_matches_ty,
 };
 pub use self::context::{
     CtxtInterners, CurrentGcx, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt, TyCtxtFeed, tls,

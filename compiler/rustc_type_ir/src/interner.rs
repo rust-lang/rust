@@ -244,10 +244,7 @@ pub trait Interner:
     type AdtDef: AdtDef<Self>;
     fn adt_def(self, adt_def_id: Self::AdtId) -> Self::AdtDef;
 
-    fn unevaluated_const_kind_from_def_id(
-        self,
-        def_id: Self::DefId,
-    ) -> ty::UnevaluatedConstKind<Self>;
+    fn alias_const_kind_from_def_id(self, def_id: Self::DefId) -> ty::AliasConstKind<Self>;
 
     // FIXME: remove in favor of explicit construction
     fn alias_term_kind_from_def_id(self, def_id: Self::DefId) -> ty::AliasTermKind<Self>;

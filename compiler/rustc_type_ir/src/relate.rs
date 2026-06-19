@@ -227,12 +227,12 @@ impl<I: Interner> Relate<I> for ty::AliasTy<I> {
     }
 }
 
-impl<I: Interner> Relate<I> for ty::UnevaluatedConst<I> {
+impl<I: Interner> Relate<I> for ty::AliasConst<I> {
     fn relate<R: TypeRelation<I>>(
         relation: &mut R,
-        a: ty::UnevaluatedConst<I>,
-        b: ty::UnevaluatedConst<I>,
-    ) -> RelateResult<I, ty::UnevaluatedConst<I>> {
+        a: ty::AliasConst<I>,
+        b: ty::AliasConst<I>,
+    ) -> RelateResult<I, ty::AliasConst<I>> {
         let cx = relation.cx();
         if a.kind != b.kind {
             Err(TypeError::ConstMismatch(ExpectedFound::new(
@@ -245,7 +245,7 @@ impl<I: Interner> Relate<I> for ty::UnevaluatedConst<I> {
 
             let args = relate_args_invariantly(relation, a.args, b.args)?;
 
-            Ok(ty::UnevaluatedConst::new(cx, a.kind, args))
+            Ok(ty::AliasConst::new(cx, a.kind, args))
         }
     }
 }

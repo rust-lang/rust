@@ -454,9 +454,9 @@ where
                     c.into()
                 }
                 ty::AliasTermKind::ProjectionConst { .. } => {
-                    let uv = ty::UnevaluatedConst::new(
+                    let uv = ty::AliasConst::new(
                         cx,
-                        ty::UnevaluatedConstKind::Projection {
+                        ty::AliasConstKind::Projection {
                             def_id: target_item_def_id.into().try_into().unwrap(),
                         },
                         target_args,

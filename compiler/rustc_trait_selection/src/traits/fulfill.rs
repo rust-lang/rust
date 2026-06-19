@@ -717,15 +717,13 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         debug!("equating consts:\nc1= {:?}\nc2= {:?}", c1, c2);
 
                         match (c1.kind(), c2.kind()) {
-                            (
-                                ty::ConstKind::Unevaluated(_, a),
-                                ty::ConstKind::Unevaluated(_, b),
-                            ) if a.kind == b.kind
-                                && matches!(
-                                    a.kind,
-                                    ty::UnevaluatedConstKind::Projection { .. }
-                                        | ty::UnevaluatedConstKind::Inherent { .. }
-                                ) =>
+                            (ty::ConstKind::Unevaluated(_, a), ty::ConstKind::Unevaluated(_, b))
+                                if a.kind == b.kind
+                                    && matches!(
+                                        a.kind,
+                                        ty::AliasConstKind::Projection { .. }
+                                            | ty::AliasConstKind::Inherent { .. }
+                                    ) =>
                             {
                                 if let Ok(new_obligations) = infcx
                                     .at(&obligation.cause, obligation.param_env)

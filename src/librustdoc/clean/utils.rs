@@ -350,8 +350,8 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
 
 pub(crate) fn print_const(tcx: TyCtxt<'_>, n: ty::Const<'_>) -> String {
     match n.kind() {
-        ty::ConstKind::Unevaluated(_, ty::UnevaluatedConst { kind, .. }) => match kind {
-            ty::UnevaluatedConstKind::Projection { def_id } => {
+        ty::ConstKind::Unevaluated(_, ty::AliasConst { kind, .. }) => match kind {
+            ty::AliasConstKind::Projection { def_id } => {
                 if let Some(local_def_id) = def_id.as_local()
                     && let Some(body_id) = tcx.hir_maybe_body_owned_by(local_def_id)
                 {
@@ -360,9 +360,9 @@ pub(crate) fn print_const(tcx: TyCtxt<'_>, n: ty::Const<'_>) -> String {
                     n.to_string()
                 }
             }
-            ty::UnevaluatedConstKind::Inherent { def_id }
-            | ty::UnevaluatedConstKind::Free { def_id }
-            | ty::UnevaluatedConstKind::Anon { def_id } => {
+            ty::AliasConstKind::Inherent { def_id }
+            | ty::AliasConstKind::Free { def_id }
+            | ty::AliasConstKind::Anon { def_id } => {
                 if let Some(local_def_id) = def_id.as_local()
                     && let Some(body_id) = tcx.hir_maybe_body_owned_by(local_def_id)
                 {

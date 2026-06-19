@@ -415,8 +415,8 @@ fn const_evaluatable_predicates_of<'tcx>(
         preds: FxIndexSet<(ty::Clause<'tcx>, Span)>,
     }
 
-    fn is_const_param_default(tcx: TyCtxt<'_>, kind: ty::UnevaluatedConstKind<'_>) -> bool {
-        let ty::UnevaluatedConstKind::Anon { def_id } = kind else { return false };
+    fn is_const_param_default(tcx: TyCtxt<'_>, kind: ty::AliasConstKind<'_>) -> bool {
+        let ty::AliasConstKind::Anon { def_id } = kind else { return false };
         let Some(local) = def_id.as_local() else { return false };
 
         let hir_id = tcx.local_def_id_to_hir_id(local);

@@ -218,7 +218,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
     fn evaluate_const(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        uv: ty::UnevaluatedConst<'tcx>,
+        uv: ty::AliasConst<'tcx>,
     ) -> Option<ty::Const<'tcx>> {
         let ct = ty::Const::new_unevaluated(self.tcx, ty::IsRigid::No, uv);
 

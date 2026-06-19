@@ -280,7 +280,7 @@ pub trait Const<I: Interner<Const = Self>>:
 
     fn new_placeholder(interner: I, param: ty::PlaceholderConst<I>) -> Self;
 
-    fn new_unevaluated(interner: I, is_rigid: ty::IsRigid, uv: ty::UnevaluatedConst<I>) -> Self;
+    fn new_unevaluated(interner: I, is_rigid: ty::IsRigid, uv: ty::AliasConst<I>) -> Self;
 
     fn new_expr(interner: I, expr: I::ExprConst) -> Self;
 

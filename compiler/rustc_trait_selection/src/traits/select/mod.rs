@@ -882,15 +882,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         );
 
                         match (c1.kind(), c2.kind()) {
-                            (
-                                ty::ConstKind::Unevaluated(_, a),
-                                ty::ConstKind::Unevaluated(_, b),
-                            ) if a.kind == b.kind
-                                && matches!(
-                                    a.kind,
-                                    ty::UnevaluatedConstKind::Projection { .. }
-                                        | ty::UnevaluatedConstKind::Inherent { .. }
-                                ) =>
+                            (ty::ConstKind::Unevaluated(_, a), ty::ConstKind::Unevaluated(_, b))
+                                if a.kind == b.kind
+                                    && matches!(
+                                        a.kind,
+                                        ty::AliasConstKind::Projection { .. }
+                                            | ty::AliasConstKind::Inherent { .. }
+                                    ) =>
                             {
                                 if let Ok(InferOk { obligations, value: () }) = self
                                     .infcx

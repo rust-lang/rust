@@ -1865,9 +1865,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ty::AssocTag::Const,
         )?;
         self.require_type_const_attribute(item_def_id, span)?;
-        let uv = ty::UnevaluatedConst::new(
+        let uv = ty::AliasConst::new(
             tcx,
-            ty::UnevaluatedConstKind::new_from_def_id(tcx, item_def_id),
+            ty::AliasConstKind::new_from_def_id(tcx, item_def_id),
             item_args,
         );
         Ok(Const::new_unevaluated(tcx, ty::IsRigid::No, uv))
@@ -2775,9 +2775,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ty::Const::new_unevaluated(
                     tcx,
                     ty::IsRigid::No,
-                    ty::UnevaluatedConst::new(
+                    ty::AliasConst::new(
                         tcx,
-                        ty::UnevaluatedConstKind::new_from_def_id(tcx, did),
+                        ty::AliasConstKind::new_from_def_id(tcx, did),
                         args,
                     ),
                 )
@@ -2933,9 +2933,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             None => ty::Const::new_unevaluated(
                 tcx,
                 ty::IsRigid::No,
-                ty::UnevaluatedConst::new(
+                ty::AliasConst::new(
                     tcx,
-                    ty::UnevaluatedConstKind::Anon { def_id: anon.def_id.to_def_id() },
+                    ty::AliasConstKind::Anon { def_id: anon.def_id.to_def_id() },
                     ty::GenericArgs::identity_for_item(tcx, anon.def_id.to_def_id()),
                 ),
             ),

@@ -1082,13 +1082,13 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                     }
 
                     match uv.kind {
-                        ty::UnevaluatedConstKind::Inherent { .. } => {
+                        ty::AliasConstKind::Inherent { .. } => {
                             self.add_wf_preds_for_inherent_projection(uv.into());
                             return; // Subtree is handled by above function
                         }
-                        ty::UnevaluatedConstKind::Projection { def_id }
-                        | ty::UnevaluatedConstKind::Free { def_id }
-                        | ty::UnevaluatedConstKind::Anon { def_id } => {
+                        ty::AliasConstKind::Projection { def_id }
+                        | ty::AliasConstKind::Free { def_id }
+                        | ty::AliasConstKind::Anon { def_id } => {
                             let obligations = self.nominal_obligations(def_id, uv.args);
                             self.out.extend(obligations);
                         }
