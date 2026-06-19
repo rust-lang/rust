@@ -6,6 +6,21 @@ pub use core::io::ErrorKind;
 #[unstable(feature = "raw_os_error_ty", issue = "107792")]
 pub use core::io::RawOsError;
 
+#[core::io::raw_os_error::decode_error_kind]
+fn raw_os_error_decode(code: RawOsError) -> ErrorKind {
+    sys::io::decode_error_kind(code)
+}
+
+#[core::io::raw_os_error::fmt]
+fn raw_os_error_fmt(code: RawOsError, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fmt.write_str(&sys::io::error_string(code))
+}
+
+#[core::io::raw_os_error::is_interrupted]
+fn raw_os_error_is_interrupted(code: RawOsError) -> bool {
+    sys::io::is_interrupted(code)
+}
+
 // On 64-bit platforms, `io::Error` may use a bit-packed representation to
 // reduce size. However, this representation assumes that error codes are
 // always 32-bit wide.
