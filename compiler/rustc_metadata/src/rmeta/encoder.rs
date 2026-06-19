@@ -3105,9 +3105,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         || {
             tcx.with_stable_hashing_context(|hcx| {
                 let is_proc_macro = tcx.crate_types().contains(&CrateType::ProcMacro);
-                let hash_public_api = tcx.sess.opts.unstable_opts.public_api_hash
-                    & !is_proc_macro
-                    & tcx.sess.opts.incremental.is_some();
+                let hash_public_api = tcx.sess.opts.unstable_opts.public_api_hash && !is_proc_macro;
                 if hash_public_api {
                     encode_crate_root::<DefPathHashDefIdEncoder<'_>>(tcx, path, hcx, &mut hashes);
                 } else {
