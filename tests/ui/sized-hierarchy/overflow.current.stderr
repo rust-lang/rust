@@ -8,9 +8,9 @@ note: required for `Box<Element>` to implement `ParseTokens`
   --> $DIR/overflow.rs:13:31
    |
 LL | impl<T: ParseTokens + ?Sized> ParseTokens for Box<T> {
-   |                       ------  ^^^^^^^^^^^     ^^^^^^
-   |                       |
-   |                       unsatisfied trait bound introduced here
+   |      -                        ^^^^^^^^^^^     ^^^^^^
+   |      |
+   |      unsatisfied trait bound introduced here
    = note: 1 redundant requirement hidden
    = note: required for `Box<Box<Element>>` to implement `ParseTokens`
 

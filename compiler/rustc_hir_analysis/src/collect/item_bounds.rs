@@ -58,16 +58,14 @@ fn associated_type_bounds<'tcx>(
                     &mut bounds,
                     item_ty,
                     hir_bounds,
-                    &[],
-                    ImpliedBoundsContext::AssociatedType(assoc_item_def_id),
+                    ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     span,
                 );
                 icx.lowerer().add_default_traits(
                     &mut bounds,
                     item_ty,
                     hir_bounds,
-                    &[],
-                    ImpliedBoundsContext::AssociatedType(assoc_item_def_id),
+                    ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     span,
                 );
 
@@ -386,16 +384,14 @@ fn opaque_type_bounds<'tcx>(
                     &mut bounds,
                     item_ty,
                     hir_bounds,
-                    &[],
-                    ImpliedBoundsContext::ImplTrait,
+                    ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     span,
                 );
                 icx.lowerer().add_default_traits(
                     &mut bounds,
                     item_ty,
                     hir_bounds,
-                    &[],
-                    ImpliedBoundsContext::ImplTrait,
+                    ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     span,
                 );
             }
