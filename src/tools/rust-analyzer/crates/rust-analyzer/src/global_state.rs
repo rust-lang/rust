@@ -18,7 +18,7 @@ use ide_db::{
 };
 use itertools::Itertools;
 use load_cargo::SourceRootConfig;
-use lsp_types::{SemanticTokens, Url};
+use lsp_types::{Notification, SemanticTokens, Uri};
 use parking_lot::{
     MappedRwLockReadGuard, Mutex, RwLock, RwLockReadGuard, RwLockUpgradableReadGuard,
     RwLockWriteGuard,
@@ -97,7 +97,7 @@ pub(crate) struct GlobalState {
     pub(crate) source_root_config: SourceRootConfig,
     /// A mapping that maps a local source root's `SourceRootId` to it parent's `SourceRootId`, if it has one.
     pub(crate) local_roots_parent_map: Arc<FxHashMap<SourceRootId, SourceRootId>>,
-    pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
+    pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Uri, SemanticTokens>>>,
 
     // status
     pub(crate) shutdown_requested: bool,
@@ -209,7 +209,7 @@ pub(crate) struct GlobalStateSnapshot {
     pub(crate) analysis: Analysis,
     pub(crate) check_fixes: CheckFixes,
     mem_docs: MemDocs,
-    pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
+    pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Uri, SemanticTokens>>>,
     vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
     // used to signal semantic highlighting to fall back to syntax based highlighting until
@@ -580,12 +580,12 @@ impl GlobalState {
         }
     }
 
-    pub(crate) fn send_request<R: lsp_types::request::Request>(
+    pub(crate) fn send_request<R: lsp_types::Request>(
         &mut self,
         params: R::Params,
         handler: ReqHandler,
     ) {
-        let request = self.req_queue.outgoing.register(R::METHOD.to_owned(), params, handler);
+        let request = self.req_queue.outgoing.register(R::METHOD.into(), params, handler);
         self.send(request.into());
     }
 
@@ -598,11 +598,8 @@ impl GlobalState {
         handler(self, response)
     }
 
-    pub(crate) fn send_notification<N: lsp_types::notification::Notification>(
-        &self,
-        params: N::Params,
-    ) {
-        let not = lsp_server::Notification::new(N::METHOD.to_owned(), params);
+    pub(crate) fn send_notification<N: lsp_types::Notification>(&self, params: N::Params) {
+        let not = lsp_server::Notification::new(N::METHOD.into(), params);
         self.send(not.into());
     }
 
@@ -647,7 +644,7 @@ impl GlobalState {
 
     pub(crate) fn publish_diagnostics(
         &mut self,
-        uri: Url,
+        uri: Uri,
         version: Option<i32>,
         mut diagnostics: Vec<lsp_types::Diagnostic>,
     ) {
@@ -680,7 +677,7 @@ impl GlobalState {
                 }
 
                 let not = lsp_server::Notification::new(
-                    <lsp_types::notification::PublishDiagnostics as lsp_types::notification::Notification>::METHOD.to_owned(),
+                    lsp_types::PublishDiagnosticsNotification::METHOD.into(),
                     lsp_types::PublishDiagnosticsParams { uri, diagnostics, version },
                 );
                 _ = sender.send(not.into());
@@ -744,11 +741,11 @@ impl GlobalStateSnapshot {
     }
 
     /// Returns `None` if the file was excluded.
-    pub(crate) fn url_to_file_id(&self, url: &Url) -> anyhow::Result<Option<FileId>> {
+    pub(crate) fn url_to_file_id(&self, url: &Uri) -> anyhow::Result<Option<FileId>> {
         url_to_file_id(&self.vfs_read(), url)
     }
 
-    pub(crate) fn file_id_to_url(&self, id: FileId) -> Url {
+    pub(crate) fn file_id_to_url(&self, id: FileId) -> Uri {
         file_id_to_url(&self.vfs_read(), id)
     }
 
@@ -768,12 +765,12 @@ impl GlobalStateSnapshot {
         Some(self.mem_docs.get(self.vfs_read().file_path(file_id))?.version)
     }
 
-    pub(crate) fn url_file_version(&self, url: &Url) -> Option<i32> {
+    pub(crate) fn url_file_version(&self, url: &Uri) -> Option<i32> {
         let path = from_proto::vfs_path(url).ok()?;
         Some(self.mem_docs.get(&path)?.version)
     }
 
-    pub(crate) fn anchored_path(&self, path: &AnchoredPathBuf) -> Url {
+    pub(crate) fn anchored_path(&self, path: &AnchoredPathBuf) -> Uri {
         let mut base = self.vfs_read().file_path(path.anchor).clone();
         base.pop();
         let path = base.join(&path.path).unwrap();
@@ -898,14 +895,14 @@ impl GlobalStateSnapshot {
     }
 }
 
-pub(crate) fn file_id_to_url(vfs: &vfs::Vfs, id: FileId) -> Url {
+pub(crate) fn file_id_to_url(vfs: &vfs::Vfs, id: FileId) -> Uri {
     let path = vfs.file_path(id);
     let path = path.as_path().unwrap();
     url_from_abs_path(path)
 }
 
 /// Returns `None` if the file was excluded.
-pub(crate) fn url_to_file_id(vfs: &vfs::Vfs, url: &Url) -> anyhow::Result<Option<FileId>> {
+pub(crate) fn url_to_file_id(vfs: &vfs::Vfs, url: &Uri) -> anyhow::Result<Option<FileId>> {
     let path = from_proto::vfs_path(url)?;
     vfs_path_to_file_id(vfs, &path)
 }

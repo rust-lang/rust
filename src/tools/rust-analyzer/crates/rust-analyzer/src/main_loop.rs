@@ -11,7 +11,7 @@ use std::{
 use crossbeam_channel::{Receiver, never, select};
 use ide_db::base_db::{SourceDatabase, VfsPath};
 use lsp_server::{Connection, Notification, Request};
-use lsp_types::{TextDocumentIdentifier, notification::Notification as _};
+use lsp_types::{Notification as _, TextDocumentIdentifier};
 use stdx::thread::ThreadIntent;
 use tracing::{Level, error, span};
 use vfs::{AbsPathBuf, FileId, loader::LoadingProgress};
@@ -99,7 +99,7 @@ impl fmt::Display for Event {
 
 #[derive(Debug)]
 pub(crate) enum DeferredTask {
-    CheckIfIndexed(lsp_types::Url),
+    CheckIfIndexed(lsp_types::Uri),
     CheckProcMacroSources(Vec<FileId>),
 }
 
@@ -145,8 +145,8 @@ impl fmt::Debug for Event {
 
         match self {
             Event::Lsp(lsp_server::Message::Notification(not))
-                if (notification_is::<lsp_types::notification::DidOpenTextDocument>(not)
-                    || notification_is::<lsp_types::notification::DidChangeTextDocument>(not)) =>
+                if (notification_is::<lsp_types::DidOpenTextDocumentNotification>(not)
+                    || notification_is::<lsp_types::DidChangeTextDocumentNotification>(not)) =>
             {
                 return debug_non_verbose(not, f);
             }
@@ -207,7 +207,7 @@ impl GlobalState {
             if matches!(
                 &event,
                 Event::Lsp(lsp_server::Message::Notification(Notification { method, .. }))
-                if method == lsp_types::notification::Exit::METHOD
+                if method == lsp_types::ExitNotification::METHOD.as_str()
             ) {
                 return Ok(());
             }
@@ -218,33 +218,43 @@ impl GlobalState {
     }
 
     fn register_did_save_capability(&mut self, additional_patterns: impl Iterator<Item = String>) {
-        let additional_filters = additional_patterns.map(|pattern| lsp_types::DocumentFilter {
-            language: None,
-            scheme: None,
-            pattern: (Some(pattern)),
+        let additional_filters = additional_patterns.map(|pattern| {
+            lsp_types::DocumentFilter::TextDocumentFilter(lsp_types::TextDocumentFilter::Pattern(
+                lsp_types::TextDocumentFilterPattern {
+                    language: None,
+                    scheme: None,
+                    pattern: pattern.into(),
+                },
+            ))
         });
 
         let mut selectors = vec![
-            lsp_types::DocumentFilter {
-                language: None,
-                scheme: None,
-                pattern: Some("**/*.rs".into()),
-            },
-            lsp_types::DocumentFilter {
-                language: None,
-                scheme: None,
-                pattern: Some("**/Cargo.toml".into()),
-            },
-            lsp_types::DocumentFilter {
-                language: None,
-                scheme: None,
-                pattern: Some("**/Cargo.lock".into()),
-            },
+            lsp_types::DocumentFilter::TextDocumentFilter(lsp_types::TextDocumentFilter::Pattern(
+                lsp_types::TextDocumentFilterPattern {
+                    language: None,
+                    scheme: None,
+                    pattern: "**/*.rs".to_owned().into(),
+                },
+            )),
+            lsp_types::DocumentFilter::TextDocumentFilter(lsp_types::TextDocumentFilter::Pattern(
+                lsp_types::TextDocumentFilterPattern {
+                    language: None,
+                    scheme: None,
+                    pattern: "**/Cargo.toml".to_owned().into(),
+                },
+            )),
+            lsp_types::DocumentFilter::TextDocumentFilter(lsp_types::TextDocumentFilter::Pattern(
+                lsp_types::TextDocumentFilterPattern {
+                    language: None,
+                    scheme: None,
+                    pattern: "**/Cargo.lock".to_owned().into(),
+                },
+            )),
         ];
         selectors.extend(additional_filters);
 
         let save_registration_options = lsp_types::TextDocumentSaveRegistrationOptions {
-            include_text: Some(false),
+            save_options: lsp_types::SaveOptions { include_text: Some(false) },
             text_document_registration_options: lsp_types::TextDocumentRegistrationOptions {
                 document_selector: Some(selectors),
             },
@@ -255,7 +265,7 @@ impl GlobalState {
             method: "textDocument/didSave".to_owned(),
             register_options: Some(serde_json::to_value(save_registration_options).unwrap()),
         };
-        self.send_request::<lsp_types::request::RegisterCapability>(
+        self.send_request::<lsp_types::RegistrationRequest>(
             lsp_types::RegistrationParams { registrations: vec![registration] },
             |_, _| (),
         );
@@ -453,10 +463,7 @@ impl GlobalState {
                     self.handle_flycheck_msg(message, &mut cargo_finished);
                 }
                 if cargo_finished {
-                    self.send_request::<lsp_types::request::WorkspaceDiagnosticRefresh>(
-                        (),
-                        |_, _| (),
-                    );
+                    self.send_request::<lsp_types::DiagnosticRefreshRequest>((), |_, _| ());
                 }
             }
             Event::TestResult(message) => {
@@ -519,24 +526,21 @@ impl GlobalState {
                 // Refresh semantic tokens if the client supports it.
                 if self.config.semantic_tokens_refresh() {
                     self.semantic_tokens_cache.lock().clear();
-                    self.send_request::<lsp_types::request::SemanticTokensRefresh>((), |_, _| ());
+                    self.send_request::<lsp_types::SemanticTokensRefreshRequest>((), |_, _| ());
                 }
 
                 // Refresh code lens if the client supports it.
                 if self.config.code_lens_refresh() {
-                    self.send_request::<lsp_types::request::CodeLensRefresh>((), |_, _| ());
+                    self.send_request::<lsp_types::CodeLensRefreshRequest>((), |_, _| ());
                 }
 
                 // Refresh inlay hints if the client supports it.
                 if self.config.inlay_hints_refresh() {
-                    self.send_request::<lsp_types::request::InlayHintRefreshRequest>((), |_, _| ());
+                    self.send_request::<lsp_types::InlayHintRefreshRequest>((), |_, _| ());
                 }
 
                 if self.config.diagnostics_refresh() {
-                    self.send_request::<lsp_types::request::WorkspaceDiagnosticRefresh>(
-                        (),
-                        |_, _| (),
-                    );
+                    self.send_request::<lsp_types::DiagnosticRefreshRequest>((), |_, _| ());
                 }
             }
 
@@ -808,9 +812,9 @@ impl GlobalState {
                         || self.fetch_workspace_error().is_err());
                 self.show_message(
                     match health {
-                        lsp_ext::Health::Ok => lsp_types::MessageType::INFO,
-                        lsp_ext::Health::Warning => lsp_types::MessageType::WARNING,
-                        lsp_ext::Health::Error => lsp_types::MessageType::ERROR,
+                        lsp_ext::Health::Ok => lsp_types::MessageType::Info,
+                        lsp_ext::Health::Warning => lsp_types::MessageType::Warning,
+                        lsp_ext::Health::Error => lsp_types::MessageType::Error,
                     },
                     message.clone(),
                     open_log_button,
@@ -886,7 +890,7 @@ impl GlobalState {
                             self.discover_handles.push(handle)
                         }
                         Err(e) => self.show_message(
-                            lsp_types::MessageType::ERROR,
+                            lsp_types::MessageType::Error,
                             format!("Failed to spawn project discovery command: {e:#}"),
                             false,
                         ),
@@ -934,7 +938,7 @@ impl GlobalState {
             }
             Task::BuildDepsHaveChanged => self.build_deps_changed = true,
             Task::DiscoverTest(tests) => {
-                self.send_notification::<lsp_ext::DiscoveredTests>(tests);
+                self.send_notification::<lsp_ext::DiscoveredTestsNotification>(tests);
             }
         }
     }
@@ -1147,7 +1151,7 @@ impl GlobalState {
                 // The notification requires the namespace form (with underscores) of the target
                 let test_id = format!("{}::{name}", message.target.target.replace('-', "_"));
 
-                self.send_notification::<lsp_ext::ChangeTestState>(
+                self.send_notification::<lsp_ext::ChangeTestStateNotification>(
                     lsp_ext::ChangeTestStateParams { test_id, state },
                 );
             }
@@ -1155,12 +1159,12 @@ impl GlobalState {
             CargoTestOutput::Finished => {
                 self.test_run_remaining_jobs = self.test_run_remaining_jobs.saturating_sub(1);
                 if self.test_run_remaining_jobs == 0 {
-                    self.send_notification::<lsp_ext::EndRunTest>(());
+                    self.send_notification::<lsp_ext::EndRunTestNotification>(());
                     self.test_run_session = None;
                 }
             }
             CargoTestOutput::Custom { text } => {
-                self.send_notification::<lsp_ext::AppendOutputToRunTest>(text);
+                self.send_notification::<lsp_ext::AppendOutputToRunTestNotification>(text);
             }
         }
     }
@@ -1281,7 +1285,7 @@ impl GlobalState {
     /// Handles a request.
     fn on_request(&mut self, req: Request) {
         let mut dispatcher = RequestDispatcher { req: Some(req), global_state: self };
-        dispatcher.on_sync_mut::<lsp_types::request::Shutdown>(|s, ()| {
+        dispatcher.on_sync_mut::<lsp_types::ShutdownRequest>(|s, ()| {
             s.shutdown_requested = true;
             s.proc_macro_clients =
                 std::iter::repeat_with(|| None).take(s.proc_macro_clients.len()).collect();
@@ -1303,7 +1307,6 @@ impl GlobalState {
         }
 
         use crate::handlers::request as handlers;
-        use lsp_types::request as lsp_request;
 
         const RETRY: bool = true;
         const NO_RETRY: bool = false;
@@ -1312,91 +1315,91 @@ impl GlobalState {
         dispatcher
             // Request handlers that must run on the main thread
             // because they mutate GlobalState:
-            .on_sync_mut::<lsp_ext::ReloadWorkspace>(handlers::handle_workspace_reload)
-            .on_sync_mut::<lsp_ext::RebuildProcMacros>(handlers::handle_proc_macros_rebuild)
-            .on_sync_mut::<lsp_ext::MemoryUsage>(handlers::handle_memory_usage)
-            .on_sync_mut::<lsp_ext::RunTest>(handlers::handle_run_test)
+            .on_sync_mut::<lsp_ext::ReloadWorkspaceRequest>(handlers::handle_workspace_reload)
+            .on_sync_mut::<lsp_ext::RebuildProcMacrosRequest>(handlers::handle_proc_macros_rebuild)
+            .on_sync_mut::<lsp_ext::MemoryUsageRequest>(handlers::handle_memory_usage)
+            .on_sync_mut::<lsp_ext::RunTestRequest>(handlers::handle_run_test)
             // Request handlers which are related to the user typing
             // are run on the main thread to reduce latency:
-            .on_sync::<lsp_ext::JoinLines>(handlers::handle_join_lines)
-            .on_sync::<lsp_ext::OnEnter>(handlers::handle_on_enter)
-            .on_sync::<lsp_request::SelectionRangeRequest>(handlers::handle_selection_range)
-            .on_sync::<lsp_ext::MatchingBrace>(handlers::handle_matching_brace)
-            .on_sync::<lsp_ext::OnTypeFormatting>(handlers::handle_on_type_formatting)
+            .on_sync::<lsp_ext::JoinLinesRequest>(handlers::handle_join_lines)
+            .on_sync::<lsp_ext::OnEnterRequest>(handlers::handle_on_enter)
+            .on_sync::<lsp_types::SelectionRangeRequest>(handlers::handle_selection_range)
+            .on_sync::<lsp_ext::MatchingBraceRequest>(handlers::handle_matching_brace)
+            .on_sync::<lsp_ext::DocumentOnTypeFormattingRequest>(handlers::handle_on_type_formatting)
             // Formatting should be done immediately as the editor might wait on it, but we can't
             // put it on the main thread as we do not want the main thread to block on rustfmt.
             // So we have an extra thread just for formatting requests to make sure it gets handled
             // as fast as possible.
-            .on_fmt_thread::<lsp_request::Formatting>(handlers::handle_formatting)
-            .on_fmt_thread::<lsp_request::RangeFormatting>(handlers::handle_range_formatting)
+            .on_fmt_thread::<lsp_types::DocumentFormattingRequest>(handlers::handle_formatting)
+            .on_fmt_thread::<lsp_types::DocumentRangeFormattingRequest>(handlers::handle_range_formatting)
             // We can’t run latency-sensitive request handlers which do semantic
             // analysis on the main thread because that would block other
             // requests. Instead, we run these request handlers on higher priority
             // threads in the threadpool.
             // FIXME: Retrying can make the result of this stale?
-            .on_latency_sensitive::<RETRY, lsp_request::Completion>(handlers::handle_completion)
+            .on_latency_sensitive::<RETRY, lsp_types::CompletionRequest>(handlers::handle_completion)
             // FIXME: Retrying can make the result of this stale
-            .on_latency_sensitive::<RETRY, lsp_request::ResolveCompletionItem>(handlers::handle_completion_resolve)
-            .on_latency_sensitive::<RETRY, lsp_request::SemanticTokensFullRequest>(handlers::handle_semantic_tokens_full)
-            .on_latency_sensitive::<RETRY, lsp_request::SemanticTokensFullDeltaRequest>(handlers::handle_semantic_tokens_full_delta)
-            .on_latency_sensitive::<NO_RETRY, lsp_request::SemanticTokensRangeRequest>(handlers::handle_semantic_tokens_range)
+            .on_latency_sensitive::<RETRY, lsp_types::CompletionResolveRequest>(handlers::handle_completion_resolve)
+            .on_latency_sensitive::<RETRY, lsp_types::SemanticTokensRequest>(handlers::handle_semantic_tokens_full)
+            .on_latency_sensitive::<RETRY, lsp_types::SemanticTokensDeltaRequest>(handlers::handle_semantic_tokens_full_delta)
+            .on_latency_sensitive::<NO_RETRY, lsp_types::SemanticTokensRangeRequest>(handlers::handle_semantic_tokens_range)
             // FIXME: Some of these NO_RETRY could be retries if the file they are interested didn't change.
             // All other request handlers
-            .on_with_vfs_default::<lsp_request::DocumentDiagnosticRequest>(handlers::handle_document_diagnostics, empty_diagnostic_report, || lsp_server::ResponseError {
+            .on_with_vfs_default::<lsp_types::DocumentDiagnosticRequest>(handlers::handle_document_diagnostics, empty_diagnostic_report, || lsp_server::ResponseError {
                 code: lsp_server::ErrorCode::ServerCancelled as i32,
                 message: "server cancelled the request".to_owned(),
                 data: serde_json::to_value(lsp_types::DiagnosticServerCancellationData {
                     retrigger_request: true
                 }).ok(),
             })
-            .on::<RETRY, lsp_request::DocumentSymbolRequest>(handlers::handle_document_symbol)
-            .on::<RETRY, lsp_request::FoldingRangeRequest>(handlers::handle_folding_range)
-            .on::<NO_RETRY, lsp_request::SignatureHelpRequest>(handlers::handle_signature_help)
-            .on::<RETRY, lsp_request::WillRenameFiles>(handlers::handle_will_rename_files)
-            .on::<NO_RETRY, lsp_request::GotoDefinition>(handlers::handle_goto_definition)
-            .on::<NO_RETRY, lsp_request::GotoDeclaration>(handlers::handle_goto_declaration)
-            .on::<NO_RETRY, lsp_request::GotoImplementation>(handlers::handle_goto_implementation)
-            .on::<NO_RETRY, lsp_request::GotoTypeDefinition>(handlers::handle_goto_type_definition)
-            .on::<NO_RETRY, lsp_request::InlayHintRequest>(handlers::handle_inlay_hints)
-            .on_identity::<NO_RETRY, lsp_request::InlayHintResolveRequest, _>(handlers::handle_inlay_hints_resolve)
-            .on::<NO_RETRY, lsp_request::CodeLensRequest>(handlers::handle_code_lens)
-            .on_identity::<NO_RETRY, lsp_request::CodeLensResolve, _>(handlers::handle_code_lens_resolve)
-            .on::<NO_RETRY, lsp_request::PrepareRenameRequest>(handlers::handle_prepare_rename)
-            .on::<NO_RETRY, lsp_request::Rename>(handlers::handle_rename)
-            .on::<NO_RETRY, lsp_request::References>(handlers::handle_references)
-            .on::<NO_RETRY, lsp_request::DocumentHighlightRequest>(handlers::handle_document_highlight)
-            .on::<NO_RETRY, lsp_request::CallHierarchyPrepare>(handlers::handle_call_hierarchy_prepare)
-            .on::<NO_RETRY, lsp_request::CallHierarchyIncomingCalls>(handlers::handle_call_hierarchy_incoming)
-            .on::<NO_RETRY, lsp_request::CallHierarchyOutgoingCalls>(handlers::handle_call_hierarchy_outgoing)
+            .on::<RETRY, lsp_types::DocumentSymbolRequest>(handlers::handle_document_symbol)
+            .on::<RETRY, lsp_types::FoldingRangeRequest>(handlers::handle_folding_range)
+            .on::<NO_RETRY, lsp_types::SignatureHelpRequest>(handlers::handle_signature_help)
+            .on::<RETRY, lsp_types::WillRenameFilesRequest>(handlers::handle_will_rename_files)
+            .on::<NO_RETRY, lsp_types::DefinitionRequest>(handlers::handle_goto_definition)
+            .on::<NO_RETRY, lsp_types::DeclarationRequest>(handlers::handle_goto_declaration)
+            .on::<NO_RETRY, lsp_types::ImplementationRequest>(handlers::handle_goto_implementation)
+            .on::<NO_RETRY, lsp_types::TypeDefinitionRequest>(handlers::handle_goto_type_definition)
+            .on::<NO_RETRY, lsp_types::InlayHintRequest>(handlers::handle_inlay_hints)
+            .on_identity::<NO_RETRY, lsp_types::InlayHintResolveRequest, _>(handlers::handle_inlay_hints_resolve)
+            .on::<NO_RETRY, lsp_types::CodeLensRequest>(handlers::handle_code_lens)
+            .on_identity::<NO_RETRY, lsp_types::CodeLensResolveRequest, _>(handlers::handle_code_lens_resolve)
+            .on::<NO_RETRY, lsp_types::PrepareRenameRequest>(handlers::handle_prepare_rename)
+            .on::<NO_RETRY, lsp_types::RenameRequest>(handlers::handle_rename)
+            .on::<NO_RETRY, lsp_types::ReferencesRequest>(handlers::handle_references)
+            .on::<NO_RETRY, lsp_types::DocumentHighlightRequest>(handlers::handle_document_highlight)
+            .on::<NO_RETRY, lsp_types::CallHierarchyPrepareRequest>(handlers::handle_call_hierarchy_prepare)
+            .on::<NO_RETRY, lsp_types::CallHierarchyIncomingCallsRequest>(handlers::handle_call_hierarchy_incoming)
+            .on::<NO_RETRY, lsp_types::CallHierarchyOutgoingCallsRequest>(handlers::handle_call_hierarchy_outgoing)
             // All other request handlers (lsp extension)
-            .on::<RETRY, lsp_ext::FetchDependencyList>(handlers::fetch_dependency_list)
-            .on::<RETRY, lsp_ext::AnalyzerStatus>(handlers::handle_analyzer_status)
-            .on::<RETRY, lsp_ext::ViewFileText>(handlers::handle_view_file_text)
-            .on::<RETRY, lsp_ext::ViewCrateGraph>(handlers::handle_view_crate_graph)
-            .on::<RETRY, lsp_ext::ViewItemTree>(handlers::handle_view_item_tree)
-            .on::<RETRY, lsp_ext::DiscoverTest>(handlers::handle_discover_test)
-            .on::<RETRY, lsp_ext::WorkspaceSymbol>(handlers::handle_workspace_symbol)
-            .on::<NO_RETRY, lsp_ext::Ssr>(handlers::handle_ssr)
-            .on::<NO_RETRY, lsp_ext::ViewRecursiveMemoryLayout>(handlers::handle_view_recursive_memory_layout)
-            .on::<NO_RETRY, lsp_ext::ViewSyntaxTree>(handlers::handle_view_syntax_tree)
-            .on::<NO_RETRY, lsp_ext::ViewHir>(handlers::handle_view_hir)
-            .on::<NO_RETRY, lsp_ext::ViewMir>(handlers::handle_view_mir)
-            .on::<NO_RETRY, lsp_ext::InterpretFunction>(handlers::handle_interpret_function)
-            .on::<NO_RETRY, lsp_ext::ExpandMacro>(handlers::handle_expand_macro)
-            .on::<NO_RETRY, lsp_ext::ParentModule>(handlers::handle_parent_module)
-            .on::<NO_RETRY, lsp_ext::ChildModules>(handlers::handle_child_modules)
-            .on::<NO_RETRY, lsp_ext::Runnables>(handlers::handle_runnables)
-            .on::<NO_RETRY, lsp_ext::RelatedTests>(handlers::handle_related_tests)
+            .on::<RETRY, lsp_ext::FetchDependencyListRequest>(handlers::fetch_dependency_list)
+            .on::<RETRY, lsp_ext::AnalyzerStatusRequest>(handlers::handle_analyzer_status)
+            .on::<RETRY, lsp_ext::ViewFileTextRequest>(handlers::handle_view_file_text)
+            .on::<RETRY, lsp_ext::ViewCrateGraphRequest>(handlers::handle_view_crate_graph)
+            .on::<RETRY, lsp_ext::ViewItemTreeRequest>(handlers::handle_view_item_tree)
+            .on::<RETRY, lsp_ext::DiscoverTestRequest>(handlers::handle_discover_test)
+            .on::<RETRY, lsp_ext::WorkspaceSymbolRequest>(handlers::handle_workspace_symbol)
+            .on::<NO_RETRY, lsp_ext::SsrRequest>(handlers::handle_ssr)
+            .on::<NO_RETRY, lsp_ext::ViewRecursiveMemoryLayoutRequest>(handlers::handle_view_recursive_memory_layout)
+            .on::<NO_RETRY, lsp_ext::ViewSyntaxTreeRequest>(handlers::handle_view_syntax_tree)
+            .on::<NO_RETRY, lsp_ext::ViewHirRequest>(handlers::handle_view_hir)
+            .on::<NO_RETRY, lsp_ext::ViewMirRequest>(handlers::handle_view_mir)
+            .on::<NO_RETRY, lsp_ext::InterpretFunctionRequest>(handlers::handle_interpret_function)
+            .on::<NO_RETRY, lsp_ext::ExpandMacroRequest>(handlers::handle_expand_macro)
+            .on::<NO_RETRY, lsp_ext::ParentModuleRequest>(handlers::handle_parent_module)
+            .on::<NO_RETRY, lsp_ext::ChildModulesRequest>(handlers::handle_child_modules)
+            .on::<NO_RETRY, lsp_ext::RunnablesRequest>(handlers::handle_runnables)
+            .on::<NO_RETRY, lsp_ext::RelatedTestsRequest>(handlers::handle_related_tests)
             .on::<NO_RETRY, lsp_ext::CodeActionRequest>(handlers::handle_code_action)
             .on_identity::<RETRY, lsp_ext::CodeActionResolveRequest, _>(handlers::handle_code_action_resolve)
             .on::<NO_RETRY, lsp_ext::HoverRequest>(handlers::handle_hover)
-            .on::<NO_RETRY, lsp_ext::ExternalDocs>(handlers::handle_open_docs)
-            .on::<NO_RETRY, lsp_ext::OpenCargoToml>(handlers::handle_open_cargo_toml)
-            .on::<NO_RETRY, lsp_ext::MoveItem>(handlers::handle_move_item)
+            .on::<NO_RETRY, lsp_ext::ExternalDocsRequest>(handlers::handle_open_docs)
+            .on::<NO_RETRY, lsp_ext::OpenCargoTomlRequest>(handlers::handle_open_cargo_toml)
+            .on::<NO_RETRY, lsp_ext::MoveItemRequest>(handlers::handle_move_item)
             //
-            .on::<NO_RETRY, lsp_ext::InternalTestingFetchConfig>(handlers::internal_testing_fetch_config)
-            .on::<RETRY, lsp_ext::EvaluatePredicate>(handlers::handle_evaluate_predicate)
-            .on::<RETRY, lsp_ext::GetFailedObligations>(handlers::get_failed_obligations)
+            .on::<NO_RETRY, lsp_ext::InternalTestingFetchConfigRequest>(handlers::internal_testing_fetch_config)
+            .on::<RETRY, lsp_ext::EvaluatePredicateRequest>(handlers::handle_evaluate_predicate)
+            .on::<RETRY, lsp_ext::GetFailedObligationsRequest>(handlers::get_failed_obligations)
             .finish();
     }
 
@@ -1405,28 +1408,37 @@ impl GlobalState {
         let _p =
             span!(Level::INFO, "GlobalState::on_notification", not.method = ?not.method).entered();
         use crate::handlers::notification as handlers;
-        use lsp_types::notification as notifs;
 
         NotificationDispatcher { not: Some(not), global_state: self }
-            .on_sync_mut::<notifs::Cancel>(handlers::handle_cancel)
-            .on_sync_mut::<notifs::WorkDoneProgressCancel>(
+            .on_sync_mut::<lsp_types::CancelNotification>(handlers::handle_cancel)
+            .on_sync_mut::<lsp_types::WorkDoneProgressCancelNotification>(
                 handlers::handle_work_done_progress_cancel,
             )
-            .on_sync_mut::<notifs::DidOpenTextDocument>(handlers::handle_did_open_text_document)
-            .on_sync_mut::<notifs::DidChangeTextDocument>(handlers::handle_did_change_text_document)
-            .on_sync_mut::<notifs::DidCloseTextDocument>(handlers::handle_did_close_text_document)
-            .on_sync_mut::<notifs::DidSaveTextDocument>(handlers::handle_did_save_text_document)
-            .on_sync_mut::<notifs::DidChangeConfiguration>(
+            .on_sync_mut::<lsp_types::DidOpenTextDocumentNotification>(
+                handlers::handle_did_open_text_document,
+            )
+            .on_sync_mut::<lsp_types::DidChangeTextDocumentNotification>(
+                handlers::handle_did_change_text_document,
+            )
+            .on_sync_mut::<lsp_types::DidCloseTextDocumentNotification>(
+                handlers::handle_did_close_text_document,
+            )
+            .on_sync_mut::<lsp_types::DidSaveTextDocumentNotification>(
+                handlers::handle_did_save_text_document,
+            )
+            .on_sync_mut::<lsp_types::DidChangeConfigurationNotification>(
                 handlers::handle_did_change_configuration,
             )
-            .on_sync_mut::<notifs::DidChangeWorkspaceFolders>(
+            .on_sync_mut::<lsp_types::DidChangeWorkspaceFoldersNotification>(
                 handlers::handle_did_change_workspace_folders,
             )
-            .on_sync_mut::<notifs::DidChangeWatchedFiles>(handlers::handle_did_change_watched_files)
-            .on_sync_mut::<lsp_ext::CancelFlycheck>(handlers::handle_cancel_flycheck)
-            .on_sync_mut::<lsp_ext::ClearFlycheck>(handlers::handle_clear_flycheck)
-            .on_sync_mut::<lsp_ext::RunFlycheck>(handlers::handle_run_flycheck)
-            .on_sync_mut::<lsp_ext::AbortRunTest>(handlers::handle_abort_run_test)
+            .on_sync_mut::<lsp_types::DidChangeWatchedFilesNotification>(
+                handlers::handle_did_change_watched_files,
+            )
+            .on_sync_mut::<lsp_ext::CancelFlycheckNotification>(handlers::handle_cancel_flycheck)
+            .on_sync_mut::<lsp_ext::ClearFlycheckNotification>(handlers::handle_clear_flycheck)
+            .on_sync_mut::<lsp_ext::RunFlycheckNotification>(handlers::handle_run_flycheck)
+            .on_sync_mut::<lsp_ext::AbortRunTestNotification>(handlers::handle_abort_run_test)
             .finish();
     }
 }

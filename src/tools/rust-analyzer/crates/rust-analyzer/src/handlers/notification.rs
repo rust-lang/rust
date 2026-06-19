@@ -30,8 +30,8 @@ use crate::{
 
 pub(crate) fn handle_cancel(state: &mut GlobalState, params: CancelParams) -> anyhow::Result<()> {
     let id: lsp_server::RequestId = match params.id {
-        lsp_types::NumberOrString::Number(id) => id.into(),
-        lsp_types::NumberOrString::String(id) => id.into(),
+        lsp_types::Id::Int(id) => id.into(),
+        lsp_types::Id::String(id) => id.into(),
     };
     state.cancel(id);
     Ok(())
@@ -41,7 +41,7 @@ pub(crate) fn handle_work_done_progress_cancel(
     state: &mut GlobalState,
     params: WorkDoneProgressCancelParams,
 ) -> anyhow::Result<()> {
-    if let lsp_types::NumberOrString::String(s) = &params.token
+    if let lsp_types::ProgressToken::String(s) = &params.token
         && let Some(id) = s.strip_prefix("rust-analyzer/flycheck/")
         && let Ok(id) = id.parse::<u32>()
         && let Some(flycheck) = state.flycheck.get(id as usize)
@@ -103,7 +103,7 @@ pub(crate) fn handle_did_change_text_document(
 ) -> anyhow::Result<()> {
     let _p = tracing::info_span!("handle_did_change_text_document").entered();
 
-    if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
+    if let Ok(path) = from_proto::vfs_path(&params.text_document.text_document_identifier.uri) {
         let Some(DocumentData { version, data }) = state.mem_docs.get_mut(&path) else {
             tracing::error!(?path, "unexpected DidChangeTextDocument");
             return Ok(());
@@ -215,7 +215,7 @@ pub(crate) fn handle_did_change_configuration(
 ) -> anyhow::Result<()> {
     // As stated in https://github.com/microsoft/language-server-protocol/issues/676,
     // this notification's parameters should be ignored and the actual config queried separately.
-    state.send_request::<lsp_types::request::WorkspaceConfiguration>(
+    state.send_request::<lsp_types::ConfigurationRequest>(
         lsp_types::ConfigurationParams {
             items: vec![lsp_types::ConfigurationItem {
                 scope_uri: None,
@@ -553,7 +553,7 @@ pub(crate) fn handle_run_flycheck(
 
 pub(crate) fn handle_abort_run_test(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
     if state.test_run_session.take().is_some() {
-        state.send_notification::<lsp_ext::EndRunTest>(());
+        state.send_notification::<lsp_ext::EndRunTestNotification>(());
     }
     Ok(())
 }

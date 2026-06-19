@@ -8,17 +8,16 @@
 
 use std::ops;
 
-use lsp_types::Url;
-use lsp_types::request::Request;
 use lsp_types::{
-    CodeActionKind, DocumentOnTypeFormattingParams, PartialResultParams, Position, Range,
-    TextDocumentIdentifier, WorkDoneProgressParams, notification::Notification,
+    CodeActionKind, DocumentOnTypeFormattingParams, LspNotificationMethod, LspRequestMethod,
+    MessageDirection, Notification, PartialResultParams, Position, Range, Request,
+    TextDocumentIdentifier, Uri, WorkDoneProgressParams,
 };
 use paths::Utf8PathBuf;
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
-pub enum InternalTestingFetchConfig {}
+pub enum InternalTestingFetchConfigRequest {}
 
 #[derive(Deserialize, Serialize, Debug)]
 pub enum InternalTestingFetchConfigOption {
@@ -32,11 +31,13 @@ pub enum InternalTestingFetchConfigResponse {
     CheckWorkspace(bool),
 }
 
-impl Request for InternalTestingFetchConfig {
+impl Request for InternalTestingFetchConfigRequest {
     type Params = InternalTestingFetchConfigParams;
     // Option is solely to circumvent Default bound.
     type Result = Option<InternalTestingFetchConfigResponse>;
-    const METHOD: &'static str = "rust-analyzer-internal/internalTestingFetchConfig";
+    const METHOD: LspRequestMethod =
+        LspRequestMethod::new("rust-analyzer-internal/internalTestingFetchConfig");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -45,12 +46,13 @@ pub struct InternalTestingFetchConfigParams {
     pub text_document: Option<TextDocumentIdentifier>,
     pub config: InternalTestingFetchConfigOption,
 }
-pub enum AnalyzerStatus {}
+pub enum AnalyzerStatusRequest {}
 
-impl Request for AnalyzerStatus {
+impl Request for AnalyzerStatusRequest {
     type Params = AnalyzerStatusParams;
     type Result = String;
-    const METHOD: &'static str = "rust-analyzer/analyzerStatus";
+    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/analyzerStatus");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -64,14 +66,15 @@ pub struct AnalyzerStatusParams {
 pub struct CrateInfoResult {
     pub name: Option<String>,
     pub version: Option<String>,
-    pub path: Url,
+    pub path: Uri,
 }
-pub enum FetchDependencyList {}
+pub enum FetchDependencyListRequest {}
 
-impl Request for FetchDependencyList {
+impl Request for FetchDependencyListRequest {
     type Params = FetchDependencyListParams;
     type Result = FetchDependencyListResult;
-    const METHOD: &'static str = "rust-analyzer/fetchDependencyList";
+    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/fetchDependencyList");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -84,36 +87,40 @@ pub struct FetchDependencyListResult {
     pub crates: Vec<CrateInfoResult>,
 }
 
-pub enum MemoryUsage {}
+pub enum MemoryUsageRequest {}
 
-impl Request for MemoryUsage {
+impl Request for MemoryUsageRequest {
     type Params = ();
     type Result = String;
-    const METHOD: &'static str = "rust-analyzer/memoryUsage";
+    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/memoryUsage");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
-pub enum ReloadWorkspace {}
+pub enum ReloadWorkspaceRequest {}
 
-impl Request for ReloadWorkspace {
+impl Request for ReloadWorkspaceRequest {
     type Params = ();
     type Result = ();
-    const METHOD: &'static str = "rust-analyzer/reloadWorkspace";
+    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/reloadWorkspace");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
-pub enum RebuildProcMacros {}
+pub enum RebuildProcMacrosRequest {}
 
-impl Request for RebuildProcMacros {
+impl Request for RebuildProcMacrosRequest {
     type Params = ();
     type Result = ();
-    const METHOD: &'static str = "rust-analyzer/rebuildProcMacros";
+    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/rebuildProcMacros");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
-pub enum ViewSyntaxTree {}
+pub enum ViewSyntaxTreeRequest {}
 
-impl Request for ViewSyntaxTree {
+impl Request for ViewSyntaxTreeRequest {
     type Params = ViewSyntaxTreeParams;
     type Result = String;
-    const METHOD: &'static str = "rust-analyzer/viewSyntaxTree";
+    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/viewSyntaxTree");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -122,36 +129,40 @@ pub struct ViewSyntaxTreeParams {
     pub text_document: TextDocumentIdentifier,
 }
 
-pub enum ViewHir {}
+pub enum ViewHirRequest {}
 
-impl Request for ViewHir {
+impl Request for ViewHirRequest {
     type Params = lsp_types::TextDocumentPositionParams;
     type Result = String;
-    const METHOD: &'static str = "rust-analyzer/viewHir";
+    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/viewHir");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
-pub enum ViewMir {}
+pub enum ViewMirRequest {}
 
-impl Request for ViewMir {
+impl Request for ViewMirRequest {
     type Params = lsp_types::TextDocumentPositionParams;
     type Result = String;
-    const METHOD: &'static str = "rust-analyzer/viewMir";
+    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/viewMir");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
-pub enum InterpretFunction {}
+pub enum InterpretFunctionRequest {}
 
-impl Request for InterpretFunction {
+impl Request for InterpretFunctionRequest {
     type Params = lsp_types::TextDocumentPositionParams;
     type Result = String;
-    const METHOD: &'static str = "rust-analyzer/interpretFunction";
+    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/interpretFunction");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
-pub enum ViewFileText {}
+pub enum ViewFileTextRequest {}
 
-impl Request for ViewFileText {
+impl Request for ViewFileTextRequest {
     type Params = lsp_types::TextDocumentIdentifier;
     type Result = String;
-    const METHOD: &'static str = "rust-analyzer/viewFileText";
+    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/viewFileText");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -161,12 +172,13 @@ pub struct ViewCrateGraphParams {
     pub full: bool,
 }
 
-pub enum ViewCrateGraph {}
+pub enum ViewCrateGraphRequest {}
 
-impl Request for ViewCrateGraph {
+impl Request for ViewCrateGraphRequest {
     type Params = ViewCrateGraphParams;
     type Result = String;
-    const METHOD: &'static str = "rust-analyzer/viewCrateGraph";
+    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/viewCrateGraph");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -175,12 +187,13 @@ pub struct ViewItemTreeParams {
     pub text_document: TextDocumentIdentifier,
 }
 
-pub enum ViewItemTree {}
+pub enum ViewItemTreeRequest {}
 
-impl Request for ViewItemTree {
+impl Request for ViewItemTreeRequest {
     type Params = ViewItemTreeParams;
     type Result = String;
-    const METHOD: &'static str = "rust-analyzer/viewItemTree";
+    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/viewItemTree");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -218,19 +231,22 @@ pub struct DiscoverTestResults {
     pub scope_file: Option<Vec<TextDocumentIdentifier>>,
 }
 
-pub enum DiscoverTest {}
+pub enum DiscoverTestRequest {}
 
-impl Request for DiscoverTest {
+impl Request for DiscoverTestRequest {
     type Params = DiscoverTestParams;
     type Result = DiscoverTestResults;
-    const METHOD: &'static str = "experimental/discoverTest";
+    const METHOD: LspRequestMethod = LspRequestMethod::new("experimental/discoverTest");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
-pub enum DiscoveredTests {}
+pub enum DiscoveredTestsNotification {}
 
-impl Notification for DiscoveredTests {
+impl Notification for DiscoveredTestsNotification {
     type Params = DiscoverTestResults;
-    const METHOD: &'static str = "experimental/discoveredTests";
+    const METHOD: LspNotificationMethod =
+        LspNotificationMethod::new("experimental/discoveredTests");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -240,33 +256,38 @@ pub struct RunTestParams {
     pub exclude: Option<Vec<String>>,
 }
 
-pub enum RunTest {}
+pub enum RunTestRequest {}
 
-impl Request for RunTest {
+impl Request for RunTestRequest {
     type Params = RunTestParams;
     type Result = ();
-    const METHOD: &'static str = "experimental/runTest";
+    const METHOD: LspRequestMethod = LspRequestMethod::new("experimental/runTest");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
-pub enum EndRunTest {}
+pub enum EndRunTestNotification {}
 
-impl Notification for EndRunTest {
+impl Notification for EndRunTestNotification {
     type Params = ();
-    const METHOD: &'static str = "experimental/endRunTest";
+    const METHOD: LspNotificationMethod = LspNotificationMethod::new("experimental/endRunTest");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
-pub enum AppendOutputToRunTest {}
+pub enum AppendOutputToRunTestNotification {}
 
-impl Notification for AppendOutputToRunTest {
+impl Notification for AppendOutputToRunTestNotification {
     type Params = String;
-    const METHOD: &'static str = "experimental/appendOutputToRunTest";
+    const METHOD: LspNotificationMethod =
+        LspNotificationMethod::new("experimental/appendOutputToRunTest");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
-pub enum AbortRunTest {}
+pub enum AbortRunTestNotification {}
 
-impl Notification for AbortRunTest {
+impl Notification for AbortRunTestNotification {
     type Params = ();
-    const METHOD: &'static str = "experimental/abortRunTest";
+    const METHOD: LspNotificationMethod = LspNotificationMethod::new("experimental/abortRunTest");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -286,19 +307,22 @@ pub struct ChangeTestStateParams {
     pub state: TestState,
 }
 
-pub enum ChangeTestState {}
+pub enum ChangeTestStateNotification {}
 
-impl Notification for ChangeTestState {
+impl Notification for ChangeTestStateNotification {
     type Params = ChangeTestStateParams;
-    const METHOD: &'static str = "experimental/changeTestState";
+    const METHOD: LspNotificationMethod =
+        LspNotificationMethod::new("experimental/changeTestState");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
-pub enum ExpandMacro {}
+pub enum ExpandMacroRequest {}
 
-impl Request for ExpandMacro {
+impl Request for ExpandMacroRequest {
     type Params = ExpandMacroParams;
     type Result = Option<ExpandedMacro>;
-    const METHOD: &'static str = "rust-analyzer/expandMacro";
+    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/expandMacro");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -315,12 +339,14 @@ pub struct ExpandedMacro {
     pub expansion: String,
 }
 
-pub enum ViewRecursiveMemoryLayout {}
+pub enum ViewRecursiveMemoryLayoutRequest {}
 
-impl Request for ViewRecursiveMemoryLayout {
+impl Request for ViewRecursiveMemoryLayoutRequest {
     type Params = lsp_types::TextDocumentPositionParams;
     type Result = Option<RecursiveMemoryLayout>;
-    const METHOD: &'static str = "rust-analyzer/viewRecursiveMemoryLayout";
+    const METHOD: LspRequestMethod =
+        LspRequestMethod::new("rust-analyzer/viewRecursiveMemoryLayout");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -342,32 +368,38 @@ pub struct MemoryLayoutNode {
     pub children_len: u64,
 }
 
-pub enum CancelFlycheck {}
+pub enum CancelFlycheckNotification {}
 
-impl Notification for CancelFlycheck {
+impl Notification for CancelFlycheckNotification {
     type Params = ();
-    const METHOD: &'static str = "rust-analyzer/cancelFlycheck";
+    const METHOD: LspNotificationMethod =
+        LspNotificationMethod::new("rust-analyzer/cancelFlycheck");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
-pub enum RunFlycheck {}
+pub enum RunFlycheckNotification {}
 
-impl Notification for RunFlycheck {
+impl Notification for RunFlycheckNotification {
     type Params = RunFlycheckParams;
-    const METHOD: &'static str = "rust-analyzer/runFlycheck";
+    const METHOD: LspNotificationMethod = LspNotificationMethod::new("rust-analyzer/runFlycheck");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
-pub enum ClearFlycheck {}
+pub enum ClearFlycheckNotification {}
 
-impl Notification for ClearFlycheck {
+impl Notification for ClearFlycheckNotification {
     type Params = ();
-    const METHOD: &'static str = "rust-analyzer/clearFlycheck";
+    const METHOD: LspNotificationMethod = LspNotificationMethod::new("rust-analyzer/clearFlycheck");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
-pub enum OpenServerLogs {}
+pub enum OpenServerLogsNotification {}
 
-impl Notification for OpenServerLogs {
+impl Notification for OpenServerLogsNotification {
     type Params = ();
-    const METHOD: &'static str = "rust-analyzer/openServerLogs";
+    const METHOD: LspNotificationMethod =
+        LspNotificationMethod::new("rust-analyzer/openServerLogs");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -376,12 +408,13 @@ pub struct RunFlycheckParams {
     pub text_document: Option<TextDocumentIdentifier>,
 }
 
-pub enum MatchingBrace {}
+pub enum MatchingBraceRequest {}
 
-impl Request for MatchingBrace {
+impl Request for MatchingBraceRequest {
     type Params = MatchingBraceParams;
     type Result = Vec<Position>;
-    const METHOD: &'static str = "experimental/matchingBrace";
+    const METHOD: LspRequestMethod = LspRequestMethod::new("experimental/matchingBrace");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -391,28 +424,31 @@ pub struct MatchingBraceParams {
     pub positions: Vec<Position>,
 }
 
-pub enum ParentModule {}
+pub enum ParentModuleRequest {}
 
-impl Request for ParentModule {
+impl Request for ParentModuleRequest {
     type Params = lsp_types::TextDocumentPositionParams;
-    type Result = Option<lsp_types::GotoDefinitionResponse>;
-    const METHOD: &'static str = "experimental/parentModule";
+    type Result = Option<lsp_types::DefinitionResponse>;
+    const METHOD: LspRequestMethod = LspRequestMethod::new("experimental/parentModule");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
-pub enum ChildModules {}
+pub enum ChildModulesRequest {}
 
-impl Request for ChildModules {
+impl Request for ChildModulesRequest {
     type Params = lsp_types::TextDocumentPositionParams;
-    type Result = Option<lsp_types::GotoDefinitionResponse>;
-    const METHOD: &'static str = "experimental/childModules";
+    type Result = Option<lsp_types::DefinitionResponse>;
+    const METHOD: LspRequestMethod = LspRequestMethod::new("experimental/childModules");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
-pub enum JoinLines {}
+pub enum JoinLinesRequest {}
 
-impl Request for JoinLines {
+impl Request for JoinLinesRequest {
     type Params = JoinLinesParams;
     type Result = Vec<lsp_types::TextEdit>;
-    const METHOD: &'static str = "experimental/joinLines";
+    const METHOD: LspRequestMethod = LspRequestMethod::new("experimental/joinLines");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -422,20 +458,22 @@ pub struct JoinLinesParams {
     pub ranges: Vec<Range>,
 }
 
-pub enum OnEnter {}
+pub enum OnEnterRequest {}
 
-impl Request for OnEnter {
+impl Request for OnEnterRequest {
     type Params = lsp_types::TextDocumentPositionParams;
     type Result = Option<Vec<SnippetTextEdit>>;
-    const METHOD: &'static str = "experimental/onEnter";
+    const METHOD: LspRequestMethod = LspRequestMethod::new("experimental/onEnter");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
-pub enum Runnables {}
+pub enum RunnablesRequest {}
 
-impl Request for Runnables {
+impl Request for RunnablesRequest {
     type Params = RunnablesParams;
     type Result = Vec<Runnable>;
-    const METHOD: &'static str = "experimental/runnables";
+    const METHOD: LspRequestMethod = LspRequestMethod::new("experimental/runnables");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -488,12 +526,13 @@ pub struct ShellRunnableArgs {
     pub args: Vec<String>,
 }
 
-pub enum RelatedTests {}
+pub enum RelatedTestsRequest {}
 
-impl Request for RelatedTests {
+impl Request for RelatedTestsRequest {
     type Params = lsp_types::TextDocumentPositionParams;
     type Result = Vec<TestInfo>;
-    const METHOD: &'static str = "rust-analyzer/relatedTests";
+    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/relatedTests");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -501,12 +540,13 @@ pub struct TestInfo {
     pub runnable: Runnable,
 }
 
-pub enum Ssr {}
+pub enum SsrRequest {}
 
-impl Request for Ssr {
+impl Request for SsrRequest {
     type Params = SsrParams;
     type Result = lsp_types::WorkspaceEdit;
-    const METHOD: &'static str = "experimental/ssr";
+    const METHOD: LspRequestMethod = LspRequestMethod::new("experimental/ssr");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -528,7 +568,8 @@ pub enum ServerStatusNotification {}
 
 impl Notification for ServerStatusNotification {
     type Params = ServerStatusParams;
-    const METHOD: &'static str = "experimental/serverStatus";
+    const METHOD: LspNotificationMethod = LspNotificationMethod::new("experimental/serverStatus");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 #[derive(Deserialize, Serialize, PartialEq, Eq, Clone)]
@@ -562,7 +603,8 @@ pub enum CodeActionRequest {}
 impl Request for CodeActionRequest {
     type Params = lsp_types::CodeActionParams;
     type Result = Option<Vec<CodeAction>>;
-    const METHOD: &'static str = "textDocument/codeAction";
+    const METHOD: LspRequestMethod = LspRequestMethod::new("textDocument/codeAction");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 pub enum CodeActionResolveRequest {}
@@ -570,7 +612,8 @@ pub enum CodeActionResolveRequest {}
 impl Request for CodeActionResolveRequest {
     type Params = CodeAction;
     type Result = CodeAction;
-    const METHOD: &'static str = "codeAction/resolve";
+    const METHOD: LspRequestMethod = LspRequestMethod::new("codeAction/resolve");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 #[derive(Debug, PartialEq, Clone, Default, Deserialize, Serialize)]
@@ -604,7 +647,7 @@ pub struct CodeActionData {
 #[serde(rename_all = "camelCase")]
 pub struct SnippetWorkspaceEdit {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub changes: Option<FxHashMap<lsp_types::Url, Vec<lsp_types::TextEdit>>>,
+    pub changes: Option<FxHashMap<Uri, Vec<lsp_types::TextEdit>>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub document_changes: Option<Vec<SnippetDocumentChangeOperation>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -619,7 +662,7 @@ pub struct SnippetWorkspaceEdit {
 #[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(untagged, rename_all = "lowercase")]
 pub enum SnippetDocumentChangeOperation {
-    Op(lsp_types::ResourceOp),
+    Change(lsp_types::DocumentChange),
     Edit(SnippetTextDocumentEdit),
 }
 
@@ -647,7 +690,8 @@ pub enum HoverRequest {}
 impl Request for HoverRequest {
     type Params = HoverParams;
     type Result = Option<Hover>;
-    const METHOD: &'static str = lsp_types::request::HoverRequest::METHOD;
+    const METHOD: LspRequestMethod = lsp_types::HoverRequest::METHOD;
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
@@ -691,18 +735,19 @@ pub struct CommandLink {
     pub tooltip: Option<String>,
 }
 
-pub enum ExternalDocs {}
+pub enum ExternalDocsRequest {}
 
-impl Request for ExternalDocs {
+impl Request for ExternalDocsRequest {
     type Params = lsp_types::TextDocumentPositionParams;
     type Result = ExternalDocsResponse;
-    const METHOD: &'static str = "experimental/externalDocs";
+    const METHOD: LspRequestMethod = LspRequestMethod::new("experimental/externalDocs");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum ExternalDocsResponse {
-    Simple(Option<lsp_types::Url>),
+    Simple(Option<lsp_types::Uri>),
     WithLocal(ExternalDocsPair),
 }
 
@@ -715,16 +760,17 @@ impl Default for ExternalDocsResponse {
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ExternalDocsPair {
-    pub web: Option<lsp_types::Url>,
-    pub local: Option<lsp_types::Url>,
+    pub web: Option<lsp_types::Uri>,
+    pub local: Option<lsp_types::Uri>,
 }
 
-pub enum OpenCargoToml {}
+pub enum OpenCargoTomlRequest {}
 
-impl Request for OpenCargoToml {
+impl Request for OpenCargoTomlRequest {
     type Params = OpenCargoTomlParams;
-    type Result = Option<lsp_types::GotoDefinitionResponse>;
-    const METHOD: &'static str = "experimental/openCargoToml";
+    type Result = Option<lsp_types::DefinitionResponse>;
+    const METHOD: LspRequestMethod = LspRequestMethod::new("experimental/openCargoToml");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -744,16 +790,17 @@ pub struct CodeLensResolveData {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum CodeLensResolveDataKind {
-    Impls(lsp_types::request::GotoImplementationParams),
+    Impls(lsp_types::ImplementationParams),
     References(lsp_types::TextDocumentPositionParams),
 }
 
-pub enum MoveItem {}
+pub enum MoveItemRequest {}
 
-impl Request for MoveItem {
+impl Request for MoveItemRequest {
     type Params = MoveItemParams;
     type Result = Vec<SnippetTextEdit>;
-    const METHOD: &'static str = "experimental/moveItem";
+    const METHOD: LspRequestMethod = LspRequestMethod::new("experimental/moveItem");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -771,12 +818,13 @@ pub enum MoveItemDirection {
 }
 
 #[derive(Debug)]
-pub enum WorkspaceSymbol {}
+pub enum WorkspaceSymbolRequest {}
 
-impl Request for WorkspaceSymbol {
+impl Request for WorkspaceSymbolRequest {
     type Params = WorkspaceSymbolParams;
     type Result = Option<lsp_types::WorkspaceSymbolResponse>;
-    const METHOD: &'static str = "workspace/symbol";
+    const METHOD: LspRequestMethod = LspRequestMethod::new("workspace/symbol");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Default, Deserialize, Serialize)]
@@ -812,15 +860,16 @@ pub enum WorkspaceSymbolSearchKind {
 
 /// The document on type formatting request is sent from the client to
 /// the server to format parts of the document during typing.  This is
-/// almost same as lsp_types::request::OnTypeFormatting, but the
+/// almost same as [`lsp_types::DocumentOnTypeFormattingRequest`], but the
 /// result has SnippetTextEdit in it instead of TextEdit.
 #[derive(Debug)]
-pub enum OnTypeFormatting {}
+pub enum DocumentOnTypeFormattingRequest {}
 
-impl Request for OnTypeFormatting {
+impl Request for DocumentOnTypeFormattingRequest {
     type Params = DocumentOnTypeFormattingParams;
     type Result = Option<Vec<SnippetTextEdit>>;
-    const METHOD: &'static str = "textDocument/onTypeFormatting";
+    const METHOD: LspRequestMethod = LspRequestMethod::new("textDocument/onTypeFormatting");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -859,7 +908,7 @@ pub struct ClientCommandOptions {
     pub commands: Vec<String>,
 }
 
-pub enum EvaluatePredicate {}
+pub enum EvaluatePredicateRequest {}
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -886,13 +935,14 @@ pub enum PredicateEvaluationStatus {
     Unsupported,
 }
 
-impl Request for EvaluatePredicate {
+impl Request for EvaluatePredicateRequest {
     type Params = EvaluatePredicateParams;
     type Result = EvaluatePredicateResult;
-    const METHOD: &'static str = "rust-analyzer/evaluatePredicate";
+    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/evaluatePredicate");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
-pub enum GetFailedObligations {}
+pub enum GetFailedObligationsRequest {}
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -901,10 +951,11 @@ pub struct GetFailedObligationsParams {
     pub position: Position,
 }
 
-impl Request for GetFailedObligations {
+impl Request for GetFailedObligationsRequest {
     type Params = GetFailedObligationsParams;
     type Result = String;
-    const METHOD: &'static str = "rust-analyzer/getFailedObligations";
+    const METHOD: LspRequestMethod = LspRequestMethod::new("rust-analyzer/getFailedObligations");
+    const MESSAGE_DIRECTION: MessageDirection = MessageDirection::ClientToServer;
 }
 
 #[cfg(test)]

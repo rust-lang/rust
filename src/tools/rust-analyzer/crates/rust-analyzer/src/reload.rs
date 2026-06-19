@@ -547,8 +547,8 @@ impl GlobalState {
             // FIXME: can we abort the build scripts here if they are already running?
             self.workspaces = Arc::new(workspaces);
             self.check_workspaces_msrv().for_each(|message| {
-                self.send_notification::<lsp_types::notification::ShowMessage>(
-                    lsp_types::ShowMessageParams { typ: lsp_types::MessageType::WARNING, message },
+                self.send_notification::<lsp_types::ShowMessageNotification>(
+                    lsp_types::ShowMessageParams { kind: lsp_types::MessageType::Warning, message },
                 );
             });
 
@@ -588,10 +588,10 @@ impl GlobalState {
                             })
                         })
                         .map(|(base, pat)| lsp_types::FileSystemWatcher {
-                            glob_pattern: lsp_types::GlobPattern::Relative(
+                            glob_pattern: lsp_types::GlobPattern::RelativePattern(
                                 lsp_types::RelativePattern {
-                                    base_uri: lsp_types::OneOf::Right(
-                                        lsp_types::Url::from_file_path(base).unwrap(),
+                                    base_uri: lsp_types::BaseUri::Uri(
+                                        lsp_types::Uri::from_file_path(base).unwrap(),
                                     ),
                                     pattern: pat.to_owned(),
                                 },
@@ -613,7 +613,7 @@ impl GlobalState {
                             })
                         })
                         .map(|glob_pattern| lsp_types::FileSystemWatcher {
-                            glob_pattern: lsp_types::GlobPattern::String(glob_pattern),
+                            glob_pattern: lsp_types::GlobPattern::Pattern(glob_pattern),
                             kind: None,
                         })
                         .collect()
@@ -627,7 +627,7 @@ impl GlobalState {
                             continue;
                         };
                         watchers.push(lsp_types::FileSystemWatcher {
-                            glob_pattern: lsp_types::GlobPattern::String(
+                            glob_pattern: lsp_types::GlobPattern::Pattern(
                                 build.build_file.to_string(),
                             ),
                             kind: None,
@@ -641,7 +641,7 @@ impl GlobalState {
                     .chain(self.workspaces.iter().map(|ws| ws.manifest().map(ManifestPath::as_ref)))
                     .flatten()
                     .map(|glob_pattern| lsp_types::FileSystemWatcher {
-                        glob_pattern: lsp_types::GlobPattern::String(glob_pattern.to_string()),
+                        glob_pattern: lsp_types::GlobPattern::Pattern(glob_pattern.to_string()),
                         kind: None,
                     }),
             );
@@ -653,7 +653,7 @@ impl GlobalState {
                 method: "workspace/didChangeWatchedFiles".to_owned(),
                 register_options: Some(serde_json::to_value(registration_options).unwrap()),
             };
-            self.send_request::<lsp_types::request::RegisterCapability>(
+            self.send_request::<lsp_types::RegistrationRequest>(
                 lsp_types::RegistrationParams { registrations: vec![registration] },
                 |_, _| (),
             );
