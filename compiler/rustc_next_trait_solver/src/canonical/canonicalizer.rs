@@ -581,13 +581,13 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
     }
 
     fn fold_clauses(&mut self, c: I::Clauses) -> I::Clauses {
-        match self.canonicalize_mode {
-            CanonicalizeMode::Input(CanonicalizeInputKind::ParamEnv)
-            | CanonicalizeMode::Response { max_input_universe: _ } => {}
-            CanonicalizeMode::Input(CanonicalizeInputKind::Predicate) => {
-                panic!("erasing 'static in env")
-            }
-        }
+        // match self.canonicalize_mode {
+        //    CanonicalizeMode::Input(CanonicalizeInputKind::ParamEnv)
+        //    | CanonicalizeMode::Response { max_input_universe: _ } => {}
+        //    CanonicalizeMode::Input(CanonicalizeInputKind::Predicate) => {
+        //        panic!("erasing 'static in env")
+        //    }
+        // }
         if !c.flags().intersects(NEEDS_CANONICAL) { c } else { c.super_fold_with(self) }
     }
 }

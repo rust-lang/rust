@@ -98,6 +98,13 @@ pub trait Interner:
 
     type BoundVarKinds: BoundVarKinds<Self>;
 
+    type SigBinderRef: Deref<Target = ty::Binder<Self, ty::FnSigTys<Self>>>
+        + Copy
+        + Debug
+        + Hash
+        + Eq;
+    type TyBinderRef: Deref<Target = ty::Binder<Self, Self::Ty>> + Copy + Debug + Hash + Eq;
+
     type PredefinedOpaques: Copy
         + Debug
         + Hash
@@ -496,6 +503,7 @@ macro_rules! declare_lift_into {
 
 declare_lift_into! {
     BoundVarKinds,
+    Clauses,
     Const,
     DefId,
     FreeConstAliasId,

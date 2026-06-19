@@ -67,6 +67,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             let result = self.lower_poly_trait_ref(
                 poly_trait_ref,
                 dummy_self,
+                ty::ListWithCachedTypeInfo::empty(),
                 &mut user_written_bounds,
                 PredicateFilter::SelfOnly,
                 OverlappingAsssocItemConstraints::Forbidden,

@@ -386,7 +386,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
     pub(crate) fn write_fn_ptr_type_info(
         &mut self,
         place: impl Writeable<'tcx, CtfeProvenance>,
-        sig: &FnSigTys<TyCtxt<'tcx>>,
+        sig: &FnSigTys<'tcx>,
         fn_header: &FnHeader<TyCtxt<'tcx>>,
     ) -> InterpResult<'tcx> {
         let FnHeader { fn_sig_kind } = fn_header;

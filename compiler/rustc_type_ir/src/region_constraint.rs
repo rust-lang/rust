@@ -133,6 +133,7 @@ where
     I::OpaqueTyId: StableHash,
     I::FreeTyAliasId: StableHash,
     I::BoundVarKinds: StableHash,
+    I::Clauses: StableHash,
 {
     #[inline]
     fn stable_hash<CTX: StableHashCtxt>(&self, hcx: &mut CTX, hasher: &mut StableHasher) {

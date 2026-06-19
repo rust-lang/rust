@@ -1,6 +1,5 @@
 use std::fmt;
 use std::marker::PhantomData;
-use std::ops::Deref;
 
 use derive_where::derive_where;
 use rustc_abi::ExternAbi;
@@ -18,8 +17,6 @@ use self::TyKind::*;
 pub use self::closure::*;
 use crate::inherent::*;
 use crate::ty::AliasTy;
-#[cfg(feature = "nightly")]
-use crate::visit::TypeVisitable;
 use crate::{self as ty, BoundVarIndexKind, FloatTy, IntTy, Interner, UintTy};
 
 mod closure;
@@ -182,14 +179,14 @@ pub enum TyKind<I: Interner> {
     /// splitting that into two pieces, we get a more compact data layout that
     /// reduces the size of `TyKind` by 8 bytes. It is a very hot type, so it's
     /// worth the mild inconvenience.
-    FnPtr(ty::Binder<I, FnSigTys<I>>, FnHeader<I>),
+    FnPtr(I::SigBinderRef, FnHeader<I>),
 
     /// An unsafe binder type.
     ///
     /// A higher-ranked type used to represent a type which has had some of its
     /// lifetimes erased. This can be used to represent types in positions where
     /// a lifetime is literally inexpressible, such as self-referential types.
-    UnsafeBinder(UnsafeBinderInner<I>),
+    UnsafeBinder(I::TyBinderRef),
 
     /// A trait object. Written as `dyn for<'b> Trait<'b, Assoc = u32> + Send + 'a`.
     Dynamic(I::BoundExistentialPredicates, I::Region),
@@ -978,70 +975,6 @@ impl<I: Interner> fmt::Debug for FnSig<I> {
             Tuple(list) if list.is_empty() => Ok(()),
             _ => write!(f, " -> {:?}", sig.output()),
         }
-    }
-}
-
-// FIXME: this is a distinct type because we need to define `Encode`/`Decode`
-// impls in this crate for `Binder<I, I::Ty>`.
-#[derive_where(Clone, Copy, PartialEq, Hash; I: Interner)]
-#[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
-#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
-pub struct UnsafeBinderInner<I: Interner>(ty::Binder<I, I::Ty>);
-
-impl<I: Interner> Eq for UnsafeBinderInner<I> {}
-
-impl<I: Interner> From<ty::Binder<I, I::Ty>> for UnsafeBinderInner<I> {
-    fn from(value: ty::Binder<I, I::Ty>) -> Self {
-        UnsafeBinderInner(value)
-    }
-}
-
-impl<I: Interner> From<UnsafeBinderInner<I>> for ty::Binder<I, I::Ty> {
-    fn from(value: UnsafeBinderInner<I>) -> Self {
-        value.0
-    }
-}
-
-impl<I: Interner> fmt::Debug for UnsafeBinderInner<I> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl<I: Interner> Deref for UnsafeBinderInner<I> {
-    type Target = ty::Binder<I, I::Ty>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-#[cfg(feature = "nightly")]
-impl<I: Interner, E: rustc_serialize::Encoder> rustc_serialize::Encodable<E>
-    for UnsafeBinderInner<I>
-where
-    I::Ty: rustc_serialize::Encodable<E>,
-    I::BoundVarKinds: rustc_serialize::Encodable<E>,
-{
-    fn encode(&self, e: &mut E) {
-        self.bound_vars().encode(e);
-        self.as_ref().skip_binder().encode(e);
-    }
-}
-
-#[cfg(feature = "nightly")]
-impl<I: Interner, D: rustc_serialize::Decoder> rustc_serialize::Decodable<D>
-    for UnsafeBinderInner<I>
-where
-    I::Ty: TypeVisitable<I> + rustc_serialize::Decodable<D>,
-    I::BoundVarKinds: rustc_serialize::Decodable<D>,
-{
-    fn decode(decoder: &mut D) -> Self {
-        let bound_vars = rustc_serialize::Decodable::decode(decoder);
-        UnsafeBinderInner(ty::Binder::bind_with_vars(
-            rustc_serialize::Decodable::decode(decoder),
-            bound_vars,
-        ))
     }
 }
 

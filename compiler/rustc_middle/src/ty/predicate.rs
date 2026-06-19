@@ -147,6 +147,12 @@ impl<'tcx> rustc_type_ir::inherent::Clause<TyCtxt<'tcx>> for Clause<'tcx> {
     }
 }
 
+impl<'tcx> rustc_type_ir::inherent::Clauses<TyCtxt<'tcx>> for ty::Clauses<'tcx> {
+    fn empty() -> Self {
+        ty::ListWithCachedTypeInfo::empty()
+    }
+}
+
 impl<'tcx> rustc_type_ir::inherent::IntoKind for Clause<'tcx> {
     type Kind = ty::Binder<'tcx, ClauseKind<'tcx>>;
 
@@ -205,8 +211,6 @@ impl<'tcx> Clause<'tcx> {
         }
     }
 }
-
-impl<'tcx> rustc_type_ir::inherent::Clauses<TyCtxt<'tcx>> for ty::Clauses<'tcx> {}
 
 #[extension(pub trait ExistentialPredicateStableCmpExt<'tcx>)]
 impl<'tcx> ExistentialPredicate<'tcx> {

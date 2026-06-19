@@ -7,8 +7,8 @@
 #[rustc_dump_predicates]
 struct ConstBytes<const T: &'static [*mut u8; 3]>
 //~^ ERROR rustc_dump_predicates
-//~| NOTE Binder { value: ConstArgHasType(T/#0, &'static [*mut u8; 3_usize]), bound_vars: [] }
-//~| NOTE Binder { value: TraitPredicate(<ConstBytes<b"AAA"> as std::marker::Sized>, polarity:Positive), bound_vars: [] }
+//~| NOTE Binder { value: ConstArgHasType(T/#0, &'static [*mut u8; 3_usize]), bound_vars: [], clauses: [] }
+//~| NOTE Binder { value: TraitPredicate(<ConstBytes<b"AAA"> as std::marker::Sized>, polarity:Positive), bound_vars: [], clauses: [] }
 //~| NOTE expected because of the type of the const parameter
 
 where

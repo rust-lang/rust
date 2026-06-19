@@ -39,6 +39,7 @@ use snapshot::undo_log::InferCtxtUndoLogs;
 use tracing::{debug, instrument};
 use type_variable::TypeVariableOrigin;
 
+use crate::infer::RegionVariableOrigin::BoundRegion;
 use crate::infer::snapshot::undo_log::UndoLog;
 use crate::infer::type_variable::FloatVariableOrigin;
 use crate::infer::unify_key::{ConstVariableOrigin, ConstVariableValue, ConstVidKey};
@@ -1431,6 +1432,52 @@ impl<'tcx> InferCtxt<'tcx> {
         }
         let delegate = ToFreshVars { args };
         self.tcx.replace_bound_vars_uncached(value, delegate)
+    }
+
+    pub fn instantiate_binder_with_fresh_vars_and_goals<T>(
+        &self,
+        span: Span,
+        lbrct: BoundRegionConversionTime,
+        binder: ty::Binder<'tcx, T>,
+    ) -> (T, ty::Clauses<'tcx>)
+    where
+        T: TypeFoldable<TyCtxt<'tcx>> + Copy,
+    {
+        if !binder.as_ref().skip_binder_with_clauses().has_escaping_bound_vars() {
+            return binder.skip_binder_with_clauses();
+        }
+
+        let bound_vars = binder.bound_vars();
+        let mut args = Vec::with_capacity(bound_vars.len());
+
+        for bound_var_kind in bound_vars {
+            let arg: ty::GenericArg<'_> = match bound_var_kind {
+                ty::BoundVariableKind::Ty(_) => self.next_ty_var(span).into(),
+                ty::BoundVariableKind::Region(br) => {
+                    self.next_region_var(BoundRegion(span, br, lbrct)).into()
+                }
+                ty::BoundVariableKind::Const => self.next_const_var(span).into(),
+            };
+            args.push(arg);
+        }
+
+        struct ToFreshVars<'tcx> {
+            args: Vec<ty::GenericArg<'tcx>>,
+        }
+
+        impl<'tcx> BoundVarReplacerDelegate<'tcx> for ToFreshVars<'tcx> {
+            fn replace_region(&mut self, br: ty::BoundRegion<'tcx>) -> ty::Region<'tcx> {
+                self.args[br.var.index()].expect_region()
+            }
+            fn replace_ty(&mut self, bt: ty::BoundTy<'tcx>) -> Ty<'tcx> {
+                self.args[bt.var.index()].expect_ty()
+            }
+            fn replace_const(&mut self, bc: ty::BoundConst<'tcx>) -> ty::Const<'tcx> {
+                self.args[bc.var.index()].expect_const()
+            }
+        }
+        let delegate = ToFreshVars { args };
+        self.tcx.replace_bound_vars_uncached_with_clauses(binder, delegate)
     }
 
     /// See the [`region_constraints::RegionConstraintCollector::verify_generic_bound`] method.

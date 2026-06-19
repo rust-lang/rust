@@ -11,7 +11,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Ident, Span};
-use tracing::{debug, instrument, trace};
+use tracing::{debug, instrument};
 
 use super::item_bounds::explicit_item_bounds_with_filter;
 use crate::collect::ItemCtxt;
@@ -19,7 +19,6 @@ use crate::constrained_generic_params as cgp;
 use crate::delegation::inherit_predicates_for_delegation_item;
 use crate::hir_ty_lowering::{
     HirTyLowerer, ImpliedBoundsContext, OverlappingAsssocItemConstraints, PredicateFilter,
-    RegionInferReason,
 };
 
 /// Returns a list of all type predicates (explicit and implicit) for the definition with
@@ -193,6 +192,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             self_bounds,
             &mut bounds,
             ty::List::empty(),
+            ty::ListWithCachedTypeInfo::empty(),
             PredicateFilter::All,
             OverlappingAsssocItemConstraints::Allowed,
         );
@@ -227,107 +227,11 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         predicates.insert((trait_ref.upcast(tcx), tcx.def_span(def_id)));
     }
 
-    // Add implicit predicates that should be treated as if the user has written them,
-    // including the implicit `T: Sized` for all generic parameters, and `ConstArgHasType`
-    // for const params.
-    for param in hir_generics.params {
-        match param.kind {
-            GenericParamKind::Lifetime { .. } => (),
-            GenericParamKind::Type { .. } => {
-                let param_ty = icx.lowerer().lower_ty_param(param.hir_id);
-                let mut bounds = Vec::new();
-                // Implicit bounds are added to type params unless a `?Trait` bound is found
-                icx.lowerer().add_implicit_sizedness_bounds(
-                    &mut bounds,
-                    param_ty,
-                    &[],
-                    hir_generics.predicates,
-                    ImpliedBoundsContext::TyParam(param.def_id),
-                    param.span,
-                );
-                icx.lowerer().add_default_traits(
-                    &mut bounds,
-                    param_ty,
-                    &[],
-                    hir_generics.predicates,
-                    ImpliedBoundsContext::TyParam(param.def_id),
-                    param.span,
-                );
-                trace!(?bounds);
-                predicates.extend(bounds);
-                trace!(?predicates);
-            }
-            hir::GenericParamKind::Const { .. } => {
-                let param_def_id = param.def_id.to_def_id();
-                let ct_ty = tcx.type_of(param_def_id).instantiate_identity().skip_norm_wip();
-                let ct = icx.lowerer().lower_const_param(param_def_id, param.hir_id);
-                predicates
-                    .insert((ty::ClauseKind::ConstArgHasType(ct, ct_ty).upcast(tcx), param.span));
-            }
-        }
-    }
-
-    trace!(?predicates);
-    // Add inline `<T: Foo>` bounds and bounds in the where clause.
-    for predicate in hir_generics.predicates {
-        match predicate.kind {
-            hir::WherePredicateKind::BoundPredicate(bound_pred) => {
-                let ty = icx.lowerer().lower_ty_maybe_return_type_notation(bound_pred.bounded_ty);
-                let bound_vars = tcx.late_bound_vars(predicate.hir_id);
-
-                // This is a `where Ty:` (sic!).
-                if bound_pred.bounds.is_empty() {
-                    if let ty::Param(_) = ty.kind() {
-                        // We can skip the predicate because type parameters are trivially WF.
-                    } else {
-                        // Keep the type around in a dummy predicate. That way, it's not a complete
-                        // noop (see #53696) and `Ty` is still checked for WF.
-
-                        let span = bound_pred.bounded_ty.span;
-                        let predicate = ty::Binder::bind_with_vars(
-                            ty::ClauseKind::WellFormed(ty.into()),
-                            bound_vars,
-                        );
-                        predicates.insert((predicate.upcast(tcx), span));
-                    }
-                }
-
-                let mut bounds = Vec::new();
-                icx.lowerer().lower_bounds(
-                    ty,
-                    bound_pred.bounds,
-                    &mut bounds,
-                    bound_vars,
-                    PredicateFilter::All,
-                    OverlappingAsssocItemConstraints::Allowed,
-                );
-                predicates.extend(bounds);
-            }
-
-            hir::WherePredicateKind::RegionPredicate(region_pred) => {
-                let r1 = icx
-                    .lowerer()
-                    .lower_lifetime(region_pred.lifetime, RegionInferReason::RegionPredicate);
-                predicates.extend(region_pred.bounds.iter().map(|bound| {
-                    let (r2, span) = match bound {
-                        hir::GenericBound::Outlives(lt) => (
-                            icx.lowerer().lower_lifetime(lt, RegionInferReason::RegionPredicate),
-                            lt.ident.span,
-                        ),
-                        bound => {
-                            span_bug!(
-                                bound.span(),
-                                "lifetime param bounds must be outlives, but found {bound:?}"
-                            )
-                        }
-                    };
-                    let pred =
-                        ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(r1, r2)).upcast(tcx);
-                    (pred, span)
-                }))
-            }
-        }
-    }
+    icx.lowerer().lower_where_predicates(
+        hir_generics.params,
+        hir_generics.predicates,
+        &mut predicates,
+    );
 
     if tcx.features().generic_const_exprs() {
         predicates.extend(const_evaluatable_predicates_of(tcx, def_id, &predicates));
@@ -684,6 +588,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
         superbounds,
         &mut bounds,
         ty::List::empty(),
+        ty::ListWithCachedTypeInfo::empty(),
         filter,
         OverlappingAsssocItemConstraints::Allowed,
     );
@@ -1040,6 +945,16 @@ impl<'tcx> ItemCtxt<'tcx> {
             }
 
             let bound_ty = self.lowerer().lower_ty_maybe_return_type_notation(predicate.bounded_ty);
+            let mut bound_assumptions = FxIndexSet::default();
+            if self.tcx.features().non_lifetime_binders() {
+                self.lowerer().lower_where_predicates(
+                    predicate.bound_generic_params,
+                    predicate.bound_assumptions,
+                    &mut bound_assumptions,
+                );
+            }
+            let bound_assumptions =
+                self.tcx().mk_clauses_from_iter(bound_assumptions.into_iter().map(|(c, _)| c));
 
             let bound_vars = self.tcx.late_bound_vars(hir_id);
             self.lowerer().lower_bounds(
@@ -1047,6 +962,7 @@ impl<'tcx> ItemCtxt<'tcx> {
                 predicate.bounds,
                 &mut bounds,
                 bound_vars,
+                bound_assumptions,
                 filter,
                 OverlappingAsssocItemConstraints::Allowed,
             );
@@ -1127,12 +1043,23 @@ pub(super) fn const_conditions<'tcx>(
         match pred.kind {
             hir::WherePredicateKind::BoundPredicate(bound_pred) => {
                 let ty = icx.lowerer().lower_ty_maybe_return_type_notation(bound_pred.bounded_ty);
+                let mut bound_assumptions = FxIndexSet::default();
+                if tcx.features().non_lifetime_binders() {
+                    icx.lowerer().lower_where_predicates(
+                        bound_pred.bound_generic_params,
+                        bound_pred.bound_assumptions,
+                        &mut bound_assumptions,
+                    );
+                }
+                let bound_assumptions =
+                    tcx.mk_clauses_from_iter(bound_assumptions.into_iter().map(|(c, _)| c));
                 let bound_vars = tcx.late_bound_vars(pred.hir_id);
                 icx.lowerer().lower_bounds(
                     ty,
                     bound_pred.bounds.iter(),
                     &mut bounds,
                     bound_vars,
+                    bound_assumptions,
                     PredicateFilter::ConstIfConst,
                     OverlappingAsssocItemConstraints::Allowed,
                 );
@@ -1156,6 +1083,7 @@ pub(super) fn const_conditions<'tcx>(
             supertraits,
             &mut bounds,
             ty::List::empty(),
+            ty::ListWithCachedTypeInfo::empty(),
             PredicateFilter::ConstIfConst,
             OverlappingAsssocItemConstraints::Allowed,
         );

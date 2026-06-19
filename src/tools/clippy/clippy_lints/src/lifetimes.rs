@@ -653,6 +653,7 @@ where
             bounded_ty,
             bounds,
             bound_generic_params,
+            bound_assumptions: _,
             origin: _,
         }) = predicate.kind
         {

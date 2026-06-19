@@ -56,12 +56,6 @@ use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol};
 use rustc_target::callconv::FnAbi;
 pub use rustc_type_ir::data_structures::{DelayedMap, DelayedSet};
 pub use rustc_type_ir::fast_reject::DeepRejectCtxt;
-#[allow(
-    hidden_glob_reexports,
-    rustc::usage_of_type_ir_inherent,
-    rustc::non_glob_import_of_type_ir_inherent
-)]
-use rustc_type_ir::inherent;
 pub use rustc_type_ir::relate::VarianceDiagInfo;
 pub use rustc_type_ir::solve::{CandidatePreferenceMode, SizedTraitKind, VisibleForLeakCheck};
 pub use rustc_type_ir::*;
@@ -106,9 +100,9 @@ pub use self::region::{
 pub use self::sty::{
     AliasTy, AliasTyKind, Article, Binder, BoundConst, BoundRegion, BoundRegionKind, BoundTy,
     BoundTyKind, BoundVariableKind, CanonicalPolyFnSig, CoroutineArgsExt, EarlyBinder, FnSig,
-    FnSigKind, InlineConstArgs, InlineConstArgsParts, ParamConst, ParamTy, PlaceholderConst,
-    PlaceholderRegion, PlaceholderType, PolyFnSig, TyKind, TypeAndMut, TypingMode,
-    TypingModeEqWrapper, Unnormalized, UpvarArgs,
+    FnSigKind, FnSigTys, InlineConstArgs, InlineConstArgsParts, ParamConst, ParamTy,
+    PlaceholderConst, PlaceholderRegion, PlaceholderType, PolyFnSig, SigBinderRef, TyBinderRef,
+    TyKind, TypeAndMut, TypingMode, TypingModeEqWrapper, Unnormalized, UpvarArgs,
 };
 pub use self::trait_def::TraitDef;
 pub use self::typeck_results::{
@@ -1009,7 +1003,7 @@ pub struct ParamEnv<'tcx> {
 }
 
 impl<'tcx> rustc_type_ir::inherent::ParamEnv<TyCtxt<'tcx>> for ParamEnv<'tcx> {
-    fn caller_bounds(self) -> impl inherent::SliceLike<Item = ty::Clause<'tcx>> {
+    fn caller_bounds(self) -> Clauses<'tcx> {
         self.caller_bounds()
     }
 }
@@ -1050,6 +1044,23 @@ impl<'tcx> ParamEnv<'tcx> {
             self
         } else {
             ParamEnv::new(tcx.reveal_opaque_types_in_bounds(self.caller_bounds))
+        }
+    }
+
+    /// Creates a new param-env by augmenting the previous param-env with more predicates.
+    ///
+    /// N.B. this method does not elaborate the assumptions, and you probably should do that.
+    // FIXME(non_lifetime_binders): We should elaborate these predicates somewhere.
+    pub fn extend(self, tcx: TyCtxt<'tcx>, assumptions: ty::Clauses<'tcx>) -> Self {
+        if assumptions.is_empty() {
+            self
+        } else if self.caller_bounds.is_empty() {
+            ParamEnv { caller_bounds: assumptions }
+        } else {
+            ParamEnv {
+                caller_bounds: tcx
+                    .mk_clauses_from_iter(self.caller_bounds.iter().chain(assumptions)),
+            }
         }
     }
 }
@@ -2609,6 +2620,5 @@ fn typetree_from_ty_impl_inner<'tcx>(
             }
         }
     }
-
     TypeTree::new()
 }
