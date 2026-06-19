@@ -1387,6 +1387,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_dump_def_path]`
     RustcDumpDefPath(Span),
 
+    /// Represents `#[rustc_dump_generics]`
+    RustcDumpGenerics,
+
     /// Represents `#[rustc_dump_hidden_type_of_opaques]`
     RustcDumpHiddenTypeOfOpaques,
 

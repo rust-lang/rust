@@ -345,6 +345,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcDummy => (),
             AttributeKind::RustcDumpDefParents => (),
             AttributeKind::RustcDumpDefPath(..) => (),
+            AttributeKind::RustcDumpGenerics => (),
             AttributeKind::RustcDumpHiddenTypeOfOpaques => (),
             AttributeKind::RustcDumpInferredOutlives => (),
             AttributeKind::RustcDumpItemBounds => (),
