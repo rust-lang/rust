@@ -1,0 +1,19 @@
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/type-const-suggestion.rs:8:17
+   |
+LL | fn take(_: impl Trait<0>) {}
+   |                 ^^^^^ expected 0 generic arguments
+   |
+note: trait defined here, with 0 generic parameters
+  --> $DIR/type-const-suggestion.rs:5:7
+   |
+LL | trait Trait {
+   |       ^^^^^
+help: turn the generic argument into an associated item binding
+   |
+LL | fn take(_: impl Trait<K = 0>) {}
+   |                       +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0107`.

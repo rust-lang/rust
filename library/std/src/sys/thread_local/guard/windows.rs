@@ -159,9 +159,11 @@ pub fn enable() {
                     //
                     // Miri has no DLL unloading so we can skip this step here.
                     if !cfg!(miri) {
-                        let res = unsafe { c::atexit(free_fls_key_at_exit) };
-                        if res != 0 {
-                            rtabort!("failed to register fls atexit hook");
+                        if cleanup_is_unloadable() {
+                            let res = unsafe { c::atexit(free_fls_key_at_exit) };
+                            if res != 0 {
+                                rtabort!("failed to register fls atexit hook");
+                            }
                         }
                     }
 
@@ -177,6 +179,48 @@ pub fn enable() {
         // Setting the key's value to non-zero will cause the dtor callback to be called when the thread exits.
         unsafe { set(key, ptr::without_provenance(1)) };
     }
+}
+
+/// Checks if `cleanup` is in a different module from the main executable,
+/// using `GetModuleHandleExW(FLAG_FROM_ADDRESS, cleanup) != GetModuleHandleW(ptr::null())`.
+///
+/// If `cleanup` lives in the main executable, its code cannot be unmapped
+/// before process exit, so no unload hook is needed.
+///
+/// If it lives in a DLL, the DLL may be unloaded while the process keeps
+/// running, so the FLS callback must be unregistered before that image is
+/// unmapped.
+///
+/// On failure, return true, which assumes it can be unloaded.
+fn cleanup_is_unloadable() -> bool {
+    // Get a handle to the module of `cleanup`.
+    let cleanup_module = {
+        let mut handle: c::HMODULE = ptr::null_mut();
+
+        let res = unsafe {
+            c::GetModuleHandleExW(
+                c::GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
+                    | c::GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                cleanup as *const () as c::PCWSTR,
+                &mut handle,
+            )
+        };
+
+        if res == c::FALSE || handle.is_null() {
+            return true;
+        }
+
+        handle
+    };
+
+    // Get a handle to the file used to create the calling process (.exe file).
+    let main_exe_module = unsafe { c::GetModuleHandleW(ptr::null()) };
+
+    if main_exe_module.is_null() {
+        return true;
+    }
+
+    cleanup_module != main_exe_module
 }
 
 extern "C" fn free_fls_key_at_exit() {

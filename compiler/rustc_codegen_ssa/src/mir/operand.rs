@@ -297,10 +297,20 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         bx: &mut Bx,
         dest: PlaceRef<'tcx, V>,
     ) {
+        self.store_with_annotation_and_flags(bx, dest, MemFlags::empty())
+    }
+
+    /// Same as store_with_annotation(), but also specify flags for the store.
+    pub fn store_with_annotation_and_flags<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+        self,
+        bx: &mut Bx,
+        dest: PlaceRef<'tcx, V>,
+        flags: MemFlags,
+    ) {
         if let Some(instance) = self.move_annotation {
-            bx.with_move_annotation(instance, |bx| self.val.store(bx, dest))
+            bx.with_move_annotation(instance, |bx| self.val.store_with_flags(bx, dest, flags))
         } else {
-            self.val.store(bx, dest)
+            self.val.store_with_flags(bx, dest, flags)
         }
     }
 
@@ -961,7 +971,8 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
                 let llptr = bx.inbounds_ptradd(dest.val.llval, bx.const_usize(b_offset.bytes()));
                 let val = bx.from_immediate(b);
                 let align = dest.val.align.restrict_for_offset(b_offset);
-                bx.store_with_flags(val, llptr, align, flags);
+                // The CAPTURES_READ_ONLY flag only applies to the first element.
+                bx.store_with_flags(val, llptr, align, flags & !MemFlags::CAPTURES_READ_ONLY);
             }
         }
     }

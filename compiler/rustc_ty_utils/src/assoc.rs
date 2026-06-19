@@ -88,8 +88,8 @@ fn associated_item_from_trait_item(
     let owner_id = trait_item.owner_id;
     let name = trait_item.ident.name;
     let kind = match trait_item.kind {
-        hir::TraitItemKind::Const(_, _, is_type_const) => {
-            ty::AssocKind::Const { name, is_type_const: is_type_const.into() }
+        hir::TraitItemKind::Const(_, _) => {
+            ty::AssocKind::Const { name, is_type_const: tcx.is_type_const(owner_id.def_id) }
         }
         hir::TraitItemKind::Fn { .. } => {
             ty::AssocKind::Fn { name, has_self: fn_has_self_parameter(tcx, owner_id) }

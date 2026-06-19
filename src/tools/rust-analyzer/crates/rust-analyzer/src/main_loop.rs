@@ -1379,6 +1379,7 @@ impl GlobalState {
             .on::<NO_RETRY, lsp_ext::MoveItem>(handlers::handle_move_item)
             //
             .on::<NO_RETRY, lsp_ext::InternalTestingFetchConfig>(handlers::internal_testing_fetch_config)
+            .on::<RETRY, lsp_ext::EvaluatePredicate>(handlers::handle_evaluate_predicate)
             .on::<RETRY, lsp_ext::GetFailedObligations>(handlers::get_failed_obligations)
             .finish();
     }

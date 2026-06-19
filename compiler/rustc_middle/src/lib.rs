@@ -27,10 +27,10 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::direct_use_of_rustc_type_ir)]
+#![cfg_attr(bootstrap, feature(box_as_ptr))]
 #![cfg_attr(doc, feature(intra_doc_pointers))]
 #![feature(allocator_api)]
 #![feature(associated_type_defaults)]
-#![feature(box_as_ptr)]
 #![feature(closure_track_caller)]
 #![feature(const_default)]
 #![feature(const_trait_impl)]

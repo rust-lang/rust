@@ -1,8 +1,4 @@
 #![warn(clippy::manual_instant_elapsed)]
-#![allow(clippy::unnecessary_operation)]
-#![allow(clippy::unchecked_time_subtraction)]
-#![allow(unused_variables)]
-#![allow(unused_must_use)]
 
 use std::time::Instant;
 

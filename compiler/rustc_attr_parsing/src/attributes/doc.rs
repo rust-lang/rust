@@ -1,6 +1,6 @@
 use rustc_ast::ast::{AttrStyle, LitKind, MetaItemLit};
 use rustc_errors::{Applicability, msg};
-use rustc_feature::{AttributeStability, template};
+use rustc_feature::AttributeStability;
 use rustc_hir::Target;
 use rustc_hir::attrs::{
     AttributeKind, CfgEntry, CfgHideShow, CfgInfo, DocAttribute, DocInline, HideOrShow,
@@ -10,9 +10,9 @@ use rustc_span::{Span, Symbol, edition, sym};
 use thin_vec::ThinVec;
 
 use super::prelude::{ALL_TARGETS, AllowedTargets};
-use super::{AcceptMapping, AttributeParser};
+use super::{AcceptMapping, AttributeParser, template};
 use crate::context::{AcceptContext, FinalizeContext};
-use crate::errors::{
+use crate::diagnostics::{
     AttrCrateLevelOnly, DocAliasDuplicated, DocAutoCfgExpectsHideOrShow,
     DocAutoCfgHideShowExpectsList, DocAutoCfgHideShowUnexpectedItem, DocAutoCfgWrongLiteral,
     DocTestLiteral, DocTestTakesList, DocTestUnknown, DocUnknownAny, DocUnknownInclude,
@@ -22,7 +22,7 @@ use crate::errors::{
 use crate::parser::{ArgParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser};
 use crate::session_diagnostics::{
     DocAliasBadChar, DocAliasEmpty, DocAliasMalformed, DocAliasStartEnd, DocAttrNotCrateLevel,
-    DocAttributeNotAttribute, DocKeywordNotKeyword,
+    DocAttributeNotAttribute, DocKeywordNotKeyword, UnusedDuplicate,
 };
 
 fn check_keyword(cx: &mut AcceptContext<'_, '_>, keyword: Symbol, span: Span) -> bool {
@@ -159,11 +159,7 @@ impl DocParser {
                     let unused_span = path.span();
                     cx.emit_lint(
                         rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                        rustc_errors::lints::UnusedDuplicate {
-                            this: unused_span,
-                            other: used_span,
-                            warning: true,
-                        },
+                        UnusedDuplicate { this: unused_span, other: used_span, warning: true },
                         unused_span,
                     );
                     return;

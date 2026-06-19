@@ -90,5 +90,27 @@ LL |
 LL ~             std::future::ready(vec![])
    |
 
-error: aborting due to 5 previous errors
+error: unused `async` for async trait impl function with no `.await` statements
+  --> tests/ui/unused_async_trait_impl.rs:115:9
+   |
+LL | /         async fn do_something() -> u32 {
+...  |
+LL | |             5
+LL | |         }
+   | |_________^
+   |
+   = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
+help: consider removing the `async` from this function and returning `impl Future<Output = u32>` instead
+   |
+LL ~         fn do_something() -> impl Future<Output = u32> {
+LL |
+...
+LL |             if f() == 5 {
+LL ~                 return std::future::ready(3);
+LL |             }
+LL |
+LL ~             std::future::ready(5)
+   |
+
+error: aborting due to 6 previous errors
 

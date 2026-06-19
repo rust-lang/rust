@@ -99,7 +99,7 @@ use tracing::{debug, instrument};
 
 use super::matches::BuiltMatchTree;
 use crate::builder::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
-use crate::errors::{
+use crate::diagnostics::{
     ConstContinueBadConst, ConstContinueNotMonomorphicConst, ConstContinueUnknownJumpTarget,
 };
 
@@ -924,7 +924,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::NamedConst { .. } => self.as_constant(&self.thir[value]),
 
             other => {
-                use crate::errors::ConstContinueNotMonomorphicConstReason as Reason;
+                use crate::diagnostics::ConstContinueNotMonomorphicConstReason as Reason;
 
                 let span = expr.span;
                 let reason = match other {

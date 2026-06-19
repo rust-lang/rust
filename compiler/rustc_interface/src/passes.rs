@@ -24,7 +24,7 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{LOCAL_CRATE, StableCrateId, StableCrateIdMap};
 use rustc_hir::definitions::Definitions;
 use rustc_hir::limit::Limit;
-use rustc_hir::{Attribute, MaybeOwner, Target, find_attr};
+use rustc_hir::{Attribute, Target, find_attr};
 use rustc_incremental::setup_dep_graph;
 use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore, unerased_lint_store};
 use rustc_metadata::EncodedMetadata;
@@ -49,7 +49,7 @@ use rustc_trait_selection::{solve, traits};
 use tracing::{info, instrument};
 
 use crate::interface::Compiler;
-use crate::{errors, limits, proc_macro_decls, util};
+use crate::{diagnostics, limits, proc_macro_decls, util};
 
 pub fn parse<'a>(sess: &'a Session) -> ast::Crate {
     let mut krate = sess
@@ -271,10 +271,10 @@ fn configure_and_expand(
 
     if crate_types.len() > 1 {
         if is_executable_crate {
-            sess.dcx().emit_err(errors::MixedBinCrate);
+            sess.dcx().emit_err(diagnostics::MixedBinCrate);
         }
         if is_proc_macro_crate {
-            sess.dcx().emit_err(errors::MixedProcMacroCrate);
+            sess.dcx().emit_err(diagnostics::MixedProcMacroCrate);
         }
     }
     if crate_types.contains(&CrateType::Sdylib) && !tcx.features().export_stable() {
@@ -282,7 +282,7 @@ fn configure_and_expand(
     }
 
     if is_proc_macro_crate && !sess.panic_strategy().unwinds() {
-        sess.dcx().emit_warn(errors::ProcMacroCratePanicAbort);
+        sess.dcx().emit_warn(diagnostics::ProcMacroCratePanicAbort);
     }
 
     sess.time("maybe_create_a_macro_crate", || {
@@ -399,7 +399,9 @@ fn print_macro_stats(ecx: &ExtCtxt<'_>) {
 
 fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
     let sess = tcx.sess;
-    let (resolver, krate) = &*tcx.resolver_for_lowering().borrow();
+    let (resolver, krate) = tcx.resolver_for_lowering();
+    let resolver = &*resolver.borrow();
+    let krate = &*krate.borrow();
     let mut lint_buffer = resolver.lint_buffer.steal();
 
     if sess.opts.unstable_opts.input_stats {
@@ -458,9 +460,13 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
                     })
                     .as_str();
 
-                sess.dcx().emit_err(errors::FerrisIdentifier { spans, first_span, ferris_fix });
+                sess.dcx().emit_err(diagnostics::FerrisIdentifier {
+                    spans,
+                    first_span,
+                    ferris_fix,
+                });
             } else {
-                sess.dcx().emit_err(errors::EmojiIdentifier { spans, ident });
+                sess.dcx().emit_err(diagnostics::EmojiIdentifier { spans, ident });
             }
         }
     });
@@ -474,7 +480,7 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
         tcx.registered_tools(()),
         Some(lint_buffer),
         rustc_lint::BuiltinCombinedEarlyLintPass::new(),
-        (&**krate, &*krate.attrs),
+        (&*krate, &*krate.attrs),
     )
 }
 
@@ -773,7 +779,8 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
             }
         }
         Err(error) => {
-            sess.dcx().emit_fatal(errors::ErrorWritingDependencies { path: deps_filename, error });
+            sess.dcx()
+                .emit_fatal(diagnostics::ErrorWritingDependencies { path: deps_filename, error });
         }
     }
 }
@@ -781,7 +788,11 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
 fn resolver_for_lowering_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
     (): (),
-) -> (&'tcx Steal<(ty::ResolverAstLowering<'tcx>, Arc<ast::Crate>)>, &'tcx ty::ResolverGlobalCtxt) {
+) -> (
+    &'tcx Steal<ty::ResolverAstLowering<'tcx>>,
+    &'tcx Steal<ast::Crate>,
+    &'tcx ty::ResolverGlobalCtxt,
+) {
     let arenas = Resolver::arenas();
     let _ = tcx.registered_tools(()); // Uses `crate_for_resolver`.
     let (krate, pre_configured_attrs) = tcx.crate_for_resolver(()).steal();
@@ -802,8 +813,11 @@ fn resolver_for_lowering_raw<'tcx>(
         ast_lowering: untracked_resolver_for_lowering,
     } = resolver.into_outputs();
 
-    let resolutions = tcx.arena.alloc(untracked_resolutions);
-    (tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, Arc::new(krate)))), resolutions)
+    (
+        tcx.arena.alloc(Steal::new(untracked_resolver_for_lowering)),
+        tcx.arena.alloc(Steal::new(krate)),
+        tcx.arena.alloc(untracked_resolutions),
+    )
 }
 
 pub fn write_dep_info(tcx: TyCtxt<'_>) {
@@ -824,10 +838,11 @@ pub fn write_dep_info(tcx: TyCtxt<'_>) {
     if let Some(input_path) = sess.io.input.opt_path() {
         if sess.opts.will_create_output_file() {
             if output_contains_path(&output_paths, input_path) {
-                sess.dcx().emit_fatal(errors::InputFileWouldBeOverWritten { path: input_path });
+                sess.dcx()
+                    .emit_fatal(diagnostics::InputFileWouldBeOverWritten { path: input_path });
             }
             if let Some(dir_path) = output_conflicts_with_dir(&output_paths) {
-                sess.dcx().emit_fatal(errors::GeneratedFileConflictsWithDirectory {
+                sess.dcx().emit_fatal(diagnostics::GeneratedFileConflictsWithDirectory {
                     input_path,
                     dir_path,
                 });
@@ -837,7 +852,7 @@ pub fn write_dep_info(tcx: TyCtxt<'_>) {
 
     if let Some(ref dir) = sess.io.temps_dir {
         if fs::create_dir_all(dir).is_err() {
-            sess.dcx().emit_fatal(errors::TempsDirError);
+            sess.dcx().emit_fatal(diagnostics::TempsDirError);
         }
     }
 
@@ -849,7 +864,7 @@ pub fn write_dep_info(tcx: TyCtxt<'_>) {
     if !only_dep_info {
         if let Some(ref dir) = sess.io.output_dir {
             if fs::create_dir_all(dir).is_err() {
-                sess.dcx().emit_fatal(errors::OutDirError);
+                sess.dcx().emit_fatal(diagnostics::OutDirError);
             }
         }
     }
@@ -860,10 +875,10 @@ pub fn write_interface<'tcx>(tcx: TyCtxt<'tcx>) {
         return;
     }
     let _timer = tcx.sess.timer("write_interface");
-    let (_, krate) = &*tcx.resolver_for_lowering().borrow();
+    let (_, krate) = tcx.resolver_for_lowering();
 
     let krate = rustc_ast_pretty::pprust::print_crate_as_interface(
-        krate,
+        &*krate.borrow(),
         tcx.sess.psess.edition,
         &tcx.sess.psess.attr_id_generator,
     );
@@ -877,12 +892,9 @@ pub fn write_interface<'tcx>(tcx: TyCtxt<'tcx>) {
 pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     let providers = &mut Providers::default();
     providers.queries.analysis = analysis;
-    // `hir_delayed_owner` is fed during `lower_delayed_owner`, by default it returns phantom,
-    // as if this query was not fed it means that `MaybeOwner` does not exist for provided LocalDefId.
-    providers.queries.hir_delayed_owner = |_, _| MaybeOwner::Phantom;
     providers.queries.resolver_for_lowering_raw = resolver_for_lowering_raw;
     providers.queries.stripped_cfg_items = |tcx, _| &tcx.resolutions(()).stripped_cfg_items[..];
-    providers.queries.resolutions = |tcx, ()| tcx.resolver_for_lowering_raw(()).1;
+    providers.queries.resolutions = |tcx, ()| tcx.resolver_for_lowering_raw(()).2;
     providers.queries.early_lint_checks = early_lint_checks;
     providers.queries.env_var_os = env_var_os;
     rustc_ast_lowering::provide(&mut providers.queries);
@@ -1353,7 +1365,7 @@ pub fn get_crate_name(sess: &Session, krate_attrs: &[ast::Attribute]) -> Symbol 
         if let Some((attr_crate_name, span)) = attr_crate_name
             && attr_crate_name != crate_name
         {
-            sess.dcx().emit_err(errors::CrateNameDoesNotMatch {
+            sess.dcx().emit_err(diagnostics::CrateNameDoesNotMatch {
                 span,
                 crate_name,
                 attr_crate_name,
@@ -1370,7 +1382,7 @@ pub fn get_crate_name(sess: &Session, krate_attrs: &[ast::Attribute]) -> Symbol 
         && let Some(file_stem) = path.file_stem().and_then(|s| s.to_str())
     {
         if file_stem.starts_with('-') {
-            sess.dcx().emit_err(errors::CrateNameInvalid { crate_name: file_stem });
+            sess.dcx().emit_err(diagnostics::CrateNameInvalid { crate_name: file_stem });
         } else {
             return validate(Symbol::intern(&file_stem.replace('-', "_")), None);
         }
@@ -1413,7 +1425,7 @@ pub fn collect_crate_types(
     // styles at all other locations
     if session.opts.test {
         if !session.target.executables {
-            session.dcx().emit_warn(errors::UnsupportedCrateTypeForTarget {
+            session.dcx().emit_warn(diagnostics::UnsupportedCrateTypeForTarget {
                 crate_type: CrateType::Executable,
                 target_triple: &session.opts.target_triple,
             });
@@ -1459,13 +1471,13 @@ pub fn collect_crate_types(
 
     base.retain(|crate_type| {
         if invalid_output_for_target(session, *crate_type) {
-            session.dcx().emit_warn(errors::UnsupportedCrateTypeForTarget {
+            session.dcx().emit_warn(diagnostics::UnsupportedCrateTypeForTarget {
                 crate_type: *crate_type,
                 target_triple: &session.opts.target_triple,
             });
             false
         } else if !backend_crate_types.contains(crate_type) {
-            session.dcx().emit_warn(errors::UnsupportedCrateTypeForCodegenBackend {
+            session.dcx().emit_warn(diagnostics::UnsupportedCrateTypeForCodegenBackend {
                 crate_type: *crate_type,
                 codegen_backend: codegen_backend_name,
             });

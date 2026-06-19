@@ -6,7 +6,7 @@ use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::{
     FromSolverError, PredicateObligation, PredicateObligations, TraitEngine,
 };
-use rustc_middle::ty::{TyCtxt, TypeVisitableExt, TypingMode};
+use rustc_middle::ty::{self, TyCtxt, TyVid, TypeVisitableExt, TypingMode};
 use rustc_next_trait_solver::delegate::SolverDelegate as _;
 use rustc_next_trait_solver::solve::{
     GoalEvaluation, GoalStalledOn, HasChanged, MaybeInfo, SolverDelegateEvalExt as _,
@@ -75,6 +75,37 @@ impl<'tcx> ObligationStorage<'tcx> {
     fn clone_pending(&self) -> PredicateObligations<'tcx> {
         let mut obligations: PredicateObligations<'tcx> =
             self.pending.iter().map(|(o, _)| o.clone()).collect();
+        obligations.extend(self.overflowed.iter().cloned());
+        obligations
+    }
+
+    fn clone_pending_potentially_referencing_sub_root(
+        &self,
+        infcx: &InferCtxt<'tcx>,
+        vid: TyVid,
+    ) -> PredicateObligations<'tcx> {
+        let mut obligations: PredicateObligations<'tcx> = self
+            .pending
+            .iter()
+            .filter(|(_, stalled_on)| {
+                let Some(stalled_on) = stalled_on else { return true };
+                // Don't reuse the sub-unification roots cached on `stalled_on`:
+                // a later sub-unification merge can have changed which root
+                // each stalled var belongs to, so the cached info can be stale.
+                // Walk `stalled_vars` and recompute the current root instead.
+                //
+                // Conservative here: if a stalled var no longer resolves to an
+                // infer var, some unification happened, so the goal is no longer
+                // stalled. Include it to be re-evaluated downstream.
+                stalled_on.stalled_vars.iter().filter_map(|arg| arg.as_type()).any(
+                    |ty| match *infcx.shallow_resolve(ty).kind() {
+                        ty::Infer(ty::TyVar(tv)) => infcx.sub_unification_table_root_var(tv) == vid,
+                        _ => true,
+                    },
+                )
+            })
+            .map(|(o, _)| o.clone())
+            .collect();
         obligations.extend(self.overflowed.iter().cloned());
         obligations
     }
@@ -272,17 +303,29 @@ where
         self.obligations.clone_pending()
     }
 
+    fn pending_obligations_potentially_referencing_sub_root(
+        &self,
+        infcx: &InferCtxt<'tcx>,
+        vid: ty::TyVid,
+    ) -> PredicateObligations<'tcx> {
+        // `-Zdisable-fast-paths`: same gate as the other new-solver fast paths.
+        if infcx.tcx.disable_trait_solver_fast_paths() {
+            return self.obligations.clone_pending();
+        }
+        self.obligations.clone_pending_potentially_referencing_sub_root(infcx, vid)
+    }
+
     fn drain_stalled_obligations_for_coroutines(
         &mut self,
         infcx: &InferCtxt<'tcx>,
     ) -> PredicateObligations<'tcx> {
         let stalled_coroutines = match infcx.typing_mode_raw().assert_not_erased() {
-            TypingMode::Analysis { defining_opaque_types_and_generators } => {
+            TypingMode::Typeck { defining_opaque_types_and_generators } => {
                 defining_opaque_types_and_generators
             }
             TypingMode::Coherence
-            | TypingMode::Borrowck { defining_opaque_types: _ }
-            | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ }
+            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _ }
+            | TypingMode::PostBorrowck { defined_opaque_types: _ }
             | TypingMode::PostAnalysis
             | TypingMode::Codegen => return Default::default(),
         };

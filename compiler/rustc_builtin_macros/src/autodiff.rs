@@ -567,8 +567,7 @@ mod llvm_enzyme {
                     PatKind::Ident(_, ident, _) => ecx.expr_path(ecx.path_ident(span, ident)),
                     _ => todo!(),
                 })
-                .collect::<ThinVec<_>>()
-                .into(),
+                .collect::<ThinVec<_>>(),
         );
 
         let enzyme_path_idents = ecx.std_path(&[sym::intrinsics, sym::autodiff]);

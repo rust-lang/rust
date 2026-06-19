@@ -1,6 +1,6 @@
 //@ check-pass
 
-#![allow(clippy::unnecessary_literal_unwrap)]
+#![expect(clippy::unnecessary_literal_unwrap)]
 
 trait IsErr {
     fn is_err(&self, err: &str) -> bool;

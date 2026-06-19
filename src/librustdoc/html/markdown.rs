@@ -41,10 +41,10 @@ use rustc_errors::{Diag, DiagMessage};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::TyCtxt;
 pub(crate) use rustc_resolve::rustdoc::main_body_opts;
-use rustc_resolve::rustdoc::may_be_doc_link;
 use rustc_resolve::rustdoc::pulldown_cmark::{
     self, BrokenLink, CodeBlockKind, CowStr, Event, LinkType, Options, Parser, Tag, TagEnd, html,
 };
+use rustc_resolve::rustdoc::{DocFragment, may_be_doc_link, source_span_for_markdown_range};
 use rustc_span::edition::Edition;
 use rustc_span::{Span, Symbol};
 use tracing::{debug, trace};
@@ -719,11 +719,17 @@ impl MdRelLine {
     }
 }
 
+#[derive(Clone, Debug)]
+pub(crate) struct CodeLineMapping {
+    pub(crate) generated: Range<usize>,
+    pub(crate) original: Span,
+}
+
 pub(crate) fn find_testable_code<T: doctest::DocTestVisitor>(
     doc: &str,
     tests: &mut T,
     error_codes: ErrorCodes,
-    extra_info: Option<&ExtraInfo<'_>>,
+    extra_info: Option<&ExtraInfo<'_, '_>>,
 ) {
     find_codes(doc, tests, error_codes, extra_info, false)
 }
@@ -732,7 +738,7 @@ pub(crate) fn find_codes<T: doctest::DocTestVisitor>(
     doc: &str,
     tests: &mut T,
     error_codes: ErrorCodes,
-    extra_info: Option<&ExtraInfo<'_>>,
+    extra_info: Option<&ExtraInfo<'_, '_>>,
     include_non_rust: bool,
 ) {
     let mut parser = Parser::new_ext(doc, main_body_opts()).into_offset_iter();
@@ -757,15 +763,14 @@ pub(crate) fn find_codes<T: doctest::DocTestVisitor>(
                 }
 
                 let mut test_s = String::new();
+                let mut text_events = Vec::new();
 
-                while let Some((Event::Text(s), _)) = parser.next() {
+                while let Some((Event::Text(s), offset)) = parser.next() {
+                    let start = test_s.len();
                     test_s.push_str(&s);
+                    text_events.push((start..test_s.len(), offset));
                 }
-                let text = test_s
-                    .lines()
-                    .map(|l| map_line(l).for_code())
-                    .collect::<Vec<Cow<'_, str>>>()
-                    .join("\n");
+                let (text, code_mappings) = map_code_block(doc, &test_s, &text_events, extra_info);
 
                 nb_lines += doc[prev_offset..offset.start].lines().count();
                 // If there are characters between the preceding line ending and
@@ -775,7 +780,7 @@ pub(crate) fn find_codes<T: doctest::DocTestVisitor>(
                     nb_lines -= 1;
                 }
                 let line = MdRelLine::new(nb_lines);
-                tests.visit_test(text, block_info, line);
+                tests.visit_test(text, block_info, line, code_mappings);
                 prev_offset = offset.start;
             }
             Event::Start(Tag::Heading { level, .. }) => {
@@ -791,15 +796,75 @@ pub(crate) fn find_codes<T: doctest::DocTestVisitor>(
     }
 }
 
-pub(crate) struct ExtraInfo<'tcx> {
+fn map_code_block(
+    doc: &str,
+    code: &str,
+    text_events: &[(Range<usize>, Range<usize>)],
+    extra_info: Option<&ExtraInfo<'_, '_>>,
+) -> (String, Vec<CodeLineMapping>) {
+    let mut text = String::new();
+    let mut code_mappings = Vec::new();
+    let mut code_line_start = 0;
+
+    for (line_index, line) in code.lines().enumerate() {
+        if line_index != 0 {
+            text.push('\n');
+        }
+
+        let generated_start = text.len();
+        let mapped_line = map_line(line).for_code();
+        text.push_str(&mapped_line);
+        let generated = generated_start..text.len();
+
+        if mapped_line.as_ref() == line
+            && let Some(extra_info) = extra_info
+            && let Some(fragments) = extra_info.fragments
+        {
+            let code_line = code_line_start..code_line_start + line.len();
+            if let Some(md_range) = markdown_range_for_code_range(text_events, code_line)
+                && let Some((original, _)) =
+                    source_span_for_markdown_range(extra_info.tcx, doc, &md_range, fragments)
+            {
+                code_mappings.push(CodeLineMapping { generated, original });
+            }
+        }
+
+        code_line_start += line.len() + 1;
+    }
+
+    (text, code_mappings)
+}
+
+fn markdown_range_for_code_range(
+    text_events: &[(Range<usize>, Range<usize>)],
+    code_range: Range<usize>,
+) -> Option<Range<usize>> {
+    text_events.iter().find_map(|(event_code_range, event_md_range)| {
+        if event_code_range.start <= code_range.start && code_range.end <= event_code_range.end {
+            let start = event_md_range.start + code_range.start - event_code_range.start;
+            let end = event_md_range.start + code_range.end - event_code_range.start;
+            Some(start..end)
+        } else {
+            None
+        }
+    })
+}
+
+pub(crate) struct ExtraInfo<'doc, 'tcx> {
     def_id: LocalDefId,
     sp: Span,
     tcx: TyCtxt<'tcx>,
+    fragments: Option<&'doc [DocFragment]>,
 }
 
-impl<'tcx> ExtraInfo<'tcx> {
-    pub(crate) fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId, sp: Span) -> ExtraInfo<'tcx> {
-        ExtraInfo { def_id, sp, tcx }
+impl<'doc, 'tcx> ExtraInfo<'doc, 'tcx> {
+    pub(crate) fn new(
+        tcx: TyCtxt<'tcx>,
+        def_id: LocalDefId,
+        sp: Span,
+        fragments: Option<&'doc [DocFragment]>,
+    ) -> ExtraInfo<'doc, 'tcx> {
+        ExtraInfo { def_id, sp, tcx, fragments }
     }
 
     fn error_invalid_codeblock_attr(&self, msg: impl Into<DiagMessage>) {
@@ -846,11 +911,12 @@ pub(crate) enum Ignore {
     Some(Vec<String>),
 }
 
-/// This is the parser for fenced codeblocks attributes. It implements the following eBNF:
+/// This is the parser for fenced codeblocks attributes.
 ///
-/// ```eBNF
+/// It implements the following grammar as expressed in ABNF:
+///
+/// ```ABNF
 /// lang-string = *(token-list / delimited-attribute-list / comment)
-///
 /// bareword = LEADINGCHAR *(CHAR)
 /// bareword-without-leading-char = CHAR *(CHAR)
 /// quoted-string = QUOTE *(NONQUOTE) QUOTE
@@ -861,7 +927,7 @@ pub(crate) enum Ignore {
 /// attribute-list = [sep] attribute *(sep attribute) [sep]
 /// delimited-attribute-list = OPEN-CURLY-BRACKET attribute-list CLOSE-CURLY-BRACKET
 /// token-list = [sep] token *(sep token) [sep]
-/// comment = OPEN_PAREN *(all characters) CLOSE_PAREN
+/// comment = OPEN_PAREN *<all characters except closing parentheses> CLOSE_PAREN
 ///
 /// OPEN_PAREN = "("
 /// CLOSE_PARENT = ")"
@@ -889,7 +955,7 @@ pub(crate) struct TagIterator<'a, 'tcx> {
     inner: Peekable<CharIndices<'a>>,
     data: &'a str,
     is_in_attribute_block: bool,
-    extra: Option<&'a ExtraInfo<'tcx>>,
+    extra: Option<&'a ExtraInfo<'a, 'tcx>>,
     is_error: bool,
 }
 
@@ -916,7 +982,7 @@ struct Indices {
 }
 
 impl<'a, 'tcx> TagIterator<'a, 'tcx> {
-    pub(crate) fn new(data: &'a str, extra: Option<&'a ExtraInfo<'tcx>>) -> Self {
+    pub(crate) fn new(data: &'a str, extra: Option<&'a ExtraInfo<'a, 'tcx>>) -> Self {
         Self {
             inner: data.char_indices().peekable(),
             data,
@@ -1171,7 +1237,7 @@ impl LangString {
     fn parse(
         string: &str,
         allow_error_code_check: ErrorCodes,
-        extra: Option<&ExtraInfo<'_>>,
+        extra: Option<&ExtraInfo<'_, '_>>,
     ) -> Self {
         let allow_error_code_check = allow_error_code_check.as_bool();
         let mut seen_rust_tags = false;
@@ -1954,7 +2020,7 @@ pub(crate) struct RustCodeBlock {
 
 /// Returns a range of bytes for each code block in the markdown that is tagged as `rust` or
 /// untagged (and assumed to be rust).
-pub(crate) fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<RustCodeBlock> {
+pub(crate) fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_, '_>) -> Vec<RustCodeBlock> {
     let mut code_blocks = vec![];
 
     if md.is_empty() {

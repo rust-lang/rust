@@ -1,5 +1,4 @@
 #![warn(clippy::empty_enum_variants_with_brackets)]
-#![allow(dead_code)]
 #![feature(more_qualified_paths)]
 
 pub enum PublicTestEnum {

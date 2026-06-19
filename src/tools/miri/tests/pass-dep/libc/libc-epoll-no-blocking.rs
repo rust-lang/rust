@@ -1,5 +1,6 @@
 //@only-target: linux android illumos
 //@revisions: edge_triggered level_triggered
+//@run-native
 
 #[path = "../../utils/libc.rs"]
 mod libc_utils;

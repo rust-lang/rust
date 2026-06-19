@@ -1,0 +1,4 @@
+break tests/ui/repeated_same_line_breakpoint.rs:6
+continue
+continue
+quit

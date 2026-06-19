@@ -26,9 +26,9 @@ use std::ops::ControlFlow;
 use std::sync::Arc;
 use std::{fmt, mem};
 
-use diagnostics::{ImportSuggestion, LabelSuggestion, StructCtor, Suggestion};
+use diagnostics::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
 use effective_visibilities::EffectiveVisibilitiesVisitor;
-use errors::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
+use error_helper::{ImportSuggestion, LabelSuggestion, StructCtor, Suggestion};
 use hygiene::Macros20NormalizedSyntaxContext;
 use imports::{Import, ImportData, ImportKind, NameResolution, PendingDecl};
 use late::{
@@ -82,7 +82,7 @@ mod check_unused;
 mod def_collector;
 mod diagnostics;
 mod effective_visibilities;
-mod errors;
+mod error_helper;
 mod ident;
 mod imports;
 mod late;
@@ -477,8 +477,8 @@ enum PathResult<'ra> {
         ///
         /// In this case, `module` will point to `a`.
         module: Option<ModuleOrUniformRoot<'ra>>,
-        /// The segment name of target
-        segment_name: Symbol,
+        /// The segment of target
+        segment: Ident,
         error_implied_by_parse_error: bool,
         message: String,
         note: Option<String>,
@@ -507,7 +507,7 @@ impl<'ra> PathResult<'ra> {
         };
         PathResult::Failed {
             span: ident.span,
-            segment_name: ident.name,
+            segment: ident,
             label,
             suggestion,
             is_error_from_last_segment,
@@ -2273,7 +2273,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         PRIVATE_MACRO_USE,
                         import.root_id,
                         ident.span,
-                        errors::MacroIsPrivate { ident },
+                        diagnostics::MacroIsPrivate { ident },
                     );
                 }
             }

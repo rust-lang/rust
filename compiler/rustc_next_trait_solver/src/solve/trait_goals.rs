@@ -1590,9 +1590,7 @@ where
     ) -> Option<Result<Candidate<I>, NoSolutionOrRerunNonErased>> {
         if let ty::Coroutine(def_id, _) = self_ty.kind() {
             match self.typing_mode() {
-                TypingMode::Analysis {
-                    defining_opaque_types_and_generators: stalled_generators,
-                } => {
+                TypingMode::Typeck { defining_opaque_types_and_generators: stalled_generators } => {
                     if def_id.as_local().is_some_and(|def_id| stalled_generators.contains(&def_id))
                     {
                         return Some(self.forced_ambiguity(MaybeInfo {
@@ -1613,8 +1611,8 @@ where
                 TypingMode::Coherence
                 | TypingMode::PostAnalysis
                 | TypingMode::Codegen
-                | TypingMode::Borrowck { defining_opaque_types: _ }
-                | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ } => {}
+                | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _ }
+                | TypingMode::PostBorrowck { defined_opaque_types: _ } => {}
             }
         }
 

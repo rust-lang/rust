@@ -925,10 +925,7 @@ where
             // show up in the bounds, but just ones that come from substituting
             // `Self` with the dyn type.
             let proj = proj.with_self_ty(cx, trait_ref.self_ty());
-            replace_projection_with
-                .entry(proj.def_id().into())
-                .or_default()
-                .push(bound.rebind(proj));
+            replace_projection_with.entry(proj.def_id()).or_default().push(bound.rebind(proj));
         }
     }
 
@@ -952,7 +949,7 @@ struct ReplaceProjectionWith<'a, 'b, I: Interner, D: SolverDelegate<Interner = I
     ecx: &'a mut EvalCtxt<'b, D>,
     param_env: I::ParamEnv,
     self_ty: I::Ty,
-    mapping: &'a HashMap<I::DefId, Vec<ty::Binder<I, ty::ProjectionPredicate<I>>>>,
+    mapping: &'a HashMap<I::TraitAssocTermId, Vec<ty::Binder<I, ty::ProjectionPredicate<I>>>>,
     nested: Vec<Goal<I, I::Predicate>>,
 }
 
@@ -966,7 +963,7 @@ where
         source_projection: ty::Binder<I, ty::ProjectionPredicate<I>>,
         target_projection: ty::AliasTerm<I>,
     ) -> bool {
-        source_projection.item_def_id() == target_projection.def_id()
+        source_projection.item_def_id() == target_projection.expect_projection_def_id()
             && self
                 .ecx
                 .probe(|_| ProbeKind::ProjectionCompatibility)
@@ -990,7 +987,7 @@ where
             return Ok(None);
         }
 
-        let Some(replacements) = self.mapping.get(&alias_term.def_id()) else {
+        let Some(replacements) = self.mapping.get(&alias_term.expect_projection_def_id()) else {
             return Ok(None);
         };
 

@@ -10,7 +10,7 @@ use rustc_middle::ty::{self, Ty};
 use rustc_span::{Span, sym};
 
 use clippy_utils::attrs::is_proc_macro;
-use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_indent;
 use clippy_utils::ty::is_must_use_ty;
 use clippy_utils::visitors::for_each_expr_without_closures;
@@ -145,31 +145,24 @@ fn check_needless_must_use(
         return;
     }
     if returns_unit(decl) {
-        if attrs.len() == 1 {
-            span_lint_and_then(
-                cx,
-                MUST_USE_UNIT,
-                fn_header_span,
-                "this unit-returning function has a `#[must_use]` attribute",
-                |diag| {
+        span_lint_and_then(
+            cx,
+            MUST_USE_UNIT,
+            fn_header_span,
+            "this unit-returning function has a `#[must_use]` attribute",
+            |diag| {
+                // When there are multiple attributes, it is not sufficient to simply make `must_use` empty, see
+                // issue #12320.
+                // FIXME(jdonszelmann): this used to give a machine-applicable fix. However, it was super fragile,
+                // honestly looked incorrect, and is a little hard to support for a little bit now. Some day this
+                // could be re-added.
+                if attrs.len() == 1 {
                     diag.span_suggestion(attr_span, "remove the attribute", "", Applicability::MachineApplicable);
-                },
-            );
-        } else {
-            // When there are multiple attributes, it is not sufficient to simply make `must_use` empty, see
-            // issue #12320.
-            // FIXME(jdonszelmann): this used to give a machine-applicable fix. However, it was super fragile,
-            // honestly looked incorrect, and is a little hard to support for a little bit now. Some day this
-            // could be re-added.
-            span_lint_and_help(
-                cx,
-                MUST_USE_UNIT,
-                fn_header_span,
-                "this unit-returning function has a `#[must_use]` attribute",
-                Some(attr_span),
-                "remove `must_use`",
-            );
-        }
+                } else {
+                    diag.span_help(attr_span, "remove `must_use`");
+                }
+            },
+        );
     } else if reason.is_none() && is_must_use_ty(cx, return_ty(cx, item_id)) {
         // Ignore async functions unless Future::Output type is a must_use type
         if sig.header.is_async() {
@@ -181,13 +174,24 @@ fn check_needless_must_use(
             }
         }
 
-        span_lint_and_help(
+        span_lint_and_then(
             cx,
             DOUBLE_MUST_USE,
             fn_header_span,
             "this function has a `#[must_use]` attribute with no message, but returns a type already marked as `#[must_use]`",
-            None,
-            "either add some descriptive message or remove the attribute",
+            |diag| {
+                // When there are multiple attributes, it is not sufficient to simply make `must_use` empty, see
+                // issue #12320.
+                // FIXME(jdonszelmann): this used to give a machine-applicable fix. However, it was super fragile,
+                // honestly looked incorrect, and is a little hard to support for a little bit now. Some day this
+                // could be re-added.
+                if attrs.len() == 1 {
+                    diag.span_suggestion(attr_span, "remove the attribute", "", Applicability::MachineApplicable);
+                } else {
+                    diag.span_help(attr_span, "remove `must_use`");
+                }
+                diag.note("alternatively, you may add an explicit reason to the `must_use` attribute");
+            },
         );
     }
 }

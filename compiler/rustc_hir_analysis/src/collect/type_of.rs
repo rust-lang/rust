@@ -62,7 +62,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
                 Ty::new_fn_def(tcx, def_id.to_def_id(), args)
             }
-            TraitItemKind::Const(ty, rhs, _) => rhs
+            TraitItemKind::Const(ty, rhs) => rhs
                 .and_then(|rhs| {
                     ty.is_suggestable_infer_ty().then(|| {
                         infer_placeholder_type(
@@ -154,9 +154,10 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
             ItemKind::TyAlias(_, _, self_ty) => icx.lower_ty(self_ty),
             ItemKind::Impl(hir::Impl { self_ty, .. }) => match self_ty.find_self_aliases() {
                 spans if spans.len() > 0 => {
-                    let guar = tcx
-                        .dcx()
-                        .emit_err(crate::errors::SelfInImplSelf { span: spans.into(), note: () });
+                    let guar = tcx.dcx().emit_err(crate::diagnostics::SelfInImplSelf {
+                        span: spans.into(),
+                        note: (),
+                    });
                     Ty::new_error(tcx, guar)
                 }
                 _ => icx.lower_ty(self_ty),
@@ -437,6 +438,15 @@ fn infer_placeholder_type<'tcx>(
     let guar = cx
         .dcx()
         .try_steal_modify_and_emit_err(ty_span, StashKey::ItemNoType, |err| {
+            // HACK(#69396): A macro can expand to several missing-type items that all
+            // collide on one stashed `(span, ItemNoType)` diagnostic. They can infer
+            // different types, so there is no single concrete type to suggest, and which
+            // one wins the steal is not even stable under the parallel front-end. Keep the
+            // parser's generic suggestion instead. The fallback arm below additionally
+            // checks `is_empty` for explicit `_` spans.
+            if ty_span.from_expansion() {
+                return;
+            }
             if !ty.references_error() {
                 // Only suggest adding `:` if it was missing (and suggested by parsing diagnostic).
                 let colon = if ty_span == item_ident.span.shrink_to_hi() { ":" } else { "" };

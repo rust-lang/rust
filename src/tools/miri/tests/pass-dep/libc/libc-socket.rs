@@ -1,5 +1,6 @@
 //@ignore-target: windows # No libc socket on Windows
 //@compile-flags: -Zmiri-disable-isolation
+//@run-native
 
 #[path = "../../utils/libc.rs"]
 mod libc_utils;
@@ -176,8 +177,8 @@ fn test_set_nosigpipe_invalid_len() {
     let sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
     // Value should be of type `libc::c_int` which has size 4 bytes.
-    // By providing a u64 of size 8 bytes we trigger an invalid length error.
-    let err = net::setsockopt(sockfd, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1u64).unwrap_err();
+    // By providing a u16 of size 2 bytes we trigger an invalid length error.
+    let err = net::setsockopt(sockfd, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1u16).unwrap_err();
     assert_eq!(err.kind(), ErrorKind::InvalidInput);
     // Check that it is the right kind of `InvalidInput`.
     assert_eq!(err.raw_os_error(), Some(libc::EINVAL));

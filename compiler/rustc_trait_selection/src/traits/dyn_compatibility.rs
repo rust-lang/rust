@@ -886,16 +886,15 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalSelfTypeVisitor<'tcx> {
         let ct = self.tcx.expand_abstract_consts(ct);
 
         match ct.kind() {
-            ty::ConstKind::Unevaluated(
-                proj @ ty::UnevaluatedConst {
-                    kind: ty::UnevaluatedConstKind::Projection { .. },
-                    ..
-                },
-            ) if self.tcx.features().min_generic_const_args() => {
+            ty::ConstKind::Unevaluated(ty::UnevaluatedConst {
+                kind: ty::UnevaluatedConstKind::Projection { def_id },
+                args,
+                ..
+            }) if self.tcx.features().min_generic_const_args() => {
                 match self.allow_self_projections {
                     AllowSelfProjections::Yes => {
-                        let trait_def_id = self.tcx.parent(proj.kind.def_id());
-                        let trait_ref = ty::TraitRef::from_assoc(self.tcx, trait_def_id, proj.args);
+                        let trait_def_id = self.tcx.parent(def_id);
+                        let trait_ref = ty::TraitRef::from_assoc(self.tcx, trait_def_id, args);
 
                         // Only walk contained consts if the parent trait is not a supertrait.
                         if self.is_supertrait_of_current_trait(trait_ref) {

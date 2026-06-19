@@ -22,12 +22,12 @@ use stdx::impl_from;
 use triomphe::Arc;
 
 use crate::{
-    GenericDefaultsRef, GenericPredicates, ImplTraitId, InferBodyId, TyDefId, TyLoweringResult,
-    ValueTyDefId,
+    FieldType, GenericDefaultsRef, GenericPredicates, ImplTraitId, InferBodyId, TyDefId,
+    TyLoweringResult, ValueTyDefId,
     consteval::ConstEvalError,
     dyn_compatibility::DynCompatibilityViolation,
     layout::{Layout, LayoutError},
-    lower::{GenericDefaults, TypeAliasBounds},
+    lower::{GenericDefaults, TrackedStructToken, TypeAliasBounds},
     mir::{BorrowckResult, MirBody, MirLowerError},
     next_solver::{
         Allocation, Clause, EarlyBinder, GenericArgs, ParamEnv, PolyFnSig, StoredClauses,
@@ -225,11 +225,11 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     fn field_types_with_diagnostics(
         &self,
         var: VariantId,
-    ) -> &TyLoweringResult<ArenaMap<LocalFieldId, StoredEarlyBinder<StoredTy>>>;
+    ) -> &TyLoweringResult<ArenaMap<LocalFieldId, FieldType>>;
 
     #[salsa::invoke(crate::lower::field_types_query)]
     #[salsa::transparent]
-    fn field_types(&self, var: VariantId) -> &ArenaMap<LocalFieldId, StoredEarlyBinder<StoredTy>>;
+    fn field_types(&self, var: VariantId) -> &ArenaMap<LocalFieldId, FieldType>;
 
     #[salsa::invoke(crate::lower::callable_item_signature)]
     #[salsa::transparent]
@@ -421,11 +421,18 @@ pub struct AnonConstLoc {
     pub(crate) allow_using_generic_params: bool,
 }
 
-#[salsa_macros::interned(debug, no_lifetime, revisions = usize::MAX)]
+#[salsa_macros::interned(debug, no_lifetime, revisions = usize::MAX, constructor = new_)]
 #[derive(PartialOrd, Ord)]
 pub struct AnonConstId {
     #[returns(ref)]
     pub loc: AnonConstLoc,
+}
+
+impl AnonConstId {
+    pub(crate) fn new(db: &dyn DefDatabase, loc: AnonConstLoc, token: TrackedStructToken) -> Self {
+        _ = token;
+        AnonConstId::new_(db, loc)
+    }
 }
 
 impl HasModule for AnonConstId {

@@ -26,7 +26,7 @@ use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use rustc_span::{Symbol, sym};
 use tracing::{debug, instrument};
 
-use crate::errors::NonPrimitiveSimdType;
+use crate::diagnostics::NonPrimitiveSimdType;
 
 mod invariant;
 
@@ -77,9 +77,9 @@ fn layout_of<'tcx>(
             };
         }
         ty::TypingMode::Coherence
-        | ty::TypingMode::Analysis { .. }
-        | ty::TypingMode::Borrowck { .. }
-        | ty::TypingMode::PostBorrowckAnalysis { .. }
+        | ty::TypingMode::Typeck { .. }
+        | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+        | ty::TypingMode::PostBorrowck { .. }
         | ty::TypingMode::ErasedNotCoherence(_)
         | ty::TypingMode::PostAnalysis => {}
     }
@@ -540,9 +540,9 @@ fn layout_of_uncached<'tcx>(
             match cx.typing_env.typing_mode() {
                 ty::TypingMode::Codegen => {}
                 ty::TypingMode::Coherence
-                | ty::TypingMode::Analysis { .. }
-                | ty::TypingMode::Borrowck { .. }
-                | ty::TypingMode::PostBorrowckAnalysis { .. }
+                | ty::TypingMode::Typeck { .. }
+                | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+                | ty::TypingMode::PostBorrowck { .. }
                 | ty::TypingMode::ErasedNotCoherence(_)
                 | ty::TypingMode::PostAnalysis => {
                     return Err(error(cx, LayoutError::TooGeneric(ty)));

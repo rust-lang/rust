@@ -1,26 +1,37 @@
+warning: unused doc comment
+  --> $DIR/check-doc-alias-attr-location.rs:9:1
+   |
+LL | #[doc(alias = "foo")]
+   | ^^^^^^^^^^^^^^^^^^^^^
+LL | extern "C" {}
+   | ------------- rustdoc does not generate documentation for extern blocks
+   |
+   = help: use `//` for a plain comment
+   = note: `#[warn(unused_doc_comments)]` (part of `#[warn(unused)]`) on by default
+
 error: `#[doc(alias = "...")]` isn't allowed on foreign module
-  --> $DIR/check-doc-alias-attr-location.rs:7:15
+  --> $DIR/check-doc-alias-attr-location.rs:9:15
    |
 LL | #[doc(alias = "foo")]
    |               ^^^^^
 
 error: `#[doc(alias = "...")]` isn't allowed on implementation block
-  --> $DIR/check-doc-alias-attr-location.rs:10:15
+  --> $DIR/check-doc-alias-attr-location.rs:12:15
    |
 LL | #[doc(alias = "bar")]
    |               ^^^^^
 
 error: `#[doc(alias = "...")]` isn't allowed on implementation block
-  --> $DIR/check-doc-alias-attr-location.rs:16:15
+  --> $DIR/check-doc-alias-attr-location.rs:18:15
    |
 LL | #[doc(alias = "foobar")]
    |               ^^^^^^^^
 
 error: `#[doc(alias = "...")]` isn't allowed on type alias in implementation block
-  --> $DIR/check-doc-alias-attr-location.rs:18:19
+  --> $DIR/check-doc-alias-attr-location.rs:20:19
    |
 LL |     #[doc(alias = "assoc")]
    |                   ^^^^^^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 4 previous errors; 1 warning emitted
 

@@ -34,7 +34,7 @@ use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _
 use tracing::{debug, instrument};
 
 use super::FnCtxt;
-use crate::errors::{self, SuggestBoxingForReturnImplTrait};
+use crate::diagnostics::{self, SuggestBoxingForReturnImplTrait};
 use crate::fn_ctxt::rustc_span::BytePos;
 use crate::method::probe;
 use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
@@ -527,7 +527,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // but those checks need to be a bit more delicate and the benefit is diminishing.
             if self.can_eq(self.param_env, found_ty_inner, peeled) && error_tys_equate_as_ref {
                 let sugg = prefix_wrap(".as_ref()");
-                err.subdiagnostic(errors::SuggestConvertViaMethod {
+                err.subdiagnostic(diagnostics::SuggestConvertViaMethod {
                     span: expr.span.shrink_to_hi(),
                     sugg,
                     expected,
@@ -561,7 +561,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && self.can_eq(self.param_env, deref_ty, peeled)
                 {
                     let sugg = prefix_wrap(".as_deref()");
-                    err.subdiagnostic(errors::SuggestConvertViaMethod {
+                    err.subdiagnostic(diagnostics::SuggestConvertViaMethod {
                         span: expr.span.shrink_to_hi(),
                         sugg,
                         expected,
@@ -574,7 +574,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if self.can_eq(self.param_env, deref_ty, peeled) {
                         let explicit_deref = "*".repeat(n_step);
                         let sugg = prefix_wrap(&format!(".map(|v| &{explicit_deref}v)"));
-                        err.subdiagnostic(errors::SuggestConvertViaMethod {
+                        err.subdiagnostic(diagnostics::SuggestConvertViaMethod {
                             span: expr.span.shrink_to_hi(),
                             sugg,
                             expected,
@@ -638,7 +638,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if self.may_coerce(Ty::new_box(self.tcx, found), expected) {
             let suggest_boxing = match *found.kind() {
                 ty::Tuple(tuple) if tuple.is_empty() => {
-                    errors::SuggestBoxing::Unit { start: span.shrink_to_lo(), end: span }
+                    diagnostics::SuggestBoxing::Unit { start: span.shrink_to_lo(), end: span }
                 }
                 ty::Coroutine(def_id, ..)
                     if matches!(
@@ -649,18 +649,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ))
                     ) =>
                 {
-                    errors::SuggestBoxing::AsyncBody
+                    diagnostics::SuggestBoxing::AsyncBody
                 }
                 _ if let Node::ExprField(expr_field) = self.tcx.parent_hir_node(hir_id)
                     && expr_field.is_shorthand =>
                 {
-                    errors::SuggestBoxing::ExprFieldShorthand {
+                    diagnostics::SuggestBoxing::ExprFieldShorthand {
                         start: span.shrink_to_lo(),
                         end: span.shrink_to_hi(),
                         ident: expr_field.ident,
                     }
                 }
-                _ => errors::SuggestBoxing::Other {
+                _ => diagnostics::SuggestBoxing::Other {
                     start: span.shrink_to_lo(),
                     end: span.shrink_to_hi(),
                 },
@@ -970,17 +970,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             &hir::FnRetTy::DefaultReturn(_) if self.tcx.is_closure_like(fn_id.to_def_id()) => {}
             &hir::FnRetTy::DefaultReturn(span) if expected.is_unit() => {
                 if !self.can_add_return_type(fn_id) {
-                    err.subdiagnostic(errors::ExpectedReturnTypeLabel::Unit { span });
+                    err.subdiagnostic(diagnostics::ExpectedReturnTypeLabel::Unit { span });
                 } else if let Some(found) = found.make_suggestable(self.tcx, false, None) {
-                    err.subdiagnostic(errors::AddReturnTypeSuggestion::Add {
+                    err.subdiagnostic(diagnostics::AddReturnTypeSuggestion::Add {
                         span,
                         found: found.to_string(),
                     });
                 } else if let Some(sugg) = suggest_impl_trait(self, self.param_env, found) {
-                    err.subdiagnostic(errors::AddReturnTypeSuggestion::Add { span, found: sugg });
+                    err.subdiagnostic(diagnostics::AddReturnTypeSuggestion::Add {
+                        span,
+                        found: sugg,
+                    });
                 } else {
                     // FIXME: if `found` could be `impl Iterator` we should suggest that.
-                    err.subdiagnostic(errors::AddReturnTypeSuggestion::MissingHere { span });
+                    err.subdiagnostic(diagnostics::AddReturnTypeSuggestion::MissingHere { span });
                 }
 
                 return true;
@@ -1006,7 +1009,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .collect::<Vec<_>>()
                         .join("::");
 
-                    err.subdiagnostic(errors::ExpectedReturnTypeLabel::ImplTrait {
+                    err.subdiagnostic(diagnostics::ExpectedReturnTypeLabel::ImplTrait {
                         span: hir_ty.span,
                         trait_name,
                     });
@@ -1069,13 +1072,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     debug!(?found);
                     if found.is_suggestable(self.tcx, false) {
                         if ty.span.is_empty() {
-                            err.subdiagnostic(errors::AddReturnTypeSuggestion::Add {
+                            err.subdiagnostic(diagnostics::AddReturnTypeSuggestion::Add {
                                 span: ty.span,
                                 found: found.to_string(),
                             });
                             return true;
                         } else {
-                            err.subdiagnostic(errors::ExpectedReturnTypeLabel::Other {
+                            err.subdiagnostic(diagnostics::ExpectedReturnTypeLabel::Other {
                                 span: ty.span,
                                 expected,
                             });
@@ -1094,7 +1097,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let ty = self.normalize(hir_ty.span, Unnormalized::new_wip(ty));
                     let ty = self.tcx.instantiate_bound_regions_with_erased(ty);
                     if self.may_coerce(expected, ty) {
-                        err.subdiagnostic(errors::ExpectedReturnTypeLabel::Other {
+                        err.subdiagnostic(diagnostics::ExpectedReturnTypeLabel::Other {
                             span: hir_ty.span,
                             expected,
                         });
@@ -1156,7 +1159,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        diag.subdiagnostic(errors::NoteCallerChoosesTyForTyParam {
+        diag.subdiagnostic(diagnostics::NoteCallerChoosesTyForTyParam {
             ty_param_name: expected_ty_as_param.name,
             found_ty: found,
         });
@@ -1539,9 +1542,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let def_path = self.tcx.def_path_str(adt_def.did());
                 let span = expr.span.shrink_to_hi();
                 let subdiag = if self.type_is_copy_modulo_regions(self.param_env, ty) {
-                    errors::OptionResultRefMismatch::Copied { span, def_path }
+                    diagnostics::OptionResultRefMismatch::Copied { span, def_path }
                 } else if self.type_is_clone_modulo_regions(self.param_env, ty) {
-                    errors::OptionResultRefMismatch::Cloned { span, def_path }
+                    diagnostics::OptionResultRefMismatch::Cloned { span, def_path }
                 } else {
                     return false;
                 };
@@ -2272,6 +2275,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) -> bool {
+        // don't suggest missing `.expect()` or `?` in destructuring assignments LHS.
+        // If the immediate parent is an Assign Expr, and the LHS and the RHS of that Expr
+        // overlap with each other, it's guaranteed that the expression came from desugaring
+        // a destructuring assignment.
+        let parent_node = self.tcx.parent_hir_node(expr.hir_id);
+        if let hir::Node::Expr(e) = parent_node
+            && let hir::ExprKind::Assign(lhs, rhs, _) = e.kind
+            && rhs.hir_id == expr.hir_id
+            && lhs.span.overlaps(rhs.span)
+        {
+            return false;
+        }
+
         let ty::Adt(adt, args) = found.kind() else {
             return false;
         };
@@ -2536,7 +2552,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && self.type_is_clone_modulo_regions(self.param_env, first_ty)
                 && (expr.is_size_lit() || expr_ty.is_usize_like())
             {
-                err.subdiagnostic(errors::ReplaceCommaWithSemicolon {
+                err.subdiagnostic(diagnostics::ReplaceCommaWithSemicolon {
                     comma_span,
                     descr: "a vector",
                 });
@@ -2549,7 +2565,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if self.type_is_copy_modulo_regions(self.param_env, first_ty)
                 && (expr.is_size_lit() || expr_is_const_usize)
             {
-                err.subdiagnostic(errors::ReplaceCommaWithSemicolon {
+                err.subdiagnostic(diagnostics::ReplaceCommaWithSemicolon {
                     comma_span,
                     descr: "an array",
                 });

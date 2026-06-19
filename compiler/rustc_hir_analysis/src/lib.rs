@@ -74,14 +74,14 @@ mod coherence;
 mod collect;
 mod constrained_generic_params;
 pub mod delegation;
-pub mod errors;
+pub mod diagnostics;
 pub mod hir_ty_lowering;
 pub mod hir_wf_check;
 mod impl_wf_check;
 mod outlives;
 mod variance;
 
-pub use errors::NoVariantNamed;
+pub use diagnostics::NoVariantNamed;
 use rustc_abi::{CVariadicStatus, ExternAbi};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -106,7 +106,7 @@ fn check_c_variadic_abi(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: ExternAbi,
         CVariadicStatus::Stable => {}
         CVariadicStatus::NotSupported => {
             tcx.dcx()
-                .create_err(errors::VariadicFunctionCompatibleConvention {
+                .create_err(diagnostics::VariadicFunctionCompatibleConvention {
                     span,
                     convention: &format!("{abi}"),
                 })
@@ -202,6 +202,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         tcx.sess.time("dumping_rustc_attr_data", || {
             outlives::dump::inferred_outlives(tcx);
             variance::dump::variances(tcx);
+            collect::dump::generics(tcx);
             collect::dump::opaque_hidden_types(tcx);
             collect::dump::predicates_and_item_bounds(tcx);
             collect::dump::def_parents(tcx);

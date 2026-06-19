@@ -976,6 +976,35 @@ static AVR_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-end
 ];
 
+const XTENSA_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+    ("bool", Unstable(sym::xtensa_target_feature), &[]),
+    ("fp", Unstable(sym::xtensa_target_feature), &["bool", "coprocessor"]),
+    ("coprocessor", Unstable(sym::xtensa_target_feature), &[]),
+    ("highpriinterrupts", Unstable(sym::xtensa_target_feature), &["interrupt"]),
+    ("interrupt", Unstable(sym::xtensa_target_feature), &["exception"]),
+    (
+        "windowed",
+        Forbidden { reason: "windowed changes the Xtensa calling convention", hard_error: false },
+        &["exception"],
+    ),
+    ("loop", Unstable(sym::xtensa_target_feature), &[]),
+    ("sext", Unstable(sym::xtensa_target_feature), &[]),
+    ("nsa", Unstable(sym::xtensa_target_feature), &[]),
+    ("mul32", Unstable(sym::xtensa_target_feature), &[]),
+    ("mul32high", Unstable(sym::xtensa_target_feature), &["mul32"]),
+    ("div32", Unstable(sym::xtensa_target_feature), &[]),
+    ("mac16", Unstable(sym::xtensa_target_feature), &[]),
+    ("s32c1i", Unstable(sym::xtensa_target_feature), &[]),
+    ("threadptr", Unstable(sym::xtensa_target_feature), &[]),
+    ("extendedl32r", Unstable(sym::xtensa_target_feature), &[]),
+    ("debug", Unstable(sym::xtensa_target_feature), &["exception"]),
+    ("exception", Unstable(sym::xtensa_target_feature), &[]),
+    ("rvector", Unstable(sym::xtensa_target_feature), &["exception"]),
+    ("prid", Unstable(sym::xtensa_target_feature), &[]),
+    ("regprotect", Unstable(sym::xtensa_target_feature), &[]),
+    ("miscsr", Unstable(sym::xtensa_target_feature), &[]),
+];
+
 /// When rustdoc is running, provide a list of all known features so that all their respective
 /// primitives may be documented.
 ///
@@ -992,6 +1021,7 @@ pub fn all_rust_features() -> impl Iterator<Item = (&'static str, Stability)> {
         .chain(RISCV_FEATURES.iter())
         .chain(WASM_FEATURES.iter())
         .chain(BPF_FEATURES.iter())
+        .chain(XTENSA_FEATURES.iter())
         .chain(CSKY_FEATURES)
         .chain(LOONGARCH_FEATURES)
         .chain(IBMZ_FEATURES)
@@ -1000,6 +1030,39 @@ pub fn all_rust_features() -> impl Iterator<Item = (&'static str, Stability)> {
         .chain(AVR_FEATURES)
         .cloned()
         .map(|(f, s, _)| (f, s))
+}
+
+/// Find which target architectures a feature belongs to.
+/// Returns arch display names for all targets where this feature name appears.
+/// Returns empty vec if feature unknown on any target.
+pub fn feature_to_arch_names(feature: &str) -> Vec<&'static str> {
+    let mut arches = Vec::new();
+    macro_rules! check_arch_feats {
+        ($arch_name:expr, $feats:expr) => {
+            if $feats.iter().any(|(f, _, _)| *f == feature) {
+                arches.push($arch_name);
+            }
+        };
+    }
+    check_arch_feats!("arm", ARM_FEATURES);
+    check_arch_feats!("aarch64", AARCH64_FEATURES);
+    check_arch_feats!("x86", X86_FEATURES);
+    check_arch_feats!("hexagon", HEXAGON_FEATURES);
+    check_arch_feats!("mips", MIPS_FEATURES);
+    check_arch_feats!("nvptx64", NVPTX_FEATURES);
+    check_arch_feats!("powerpc", POWERPC_FEATURES);
+    check_arch_feats!("riscv", RISCV_FEATURES);
+    check_arch_feats!("wasm", WASM_FEATURES);
+    check_arch_feats!("bpf", BPF_FEATURES);
+    check_arch_feats!("csky", CSKY_FEATURES);
+    check_arch_feats!("loongarch", LOONGARCH_FEATURES);
+    check_arch_feats!("s390x", IBMZ_FEATURES);
+    check_arch_feats!("sparc", SPARC_FEATURES);
+    check_arch_feats!("m68k", M68K_FEATURES);
+    check_arch_feats!("avr", AVR_FEATURES);
+    arches.sort();
+    arches.dedup();
+    arches
 }
 
 // These arrays represent the least-constraining feature that is required for vector types up to a
@@ -1079,7 +1142,8 @@ impl Target {
             Arch::Sparc | Arch::Sparc64 => SPARC_FEATURES,
             Arch::M68k => M68K_FEATURES,
             Arch::Avr => AVR_FEATURES,
-            Arch::AmdGpu | Arch::Msp430 | Arch::SpirV | Arch::Xtensa | Arch::Other(_) => &[],
+            Arch::Xtensa => XTENSA_FEATURES,
+            Arch::AmdGpu | Arch::Msp430 | Arch::SpirV | Arch::Other(_) => &[],
         }
     }
 

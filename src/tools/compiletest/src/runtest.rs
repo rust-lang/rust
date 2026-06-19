@@ -2304,6 +2304,23 @@ impl<'test> TestCx<'test> {
         self.props.compile_flags.iter().any(|s| s.contains("--color=always"))
     }
 
+    /// Returns the lines for the by-lines comparison, normalized for the
+    /// parallel front-end: for SVG output, strip the header line and `y`
+    /// offsets; otherwise, filter out padded empty code lines (a single `|`).
+    fn lines_for_comparison(&self, output: &str) -> Vec<String> {
+        if self.force_color_svg() {
+            let strip_y = static_regex!(r#"y="\d+px""#);
+            output
+                .lines()
+                // anstyle_svg causes environment-dependent width parameter
+                .skip(1)
+                .map(|line| strip_y.replace_all(line, r#"y="0px""#).into_owned())
+                .collect()
+        } else {
+            output.lines().filter(|l| l.trim() != "|").map(str::to_owned).collect()
+        }
+    }
+
     fn load_compare_outputs(
         &self,
         proc_res: &ProcRes,
@@ -2719,8 +2736,8 @@ impl<'test> TestCx<'test> {
                 (&tmp.0, &tmp.1)
             }
         } else if compare_output_by_lines {
-            let mut actual_lines: Vec<&str> = actual.lines().collect();
-            let mut expected_lines: Vec<&str> = expected.lines().collect();
+            let mut actual_lines = self.lines_for_comparison(actual);
+            let mut expected_lines = self.lines_for_comparison(expected);
             actual_lines.sort_unstable();
             expected_lines.sort_unstable();
             if actual_lines == expected_lines {
@@ -2864,7 +2881,9 @@ impl<'test> TestCx<'test> {
         }
 
         if show_diff_by_lines {
-            write!(self.stderr, "{}", diff_by_lines(expected, actual));
+            let expected_lines = self.lines_for_comparison(expected);
+            let actual_lines = self.lines_for_comparison(actual);
+            write!(self.stderr, "{}", diff_by_lines(&expected_lines, &actual_lines));
         }
     }
 

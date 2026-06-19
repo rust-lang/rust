@@ -20,7 +20,7 @@
 
 use std::marker::PhantomData;
 
-use rustc_feature::{AttributeStability, AttributeTemplate, template};
+use rustc_feature::AttributeStability;
 use rustc_hir::attrs::AttributeKind;
 use rustc_span::edition::Edition;
 use rustc_span::{Span, Symbol};
@@ -30,6 +30,7 @@ use crate::context::{AcceptContext, FinalizeContext};
 use crate::parser::ArgParser;
 use crate::session_diagnostics::UnusedMultiple;
 use crate::target_checking::AllowedTargets;
+use crate::{AttributeTemplate, template};
 
 /// All the parsers require roughly the same imports, so this prelude has most of the often-needed ones.
 mod prelude;
@@ -68,10 +69,12 @@ pub(crate) mod rustc_allocator;
 pub(crate) mod rustc_dump;
 pub(crate) mod rustc_internal;
 pub(crate) mod semantics;
+pub(crate) mod splat;
 pub(crate) mod stability;
 pub(crate) mod test_attrs;
 pub(crate) mod traits;
 pub(crate) mod transparency;
+pub(crate) mod unroll;
 pub(crate) mod util;
 
 type AcceptFn<T> = for<'sess> fn(&mut T, &mut AcceptContext<'_, 'sess>, &ArgParser);
@@ -234,7 +237,11 @@ pub enum AttributeSafety {
     /// An error is emitted when `#[unsafe(...)]` is omitted, except when the attribute's edition
     /// is less than the one stored in `unsafe_since`. This handles attributes that were safe in
     /// earlier editions, but become unsafe in later ones.
-    Unsafe { unsafe_since: Option<Edition> },
+    Unsafe {
+        /// The `note` is emitted during the `unsafe_code`, and explains to the user why this attribute is unsafe.
+        note: &'static str,
+        unsafe_since: Option<Edition>,
+    },
 }
 
 /// An even simpler version of [`SingleAttributeParser`]:

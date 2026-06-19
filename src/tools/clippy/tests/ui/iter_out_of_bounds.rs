@@ -1,5 +1,5 @@
-#![deny(clippy::iter_out_of_bounds)]
-#![allow(clippy::useless_vec)]
+#![warn(clippy::iter_out_of_bounds)]
+#![expect(clippy::useless_vec)]
 
 fn opaque_empty_iter() -> impl Iterator<Item = ()> {
     std::iter::empty()

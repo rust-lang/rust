@@ -2,7 +2,9 @@ error[E0432]: unresolved import `crate::b::x`
   --> $DIR/import-loop-2.rs:2:13
    |
 LL |     pub use crate::b::x;
-   |             ^^^^^^^^^^^ no `x` in `b`
+   |             ^^^^^^^^^^-
+   |                       |
+   |                       no `x` in `b`
 
 error: aborting due to 1 previous error
 

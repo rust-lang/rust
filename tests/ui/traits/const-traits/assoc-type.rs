@@ -9,7 +9,7 @@ const trait Add<Rhs = Self> {
     fn add(self, other: Rhs) -> Self::Output;
 }
 
-impl const Add for i32 {
+const impl Add for i32 {
     type Output = Self;
 
     fn add(self, other: Self) -> Self::Output {
@@ -31,7 +31,7 @@ const trait Foo {
     type Bar: [const] Add;
 }
 
-impl const Foo for NonConstAdd {
+const impl Foo for NonConstAdd {
     type Bar = NonConstAdd;
     //~^ ERROR the trait bound `NonConstAdd: [const] Add` is not satisfied
 }
@@ -40,7 +40,7 @@ const trait Baz {
     type Qux: Add;
 }
 
-impl const Baz for NonConstAdd {
+const impl Baz for NonConstAdd {
     type Qux = NonConstAdd; // OK
 }
 

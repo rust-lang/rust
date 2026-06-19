@@ -9,6 +9,7 @@ use hir::{
     DefWithBody,
     db::HirDatabase as _,
     mir::{MirSpan, TerminatorKind},
+    name,
 };
 use ide_db::{FileRange, famous_defs::FamousDefs};
 
@@ -95,7 +96,7 @@ pub(super) fn hints(
             };
             let binding = &hir[binding_idx];
             let name = binding.name.display_no_db(display_target.edition).to_smolstr();
-            if name.starts_with("<ra@") {
+            if name::is_generated(&name) {
                 continue; // Ignore desugared variables
             }
             let mut label = InlayHintLabel::simple(

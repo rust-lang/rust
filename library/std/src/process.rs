@@ -413,7 +413,7 @@ impl Read for ChildStdout {
         self.inner.read(buf)
     }
 
-    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.inner.read_buf(buf)
     }
 
@@ -483,7 +483,7 @@ impl Read for ChildStderr {
         self.inner.read(buf)
     }
 
-    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.inner.read_buf(buf)
     }
 
@@ -1400,6 +1400,12 @@ impl<'a> ExactSizeIterator for CommandArgs<'a> {
         self.inner.is_empty()
     }
 }
+
+const fn assert_send<T: core::marker::Send>() {}
+const fn assert_sync<T: core::marker::Sync>() {}
+
+const _: () = assert_send::<CommandArgs<'static>>();
+const _: () = assert_sync::<CommandArgs<'static>>();
 
 /// An iterator over the command environment variables.
 ///

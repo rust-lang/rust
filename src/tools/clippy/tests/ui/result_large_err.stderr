@@ -120,5 +120,21 @@ LL |     let closure = || Ok::<(), Large>(());
    |
    = help: try reducing the size of `[u8; 1024]`, for example by boxing large elements or replacing it with `Box<[u8; 1024]>`
 
-error: aborting due to 14 previous errors
+error: the `Err`-variant returned from this function is very large
+  --> tests/ui/result_large_err.rs:154:35
+   |
+LL | pub async fn async_large_err() -> Result<(), [u8; 512]> {
+   |                                   ^^^^^^^^^^^^^^^^^^^^^ the `Err`-variant is at least 512 bytes
+   |
+   = help: try reducing the size of `[u8; 512]`, for example by boxing large elements or replacing it with `Box<[u8; 512]>`
+
+error: the `Err`-variant returned from this function is very large
+  --> tests/ui/result_large_err.rs:163:38
+   |
+LL | pub async fn async_struct_error() -> Result<(), FullyDefinedLargeError> {
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `Err`-variant is at least 240 bytes
+   |
+   = help: try reducing the size of `FullyDefinedLargeError`, for example by boxing large elements or replacing it with `Box<FullyDefinedLargeError>`
+
+error: aborting due to 16 previous errors
 

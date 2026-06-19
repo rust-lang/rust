@@ -313,6 +313,7 @@
 #![feature(try_blocks)]
 #![feature(try_trait_v2)]
 #![feature(type_alias_impl_trait)]
+#![feature(unwrap_infallible)]
 // tidy-alphabetical-end
 //
 // Library features (core):
@@ -339,7 +340,6 @@
 #![feature(exact_size_is_empty)]
 #![feature(exclusive_wrapper)]
 #![feature(extend_one)]
-#![feature(float_algebraic)]
 #![feature(float_gamma)]
 #![feature(float_minimum_maximum)]
 #![feature(fmt_internals)]
@@ -787,6 +787,11 @@ include!("../../core/src/primitive_docs.rs");
 // because rustdoc only looks for these modules at the crate level.
 include!("keyword_docs.rs");
 
+// Include private modules that exist solely to provide rustdoc
+// documentation for built-in attributes. Using `include!` because rustdoc
+// only looks for these modules at the crate level.
+include!("attribute_docs.rs");
+
 // This is required to avoid an unstable error when `restricted-std` is not
 // enabled. The use of #![feature(restricted_std)] in rustc-std-workspace-std
 // is unconditional, so the unstable feature needs to be defined somewhere.
@@ -802,6 +807,15 @@ mod sealed {
     #[unstable(feature = "sealed", issue = "none")]
     pub trait Sealed {}
 }
+
+macro_rules! impl_sealed {
+    ($($t:ty)*) => {$(
+        /// Allows implementations within `std`.
+        #[unstable(feature = "sealed", issue = "none")]
+        impl crate::sealed::Sealed for $t {}
+    )*}
+}
+impl_sealed! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 f32 f64 }
 
 #[cfg(test)]
 #[allow(dead_code)] // Not used in all configurations.

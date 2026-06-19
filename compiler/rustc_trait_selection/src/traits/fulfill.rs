@@ -172,12 +172,12 @@ where
         infcx: &InferCtxt<'tcx>,
     ) -> PredicateObligations<'tcx> {
         let stalled_coroutines = match infcx.typing_mode_raw().assert_not_erased() {
-            TypingMode::Analysis { defining_opaque_types_and_generators } => {
+            TypingMode::Typeck { defining_opaque_types_and_generators } => {
                 defining_opaque_types_and_generators
             }
             TypingMode::Coherence
-            | TypingMode::Borrowck { defining_opaque_types: _ }
-            | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ }
+            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _ }
+            | TypingMode::PostBorrowck { defined_opaque_types: _ }
             | TypingMode::PostAnalysis
             | TypingMode::Codegen => return Default::default(),
         };
@@ -559,11 +559,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                             return ProcessResult::Changed(PendingPredicateObligations::new());
                         }
                         ty::ConstKind::Value(cv) => cv.ty,
-                        ty::ConstKind::Unevaluated(uv) => infcx
-                            .tcx
-                            .type_of(uv.kind.def_id())
-                            .instantiate(infcx.tcx, uv.args)
-                            .skip_norm_wip(),
+                        ty::ConstKind::Unevaluated(uv) => uv.type_of(infcx.tcx).skip_norm_wip(),
                         // FIXME(generic_const_exprs): we should construct an alias like
                         // `<lhs_ty as Add<rhs_ty>>::Output` when this is an `Expr` representing
                         // `lhs + rhs`.

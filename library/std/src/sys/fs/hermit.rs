@@ -396,7 +396,7 @@ impl File {
         self.0.is_read_vectored()
     }
 
-    pub fn read_buf(&self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.0.read_buf(cursor)
     }
 

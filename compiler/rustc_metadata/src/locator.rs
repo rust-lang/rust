@@ -235,8 +235,8 @@ use tempfile::Builder as TempFileBuilder;
 use tracing::{debug, info};
 
 use crate::creader::{Library, MetadataLoader};
-use crate::errors;
-use crate::rmeta::{METADATA_HEADER, MetadataBlob, rustc_version};
+use crate::diagnostics;
+use crate::rmeta::{METADATA_HEADER, MetadataBlob, ProcMacroKind, rustc_version};
 
 #[derive(Clone)]
 pub(crate) struct CrateLocator<'a> {
@@ -821,7 +821,7 @@ fn get_metadata_section<'p>(
     crate_name: Option<Symbol>,
 ) -> Result<MetadataBlob, MetadataError<'p>> {
     if !filename.exists() {
-        return Err(MetadataError::NotPresent(filename));
+        return Err(MetadataError::NotPresent(filename.into()));
     }
     let raw_bytes = match flavor {
         CrateFlavor::Rlib => {
@@ -978,6 +978,20 @@ fn get_flavor_from_path(path: &Path) -> CrateFlavor {
     }
 }
 
+/// A function to get information about all macros inside a proc-macro crate.
+///
+/// Used by rust-analyzer-proc-macro-srv.
+pub fn get_proc_macro_info<'p>(
+    target: &Target,
+    path: &'p Path,
+    metadata_loader: &dyn MetadataLoader,
+    cfg_version: &'static str,
+) -> Result<Vec<ProcMacroKind>, MetadataError<'p>> {
+    let metadata =
+        get_metadata_section(target, CrateFlavor::Dylib, path, metadata_loader, cfg_version, None)?;
+    Ok(metadata.get_proc_macro_info())
+}
+
 // ------------------------------------------ Error reporting -------------------------------------
 
 #[derive(Clone, Debug)]
@@ -1024,9 +1038,10 @@ pub(crate) enum CrateError {
     NotFound(Symbol),
 }
 
-enum MetadataError<'a> {
+#[derive(Debug)]
+pub enum MetadataError<'a> {
     /// The file was missing.
-    NotPresent(&'a Path),
+    NotPresent(Cow<'a, Path>),
     /// The file was present and invalid.
     LoadFailure(String),
     /// The file was present, but compiled with a different rustc version.
@@ -1055,28 +1070,45 @@ impl CrateError {
         let dcx = sess.dcx();
         match self {
             CrateError::NonAsciiName(crate_name) => {
-                dcx.emit_err(errors::NonAsciiName { span, crate_name });
+                dcx.emit_err(diagnostics::NonAsciiName { span, crate_name });
             }
             CrateError::ExternLocationNotExist(crate_name, loc) => {
-                dcx.emit_err(errors::ExternLocationNotExist { span, crate_name, location: &loc });
+                dcx.emit_err(diagnostics::ExternLocationNotExist {
+                    span,
+                    crate_name,
+                    location: &loc,
+                });
             }
             CrateError::ExternLocationNotFile(crate_name, loc) => {
-                dcx.emit_err(errors::ExternLocationNotFile { span, crate_name, location: &loc });
+                dcx.emit_err(diagnostics::ExternLocationNotFile {
+                    span,
+                    crate_name,
+                    location: &loc,
+                });
             }
             CrateError::MultipleCandidates(crate_name, flavor, candidates) => {
-                dcx.emit_err(errors::MultipleCandidates { span, crate_name, flavor, candidates });
+                dcx.emit_err(diagnostics::MultipleCandidates {
+                    span,
+                    crate_name,
+                    flavor,
+                    candidates,
+                });
             }
             CrateError::FullMetadataNotFound(crate_name, flavor) => {
-                dcx.emit_err(errors::FullMetadataNotFound { span, crate_name, flavor });
+                dcx.emit_err(diagnostics::FullMetadataNotFound { span, crate_name, flavor });
             }
             CrateError::SymbolConflictsCurrent(root_name) => {
-                dcx.emit_err(errors::SymbolConflictsCurrent { span, crate_name: root_name });
+                dcx.emit_err(diagnostics::SymbolConflictsCurrent { span, crate_name: root_name });
             }
             CrateError::StableCrateIdCollision(crate_name0, crate_name1) => {
-                dcx.emit_err(errors::StableCrateIdCollision { span, crate_name0, crate_name1 });
+                dcx.emit_err(diagnostics::StableCrateIdCollision {
+                    span,
+                    crate_name0,
+                    crate_name1,
+                });
             }
             CrateError::DlOpen(path, err) | CrateError::DlSym(path, err) => {
-                dcx.emit_err(errors::DlError { span, path, err });
+                dcx.emit_err(diagnostics::DlError { span, path, err });
             }
             CrateError::LocatorCombined(locator) => {
                 let crate_name = locator.crate_name;
@@ -1087,8 +1119,12 @@ impl CrateError {
                 if !locator.crate_rejections.via_filename.is_empty() {
                     let mismatches = locator.crate_rejections.via_filename.iter();
                     for CrateMismatch { path, .. } in mismatches {
-                        dcx.emit_err(errors::CrateLocationUnknownType { span, path, crate_name });
-                        dcx.emit_err(errors::LibFilenameForm {
+                        dcx.emit_err(diagnostics::CrateLocationUnknownType {
+                            span,
+                            path,
+                            crate_name,
+                        });
+                        dcx.emit_err(diagnostics::LibFilenameForm {
                             span,
                             dll_prefix: &locator.dll_prefix,
                             dll_suffix: &locator.dll_suffix,
@@ -1114,7 +1150,7 @@ impl CrateError {
                             ));
                         }
                     }
-                    dcx.emit_err(errors::NewerCrateVersion {
+                    dcx.emit_err(diagnostics::NewerCrateVersion {
                         span,
                         crate_name,
                         add_info,
@@ -1130,7 +1166,7 @@ impl CrateError {
                             path.display(),
                         ));
                     }
-                    dcx.emit_err(errors::NoCrateWithTriple {
+                    dcx.emit_err(diagnostics::NoCrateWithTriple {
                         span,
                         crate_name,
                         locator_triple: locator.triple.tuple(),
@@ -1146,7 +1182,7 @@ impl CrateError {
                             path.display()
                         ));
                     }
-                    dcx.emit_err(errors::FoundStaticlib {
+                    dcx.emit_err(diagnostics::FoundStaticlib {
                         span,
                         crate_name,
                         add_info,
@@ -1162,7 +1198,7 @@ impl CrateError {
                             path.display(),
                         ));
                     }
-                    dcx.emit_err(errors::IncompatibleRustc {
+                    dcx.emit_err(diagnostics::IncompatibleRustc {
                         span,
                         crate_name,
                         add_info,
@@ -1174,14 +1210,14 @@ impl CrateError {
                     for CrateMismatch { path: _, got } in locator.crate_rejections.via_invalid {
                         crate_rejections.push(got);
                     }
-                    dcx.emit_err(errors::InvalidMetadataFiles {
+                    dcx.emit_err(diagnostics::InvalidMetadataFiles {
                         span,
                         crate_name,
                         add_info,
                         crate_rejections,
                     });
                 } else {
-                    let error = errors::CannotFindCrate {
+                    let error = diagnostics::CannotFindCrate {
                         span,
                         crate_name,
                         add_info,
@@ -1207,7 +1243,7 @@ impl CrateError {
                 }
             }
             CrateError::NotFound(crate_name) => {
-                let error = errors::CannotFindCrate {
+                let error = diagnostics::CannotFindCrate {
                     span,
                     crate_name,
                     add_info: String::new(),

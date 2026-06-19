@@ -1,5 +1,4 @@
 #![warn(clippy::cast_abs_to_unsigned)]
-#![allow(unused)]
 
 fn main() {
     let x: i32 = -42;

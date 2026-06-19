@@ -1,5 +1,5 @@
 #![feature(proc_macro_span)]
-#![allow(clippy::needless_ifs, dead_code)]
+#![allow(clippy::needless_ifs)]
 
 extern crate proc_macro;
 

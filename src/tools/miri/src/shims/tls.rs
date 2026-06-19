@@ -63,19 +63,19 @@ impl<'tcx> Default for TlsData<'tcx> {
 
 impl<'tcx> TlsData<'tcx> {
     /// Generate a new TLS key with the given destructor.
-    /// `max_size` determines the integer size the key has to fit in.
+    /// `key_size` determines the integer size the key has to fit in.
     #[expect(clippy::arithmetic_side_effects)]
     pub fn create_tls_key(
         &mut self,
         dtor: Option<(ty::Instance<'tcx>, Span)>,
-        max_size: Size,
+        key_size: Size,
     ) -> InterpResult<'tcx, TlsKey> {
         let new_key = self.next_key;
         self.next_key += 1;
         self.keys.try_insert(new_key, TlsEntry { data: Default::default(), dtor }).unwrap();
         trace!("New TLS key allocated: {} with dtor {:?}", new_key, dtor);
 
-        if max_size.bits() < 128 && new_key >= (1u128 << max_size.bits()) {
+        if new_key > key_size.unsigned_int_max() {
             throw_unsup_format!("we ran out of TLS key space");
         }
         interp_ok(new_key)
@@ -267,7 +267,13 @@ impl<'tcx> TlsDtorsState<'tcx> {
                             let fls_keys_with_dtors = this.lookup_windows_fls_keys_with_dtors()?;
 
                             // And move to the next state, that runs them.
-                            break 'new_state WindowsDtors(RunningWindowsDtorState { last_key: None, remaining_keys: fls_keys_with_dtors }, dtors);
+                            break 'new_state WindowsDtors(
+                                RunningWindowsDtorState {
+                                    last_key: None,
+                                    remaining_keys: fls_keys_with_dtors,
+                                },
+                                dtors,
+                            );
                         }
                         _ => {
                             // No TLS dtor support.
@@ -453,35 +459,31 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Keys without dtors will not be set to zero.
         // [PflsCallbackFunction's docs]: https://learn.microsoft.com/en-us/windows/win32/api/winnt/nc-winnt-pfls_callback_function
         // [`RtlProcessFlsData`]: https://github.com/wine-mirror/wine/blob/wine-11.0/dlls/ntdll/thread.c#L679
-        
+
         // We are done running the previous key's destructor, so set it's value to zero.
         if let Some(last_key) = state.last_key.take() {
             if let Some(TlsEntry { data, .. }) = this.machine.tls.keys.get_mut(&last_key) {
-                 data.remove(&active_thread);
+                data.remove(&active_thread);
             };
         }
 
         while let Some(key) = state.remaining_keys.pop_front() {
             // Fetch dtor for this `key`.
             // If the key doesn't have a dtor or does not exist any more, move on to the next key.
-            let (data, dtor) = match this.machine.tls.keys.get(&key) {
-                Some(TlsEntry { data, dtor: Some(dtor) }) => (data, dtor),
-                _ => continue,
+            let Some(TlsEntry { data, dtor: Some(dtor) }) = this.machine.tls.keys.get(&key) else {
+                continue;
             };
 
             let (instance, span) = dtor.to_owned();
-            
+
             // If the key has no value in this thread, move on to the next key.
-            let ptr = match data.get(&active_thread) {
-                Some(data_scalar) => *data_scalar,
-                None => continue,
-            };
+            let Some(&ptr) = data.get(&active_thread) else { continue };
 
             assert!(
                 ptr.to_target_usize(this).unwrap() != 0,
                 "TLS key's value can't be null (should be absent instead)"
             );
-            
+
             trace!("Running TLS dtor {:?} on {:?} at {:?}", instance, ptr, active_thread);
 
             // We'll clear this key's value next time we are called.
@@ -497,7 +499,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             return interp_ok(Poll::Pending);
         }
-        
+
         // We are done scheduling all the keys.
         interp_ok(Poll::Ready(()))
     }
