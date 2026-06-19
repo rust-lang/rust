@@ -79,14 +79,15 @@ fn min_max<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(MinMax, Cons
             }
         },
         ExprKind::MethodCall(path, receiver, args @ [_], _) => {
+            let m = match path.ident.name {
+                sym::max => MinMax::Max,
+                sym::min => MinMax::Min,
+                _ => return None,
+            };
             if cx.typeck_results().expr_ty(receiver).is_floating_point()
                 || cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Ord)
             {
-                match path.ident.name {
-                    sym::max => fetch_const(cx, expr.span.ctxt(), Some(receiver), args, MinMax::Max),
-                    sym::min => fetch_const(cx, expr.span.ctxt(), Some(receiver), args, MinMax::Min),
-                    _ => None,
-                }
+                fetch_const(cx, expr.span.ctxt(), Some(receiver), args, m)
             } else {
                 None
             }

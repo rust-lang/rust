@@ -230,13 +230,13 @@ impl<'tcx> LateLintPass<'tcx> for StringPatterns {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if !expr.span.from_expansion()
             && let ExprKind::MethodCall(method, receiver, args, _) = expr.kind
-            && let ty::Ref(_, ty, _) = cx.typeck_results().expr_ty_adjusted(receiver).kind()
-            && ty.is_str()
             && let method_name = method.ident.name
             && let Some(&(_, pos)) = PATTERN_METHODS
                 .iter()
                 .find(|(array_method_name, _)| *array_method_name == method_name)
             && let Some(arg) = args.get(pos)
+            && let ty::Ref(_, ty, _) = cx.typeck_results().expr_ty_adjusted(receiver).kind()
+            && ty.is_str()
         {
             check_single_char_pattern_lint(cx, arg);
 
