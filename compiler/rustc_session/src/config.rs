@@ -2183,8 +2183,8 @@ pub fn parse_crate_edition(
         None => {
             if has_input {
                 early_dcx.early_note(format!(
-                    "it is advisable to explicitly specify the `--edition` argument (the default \
-                    implies `2015`); it must be one of: {EDITION_NAME_LIST}"
+                    "`--edition` is unspecified, defaulting to `{DEFAULT_EDITION}` while the \
+                     latest is `{LATEST_STABLE_EDITION}`; it must be one of: {EDITION_NAME_LIST}",
                 ));
             }
             DEFAULT_EDITION
