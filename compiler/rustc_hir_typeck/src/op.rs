@@ -314,15 +314,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 self.write_method_call_and_enforce_effects(expr.hir_id, expr.span, method);
 
-                if method.sig.output().has_infer()
-                    && let hir::ExprKind::Index(_, idx, _) = rhs_expr.kind
-                {
-                    let idx_ty = self.resolve_vars_if_possible(self.node_ty(idx.hir_id));
-                    if idx_ty.is_ty_var() {
-                        self.structurally_resolve_type(idx.span, idx_ty);
-                    }
-                }
-
                 method.sig.output()
             }
             // error types are considered "builtin"
