@@ -38,6 +38,7 @@ use crate::llvm::{
     ToLlvmBool, Type, Value,
 };
 use crate::type_of::LayoutLlvmExt;
+use rustc_middle::ty::type_tree::typetree_from_ty;
 
 #[must_use]
 pub(crate) struct GenericBuilder<'a, 'll, CX: Borrow<SCx<'ll>>> {
@@ -741,7 +742,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 let load = self.load(llty, place.val.llval, place.val.align);
                 //let layout = place.layout.ty_and_layout_pointee_info_at(self.cx(), Size::ZERO).unwrap();
                 let ty = place.layout.ty;
-                let tt = rustc_middle::ty::typetree_from_ty(self.tcx, ty);
+                let tt = typetree_from_ty(self.tcx, ty);
                 if tt != rustc_ast::expand::typetree::TypeTree::new() {
                     use rustc_middle::ty::print::with_no_trimmed_paths;
                     //dbg!("add_tt start!");
@@ -752,7 +753,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                         args: vec![TypeTree::new(), TypeTree::new()],
                         ret: tt,
                     };
-                    crate::typetree::add_tt(self.cx().llmod, self.cx().llcx, load, self.tcx, fnc_tree);
+                    // TODO: re-enable?
+                    //crate::typetree::add_tt(self.cx().llmod, self.cx().llcx, load, self.tcx, fnc_tree);
                     //dbg!("add_tt done!");
                 }
                 //eprintln!("general load of place = {}", with_no_trimmed_paths!(format!("{place:#?}")));

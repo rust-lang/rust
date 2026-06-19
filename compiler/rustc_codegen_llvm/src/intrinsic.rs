@@ -47,6 +47,8 @@ use crate::errors::{
 use crate::llvm::{self, Type, Value};
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
+use rustc_middle::ty::type_tree::typetree_from_ty;
+use rustc_middle::ty::type_tree::fnc_typetrees;
 
 fn call_simple_intrinsic<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
@@ -1880,7 +1882,7 @@ fn codegen_autodiff<'ll, 'tcx>(
         &mut diff_attrs.input_activity,
     );
 
-    let fnc_tree = rustc_middle::ty::fnc_typetrees(tcx, source_fn_ptr_ty);
+    let fnc_tree = fnc_typetrees(tcx, source_fn_ptr_ty);
 
     // Build body
     generate_enzyme_call(
@@ -2009,7 +2011,7 @@ fn get_args_from_tuple<'ll, 'tcx>(
                         let llvm_ty = field.layout.llvm_type(bx.cx);
                         let pair_val = bx.load(llvm_ty, field.val.llval, field.val.align);
                         let extract_ty = field.layout.ty;
-                        let tt = rustc_middle::ty::typetree_from_ty(bx.tcx(), extract_ty);
+                        let tt = typetree_from_ty(bx.tcx(), extract_ty);
                         dbg!("intrinsic pair");
                         dbg!(&tt);
                         let fnc = FncTree {

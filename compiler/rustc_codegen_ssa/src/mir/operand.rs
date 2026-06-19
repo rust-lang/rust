@@ -21,14 +21,61 @@ use crate::MemFlags;
 use crate::common::IntPredicate;
 use crate::traits::*;
 
-    fn scalar_pair_component_field_ty<'a, 'tcx, Bx, V>(
+use rustc_ast::expand::typetree::TypeTree;
+use rustc_middle::ty::type_tree::typetree_from_ty;
+use crate::TyCtxt;
+use rustc_span::sym;
+use rustc_ast::expand::typetree::FncTree;
+
+fn option_ptr_like_scalar_pair_tts<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+) -> Option<FncTree> {
+    let ty::Adt(def, args) = ty.kind() else {
+        return None;
+    };
+
+    if !tcx.is_lang_item(def.did(), LangItem::Option) {
+        return None;
+    }
+
+    let inner = args.type_at(0);
+    if !(inner.is_ref() || inner.is_box() || nonnull_inner_ty(tcx, inner).is_some()) {
+        return None;
+    }
+
+    let tt = typetree_from_ty(tcx, inner);
+    //let some_layout = layout.for_variant(bx.cx(), VariantIdx::from_u32(1));
+    //let payload_layout = some_layout.field(bx.cx(), 0);
+    // this will be a slice
+    //let payload_ty = payload_layout.ty;
+    //let tt = rustc_middle::ty::typetree_from_ty(bx.tcx(), field0_ty.unwrap());
+    if tt == TypeTree::new() {
+        return None;
+    }
+    let fnc_tree = FncTree {
+        args: vec![],
+        ret: tt,
+    };
+    Some(fnc_tree)
+}
+
+fn nonnull_inner_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+    if let ty::Adt(def, args) = ty.kind()
+        && tcx.is_diagnostic_item(sym::NonNull, def.did())
+    {
+        return Some(args.type_at(0));
+    }
+
+    None
+}
+    pub fn scalar_pair_component_field_ty<'a, 'tcx, Bx, V>(
         bx: &Bx,
         layout: TyAndLayout<'tcx>,
         idx: u64,
     ) -> Option<Ty<'tcx>>
     where
         Bx: BuilderMethods<'a, 'tcx, Value = V>,
-        //Bx: BuilderMethods<'_, 'tcx, Value = V>,
     {
         let BackendRepr::ScalarPair(a, b) = layout.backend_repr else {
             return None;
@@ -369,41 +416,72 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
     ) -> Self {
         let val = if let BackendRepr::ScalarPair(..) = layout.backend_repr {
             use rustc_middle::ty::print::with_no_trimmed_paths;
-            let field0_ty = scalar_pair_component_field_ty(bx, layout, 0);
-            let field1_ty = scalar_pair_component_field_ty(bx, layout, 1);
-            let (f1, f2) = if field0_ty.is_none() || field1_ty.is_none() {
-                (None, None)
+            let f1 = option_ptr_like_scalar_pair_tts(bx.tcx(), layout.ty);
+            let f2 = if f1.is_none() {
+                None
             } else {
-                let tt1 = rustc_middle::ty::typetree_from_ty(bx.tcx(), field0_ty.unwrap());
-                let tt2 = rustc_middle::ty::typetree_from_ty(bx.tcx(), field1_ty.unwrap());
-                with_no_trimmed_paths!({
-                    eprintln!(
-                        "from_immediate_or_packed_pair layout {:?}",
-                        layout
-                    );
-                    eprintln!(
-                        "from_immediate_or_packed_pair layout0 {:?}",
-                        field0_ty
-                    );
-                    eprintln!(
-                        "from_immediate_or_packed_pair layout1 {:?}",
-                        field1_ty
-                    );
-                });
-                dbg!(&tt1);
-                dbg!(&tt2);
-                //dbg!(&tt);
-                use rustc_ast::expand::typetree::FncTree;
-                let fnc1 = FncTree {
-                    args: vec![],//TypeTree::new()
-                    ret: tt1,
-                 };
-                let fnc2 = FncTree {
-                    args: vec![],//TypeTree::new()
-                    ret: tt2,
-                 };
-                (Some(fnc1), Some(fnc2))
+                Some(FncTree { args: vec![], ret: TypeTree::int(8) })
             };
+            //{
+            //    dbg!("new option ptr-like scalar pair");
+            //    tt
+            //} else {
+            //    //let field0_ty = scalar_pair_component_field_ty(bx, layout, 0);
+            //    //let field1_ty = scalar_pair_component_field_ty(bx, layout, 1);
+
+            //    //if field0_ty.is_none() || field1_ty.is_none() {
+            //    //dbg!("from_immediate_or_packed_pair: missing field for layout");
+            //    //with_no_trimmed_paths!({
+            //    //    eprintln!(
+            //    //        "from_immediate_or_packed_pair layout {:?}",
+            //    //        layout
+            //    //    );
+            //    //});
+            //    None
+            //};
+
+            //let field0_ty = scalar_pair_component_field_ty(bx, layout, 0);
+            //let field1_ty = scalar_pair_component_field_ty(bx, layout, 1);
+            //let (f1, f2) = if field0_ty.is_none() || field1_ty.is_none() {
+            //    dbg!("from_immediate_or_packed_pair: missing field for layout");
+            //    with_no_trimmed_paths!({
+            //        eprintln!(
+            //            "from_immediate_or_packed_pair layout {:?}",
+            //            layout
+            //        );
+            //    });
+            //    (None, None)
+            //} else {
+            //    let tt1 = rustc_middle::ty::typetree_from_ty(bx.tcx(), field0_ty.unwrap());
+            //    let tt2 = rustc_middle::ty::typetree_from_ty(bx.tcx(), field1_ty.unwrap());
+            //    with_no_trimmed_paths!({
+            //        eprintln!(
+            //            "from_immediate_or_packed_pair layout {:?}",
+            //            layout
+            //        );
+            //        eprintln!(
+            //            "from_immediate_or_packed_pair layout0 {:?}",
+            //            field0_ty
+            //        );
+            //        eprintln!(
+            //            "from_immediate_or_packed_pair layout1 {:?}",
+            //            field1_ty
+            //        );
+            //    });
+            //    dbg!(&tt1);
+            //    dbg!(&tt2);
+            //    //dbg!(&tt);
+            //    use rustc_ast::expand::typetree::FncTree;
+            //    let fnc1 = FncTree {
+            //        args: vec![],//TypeTree::new()
+            //        ret: tt1,
+            //     };
+            //    let fnc2 = FncTree {
+            //        args: vec![],//TypeTree::new()
+            //        ret: tt2,
+            //     };
+            //    (Some(fnc1), Some(fnc2))
+            //};
 
             // Deconstruct the immediate aggregate.
             let a_llval = bx.extract_value(llval, 0, f1);
@@ -427,7 +505,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
 
         with_no_trimmed_paths!({
             eprintln!(
-                "from_immediate_or_packed_pair layout {:?}",
+                "from_immediate_or_packed_pair single extract_field {:?}",
                 self.layout
             );
         });

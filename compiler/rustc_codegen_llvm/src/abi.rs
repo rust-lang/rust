@@ -34,6 +34,8 @@ trait ArgAttributesExt {
         callsite: &Value,
     );
 }
+                use crate::abi::ty::print::with_no_trimmed_paths;
+use rustc_codegen_ssa::mir::operand::scalar_pair_component_field_ty;
 
 const ABI_AFFECTING_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 1] =
     [(ArgAttribute::InReg, llvm::AttributeKind::InReg)];
@@ -262,6 +264,16 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 let llscratch = bx.alloca(scratch_size, scratch_align);
                 bx.lifetime_start(llscratch, scratch_size);
                 // ...store the value...
+
+                let f0 = scalar_pair_component_field_ty(bx, dst.layout, 0);
+                let f1 = scalar_pair_component_field_ty(bx, dst.layout, 1);
+
+                if f1.is_some() && f0.is_some() {
+                    with_no_trimmed_paths!({
+                        eprintln!("Cast of extractvalue 0 field = {:?}", f0.map(|f| f0.unwrap()));
+                        eprintln!("Cast of extractvalue 1 field = {:?}", f1.map(|f| f1.unwrap()));
+                    });
+                }
                 rustc_codegen_ssa::mir::store_cast(bx, cast, val, llscratch, scratch_align);
                 // ... and then memcpy it to the intended destination.
                 bx.memcpy(

@@ -24,7 +24,7 @@ fn process_typetree_recursive(
     for rust_type in &rust_typetree.0 {
         let concrete_type = match rust_type.kind {
             rustc_ast::expand::typetree::Kind::Anything => llvm::CConcreteType::DT_Anything,
-            rustc_ast::expand::typetree::Kind::Integer => llvm::CConcreteType::DT_Unknown,
+            rustc_ast::expand::typetree::Kind::Integer => llvm::CConcreteType::DT_Integer,
             rustc_ast::expand::typetree::Kind::Pointer => llvm::CConcreteType::DT_Pointer,
             rustc_ast::expand::typetree::Kind::Half => llvm::CConcreteType::DT_Half,
             rustc_ast::expand::typetree::Kind::Float => llvm::CConcreteType::DT_Float,

@@ -15,6 +15,7 @@ use crate::errors::InvalidMonomorphization;
 use crate::mir::operand::OperandRefBuilder;
 use crate::traits::*;
 use crate::{MemFlags, meth, size_of_val};
+use rustc_middle::ty::type_tree::typetree_from_ty;
 
 fn copy_intrinsic<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
@@ -31,7 +32,7 @@ fn copy_intrinsic<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let size = bx.mul(bx.const_usize(size.bytes()), count);
     let flags = if volatile { MemFlags::VOLATILE } else { MemFlags::empty() };
     let tcx = bx.tcx();
-    let tt = rustc_middle::ty::typetree_from_ty(tcx, ty);
+    let tt = typetree_from_ty(tcx, ty);
     let fnc_tree = FncTree {
         args: vec![tt.clone()],
         ret: tt,

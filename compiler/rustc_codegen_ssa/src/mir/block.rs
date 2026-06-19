@@ -2256,6 +2256,14 @@ pub fn store_cast<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     align: Align,
 ) {
     if let Some(offset_from_start) = cast.rest_offset {
+        dbg!("here we are!!");
+        //let f0 = field_for_scalar_pair_component(bx, layout, 0);
+        //let f1 = field_for_scalar_pair_component(bx, layout, 1);
+
+        //with_no_trimmed_paths!({
+        //    eprintln!("extractvalue 0 field = {:?}", f0.map(|f| f.ty));
+        //    eprintln!("extractvalue 1 field = {:?}", f1.map(|f| f.ty));
+        //});
         assert!(cast.prefix[1..].iter().all(|p| p.is_none()));
         assert_eq!(cast.rest.unit.size, cast.rest.total);
         assert!(cast.prefix[0].is_some());
