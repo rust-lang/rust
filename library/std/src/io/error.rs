@@ -6,16 +6,19 @@ pub use core::io::ErrorKind;
 #[unstable(feature = "raw_os_error_ty", issue = "107792")]
 pub use core::io::RawOsError;
 
+#[cfg(not(test))]
 #[core::io::raw_os_error::decode_error_kind]
 fn raw_os_error_decode(code: RawOsError) -> ErrorKind {
     sys::io::decode_error_kind(code)
 }
 
+#[cfg(not(test))]
 #[core::io::raw_os_error::fmt]
 fn raw_os_error_fmt(code: RawOsError, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
     fmt.write_str(&sys::io::error_string(code))
 }
 
+#[cfg(not(test))]
 #[core::io::raw_os_error::is_interrupted]
 fn raw_os_error_is_interrupted(code: RawOsError) -> bool {
     sys::io::is_interrupted(code)
