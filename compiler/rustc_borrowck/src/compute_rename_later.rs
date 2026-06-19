@@ -48,11 +48,9 @@ fn compute_outlives_bounds_rename<'tcx>(
         compute_inputs_and_output_non_nll(&infcx, mir_def, defining_ty);
     debug!("first unnormalized input and output ty is {:?}", unnormalized_input_output_tys);
 
-    // Follow what universal_region.rs does, if not it will ice on manual_test0.rs because
-    // liberate_late_bound_regions will not include 'a, but 'a will still be part of universal regions,
-    // hence there is a var values number mismatch.
-
-    // Insert late bound region into var value
+    // Collect late bound region before instantiating the binder. There is difference between collecting region like this
+    // and just collect it after `liberate_late_bound_region`. With this, we can make sure unused late bound region is 
+    // collected too.
     for (idx, bound_var) in unnormalized_input_output_tys.bound_vars().iter().enumerate() {
         if let ty::BoundVariableKind::Region(kind) = bound_var {
             let kind = ty::LateParamRegionKind::from_bound(ty::BoundVar::from_usize(idx), kind);
@@ -61,6 +59,8 @@ fn compute_outlives_bounds_rename<'tcx>(
             late_bound_region.push(region);
         }
     }
+
+    debug!("late bound region is {:?}", late_bound_region);
 
     let unnormalized_input_output_tys = tcx
         .liberate_late_bound_regions(defining_ty_def_id.to_def_id(), unnormalized_input_output_tys);
@@ -166,8 +166,6 @@ fn compute_outlives_bounds_rename<'tcx>(
     if !tcx.sess.opts.unstable_opts.no_implied_bounds_compat
         && tcx.crate_name(mir_def.to_def_id().krate) == sym::bevy_ecs
     {
-        debug!("bevy hack is used");
-
         for TypeOutlivesConstraint { sup_type, sub_region, .. } in
             infcx.clone_registered_region_obligations()
         {
@@ -177,8 +175,6 @@ fn compute_outlives_bounds_rename<'tcx>(
         }
     }
 
-    // TODO: clean up all these messy bunch together
-
     // Get early bound params.
     let typeck_root_def_id = tcx.typeck_root_def_id(mir_def.to_def_id());
 
@@ -187,6 +183,7 @@ fn compute_outlives_bounds_rename<'tcx>(
     let mut early_bound_non_region: SmallVec<[GenericArg<'_>; 8]> = Default::default();
 
     debug!("early bound params are {:?}", early_bound_params);
+    // Separate early bound region and non-region. 
     for param in early_bound_params {
         match param.kind() {
             GenericArgKind::Lifetime(_) => early_bound_region.push(param),
@@ -201,9 +198,9 @@ fn compute_outlives_bounds_rename<'tcx>(
     }
 
     // Collect late bound region for closure, coroutine, or inline-const.
-    // TODO: remove this?
     if mir_def.to_def_id() != typeck_root_def_id {
         for_each_late_bound_region_in_recursive_scope(tcx, tcx.local_parent(mir_def), |r| {
+            debug!("the late bound region for closure is {:?}", r);
             var_value.push(GenericArg::from(r));
         });
     }
@@ -218,9 +215,6 @@ fn compute_outlives_bounds_rename<'tcx>(
     for ty in &norm_sig_tys {
         var_value.push(GenericArg::from(*ty))
     }
-
-    // TODO: see if either the early and late bound region are universal. If it is,
-    // then we need a separate var value for it? test closures too.
 
     let var_values: CanonicalVarValues<TyCtxt<'_>> =
         CanonicalVarValues { var_values: tcx.mk_args(var_value.as_slice()) };

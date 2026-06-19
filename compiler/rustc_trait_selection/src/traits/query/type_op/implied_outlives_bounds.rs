@@ -170,7 +170,6 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
 // We need this because the new query "compute_rename_later" will wind up generating new
 // region constraint due to normalization, and hits the assert of region obligation needs
 // to be empty when this function is called.
-// TODO: handle the region constraint from function signature.
 pub fn compute_implied_outlives_bounds_inner_new<'tcx>(
     ocx: &ObligationCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,

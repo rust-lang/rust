@@ -103,7 +103,9 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         // Create the predicates.
         let backup = (self.category, self.span, self.from_closure);
         self.from_closure = true;
+        debug!("closure mapping is {:?}", closure_mapping);
         for outlives_requirement in &closure_requirements.outlives_requirements {
+            debug!("outlive requirement for closure is {:?}", outlives_requirement);
             let outlived_region = closure_mapping[outlives_requirement.outlived_free_region];
             let subject = match outlives_requirement.subject {
                 ClosureOutlivesSubject::Region(re) => closure_mapping[re].into(),

@@ -264,17 +264,21 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         // Add non-region params to var_values.
         let mut var_values: SmallVec<[GenericArg<'_>; 8]> =
             early_bound_params.into_iter().filter(|k| k.as_region().is_none()).collect();
+        
+        debug!("call site: non region param is {:?}", var_values);
 
         // Add both early and late bound region to var_values.
         for (region, region_vid) in self.universal_regions.named_universal_regions_iter() {
             if region_vid != fr_static {
                 // filter out 'static, it is always in indices
+                debug!("call site: all the region params are {:?}", region);
                 var_values.push(GenericArg::from(region));
             }
         }
 
         // Add normalized fn_sig to var_values.
         for ty in &normalized_inputs_and_output {
+            debug!("call site: normalized ty are {:?}", ty);
             var_values.push(GenericArg::from(*ty));
         }
 

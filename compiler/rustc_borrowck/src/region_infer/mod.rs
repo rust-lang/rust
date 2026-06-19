@@ -721,6 +721,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // avoid potential non-determinism we approximate this by requiring
             // T: '1 and T: '2.
             for upper_bound in non_local_ub {
+                debug!("the current upper bound is {:?}", upper_bound);
                 debug_assert!(self.universal_regions().is_universal_region(upper_bound));
                 debug_assert!(!self.universal_regions().is_local_free_region(upper_bound));
 
