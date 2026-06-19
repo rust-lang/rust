@@ -469,13 +469,7 @@ fn expand_macro_attr(
     let is_local = node_id != DUMMY_NODE_ID;
 
     if !is_local && !cx.ecfg.features.macro_attr() {
-        return Err(feature_err(
-            cx.sess,
-            sym::macro_attr,
-            sp,
-            "`macro_rules!` attributes are unstable",
-        )
-        .emit());
+        feature_err(cx.sess, sym::macro_attr, sp, "`macro_rules!` attributes are unstable").emit();
     }
 
     if cx.trace_macros() {
