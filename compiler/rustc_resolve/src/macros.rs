@@ -127,25 +127,17 @@ pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
 }
 
 pub fn registered_tools_ast(
-    dcx: DiagCtxtHandle<'_>,
+    _dcx: DiagCtxtHandle<'_>,
     pre_configured_attrs: &[ast::Attribute],
     sess: &Session,
 ) -> RegisteredTools {
-    let mut registered_tools = RegisteredTools::default();
-
-    if let Some(Attribute::Parsed(AttributeKind::RegisterTool(tools))) =
+    let mut registered_tools = if let Some(Attribute::Parsed(AttributeKind::RegisterTool(tools))) =
         AttributeParser::parse_limited_sym(sess, pre_configured_attrs, &[sym::register_tool])
     {
-        for tool in tools {
-            if let Some(old_tool) = registered_tools.replace(tool) {
-                dcx.emit_err(diagnostics::ToolWasAlreadyRegistered {
-                    span: tool.span,
-                    tool,
-                    old_ident_span: old_tool.span,
-                });
-            }
-        }
-    }
+        tools
+    } else {
+        Default::default()
+    };
 
     // We implicitly add `rustfmt`, `clippy`, `diagnostic`, `miri` and `rust_analyzer` to known
     // tools, but it's not an error to register them explicitly.

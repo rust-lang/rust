@@ -10,7 +10,7 @@ use rustc_ast::expand::autodiff_attrs::{DiffActivity, DiffMode};
 use rustc_ast::token::{CommentKind, DocFragmentKind};
 use rustc_ast::{AttrId, AttrStyle, IntTy, UintTy};
 use rustc_ast_pretty::pp::Printer;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_span::def_id::DefId;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
@@ -81,6 +81,26 @@ impl<T: PrintAttribute> PrintAttribute for ThinVec<T> {
         p.word("]");
     }
 }
+
+impl<T: PrintAttribute> PrintAttribute for FxIndexSet<T> {
+    fn should_render(&self) -> bool {
+        self.is_empty() || self[0].should_render()
+    }
+
+    fn print_attribute(&self, p: &mut Printer) {
+        let mut last_printed = false;
+        p.word("[");
+        for i in self {
+            if last_printed {
+                p.word_space(",");
+            }
+            i.print_attribute(p);
+            last_printed = i.should_render();
+        }
+        p.word("]");
+    }
+}
+
 impl<T: PrintAttribute, T2: PrintAttribute> PrintAttribute for FxIndexMap<T, T2> {
     fn should_render(&self) -> bool {
         self.is_empty() || self[0].should_render()

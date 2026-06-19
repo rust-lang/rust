@@ -1215,16 +1215,6 @@ pub(crate) struct CannotFindBuiltinMacroWithName {
     pub(crate) ident: Ident,
 }
 
-#[derive(Diagnostic)]
-#[diag("tool `{$tool}` was already registered")]
-pub(crate) struct ToolWasAlreadyRegistered {
-    #[primary_span]
-    pub(crate) span: Span,
-    pub(crate) tool: Ident,
-    #[label("already registered here")]
-    pub(crate) old_ident_span: Span,
-}
-
 #[derive(Subdiagnostic)]
 pub(crate) enum DefinedHere {
     #[label("similarly named {$candidate_descr} `{$candidate}` defined here")]

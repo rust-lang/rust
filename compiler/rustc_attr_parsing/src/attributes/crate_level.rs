@@ -1,3 +1,4 @@
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_feature::AttributeStability;
 use rustc_hir::attrs::{CrateType, WindowsSubsystemKind};
 use rustc_session::lint::builtin::UNKNOWN_CRATE_TYPES;
@@ -5,7 +6,9 @@ use rustc_span::Symbol;
 use rustc_span::edit_distance::find_best_match_for_name_with_substrings;
 
 use super::prelude::*;
-use crate::diagnostics::{UnknownCrateTypes, UnknownCrateTypesSuggestion};
+use crate::diagnostics::{
+    ToolWasAlreadyRegistered, UnknownCrateTypes, UnknownCrateTypesSuggestion,
+};
 
 pub(crate) struct CrateNameParser;
 
@@ -317,49 +320,61 @@ impl CombineAttributeParser for FeatureParser {
     }
 }
 
-pub(crate) struct RegisterToolParser;
+#[derive(Default)]
+pub(crate) struct RegisterToolParser {
+    tools: FxIndexSet<Ident>,
+}
 
-impl CombineAttributeParser for RegisterToolParser {
-    const PATH: &[Symbol] = &[sym::register_tool];
-    type Item = Ident;
-    const CONVERT: ConvertFn<Self::Item> = |tools, _span| AttributeKind::RegisterTool(tools);
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
-    const TEMPLATE: AttributeTemplate = template!(List: &["tool1, tool2, ..."]);
-    const STABILITY: AttributeStability = unstable!(register_tool);
+fn parse_register_tool(
+    tools: &mut FxIndexSet<Ident>,
+    cx: &mut AcceptContext<'_, '_>,
+    args: &ArgParser,
+) {
+    let Some(list) = cx.expect_list(args, cx.attr_span) else {
+        return;
+    };
 
-    fn extend(
-        cx: &mut AcceptContext<'_, '_>,
-        args: &ArgParser,
-    ) -> impl IntoIterator<Item = Self::Item> {
-        let Some(list) = cx.expect_list(args, cx.attr_span) else {
-            return Vec::new();
+    if list.is_empty() {
+        let attr_span = cx.attr_span;
+        cx.adcx().warn_empty_attribute(attr_span);
+    }
+
+    for elem in list.mixed() {
+        let Some(elem) = elem.meta_item() else {
+            cx.adcx().expected_identifier(elem.span());
+            continue;
+        };
+        let Some(()) = cx.expect_no_args(elem.args()) else {
+            continue;
         };
 
-        if list.is_empty() {
-            let attr_span = cx.attr_span;
-            cx.adcx().warn_empty_attribute(attr_span);
+        let path = elem.path();
+        let Some(ident) = path.word() else {
+            cx.adcx().expected_identifier(path.span());
+            continue;
+        };
+
+        if let Some(old_ident) = tools.replace(ident) {
+            cx.dcx().emit_err(ToolWasAlreadyRegistered {
+                span: ident.span,
+                tool: ident,
+                old_ident_span: old_ident.span,
+            });
         }
+    }
+}
 
-        let mut res = Vec::new();
+impl AttributeParser for RegisterToolParser {
+    const ATTRIBUTES: AcceptMapping<Self> = &[(
+        &[sym::register_tool],
+        template!(List: &["tool1, tool2, ..."]),
+        unstable!(register_tool),
+        |this, cx, args| parse_register_tool(&mut this.tools, cx, args),
+    )];
 
-        for elem in list.mixed() {
-            let Some(elem) = elem.meta_item() else {
-                cx.adcx().expected_identifier(elem.span());
-                continue;
-            };
-            let Some(()) = cx.expect_no_args(elem.args()) else {
-                continue;
-            };
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
 
-            let path = elem.path();
-            let Some(ident) = path.word() else {
-                cx.adcx().expected_identifier(path.span());
-                continue;
-            };
-
-            res.push(ident);
-        }
-
-        res
+    fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
+        if self.tools.is_empty() { None } else { Some(AttributeKind::RegisterTool(self.tools)) }
     }
 }
