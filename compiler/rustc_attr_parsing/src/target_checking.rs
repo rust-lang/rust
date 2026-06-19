@@ -527,5 +527,6 @@ pub(crate) const ALL_TARGETS: &'static [Policy] = {
         Allow(Target::Loop),
         Allow(Target::ForLoop),
         Allow(Target::While),
+        Allow(Target::Break),
     ]
 };

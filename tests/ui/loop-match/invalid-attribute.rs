@@ -37,7 +37,8 @@ fn main() {
 
     {
         #[loop_match] //~ ERROR attribute cannot be used on
-        #[const_continue] //~ ERROR should be applied to a break expression
+        #[const_continue]
+        //~^ ERROR `#[const_continue]` attribute cannot be used on expressions
         5
     };
 }
