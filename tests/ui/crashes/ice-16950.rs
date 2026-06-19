@@ -1,6 +1,5 @@
 //@check-pass
 #![feature(trivial_bounds)]
-#![allow(dead_code)]
 
 struct Helper<T>(T);
 

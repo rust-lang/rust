@@ -885,17 +885,22 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
             _ => return None,
         };
 
-        let args = self.typeck.node_args(id);
-        // We must use the const's own TypingEnv here.
-        // If we rely on the caller, a 'where Self: Sized' bound
-        // could trick us into thinking an unsized type is safe, triggering ICE later.
-        let const_typing_env = ty::TypingEnv::post_analysis(self.tcx, did);
-        if args.types().any(|ty| !ty.is_sized(self.tcx, const_typing_env)) {
+        let owner_def_id = self.typeck.hir_owner.def_id.to_def_id();
+        let identity_args = ty::GenericArgs::identity_for_item(self.tcx, owner_def_id);
+        // Don't try to fully evaluate consts inside code whose bounds can't be satisfied.
+        if self
+            .tcx
+            .instantiate_and_check_impossible_predicates((owner_def_id, identity_args))
+        {
             return None;
         }
 
         self.tcx
-            .const_eval_resolve(self.typing_env, mir::UnevaluatedConst::new(did, args), qpath.span())
+            .const_eval_resolve(
+                self.typing_env,
+                mir::UnevaluatedConst::new(did, self.typeck.node_args(id)),
+                qpath.span(),
+            )
             .ok()
     }
 
