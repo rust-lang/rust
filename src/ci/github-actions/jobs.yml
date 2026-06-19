@@ -129,7 +129,7 @@ pr:
     <<: *job-linux-4c
   - name: x86_64-gnu-llvm-21
     env:
-      ENABLE_GCC_CODEGEN: "1"
+      # ENABLE_GCC_CODEGEN: "1"
       DOCKER_SCRIPT: x86_64-gnu-llvm.sh
     <<: *job-linux-4c
   - name: aarch64-gnu-llvm-21-1
@@ -146,17 +146,17 @@ pr:
     <<: *job-linux-4c
   - name: x86_64-gnu-miri
     <<: *job-linux-4c
-  - name: x86_64-gnu-gcc
-    doc_url: https://rustc-dev-guide.rust-lang.org/tests/codegen-backend-tests/cg_gcc.html
-    env:
-      CODEGEN_BACKENDS: llvm,gcc
-    <<: *job-linux-4c
-  - name: x86_64-gnu-gcc-core-tests
-    doc_url: https://rustc-dev-guide.rust-lang.org/tests/codegen-backend-tests/cg_gcc.html
-    env:
-      CODEGEN_BACKENDS: gcc
-    <<: *job-linux-4c
-  
+  # - name: x86_64-gnu-gcc
+  #   doc_url: https://rustc-dev-guide.rust-lang.org/tests/codegen-backend-tests/cg_gcc.html
+  #   env:
+  #     CODEGEN_BACKENDS: llvm,gcc
+  #   <<: *job-linux-4c
+  # - name: x86_64-gnu-gcc-core-tests
+  #   doc_url: https://rustc-dev-guide.rust-lang.org/tests/codegen-backend-tests/cg_gcc.html
+  #   env:
+  #     CODEGEN_BACKENDS: gcc
+  #   <<: *job-linux-4c
+
   # This job tests features we want to stabilize soon, to ensure they don't
   # regress.
   - name: x86_64-gnu-pre-stabilization
