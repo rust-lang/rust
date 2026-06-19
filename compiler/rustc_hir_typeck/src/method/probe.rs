@@ -501,13 +501,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // We demand the type to be equal to the never type, so we can probe the never type for methods
             // (see https://github.com/rust-lang/rust/issues/143349)
             } else if let ty::Infer(ty::TyVar(ty_id)) = *ty.kind()
-                && let ty_id = self.root_var(ty_id)
+                && let ty_id = self.sub_unification_table_root_var(ty_id)
                 && let root_ty = Ty::new_var(self.tcx, ty_id)
                 && self
                     .diverging_type_vars
                     .borrow()
                     .iter()
-                    .any(|&candidate_id| self.root_var(candidate_id) == ty_id)
+                    .any(|&candidate_id| self.sub_unification_table_root_var(candidate_id) == ty_id)
             {
                 self.tcx.emit_node_span_lint(
                     TRAIT_METHOD_ON_COERCED_NEVER_TYPE,
