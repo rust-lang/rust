@@ -408,6 +408,9 @@ impl GlobalState {
                                     .iter()
                                     .for_each(|flycheck| flycheck.restart_workspace(None));
                             }
+                            if !cancelled {
+                                tracing::info!("workspace loaded and indexed");
+                            }
                             if let Some((message, fraction, title)) = last_report.take() {
                                 self.report_progress(
                                     title,
