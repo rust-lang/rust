@@ -20,7 +20,7 @@ use hir_expand::name::Name;
 use intern::sym;
 use rustc_type_ir::{
     TypeVisitableExt, TypingMode,
-    inherent::{BoundExistentialPredicates, IntoKind},
+    inherent::{BoundExistentialPredicates, GenericArg as _, IntoKind, Ty as _},
 };
 
 use crate::{
@@ -153,6 +153,9 @@ pub fn implements_trait_unique_with_infcx<'db>(
     let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
 
     let args = create_args(&infcx);
+    if args.iter().filter_map(|it| it.as_type()).any(|ty| ty.is_ty_error()) {
+        return false;
+    }
     let trait_ref = rustc_type_ir::TraitRef::new_from_args(interner, trait_.into(), args);
 
     let obligation = Obligation::new(interner, ObligationCause::dummy(), env.param_env, trait_ref);

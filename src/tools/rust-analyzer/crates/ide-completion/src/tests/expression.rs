@@ -4179,3 +4179,31 @@ fn main() {
         "#]],
     );
 }
+
+#[test]
+fn no_await_on_error_type() {
+    check(
+        r#"
+//- minicore: future
+fn foo(t: T) {
+    let _ = t.$0;
+}
+        "#,
+        expect![[r#"
+                sn box  Box::new(expr)
+                sn call function(expr)
+                sn const      const {}
+                sn dbg      dbg!(expr)
+                sn dbgr    dbg!(&expr)
+                sn deref         *expr
+                sn if       if expr {}
+                sn match match expr {}
+                sn not           !expr
+                sn ref           &expr
+                sn refm      &mut expr
+                sn return  return expr
+                sn unsafe    unsafe {}
+                sn while while expr {}
+            "#]],
+    );
+}
