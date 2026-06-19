@@ -1,4 +1,4 @@
-// MIR for `Test::X` after built
+// MIR for `Test::X` after runtime-optimized
 
 fn Test::X(_1: usize) -> Test {
     let mut _0: Test;
