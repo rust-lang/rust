@@ -885,12 +885,22 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
             _ => return None,
         };
 
+        let args = self.typeck.node_args(id);
+
+        if !args.is_empty() {
+            let owner_def_id = self.typeck.hir_owner.def_id.to_def_id();
+            let identity_args = ty::GenericArgs::identity_for_item(self.tcx, owner_def_id);
+            // Don't try to fully evaluate consts inside code whose bounds can't be satisfied.
+            if self
+                .tcx
+                .instantiate_and_check_impossible_predicates((owner_def_id, identity_args))
+            {
+                return None;
+            }
+        }
+
         self.tcx
-            .const_eval_resolve(
-                self.typing_env,
-                mir::UnevaluatedConst::new(did, self.typeck.node_args(id)),
-                qpath.span(),
-            )
+            .const_eval_resolve(self.typing_env, mir::UnevaluatedConst::new(did, args), qpath.span())
             .ok()
     }
 
