@@ -335,6 +335,7 @@ symbols! {
         TyKind,
         Type,
         Union,
+        Unresolved,
         Unsize,
         Vec,
         Wrapper,

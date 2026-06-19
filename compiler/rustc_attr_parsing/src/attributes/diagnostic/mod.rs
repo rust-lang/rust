@@ -460,6 +460,7 @@ fn parse_arg(
 
             (Mode::DiagnosticOnTypeError, sym::Found) => FormatArg::Found,
             (Mode::DiagnosticOnTypeError, sym::Expected) => FormatArg::Expected,
+            (Mode::DiagnosticOnUnknown, sym::Unresolved) => FormatArg::Unresolved,
 
             // Some diagnostic attributes can use `{This}` to refer to the annotated item.
             // For those that don't, we continue and maybe use it as a generic parameter.

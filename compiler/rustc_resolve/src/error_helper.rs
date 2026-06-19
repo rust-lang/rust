@@ -9,19 +9,21 @@ use rustc_ast::{
     join_path_idents,
 };
 use rustc_ast_pretty::pprust;
+use rustc_attr_parsing::AttributeParser;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, Diagnostic, ErrorGuaranteed, MultiSpan, SuggestionStyle,
-    struct_span_code_err,
+    pluralize, struct_span_code_err,
 };
 use rustc_feature::BUILTIN_ATTRIBUTES;
-use rustc_hir::attrs::{CfgEntry, StrippedCfgItem};
+use rustc_hir::attrs::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
+use rustc_hir::attrs::{AttributeKind, CfgEntry, StrippedCfgItem};
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, MacroKinds, NonMacroAttrKind, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
-use rustc_hir::{PrimTy, Stability, StabilityLevel, find_attr};
+use rustc_hir::{Attribute, PrimTy, Stability, StabilityLevel, find_attr};
 use rustc_middle::bug;
 use rustc_middle::ty::{TyCtxt, Visibility};
 use rustc_session::Session;
@@ -46,7 +48,7 @@ use crate::diagnostics::{
     MaybeMissingMacroRulesName,
 };
 use crate::hygiene::Macros20NormalizedSyntaxContext;
-use crate::imports::{Import, ImportKind};
+use crate::imports::{Import, ImportKind, UnresolvedImportError, import_path_to_string};
 use crate::late::{DiagMetadata, PatternSource, Rib};
 use crate::{
     AmbiguityError, AmbiguityKind, AmbiguityWarning, BindingError, BindingKey, Decl, DeclKind,
@@ -134,6 +136,200 @@ fn reduce_impl_span_to_impl_keyword(sm: &SourceMap, impl_span: Span) -> Span {
 }
 
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
+    /// Reports unresolved imports.
+    ///
+    /// Multiple unresolved import errors within the same use tree are combined into a single
+    /// diagnostic.
+    pub(crate) fn throw_unresolved_import_error(
+        &mut self,
+        mut errors: Vec<(Import<'_>, UnresolvedImportError)>,
+        glob_error: bool,
+    ) {
+        errors.retain(|(_import, err)| match err.module {
+            // Skip `use` errors for `use foo::Bar;` if `foo.rs` has unrecovered parse errors.
+            Some(def_id) if self.mods_with_parse_errors.contains(&def_id) => false,
+            // If we've encountered something like `use _;`, we've already emitted an error stating
+            // that `_` is not a valid identifier, so we ignore that resolve error.
+            _ => err.segment.map(|s| s.name) != Some(kw::Underscore),
+        });
+        if errors.is_empty() {
+            self.tcx.dcx().delayed_bug("expected a parse or \"`_` can't be an identifier\" error");
+            return;
+        }
+
+        let span = MultiSpan::from_spans(errors.iter().map(|(_, err)| err.span).collect());
+
+        let paths = errors
+            .iter()
+            .map(|(import, err)| {
+                let path = import_path_to_string(
+                    &import.module_path.iter().map(|seg| seg.ident).collect::<Vec<_>>(),
+                    &import.kind,
+                    err.span,
+                );
+                format!("`{path}`")
+            })
+            .collect::<Vec<_>>();
+        let default_message =
+            format!("unresolved import{} {}", pluralize!(paths.len()), paths.join(", "),);
+
+        // Process `import` use of  the `#[diagnostic::on_unknown]` attribute.
+        //
+        // We don't need to check feature gates here; that happens on initialization of the
+        // `on_unknown_attr` fields.
+        let (mut message, label, mut notes) =
+            if let Some(directive) = errors[0].1.on_unknown_attr.as_ref().map(|a| &a.directive) {
+                let this = errors
+                    .iter()
+                    .map(|(_import, err)| {
+                        // Is this unwrap_or reachable?
+                        err.segment.map(|s| s.name).unwrap_or(kw::Underscore)
+                    })
+                    .join(", ");
+
+                let args = FormatArgs { unresolved: this.clone(), this, .. };
+
+                let CustomDiagnostic { message, label, notes, parent_label: _dead } =
+                    directive.eval(None, &args);
+
+                (message, label, notes)
+            } else {
+                (None, None, Vec::new())
+            };
+
+        // `module` use of the `#[diagnostic::on_unknown]` attribute.
+        // We assume that someone who put the attribute on the import has more information than
+        // the person who put it on the module, so we choose to prioritize the import attribute.
+        let mut mod_diagnostics: Vec<CustomDiagnostic> = errors
+            .iter()
+            .map(|(import, import_error)| {
+                if let Some(ModuleOrUniformRoot::Module(module_data)) = import.imported_module.get()
+                    && let ModuleKind::Def(DefKind::Mod, def_id, _, name) = module_data.kind
+                {
+                    let Some(directive) = self.on_unknown_data(def_id) else {
+                        return CustomDiagnostic::default();
+                    };
+
+                    let this = if let Some(name) = name {
+                        name.to_string()
+                    } else if let Some(crate_name) = &self.tcx.sess.opts.crate_name {
+                        crate_name.to_string()
+                    } else {
+                        "<unnamed crate>".to_string()
+                    };
+                    let unresolved = import_error.segment.map(|s| s.name).unwrap_or(kw::Underscore);
+                    let args = FormatArgs { this, unresolved: unresolved.to_string(), .. };
+
+                    directive.eval(None, &args)
+                } else {
+                    CustomDiagnostic::default()
+                }
+            })
+            .collect();
+
+        // If there is no import attribute with a message,
+        // but all mod messages are the same, use that.
+        let mod_message =
+            mod_diagnostics.iter_mut().flat_map(|d| d.message.take()).all_equal_value();
+        if message.is_none()
+            && let Ok(mod_msg) = mod_message
+        {
+            message = Some(mod_msg);
+        }
+
+        let mut diag = if let Some(message) = message {
+            struct_span_code_err!(self.dcx(), span, E0432, "{message}").with_note(default_message)
+        } else {
+            struct_span_code_err!(self.dcx(), span, E0432, "{default_message}")
+        };
+
+        for mod_diag in mod_diagnostics.iter_mut() {
+            for mod_note in mod_diag.notes.drain(..) {
+                if !notes.contains(&mod_note) {
+                    notes.push(mod_note);
+                }
+            }
+        }
+
+        if !notes.is_empty() {
+            for note in notes {
+                diag.note(note);
+            }
+        } else if let Some((_, UnresolvedImportError { note: Some(note), .. })) =
+            errors.iter().last()
+        {
+            diag.note(note.clone());
+        }
+
+        /// Upper limit on the number of `span_label` messages.
+        const MAX_LABEL_COUNT: usize = 10;
+        let mod_labels = mod_diagnostics.into_iter().map(|cd| cd.label);
+
+        for ((import, err), mod_label) in errors.into_iter().zip(mod_labels).take(MAX_LABEL_COUNT) {
+            let label_span = match err.segment {
+                Some(segment) => segment.span,
+                None => err.span,
+            };
+            if let Some(label) = &label {
+                diag.span_label(label_span, label.clone());
+            } else if let Some(label) = mod_label {
+                diag.span_label(label_span, label);
+            } else if let Some(label) = &err.label {
+                diag.span_label(label_span, label.clone());
+            }
+
+            if let Some((suggestions, msg, applicability)) = err.suggestion {
+                if suggestions.is_empty() {
+                    diag.help(msg);
+                    continue;
+                }
+                diag.multipart_suggestion(msg, suggestions, applicability);
+            }
+
+            if let Some(candidates) = &err.candidates {
+                match &import.kind {
+                    ImportKind::Single { nested: false, source, target, .. } => import_candidates(
+                        self.tcx,
+                        &mut diag,
+                        Some(err.span),
+                        candidates,
+                        DiagMode::Import { append: false, unresolved_import: true },
+                        (source != target)
+                            .then(|| format!(" as {target}"))
+                            .as_deref()
+                            .unwrap_or(""),
+                    ),
+                    ImportKind::Single { nested: true, source, target, .. } => {
+                        import_candidates(
+                            self.tcx,
+                            &mut diag,
+                            None,
+                            candidates,
+                            DiagMode::Normal,
+                            (source != target)
+                                .then(|| format!(" as {target}"))
+                                .as_deref()
+                                .unwrap_or(""),
+                        );
+                    }
+                    _ => {}
+                }
+            }
+
+            if matches!(import.kind, ImportKind::Single { .. })
+                && let Some(segment) = err.segment
+                && let Some(module) = err.module
+            {
+                self.find_cfg_stripped(&mut diag, &segment.name, module)
+            }
+        }
+
+        let guar = diag.emit();
+        if glob_error {
+            self.glob_error = Some(guar);
+        }
+    }
+
     pub(crate) fn dcx(&self) -> DiagCtxtHandle<'tcx> {
         self.tcx.dcx()
     }
@@ -3405,6 +3601,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         }
     }
+
+    /// Gets the `#[diagnostic::on_unknown]` attribute data associated with this `DefId`.
+    fn on_unknown_data(&self, def_id: DefId) -> Option<&Directive> {
+        match def_id.as_local() {
+            Some(local) => Some(self.on_unknown_data.get(&local)?.directive.as_ref()),
+            None => find_attr!(self.tcx, def_id, OnUnknown{ directive } => directive)?.as_deref(),
+        }
+    }
 }
 
 /// Given a `binding_span` of a binding within a use statement:
@@ -3932,4 +4136,25 @@ fn is_span_suitable_for_use_injection(s: Span) -> bool {
     // don't suggest placing a use before the prelude
     // import or other generated ones
     !s.from_expansion()
+}
+
+#[derive(Debug, Clone, Default)]
+pub(crate) struct OnUnknownData {
+    pub(crate) directive: Box<Directive>,
+}
+
+impl OnUnknownData {
+    pub(crate) fn from_attrs<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        attrs: &[ast::Attribute],
+    ) -> Option<OnUnknownData> {
+        if tcx.features().diagnostic_on_unknown()
+            && let Some(Attribute::Parsed(AttributeKind::OnUnknown { directive, .. })) =
+                AttributeParser::parse_limited(tcx.sess, attrs, &[sym::diagnostic, sym::on_unknown])
+        {
+            Some(Self { directive: directive? })
+        } else {
+            None
+        }
+    }
 }

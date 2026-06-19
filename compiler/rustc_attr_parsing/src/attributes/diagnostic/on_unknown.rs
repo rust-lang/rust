@@ -5,7 +5,7 @@ use rustc_session::lint::builtin::MISPLACED_DIAGNOSTIC_ATTRIBUTES;
 use crate::ShouldEmit;
 use crate::attributes::diagnostic::*;
 use crate::attributes::prelude::*;
-use crate::diagnostics::DiagnosticOnUnknownOnlyForImports;
+use crate::diagnostics::DiagnosticOnUnknownInvalidTarget;
 
 #[derive(Default)]
 pub(crate) struct OnUnknownParser {
@@ -29,11 +29,11 @@ impl OnUnknownParser {
         // Therefore, only do target checking if we can emit.
         let early = matches!(cx.should_emit, ShouldEmit::Nothing);
 
-        if !early && !matches!(cx.target, Target::Use) {
+        if !early && !matches!(cx.target, Target::Use | Target::Mod | Target::Crate) {
             let target_span = cx.target_span;
             cx.emit_lint(
                 MISPLACED_DIAGNOSTIC_ATTRIBUTES,
-                DiagnosticOnUnknownOnlyForImports { target_span },
+                DiagnosticOnUnknownInvalidTarget { target_span },
                 span,
             );
             return;
