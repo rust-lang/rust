@@ -654,18 +654,8 @@ fn pull_region_outlives_constraints_out_of_universe<
     use RegionConstraint::*;
     match constraint {
         Ambiguity | PlaceholderTyOutlives(..) | AliasTyOutlivesViaEnv(..) => {
-            // With only lifetime binders the rewrite step lowers these constraints out of `u`
-            // (or destructures them), so we expect `max_universe < u` here. A non-lifetime
-            // binder (`for<T>`) instead introduces a placeholder type in `u`, which
-            // `PlaceholderReplacer` (region-only, see its `fold_region`) cannot pull out,
-            // leaving e.g. `<!T as Trait>::Assoc: 'r` stranded in `u`. The assumptions-on-binders
-            // machinery is region-outlives-only and can't decide such a constraint, so report
-            // ambiguity rather than ICE.
-            if max_universe(infcx, constraint.clone()) < u {
-                constraint
-            } else {
-                RegionConstraint::Ambiguity
-            }
+            assert!(max_universe(infcx, constraint.clone()) < u);
+            constraint
         }
         RegionOutlives(region_1, region_2) => {
             let region_1_u = max_universe(infcx, region_1);
@@ -850,7 +840,15 @@ fn rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling<
                     escaping_outlives,
                     I::BoundVarKinds::from_vars(infcx.cx(), bound_vars),
                 );
-                candidates.push(RegionConstraint::AliasTyOutlivesViaEnv(bound_outlives));
+                let candidate = RegionConstraint::AliasTyOutlivesViaEnv(bound_outlives);
+                if max_universe(infcx, candidate.clone()) < u {
+                    candidates.push(candidate);
+                } else {
+                    // `PlaceholderReplacer` only folds regions. A non-lifetime binder can leave
+                    // a placeholder type in `u`, so this type-outlives constraint cannot be
+                    // handled by the region-outlives-only eager placeholder machinery.
+                    candidates.push(Ambiguity);
+                }
             }
 
             let assumptions = match assumptions {
@@ -895,12 +893,17 @@ fn rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling<
 
                 // while we did skip the binder, bound vars aren't in any universe so
                 // this can't be an escaping bound var
-                candidates.extend(
-                    regions_outliving(escaping_r, assumptions, infcx.cx())
-                        .filter(|r2| max_universe(infcx, *r2) < u)
-                        .map(|r2| AliasTyOutlivesViaEnv(bound_alias.map_bound(|alias| (alias, r2))))
-                        .collect::<Vec<_>>(),
-                );
+                for r2 in regions_outliving(escaping_r, assumptions, infcx.cx())
+                    .filter(|r2| max_universe(infcx, *r2) < u)
+                {
+                    let candidate =
+                        AliasTyOutlivesViaEnv(bound_alias.map_bound(|alias| (alias, r2)));
+                    if max_universe(infcx, candidate.clone()) < u {
+                        candidates.push(candidate);
+                    } else {
+                        candidates.push(Ambiguity);
+                    }
+                }
             }
 
             // I'm not convinced our handling here is *complete* so for now
