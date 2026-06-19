@@ -48,6 +48,8 @@ impl<const N: usize> Simd<u8, N> {
                     target_endian = "little"
                 ))]
                 16 => transize(armv7_neon_swizzle_u8x16, self, idxs),
+                #[cfg(all(target_arch = "loongarch64", target_feature = "lsx"))]
+                16 => transize(loong64_lsx_swizzle, self, idxs),
                 #[cfg(all(target_feature = "avx2", not(target_feature = "avx512vbmi")))]
                 32 => transize(avx2_pshufb, self, idxs),
                 #[cfg(all(target_feature = "avx512vl", target_feature = "avx512vbmi"))]
@@ -62,6 +64,8 @@ impl<const N: usize> Simd<u8, N> {
                     };
                     transize(swizzler, self, idxs)
                 }
+                #[cfg(all(target_arch = "loongarch64", target_feature = "lasx"))]
+                32 => transize(loong64_lasx_swizzle, self, idxs),
                 // Notable absence: avx512bw pshufb shuffle
                 #[cfg(all(target_feature = "avx512vl", target_feature = "avx512vbmi"))]
                 64 => {
@@ -217,6 +221,38 @@ unsafe fn avx2_pshufb(bytes: Simd<u8, 32>, idxs: Simd<u8, 32>) -> Simd<u8, 32> {
         // Repeat, then pick indices < 16, overwriting indices 0-15 from previous compose step
         let compose = idxs.simd_lt(mid).select(lo_shuf, compose);
         compose
+    }
+}
+
+/// LoongArch64 LSX supports swizzling `u8x16`
+///
+/// # Safety
+/// This requires LoongArch LSX to work
+#[cfg(all(target_arch = "loongarch64", target_feature = "lsx"))]
+unsafe fn loong64_lsx_swizzle(bytes: Simd<u8, 16>, idxs: Simd<u8, 16>) -> Simd<u8, 16> {
+    use core::arch::loongarch64::{lsx_vand_v, lsx_vshuf_b, lsx_vslei_bu};
+    // SAFETY: Caller promised loongarch lsx support
+    unsafe {
+        let bytes = lsx_vshuf_b(bytes.into(), bytes.into(), idxs.into());
+        let mask = lsx_vslei_bu::<15>(idxs.into());
+        lsx_vand_v(bytes, mask).into()
+    }
+}
+
+/// LoongArch64 LASX supports swizzling `u8x32`
+///
+/// # Safety
+/// This requires LoongArch LASX to work
+#[cfg(all(target_arch = "loongarch64", target_feature = "lasx"))]
+unsafe fn loong64_lasx_swizzle(bytes: Simd<u8, 32>, idxs: Simd<u8, 32>) -> Simd<u8, 32> {
+    use core::arch::loongarch64::{lasx_xvand_v, lasx_xvpermi_q, lasx_xvshuf_b, lasx_xvslei_bu};
+    // SAFETY: Caller promised loongarch lasx support
+    unsafe {
+        let lolo = lasx_xvpermi_q::<0x00>(bytes.into(), bytes.into());
+        let hihi = lasx_xvpermi_q::<0x11>(bytes.into(), bytes.into());
+        let bytes = lasx_xvshuf_b(hihi, lolo, idxs.into());
+        let mask = lasx_xvslei_bu::<31>(idxs.into());
+        lasx_xvand_v(bytes, mask).into()
     }
 }
 
