@@ -66,7 +66,7 @@ jobs:
         run: ./src/tools/update-lockfile.sh
 
       - name: upload Cargo.lock artifact for use in PR
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: Cargo-lock
           path: |
@@ -75,7 +75,7 @@ jobs:
             src/tools/rustbook/Cargo.lock
           retention-days: 1
       - name: upload cargo-update log artifact for use in PR
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: cargo-updates
           path: cargo_update.log
