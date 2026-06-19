@@ -30,6 +30,23 @@ pub(super) fn check<'tcx>(
     args: &'tcx [hir::Expr<'_>],
     msrv: Msrv,
 ) {
+    // Bail out early unless the method is one that `check_unwrap_or_default` or
+    // `check_or_fn_call` can lint, to avoid walking the argument of every method call.
+    if !matches!(
+        name,
+        sym::unwrap_or
+            | sym::unwrap_or_else
+            | sym::or_insert
+            | sym::or_insert_with
+            | sym::get_or_insert
+            | sym::map_or
+            | sym::ok_or
+            | sym::or
+            | sym::and
+    ) {
+        return;
+    }
+
     if let [arg] = args {
         let inner_arg = peel_blocks(arg);
         for_each_expr(cx, inner_arg, |ex| {
@@ -112,6 +129,12 @@ fn check_unwrap_or_default(
     method_span: Span,
     msrv: Msrv,
 ) -> bool {
+    let sugg = match (name, call_expr.is_some()) {
+        (sym::unwrap_or, true) | (sym::unwrap_or_else, false) => sym::unwrap_or_default,
+        (sym::or_insert, true) | (sym::or_insert_with, false) => sym::or_default,
+        _ => return false,
+    };
+
     let receiver_ty = cx.typeck_results().expr_ty_adjusted(receiver).peel_refs();
 
     // Check MSRV, but only for `Result::unwrap_or_default`
@@ -148,12 +171,6 @@ fn check_unwrap_or_default(
         } else {
             false
         }
-    };
-
-    let sugg = match (name, call_expr.is_some()) {
-        (sym::unwrap_or, true) | (sym::unwrap_or_else, false) => sym::unwrap_or_default,
-        (sym::or_insert, true) | (sym::or_insert_with, false) => sym::or_default,
-        _ => return false,
     };
 
     let Some(suggested_method_def_id) = receiver_ty.ty_adt_def().and_then(|adt_def| {
