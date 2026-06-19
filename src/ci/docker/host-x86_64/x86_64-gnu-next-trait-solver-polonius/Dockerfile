@@ -25,5 +25,5 @@ RUN sh /scripts/sccache.sh
 
 ENV RUST_CONFIGURE_ARGS="--build=x86_64-unknown-linux-gnu"
 
-COPY scripts/x86_64-gnu-pre-stabilization.sh /scripts/
-ENV SCRIPT="/scripts/x86_64-gnu-pre-stabilization.sh"
+COPY scripts/x86_64-gnu-next-trait-solver-polonius.sh /scripts/
+ENV SCRIPT="/scripts/x86_64-gnu-next-trait-solver-polonius.sh"
