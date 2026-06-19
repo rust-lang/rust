@@ -16,7 +16,7 @@ use tracing::{debug, instrument};
 
 use crate::diagnostics::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
 use crate::hygiene::Macros20NormalizedSyntaxContext;
-use crate::imports::{Import, NameResolution};
+use crate::imports::{Import, NameResolution, cycle_detection};
 use crate::late::{
     ConstantHasGenerics, DiagMetadata, NoConstantGenericsReason, PathSource, Rib, RibKind,
 };
@@ -1148,13 +1148,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ignore_import: Option<Import<'ra>>,
     ) -> Result<Decl<'ra>, ControlFlow<Determinacy, Determinacy>> {
         let key = BindingKey::new(ident, ns);
-        // `try_borrow_mut` is required to ensure exclusive access, even if the resulting binding
-        // doesn't need to be mutable. It will fail when there is a cycle of imports, and without
-        // the exclusive access infinite recursion will crash the compiler with stack overflow.
-        let resolution = &*self
-            .resolution_or_default(module.to_module(), key, orig_ident_span)
-            .try_borrow_mut_unchecked()
-            .map_err(|_| ControlFlow::Continue(Determined))?;
+        let resolution_ref = self.resolution_or_default(module.to_module(), key, orig_ident_span);
+        let resolution = resolution_ref.borrow();
 
         let binding = resolution.non_glob_decl.filter(|b| Some(*b) != ignore_decl);
 
@@ -1174,6 +1169,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let accessible = self.is_accessible_from(binding.vis(), parent_scope.module);
             return if accessible { Ok(binding) } else { Err(ControlFlow::Break(Determined)) };
         }
+
+        // We need to detect resolution cycles to avoid infinite recursion. The guard ensures
+        // the resolution is removed when this resolve call ends.
+        let _cycle_guard = cycle_detection::enter_cycle_detector(resolution_ref)
+            .map_err(|_| ControlFlow::Continue(Determined))?;
 
         // Check if one of single imports can still define the name, block if it can.
         if self.reborrow().single_import_can_define_name(
@@ -1210,13 +1210,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ignore_import: Option<Import<'ra>>,
     ) -> Result<Decl<'ra>, ControlFlow<Determinacy, Determinacy>> {
         let key = BindingKey::new(ident, ns);
-        // `try_borrow_mut` is required to ensure exclusive access, even if the resulting binding
-        // doesn't need to be mutable. It will fail when there is a cycle of imports, and without
-        // the exclusive access infinite recursion will crash the compiler with stack overflow.
-        let resolution = &*self
-            .resolution_or_default(module.to_module(), key, orig_ident_span)
-            .try_borrow_mut_unchecked()
-            .map_err(|_| ControlFlow::Continue(Determined))?;
+        let resolution_ref = self.resolution_or_default(module.to_module(), key, orig_ident_span);
+        let resolution = resolution_ref.borrow();
 
         let binding = resolution.glob_decl.filter(|b| Some(*b) != ignore_decl);
 
@@ -1230,6 +1225,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 shadowing,
             );
         }
+
+        // We need to detect resolution cycles to avoid infinite recursion. The guard ensures
+        // the resolution is removed when this resolve call ends.
+        let _cycle_guard = cycle_detection::enter_cycle_detector(resolution_ref)
+            .map_err(|_| ControlFlow::Continue(Determined))?;
 
         // Check if one of single imports can still define the name,
         // if it can then our result is not determined and can be invalidated.
