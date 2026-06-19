@@ -3,6 +3,8 @@
 Thank you for your interest in contributing to Rust! There are many ways to contribute
 and we appreciate all of them.
 
+If you are new to the project, you may find helpful reading our contributor guidelines [at this link][forge].
+
 The best way to get started is by asking for help in the [#new
 members](https://rust-lang.zulipchat.com/#narrow/stream/122652-new-members)
 Zulip stream. We have a lot of documentation below on how to get started on your own, but
@@ -48,3 +50,4 @@ refer to [this section][contributing-bug-reports] and [open an issue][issue temp
 [issue template]: https://github.com/rust-lang/rust/issues/new/choose
 [internals]: https://internals.rust-lang.org
 [rust-zulip]: https://rust-lang.zulipchat.com
+[forge]: https://forge.rust-lang.org/how-to-start-contributing.html
