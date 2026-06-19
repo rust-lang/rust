@@ -159,8 +159,8 @@ pr:
   
   # This job tests features we want to stabilize soon, to ensure they don't
   # regress.
-  - name: x86_64-gnu-pre-stabilization
-    doc_url: https://rustc-dev-guide.rust-lang.org/tests/pre-stabilization-ci-job.html
+  - name: x86_64-gnu-next-trait-solver-polonius
+    doc_url: https://rustc-dev-guide.rust-lang.org/tests/x86_64-gnu-next-trait-solver-polonius-ci-job.html
     env:
       CODEGEN_BACKENDS: llvm
     <<: *job-linux-4c
