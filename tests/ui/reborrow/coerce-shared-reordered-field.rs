@@ -13,8 +13,8 @@ impl<'a> Reborrow for ReorderMut<'a> {}
 #[derive(Clone, Copy)]
 struct ReorderRef<'a> {
     b: &'a u16,
-    //~^ ERROR
     a: &'a u8,
+    //~^ ERROR
 }
 
 impl<'a> CoerceShared<ReorderRef<'a>> for ReorderMut<'a> {}

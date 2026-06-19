@@ -861,17 +861,17 @@ fn validate_coerce_shared_fields<'tcx>(
         }
     };
 
-    // FIXME(CoerceShared): remove this temporary function call once the downstream
-    // CoerceShared implementation can correctly handle types that are not trivially
-    // memcpy-able. Refer to #157489
-    // Also make these test changes:
-    // coerce-shared-omitted-reborrow-field-after-dead.rs -> checkpass
-    // coerce-shared-omitted-reborrow-field-locked.rs -> no error line 20
-    //  coerce-shared-omitted-reborrow-field.rs -> checkpass
-    //  coerce-shared-reordered-field.rs -> checkpass
+    // FIXME(Reborrow): remove this temporary WF-side memcpy-ability guard once
+    // the downstream CoerceShared implementation can correctly handle source and
+    // target types that are not trivially memcpy-able. Refer to #157489
     validate_coerce_shared_fields_are_memcpy_compatible(
         tcx,
+        infcx,
+        impl_did,
+        param_env,
+        coerce_shared_trait,
         trait_name,
+        span,
         source_def,
         source_args,
         target_def,
@@ -897,41 +897,100 @@ fn validate_coerce_shared_fields<'tcx>(
 
 fn validate_coerce_shared_fields_are_memcpy_compatible<'tcx>(
     tcx: TyCtxt<'tcx>,
+    infcx: &InferCtxt<'tcx>,
+    impl_did: LocalDefId,
+    param_env: ty::ParamEnv<'tcx>,
+    coerce_shared_trait: DefId,
     trait_name: &'static str,
+    span: Span,
     source_def: ty::AdtDef<'tcx>,
     source_args: ty::GenericArgsRef<'tcx>,
     target_def: ty::AdtDef<'tcx>,
     target_args: ty::GenericArgsRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    let source_fields = collect_reborrow_data_fields(tcx, source_def, source_args);
-    let target_fields = collect_reborrow_data_fields(tcx, target_def, target_args);
+    let source_non_zst_fields =
+        non_zst_reborrow_data_fields(tcx, infcx, param_env, source_def, source_args);
+    let target_non_zst_fields =
+        non_zst_reborrow_data_fields(tcx, infcx, param_env, target_def, target_args);
 
-    if source_fields.len() != target_fields.len() {
-        let source =
-            source_fields.get(target_fields.len()).or_else(|| source_fields.last()).copied();
-        let Some(source) = source else {
-            return Ok(());
-        };
-        let target = target_fields
-            .get(source_fields.len())
-            .or_else(|| target_fields.last())
-            .copied()
-            .unwrap_or(source);
-        return Err(emit_coerce_shared_field_mismatch(tcx, trait_name, source, target));
-    }
+    match (&source_non_zst_fields[..], &target_non_zst_fields[..]) {
+        ([], []) => Ok(()),
+        ([source], [target]) => {
+            if field_tys_satisfy_relation_after_normalization_and_resolution(
+                tcx,
+                impl_did,
+                param_env,
+                source.ty,
+                target.ty,
+                source.span,
+                FieldRelation::Equal,
+            ) {
+                return Ok(());
+            }
 
-    if matches!(target_def.non_enum_variant().ctor_kind(), Some(CtorKind::Fn)) {
-        return Ok(());
-    }
+            if matches!(
+                (source.ty.kind(), target.ty.kind()),
+                (&ty::Ref(_, _, ty::Mutability::Mut), &ty::Ref(_, _, ty::Mutability::Not))
+                    | (&ty::Alias(..), _)
+                    | (_, &ty::Alias(..))
+            ) && field_tys_satisfy_relation_after_normalization_and_resolution(
+                tcx,
+                impl_did,
+                param_env,
+                source.ty,
+                target.ty,
+                source.span,
+                FieldRelation::MutRefToSharedRef,
+            ) {
+                return Ok(());
+            }
 
-    let source_variant = source_def.non_enum_variant();
-    for (&source, &target) in source_fields.iter().zip(&target_fields) {
-        if !tcx.hygienic_eq(target.ident, source.ident, source_variant.def_id) {
-            return Err(emit_coerce_shared_field_mismatch(tcx, trait_name, source, target));
+            validate_field_tys_satisfy_coerce_shared_relation(
+                tcx,
+                infcx,
+                impl_did,
+                param_env,
+                coerce_shared_trait,
+                trait_name,
+                span,
+                *source,
+                *target,
+            )
+        }
+        _ => {
+            let source = source_non_zst_fields
+                .get(1)
+                .or_else(|| source_non_zst_fields.first())
+                .or_else(|| target_non_zst_fields.first())
+                .copied()
+                .expect("at least one non-ZST field");
+            let target = target_non_zst_fields
+                .get(1)
+                .or_else(|| target_non_zst_fields.first())
+                .or_else(|| source_non_zst_fields.first())
+                .copied()
+                .expect("at least one non-ZST field");
+            Err(emit_coerce_shared_field_mismatch(tcx, trait_name, source, target))
         }
     }
+}
 
-    Ok(())
+fn non_zst_reborrow_data_fields<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    infcx: &InferCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    def: ty::AdtDef<'tcx>,
+    args: ty::GenericArgsRef<'tcx>,
+) -> Vec<ReborrowDataField<'tcx>> {
+    collect_reborrow_data_fields(tcx, def, args)
+        .into_iter()
+        .filter(|field| {
+            !matches!(
+                tcx.layout_of(infcx.typing_env(param_env).as_query_input(field.ty)),
+                Ok(layout) if layout.is_zst()
+            )
+        })
+        .collect()
 }
 
 fn validate_coerce_shared_field<'tcx>(
@@ -974,6 +1033,30 @@ fn validate_coerce_shared_field<'tcx>(
         return assert_field_type_is_copy(tcx, infcx, impl_did, param_env, source.ty, source.span);
     }
 
+    validate_field_tys_satisfy_coerce_shared_relation(
+        tcx,
+        infcx,
+        impl_did,
+        param_env,
+        coerce_shared_trait,
+        trait_name,
+        span,
+        source,
+        target,
+    )
+}
+
+fn validate_field_tys_satisfy_coerce_shared_relation<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    infcx: &InferCtxt<'tcx>,
+    impl_did: LocalDefId,
+    param_env: ty::ParamEnv<'tcx>,
+    coerce_shared_trait: DefId,
+    trait_name: &'static str,
+    span: Span,
+    source: ReborrowDataField<'tcx>,
+    target: ReborrowDataField<'tcx>,
+) -> Result<(), ErrorGuaranteed> {
     let ocx = ObligationCtxt::new_with_diagnostics(infcx);
     let cause = traits::ObligationCause::misc(span, impl_did);
     ocx.register_obligation(Obligation::new(

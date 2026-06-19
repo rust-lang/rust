@@ -1,5 +1,3 @@
-//@ check-pass
-
 #![feature(reborrow, decl_macro)]
 #![allow(incomplete_features)]
 
@@ -15,6 +13,7 @@ macro my_macro($field:ident) {
     pub struct MyRef<'a> {
         $field: &'a i32,
         field: &'a i64,
+        //~^ ERROR
     }
 
     impl Reborrow for MyMut<'_> {}

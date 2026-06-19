@@ -1,0 +1,11 @@
+error: implementing `CoerceShared` requires corresponding fields to match, be reborrowable with `CoerceShared`, or coerce a mutable reference field to a shared reference field
+  --> $DIR/coerce-shared-associated-type-field.rs:22:5
+   |
+LL |     y: i64,
+   |     ------ source field `y` has type `i64`
+...
+LL |     y: <i32 as Trait>::Assoc,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ target field `y` has type `<i32 as Trait>::Assoc`
+
+error: aborting due to 1 previous error
+

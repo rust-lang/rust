@@ -1,5 +1,3 @@
-//@ check-pass
-
 #![feature(reborrow)]
 #![allow(dead_code)]
 
@@ -22,6 +20,7 @@ struct MyMut<'a> {
 struct MyRef<'a> {
     x: &'a (),
     y: <i32 as Trait>::Assoc,
+    //~^ ERROR
 }
 
 impl Reborrow for MyMut<'_> {}

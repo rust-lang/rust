@@ -1,5 +1,3 @@
-//@ check-pass
-
 #![feature(reborrow)]
 #![allow(dead_code)]
 
@@ -15,6 +13,7 @@ impl<'a, T, U: Copy, const N: usize> Reborrow for BufferMut<'a, T, U, N> {}
 struct BufferRef<'a, T, U, const N: usize> {
     data: &'a [T; N],
     meta: U,
+    //~^ ERROR
 }
 
 impl<'a, T, U: Copy, const N: usize> Clone for BufferRef<'a, T, U, N> {
