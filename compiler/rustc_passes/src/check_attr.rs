@@ -193,9 +193,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::Inline(kind, attr_span) => {
                 self.check_inline(hir_id, *attr_span, kind, target)
             }
-            AttributeKind::LoopMatch(attr_span) => {
-                self.check_loop_match(hir_id, *attr_span, target)
-            }
             AttributeKind::ConstContinue(attr_span) => {
                 self.check_const_continue(hir_id, *attr_span, target)
             }
@@ -286,6 +283,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::LinkOrdinal { .. } => (),
             AttributeKind::LinkSection { .. } => (),
             AttributeKind::Linkage(..) => (),
+            AttributeKind::LoopMatch(..) => {}
             AttributeKind::MacroEscape => (),
             AttributeKind::MacroUse { .. } => (),
             AttributeKind::Marker => (),
@@ -1661,18 +1659,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             self.dcx()
                 .emit_err(diagnostics::BothOptimizeNoneAndInline { optimize_span, inline_span });
         }
-    }
-
-    fn check_loop_match(&self, hir_id: HirId, attr_span: Span, target: Target) {
-        let node_span = self.tcx.hir_span(hir_id);
-
-        if !matches!(target, Target::Expression) {
-            return; // Handled in target checking during attr parse
-        }
-
-        if !matches!(self.tcx.hir_expect_expr(hir_id).kind, hir::ExprKind::Loop(..)) {
-            self.dcx().emit_err(diagnostics::LoopMatchAttr { attr_span, node_span });
-        };
     }
 
     fn check_const_continue(&self, hir_id: HirId, attr_span: Span, target: Target) {
