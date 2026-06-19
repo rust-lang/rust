@@ -818,7 +818,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                                 self.tcx.check_stability_allow_unstable(
                                     def_id,
                                     None,
-                                    path.span,
+                                    path_segment.ident.span,
                                     None,
                                     if is_unstable_reexport(self.tcx, id) {
                                         AllowUnstable::Yes
