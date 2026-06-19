@@ -1074,7 +1074,12 @@ pub(super) fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     // so this would otherwise not get filled).
     body.set_mentioned_items(Vec::new());
 
-    crate::pass_manager::dump_mir_for_phase_change(tcx, &body);
+    pm::run_passes_no_validate(
+        tcx,
+        &mut body,
+        &[],
+        Some(MirPhase::Runtime(RuntimePhase::Optimized)),
+    );
 
     body
 }

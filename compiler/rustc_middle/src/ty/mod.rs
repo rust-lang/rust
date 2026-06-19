@@ -118,7 +118,7 @@ pub use self::typeck_results::{
 use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
 use crate::metadata::{AmbigModChild, ModChild};
 use crate::middle::privacy::EffectiveVisibilities;
-use crate::mir::{Body, CoroutineLayout, CoroutineSavedLocal, SourceInfo};
+use crate::mir::{Body, CoroutineLayout, CoroutineSavedLocal, MirPhase, SourceInfo};
 use crate::query::{IntoQueryKey, Providers};
 use crate::ty;
 use crate::ty::codec::{TyDecoder, TyEncoder};
@@ -1777,7 +1777,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns the possibly-auto-generated MIR of a [`ty::InstanceKind`].
     #[instrument(skip(self), level = "debug")]
     pub fn instance_mir(self, instance: ty::InstanceKind<'tcx>) -> &'tcx Body<'tcx> {
-        match instance {
+        let body = match instance {
             ty::InstanceKind::Item(def) => {
                 debug!("calling def_kind on def: {:?}", def);
                 let def_kind = self.def_kind(def);
@@ -1816,7 +1816,15 @@ impl<'tcx> TyCtxt<'tcx> {
             | ty::InstanceKind::FnPtrAddrShim(..)
             | ty::InstanceKind::AsyncDropGlueCtorShim(..)
             | ty::InstanceKind::AsyncDropGlue(..) => self.mir_shims(instance),
-        }
+        };
+
+        assert!(
+            matches!(body.phase, MirPhase::Runtime(_)),
+            "body: {body:?} instance: {instance:?} {:?}",
+            if let ty::InstanceKind::Item(d) = instance { Some(self.def_kind(d)) } else { None },
+        );
+
+        body
     }
 
     /// Gets all attributes with the given name.
