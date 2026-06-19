@@ -14,7 +14,6 @@ pub struct ListS<T> {
 pub struct Interned<'a, T>(&'a T);
 //~^ NOTE: required by an implicit `Sized`
 //~| NOTE: required by the implicit `Sized`
-//~| NOTE: in this expansion of desugaring of implied bound
 
 impl<'a, T> Clone for Interned<'a, T> {
     fn clone(&self) -> Self {

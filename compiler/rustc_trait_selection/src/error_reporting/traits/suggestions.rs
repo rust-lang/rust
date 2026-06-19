@@ -3571,7 +3571,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                 }
                 let mut a = "a";
-                let mut this = "this bound".to_owned();
+                let mut this = "this bound";
                 let mut note = None;
                 let mut help = None;
                 if let ty::PredicateKind::Clause(clause) = predicate.kind().skip_binder() {
@@ -3598,14 +3598,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 tcx.visible_parent_map(()).get(&def_id).is_some()
                             };
                             if tcx.is_lang_item(def_id, LangItem::Sized) {
-                                if let Some(DesugaringKind::DefaultBound { def }) =
-                                    span.desugaring_kind()
+                                // Check if this is an implicit bound, even in foreign crates.
+                                if tcx
+                                    .generics_of(item_def_id)
+                                    .own_params
+                                    .iter()
+                                    .any(|param| tcx.def_span(param.def_id) == span)
                                 {
                                     a = "an implicit `Sized`";
-                                    this = format!(
-                                        "the implicit `Sized` requirement on this {}",
-                                        tcx.def_kind(def).descr(def)
-                                    );
+                                    this =
+                                        "the implicit `Sized` requirement on this type parameter";
                                 }
                                 if let Some(hir::Node::TraitItem(hir::TraitItem {
                                     generics,
@@ -4215,8 +4217,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             // implicit, mention it as such.
                             if let Some(pred) = predicate.as_trait_clause()
                                 && self.tcx.is_lang_item(pred.def_id(), LangItem::Sized)
-                                && let Some(DesugaringKind::DefaultBound { .. }) =
-                                    data.span.desugaring_kind()
+                                && self
+                                    .tcx
+                                    .generics_of(data.impl_or_alias_def_id)
+                                    .own_params
+                                    .iter()
+                                    .any(|param| self.tcx.def_span(param.def_id) == data.span)
                             {
                                 spans.push_span_label(
                                     data.span,
@@ -5906,11 +5912,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let sized_trait = self.tcx.lang_items().sized_trait();
         debug!(?generics.params);
         debug!(?generics.predicates);
-        let Some(DesugaringKind::DefaultBound { def }) = span.desugaring_kind() else {
-            return;
-        };
-        let Some(param) = generics.params.iter().find(|param| param.def_id.to_def_id() == def)
-        else {
+        let Some(param) = generics.params.iter().find(|param| param.span == span) else {
             return;
         };
         // Check that none of the explicit trait bounds is `Sized`. Assume that an explicit
