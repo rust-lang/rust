@@ -39,7 +39,7 @@ enum MergingSucc {
 
 /// Indicates to the call terminator codegen whether a call
 /// is a normal call or an explicit tail call.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 enum CallKind {
     Normal,
     Tail,
@@ -1195,8 +1195,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Special logic for tail calls with `PassMode::Indirect { on_stack: false, .. }` arguments.
         //
-        // Normally an indirect argument that is allocated in the caller's stack frame
-        // would be passed as a pointer into the callee's stack frame.
+        // Normally an indirect pointer that is allocated in the caller's stack frame
+        // would be passed as an argument.
         // For tail calls, that would be unsound, because the caller's
         // stack frame is overwritten by the callee's stack frame.
         //
@@ -1216,6 +1216,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // }
         // ```
         let mut tail_call_temporaries = vec![];
+        let mut tail_call_tupled_temporary = None;
         if kind == CallKind::Tail {
             tail_call_temporaries = vec![None; first_args.len()];
             // Copy the arguments that use `PassMode::Indirect { on_stack: false , ..}`
@@ -1227,10 +1228,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 let op = self.codegen_operand(bx, &arg.node);
                 let tmp = PlaceRef::alloca(bx, op.layout);
-                bx.lifetime_start(tmp.val.llval, tmp.layout.size);
+                tmp.storage_live(bx);
                 op.store_with_annotation(bx, tmp);
 
                 tail_call_temporaries[i] = Some(tmp);
+            }
+            // Copy the tuple, which may be one of the caller’s arguments, to a temporary stack allocation.
+            if let Some(untuple) = untuple {
+                let tuple = self.codegen_operand(bx, &untuple.node);
+                if let Ref(_) = tuple.val {
+                    let tmp = PlaceRef::alloca(bx, tuple.layout);
+                    tmp.storage_live(bx);
+                    tuple.store_with_annotation(bx, tmp);
+                    tail_call_tupled_temporary = Some(tmp);
+                }
             }
         }
 
@@ -1289,69 +1300,60 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
 
-            let by_move = if let PassMode::Indirect { on_stack: false, .. } = fn_abi.args[i].mode
+            let tmp = if let PassMode::Indirect { on_stack: false, .. } = fn_abi.args[i].mode
                 && kind == CallKind::Tail
             {
                 // Special logic for tail calls with `PassMode::Indirect { on_stack: false, .. }` arguments.
                 //
-                // Normally an indirect argument that is allocated in the caller's stack frame
-                // would be passed as a pointer into the callee's stack frame.
+                // Normally an indirect pointer that is allocated in the caller's stack frame
+                // would be passed as an argument.
                 // For tail calls, that would be unsound, because the caller's
                 // stack frame is overwritten by the callee's stack frame.
                 //
                 // To handle the case, we introduce `tail_call_temporaries` to copy arguments into
                 // temporaries, then copy back to the caller's argument slots.
-                // Finally, we pass the caller's argument slots as arguments.
-                //
-                // To do that, the argument must be MUST-by-move value.
+                // Finally, we pass the caller's argument slots as arguments which is implemented in
+                // `codegen_argument`.
                 let Some(tmp) = tail_call_temporaries[i].take() else {
                     span_bug!(fn_span, "missing temporary for indirect tail call argument #{i}")
                 };
-
-                let local = self.mir.args_iter().nth(i).unwrap();
-
-                match &self.locals[local] {
-                    LocalRef::Place(arg) => {
-                        bx.typed_place_copy(arg.val, tmp.val, fn_abi.args[i].layout);
-                        op.val = Ref(arg.val);
-                    }
-                    LocalRef::Operand(arg) => {
-                        let Ref(place_value) = arg.val else {
-                            bug!("only `Ref` should use `PassMode::Indirect`");
-                        };
-                        bx.typed_place_copy(place_value, tmp.val, fn_abi.args[i].layout);
-                        op.val = arg.val;
-                    }
-                    LocalRef::UnsizedPlace(_) => {
-                        span_bug!(fn_span, "unsized types are not supported")
-                    }
-                    LocalRef::PendingOperand => {
-                        span_bug!(fn_span, "argument local should not be pending")
-                    }
-                };
-
-                bx.lifetime_end(tmp.val.llval, tmp.layout.size);
-                true
+                op.val = Ref(tmp.val);
+                Some(tmp)
             } else {
-                matches!(arg.node, mir::Operand::Move(_))
+                None
             };
 
             self.codegen_argument(
                 bx,
                 op,
-                by_move,
+                matches!(arg.node, mir::Operand::Move(_)),
                 &mut llargs,
                 &fn_abi.args[i],
                 &mut lifetime_ends_after_call,
+                fn_span,
+                kind,
             );
+
+            if let Some(tmp) = tmp {
+                tmp.storage_dead(bx);
+            }
         }
         let num_untupled = untuple.map(|tup| {
+            // For untupled arguments, it is safe to store them directly into the caller's
+            // argument slots without temporaries, because the untupled arguments are
+            // always passed through a tuple alloca. The alloca serves as a temporary
+            // that does not overlap with any caller argument.
+            // No temporaries are needed for the caller's untupled arguments either,
+            // because they are used last.
             self.codegen_arguments_untupled(
                 bx,
                 &tup.node,
+                tail_call_tupled_temporary,
                 &mut llargs,
                 &fn_abi.args[first_args.len()..],
                 &mut lifetime_ends_after_call,
+                fn_span,
+                kind,
             )
         });
 
@@ -1382,6 +1384,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 &mut llargs,
                 last_arg,
                 &mut lifetime_ends_after_call,
+                fn_span,
+                kind,
             );
         }
 
@@ -1701,6 +1705,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         llargs: &mut Vec<Bx::Value>,
         arg: &ArgAbi<'tcx, Ty<'tcx>>,
         lifetime_ends_after_call: &mut Vec<(Bx::Value, Size)>,
+        fn_span: Span,
+        kind: CallKind,
     ) {
         match arg.mode {
             PassMode::Ignore => return,
@@ -1753,7 +1759,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 PassMode::Ignore | PassMode::Pair(..) => unreachable!("handled above"),
             },
             Ref(op_place_val) => match arg.mode {
-                PassMode::Indirect { attrs, on_stack, .. } => {
+                PassMode::Indirect { attrs, meta_attrs, on_stack, .. } => {
                     // For `foo(packed.large_field)`, and types with <4 byte alignment on x86,
                     // alignment requirements may be higher than the type's alignment, so copy
                     // to a higher-aligned alloca.
@@ -1761,15 +1767,26 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         Some(pointee_align) => cmp::max(pointee_align, arg.layout.align.abi),
                         None => arg.layout.align.abi,
                     };
-                    // Copy to an alloca when the argument is neither by-val nor by-move.
-                    if op_place_val.align < required_align || (!on_stack && !by_move) {
+                    if kind == CallKind::Tail && !on_stack {
+                        // Special logic for tail calls with `PassMode::Indirect { on_stack: false, .. }` arguments.
+                        // We pass the caller's argument slots as arguments,
+                        // because the caller's stack frame is overwritten by the callee's stack frame.
+                        if meta_attrs.is_some() {
+                            span_bug!(fn_span, "unsized types are not supported")
+                        };
+                        let caller_arg =
+                            PlaceRef::new_sized(bx.get_param(llargs.len()), arg.layout);
+                        op.store_with_annotation(bx, caller_arg);
+                        (caller_arg.val.llval, caller_arg.val.align, true)
+                    } else if op_place_val.align >= required_align && (on_stack || by_move) {
+                        // We can skip copy to an alloca when the argument is by-val or by-move.
+                        (op_place_val.llval, op_place_val.align, true)
+                    } else {
                         let scratch = PlaceValue::alloca(bx, arg.layout.size, required_align);
                         bx.lifetime_start(scratch.llval, arg.layout.size);
                         op.store_with_annotation(bx, scratch.with_type(arg.layout));
                         lifetime_ends_after_call.push((scratch.llval, arg.layout.size));
                         (scratch.llval, scratch.align, true)
-                    } else {
-                        (op_place_val.llval, op_place_val.align, true)
                     }
                 }
                 _ => (op_place_val.llval, op_place_val.align, true),
@@ -1846,9 +1863,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         bx: &mut Bx,
         operand: &mir::Operand<'tcx>,
+        tmp: Option<PlaceRef<'tcx, Bx::Value>>,
         llargs: &mut Vec<Bx::Value>,
         args: &[ArgAbi<'tcx, Ty<'tcx>>],
         lifetime_ends_after_call: &mut Vec<(Bx::Value, Size)>,
+        fn_span: Span,
+        kind: CallKind,
     ) -> usize {
         let tuple = self.codegen_operand(bx, operand);
         let by_move = matches!(operand, mir::Operand::Move(_));
@@ -1858,7 +1878,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             if place_val.llextra.is_some() {
                 bug!("closure arguments must be sized");
             }
-            let tuple_ptr = place_val.with_type(tuple.layout);
+            let tuple_ptr = if kind == CallKind::Tail {
+                tmp.unwrap_or_else(|| {
+                    span_bug!(
+                        fn_span,
+                        "missing temporary for indirect tail call argument #untupled"
+                    )
+                })
+            } else {
+                place_val.with_type(tuple.layout)
+            };
             for i in 0..tuple.layout.fields.count() {
                 let field_ptr = tuple_ptr.project_field(bx, i);
                 let field = bx.load_operand(field_ptr);
@@ -1869,13 +1898,27 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     llargs,
                     &args[i],
                     lifetime_ends_after_call,
+                    fn_span,
+                    kind,
                 );
+            }
+            if let Some(tmp) = tmp {
+                tmp.storage_dead(bx);
             }
         } else {
             // If the tuple is immediate, the elements are as well.
             for i in 0..tuple.layout.fields.count() {
                 let op = tuple.extract_field(self, bx, i);
-                self.codegen_argument(bx, op, by_move, llargs, &args[i], lifetime_ends_after_call);
+                self.codegen_argument(
+                    bx,
+                    op,
+                    by_move,
+                    llargs,
+                    &args[i],
+                    lifetime_ends_after_call,
+                    fn_span,
+                    kind,
+                );
             }
         }
         tuple.layout.fields.count()
