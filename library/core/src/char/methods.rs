@@ -2427,10 +2427,13 @@ impl char {
 
 pub(crate) struct EscapeDebugExtArgs {
     /// Escape Grapheme Extender codepoints?
-    /// (Note that this excludes
+    ///
+    /// Note that this excludes
     /// U+FF9E HALFWIDTH KATAKANA VOICED SOUND MARK
     /// and U+FF9F HALFWIDTH KATAKANA SEMI-VOICED SOUND MARK,
-    /// which are never escaped.)
+    /// which are never escaped, as graphically
+    /// they are not combining. See <https://github.com/microsoft/terminal/issues/18087>
+    /// for background on these characters.
     pub(crate) escape_grapheme_extender: bool,
 
     /// Escape single quotes?
