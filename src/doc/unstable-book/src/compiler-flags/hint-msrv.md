@@ -1,4 +1,4 @@
-# `lint-rust-version`
+# `hint-msrv`
 
 The tracking issue for this feature is: [#157574](https://github.com/rust-lang/rust/issues/157574).
 
