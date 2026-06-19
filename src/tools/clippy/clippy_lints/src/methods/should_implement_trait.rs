@@ -29,7 +29,7 @@ pub(super) fn check_impl_item<'tcx>(
         && first_arg_ty_opt
             .is_none_or(|first_arg_ty| method_config.self_kind.matches(cx, self_ty, first_arg_ty))
         && sig.header.is_safe()
-        && !sig.header.is_const()
+        && matches!(sig.header.constness, hir::Constness::NotConst)
         && !sig.header.is_async()
         && sig.header.abi == ExternAbi::Rust
         && method_config.lifetime_param_cond(impl_item)

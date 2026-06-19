@@ -320,6 +320,10 @@ fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
         //     builtin#naked_asm("");
         // }
         parse_asm_expr(p, m)
+    } else if p.eat_contextual_kw(T![include_bytes]) {
+        // test include_bytes
+        // fn foo() { builtin # include_bytes }
+        Some(m.complete(p, INCLUDE_BYTES_EXPR))
     } else {
         m.abandon(p);
         None

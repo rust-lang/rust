@@ -413,7 +413,7 @@ impl CratesIndexPart {
         let layout = &cx.shared.layout;
         let style_files = &cx.shared.style_files;
         const DELIMITER: &str = "\u{FFFC}"; // users are being naughty if they have this
-        let content = format!(
+        let content = format_args!(
             "<div class=\"main-heading\">\
                 <h1>List of all crates</h1>\
                 <rustdoc-toolbar></rustdoc-toolbar>\

@@ -5,7 +5,7 @@ use std::ops::Deref;
 struct ArenaSet<U: Deref, V: ?Sized = <U as Deref>::Target>(V, U);
 //~^ ERROR the size for values of type `V` cannot be known at compilation time
 
-const DATA: *const ArenaSet<Vec<u8>> = std::ptr::null_mut();
+const DATA: &ArenaSet<Vec<u8>> = unsafe { &* std::ptr::null_mut() };
 //~^ ERROR the type `ArenaSet<Vec<u8>, [u8]>` has an unknown layout
 
 pub fn main() {}

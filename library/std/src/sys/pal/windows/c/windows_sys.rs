@@ -56,6 +56,7 @@ windows_link::link!("kernel32.dll" "system" fn GetFullPathNameW(lpfilename : PCW
 windows_link::link!("kernel32.dll" "system" fn GetLastError() -> WIN32_ERROR);
 windows_link::link!("kernel32.dll" "system" fn GetModuleFileNameW(hmodule : HMODULE, lpfilename : PWSTR, nsize : u32) -> u32);
 windows_link::link!("kernel32.dll" "system" fn GetModuleHandleA(lpmodulename : PCSTR) -> HMODULE);
+windows_link::link!("kernel32.dll" "system" fn GetModuleHandleExW(dwflags : u32, lpmodulename : PCWSTR, phmodule : *mut HMODULE) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn GetModuleHandleW(lpmodulename : PCWSTR) -> HMODULE);
 windows_link::link!("kernel32.dll" "system" fn GetOverlappedResult(hfile : HANDLE, lpoverlapped : *const OVERLAPPED, lpnumberofbytestransferred : *mut u32, bwait : BOOL) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn GetProcAddress(hmodule : HMODULE, lpprocname : PCSTR) -> FARPROC);
@@ -2716,6 +2717,8 @@ pub const GENERIC_EXECUTE: GENERIC_ACCESS_RIGHTS = 536870912u32;
 pub const GENERIC_READ: GENERIC_ACCESS_RIGHTS = 2147483648u32;
 pub const GENERIC_WRITE: GENERIC_ACCESS_RIGHTS = 1073741824u32;
 pub type GETFINALPATHNAMEBYHANDLE_FLAGS = u32;
+pub const GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS: u32 = 4u32;
+pub const GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT: u32 = 2u32;
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct GUID {

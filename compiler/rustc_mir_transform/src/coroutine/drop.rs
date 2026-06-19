@@ -91,6 +91,7 @@ pub(super) fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
             Terminator {
                 source_info,
                 kind: TerminatorKind::Drop { place, target, unwind, replace: _, drop },
+                ..
             } => {
                 if let Some(local) = place.as_local()
                     && local == SELF_ARG
@@ -308,6 +309,10 @@ pub(super) fn create_coroutine_drop_shim_async<'tcx>(
     // Run derefer to fix Derefs that are not in the first place
     deref_finder(tcx, &mut body, false);
 
+    if transform.coroutine_kind.is_async_desugaring() {
+        transform_async_context(tcx, &mut body);
+    }
+
     if let Some(dumper) = MirDumper::new(tcx, "coroutine_drop_async", &body) {
         dumper.dump_mir(&body);
     }
@@ -320,6 +325,7 @@ pub(super) fn create_coroutine_drop_shim_async<'tcx>(
 pub(super) fn create_coroutine_drop_shim_proxy_async<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
+    coroutine_kind: CoroutineKind,
 ) -> Body<'tcx> {
     let mut body = body.clone();
     // Take the coroutine info out of the body, since the drop shim is
@@ -352,10 +358,15 @@ pub(super) fn create_coroutine_drop_shim_proxy_async<'tcx>(
         replace: false,
         drop: None,
     };
-    body.basic_blocks_mut()[call_bb].terminator = Some(Terminator { source_info, kind });
+    body.basic_blocks_mut()[call_bb].terminator =
+        Some(Terminator { source_info, kind, attributes: ThinVec::new() });
 
     // Run derefer to fix Derefs that are not in the first place
     deref_finder(tcx, &mut body, false);
+
+    if coroutine_kind.is_async_desugaring() {
+        transform_async_context(tcx, &mut body);
+    }
 
     if let Some(dumper) = MirDumper::new(tcx, "coroutine_drop_proxy_async", &body) {
         dumper.dump_mir(&body);

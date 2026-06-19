@@ -204,7 +204,7 @@ pub(crate) fn lower_type_ref(
     (store, source_map, type_ref)
 }
 
-pub(crate) fn lower_generic_params(
+pub fn lower_generic_params(
     db: &dyn DefDatabase,
     module: ModuleId,
     def: GenericDefId,
@@ -1748,6 +1748,7 @@ impl<'db> ExprCollector<'db> {
                 self.alloc_expr(Expr::OffsetOf(OffsetOf { container, fields }), syntax_ptr)
             }
             ast::Expr::FormatArgsExpr(f) => self.collect_format_args(f, syntax_ptr),
+            ast::Expr::IncludeBytesExpr(_) => self.alloc_expr(Expr::IncludeBytes, syntax_ptr)
         })
     }
 

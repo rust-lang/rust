@@ -13,7 +13,7 @@ use rustc_span::DUMMY_SP;
 use tracing::debug;
 
 use super::*;
-use crate::errors::UnableToConstructConstantValue;
+use crate::diagnostics::UnableToConstructConstantValue;
 use crate::infer::TypeFreshener;
 use crate::infer::region_constraints::{ConstraintKind, RegionConstraintData};
 use crate::regions::OutlivesEnvironmentBuildExt;
@@ -773,10 +773,10 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                                 super::try_evaluate_const(selcx.infcx, c, obligation.param_env);
 
                             if let Err(EvaluateConstErr::InvalidConstParamTy(_)) = ct {
-                                self.tcx.dcx().emit_err(UnableToConstructConstantValue {
-                                    span: self.tcx.def_span(unevaluated.kind.def_id()),
-                                    unevaluated,
-                                });
+                                let span = unevaluated.kind.def_span(self.tcx);
+                                self.tcx
+                                    .dcx()
+                                    .emit_err(UnableToConstructConstantValue { span, unevaluated });
                             }
 
                             ct

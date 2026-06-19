@@ -1,4 +1,4 @@
-error[E0119]: conflicting implementations of trait `Overlap<u32, _>` for type `Overflow`
+error[E0119]: conflicting implementations of trait `Overlap<<Overflow as Trait>::Assoc<Overflow>, _>` for type `Overflow`
   --> $DIR/unproductive-in-coherence.rs:18:1
    |
 LL | impl<T: Trait, U: Copy> Overlap<T::Assoc<T>, U> for T {}

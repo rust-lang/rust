@@ -83,10 +83,10 @@ fn has_drop_glue_impl<'db>(
                     }
                     db.field_types(id.into())
                         .iter()
-                        .map(|(_, field_ty)| {
+                        .map(|(_, field)| {
                             has_drop_glue_impl(
                                 infcx,
-                                field_ty.get().instantiate(infcx.interner, subst).skip_norm_wip(),
+                                field.ty().instantiate(infcx.interner, subst).skip_norm_wip(),
                                 env,
                                 visited,
                             )
@@ -103,13 +103,10 @@ fn has_drop_glue_impl<'db>(
                     .map(|&(variant, _)| {
                         db.field_types(variant.into())
                             .iter()
-                            .map(|(_, field_ty)| {
+                            .map(|(_, field)| {
                                 has_drop_glue_impl(
                                     infcx,
-                                    field_ty
-                                        .get()
-                                        .instantiate(infcx.interner, subst)
-                                        .skip_norm_wip(),
+                                    field.ty().instantiate(infcx.interner, subst).skip_norm_wip(),
                                     env,
                                     visited,
                                 )

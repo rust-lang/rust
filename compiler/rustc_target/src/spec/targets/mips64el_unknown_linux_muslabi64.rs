@@ -1,4 +1,4 @@
-use crate::spec::{Arch, CfgAbi, LlvmAbi, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{Arch, CfgAbi, LlvmAbi, Target, TargetMetadata, TargetOptions, base, cvs};
 
 pub(crate) fn target() -> Target {
     let mut base = base::linux_musl::opts();
@@ -21,6 +21,7 @@ pub(crate) fn target() -> Target {
             cfg_abi: CfgAbi::Abi64,
             mcount: "_mcount".into(),
             llvm_abiname: LlvmAbi::N64,
+            llvm_args: cvs!["-mno-check-zero-division"],
             ..base
         },
     }

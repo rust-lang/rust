@@ -1,5 +1,5 @@
 error: unsafe function's docs are missing a `# Safety` section
-  --> tests/ui/doc_unsafe.rs:12:1
+  --> tests/ui/doc_unsafe.rs:11:1
    |
 LL | pub unsafe fn destroy_the_planet() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,44 +8,44 @@ LL | pub unsafe fn destroy_the_planet() {
    = help: to override `-D warnings` add `#[allow(clippy::missing_safety_doc)]`
 
 error: unsafe function's docs are missing a `# Safety` section
-  --> tests/ui/doc_unsafe.rs:36:5
+  --> tests/ui/doc_unsafe.rs:35:5
    |
 LL |     pub unsafe fn republished() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: docs for unsafe field missing `# Safety` section
-  --> tests/ui/doc_unsafe.rs:47:5
+  --> tests/ui/doc_unsafe.rs:46:5
    |
 LL |     unsafe field: u8,
    |     ^^^^^^^^^^^^^^^^
 
 error: docs for unsafe field missing `# Safety` section
-  --> tests/ui/doc_unsafe.rs:53:9
+  --> tests/ui/doc_unsafe.rs:52:9
    |
 LL |         unsafe field: u8,
    |         ^^^^^^^^^^^^^^^^
 
 error: docs for unsafe field missing `# Safety` section
-  --> tests/ui/doc_unsafe.rs:59:5
+  --> tests/ui/doc_unsafe.rs:58:5
    |
 LL |     unsafe field: u8,
    |     ^^^^^^^^^^^^^^^^
 
 error: field with `# Safety` documentation is not marked unsafe
-  --> tests/ui/doc_unsafe.rs:65:5
+  --> tests/ui/doc_unsafe.rs:64:5
    |
 LL |     field: u8,
    |     ^^^^^^^^^
    |
    = help: if the field has safety invariants, mark it `unsafe`
 note: the lint level is defined here
-  --> tests/ui/doc_unsafe.rs:4:9
+  --> tests/ui/doc_unsafe.rs:3:9
    |
 LL | #![deny(clippy::unnecessary_safety_doc)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: field with `# Safety` documentation is not marked unsafe
-  --> tests/ui/doc_unsafe.rs:72:9
+  --> tests/ui/doc_unsafe.rs:71:9
    |
 LL |         field: u8,
    |         ^^^^^^^^^
@@ -53,7 +53,7 @@ LL |         field: u8,
    = help: if the field has safety invariants, mark it `unsafe`
 
 error: field with `# Safety` documentation is not marked unsafe
-  --> tests/ui/doc_unsafe.rs:79:5
+  --> tests/ui/doc_unsafe.rs:78:5
    |
 LL |     field: u8,
    |     ^^^^^^^^^
@@ -61,25 +61,25 @@ LL |     field: u8,
    = help: if the field has safety invariants, mark it `unsafe`
 
 error: unsafe function's docs are missing a `# Safety` section
-  --> tests/ui/doc_unsafe.rs:84:5
+  --> tests/ui/doc_unsafe.rs:83:5
    |
 LL |     unsafe fn woefully_underdocumented(self);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: docs for unsafe trait missing `# Safety` section
-  --> tests/ui/doc_unsafe.rs:91:1
+  --> tests/ui/doc_unsafe.rs:90:1
    |
 LL | pub unsafe trait UnsafeTrait {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unsafe function's docs are missing a `# Safety` section
-  --> tests/ui/doc_unsafe.rs:122:5
+  --> tests/ui/doc_unsafe.rs:121:5
    |
 LL |     pub unsafe fn more_undocumented_unsafe() -> Self {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unsafe function's docs are missing a `# Safety` section
-  --> tests/ui/doc_unsafe.rs:139:9
+  --> tests/ui/doc_unsafe.rs:138:9
    |
 LL |         pub unsafe fn whee() {
    |         ^^^^^^^^^^^^^^^^^^^^

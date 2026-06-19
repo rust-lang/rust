@@ -4487,20 +4487,6 @@ The tracking issue for this feature is: [#128044]
         deny_since: None,
     },
     Lint {
-        label: "cfg_emscripten_wasm_eh",
-        description: r##"# `cfg_emscripten_wasm_eh`
-
-Allows access to the emscripten_wasm_eh config, used by panic_unwind and unwind
-
-This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "cfg_eval",
         description: r##"# `cfg_eval`
 
@@ -9034,6 +9020,22 @@ The tracking issue for this feature is: [#135513]
         deny_since: None,
     },
     Lint {
+        label: "gpu_offload",
+        description: r##"# `gpu_offload`
+
+
+
+The tracking issue for this feature is: [#131513]
+
+[#131513]: https://github.com/rust-lang/rust/issues/131513
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "guard_patterns",
         description: r##"# `guard_patterns`
 
@@ -9998,8 +10000,7 @@ Some features provided by lang items:
   failure mechanisms of the compiler. This is often mapped to GCC's personality
   function (see the [`std` implementation][personality] for more information),
   but programs which don't trigger a panic can be assured that this function is
-  never called. Additionally, a `eh_catch_typeinfo` static is needed for certain
-  targets which implement Rust panics on top of C++ exceptions.
+  never called.
 - the traits in `core::marker` used to indicate types of
   various kinds; e.g. lang items `sized`, `sync` and `copy`.
 - memory allocation, see below.
@@ -16433,6 +16434,22 @@ The tracking issue for this feature is: [#123481]
 The tracking issue for this feature is: [#76923]
 
 [#76923]: https://github.com/rust-lang/rust/issues/76923
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "unnamed_enum_variants",
+        description: r##"# `unnamed_enum_variants`
+
+Allows using `_ = <range-or-int>` enum variants.
+
+The tracking issue for this feature is: [#156628]
+
+[#156628]: https://github.com/rust-lang/rust/issues/156628
 
 ------------------------
 "##,

@@ -117,7 +117,7 @@ pub fn is_const_evaluatable<'tcx>(
                 tcx.dcx()
                     .struct_span_fatal(
                         // Slightly better span than just using `span` alone
-                        if span == DUMMY_SP { tcx.def_span(uv.kind.def_id()) } else { span },
+                        if span == DUMMY_SP { uv.kind.def_span(tcx) } else { span },
                         "failed to evaluate generic const expression",
                     )
                     .with_note("the crate this constant originates from uses `#![feature(generic_const_exprs)]`")

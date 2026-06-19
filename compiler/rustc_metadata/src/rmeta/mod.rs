@@ -193,7 +193,14 @@ type ExpnHashTable = LazyTable<ExpnIndex, Option<LazyValue<ExpnHash>>>;
 pub(crate) struct ProcMacroData {
     proc_macro_decls_static: DefIndex,
     stability: Option<hir::Stability>,
-    macros: LazyArray<DefIndex>,
+    macros: LazyArray<(DefIndex, LazyValue<ProcMacroKind>)>,
+}
+
+#[derive(MetadataEncodable, LazyDecodable)]
+pub enum ProcMacroKind {
+    CustomDerive { trait_name: String, attributes: Vec<String> },
+    Attr { name: String },
+    Bang { name: String },
 }
 
 /// Serialized crate metadata.
@@ -364,7 +371,7 @@ macro_rules! define_tables {
         }
 
         impl TableBuilders {
-            fn encode(&self, buf: &mut FileEncoder) -> LazyTables {
+            fn encode(&self, buf: &mut FileEncoder<'_>) -> LazyTables {
                 LazyTables {
                     $($name1: self.$name1.encode(buf),)+
                     $($name2: self.$name2.encode(buf),)+

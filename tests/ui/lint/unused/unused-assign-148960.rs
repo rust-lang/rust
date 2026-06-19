@@ -1,5 +1,5 @@
 //@ check-fail
-//@ ignore-parallel-frontend unstable liveness diagnostics
+
 #![deny(unused)]
 #![allow(dead_code)]
 

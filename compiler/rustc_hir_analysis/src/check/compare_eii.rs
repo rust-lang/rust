@@ -26,7 +26,7 @@ use super::potentially_plural_count;
 use crate::check::compare_impl_item::{
     CheckNumberOfEarlyBoundRegionsError, check_number_of_early_bound_regions,
 };
-use crate::errors::{
+use crate::diagnostics::{
     EiiDefkindMismatch, EiiDefkindMismatchStaticMutability, EiiDefkindMismatchStaticSafety,
     EiiWithGenerics, LifetimesOrBoundsMismatchOnEii,
 };

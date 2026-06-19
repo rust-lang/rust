@@ -29,7 +29,7 @@ use tracing::{debug, instrument};
 
 pub(crate) use self::check_match::check_match;
 use self::migration::PatMigration;
-use crate::errors::*;
+use crate::diagnostics::*;
 use crate::thir::cx::ThirBuildCx;
 
 /// Context for lowering HIR patterns to THIR patterns.

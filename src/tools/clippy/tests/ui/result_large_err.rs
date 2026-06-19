@@ -150,3 +150,17 @@ fn issue16249() {
     let closure = || Ok::<(), Large>(());
     //~^ result_large_err
 }
+
+pub async fn async_large_err() -> Result<(), [u8; 512]> {
+    //~^ result_large_err
+    Ok(())
+}
+
+pub async fn async_small_err() -> Result<(), u128> {
+    Ok(())
+}
+
+pub async fn async_struct_error() -> Result<(), FullyDefinedLargeError> {
+    //~^ result_large_err
+    Ok(())
+}

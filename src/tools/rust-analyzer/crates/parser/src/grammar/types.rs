@@ -1,4 +1,4 @@
-use crate::grammar::entry::prefix::pat;
+use crate::grammar::entry::prefix::pat_top;
 
 use super::*;
 
@@ -430,7 +430,7 @@ fn pattern_type(p: &mut Parser<'_>) {
         if !p.eat_contextual_kw(T![is]) {
             p.error("expected `is`")
         }
-        pat(p);
+        pat_top(p);
         p.expect(T![')']);
         m.complete(p, PATTERN_TYPE);
     } else {

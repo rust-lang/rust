@@ -185,6 +185,7 @@ fn check_struct<'tcx>(
         .filter_map(|field| {
             if field_accesses.contains(&field.ident.name)
                 || field.ty.basic_res().is_lang_item(cx, LangItem::PhantomData)
+                || field.ty.basic_res().is_diag_item(cx, sym::PhantomPinned)
             {
                 None
             } else {

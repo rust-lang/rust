@@ -160,7 +160,7 @@ impl SourceDatabase for RootDatabase {
     }
 
     fn file_source_root(&self, id: vfs::FileId) -> FileSourceRootInput {
-        self.files.file_source_root(id)
+        self.files.file_source_root(self, id)
     }
 
     fn set_file_source_root_with_durability(

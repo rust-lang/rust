@@ -158,5 +158,17 @@ LL - fn with_default_value<T: Clone = u32>(x: T) -> T {
 LL + fn with_default_value<T = u32>(x: T) -> T where T: Clone {
    |
 
-error: aborting due to 13 previous errors
+error: inline trait bounds used
+  --> tests/ui/inline_trait_bounds.rs:116:51
+   |
+LL |         fn with_default_value_but_not_auto_derived<T: Clone = u32>(x: T) -> T {
+   |                                                   ^^^^^^^^^^^^^^^^
+   |
+help: move bounds to a `where` clause
+   |
+LL -         fn with_default_value_but_not_auto_derived<T: Clone = u32>(x: T) -> T {
+LL +         fn with_default_value_but_not_auto_derived<T = u32>(x: T) -> T where T: Clone {
+   |
+
+error: aborting due to 14 previous errors
 

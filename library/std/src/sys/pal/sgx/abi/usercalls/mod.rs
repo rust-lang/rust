@@ -39,7 +39,7 @@ pub fn read(fd: Fd, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
 /// Usercall `read` with an uninitialized buffer. See the ABI documentation for
 /// more information.
 #[unstable(feature = "sgx_platform", issue = "56975")]
-pub fn read_buf(fd: Fd, mut buf: BorrowedCursor<'_>) -> io::Result<()> {
+pub fn read_buf(fd: Fd, mut buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
     unsafe {
         let mut userbuf = alloc::User::<[u8]>::uninitialized(buf.capacity());
         let len = raw::read(fd, userbuf.as_mut_ptr().cast(), userbuf.len()).from_sgx_result()?;

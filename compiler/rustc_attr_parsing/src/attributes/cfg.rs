@@ -4,9 +4,7 @@ use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{AttrItem, Attribute, LitKind, ast, token};
 use rustc_errors::{Applicability, Diagnostic, PResult, msg};
-use rustc_feature::{
-    AttrSuggestionStyle, AttributeTemplate, Features, GatedCfg, find_gated_cfg, template,
-};
+use rustc_feature::{Features, GatedCfg, find_gated_cfg};
 use rustc_hir::attrs::CfgEntry;
 use rustc_hir::{AttrPath, RustcVersion, Target};
 use rustc_parse::parser::{ForceCollect, Parser, Recovery};
@@ -28,7 +26,10 @@ use crate::session_diagnostics::{
     AttributeParseError, AttributeParseErrorReason, CfgAttrBadDelim, MetaBadDelimSugg,
     ParsedDescription,
 };
-use crate::{AttributeParser, check_cfg, parse_version, session_diagnostics};
+use crate::{
+    AttrSuggestionStyle, AttributeParser, AttributeTemplate, check_cfg, parse_version,
+    session_diagnostics, template,
+};
 
 pub const CFG_TEMPLATE: AttributeTemplate = template!(
     List: &["predicate"],
@@ -102,10 +103,11 @@ pub fn parse_cfg_entry(
                 Some(sym::target) => parse_cfg_entry_target(cx, list, meta.span())?,
                 Some(sym::version) => parse_cfg_entry_version(cx, list, meta.span())?,
                 _ => {
-                    return Err(cx.emit_err(session_diagnostics::InvalidPredicate {
-                        span: meta.span(),
-                        predicate: meta.path().to_string(),
-                    }));
+                    let mut possibilities = vec![sym::any, sym::all, sym::not, sym::target];
+                    if cx.features_option().is_some_and(Features::cfg_version) {
+                        possibilities.push(sym::version);
+                    }
+                    return Err(cx.adcx().expected_specific_argument(meta.span(), &possibilities));
                 }
             },
             a @ (ArgParser::NoArgs | ArgParser::NameValue(_)) => {

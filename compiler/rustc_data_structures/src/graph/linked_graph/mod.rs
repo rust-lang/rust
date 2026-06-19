@@ -45,17 +45,19 @@ mod tests;
 /// This graph implementation predates the later [graph traits](crate::graph),
 /// and does not implement those traits, so it has its own implementations of a
 /// few basic graph algorithms.
+#[derive(Clone)]
 pub struct LinkedGraph<N, E> {
     nodes: IndexVec<NodeIndex, Node<N>>,
     edges: Vec<Edge<E>>,
 }
 
+#[derive(Clone)]
 pub struct Node<N> {
     first_edge: [EdgeIndex; 2], // see module comment
     pub data: Option<N>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Edge<E> {
     next_edge: [EdgeIndex; 2], // see module comment
     source: NodeIndex,

@@ -10,7 +10,7 @@ pub const trait MyTrait {
     fn method(&self) -> Option<()>;
 }
 
-impl const MyTrait for () {
+const impl MyTrait for () {
     fn method(&self) -> Option<()> {
         Some(())?;
         None

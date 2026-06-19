@@ -9,7 +9,7 @@
 pub(crate) mod checks;
 pub mod constructor;
 #[cfg(feature = "rustc")]
-pub mod errors;
+pub mod diagnostics;
 #[cfg(feature = "rustc")]
 pub(crate) mod lints;
 pub mod pat;

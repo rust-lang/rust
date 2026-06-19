@@ -9,7 +9,7 @@ LL |         _ => {}
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 note: the lint level is defined here
-  --> $DIR/empty-types.rs:14:9
+  --> $DIR/empty-types.rs:8:9
    |
 LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^

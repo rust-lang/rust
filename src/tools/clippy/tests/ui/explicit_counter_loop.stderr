@@ -105,5 +105,11 @@ error: the variable `base` is used as a loop counter
 LL |     for _ in 5..MAX {
    |     ^^^^^^^^^^^^^^^ help: consider using: `for (base, _) in (100..).zip((5..MAX))`
 
-error: aborting due to 17 previous errors
+error: the variable `count` is used as a loop counter
+  --> tests/ui/explicit_counter_loop.rs:377:5
+   |
+LL |     for item in &v {
+   |     ^^^^^^^^^^^^^^ help: consider using: `for (count, item) in v.iter().enumerate()`
+
+error: aborting due to 18 previous errors
 

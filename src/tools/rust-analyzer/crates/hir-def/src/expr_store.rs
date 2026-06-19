@@ -795,6 +795,7 @@ impl ExpressionStore {
                 visitor.on_pat(target);
                 visitor.on_expr(value);
             }
+            Expr::IncludeBytes => {}
         }
     }
 

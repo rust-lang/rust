@@ -2,6 +2,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::convert::{BoundedCastFromInt, CheckedCastFromInt};
 use crate::panic::const_panic;
 use crate::str::FromStr;
 use crate::ub_checks::assert_unsafe_precondition;
@@ -1586,7 +1587,7 @@ macro_rules! from_str_int_impl {
     ($signedness:ident $($int_ty:ty)+) => {$(
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-        impl const FromStr for $int_ty {
+        const impl FromStr for $int_ty {
             type Err = ParseIntError;
 
             /// Parses an integer from a string slice with decimal digits.

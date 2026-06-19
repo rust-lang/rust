@@ -5,6 +5,7 @@
 
 use std::mem;
 use std::ops::ControlFlow;
+use std::sync::atomic::Ordering;
 
 use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
 use rustc_abi::FieldIdx;
@@ -25,7 +26,7 @@ use rustc_session::lint::builtin::{DEAD_CODE, DEAD_CODE_PUB_IN_BINARY};
 use rustc_session::lint::{self, Lint, StableLintExpectationId};
 use rustc_span::{Symbol, kw};
 
-use crate::errors::{
+use crate::diagnostics::{
     ChangeFields, DeadCodePubInBinaryNote, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo,
     UselessAssignment,
 };
@@ -930,6 +931,21 @@ fn create_and_seed_worklist(tcx: TyCtxt<'_>) -> SeedWorklists {
         });
     }
 
+    // Under `--test`, what `main` resolves to is the would-be entry point of a normal build,
+    // so keep it live, unless a stripped user `#[rustc_main]` would have been the entry instead.
+    if tcx.sess.is_test_crate()
+        && !tcx.sess.removed_rustc_main_attr.load(Ordering::Relaxed)
+        && let Some(main_def) = tcx.resolutions(()).main_def
+        && let Some(def_id) = main_def.opt_fn_def_id()
+        && let Some(local_def_id) = def_id.as_local()
+    {
+        worklist.push(WorkItem {
+            id: local_def_id,
+            propagated: ComesFromAllowExpect::No,
+            own: ComesFromAllowExpect::No,
+        });
+    }
+
     for (id, effective_vis) in tcx.effective_visibilities(()).iter() {
         if effective_vis.is_public_at_level(Level::Reachable) {
             deferred_seeds.push(WorkItem {
@@ -1217,7 +1233,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                             && let Some(variant) =
                                 maybe_enum.variants().iter().find(|i| i.name == dead_item.name)
                         {
-                            Some(crate::errors::EnumVariantSameName {
+                            Some(crate::diagnostics::EnumVariantSameName {
                                 dead_descr: tcx.def_descr(dead_item.def_id.to_def_id()),
                                 dead_name: dead_item.name,
                                 variant_span: tcx.def_span(variant.def_id),

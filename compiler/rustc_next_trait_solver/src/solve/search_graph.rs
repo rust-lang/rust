@@ -68,9 +68,9 @@ where
                 TypingMode::Coherence => {
                     response_no_constraints(cx, input, Certainty::overflow(false))
                 }
-                TypingMode::Analysis { .. }
-                | TypingMode::Borrowck { .. }
-                | TypingMode::PostBorrowckAnalysis { .. }
+                TypingMode::Typeck { .. }
+                | TypingMode::PostTypeckUntilBorrowck { .. }
+                | TypingMode::PostBorrowck { .. }
                 | TypingMode::PostAnalysis
                 | TypingMode::Codegen
                 | TypingMode::ErasedNotCoherence(MayBeErased) => {

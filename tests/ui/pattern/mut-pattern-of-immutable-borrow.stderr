@@ -6,10 +6,10 @@ LL |     match arg.field {
 LL |         Some(s) => s.push('a'),
    |              - data moved here because `s` has type `String`, which does not implement the `Copy` trait
    |
-help: consider borrowing here
+help: consider borrowing the pattern binding
    |
-LL |     match &arg.field {
-   |           +
+LL |         Some(ref s) => s.push('a'),
+   |              +++
 
 error[E0596]: cannot borrow `s` as mutable, as it is not declared as mutable
   --> $DIR/mut-pattern-of-immutable-borrow.rs:7:20

@@ -54,7 +54,7 @@ pub trait T {
 
 fn trait_bound_generic<I: T<u8, u16>>(_i: I) {
     //~^ ERROR trait takes 0 generic arguments
-    //~| HELP replace the generic bounds with the associated types
+    //~| HELP turn the generic arguments into associated item bindings
 }
 
 fn main() {}

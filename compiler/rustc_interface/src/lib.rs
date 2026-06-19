@@ -6,7 +6,7 @@
 // tidy-alphabetical-end
 
 mod callbacks;
-pub mod errors;
+pub mod diagnostics;
 pub mod interface;
 mod limits;
 pub mod passes;

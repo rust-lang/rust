@@ -100,7 +100,7 @@ impl Read for StdinRaw {
         handle_ebadf(self.0.read(buf), || Ok(0))
     }
 
-    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         handle_ebadf(self.0.read_buf(buf), || Ok(()))
     }
 
@@ -120,7 +120,7 @@ impl Read for StdinRaw {
         handle_ebadf(self.0.read_exact(buf), || Err(io::Error::READ_EXACT_EOF))
     }
 
-    fn read_buf_exact(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf_exact(&mut self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         if buf.capacity() == 0 {
             return Ok(());
         }
@@ -447,7 +447,7 @@ impl Read for Stdin {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.lock().read(buf)
     }
-    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.lock().read_buf(buf)
     }
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
@@ -466,7 +466,7 @@ impl Read for Stdin {
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         self.lock().read_exact(buf)
     }
-    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.lock().read_buf_exact(cursor)
     }
 }
@@ -476,7 +476,7 @@ impl Read for &Stdin {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.lock().read(buf)
     }
-    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.lock().read_buf(buf)
     }
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
@@ -495,7 +495,7 @@ impl Read for &Stdin {
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         self.lock().read_exact(buf)
     }
-    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.lock().read_buf_exact(cursor)
     }
 }
@@ -514,7 +514,7 @@ impl Read for StdinLock<'_> {
         self.inner.read(buf)
     }
 
-    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.inner.read_buf(buf)
     }
 
@@ -539,7 +539,7 @@ impl Read for StdinLock<'_> {
         self.inner.read_exact(buf)
     }
 
-    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.inner.read_buf_exact(cursor)
     }
 }

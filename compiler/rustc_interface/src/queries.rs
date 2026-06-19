@@ -12,7 +12,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{self, OutputFilenames, OutputType};
 
-use crate::errors::FailedWritingFile;
+use crate::diagnostics::FailedWritingFile;
 use crate::passes;
 
 pub struct Linker {

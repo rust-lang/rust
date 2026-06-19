@@ -1344,17 +1344,18 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
     fn pretty_print_inherent_projection(
         &mut self,
-        alias_ty: ty::AliasTerm<'tcx>,
+        alias_term: ty::AliasTerm<'tcx>,
     ) -> Result<(), PrintError> {
-        let def_key = self.tcx().def_key(alias_ty.def_id());
+        let alias_def_id = alias_term.expect_inherent_def_id();
+        let def_key = self.tcx().def_key(alias_def_id);
         self.print_path_with_generic_args(
             |p| {
                 p.print_path_with_simple(
-                    |p| p.print_path_with_qualified(alias_ty.self_ty(), None),
+                    |p| p.print_path_with_qualified(alias_term.self_ty(), None),
                     &def_key.disambiguated_data,
                 )
             },
-            &alias_ty.args[1..],
+            &alias_term.args[1..],
         )
     }
 
@@ -3157,7 +3158,9 @@ define_print! {
 
     ty::AliasTerm<'tcx> {
         match self.kind {
-            ty::AliasTermKind::InherentTy {..} | ty::AliasTermKind::InherentConst {..} => p.pretty_print_inherent_projection(*self)?,
+            ty::AliasTermKind::InherentTy { .. } | ty::AliasTermKind::InherentConst { .. } => {
+                p.pretty_print_inherent_projection(*self)?;
+            }
             ty::AliasTermKind::ProjectionTy { def_id } => {
                 if !(p.should_print_verbose() || with_reduced_queries())
                     && p.tcx().is_impl_trait_in_trait(def_id)

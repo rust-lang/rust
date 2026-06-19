@@ -23,7 +23,7 @@ use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
 use super::HirTyLowerer;
-use crate::errors::DynTraitAssocItemBindingMentionsSelf;
+use crate::diagnostics::DynTraitAssocItemBindingMentionsSelf;
 use crate::hir_ty_lowering::{
     GenericArgCountMismatch, ImpliedBoundsContext, OverlappingAsssocItemConstraints,
     PredicateFilter, RegionInferReason,
@@ -83,7 +83,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .iter()
                 .map(|&trait_ref| hir::GenericBound::Trait(trait_ref))
                 .collect::<Vec<_>>(),
-            ImpliedBoundsContext::AssociatedTypeOrImplTrait,
+            &[],
+            ImpliedBoundsContext::TraitObject,
             span,
         );
 
@@ -297,7 +298,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     UNUSED_ASSOCIATED_TYPE_BOUNDS,
                     hir_id,
                     span,
-                    crate::errors::UnusedAssociatedTypeBounds { span },
+                    crate::diagnostics::UnusedAssociatedTypeBounds { span },
                 );
             }
         }
@@ -434,36 +435,41 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         // N.b. principal, projections, auto traits
         // FIXME: This is actually wrong with multiple principals in regards to symbol mangling
-        let mut v = principal_trait_ref
+        let mut predicates = principal_trait_ref
             .into_iter()
             .chain(existential_projections)
             .chain(auto_trait_predicates)
             .collect::<SmallVec<[_; 8]>>();
-        v.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
-        let existential_predicates = tcx.mk_poly_existential_predicates(&v);
+        predicates.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
+        let predicates = tcx.mk_poly_existential_predicates(&predicates);
 
-        // Use explicitly-specified region bound, unless the bound is missing.
-        let region_bound = if !lifetime.is_elided() {
-            self.lower_lifetime(lifetime, RegionInferReason::ExplicitObjectLifetime)
+        let region_bound = self.lower_trait_object_lifetime(lifetime, predicates, span);
+
+        Ty::new_dynamic(tcx, predicates, region_bound)
+    }
+
+    fn lower_trait_object_lifetime(
+        &self,
+        lifetime: &hir::Lifetime,
+        predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
+        span: Span,
+    ) -> ty::Region<'tcx> {
+        // Curiously, we also use the *object region bound* for `Infer` (`'_`)
+        // while we obviously don't use the *object lifetime default* for it...
+        if let hir::LifetimeKind::ImplicitObjectLifetimeDefault | hir::LifetimeKind::Infer =
+            lifetime.kind
+            && let Some(region) = self.compute_object_lifetime_bound(span, predicates)
+        {
+            return region;
+        }
+
+        let reason = if let hir::LifetimeKind::ImplicitObjectLifetimeDefault = lifetime.kind {
+            RegionInferReason::ObjectLifetimeDefault(span.shrink_to_hi())
         } else {
-            self.compute_object_lifetime_bound(span, existential_predicates).unwrap_or_else(|| {
-                // Curiously, we prefer object lifetime default for `+ '_`...
-                if tcx.named_bound_var(lifetime.hir_id).is_some() {
-                    self.lower_lifetime(lifetime, RegionInferReason::ExplicitObjectLifetime)
-                } else {
-                    let reason =
-                        if let hir::LifetimeKind::ImplicitObjectLifetimeDefault = lifetime.kind {
-                            RegionInferReason::ObjectLifetimeDefault(span.shrink_to_hi())
-                        } else {
-                            RegionInferReason::ExplicitObjectLifetime
-                        };
-                    self.re_infer(span, reason)
-                }
-            })
+            RegionInferReason::ExplicitObjectLifetime
         };
-        debug!(?region_bound);
 
-        Ty::new_dynamic(tcx, existential_predicates, region_bound)
+        self.lower_lifetime(lifetime, reason)
     }
 
     /// Check that elaborating the principal of a trait ref doesn't lead to projections
@@ -552,7 +558,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // error.
         let r = derived_region_bounds[0];
         if derived_region_bounds[1..].iter().any(|r1| r != *r1) {
-            self.dcx().emit_err(crate::errors::AmbiguousLifetimeBound { span });
+            self.dcx().emit_err(crate::diagnostics::AmbiguousLifetimeBound { span });
         }
         Some(r)
     }
@@ -594,19 +600,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let tcx = self.tcx();
         let [poly_trait_ref, ..] = hir_bounds else { return None };
 
-        let in_path = match tcx.parent_hir_node(hir_id) {
-            hir::Node::Ty(hir::Ty {
-                kind: hir::TyKind::Path(hir::QPath::TypeRelative(qself, _)),
-                ..
-            })
-            | hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Path(hir::QPath::TypeRelative(qself, _)),
-                ..
-            })
-            | hir::Node::PatExpr(hir::PatExpr {
-                kind: hir::PatExprKind::Path(hir::QPath::TypeRelative(qself, _)),
-                ..
-            }) if qself.hir_id == hir_id => true,
+        let in_path = match tcx.parent_hir_node(hir_id).path() {
+            Some(hir::QPath::TypeRelative(qself, _)) if qself.hir_id == hir_id => true,
             _ => false,
         };
         let needs_bracket = in_path

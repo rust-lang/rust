@@ -1,4 +1,7 @@
 //@ compile-flags: -Copt-level=3
+//@ revisions: LLVM22 LLVM23
+//@ [LLVM22] max-llvm-major-version: 22
+//@ [LLVM23] min-llvm-version: 23
 // Test that `pow` can use a faster implementation when `base` is a
 // known power of two
 
@@ -21,11 +24,16 @@ pub fn pow2(exp: u32) -> u32 {
 pub fn pow4(exp: u32) -> u32 {
     // CHECK: %[[ICMP1:.+]] = icmp slt i32 %exp, 0
     // CHECK: %[[SHIFT_AMOUNT:.+]] = shl i32 %exp, 1
-    // CHECK: %[[ICMP2:.+]] = icmp ult i32 %[[SHIFT_AMOUNT]], 32
-    // CHECK: %[[POW:.+]] = shl nuw i32 1, %[[SHIFT_AMOUNT]]
-    // CHECK: %[[SEL:.+]] = select i1 %[[ICMP2]], i32 %[[POW]], i32 0
-    // CHECK: %[[RET:.+]] = select i1 %[[ICMP1]], i32 0, i32 %[[SEL]]
-    // CHECK: ret i32 %[[RET]]
+    // LLVM22: %[[ICMP2:.+]] = icmp ult i32 %[[SHIFT_AMOUNT]], 32
+    // LLVM22: %[[POW:.+]] = shl nuw i32 1, %[[SHIFT_AMOUNT]]
+    // LLVM22: %[[SEL:.+]] = select i1 %[[ICMP2]], i32 %[[POW]], i32 0
+    // LLVM22: %[[RET:.+]] = select i1 %[[ICMP1]], i32 0, i32 %[[SEL]]
+    // LLVM22: ret i32 %[[RET]]
+    // LLVM23: %[[ICMP2:.+]] = icmp ugt i32 %[[SHIFT_AMOUNT]], 31
+    // LLVM23: %[[POW:.+]] = shl nuw i32 1, %[[SHIFT_AMOUNT]]
+    // LLVM23: %[[COND:.+]] = or i1 %[[ICMP1]], %[[ICMP2]]
+    // LLVM23: %[[RET:.+]] = select i1 %[[COND]], i32 0, i32 %[[POW]]
+    // LLVM23: ret i32 %[[RET]]
     4u32.pow(exp)
 }
 
@@ -35,11 +43,16 @@ pub fn pow4(exp: u32) -> u32 {
 pub fn pow16(exp: u32) -> u32 {
     // CHECK: %[[ICMP1:.+]] = icmp ugt i32 %exp, 1073741823
     // CHECK: %[[SHIFT_AMOUNT:.+]] = shl i32 %exp, 2
-    // CHECK: %[[ICMP2:.+]] = icmp ult i32 %[[SHIFT_AMOUNT]], 32
-    // CHECK: %[[POW:.+]] = shl nuw i32 1, %[[SHIFT_AMOUNT]]
-    // CHECK: %[[SEL:.+]] = select i1 %[[ICMP2]], i32 %[[POW]], i32 0
-    // CHECK: %[[RET:.+]] = select i1 %[[ICMP1]], i32 0, i32 %[[SEL]]
-    // CHECK: ret i32 %[[RET]]
+    // LLVM22: %[[ICMP2:.+]] = icmp ult i32 %[[SHIFT_AMOUNT]], 32
+    // LLVM22: %[[POW:.+]] = shl nuw i32 1, %[[SHIFT_AMOUNT]]
+    // LLVM22: %[[SEL:.+]] = select i1 %[[ICMP2]], i32 %[[POW]], i32 0
+    // LLVM22: %[[RET:.+]] = select i1 %[[ICMP1]], i32 0, i32 %[[SEL]]
+    // LLVM22: ret i32 %[[RET]]
+    // LLVM23: %[[ICMP2:.+]] = icmp ugt i32 %[[SHIFT_AMOUNT]], 31
+    // LLVM23: %[[POW:.+]] = shl nuw i32 1, %[[SHIFT_AMOUNT]]
+    // LLVM23: %[[COND:.+]] = or i1 %[[ICMP1]], %[[ICMP2]]
+    // LLVM23: %[[RET:.+]] = select i1 %[[COND]], i32 0, i32 %[[POW]]
+    // LLVM23: ret i32 %[[RET]]
     16u32.pow(exp)
 }
 

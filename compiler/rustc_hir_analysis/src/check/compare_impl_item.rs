@@ -29,7 +29,7 @@ use rustc_trait_selection::traits::{
 use tracing::{debug, instrument};
 
 use super::potentially_plural_count;
-use crate::errors::{LifetimesOrBoundsMismatchOnTrait, MethodShouldReturnFuture};
+use crate::diagnostics::{LifetimesOrBoundsMismatchOnTrait, MethodShouldReturnFuture};
 
 pub(super) mod refine;
 

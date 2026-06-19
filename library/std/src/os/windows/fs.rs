@@ -83,7 +83,7 @@ pub trait FileExt {
     /// }
     /// ```
     #[unstable(feature = "read_buf_at", issue = "140771")]
-    fn seek_read_buf(&self, buf: BorrowedCursor<'_>, offset: u64) -> io::Result<()> {
+    fn seek_read_buf(&self, buf: BorrowedCursor<'_, u8>, offset: u64) -> io::Result<()> {
         io::default_read_buf(|b| self.seek_read(b, offset), buf)
     }
 
@@ -127,7 +127,7 @@ impl FileExt for fs::File {
         self.as_inner().read_at(buf, offset)
     }
 
-    fn seek_read_buf(&self, buf: BorrowedCursor<'_>, offset: u64) -> io::Result<()> {
+    fn seek_read_buf(&self, buf: BorrowedCursor<'_, u8>, offset: u64) -> io::Result<()> {
         self.as_inner().read_buf_at(buf, offset)
     }
 

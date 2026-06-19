@@ -188,7 +188,7 @@ cfg_select! {
 
 cfg_select! {
     a() => {}
-    //~^ ERROR invalid predicate `a` [E0537]
+    //~^ ERROR malformed `cfg_select` macro input [E0539]
 }
 
 cfg_select! {

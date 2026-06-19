@@ -1127,9 +1127,9 @@ impl<'tcx> TypingEnv<'tcx> {
         let TypingEnv { typing_mode, param_env } = self;
         match typing_mode.0.assert_not_erased() {
             TypingMode::Coherence
-            | TypingMode::Analysis { .. }
-            | TypingMode::Borrowck { .. }
-            | TypingMode::PostBorrowckAnalysis { .. } => {}
+            | TypingMode::Typeck { .. }
+            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::PostBorrowck { .. } => {}
             TypingMode::PostAnalysis | TypingMode::Codegen => return self,
         }
 
@@ -1143,9 +1143,9 @@ impl<'tcx> TypingEnv<'tcx> {
         let TypingEnv { typing_mode, param_env } = self;
         match typing_mode.0.assert_not_erased() {
             TypingMode::Coherence
-            | TypingMode::Analysis { .. }
-            | TypingMode::Borrowck { .. }
-            | TypingMode::PostBorrowckAnalysis { .. }
+            | TypingMode::Typeck { .. }
+            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis => {}
             TypingMode::Codegen => return self,
         }
@@ -1789,6 +1789,14 @@ impl<'tcx> TyCtxt<'tcx> {
                     | DefKind::Ctor(..)
                     | DefKind::AnonConst
                     | DefKind::InlineConst => self.mir_for_ctfe(def),
+                    DefKind::Fn | DefKind::AssocFn
+                        if matches!(
+                            self.constness(def),
+                            hir::Constness::Const { always: true }
+                        ) =>
+                    {
+                        self.mir_for_ctfe(def)
+                    }
                     // If the caller wants `mir_for_ctfe` of a function they should not be using
                     // `instance_mir`, so we'll assume const fn also wants the optimized version.
                     _ => self.optimized_mir(def),
@@ -2141,7 +2149,7 @@ impl<'tcx> TyCtxt<'tcx> {
         matches!(
             self.def_kind(def_id),
             DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::Closure
-        ) && self.constness(def_id) == hir::Constness::Const
+        ) && matches!(self.constness(def_id), hir::Constness::Const { .. })
     }
 
     /// Whether this item is conditionally constant for the purposes of the
@@ -2155,12 +2163,14 @@ impl<'tcx> TyCtxt<'tcx> {
         match self.def_kind(def_id) {
             DefKind::Impl { of_trait: true } => {
                 let header = self.impl_trait_header(def_id);
-                header.constness == hir::Constness::Const
+                matches!(header.constness, hir::Constness::Const { always: false })
                     && self.is_const_trait(header.trait_ref.skip_binder().def_id)
             }
-            DefKind::Impl { of_trait: false } => self.constness(def_id) == hir::Constness::Const,
+            DefKind::Impl { of_trait: false } => {
+                matches!(self.constness(def_id), hir::Constness::Const { always: false })
+            }
             DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn) => {
-                self.constness(def_id) == hir::Constness::Const
+                matches!(self.constness(def_id), hir::Constness::Const { always: false })
             }
             DefKind::TraitAlias | DefKind::Trait => self.is_const_trait(def_id),
             DefKind::AssocTy => {
@@ -2177,17 +2187,19 @@ impl<'tcx> TyCtxt<'tcx> {
                 let parent_def_id = self.parent(def_id);
                 match self.def_kind(parent_def_id) {
                     DefKind::Impl { of_trait: false } => {
-                        self.constness(def_id) == hir::Constness::Const
+                        matches!(self.constness(def_id), hir::Constness::Const { always: false })
                     }
                     DefKind::Impl { of_trait: true } => {
                         let Some(trait_method_did) = self.trait_item_of(def_id) else {
                             return false;
                         };
-                        self.constness(trait_method_did) == hir::Constness::Const
-                            && self.is_conditionally_const(parent_def_id)
+                        matches!(
+                            self.constness(trait_method_did),
+                            hir::Constness::Const { always: false }
+                        ) && self.is_conditionally_const(parent_def_id)
                     }
                     DefKind::Trait => {
-                        self.constness(def_id) == hir::Constness::Const
+                        matches!(self.constness(def_id), hir::Constness::Const { always: false })
                             && self.is_conditionally_const(parent_def_id)
                     }
                     _ => bug!("unexpected parent item of associated fn: {parent_def_id:?}"),
@@ -2199,7 +2211,9 @@ impl<'tcx> TyCtxt<'tcx> {
                 // FIXME(const_trait_impl): ATPITs could be conditionally const?
                 hir::OpaqueTyOrigin::TyAlias { .. } => false,
             },
-            DefKind::Closure => self.constness(def_id) == hir::Constness::Const,
+            DefKind::Closure => {
+                matches!(self.constness(def_id), hir::Constness::Const { always: false })
+            }
             DefKind::Ctor(_, CtorKind::Const)
             | DefKind::Mod
             | DefKind::Struct
@@ -2228,7 +2242,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn is_const_trait(self, def_id: DefId) -> bool {
-        self.trait_def(def_id).constness == hir::Constness::Const
+        matches!(self.trait_def(def_id).constness, hir::Constness::Const { .. })
     }
 
     pub fn impl_method_has_trait_impl_trait_tys(self, def_id: DefId) -> bool {

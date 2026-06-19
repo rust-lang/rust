@@ -173,7 +173,8 @@ macro_rules! declare_features {
             pub fn incomplete(&self, feature: Symbol) -> bool {
                 match feature {
                     $(
-                        sym::$feature => status_to_enum!($status) == FeatureStatus::Incomplete,
+                        // Match guard to avoid duplicating `cannot find $feature in module sym` error.
+                        f if f == sym::$feature => status_to_enum!($status) == FeatureStatus::Incomplete,
                     )*
                     _ if self.enabled_features.contains(&feature) => {
                         // Accepted/removed features and library features aren't in this file but
@@ -189,7 +190,8 @@ macro_rules! declare_features {
             pub fn internal(&self, feature: Symbol) -> bool {
                 match feature {
                     $(
-                        sym::$feature => status_to_enum!($status) == FeatureStatus::Internal,
+                       // Match guard to avoid duplicating `cannot find $feature in module sym` error.
+                       f if f == sym::$feature => status_to_enum!($status) == FeatureStatus::Internal,
                     )*
                     _ if self.enabled_features.contains(&feature) => {
                         // This could be accepted/removed, or a libs feature.
@@ -510,10 +512,12 @@ declare_features! (
     (unstable, diagnostic_on_const, "1.93.0", Some(143874)),
     /// Allows giving on-move borrowck custom diagnostic messages for a type
     (unstable, diagnostic_on_move, "1.96.0", Some(154181)),
+    /// Allows giving custom types diagnostic messages on type errors
+    (unstable, diagnostic_on_type_error, "CURRENT_RUSTC_VERSION", Some(155382)),
     /// Allows giving unresolved imports a custom diagnostic message
     (unstable, diagnostic_on_unknown, "1.96.0", Some(152900)),
     /// Allows macros to customize macro argument matcher diagnostics.
-    (unstable, diagnostic_on_unmatch_args, "1.97.0", Some(155642)),
+    (unstable, diagnostic_on_unmatched_args, "1.97.0", Some(155642)),
     /// Allows `#[doc(cfg(...))]`.
     (unstable, doc_cfg, "1.21.0", Some(43781)),
     /// Allows `#[doc(masked)]`.
@@ -593,6 +597,8 @@ declare_features! (
     (unstable, import_trait_associated_functions, "1.86.0", Some(134691)),
     /// Allows associated types in inherent impls.
     (incomplete, inherent_associated_types, "1.52.0", Some(8995)),
+    /// Enable #[instrument_fn] on function.
+    (unstable, instrument_fn, "CURRENT_RUSTC_VERSION", Some(157081)),
     /// Allows using `pointer` and `reference` in intra-doc links
     (unstable, intra_doc_pointers, "1.51.0", Some(80896)),
     /// lahfsahf target feature on x86.
@@ -606,6 +612,8 @@ declare_features! (
     (unstable, link_arg_attribute, "1.76.0", Some(99427)),
     /// Target features on loongarch.
     (unstable, loongarch_target_feature, "1.73.0", Some(150252)),
+    /// Allows use of loop optimization hints via attributes.
+    (unstable, loop_hints, "CURRENT_RUSTC_VERSION", Some(156874)),
     /// Allows fused `loop`/`match` for direct intraprocedural jumps.
     (incomplete, loop_match, "1.90.0", Some(132306)),
     /// Target features on m68k.
@@ -721,6 +729,9 @@ declare_features! (
     (unstable, sparc_target_feature, "1.84.0", Some(132783)),
     /// Allows specialization of implementations (RFC 1210).
     (incomplete, specialization, "1.7.0", Some(31844)),
+    /// Experimental "splatting" of function call arguments at the call site.
+    /// e.g. `foo(a, b, c)` calls `#[splat] fn foo((a: A, b: B, c: C))`.
+    (incomplete, splat, "CURRENT_RUSTC_VERSION", Some(153629)),
     /// Allows using `#[rustc_align_static(...)]` on static items.
     (unstable, static_align, "1.91.0", Some(146177)),
     /// Allows attributes on expressions and non-item statements.
@@ -775,6 +786,8 @@ declare_features! (
     (unstable, x87_target_feature, "1.85.0", Some(150261)),
     /// Allows use of the `xop` target-feature
     (unstable, xop_target_feature, "1.81.0", Some(127208)),
+    /// Allows use of the Xtensa target-features
+    (unstable, xtensa_target_feature, "CURRENT_RUSTC_VERSION", Some(157063)),
     /// Allows `do yeet` expressions
     (unstable, yeet_expr, "1.62.0", Some(96373)),
     (unstable, yield_expr, "1.87.0", Some(43122)),

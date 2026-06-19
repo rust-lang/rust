@@ -5,11 +5,11 @@ LL |     type Pointer<T> = dyn Deref<Target = T>;
    |                       ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn Deref<Target = T> + 'static)`
-note: required by a bound in `PointerFamily::Pointer`
+note: required by an implicit `Sized` bound in `PointerFamily::Pointer`
   --> $DIR/issue-119942-unsatisified-gat-bound-during-assoc-ty-selection.rs:4:5
    |
 LL |     type Pointer<T>: Deref<Target = T>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `PointerFamily::Pointer`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by the implicit `Sized` requirement on this associated type in `PointerFamily::Pointer`
 help: consider relaxing the implicit `Sized` restriction
    |
 LL |     type Pointer<T>: Deref<Target = T> + ?Sized;

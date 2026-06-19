@@ -845,6 +845,19 @@ impl ImplTraitType {
     #[inline]
     pub fn impl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![impl]) }
 }
+pub struct IncludeBytesExpr {
+    pub(crate) syntax: SyntaxNode,
+}
+impl IncludeBytesExpr {
+    #[inline]
+    pub fn pound_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![#]) }
+    #[inline]
+    pub fn builtin_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![builtin]) }
+    #[inline]
+    pub fn include_bytes_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![include_bytes])
+    }
+}
 pub struct IndexExpr {
     pub(crate) syntax: SyntaxNode,
 }
@@ -2059,6 +2072,8 @@ impl Variant {
     pub fn field_list(&self) -> Option<FieldList> { support::child(&self.syntax) }
     #[inline]
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
+    #[inline]
+    pub fn underscore_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![_]) }
 }
 pub struct VariantList {
     pub(crate) syntax: SyntaxNode,
@@ -2212,6 +2227,7 @@ pub enum Expr {
     ForExpr(ForExpr),
     FormatArgsExpr(FormatArgsExpr),
     IfExpr(IfExpr),
+    IncludeBytesExpr(IncludeBytesExpr),
     IndexExpr(IndexExpr),
     LetExpr(LetExpr),
     Literal(Literal),
@@ -4371,6 +4387,38 @@ impl Clone for ImplTraitType {
 impl fmt::Debug for ImplTraitType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ImplTraitType").field("syntax", &self.syntax).finish()
+    }
+}
+impl AstNode for IncludeBytesExpr {
+    #[inline]
+    fn kind() -> SyntaxKind
+    where
+        Self: Sized,
+    {
+        INCLUDE_BYTES_EXPR
+    }
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == INCLUDE_BYTES_EXPR }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl hash::Hash for IncludeBytesExpr {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for IncludeBytesExpr {}
+impl PartialEq for IncludeBytesExpr {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+impl Clone for IncludeBytesExpr {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl fmt::Debug for IncludeBytesExpr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("IncludeBytesExpr").field("syntax", &self.syntax).finish()
     }
 }
 impl AstNode for IndexExpr {
@@ -8101,6 +8149,10 @@ impl From<IfExpr> for Expr {
     #[inline]
     fn from(node: IfExpr) -> Expr { Expr::IfExpr(node) }
 }
+impl From<IncludeBytesExpr> for Expr {
+    #[inline]
+    fn from(node: IncludeBytesExpr) -> Expr { Expr::IncludeBytesExpr(node) }
+}
 impl From<IndexExpr> for Expr {
     #[inline]
     fn from(node: IndexExpr) -> Expr { Expr::IndexExpr(node) }
@@ -8205,6 +8257,7 @@ impl AstNode for Expr {
                 | FOR_EXPR
                 | FORMAT_ARGS_EXPR
                 | IF_EXPR
+                | INCLUDE_BYTES_EXPR
                 | INDEX_EXPR
                 | LET_EXPR
                 | LITERAL
@@ -8246,6 +8299,7 @@ impl AstNode for Expr {
             FOR_EXPR => Expr::ForExpr(ForExpr { syntax }),
             FORMAT_ARGS_EXPR => Expr::FormatArgsExpr(FormatArgsExpr { syntax }),
             IF_EXPR => Expr::IfExpr(IfExpr { syntax }),
+            INCLUDE_BYTES_EXPR => Expr::IncludeBytesExpr(IncludeBytesExpr { syntax }),
             INDEX_EXPR => Expr::IndexExpr(IndexExpr { syntax }),
             LET_EXPR => Expr::LetExpr(LetExpr { syntax }),
             LITERAL => Expr::Literal(Literal { syntax }),
@@ -8289,6 +8343,7 @@ impl AstNode for Expr {
             Expr::ForExpr(it) => &it.syntax,
             Expr::FormatArgsExpr(it) => &it.syntax,
             Expr::IfExpr(it) => &it.syntax,
+            Expr::IncludeBytesExpr(it) => &it.syntax,
             Expr::IndexExpr(it) => &it.syntax,
             Expr::LetExpr(it) => &it.syntax,
             Expr::Literal(it) => &it.syntax,
@@ -10401,6 +10456,11 @@ impl std::fmt::Display for ImplRestriction {
     }
 }
 impl std::fmt::Display for ImplTraitType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for IncludeBytesExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

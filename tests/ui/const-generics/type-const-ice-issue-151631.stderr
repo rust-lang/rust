@@ -15,23 +15,23 @@ note: required by a bound in `Trait`
 LL | trait Trait: SuperTrait {
    |              ^^^^^^^^^^ required by this bound in `Trait`
 
-error[E0277]: the trait bound `(): SuperTrait` is not satisfied
-  --> $DIR/type-const-ice-issue-151631.rs:17:5
+error[E0271]: type mismatch resolving `<() as Trait>::K == 0`
+  --> $DIR/type-const-ice-issue-151631.rs:17:11
    |
 LL |     check(());
-   |     ^^^^^^^^^ the trait `SuperTrait` is not implemented for `()`
+   |     ----- ^^ expected `0`, found `1`
+   |     |
+   |     required by a bound introduced by this call
    |
-help: this trait has no implementations, consider adding one
-  --> $DIR/type-const-ice-issue-151631.rs:6:1
+   = note: expected constant `0`
+              found constant `1`
+note: required by a bound in `check`
+  --> $DIR/type-const-ice-issue-151631.rs:14:24
    |
-LL | trait SuperTrait {}
-   | ^^^^^^^^^^^^^^^^
-note: required by a bound in `Trait`
-  --> $DIR/type-const-ice-issue-151631.rs:7:14
-   |
-LL | trait Trait: SuperTrait {
-   |              ^^^^^^^^^^ required by this bound in `Trait`
+LL | fn check(_: impl Trait<K = 0>) {}
+   |                        ^^^^^ required by this bound in `check`
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0277`.
+Some errors have detailed explanations: E0271, E0277.
+For more information about an error, try `rustc --explain E0271`.

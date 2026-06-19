@@ -20,34 +20,34 @@
 +     let mut _0: std::task::Poll<()>;
       let mut _3: &mut AsyncReference<'_>;
       let mut _4: impl std::future::Future<Output = ()>;
--     let mut _5: std::future::ResumeTy;
-+     let mut _5: &mut std::task::Context<'_>;
+      let mut _5: std::future::ResumeTy;
       let mut _6: std::task::Poll<()>;
       let mut _7: isize;
       let mut _8: std::pin::Pin<&mut impl std::future::Future<Output = ()>>;
       let mut _9: &mut std::task::Context<'_>;
--     let mut _10: std::future::ResumeTy;
-+     let mut _10: &mut std::task::Context<'_>;
+      let mut _10: std::future::ResumeTy;
       let mut _11: &mut impl std::future::Future<Output = ()>;
--     let mut _12: std::future::ResumeTy;
-+     let mut _12: &mut std::task::Context<'_>;
+      let mut _12: std::future::ResumeTy;
       let mut _13: std::task::Poll<()>;
       let mut _14: isize;
       let mut _15: std::pin::Pin<&mut impl std::future::Future<Output = ()>>;
       let mut _16: &mut std::task::Context<'_>;
--     let mut _17: std::future::ResumeTy;
-+     let mut _17: &mut std::task::Context<'_>;
+      let mut _17: std::future::ResumeTy;
       let mut _18: &mut impl std::future::Future<Output = ()>;
       let mut _19: std::pin::Pin<&mut AsyncReference<'_>>;
       let mut _20: &mut AsyncReference<'_>;
 +     let mut _21: ();
 +     let mut _22: u32;
 +     let mut _23: &mut {async fn body of std::future::async_drop_in_place<AsyncReference<'_>>()};
++     let _24: std::future::ResumeTy;
++     let mut _25: std::ptr::NonNull<std::task::Context<'_>>;
   
       bb0: {
 -         _3 = move (_1.0: &mut AsyncReference<'_>);
 -         _20 = &mut (*_3);
 -         _19 = Pin::<&mut AsyncReference<'_>>::new_unchecked(move _20) -> [return: bb22, unwind: bb2];
++         _25 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
++         _24 = std::future::ResumeTy(move _25);
 +         _23 = copy (_1.0: &mut {async fn body of std::future::async_drop_in_place<AsyncReference<'_>>()});
 +         _22 = discriminant((*_23));
 +         switchInt(move _22) -> [0: bb20, 1: bb19, 2: bb18, 3: bb16, 4: bb17, otherwise: bb7];
@@ -87,7 +87,7 @@
   
       bb6: {
 -         assert(const false, "`async fn` resumed after async drop") -> [success: bb6, unwind: bb5];
-+         _2 = move _5;
++         _24 = move _5;
 +         StorageDead(_5);
 +         goto -> bb5;
       }
@@ -103,7 +103,7 @@
 -         _2 = move _5;
 -         StorageDead(_5);
 -         goto -> bb14;
-+         _2 = move _12;
++         _24 = move _12;
 +         StorageDead(_12);
 +         goto -> bb13;
       }
@@ -132,8 +132,8 @@
   
       bb12: {
 -         _6 = <impl Future<Output = ()> as Future>::poll(move _8, move _9) -> [return: bb11, unwind: bb5];
-+         _17 = move _2;
-+         _16 = move _17;
++         _17 = move _24;
++         _16 = copy (_17.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb11;
       }
   
@@ -165,14 +165,14 @@
 -         StorageDead(_12);
 -         goto -> bb14;
 +         StorageLive(_5);
-+         _5 = move _2;
++         _5 = move _24;
 +         goto -> bb6;
       }
   
       bb17: {
           StorageLive(_12);
 -         _12 = yield(const ()) -> [resume: bb15, drop: bb16];
-+         _12 = move _2;
++         _12 = move _24;
 +         goto -> bb8;
       }
   

@@ -1,0 +1,38 @@
+trait Trait {
+    fn run(&self);
+}
+
+struct Test;
+impl Test {
+    fn run(self, x: f32) {}
+}
+impl Trait for Test {
+    fn run(&self) {}
+}
+
+struct Test2;
+trait Trait2: Sized {
+    fn run(self, _x: f32) {}
+}
+impl Trait2 for Test2 {
+    fn run(self, _x: f32) {}
+}
+impl Trait for Test2 {
+    fn run(&self) {}
+}
+
+struct Test3;
+impl Trait for Test3 {
+    fn run(&self) {}
+}
+
+fn main() {
+    (&Test).run();
+    (&&Test).run(); //~ needless_borrow
+
+    (&Test2).run();
+    (&&Test2).run(); //~ needless_borrow
+
+    (&Test3).run(); //~ needless_borrow
+    (&&Test3).run(); //~ needless_borrow
+}

@@ -34,10 +34,8 @@ it out of scope (be it due to generally not fitting in with rust-analyzer, or ju
 maintenance capacity). If there already is a feature issue open but it is not clear whether it is
 considered accepted feel free to just drop a comment and ask!
 
-## Use of AI tools
+## Use of AI
 
-AI tool use is not discouraged on the rust-analyzer codebase, as long as it meets our quality standards.
-We kindly ask you to disclose usage of AI tools in your contributions.
-If you used them without disclosing it, we may reject your contribution on that basis alone due to the assumption that you have, most likely, not reviewed your own submission (so why should we?).
+All use of AI in contributions must follow the [AI Policy](./AI_POLICY.md).
 
-We may still reject AI-assisted contributions if we deem the quality of the contribution to be unsatisfactory as to reduce impact on the team's review budget.
+Contributions not following the AI Policy will be closed.

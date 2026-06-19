@@ -94,6 +94,7 @@ pub mod net;
 pub mod process;
 pub mod raw;
 pub mod thread;
+pub mod xdg;
 
 /// A prelude for conveniently writing platform-specific code.
 ///

@@ -2,7 +2,9 @@ error[E0432]: unresolved import `super::inner::doesnt_exist`
   --> $DIR/diagnostics-same-crate.rs:32:9
    |
 LL |     use super::inner::doesnt_exist;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ no `doesnt_exist` in `inner`
+   |         ^^^^^^^^^^^^^^------------
+   |                       |
+   |                       no `doesnt_exist` in `inner`
    |
 note: found an item that was configured out
   --> $DIR/diagnostics-same-crate.rs:11:13

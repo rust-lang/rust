@@ -11,12 +11,13 @@ use hir_def::{
         ExprOrPatPtr, ExpressionStoreSourceMap, hir_assoc_type_binding_to_ast,
         hir_generic_arg_to_ast, hir_segment_to_ast_segment,
     },
-    hir::ExprOrPatId,
+    hir::{ExprId, ExprOrPatId, PatId},
+    type_ref::TypeRefId,
 };
 use hir_expand::{HirFileId, InFile, mod_path::ModPath, name::Name};
 use hir_ty::{
     CastError, ExplicitDropMethodUseKind, InferenceDiagnostic, InferenceTyDiagnosticSource,
-    PathGenericsSource, PathLoweringDiagnostic, TyLoweringDiagnostic, TyLoweringDiagnosticKind,
+    PathGenericsSource, PathLoweringDiagnostic, TyLoweringDiagnostic,
     db::HirDatabase,
     diagnostics::{BodyValidationDiagnostic, UnsafetyReason},
     display::{DisplayTarget, HirDisplay},
@@ -118,6 +119,7 @@ diagnostics![AnyDiagnostic<'db> ->
     IncorrectCase,
     IncorrectGenericsLen,
     IncorrectGenericsOrder,
+    InferVarsNotAllowed,
     InvalidCast<'db>,
     InvalidDeriveTarget,
     InvalidLhsOfAssignment,
@@ -565,6 +567,11 @@ pub struct BadRtn {
 }
 
 #[derive(Debug)]
+pub struct InferVarsNotAllowed {
+    pub node: InFile<SyntaxNodePtr>,
+}
+
+#[derive(Debug)]
 pub struct IncorrectGenericsLen {
     /// Points at the name if there are no generics.
     pub generics_or_segment: InFile<AstPtr<Either<ast::GenericArgList, ast::NameRef>>>,
@@ -799,41 +806,14 @@ impl<'db> AnyDiagnostic<'db> {
         sig_map: &hir_def::expr_store::ExpressionStoreSourceMap,
         type_owner: TypeOwnerId,
     ) -> Option<AnyDiagnostic<'db>> {
-        let expr_syntax = |expr| {
-            source_map
-                .expr_syntax(expr)
-                .inspect_err(|_| stdx::never!("inference diagnostic in desugared expr"))
-                .ok()
-        };
-        let pat_syntax = |pat| {
-            source_map
-                .pat_syntax(pat)
-                .inspect_err(|_| stdx::never!("inference diagnostic in desugared pattern"))
-                .ok()
-        };
-        let type_syntax = |pat| {
-            source_map
-                .type_syntax(pat)
-                .inspect_err(|_| stdx::never!("inference diagnostic in desugared type"))
-                .ok()
-        };
+        let expr_syntax = |expr| Self::expr_syntax(expr, source_map);
+        let pat_syntax = |pat| Self::pat_syntax(pat, source_map);
         let expr_or_pat_syntax = |id| match id {
             ExprOrPatId::ExprId(expr) => expr_syntax(expr),
             ExprOrPatId::PatId(pat) => pat_syntax(pat),
         };
         let new_ty = |ty| Type { owner: type_owner, ty: EarlyBinder::bind(ty) };
-        let span_syntax = |span| match span {
-            hir_ty::Span::ExprId(idx) => expr_syntax(idx).map(|it| it.upcast()),
-            hir_ty::Span::PatId(idx) => pat_syntax(idx).map(|it| it.upcast()),
-            hir_ty::Span::TypeRefId(idx) => type_syntax(idx).map(|it| it.upcast()),
-            hir_ty::Span::BindingId(idx) => {
-                pat_syntax(source_map.patterns_for_binding(idx)[0]).map(|it| it.upcast())
-            }
-            hir_ty::Span::Dummy => {
-                never!("should never create a diagnostic for dummy spans");
-                None
-            }
-        };
+        let span_syntax = |span| Self::span_syntax(span, source_map);
         Some(match d {
             &InferenceDiagnostic::NoSuchField { field: expr, private, variant } => {
                 let expr_or_pat = match expr {
@@ -1238,20 +1218,72 @@ impl<'db> AnyDiagnostic<'db> {
         })
     }
 
+    fn expr_syntax(
+        expr: ExprId,
+        source_map: &ExpressionStoreSourceMap,
+    ) -> Option<InFile<ExprOrPatPtr>> {
+        source_map
+            .expr_syntax(expr)
+            .inspect_err(|_| stdx::never!("inference diagnostic in desugared expr"))
+            .ok()
+    }
+
+    fn pat_syntax(
+        pat: PatId,
+        source_map: &ExpressionStoreSourceMap,
+    ) -> Option<InFile<ExprOrPatPtr>> {
+        source_map
+            .pat_syntax(pat)
+            .inspect_err(|_| stdx::never!("inference diagnostic in desugared pattern"))
+            .ok()
+    }
+
+    fn type_syntax(
+        type_ref: TypeRefId,
+        source_map: &ExpressionStoreSourceMap,
+    ) -> Option<InFile<AstPtr<ast::Type>>> {
+        source_map
+            .type_syntax(type_ref)
+            .inspect_err(|_| stdx::never!("inference diagnostic in desugared type"))
+            .ok()
+    }
+
+    fn span_syntax(
+        span: hir_ty::Span,
+        source_map: &ExpressionStoreSourceMap,
+    ) -> Option<InFile<AstPtr<SpanAst>>> {
+        Some(match span {
+            hir_ty::Span::ExprId(idx) => Self::expr_syntax(idx, source_map)?.map(|it| it.upcast()),
+            hir_ty::Span::PatId(idx) => Self::pat_syntax(idx, source_map)?.map(|it| it.upcast()),
+            hir_ty::Span::TypeRefId(idx) => {
+                Self::type_syntax(idx, source_map)?.map(|it| it.upcast())
+            }
+            hir_ty::Span::BindingId(idx) => {
+                let &pat = source_map.patterns_for_binding(idx).first()?;
+                Self::pat_syntax(pat, source_map)?.map(|it| it.upcast())
+            }
+            hir_ty::Span::Dummy => {
+                never!("should never create a diagnostic for dummy spans");
+                return None;
+            }
+        })
+    }
+
     pub(crate) fn ty_diagnostic(
         diag: &TyLoweringDiagnostic,
         source_map: &ExpressionStoreSourceMap,
         db: &'db dyn HirDatabase,
     ) -> Option<AnyDiagnostic<'db>> {
-        let Ok(source) = source_map.type_syntax(diag.source) else {
-            stdx::never!("error on synthetic type syntax");
-            return None;
-        };
-        let syntax = || source.value.to_node(&db.parse_or_expand(source.file_id));
-        Some(match &diag.kind {
-            TyLoweringDiagnosticKind::PathDiagnostic(diag) => {
-                let ast::Type::PathType(syntax) = syntax() else { return None };
+        Some(match diag {
+            TyLoweringDiagnostic::PathDiagnostic { source, diag } => {
+                let source = Self::type_syntax(*source, source_map)?;
+                let syntax = source.value.to_node(&db.parse_or_expand(source.file_id));
+                let ast::Type::PathType(syntax) = syntax else { return None };
                 Self::path_diagnostic(diag, source.with_value(syntax.path()?))?
+            }
+            TyLoweringDiagnostic::InferVarsNotAllowed { source } => {
+                let source = Self::span_syntax(*source, source_map)?;
+                InferVarsNotAllowed { node: source.map(Into::into) }.into()
             }
         })
     }

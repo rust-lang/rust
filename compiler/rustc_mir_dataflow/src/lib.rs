@@ -23,8 +23,8 @@ pub use self::framework::{
 use self::move_paths::MoveData;
 
 pub mod debuginfo;
+mod diagnostics;
 mod drop_flag_effects;
-mod errors;
 mod framework;
 pub mod impls;
 pub mod move_paths;

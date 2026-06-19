@@ -3,6 +3,7 @@
 //@revisions: windows_host unix_host
 //@[unix_host] ignore-host: windows
 //@[windows_host] only-host: windows
+//@run-native
 
 #![feature(io_error_inprogress)]
 

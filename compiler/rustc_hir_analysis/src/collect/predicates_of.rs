@@ -200,6 +200,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             &mut bounds,
             tcx.types.self_param,
             self_bounds,
+            &[],
             ImpliedBoundsContext::TraitDef(def_id),
             span,
         );
@@ -207,6 +208,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             &mut bounds,
             tcx.types.self_param,
             self_bounds,
+            &[],
             ImpliedBoundsContext::TraitDef(def_id),
             span,
         );
@@ -239,14 +241,16 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     &mut bounds,
                     param_ty,
                     &[],
-                    ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
+                    hir_generics.predicates,
+                    ImpliedBoundsContext::TyParam(param.def_id),
                     param.span,
                 );
                 icx.lowerer().add_default_traits(
                     &mut bounds,
                     param_ty,
                     &[],
-                    ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
+                    hir_generics.predicates,
+                    ImpliedBoundsContext::TyParam(param.def_id),
                     param.span,
                 );
                 trace!(?bounds);
@@ -415,8 +419,11 @@ fn const_evaluatable_predicates_of<'tcx>(
         preds: FxIndexSet<(ty::Clause<'tcx>, Span)>,
     }
 
-    fn is_const_param_default(tcx: TyCtxt<'_>, def: LocalDefId) -> bool {
-        let hir_id = tcx.local_def_id_to_hir_id(def);
+    fn is_const_param_default(tcx: TyCtxt<'_>, kind: ty::UnevaluatedConstKind<'_>) -> bool {
+        let ty::UnevaluatedConstKind::Anon { def_id } = kind else { return false };
+        let Some(local) = def_id.as_local() else { return false };
+
+        let hir_id = tcx.local_def_id_to_hir_id(local);
         let (_, parent_node) = tcx
             .hir_parent_iter(hir_id)
             .skip_while(|(_, n)| matches!(n, Node::ConstArg(..)))
@@ -431,9 +438,7 @@ fn const_evaluatable_predicates_of<'tcx>(
     impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ConstCollector<'tcx> {
         fn visit_const(&mut self, c: ty::Const<'tcx>) {
             if let ty::ConstKind::Unevaluated(uv) = c.kind() {
-                if let Some(local) = uv.kind.def_id().as_local()
-                    && is_const_param_default(self.tcx, local)
-                {
+                if is_const_param_default(self.tcx, uv.kind) {
                     // Do not look into const param defaults,
                     // these get checked when they are actually instantiated.
                     //
@@ -445,11 +450,11 @@ fn const_evaluatable_predicates_of<'tcx>(
                 }
 
                 // Skip type consts as mGCA doesn't support evaluatable clauses.
-                if self.tcx.is_type_const(uv.kind.def_id()) {
+                if uv.kind.is_type_const(self.tcx) {
                     return;
                 }
 
-                let span = self.tcx.def_span(uv.kind.def_id());
+                let span = uv.kind.def_span(self.tcx);
                 self.preds.insert((ty::ClauseKind::ConstEvaluatable(c).upcast(self.tcx), span));
             }
         }
@@ -691,6 +696,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
                 &mut bounds,
                 self_param_ty,
                 superbounds,
+                &[],
                 ImpliedBoundsContext::TraitDef(trait_def_id),
                 item.span,
             );
@@ -698,6 +704,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
                 &mut bounds,
                 self_param_ty,
                 superbounds,
+                &[],
                 ImpliedBoundsContext::TraitDef(trait_def_id),
                 item.span,
             );
@@ -993,14 +1000,16 @@ impl<'tcx> ItemCtxt<'tcx> {
                             &mut bounds,
                             param_ty,
                             &[],
-                            ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
+                            hir_generics.predicates,
+                            ImpliedBoundsContext::TyParam(param.def_id),
                             param.span,
                         );
                         self.lowerer().add_default_traits(
                             &mut bounds,
                             param_ty,
                             &[],
-                            ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
+                            hir_generics.predicates,
+                            ImpliedBoundsContext::TyParam(param.def_id),
                             param.span,
                         );
                     }
