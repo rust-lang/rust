@@ -134,7 +134,7 @@ pub fn registered_tools_ast(
     let mut registered_tools = RegisteredTools::default();
 
     if let Some(Attribute::Parsed(AttributeKind::RegisterTool(tools))) =
-        AttributeParser::parse_limited(sess, pre_configured_attrs, &[sym::register_tool])
+        AttributeParser::parse_limited_sym(sess, pre_configured_attrs, &[sym::register_tool])
     {
         for tool in tools {
             if let Some(old_tool) = registered_tools.replace(tool) {

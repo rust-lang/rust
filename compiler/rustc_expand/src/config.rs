@@ -51,7 +51,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
     let mut features = Features::default();
 
     if let Some(hir::Attribute::Parsed(AttributeKind::Feature(feature_idents, _))) =
-        AttributeParser::parse_limited(sess, krate_attrs, &[sym::feature])
+        AttributeParser::parse_limited_sym(sess, krate_attrs, &[sym::feature])
     {
         for feature_ident in feature_idents {
             // If the enabled feature has been removed, issue an error.

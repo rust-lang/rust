@@ -654,7 +654,7 @@ fn maybe_stage_features(sess: &Session, features: &Features, krate: &ast::Crate)
     let mut errored = false;
 
     if let Some(Attribute::Parsed(AttributeKind::Feature(feature_idents, first_span))) =
-        AttributeParser::parse_limited(sess, &krate.attrs, &[sym::feature])
+        AttributeParser::parse_limited_sym(sess, &krate.attrs, &[sym::feature])
     {
         // `feature(...)` used on non-nightly. This is definitely an error.
         let mut err = diagnostics::FeatureOnNonNightly {

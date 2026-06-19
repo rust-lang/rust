@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock, OnceLock};
 use std::{env, fs, iter};
 
-use rustc_ast::{self as ast, CRATE_NODE_ID};
+use rustc_ast as ast;
 use rustc_attr_parsing::{AttributeParser, ShouldEmit};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CompiledModules, CrateInfo};
@@ -24,7 +24,7 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{LOCAL_CRATE, StableCrateId, StableCrateIdMap};
 use rustc_hir::definitions::Definitions;
 use rustc_hir::limit::Limit;
-use rustc_hir::{Attribute, Target, find_attr};
+use rustc_hir::{Attribute, find_attr};
 use rustc_incremental::setup_dep_graph;
 use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore, unerased_lint_store};
 use rustc_metadata::EncodedMetadata;
@@ -1373,13 +1373,11 @@ pub(crate) fn parse_crate_name(
     emit_errors: ShouldEmit,
 ) -> Option<(Symbol, Span)> {
     let rustc_hir::Attribute::Parsed(AttributeKind::CrateName { name, name_span, .. }) =
-        AttributeParser::parse_limited_should_emit(
+        AttributeParser::parse_limited_sym_should_emit(
             sess,
             attrs,
             &[sym::crate_name],
             DUMMY_SP,
-            rustc_ast::node_id::CRATE_NODE_ID,
-            Target::Crate,
             None,
             emit_errors,
         )?
@@ -1423,13 +1421,11 @@ pub fn collect_crate_types(
     let mut base = session.opts.crate_types.clone();
     if base.is_empty() {
         if let Some(Attribute::Parsed(AttributeKind::CrateType(crate_type))) =
-            AttributeParser::parse_limited_should_emit(
+            AttributeParser::parse_limited_sym_should_emit(
                 session,
                 attrs,
                 &[sym::crate_type],
                 crate_span,
-                CRATE_NODE_ID,
-                Target::Crate,
                 None,
                 ShouldEmit::EarlyFatal { also_emit_lints: false },
             )
@@ -1480,13 +1476,11 @@ fn default_output_for_target(sess: &Session) -> CrateType {
 }
 
 fn get_recursion_limit(krate_attrs: &[ast::Attribute], sess: &Session) -> Limit {
-    let attr = AttributeParser::parse_limited_should_emit(
+    let attr = AttributeParser::parse_limited_sym_should_emit(
         sess,
         &krate_attrs,
         &[sym::recursion_limit],
         DUMMY_SP,
-        rustc_ast::node_id::CRATE_NODE_ID,
-        Target::Crate,
         None,
         // errors are fatal here, but lints aren't.
         // If things aren't fatal we continue, and will parse this again.

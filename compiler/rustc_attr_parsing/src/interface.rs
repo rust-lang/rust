@@ -42,10 +42,10 @@ pub struct AttributeParser<'sess> {
     pub(crate) sess: &'sess Session,
     pub(crate) should_emit: ShouldEmit,
 
-    /// *Only* parse attributes with this symbol.
+    /// *Only* parse attributes that passes this filter.
     ///
-    /// Used in cases where we want the lowering infrastructure for parse just a single attribute.
-    parse_only: Option<&'static [Symbol]>,
+    /// Used in cases where we want the lowering infrastructure for parse just limited attributes.
+    parse_filter: Option<&'sess dyn Fn(&ast::Attribute) -> bool>,
 }
 
 impl<'sess> AttributeParser<'sess> {
@@ -57,8 +57,8 @@ impl<'sess> AttributeParser<'sess> {
     /// `rustc_ast_lowering`. Some attributes require access to features to parse, which would
     /// crash if you tried to do so through [`parse_limited`](Self::parse_limited).
     ///
-    /// To make sure use is limited, supply a `Symbol` you'd like to parse. Only attributes with
-    /// that symbol are picked out of the list of instructions and parsed. Those are returned.
+    /// To make sure use is limited, supply a filter. Only attributes that passes the filter are
+    /// picked out of the list of instructions and parsed. Those are returned.
     ///
     /// No diagnostics will be emitted when parsing limited. Lints are not emitted at all, while
     /// errors will be emitted as a delayed bugs. in other words, we *expect* attributes parsed
@@ -68,19 +68,27 @@ impl<'sess> AttributeParser<'sess> {
     pub fn parse_limited(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
-        sym: &'static [Symbol],
+        parse_filter: &dyn Fn(&ast::Attribute) -> bool,
     ) -> Option<Attribute> {
         Self::parse_limited_should_emit(
             sess,
             attrs,
-            sym,
+            parse_filter,
             // Because we're not emitting warnings/errors, the target should not matter
             DUMMY_SP,
-            CRATE_NODE_ID,
-            Target::Crate,
             None,
             ShouldEmit::Nothing,
         )
+    }
+
+    /// This does the same as `parse_limited`, except that it takes a fixed symbol instead of a
+    /// filter.
+    pub fn parse_limited_sym(
+        sess: &'sess Session,
+        attrs: &[ast::Attribute],
+        sym: &'static [Symbol],
+    ) -> Option<Attribute> {
+        Self::parse_limited(sess, attrs, &|attr| attr.path_matches(sym))
     }
 
     /// This does the same as `parse_limited`, except it has a `should_emit` parameter which allows it to emit errors.
@@ -90,20 +98,18 @@ impl<'sess> AttributeParser<'sess> {
     pub fn parse_limited_should_emit(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
-        sym: &'static [Symbol],
+        parse_filter: &dyn Fn(&ast::Attribute) -> bool,
         target_span: Span,
-        target_node_id: NodeId,
-        target: Target,
         features: Option<&'sess Features>,
         should_emit: ShouldEmit,
     ) -> Option<Attribute> {
         let mut parsed = Self::parse_limited_all(
             sess,
             attrs,
-            Some(sym),
-            target,
+            Some(parse_filter),
+            Target::Crate,
             target_span,
-            target_node_id,
+            CRATE_NODE_ID,
             features,
             should_emit,
             None,
@@ -112,17 +118,37 @@ impl<'sess> AttributeParser<'sess> {
         parsed.pop()
     }
 
+    /// This does the same as `parse_limited_should_emit`, except that it takes a fixed symbol
+    /// instead of a filter.
+    pub fn parse_limited_sym_should_emit(
+        sess: &'sess Session,
+        attrs: &[ast::Attribute],
+        sym: &'static [Symbol],
+        target_span: Span,
+        features: Option<&'sess Features>,
+        should_emit: ShouldEmit,
+    ) -> Option<Attribute> {
+        Self::parse_limited_should_emit(
+            sess,
+            attrs,
+            &|attr| attr.path_matches(sym),
+            target_span,
+            features,
+            should_emit,
+        )
+    }
+
     /// This method allows you to parse a list of attributes *before* `rustc_ast_lowering`.
     /// This can be used for attributes that would be removed before `rustc_ast_lowering`, such as attributes on macro calls.
     ///
     /// Try to use this as little as possible. Attributes *should* be lowered during
     /// `rustc_ast_lowering`. Some attributes require access to features to parse, which would
     /// crash if you tried to do so through [`parse_limited_all`](Self::parse_limited_all).
-    /// Therefore, if `parse_only` is None, then features *must* be provided.
+    /// Therefore, if `parse_filter` is None, then features *must* be provided.
     pub fn parse_limited_all(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
-        parse_only: Option<&'static [Symbol]>,
+        parse_filter: Option<&dyn Fn(&ast::Attribute) -> bool>,
         target: Target,
         target_span: Span,
         target_node_id: NodeId,
@@ -130,7 +156,7 @@ impl<'sess> AttributeParser<'sess> {
         should_emit: ShouldEmit,
         tools: Option<&'sess RegisteredTools>,
     ) -> Vec<Attribute> {
-        let mut p = Self { features, tools, parse_only, sess, should_emit };
+        let mut p = AttributeParser { features, tools, parse_filter, sess, should_emit };
         p.parse_attribute_list(
             attrs,
             target_span,
@@ -212,7 +238,7 @@ impl<'sess> AttributeParser<'sess> {
         parse_fn: fn(cx: &mut AcceptContext<'_, '_>, item: &I) -> T,
         template: &AttributeTemplate,
     ) -> T {
-        let mut parser = Self { features, tools: None, parse_only: None, sess, should_emit };
+        let mut parser = Self { features, tools: None, parse_filter: None, sess, should_emit };
         let mut emit_lint = |lint_id: LintId, span: MultiSpan, kind: EmitAttribute| {
             sess.psess.dyn_buffer_lint_sess(lint_id.lint, span, target_node_id, kind.0)
         };
@@ -255,7 +281,7 @@ impl<'sess> AttributeParser<'sess> {
         tools: &'sess RegisteredTools,
         should_emit: ShouldEmit,
     ) -> Self {
-        Self { features: Some(features), tools: Some(tools), parse_only: None, sess, should_emit }
+        Self { features: Some(features), tools: Some(tools), parse_filter: None, sess, should_emit }
     }
 
     pub(crate) fn sess(&self) -> &'sess Session {
@@ -299,8 +325,8 @@ impl<'sess> AttributeParser<'sess> {
 
         for attr in attrs {
             // If we're only looking for a single attribute, skip all the ones we don't care about.
-            if let Some(expected) = self.parse_only {
-                if !attr.path_matches(expected) {
+            if let Some(filter) = self.parse_filter {
+                if !filter(attr) {
                     continue;
                 }
             }
