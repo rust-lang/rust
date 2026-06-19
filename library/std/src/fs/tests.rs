@@ -1724,6 +1724,25 @@ fn create_dir_all_with_junctions() {
 }
 
 #[test]
+#[cfg(windows)]
+fn junction_point_overlong_path() {
+    // Regression test: an `original` path long enough to exceed the inline
+    // reparse buffer used to be copied past the end of the stack array. It must
+    // now be rejected with a clean error instead of overflowing.
+    let tmpdir = tmpdir();
+    let link = tmpdir.join("junction");
+
+    // The `\\?\` prefix bypasses MAX_PATH normalization so the path is copied
+    // through verbatim. 20_000 code units lands in the old overflow window: it
+    // passed the previous `> u16::MAX` byte check yet exceeded the buffer.
+    let mut original = String::from(r"\\?\C:\");
+    original.push_str(&"a".repeat(20_000));
+
+    let err = junction_point(Path::new(&original), &link).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::InvalidInput);
+}
+
+#[test]
 fn metadata_access_times() {
     let start_time = SystemTime::now();
 
