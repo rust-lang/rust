@@ -147,7 +147,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
                 .map(|(param, &arg)| {
                     if param.value_type == types::I128 {
                         let arg_ptr = self.create_stack_slot(16, 16);
-                        arg_ptr.store(self, arg, MemFlags::trusted());
+                        arg_ptr.store(self, arg, MemFlagsData::trusted());
                         (AbiParam::new(self.pointer_type), arg_ptr.get_addr(self))
                     } else {
                         (param, arg)
@@ -179,7 +179,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
 
             self.lib_call_unadjusted(name, params, vec![], &args);
 
-            Cow::Owned(vec![ret_ptr.load(self, types::I128, MemFlags::trusted())])
+            Cow::Owned(vec![ret_ptr.load(self, types::I128, MemFlagsData::trusted())])
         } else {
             Cow::Borrowed(self.lib_call_unadjusted(name, params, returns, &args))
         }

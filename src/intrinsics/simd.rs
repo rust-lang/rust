@@ -850,7 +850,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                     m.force_stack(fx).0.load(
                         fx,
                         Type::int(expected_int_bits as u16).unwrap(),
-                        MemFlags::trusted(),
+                        MemFlagsData::trusted(),
                     )
                 }
                 _ => {
@@ -1026,8 +1026,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 generic_args[3].expect_const().to_branch()[0].to_leaf().to_simd_alignment();
 
             let memflags = match alignment {
-                SimdAlign::Unaligned => MemFlags::new().with_notrap(),
-                _ => MemFlags::trusted(),
+                SimdAlign::Unaligned => MemFlagsData::new().with_notrap(),
+                _ => MemFlagsData::trusted(),
             };
 
             for lane_idx in 0..val_lane_count {
@@ -1081,7 +1081,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 fx.bcx.seal_block(if_disabled);
 
                 fx.bcx.switch_to_block(if_enabled);
-                let res = fx.bcx.ins().load(lane_clif_ty, MemFlags::trusted(), ptr_lane, 0);
+                let res = fx.bcx.ins().load(lane_clif_ty, MemFlagsData::trusted(), ptr_lane, 0);
                 fx.bcx.ins().jump(next, &[res.into()]);
 
                 fx.bcx.switch_to_block(if_disabled);
@@ -1114,8 +1114,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 generic_args[3].expect_const().to_branch()[0].to_leaf().to_simd_alignment();
 
             let memflags = match alignment {
-                SimdAlign::Unaligned => MemFlags::new().with_notrap(),
-                _ => MemFlags::trusted(),
+                SimdAlign::Unaligned => MemFlagsData::new().with_notrap(),
+                _ => MemFlagsData::trusted(),
             };
 
             for lane_idx in 0..ret_lane_count {
@@ -1170,7 +1170,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 fx.bcx.seal_block(if_enabled);
 
                 fx.bcx.switch_to_block(if_enabled);
-                fx.bcx.ins().store(MemFlags::trusted(), val_lane, ptr_lane, 0);
+                fx.bcx.ins().store(MemFlagsData::trusted(), val_lane, ptr_lane, 0);
                 fx.bcx.ins().jump(next, &[]);
 
                 fx.bcx.seal_block(next);

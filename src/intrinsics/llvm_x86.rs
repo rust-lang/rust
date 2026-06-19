@@ -117,8 +117,11 @@ pub(super) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 let src_lane = src.value_lane(fx, lane_idx).load_scalar(fx);
                 let index_lane = index.value_lane(fx, lane_idx).load_scalar(fx);
                 let mask_lane = mask.value_lane(fx, lane_idx).load_scalar(fx);
-                let mask_lane =
-                    fx.bcx.ins().bitcast(mask_lane_clif_ty.as_int(), MemFlags::new(), mask_lane);
+                let mask_lane = fx.bcx.ins().bitcast(
+                    mask_lane_clif_ty.as_int(),
+                    MemFlagsData::new(),
+                    mask_lane,
+                );
 
                 let if_enabled = fx.bcx.create_block();
                 let if_disabled = fx.bcx.create_block();
@@ -146,7 +149,7 @@ pub(super) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 };
                 let offset = fx.bcx.ins().imul(index_lane, scale);
                 let lane_ptr = fx.bcx.ins().iadd(ptr, offset);
-                let res = fx.bcx.ins().load(lane_clif_ty, MemFlags::trusted(), lane_ptr, 0);
+                let res = fx.bcx.ins().load(lane_clif_ty, MemFlagsData::trusted(), lane_ptr, 0);
                 fx.bcx.ins().jump(next, &[res.into()]);
 
                 fx.bcx.switch_to_block(if_disabled);
@@ -163,7 +166,8 @@ pub(super) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
             for lane_idx in std::cmp::min(src_lane_count, index_lane_count)..ret_lane_count {
                 let zero_lane = fx.bcx.ins().iconst(mask_lane_clif_ty.as_int(), 0);
-                let zero_lane = fx.bcx.ins().bitcast(mask_lane_clif_ty, MemFlags::new(), zero_lane);
+                let zero_lane =
+                    fx.bcx.ins().bitcast(mask_lane_clif_ty, MemFlagsData::new(), zero_lane);
                 ret.place_lane(fx, lane_idx)
                     .write_cvalue(fx, CValue::by_val(zero_lane, ret_lane_layout));
             }
@@ -325,7 +329,7 @@ pub(super) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 let a_idx = fx.bcx.ins().uextend(fx.pointer_type, a_idx);
                 let a_lane = a.value_lane_dyn(fx, a_idx).load_scalar(fx);
                 let res = fx.bcx.ins().select(is_zero, zero, a_lane);
-                ret.place_lane(fx, i).to_ptr().store(fx, res, MemFlags::trusted());
+                ret.place_lane(fx, i).to_ptr().store(fx, res, MemFlagsData::trusted());
             }
 
             if intrinsic == "llvm.x86.avx2.pshuf.b" {
@@ -337,7 +341,7 @@ pub(super) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                     let a_idx = fx.bcx.ins().uextend(fx.pointer_type, a_idx);
                     let a_lane = a.value_lane_dyn(fx, a_idx).load_scalar(fx);
                     let res = fx.bcx.ins().select(is_zero, zero, a_lane);
-                    ret.place_lane(fx, i).to_ptr().store(fx, res, MemFlags::trusted());
+                    ret.place_lane(fx, i).to_ptr().store(fx, res, MemFlagsData::trusted());
                 }
             }
         }
@@ -352,7 +356,7 @@ pub(super) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 ret.place_typed_lane(fx, fx.tcx.types.u32, j).to_ptr().store(
                     fx,
                     value,
-                    MemFlags::trusted(),
+                    MemFlagsData::trusted(),
                 );
             }
         }
@@ -406,12 +410,12 @@ pub(super) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             ret.place_typed_lane(fx, fx.tcx.types.u128, 0).to_ptr().store(
                 fx,
                 res_low,
-                MemFlags::trusted(),
+                MemFlagsData::trusted(),
             );
             ret.place_typed_lane(fx, fx.tcx.types.u128, 1).to_ptr().store(
                 fx,
                 res_high,
-                MemFlags::trusted(),
+                MemFlagsData::trusted(),
             );
         }
         "llvm.x86.ssse3.pabs.b.128" | "llvm.x86.ssse3.pabs.w.128" | "llvm.x86.ssse3.pabs.d.128" => {
@@ -465,7 +469,7 @@ pub(super) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
             let (cb_out, c) = llvm_add_sub(fx, BinOp::Add, c_in, a, b);
 
-            Pointer::new(out.load_scalar(fx)).store(fx, c, MemFlags::trusted());
+            Pointer::new(out.load_scalar(fx)).store(fx, c, MemFlagsData::trusted());
             ret.write_cvalue(fx, CValue::by_val(cb_out, fx.layout_of(fx.tcx.types.u8)));
         }
         "llvm.x86.subborrow.32" | "llvm.x86.subborrow.64" => {
@@ -502,7 +506,7 @@ pub(super) fn codegen_x86_llvm_intrinsic_call<'tcx>(
         "llvm.x86.sse2.psra.w" => {
             intrinsic_args!(fx, args => (a, count); intrinsic);
 
-            let count_lane = count.force_stack(fx).0.load(fx, types::I64, MemFlags::trusted());
+            let count_lane = count.force_stack(fx).0.load(fx, types::I64, MemFlagsData::trusted());
             let lane_ty = fx.clif_type(a.layout().ty.simd_size_and_type(fx.tcx).1).unwrap();
             let max_count = fx.bcx.ins().iconst(types::I64, i64::from(lane_ty.bits() - 1));
             let saturated_count = fx.bcx.ins().umin(count_lane, max_count);

@@ -426,7 +426,7 @@ pub(super) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
                 let t_idx = fx.bcx.ins().uextend(fx.pointer_type, idx_lane);
                 let t_lane = t.value_lane_dyn(fx, t_idx).load_scalar(fx);
                 let res = fx.bcx.ins().select(is_zero, zero, t_lane);
-                ret.place_lane(fx, i).to_ptr().store(fx, res, MemFlags::trusted());
+                ret.place_lane(fx, i).to_ptr().store(fx, res, MemFlagsData::trusted());
             }
         }
         "llvm.aarch64.neon.tbl1.v16i8" => {
@@ -440,7 +440,7 @@ pub(super) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
                 let t_idx = fx.bcx.ins().uextend(fx.pointer_type, idx_lane);
                 let t_lane = t.value_lane_dyn(fx, t_idx).load_scalar(fx);
                 let res = fx.bcx.ins().select(is_zero, zero, t_lane);
-                ret.place_lane(fx, i).to_ptr().store(fx, res, MemFlags::trusted());
+                ret.place_lane(fx, i).to_ptr().store(fx, res, MemFlagsData::trusted());
             }
         }
 

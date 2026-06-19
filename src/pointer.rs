@@ -106,7 +106,12 @@ impl Pointer {
         }
     }
 
-    pub(crate) fn load(self, fx: &mut FunctionCx<'_, '_, '_>, ty: Type, flags: MemFlags) -> Value {
+    pub(crate) fn load(
+        self,
+        fx: &mut FunctionCx<'_, '_, '_>,
+        ty: Type,
+        flags: MemFlagsData,
+    ) -> Value {
         match self.base {
             PointerBase::Addr(base_addr) => fx.bcx.ins().load(ty, flags, base_addr, self.offset),
             PointerBase::Stack(stack_slot) => fx.bcx.ins().stack_load(ty, stack_slot, self.offset),
@@ -114,7 +119,7 @@ impl Pointer {
         }
     }
 
-    pub(crate) fn store(self, fx: &mut FunctionCx<'_, '_, '_>, value: Value, flags: MemFlags) {
+    pub(crate) fn store(self, fx: &mut FunctionCx<'_, '_, '_>, value: Value, flags: MemFlagsData) {
         match self.base {
             PointerBase::Addr(base_addr) => {
                 fx.bcx.ins().store(flags, value, base_addr, self.offset);

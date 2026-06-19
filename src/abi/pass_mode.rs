@@ -211,7 +211,11 @@ pub(super) fn to_casted_value<'tcx>(
     cast_target_to_abi_params(cast)
         .into_iter()
         .map(|(offset, param)| {
-            ptr.offset_i64(fx, offset.bytes() as i64).load(fx, param.value_type, MemFlags::new())
+            ptr.offset_i64(fx, offset.bytes() as i64).load(
+                fx,
+                param.value_type,
+                MemFlagsData::new(),
+            )
         })
         .collect()
 }
@@ -237,7 +241,7 @@ pub(super) fn from_casted_value<'tcx>(
         ptr.offset_i64(fx, offset.bytes() as i64).store(
             fx,
             block_params_iter.next().unwrap(),
-            MemFlags::new(),
+            MemFlagsData::trusted(),
         )
     }
     assert_eq!(block_params_iter.next(), None, "Leftover block param");

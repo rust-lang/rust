@@ -875,7 +875,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             }
             let clif_ty = fx.clif_type(ty).unwrap();
 
-            let val = fx.bcx.ins().atomic_load(clif_ty, MemFlags::trusted(), ptr);
+            let val = fx.bcx.ins().atomic_load(clif_ty, MemFlagsData::trusted(), ptr);
 
             let val = CValue::by_val(val, fx.layout_of(ty));
             ret.write_cvalue(fx, val);
@@ -911,7 +911,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let val = val.load_scalar(fx);
 
-            fx.bcx.ins().atomic_store(MemFlags::trusted(), val, ptr);
+            fx.bcx.ins().atomic_store(MemFlagsData::trusted(), val, ptr);
         }
         sym::atomic_xchg => {
             intrinsic_args!(fx, args => (ptr, new); intrinsic);
@@ -929,7 +929,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let new = new.load_scalar(fx);
 
-            let old = fx.bcx.ins().atomic_rmw(ty, MemFlags::trusted(), AtomicRmwOp::Xchg, ptr, new);
+            let old =
+                fx.bcx.ins().atomic_rmw(ty, MemFlagsData::trusted(), AtomicRmwOp::Xchg, ptr, new);
 
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
@@ -950,7 +951,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let test_old = test_old.load_scalar(fx);
             let new = new.load_scalar(fx);
 
-            let old = fx.bcx.ins().atomic_cas(MemFlags::trusted(), ptr, test_old, new);
+            let old = fx.bcx.ins().atomic_cas(MemFlagsData::trusted(), ptr, test_old, new);
             let is_eq = fx.bcx.ins().icmp(IntCC::Equal, old, test_old);
 
             let ret_val = CValue::by_val_pair(old, is_eq, ret.layout());
@@ -974,7 +975,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let amount = amount.load_scalar(fx);
 
             let old =
-                fx.bcx.ins().atomic_rmw(ty, MemFlags::trusted(), AtomicRmwOp::Add, ptr, amount);
+                fx.bcx.ins().atomic_rmw(ty, MemFlagsData::trusted(), AtomicRmwOp::Add, ptr, amount);
 
             let old = CValue::by_val(old, ret.layout());
             ret.write_cvalue(fx, old);
@@ -996,7 +997,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let amount = amount.load_scalar(fx);
 
             let old =
-                fx.bcx.ins().atomic_rmw(ty, MemFlags::trusted(), AtomicRmwOp::Sub, ptr, amount);
+                fx.bcx.ins().atomic_rmw(ty, MemFlagsData::trusted(), AtomicRmwOp::Sub, ptr, amount);
 
             let old = CValue::by_val(old, ret.layout());
             ret.write_cvalue(fx, old);
@@ -1017,7 +1018,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let src = src.load_scalar(fx);
 
-            let old = fx.bcx.ins().atomic_rmw(ty, MemFlags::trusted(), AtomicRmwOp::And, ptr, src);
+            let old =
+                fx.bcx.ins().atomic_rmw(ty, MemFlagsData::trusted(), AtomicRmwOp::And, ptr, src);
 
             let old = CValue::by_val(old, ret.layout());
             ret.write_cvalue(fx, old);
@@ -1038,7 +1040,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let src = src.load_scalar(fx);
 
-            let old = fx.bcx.ins().atomic_rmw(ty, MemFlags::trusted(), AtomicRmwOp::Or, ptr, src);
+            let old =
+                fx.bcx.ins().atomic_rmw(ty, MemFlagsData::trusted(), AtomicRmwOp::Or, ptr, src);
 
             let old = CValue::by_val(old, ret.layout());
             ret.write_cvalue(fx, old);
@@ -1059,7 +1062,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let src = src.load_scalar(fx);
 
-            let old = fx.bcx.ins().atomic_rmw(ty, MemFlags::trusted(), AtomicRmwOp::Xor, ptr, src);
+            let old =
+                fx.bcx.ins().atomic_rmw(ty, MemFlagsData::trusted(), AtomicRmwOp::Xor, ptr, src);
 
             let old = CValue::by_val(old, ret.layout());
             ret.write_cvalue(fx, old);
@@ -1080,7 +1084,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let src = src.load_scalar(fx);
 
-            let old = fx.bcx.ins().atomic_rmw(ty, MemFlags::trusted(), AtomicRmwOp::Nand, ptr, src);
+            let old =
+                fx.bcx.ins().atomic_rmw(ty, MemFlagsData::trusted(), AtomicRmwOp::Nand, ptr, src);
 
             let old = CValue::by_val(old, ret.layout());
             ret.write_cvalue(fx, old);
@@ -1101,7 +1106,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let src = src.load_scalar(fx);
 
-            let old = fx.bcx.ins().atomic_rmw(ty, MemFlags::trusted(), AtomicRmwOp::Smax, ptr, src);
+            let old =
+                fx.bcx.ins().atomic_rmw(ty, MemFlagsData::trusted(), AtomicRmwOp::Smax, ptr, src);
 
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
@@ -1122,7 +1128,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let src = src.load_scalar(fx);
 
-            let old = fx.bcx.ins().atomic_rmw(ty, MemFlags::trusted(), AtomicRmwOp::Umax, ptr, src);
+            let old =
+                fx.bcx.ins().atomic_rmw(ty, MemFlagsData::trusted(), AtomicRmwOp::Umax, ptr, src);
 
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
@@ -1143,7 +1150,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let src = src.load_scalar(fx);
 
-            let old = fx.bcx.ins().atomic_rmw(ty, MemFlags::trusted(), AtomicRmwOp::Smin, ptr, src);
+            let old =
+                fx.bcx.ins().atomic_rmw(ty, MemFlagsData::trusted(), AtomicRmwOp::Smin, ptr, src);
 
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
@@ -1164,7 +1172,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let src = src.load_scalar(fx);
 
-            let old = fx.bcx.ins().atomic_rmw(ty, MemFlags::trusted(), AtomicRmwOp::Umin, ptr, src);
+            let old =
+                fx.bcx.ins().atomic_rmw(ty, MemFlagsData::trusted(), AtomicRmwOp::Umin, ptr, src);
 
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
@@ -1471,8 +1480,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 fx.bcx.ins().iconst(types::I8, 1)
             } else if let Some(clty) = size.bits().try_into().ok().and_then(Type::int) {
                 // Can't use `trusted` for these loads; they could be unaligned.
-                let mut flags = MemFlags::new();
-                flags.set_notrap();
+                let flags = MemFlagsData::new().with_notrap();
                 let lhs_val = fx.bcx.ins().load(clty, flags, lhs_ref, 0);
                 let rhs_val = fx.bcx.ins().load(clty, flags, rhs_ref, 0);
                 fx.bcx.ins().icmp(IntCC::Equal, lhs_val, rhs_val)

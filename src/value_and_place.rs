@@ -143,8 +143,7 @@ impl<'tcx> CValue<'tcx> {
                     }
                     _ => unreachable!("{:?}", layout.ty),
                 };
-                let mut flags = MemFlags::new();
-                flags.set_notrap();
+                let flags = MemFlagsData::new().with_notrap();
                 ptr.load(fx, clif_ty, flags)
             }
             CValueInner::ByVal(value) => value,
@@ -166,8 +165,7 @@ impl<'tcx> CValue<'tcx> {
                 let b_offset = scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
                 let clif_ty1 = scalar_to_clif_type(fx.tcx, a_scalar);
                 let clif_ty2 = scalar_to_clif_type(fx.tcx, b_scalar);
-                let mut flags = MemFlags::new();
-                flags.set_notrap();
+                let flags = MemFlagsData::new().with_notrap();
                 let val1 = ptr.load(fx, clif_ty1, flags);
                 let val2 = ptr.offset(fx, b_offset).load(fx, clif_ty2, flags);
                 (val1, val2)
@@ -599,8 +597,7 @@ impl<'tcx> CPlace<'tcx> {
                     return;
                 }
 
-                let mut flags = MemFlags::new();
-                flags.set_notrap();
+                let flags = MemFlagsData::new().with_notrap();
 
                 match from.0 {
                     CValueInner::ByVal(val) => {

@@ -146,7 +146,7 @@ pub(crate) fn codegen_icmp_imm(
 }
 
 pub(crate) fn codegen_bitcast(fx: &mut FunctionCx<'_, '_, '_>, dst_ty: Type, val: Value) -> Value {
-    let mut flags = MemFlags::new();
+    let mut flags = MemFlagsData::new();
     flags.set_endianness(match fx.tcx.data_layout.endian {
         rustc_abi::Endian::Big => cranelift_codegen::ir::Endianness::Big,
         rustc_abi::Endian::Little => cranelift_codegen::ir::Endianness::Little,
@@ -401,7 +401,8 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
             });
             let base_ptr = self.bcx.ins().stack_addr(self.pointer_type, stack_slot, 0);
             let misalign_offset = self.bcx.ins().band_imm(base_ptr, i64::from(align - 1));
-            let realign_offset = self.bcx.ins().irsub_imm(misalign_offset, i64::from(align));
+            let align = self.bcx.ins().iconst(self.pointer_type, i64::from(align));
+            let realign_offset = self.bcx.ins().isub(align, misalign_offset);
             Pointer::new(self.bcx.ins().iadd(base_ptr, realign_offset))
         }
     }
