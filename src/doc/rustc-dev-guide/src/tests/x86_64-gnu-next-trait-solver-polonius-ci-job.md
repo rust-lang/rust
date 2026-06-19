@@ -1,11 +1,11 @@
-# Pre-stabilization testing of new solver and polonius alpha on CI
+# Pre-stabilization testing of the next solver and polonius alpha on CI
 
 We want to improve the continuous test coverage of next solver and polonius
 alpha with a goal to stabilize them in 2026. To achieve this, we need to ensure
 these unstable features are well tested and continuously well tested so they do
 not regress.
 
-This calls for a dedicated CI job [`x86_64-gnu-pre-stabilization`] which is
+This calls for a dedicated CI job [`x86_64-gnu-next-trait-solver-polonius`] which is
 blocking in PR CI and thus also Merge CI to catch regressions.
 
 For more context, see:
@@ -15,29 +15,26 @@ For more context, see:
 
 ## What is tested
 
-* For next solver:
-    * We want to ensure that we can build the stage 2 compiler and standard
-      library with next solver.
-    * (Later) we also want to ensure that we can bootstrap a full toolchain with
-      the next solver.
-* For polonius alpha:
-    * We wil run the UI test suite under polonius [compare
-      mode](./compiletest.md#compare-modes), against the stage 2 compiler/std
-      built with next solver as aforementioned.
+* For the next solver:
+    * We want to ensure we can build the standard library with the next solver.
+    * We want to ensure we can bootstrap a full toolchain with the next solver.
+    * We do both by building the stage 2 library with the next solver enabled at
+      stage 1.
+* For the polonius alpha:
+    * We run the UI test suite under the polonius [compare
+      mode](./compiletest.md#compare-modes), against the stage 1 compiler/std
+      built with the next solver enabled.
 
 > **Note**
->
-> Initially, we may test only up to `--stage=1`, but the plan is to expand up to
-> stage 2.
 >
 > To reproduce failures locally:
 >
 > ```console
-> $ RUSTFLAGS_NOT_BOOTSTRAP="-Znext-solver=globally" ../x build library --stage 1
+> $ RUSTFLAGS_NOT_BOOTSTRAP="-Znext-solver=globally" ./x build library --stage 2
 > ```
 >
 > ```console
-> $ RUSTFLAGS_NOT_BOOTSTRAP="-Znext-solver=globally" ../x test tests/ui --compare-mode polonius --stage 1
+> $ RUSTFLAGS_NOT_BOOTSTRAP="-Znext-solver=globally" ./x test tests/ui --compare-mode polonius --stage 1
 > ```
 
 ## What failures and remedies might be specific to this combination?
@@ -54,4 +51,4 @@ a new topic in [t-compiler zulip
 channel](https://rust-lang.zulipchat.com/#narrow/channel/131828-t-compiler).
 
 
-[`x86_64-gnu-pre-stabilization`]: https://github.com/rust-lang/rust/pull/157322
+[`x86_64-gnu-next-trait-solver-polonius`]: https://github.com/rust-lang/rust/pull/157322
