@@ -31,8 +31,8 @@ use tracing::debug;
 
 use crate::Namespace::{MacroNS, TypeNS, ValueNS};
 use crate::def_collector::DefCollector;
-use crate::error_helper::StructCtor;
-use crate::imports::{ImportData, ImportKind, OnUnknownData};
+use crate::error_helper::{OnUnknownData, StructCtor};
+use crate::imports::{ImportData, ImportKind};
 use crate::macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
 use crate::ref_mut::CmCell;
 use crate::{
@@ -548,7 +548,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             root_id,
             vis,
             vis_span: item.vis.span,
-            on_unknown_attr: OnUnknownData::from_attrs(self.r.tcx, item),
+            on_unknown_attr: OnUnknownData::from_attrs(self.r.tcx, &item.attrs),
         });
 
         self.r.indeterminate_imports.push(import);
@@ -863,6 +863,9 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                         || ast::attr::contains_name(&item.attrs, sym::no_implicit_prelude),
                 );
                 self.parent_scope.module = module.to_module();
+                if let Some(directive) = OnUnknownData::from_attrs(self.r.tcx, &item.attrs) {
+                    self.r.on_unknown_data.insert(local_def_id, directive);
+                }
             }
 
             // These items live in the value namespace.
@@ -1037,7 +1040,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             module_path: Vec::new(),
             vis,
             vis_span: item.vis.span,
-            on_unknown_attr: OnUnknownData::from_attrs(self.r.tcx, item),
+            on_unknown_attr: OnUnknownData::from_attrs(self.r.tcx, &item.attrs),
         });
         if used {
             self.r.import_use_map.insert(import, Used::Other);
@@ -1169,7 +1172,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 module_path: Vec::new(),
                 vis: Visibility::Restricted(CRATE_DEF_ID),
                 vis_span: item.vis.span,
-                on_unknown_attr: OnUnknownData::from_attrs(this.r.tcx, item),
+                on_unknown_attr: OnUnknownData::from_attrs(this.r.tcx, &item.attrs),
             })
         };
 
@@ -1350,7 +1353,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     module_path: Vec::new(),
                     vis,
                     vis_span: item.vis.span,
-                    on_unknown_attr: OnUnknownData::from_attrs(self.r.tcx, item),
+                    on_unknown_attr: OnUnknownData::from_attrs(self.r.tcx, &item.attrs),
                 });
                 self.r.import_use_map.insert(import, Used::Other);
                 let import_decl = self.r.new_import_decl(decl, import);
