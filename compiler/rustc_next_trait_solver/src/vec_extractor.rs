@@ -115,7 +115,7 @@ impl<'e, T> Extractor<'e, T> {
         Some(Entry { extractor: self, val: unsafe { { val }.as_mut() } })
     }
 
-    pub fn drop_rest(mut self) {
+    pub fn drop_rest(&mut self) {
         unsafe {
             std::ptr::drop_in_place(self.rest.as_slice().as_ptr());
             self.rest = <_>::default();

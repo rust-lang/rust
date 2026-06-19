@@ -38,6 +38,7 @@ use crate::solve::{
     NestedNormalizationGoals, NoSolution, QueryInput, QueryResult, Response, SucceededInErased,
     VisibleForLeakCheck, inspect,
 };
+use crate::vec_extractor::Extractor;
 
 mod probe;
 mod solver_region_constraints;
@@ -1001,7 +1002,13 @@ where
     ) -> Result<Option<Certainty>, NoSolutionOrRerunNonErased> {
         // If this loop did not result in any progress, what's our final certainty.
         let mut unchanged_certainty = Some(Certainty::Yes);
-        for (source, goal, stalled_on) in mem::take(&mut self.nested_goals) {
+
+        let mut nested_goals = mem::take(&mut self.nested_goals);
+        let mut extractor = Extractor::new(&mut nested_goals);
+
+        while let Some(((source, goal, stalled_on), hole)) =
+            extractor.entry().map(|entry| entry.take())
+        {
             // We never handle `NormalizesTo` as a nested goal
             debug_assert!(!matches!(
                 goal.predicate.kind().skip_binder(),
@@ -1015,7 +1022,7 @@ where
                 match certainty {
                     Certainty::Yes => {}
                     Certainty::Maybe { .. } => {
-                        self.nested_goals.push((source, goal, None));
+                        hole.fill((source, goal, None));
                         unchanged_certainty = unchanged_certainty.map(|c| c.and(certainty));
                     }
                 }
@@ -1023,7 +1030,16 @@ where
             }
 
             let GoalEvaluation { goal, certainty, has_changed, stalled_on } =
-                self.evaluate_goal(source, goal, stalled_on)?;
+                match self.evaluate_goal(source, goal, stalled_on) {
+                    Ok(it) => it,
+                    Err(err) => {
+                        extractor.drop_rest();
+                        drop(extractor);
+                        self.nested_goals = nested_goals;
+                        return Err(err);
+                    }
+                };
+
             if has_changed == HasChanged::Yes {
                 unchanged_certainty = None;
             }
@@ -1031,11 +1047,14 @@ where
             match certainty {
                 Certainty::Yes => {}
                 Certainty::Maybe { .. } => {
-                    self.nested_goals.push((source, goal, stalled_on));
+                    hole.fill((source, goal, stalled_on));
                     unchanged_certainty = unchanged_certainty.map(|c| c.and(certainty));
                 }
             }
         }
+
+        drop(extractor);
+        self.nested_goals = nested_goals;
 
         Ok(unchanged_certainty)
     }
