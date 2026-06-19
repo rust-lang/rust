@@ -1,8 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/24227>.
+//! Ensure we don't ICE on self type in inherent fn.
 //@ check-pass
-// This resulted in an ICE. Test for future-proofing
-// Issue #24227
-
-#![allow(unused)]
 
 struct Foo<'a> {
     x: &'a u8
