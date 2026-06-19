@@ -4214,7 +4214,7 @@ impl OnUnknownData {
     ) -> Option<OnUnknownData> {
         if r.features.diagnostic_on_unknown()
             && let Some(Attribute::Parsed(AttributeKind::OnUnknown { directive, .. })) =
-                AttributeParser::parse_limited(
+                AttributeParser::parse_limited_sym(
                     r.tcx.sess,
                     attrs,
                     &[sym::diagnostic, sym::on_unknown],

@@ -100,7 +100,7 @@ impl<'a> CollectProcMacros<'a> {
         attr: &'a ast::Attribute,
     ) {
         let Some(rustc_hir::Attribute::Parsed(AttributeKind::ProcMacroDerive { .. })) =
-            AttributeParser::parse_limited(
+            AttributeParser::parse_limited_sym(
                 self.session,
                 slice::from_ref(attr),
                 &[sym::proc_macro_derive],
