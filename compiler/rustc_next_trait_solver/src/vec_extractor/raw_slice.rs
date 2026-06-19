@@ -1,3 +1,4 @@
+#![expect(unreachable_pub)] // to be moved to a better place (like std?)
 use std::iter::FusedIterator;
 use std::marker::PhantomData;
 use std::ptr::{self, NonNull};
@@ -70,6 +71,7 @@ impl<'a, T> RawSliceIter<'a, T> {
         unsafe { Self::new(NonNull::new(ptr::from_ref(slice).cast_mut()).unwrap()) }
     }
 
+    #[expect(unused)]
     pub const fn from_mut(slice: &'a mut [T]) -> Self {
         // This should just be `NonNull::from(slice)`, but it's not const stable :(
         //
@@ -147,6 +149,7 @@ impl<'a, T> RawSliceIter<'a, T> {
     /// returning the old start.
     /// Unsafe because the offset must not exceed `self.len()`.
     #[inline(always)]
+    #[expect(unused)]
     unsafe fn post_inc_start(&mut self, offset: usize) -> NonNull<T> {
         let old = self.ptr;
 
