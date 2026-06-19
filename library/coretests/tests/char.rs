@@ -299,6 +299,8 @@ fn test_escape_debug() {
     assert_eq!(string('\u{200b}'), "\\u{200b}"); // zero width space
     assert_eq!(string('\u{e000}'), "\\u{e000}"); // private use 1
     assert_eq!(string('\u{100000}'), "\\u{100000}"); // private use 2
+    assert_eq!(string('\u{ff9e}'), "\u{ff9e}"); // halfwidth dakuten
+    assert_eq!(string('\u{ff9f}'), "\u{ff9f}"); // halfwidth handakuten
 }
 
 #[test]
