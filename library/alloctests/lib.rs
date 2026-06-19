@@ -20,6 +20,7 @@
 #![feature(const_alloc_error)]
 #![feature(const_cmp)]
 #![feature(const_convert)]
+#![feature(const_default)]
 #![feature(const_destruct)]
 #![feature(const_heap)]
 #![feature(const_option_ops)]
