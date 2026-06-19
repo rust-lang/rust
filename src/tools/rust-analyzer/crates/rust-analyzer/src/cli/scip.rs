@@ -237,7 +237,7 @@ impl flags::Scip {
             let token = si.tokens.get(id).unwrap();
 
             let Some(definition) = token.definition else {
-                break;
+                continue;
             };
 
             let file_id = definition.file_id;
