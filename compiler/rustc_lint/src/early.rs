@@ -27,7 +27,7 @@ macro_rules! lint_callback { ($cx:expr, $f:ident, $($args:expr),*) => ({
 
 /// Implements the AST traversal for early lint passes. `T` provides the
 /// `check_*` methods.
-pub struct EarlyContextAndPass<'ecx, T: EarlyLintPass> {
+struct EarlyContextAndPass<'ecx, T: EarlyLintPass> {
     context: EarlyContext<'ecx>,
     pass: T,
 }
@@ -276,36 +276,36 @@ crate::early_lint_methods!(impl_early_lint_pass, []);
 
 /// Early lints work on different nodes - either on the crate root, or on freshly loaded modules.
 /// This trait generalizes over those nodes.
-pub trait EarlyCheckNode<'a>: Copy {
-    fn id(self) -> ast::NodeId;
-    fn attrs(self) -> &'a [ast::Attribute];
-    fn check<'ecx, T: EarlyLintPass>(self, cx: &mut EarlyContextAndPass<'ecx, T>);
+pub enum EarlyCheckNode<'a> {
+    CrateRoot(&'a ast::Crate, &'a [ast::Attribute]),
+    LoadedMod(ast::NodeId, &'a [ast::Attribute], &'a [Box<ast::Item>]),
 }
 
-impl<'a> EarlyCheckNode<'a> for (&'a ast::Crate, &'a [ast::Attribute]) {
-    fn id(self) -> ast::NodeId {
-        ast::CRATE_NODE_ID
+impl<'a> EarlyCheckNode<'a> {
+    fn id(&self) -> ast::NodeId {
+        match self {
+            EarlyCheckNode::CrateRoot(_crate, _attrs) => ast::CRATE_NODE_ID,
+            EarlyCheckNode::LoadedMod(id, _attrs, _items) => *id,
+        }
     }
-    fn attrs(self) -> &'a [ast::Attribute] {
-        self.1
+    fn attrs(&self) -> &'a [ast::Attribute] {
+        match self {
+            EarlyCheckNode::CrateRoot(_crate, attrs) => attrs,
+            EarlyCheckNode::LoadedMod(_id, attrs, _items) => attrs,
+        }
     }
-    fn check<'ecx, T: EarlyLintPass>(self, cx: &mut EarlyContextAndPass<'ecx, T>) {
-        lint_callback!(cx, check_crate, self.0);
-        ast_visit::walk_crate(cx, self.0);
-        lint_callback!(cx, check_crate_post, self.0);
-    }
-}
-
-impl<'a> EarlyCheckNode<'a> for (ast::NodeId, &'a [ast::Attribute], &'a [Box<ast::Item>]) {
-    fn id(self) -> ast::NodeId {
-        self.0
-    }
-    fn attrs(self) -> &'a [ast::Attribute] {
-        self.1
-    }
-    fn check<'ecx, T: EarlyLintPass>(self, cx: &mut EarlyContextAndPass<'ecx, T>) {
-        walk_list!(cx, visit_attribute, self.1);
-        walk_list!(cx, visit_item, self.2);
+    fn check<'ecx, T: EarlyLintPass>(&self, cx: &mut EarlyContextAndPass<'ecx, T>) {
+        match self {
+            EarlyCheckNode::CrateRoot(crate_, _attrs) => {
+                lint_callback!(cx, check_crate, crate_);
+                ast_visit::walk_crate(cx, crate_);
+                lint_callback!(cx, check_crate_post, crate_);
+            }
+            EarlyCheckNode::LoadedMod(_id, attrs, items) => {
+                walk_list!(cx, visit_attribute, *attrs);
+                walk_list!(cx, visit_item, *items);
+            }
+        }
     }
 }
 
@@ -317,7 +317,7 @@ pub fn check_ast_node<'a>(
     registered_tools: &RegisteredTools,
     lint_buffer: Option<LintBuffer>,
     builtin_lints: impl EarlyLintPass + 'static,
-    check_node: impl EarlyCheckNode<'a>,
+    check_node: EarlyCheckNode<'a>,
 ) {
     let context = EarlyContext::new(
         sess,
@@ -345,7 +345,7 @@ pub fn check_ast_node<'a>(
 
 fn check_ast_node_inner<'a, T: EarlyLintPass>(
     sess: &Session,
-    check_node: impl EarlyCheckNode<'a>,
+    check_node: EarlyCheckNode<'a>,
     context: EarlyContext<'_>,
     pass: T,
 ) {
