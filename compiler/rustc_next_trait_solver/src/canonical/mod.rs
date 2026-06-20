@@ -265,17 +265,8 @@ fn unify_query_var_values<D, I>(
     assert_eq!(original_values.len(), var_values.len());
 
     for (&orig, response) in iter::zip(original_values, var_values.var_values.iter()) {
-        let goals = if delegate.cx().assumptions_on_binders() {
-            let (goals, region_constraints) = delegate
-                .eq_structurally_relating_aliases_with_region_constraints(
-                    param_env, orig, response, span,
-                )
-                .unwrap();
-            delegate.register_solver_region_constraint(region_constraints);
-            goals
-        } else {
-            delegate.eq_structurally_relating_aliases(param_env, orig, response, span).unwrap()
-        };
+        let goals =
+            delegate.eq_structurally_relating_aliases(param_env, orig, response, span).unwrap();
         assert!(goals.is_empty());
     }
 }
