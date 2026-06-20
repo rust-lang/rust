@@ -48,12 +48,16 @@ error: manually constructing a nul-terminated string
    |
 LL |     let _: *const _ = b"foo\0".as_ptr();
    |                       ^^^^^^^^ help: use a `c""` literal: `c"foo"`
+   |
+   = note: an additional cast may be needed, since the type of `c"".as_ptr()` and `b"".as_ptr()` can differ and is platform dependent
 
 error: manually constructing a nul-terminated string
   --> tests/ui/manual_c_str_literals.rs:58:23
    |
 LL |     let _: *const _ = "foo\0".as_ptr();
    |                       ^^^^^^^ help: use a `c""` literal: `c"foo"`
+   |
+   = note: an additional cast may be needed, since the type of `c"".as_ptr()` and `b"".as_ptr()` can differ and is platform dependent
 
 error: manually constructing a nul-terminated string
   --> tests/ui/manual_c_str_literals.rs:62:23
@@ -66,18 +70,24 @@ error: manually constructing a nul-terminated string
    |
 LL |     let _ = "电脑\\\0".as_ptr();
    |             ^^^^^^^^^^ help: use a `c""` literal: `c"电脑\\"`
+   |
+   = note: an additional cast may be needed, since the type of `c"".as_ptr()` and `b"".as_ptr()` can differ and is platform dependent
 
 error: manually constructing a nul-terminated string
   --> tests/ui/manual_c_str_literals.rs:68:13
    |
 LL |     let _ = "电脑\0".as_ptr();
    |             ^^^^^^^^ help: use a `c""` literal: `c"电脑"`
+   |
+   = note: an additional cast may be needed, since the type of `c"".as_ptr()` and `b"".as_ptr()` can differ and is platform dependent
 
 error: manually constructing a nul-terminated string
   --> tests/ui/manual_c_str_literals.rs:70:13
    |
 LL |     let _ = "电脑\x00".as_ptr();
    |             ^^^^^^^^^^ help: use a `c""` literal: `c"电脑"`
+   |
+   = note: an additional cast may be needed, since the type of `c"".as_ptr()` and `b"".as_ptr()` can differ and is platform dependent
 
 error: aborting due to 13 previous errors
 
