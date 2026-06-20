@@ -307,15 +307,11 @@ impl GlobalState {
         let _p = tracing::info_span!("GlobalState::handle_event", event = %event).entered();
 
         let event_dbg_msg = format!("{event:?}");
-        tracing::debug!(?loop_start, ?event, "handle_event");
-        if tracing::enabled!(tracing::Level::TRACE) {
-            let task_queue_len = self.task_pool.handle.len();
-            if task_queue_len > 0 {
-                tracing::trace!("task queue len: {}", task_queue_len);
-            }
-        }
+        tracing::debug!(?event, "handle_event");
 
         let was_quiescent = self.is_quiescent();
+
+        let mut cancellation_time = None;
         match event {
             Event::Lsp(msg) => match msg {
                 lsp_server::Message::Request(req) => self.on_new_request(loop_start, req),
@@ -326,7 +322,9 @@ impl GlobalState {
                 let _p = tracing::info_span!("GlobalState::handle_event/queued_task").entered();
                 self.handle_deferred_task(task);
                 // Coalesce multiple deferred task events into one loop turn
-                while let Ok(task) = self.deferred_task_queue.receiver.try_recv() {
+                while loop_start.elapsed() < Duration::from_millis(50)
+                    && let Ok(task) = self.deferred_task_queue.receiver.try_recv()
+                {
                     self.handle_deferred_task(task);
                 }
             }
@@ -334,14 +332,16 @@ impl GlobalState {
                 let _p = tracing::info_span!("GlobalState::handle_event/task").entered();
                 let mut prime_caches_progress = Vec::new();
 
-                self.handle_task(&mut prime_caches_progress, task);
+                cancellation_time = self.handle_task(&mut prime_caches_progress, task);
                 // Coalesce multiple task events into one loop turn
-                while let Ok(task) = self.task_pool.receiver.try_recv() {
+                while loop_start.elapsed() < Duration::from_millis(50)
+                    && let Ok(task) = self.task_pool.receiver.try_recv()
+                {
                     self.handle_task(&mut prime_caches_progress, task);
                 }
 
                 let title = "Indexing";
-                let cancel_token = Some("rustAnalyzer/cachePriming".to_owned());
+                let cancel_token = || Some("rustAnalyzer/cachePriming".to_owned());
 
                 let mut last_report = None;
                 for progress in prime_caches_progress {
@@ -352,7 +352,7 @@ impl GlobalState {
                                 Progress::Begin,
                                 None,
                                 Some(0.0),
-                                cancel_token.clone(),
+                                cancel_token(),
                             );
                         }
                         PrimeCachesProgress::Report(report) => {
@@ -404,7 +404,7 @@ impl GlobalState {
                                     Progress::Report,
                                     message,
                                     Some(fraction),
-                                    cancel_token.clone(),
+                                    cancel_token(),
                                 );
                             }
                             self.report_progress(
@@ -412,7 +412,7 @@ impl GlobalState {
                                 Progress::End,
                                 None,
                                 Some(1.0),
-                                cancel_token.clone(),
+                                cancel_token(),
                             );
                         }
                     };
@@ -423,7 +423,7 @@ impl GlobalState {
                         Progress::Report,
                         message,
                         Some(fraction),
-                        cancel_token.clone(),
+                        cancel_token(),
                     );
                 }
             }
@@ -432,7 +432,9 @@ impl GlobalState {
                 let mut last_progress_report = None;
                 self.handle_vfs_msg(message, &mut last_progress_report);
                 // Coalesce many VFS event into a single loop turn
-                while let Ok(message) = self.loader.receiver.try_recv() {
+                while loop_start.elapsed() < Duration::from_millis(50)
+                    && let Ok(message) = self.loader.receiver.try_recv()
+                {
                     self.handle_vfs_msg(message, &mut last_progress_report);
                 }
                 if let Some((message, fraction)) = last_progress_report {
@@ -449,7 +451,9 @@ impl GlobalState {
                 let mut cargo_finished = false;
                 self.handle_flycheck_msg(message, &mut cargo_finished);
                 // Coalesce many flycheck updates into a single loop turn
-                while let Ok(message) = self.flycheck_receiver.try_recv() {
+                while loop_start.elapsed() < Duration::from_millis(50)
+                    && let Ok(message) = self.flycheck_receiver.try_recv()
+                {
                     self.handle_flycheck_msg(message, &mut cargo_finished);
                 }
                 if cargo_finished {
@@ -463,14 +467,18 @@ impl GlobalState {
                 let _p = tracing::info_span!("GlobalState::handle_event/test_result").entered();
                 self.handle_cargo_test_msg(message);
                 // Coalesce many test result event into a single loop turn
-                while let Ok(message) = self.test_run_receiver.try_recv() {
+                while loop_start.elapsed() < Duration::from_millis(50)
+                    && let Ok(message) = self.test_run_receiver.try_recv()
+                {
                     self.handle_cargo_test_msg(message);
                 }
             }
             Event::DiscoverProject(message) => {
                 self.handle_discover_msg(message);
                 // Coalesce many project discovery events into a single loop turn.
-                while let Ok(message) = self.discover_receiver.try_recv() {
+                while loop_start.elapsed() < Duration::from_millis(50)
+                    && let Ok(message) = self.discover_receiver.try_recv()
+                {
                     self.handle_discover_msg(message);
                 }
             }
@@ -479,13 +487,23 @@ impl GlobalState {
             }
         }
         let event_handling_duration = loop_start.elapsed();
-        let (state_changed, memdocs_added_or_removed) = if self.vfs_done {
-            if let Some(cause) = self.wants_to_switch.take() {
-                self.switch_workspaces(cause);
-            }
-            (self.process_changes(), self.mem_docs.take_changes())
-        } else {
-            (false, false)
+        let ((state_changed, changes_cancellation_time), memdocs_added_or_removed) =
+            if self.vfs_done {
+                if let Some(cause) = self.wants_to_switch.take() {
+                    cancellation_time = match (cancellation_time, self.switch_workspaces(cause)) {
+                        (Some(a), Some(b)) => Some(a + b),
+                        (Some(d), None) | (None, Some(d)) => Some(d),
+                        (None, None) => None,
+                    };
+                }
+                (self.process_changes(), self.mem_docs.take_changes())
+            } else {
+                ((false, None), false)
+            };
+        cancellation_time = match (cancellation_time, changes_cancellation_time) {
+            (Some(a), Some(b)) => Some(a + b),
+            (Some(d), None) | (None, Some(d)) => Some(d),
+            (None, None) => None,
         };
 
         let mut gc_elapsed = None;
@@ -609,11 +627,13 @@ impl GlobalState {
             tracing::warn!(
                 "overly long loop turn took {loop_duration:?}:\n\
                 (event handling took {event_handling_duration:?}): {event_dbg_msg}\n\
+                (cancellation took {cancellation_time:?})
                 (garbage collection took {gc_elapsed:?})"
             );
             self.poke_rust_analyzer_developer(format!(
                 "overly long loop turn took {loop_duration:?}:\n\
                 (event handling took {event_handling_duration:?}): {event_dbg_msg}\n\
+                (cancellation took {cancellation_time:?})
                 (garbage collection took {gc_elapsed:?})"
             ));
         }
@@ -819,7 +839,12 @@ impl GlobalState {
         }
     }
 
-    fn handle_task(&mut self, prime_caches_progress: &mut Vec<PrimeCachesProgress>, task: Task) {
+    fn handle_task(
+        &mut self,
+        prime_caches_progress: &mut Vec<PrimeCachesProgress>,
+        task: Task,
+    ) -> Option<Duration> {
+        let mut cancellation_time = None;
         match task {
             Task::Response(response) => self.respond(response),
             // Only retry requests that haven't been cancelled. Otherwise we do unnecessary work.
@@ -922,8 +947,9 @@ impl GlobalState {
                     ProcMacroProgress::Report(msg) => (Some(Progress::Report), Some(msg)),
                     ProcMacroProgress::End(change) => {
                         self.fetch_proc_macros_queue.op_completed(true);
-                        self.analysis_host.apply_change(change);
-                        self.finish_loading_crate_graph();
+                        cancellation_time = Some(self.analysis_host.apply_change(change));
+                        // FIXME This feels a bit off, this should go through similar machinery as build scripts?
+                        _ = self.finish_loading_crate_graph();
                         (Some(Progress::End), None)
                     }
                 };
@@ -937,6 +963,7 @@ impl GlobalState {
                 self.send_notification::<lsp_ext::DiscoveredTests>(tests);
             }
         }
+        cancellation_time
     }
 
     fn handle_vfs_msg(
