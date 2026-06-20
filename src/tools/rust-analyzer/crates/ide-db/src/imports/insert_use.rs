@@ -263,7 +263,9 @@ fn insert_use_with_alias_option_with_editor(
         for existing_use in
             scope.as_syntax_node().children().filter_map(ast::Use::cast).filter(filter)
         {
-            if let Some(merged) = try_merge_imports(syntax_editor, &existing_use, &use_item, mb) {
+            if let Some(merged) =
+                try_merge_imports(syntax_editor.make(), &existing_use, &use_item, mb)
+            {
                 syntax_editor.replace(existing_use.syntax(), merged.syntax());
                 return;
             }

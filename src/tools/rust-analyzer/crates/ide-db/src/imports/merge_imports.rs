@@ -40,7 +40,7 @@ impl MergeBehavior {
 
 /// Merge `rhs` into `lhs` keeping both intact.
 pub fn try_merge_imports(
-    editor: &SyntaxEditor,
+    make: &SyntaxFactory,
     lhs: &ast::Use,
     rhs: &ast::Use,
     merge_behavior: MergeBehavior,
@@ -53,7 +53,6 @@ pub fn try_merge_imports(
         return None;
     }
 
-    let make = editor.make();
     let lhs_tree = lhs.use_tree()?;
     let rhs_tree = rhs.use_tree()?;
     let merged_tree = try_merge_trees_with_factory(lhs_tree, rhs_tree, merge_behavior, make)?;
@@ -67,12 +66,11 @@ pub fn try_merge_imports(
 
 /// Merge `rhs` into `lhs` keeping both intact.
 pub fn try_merge_trees(
-    editor: &SyntaxEditor,
+    make: &SyntaxFactory,
     lhs: &ast::UseTree,
     rhs: &ast::UseTree,
     merge: MergeBehavior,
 ) -> Option<ast::UseTree> {
-    let make = editor.make();
     let merged = try_merge_trees_with_factory(lhs.clone(), rhs.clone(), merge, make)?;
 
     // Ignore `None` result because normalization should not affect the merge result.
@@ -100,15 +98,11 @@ fn try_merge_trees_with_factory(
         {
             // we can't merge if the renames are different (`A as a` and `A as b`),
             // and we can safely return here
-            let lhs_name = lhs
-                .rename()
-                .and_then(|lhs_name| lhs_name.name())
-                .map(|name| name.text().to_string());
-            let rhs_name = rhs
-                .rename()
-                .and_then(|rhs_name| rhs_name.name())
-                .map(|name| name.text().to_string());
-            if lhs_name != rhs_name {
+            let lhs_name = lhs.rename().and_then(|lhs_name| lhs_name.name());
+            let rhs_name = rhs.rename().and_then(|rhs_name| rhs_name.name());
+            if lhs_name.as_ref().map(|name| name.text())
+                != rhs_name.as_ref().map(|name| name.text())
+            {
                 return None;
             }
 
@@ -263,11 +257,10 @@ impl From<MergeBehavior> for NormalizationStyle {
 /// - `foo::bar::{self}` -> `{foo::bar}`
 /// - `foo::bar` -> `{foo::bar}`
 pub fn try_normalize_import(
-    editor: &SyntaxEditor,
+    make: &SyntaxFactory,
     use_item: &ast::Use,
     style: NormalizationStyle,
 ) -> Option<ast::Use> {
-    let make = editor.make();
     let use_tree = try_normalize_use_tree(use_item.use_tree()?, style, make)?;
 
     make_use_with_tree(use_item, use_tree)

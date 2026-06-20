@@ -98,7 +98,7 @@ fn merge_uses(
     };
     let mut merged = first.clone();
     for item in &rest {
-        merged = try_merge_imports(editor, &merged, item, mb)?;
+        merged = try_merge_imports(editor.make(), &merged, item, mb)?;
     }
     for item in rest {
         item.remove(editor);
@@ -118,7 +118,7 @@ fn merge_use_trees(
 
     let mut merged = first.clone();
     for item in &rest {
-        merged = try_merge_trees(editor, &merged, item, MergeBehavior::Crate)?;
+        merged = try_merge_trees(editor.make(), &merged, item, MergeBehavior::Crate)?;
     }
     for item in rest {
         item.remove(editor);
