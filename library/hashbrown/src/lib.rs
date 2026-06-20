@@ -168,7 +168,7 @@ pub enum TryReserveError {
     /// The memory allocator returned an error
     AllocError {
         /// The layout of the allocation request that failed.
-        layout: stdalloc::alloc::Layout,
+        layout: core::alloc::Layout,
     },
 }
 

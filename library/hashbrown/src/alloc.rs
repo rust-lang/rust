@@ -8,10 +8,10 @@ pub(crate) use self::inner::{Allocator, Global, do_alloc};
 // This is used when building for `std`.
 #[cfg(feature = "nightly")]
 mod inner {
+    use core::alloc::Layout;
     use core::ptr::NonNull;
     #[cfg(test)]
     pub(crate) use stdalloc::alloc::AllocError;
-    use stdalloc::alloc::Layout;
     pub(crate) use stdalloc::alloc::{Allocator, Global};
 
     pub(crate) fn do_alloc<A: Allocator>(alloc: &A, layout: Layout) -> Result<NonNull<[u8]>, ()> {
@@ -33,8 +33,8 @@ mod inner {
     #[cfg(test)]
     pub(crate) use allocator_api2::alloc::AllocError;
     pub(crate) use allocator_api2::alloc::{Allocator, Global};
+    use core::alloc::Layout;
     use core::ptr::NonNull;
-    use stdalloc::alloc::Layout;
 
     pub(crate) fn do_alloc<A: Allocator>(alloc: &A, layout: Layout) -> Result<NonNull<[u8]>, ()> {
         match alloc.allocate(layout) {
@@ -54,8 +54,9 @@ mod inner {
 // or `nightly` without disturbing users that don't want to use it.
 #[cfg(not(any(feature = "nightly", feature = "allocator-api2")))]
 mod inner {
+    use core::alloc::Layout;
     use core::ptr::NonNull;
-    use stdalloc::alloc::{Layout, alloc, dealloc};
+    use stdalloc::alloc::{alloc, dealloc};
 
     #[expect(clippy::missing_safety_doc)] // not exposed outside of this crate
     pub unsafe trait Allocator {
