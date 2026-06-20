@@ -2152,7 +2152,10 @@ pub(crate) fn clean_middle_ty<'tcx>(
             format!("{pat:?}").into_boxed_str(),
         ),
         ty::Array(ty, n) => {
-            let n = cx.tcx.normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(n));
+            let n = cx
+                .tcx
+                .try_normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(n))
+                .unwrap_or(n);
             let n = print_const(cx.tcx, n);
             Array(Box::new(clean_middle_ty(bound_ty.rebind(ty), cx, None, None)), n.into())
         }
