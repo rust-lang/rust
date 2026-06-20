@@ -2,9 +2,10 @@
 //! and potentially other data collected and used when building or linking a rlib.
 //! See <https://github.com/rust-lang/rust/issues/138243>.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use object::read::archive::ArchiveFile;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_serialize::opaque::mem_encoder::MemEncoder;
 use rustc_serialize::opaque::{MAGIC_END_BYTES, MemDecoder};
 use rustc_serialize::{Decodable, Encodable};
@@ -53,4 +54,19 @@ pub fn read(archive: &ArchiveFile<'_>, archive_data: &[u8], rlib_path: &Path) ->
 pub fn read_from_data(archive_data: &[u8], rlib_path: &Path) -> Option<RmetaLink> {
     let archive = ArchiveFile::parse(archive_data).ok()?;
     read(&archive, archive_data, rlib_path)
+}
+
+#[derive(Default)]
+pub struct RmetaLinkCache {
+    cache: FxHashMap<PathBuf, Option<RmetaLink>>,
+}
+
+impl RmetaLinkCache {
+    pub fn get_or_insert_with(
+        &mut self,
+        rlib_path: &Path,
+        load: impl FnOnce() -> Option<RmetaLink>,
+    ) -> Option<&RmetaLink> {
+        self.cache.entry(rlib_path.to_path_buf()).or_insert_with(load).as_ref()
+    }
 }

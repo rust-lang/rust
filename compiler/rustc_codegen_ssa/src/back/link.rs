@@ -59,6 +59,7 @@ use super::archive::{
 use super::command::Command;
 use super::linker::{self, Linker};
 use super::metadata::{MetadataPosition, create_wrapper_file};
+use super::rmeta_link::RmetaLinkCache;
 use super::rpath::{self, RPathConfig};
 use super::{apple, rmeta_link, versioned_llvm_target};
 use crate::base::needs_allocator_shim_for_linking;
@@ -86,6 +87,7 @@ pub fn link_binary(
     let _timer = sess.timer("link_binary");
     let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
     let mut tempfiles_for_stdout_output: Vec<PathBuf> = Vec::new();
+    let mut rmeta_link_cache = RmetaLinkCache::default();
     for &crate_type in &crate_info.crate_types {
         // Ignore executable crates if we have -Z no-codegen, as they will error.
         if (sess.opts.unstable_opts.no_codegen || !sess.opts.output_types.should_codegen())
@@ -139,6 +141,7 @@ pub fn link_binary(
                     link_staticlib(
                         sess,
                         archive_builder_builder,
+                        &mut rmeta_link_cache,
                         &compiled_modules,
                         &crate_info,
                         &metadata,
@@ -150,6 +153,7 @@ pub fn link_binary(
                     link_natively(
                         sess,
                         archive_builder_builder,
+                        &mut rmeta_link_cache,
                         crate_type,
                         &out_filename,
                         &compiled_modules,
@@ -502,6 +506,7 @@ fn link_rlib<'a>(
 fn link_staticlib(
     sess: &Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
+    rmeta_link_cache: &mut RmetaLinkCache,
     compiled_modules: &CompiledModules,
     crate_info: &CrateInfo,
     metadata: &EncodedMetadata,
@@ -531,7 +536,7 @@ fn link_staticlib(
         let bundled_libs: FxIndexSet<_> = native_libs.filter_map(|lib| lib.filename).collect();
         ab.add_archive(
             path,
-            AddArchiveKind::Rlib(&|fname: &str, entry_kind| {
+            AddArchiveKind::Rlib(rmeta_link_cache, &|fname: &str, entry_kind| {
                 // Ignore metadata and rmeta-link files.
                 if fname == METADATA_FILENAME || fname == rmeta_link::FILENAME {
                     return true;
@@ -939,6 +944,7 @@ fn report_linker_output(
 fn link_natively(
     sess: &Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
+    rmeta_link_cache: &mut RmetaLinkCache,
     crate_type: CrateType,
     out_filename: &Path,
     compiled_modules: &CompiledModules,
@@ -965,6 +971,7 @@ fn link_natively(
         flavor,
         sess,
         archive_builder_builder,
+        rmeta_link_cache,
         crate_type,
         tmpdir,
         temp_filename,
@@ -2491,6 +2498,7 @@ fn linker_with_args(
     flavor: LinkerFlavor,
     sess: &Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
+    rmeta_link_cache: &mut RmetaLinkCache,
     crate_type: CrateType,
     tmpdir: &Path,
     out_filename: &Path,
@@ -2619,6 +2627,7 @@ fn linker_with_args(
         cmd,
         sess,
         archive_builder_builder,
+        rmeta_link_cache,
         crate_info,
         crate_type,
         tmpdir,
@@ -3055,6 +3064,7 @@ fn add_upstream_rust_crates(
     cmd: &mut dyn Linker,
     sess: &Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
+    rmeta_link_cache: &mut RmetaLinkCache,
     crate_info: &CrateInfo,
     crate_type: CrateType,
     tmpdir: &Path,
@@ -3107,6 +3117,7 @@ fn add_upstream_rust_crates(
                         cmd,
                         sess,
                         archive_builder_builder,
+                        rmeta_link_cache,
                         crate_info,
                         tmpdir,
                         cnum,
@@ -3238,6 +3249,7 @@ fn add_static_crate(
     cmd: &mut dyn Linker,
     sess: &Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
+    rmeta_link_cache: &mut RmetaLinkCache,
     crate_info: &CrateInfo,
     tmpdir: &Path,
     cnum: CrateNum,
@@ -3268,7 +3280,7 @@ fn add_static_crate(
         let mut archive = archive_builder_builder.new_archive_builder(sess);
         if let Err(error) = archive.add_archive(
             cratepath,
-            AddArchiveKind::Rlib(&|f, entry_kind| {
+            AddArchiveKind::Rlib(rmeta_link_cache, &|f, entry_kind| {
                 if f == METADATA_FILENAME || f == rmeta_link::FILENAME {
                     return true;
                 }
