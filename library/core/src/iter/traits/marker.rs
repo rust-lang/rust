@@ -115,4 +115,5 @@ pub unsafe trait InPlaceIterable {
 /// for details. Consumers are free to rely on the invariants in unsafe code.
 #[unstable(feature = "trusted_step", issue = "85731")]
 #[rustc_specialization_trait]
-pub unsafe trait TrustedStep: Step + Copy {}
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+pub const unsafe trait TrustedStep: [const] Step + Copy {}
