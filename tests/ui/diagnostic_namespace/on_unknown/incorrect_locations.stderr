@@ -1,103 +1,91 @@
-warning: `#[diagnostic::on_unknown]` can only be applied to `use` statements and module declarations
+warning: `#[diagnostic::on_unknown]` attribute cannot be used on extern crates
   --> $DIR/incorrect_locations.rs:5:1
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | extern crate std as other_std;
-   | ------------------------------ not an import or module
    |
+   = help: `#[diagnostic::on_unknown]` can be applied to crates, modules, and use statements
    = note: `#[warn(misplaced_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
 
-warning: `#[diagnostic::on_unknown]` can only be applied to `use` statements and module declarations
+warning: `#[diagnostic::on_unknown]` attribute cannot be used on constants
   --> $DIR/incorrect_locations.rs:9:1
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | const CONST: () = ();
-   | --------------------- not an import or module
+   |
+   = help: `#[diagnostic::on_unknown]` can be applied to crates, modules, and use statements
 
-warning: `#[diagnostic::on_unknown]` can only be applied to `use` statements and module declarations
+warning: `#[diagnostic::on_unknown]` attribute cannot be used on statics
   --> $DIR/incorrect_locations.rs:13:1
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | static STATIC: () = ();
-   | ----------------------- not an import or module
+   |
+   = help: `#[diagnostic::on_unknown]` can be applied to crates, modules, and use statements
 
-warning: `#[diagnostic::on_unknown]` can only be applied to `use` statements and module declarations
+warning: `#[diagnostic::on_unknown]` attribute cannot be used on type aliases
   --> $DIR/incorrect_locations.rs:17:1
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | type Type = ();
-   | --------------- not an import or module
+   |
+   = help: `#[diagnostic::on_unknown]` can be applied to crates, modules, and use statements
 
-warning: `#[diagnostic::on_unknown]` can only be applied to `use` statements and module declarations
+warning: `#[diagnostic::on_unknown]` attribute cannot be used on enums
   --> $DIR/incorrect_locations.rs:21:1
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | enum Enum {}
-   | ------------ not an import or module
+   |
+   = help: `#[diagnostic::on_unknown]` can be applied to crates, modules, and use statements
 
-warning: `#[diagnostic::on_unknown]` can only be applied to `use` statements and module declarations
+warning: `#[diagnostic::on_unknown]` attribute cannot be used on inherent impl blocks
   --> $DIR/incorrect_locations.rs:25:1
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | impl Enum {}
-   | ------------ not an import or module
+   |
+   = help: `#[diagnostic::on_unknown]` can be applied to crates, modules, and use statements
 
-warning: `#[diagnostic::on_unknown]` can only be applied to `use` statements and module declarations
+warning: `#[diagnostic::on_unknown]` attribute cannot be used on foreign modules
   --> $DIR/incorrect_locations.rs:29:1
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | extern "C" {}
-   | ------------- not an import or module
+   |
+   = help: `#[diagnostic::on_unknown]` can be applied to crates, modules, and use statements
 
-warning: `#[diagnostic::on_unknown]` can only be applied to `use` statements and module declarations
+warning: `#[diagnostic::on_unknown]` attribute cannot be used on functions
   --> $DIR/incorrect_locations.rs:33:1
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | fn fun() {}
-   | ----------- not an import or module
+   |
+   = help: `#[diagnostic::on_unknown]` can be applied to crates, modules, and use statements
 
-warning: `#[diagnostic::on_unknown]` can only be applied to `use` statements and module declarations
+warning: `#[diagnostic::on_unknown]` attribute cannot be used on structs
   --> $DIR/incorrect_locations.rs:37:1
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | struct Struct {}
-   | ---------------- not an import or module
+   |
+   = help: `#[diagnostic::on_unknown]` can be applied to crates, modules, and use statements
 
-warning: `#[diagnostic::on_unknown]` can only be applied to `use` statements and module declarations
+warning: `#[diagnostic::on_unknown]` attribute cannot be used on traits
   --> $DIR/incorrect_locations.rs:41:1
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | trait Trait {}
-   | -------------- not an import or module
+   |
+   = help: `#[diagnostic::on_unknown]` can be applied to crates, modules, and use statements
 
-warning: `#[diagnostic::on_unknown]` can only be applied to `use` statements and module declarations
+warning: `#[diagnostic::on_unknown]` attribute cannot be used on trait impl blocks
   --> $DIR/incorrect_locations.rs:45:1
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | impl Trait for i32 {}
-   | --------------------- not an import or module
+   |
+   = help: `#[diagnostic::on_unknown]` can be applied to crates, modules, and use statements
 
 warning: 11 warnings emitted
 

@@ -1,11 +1,8 @@
 use rustc_feature::AttributeStability;
 use rustc_hir::attrs::diagnostic::Directive;
-use rustc_session::lint::builtin::MISPLACED_DIAGNOSTIC_ATTRIBUTES;
 
-use crate::ShouldEmit;
 use crate::attributes::diagnostic::*;
 use crate::attributes::prelude::*;
-use crate::diagnostics::DiagnosticOnUnknownInvalidTarget;
 
 #[derive(Default)]
 pub(crate) struct OnUnknownParser {
@@ -25,20 +22,6 @@ impl OnUnknownParser {
         let span = cx.attr_span;
         self.span = Some(span);
 
-        // At early parsing we get passed `Target::Crate` regardless of the item we're on.
-        // Therefore, only do target checking if we can emit.
-        let early = matches!(cx.should_emit, ShouldEmit::Nothing);
-
-        if !early && !matches!(cx.target, Target::Use | Target::Mod | Target::Crate) {
-            let target_span = cx.target_span;
-            cx.emit_lint(
-                MISPLACED_DIAGNOSTIC_ATTRIBUTES,
-                DiagnosticOnUnknownInvalidTarget { target_span },
-                span,
-            );
-            return;
-        }
-
         let Some(items) = parse_list(cx, args, mode) else { return };
 
         if let Some(directive) = parse_directive_items(cx, mode, items.mixed(), true) {
@@ -57,7 +40,11 @@ impl AttributeParser for OnUnknownParser {
         },
     )];
     // "Allowed" for all targets, but noop for all but use statements.
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+        Allow(Target::Use),
+        Allow(Target::Mod),
+        Allow(Target::Crate),
+    ]);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
         if let Some(_span) = self.span {
