@@ -758,7 +758,7 @@ impl u128 {
     /// ```
     #[stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
     pub fn format_into(self, buf: &mut NumBuffer<Self>) -> &str {
-        let diff = buf.capacity() - U128_MAX_DEC_N;
+        let diff = buf.buf.len() - U128_MAX_DEC_N;
         // FIXME: Once const generics are better, use `NumberBufferTrait::BUF_SIZE` as generic const
         // for `fmt_u128_inner`.
         //
@@ -790,7 +790,7 @@ impl i128 {
     /// ```
     #[stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
     pub fn format_into(self, buf: &mut NumBuffer<Self>) -> &str {
-        let diff = buf.capacity() - U128_MAX_DEC_N;
+        let diff = buf.buf.len() - U128_MAX_DEC_N;
         // FIXME: Once const generics are better, use `NumberBufferTrait::BUF_SIZE` as generic const
         // for `fmt_u128_inner`.
         //
