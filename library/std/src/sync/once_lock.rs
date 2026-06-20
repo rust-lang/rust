@@ -626,14 +626,7 @@ impl<T: fmt::Debug> fmt::Debug for OnceLock<T> {
 impl<T: Clone> Clone for OnceLock<T> {
     #[inline]
     fn clone(&self) -> OnceLock<T> {
-        let cell = Self::new();
-        if let Some(value) = self.get() {
-            match cell.set(value.clone()) {
-                Ok(()) => (),
-                Err(_) => unreachable!(),
-            }
-        }
-        cell
+        self.get().cloned().map_or_default(Self::from)
     }
 }
 
