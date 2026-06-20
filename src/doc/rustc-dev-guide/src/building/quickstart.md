@@ -10,8 +10,8 @@ git clone https://github.com/rust-lang/rust.git
 cd rust
 ```
 
-When building the compiler, we don't use `cargo` directly, instead we use a wrapper called "x".
-It is invoked with `./x`.
+When building the compiler, we don't use `cargo` directly;
+instead we use a wrapper called "x", which is invoked with `./x`.
 
 We need to create a configuration for the build.
 Use `./x setup` to create a good default.
@@ -21,7 +21,7 @@ Use `./x setup` to create a good default.
 ```
 
 Then, we can build the compiler.
-Use `./x build` to build the compiler, standard library and a few tools.
+Use `./x build` to build the compiler, standard library, and a few tools.
 You can also `./x check` to just check it.
 All these commands can take specific components/paths as arguments, for example `./x check
 compiler` to just check the compiler.
