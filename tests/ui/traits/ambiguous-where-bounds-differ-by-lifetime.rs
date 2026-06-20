@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/24424>.
+
 trait Trait1<'l0, T0> {}
 trait Trait0<'l0>  {}
 
