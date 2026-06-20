@@ -140,7 +140,7 @@ mod must_use_attribute {}
 ///
 /// ```
 ///
-/// This is mostly used to prevent warnings for unused code while still under development.
+/// This is mostly used to prevent lint warnings or errors while still under development.
 /// It's also important to consider that overusing `allow` could make code harder to maintain
 /// and possibly hide issues. It cannot override a lint that has been set to forbid.
 ///
@@ -197,3 +197,71 @@ mod allow_attribute {}
 /// [`cfg_attr`]: ../reference/conditional-compilation.html#the-cfg_attr-attribute
 /// [the `cfg` attribute]: ../reference/conditional-compilation.html#the-cfg-attribute
 mod cfg_attribute {}
+
+#[doc(attribute = "deny")]
+//
+/// Signals an error when a lint check is violated. This is useful for enforcing rules or
+/// preventing certain patterns.
+///
+/// Unlike `allow`, which suppresses lints, `deny` makes them hard error instead of warnings, `deny` can be
+/// overridden by `allow` and `warn` in inner scopes.
+///
+/// ```rust, compile_fail
+/// #[deny(unused)]
+/// fn foo() {
+///     let x = 42;
+/// }
+///
+/// fn main() {
+///     foo(); // foo errors instead of warn because it's set to `#[deny(unused)]`
+/// }
+/// ```
+///
+/// Without `#[deny(unused)]`, the example above would only emit a warning.
+///
+/// ```rust
+/// #![deny(dead_code)]
+/// #[allow(dead_code)]
+/// fn allowed_function() {} // No error `deny` was overridden by `allow`.
+/// ```
+///
+/// For more information, see the Reference on [the `deny` attribute].
+///
+/// [the `deny` attribute]: ../reference/attributes/diagnostics.html#lint-check-attributes
+mod deny_attribute {}
+
+#[doc(attribute = "forbid")]
+//
+/// Turns a lint into a hard error and prevents it from being overridden.
+///
+/// A lint set to forbid cannot be overridden by allow or warn in any inner scope,
+/// attempting either is a compile error. Writing #[deny(...)] on the same lint inside a
+/// forbid scope is permitted, but has no effect; the lint remains at the forbid level.
+///
+/// This is useful for enforcing strict policies that should not be relaxed
+/// anywhere in the codebase.
+///
+/// ```rust
+/// #![forbid(unsafe_code)]
+///
+/// // This would cause a compilation error if uncommented:
+/// // #[allow(unsafe_code)] // error: cannot override `forbid`
+/// ```
+///
+/// Multiple lints can be set to `forbid` at once:
+///
+/// ```rust
+/// #![forbid(unsafe_code, unused)]
+/// ```
+///
+/// To apply `forbid` to an entire module or crate, use the inner attribute
+/// syntax `#![forbid(...)]` at the crate root. To apply it to a smaller
+/// scope, use `#[forbid(...)]` on the specific item.
+///
+/// The lint checks supported by rustc can be found via `rustc -W help`,
+/// along with their default settings and are documented in the rustc book.
+///
+/// For more information, see the Reference on [the `forbid` attribute].
+///
+/// [the `forbid` attribute]: ../reference/attributes/diagnostics.html#lint-check-attributes
+mod forbid_attribute {}
