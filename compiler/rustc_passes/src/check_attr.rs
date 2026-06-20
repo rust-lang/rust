@@ -39,8 +39,9 @@ use rustc_session::config::CrateType;
 use rustc_session::errors::feature_err;
 use rustc_session::lint;
 use rustc_session::lint::builtin::{
-    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
-    MISPLACED_DIAGNOSTIC_ATTRIBUTES, REPEATED_REPRS, UNUSED_ATTRIBUTES,
+    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+    MALFORMED_DIAGNOSTIC_FORMAT_LITERALS, MISPLACED_DIAGNOSTIC_ATTRIBUTES, REPEATED_REPRS,
+    UNUSED_ATTRIBUTES,
 };
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
@@ -1257,11 +1258,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 to_sort
             };
 
-            // We don't just want to know whether there are any duplicates, but also what those
-            // duplicates are. Thus, we get subslices where all of the elements of the subslice are
-            // equal, then filter out all those whose length is not 1. we could return warnings for
-            // each of them, but that's annoyingly excessive. So we instead collect all spans in one
-            // big Vec.
+            // To collect all duplicates, get subslices where all of the elements of the subslice
+            // are equal, then filter out all those whose length is not 1. We could return warnings
+            // for each of them, but that's annoyingly excessive. So we instead collect all spans in
+            // one big Vec.
             let spans: Vec<Span> = sorted_reprs
                 .chunk_by(|(a, _), (b, _)| a == b)
                 .map(ToOwned::to_owned)
@@ -1271,7 +1271,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 .collect();
 
             if !spans.is_empty() {
-                self.tcx.emit_node_span_lint(REPEATED_REPRS, hir_id, spans, errors::RepeatedRepr);
+                self.tcx.emit_node_span_lint(
+                    REPEATED_REPRS,
+                    hir_id,
+                    spans,
+                    diagnostics::RepeatedRepr,
+                );
             }
         }
 
