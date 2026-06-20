@@ -149,6 +149,7 @@
 #![feature(lang_items)]
 #![feature(link_cfg)]
 #![feature(link_llvm_intrinsics)]
+#![feature(linkage)]
 #![feature(macro_metavar_expr)]
 #![feature(macro_metavar_expr_concat)]
 #![feature(marker_trait_attr)]
