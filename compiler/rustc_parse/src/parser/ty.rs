@@ -1092,7 +1092,7 @@ impl<'a> Parser<'a> {
                 && (self.token.can_begin_type()
                     || (self.token.is_reserved_ident() && !self.token.is_keyword(kw::Where))))
         {
-            if self.token.is_keyword(kw::Dyn) {
+            if self.token.is_keyword(kw::Dyn) && self.token.span.edition().at_least_rust_2018() {
                 // Account for `&dyn Trait + dyn Other`.
                 self.bump();
                 self.dcx().emit_err(InvalidDynKeyword {

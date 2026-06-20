@@ -38,12 +38,16 @@ trait ArgAttributesExt {
 const ABI_AFFECTING_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 1] =
     [(ArgAttribute::InReg, llvm::AttributeKind::InReg)];
 
-const OPTIMIZATION_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 5] = [
+const OPTIMIZATION_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 6] = [
     (ArgAttribute::NoAlias, llvm::AttributeKind::NoAlias),
     (ArgAttribute::NonNull, llvm::AttributeKind::NonNull),
     (ArgAttribute::ReadOnly, llvm::AttributeKind::ReadOnly),
     (ArgAttribute::NoUndef, llvm::AttributeKind::NoUndef),
     (ArgAttribute::Writable, llvm::AttributeKind::Writable),
+    // Our internal NoFree attribute still allows deallocation of zero-size allocations. However,
+    // these don't render any bytes non-dereferenceable, so it's still fine to apply LLVM NoFree
+    // for them.
+    (ArgAttribute::NoFree, llvm::AttributeKind::NoFree),
 ];
 
 const CAPTURES_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 3] = [
@@ -75,7 +79,9 @@ fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'
     // Only apply remaining attributes when optimizing
     if cx.sess().opts.optimize != config::OptLevel::No {
         let deref = this.pointee_size.bytes();
-        if deref != 0 {
+        // dereferenceable in LLVM currently implies nofree, so only emit dereferenceable if nofree
+        // is also set.
+        if deref != 0 && regular.contains(ArgAttribute::NoFree) {
             if regular.contains(ArgAttribute::NonNull) {
                 attrs.push(llvm::CreateDereferenceableAttr(cx.llcx, deref));
             } else {
@@ -716,6 +722,10 @@ pub(crate) fn to_llvm_calling_convention(sess: &Session, abi: CanonAbi) -> llvm:
         CanonAbi::RustPreserveNone => match &sess.target.arch {
             Arch::X86_64 | Arch::AArch64 => llvm::PreserveNone,
             _ => llvm::CCallConv,
+        },
+        CanonAbi::RustTail => match &sess.target.arch {
+            Arch::X86 | Arch::X86_64 | Arch::AArch64 => llvm::Tail,
+            _ => sess.dcx().fatal("extern \"tail\" is only supported on x86, x86_64 and aarch64"),
         },
         // Functions with this calling convention can only be called from assembly, but it is
         // possible to declare an `extern "custom"` block, so the backend still needs a calling

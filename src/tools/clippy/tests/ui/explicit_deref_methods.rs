@@ -1,18 +1,12 @@
 //@aux-build:proc_macros.rs
 #![warn(clippy::explicit_deref_methods)]
-#![allow(unused_variables, unused_must_use)]
 #![allow(
-    clippy::borrow_deref_ref,
+    noop_method_call,
     clippy::deref_addrof,
     clippy::explicit_auto_deref,
-    clippy::needless_borrow,
-    clippy::no_effect,
-    clippy::useless_borrows_in_formatting,
-    clippy::uninlined_format_args,
-    clippy::unnecessary_literal_unwrap,
-    noop_method_call,
-    suspicious_double_ref_op
+    clippy::useless_borrows_in_formatting
 )]
+#![expect(clippy::borrow_deref_ref, clippy::unnecessary_literal_unwrap)]
 
 use std::ops::{Deref, DerefMut};
 

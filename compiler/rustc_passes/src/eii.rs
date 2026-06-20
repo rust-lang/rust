@@ -9,7 +9,7 @@ use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
 
-use crate::errors::{DuplicateEiiImpls, EiiWithoutImpl};
+use crate::diagnostics::{DuplicateEiiImpls, EiiWithoutImpl};
 
 #[derive(Clone, Copy, Debug)]
 enum CheckingMode {

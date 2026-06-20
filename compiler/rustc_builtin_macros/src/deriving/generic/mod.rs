@@ -194,7 +194,7 @@ use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 use ty::{Bounds, Path, Ref, Self_, Ty};
 
-use crate::{deriving, errors};
+use crate::{deriving, diagnostics};
 
 pub(crate) mod ty;
 
@@ -456,7 +456,7 @@ fn find_type_parameters(
         }
 
         fn visit_mac_call(&mut self, mac: &ast::MacCall) {
-            self.cx.dcx().emit_err(errors::DeriveMacroCall { span: mac.span() });
+            self.cx.dcx().emit_err(diagnostics::DeriveMacroCall { span: mac.span() });
         }
     }
 
@@ -525,7 +525,7 @@ impl<'a> TraitDef<'a> {
                                 is_packed,
                             )
                         } else {
-                            cx.dcx().emit_err(errors::DeriveUnion { span: mitem.span });
+                            cx.dcx().emit_err(diagnostics::DeriveUnion { span: mitem.span });
                             return;
                         }
                     }

@@ -476,6 +476,11 @@ impl AsciiChar {
     #[unstable(feature = "ascii_char", issue = "110998")]
     #[inline]
     pub const unsafe fn from_u8_unchecked(b: u8) -> Self {
+        assert_unsafe_precondition!(
+            check_library_ub,
+            "`ascii::Char::from_u8_unchecked` input cannot exceed 127.",
+            (b: u8 = b) => b <= 127,
+        );
         // SAFETY: Our safety precondition is that `b` is in-range.
         unsafe { transmute(b) }
     }
@@ -1160,7 +1165,7 @@ macro_rules! into_int_impl {
         $(
             #[unstable(feature = "ascii_char", issue = "110998")]
             #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-            impl const From<AsciiChar> for $ty {
+            const impl From<AsciiChar> for $ty {
                 #[inline]
                 fn from(chr: AsciiChar) -> $ty {
                     chr as u8 as $ty

@@ -502,8 +502,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     let mplace = ecx.force_allocation(&place)?;
 
                     // Consume the remaining arguments by putting them into the variable argument
-                    // list.
-                    let varargs = ecx.allocate_varargs(&mut caller_args, &mut callee_args_abis)?;
+                    // list. We disable retagging to avoid creating protected tags. Protection should
+                    // only use callee-side information, and the varargs have no static callee-side type.
+                    let varargs = M::with_retag_mode(ecx, RetagMode::None, |ecx| {
+                        ecx.allocate_varargs(&mut caller_args, &mut callee_args_abis)
+                    })?;
+
                     // When the frame is dropped, these variable arguments are deallocated.
                     ecx.frame_mut().va_list = varargs.clone();
                     let key = ecx.va_list_ptr(varargs.into());

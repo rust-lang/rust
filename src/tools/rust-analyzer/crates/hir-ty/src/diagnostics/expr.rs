@@ -83,7 +83,7 @@ impl<'db> BodyValidationDiagnostic<'db> {
         let _p = tracing::info_span!("BodyValidationDiagnostic::collect").entered();
         let infer = InferenceResult::of(db, owner);
         let body = Body::of(db, owner);
-        let env = db.trait_environment(owner.into());
+        let env = db.trait_environment(owner.generic_def(db));
         let interner = DbInterner::new_with(db, owner.krate(db));
         let infcx =
             interner.infer_ctxt().build(TypingMode::typeck_for_body(interner, owner.into()));

@@ -638,6 +638,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Thread-local storage
             "TlsAlloc" => {
+                // FIXME: This does not have a direct test (#3179).
                 // This just creates a key; Windows does not natively support TLS destructors.
 
                 // Create key and return it.
@@ -651,6 +652,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(Scalar::from_uint(key, dest.layout.size), dest)?;
             }
             "TlsGetValue" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [key] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32) -> *mut _),
                     link_name,
@@ -663,6 +665,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(ptr, dest)?;
             }
             "TlsSetValue" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [key, new_ptr] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32, *mut _) -> winapi::BOOL),
                     link_name,
@@ -678,6 +681,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_int(1, dest)?;
             }
             "TlsFree" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [key] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32) -> winapi::BOOL),
                     link_name,
@@ -693,6 +697,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Fiber-local storage - similar to TLS but supports destructors.
             "FlsAlloc" => {
+                // FIXME: This does not have a direct test (#3179).
                 // Create key and return it.
                 let [dtor] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(winapi::PFLS_CALLBACK_FUNCTION) -> u32),
@@ -716,6 +721,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(Scalar::from_uint(key, dest.layout.size), dest)?;
             }
             "FlsGetValue" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [key] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32) -> *mut _),
                     link_name,
@@ -728,6 +734,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(ptr, dest)?;
             }
             "FlsSetValue" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [key, new_ptr] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32, *mut _) -> winapi::BOOL),
                     link_name,
@@ -743,6 +750,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_int(1, dest)?;
             }
             "FlsFree" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [key] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32) -> winapi::BOOL),
                     link_name,
@@ -763,6 +771,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_int(1, dest)?;
             }
             "IsThreadAFiber" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [] = this.check_shim_sig(
                     shim_sig!(extern "system" fn() -> winapi::BOOL),
                     link_name,
@@ -1399,18 +1408,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 // FIXME: this should return a nonzero value if this call does result in switching to another thread.
                 this.write_null(dest)?;
-            }
-            "atexit" if this.frame_in_std() => {
-                let [_value] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*const _) -> winapi::c_int),
-                    link_name,
-                    abi,
-                    args,
-                )?;
-
-                // We do not support registering atexit handlers, which is used by the thread-local destructor implementation in std.
-                // But we also do not support manually unloading DLLs, so this has no visible effect.
-                this.write_int(0, dest)?;
             }
 
             _ => return interp_ok(EmulateItemResult::NotSupported),

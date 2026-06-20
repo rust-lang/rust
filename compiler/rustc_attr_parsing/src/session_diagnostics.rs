@@ -4,23 +4,14 @@ use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level,
 };
-use rustc_feature::AttributeTemplate;
 use rustc_hir::AttrPath;
 use rustc_hir::attrs::{MirDialect, MirPhase};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::TargetTuple;
 
+use crate::AttributeTemplate;
 use crate::context::Suggestion;
-
-#[derive(Diagnostic)]
-#[diag("invalid predicate `{$predicate}`", code = E0537)]
-pub(crate) struct InvalidPredicate {
-    #[primary_span]
-    pub span: Span,
-
-    pub predicate: String,
-}
 
 #[derive(Diagnostic)]
 #[diag("{$attr_str} attribute cannot have empty value")]
@@ -353,6 +344,10 @@ pub(crate) struct InvalidTarget {
         "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
     )]
     pub previously_accepted: bool,
+    #[note(
+        "placing this attribute on a macro invocation does nothing even if the macro expands to what would be a valid target for the attribute"
+    )]
+    pub on_macro_call: bool,
 }
 
 #[derive(Subdiagnostic)]
@@ -1031,4 +1026,39 @@ pub(crate) struct SanitizeInvalidStatic {
     #[primary_span]
     pub span: Span,
     pub field: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag("attribute items not separated with `,`")]
+pub(crate) struct ExpectedComma {
+    #[primary_span]
+    #[suggestion(
+        "try adding `,` here",
+        code = ",",
+        applicability = "maybe-incorrect",
+        style = "short"
+    )]
+    pub span: Span,
+    #[subdiagnostic]
+    pub additional: Vec<AdditionalCommaSuggestion>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion("try adding `,` here", code = ",", applicability = "maybe-incorrect", style = "short")]
+pub(crate) struct AdditionalCommaSuggestion {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("unused attribute")]
+pub(crate) struct UnusedDuplicate {
+    #[suggestion("remove this attribute", code = "", applicability = "machine-applicable")]
+    pub this: Span,
+    #[note("attribute also specified here")]
+    pub other: Span,
+    #[warning(
+        "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+    )]
+    pub warning: bool,
 }

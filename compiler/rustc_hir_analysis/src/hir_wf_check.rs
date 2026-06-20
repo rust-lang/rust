@@ -139,7 +139,7 @@ pub(super) fn diagnostic_hir_wf_check<'tcx>(
             },
             hir::Node::TraitItem(item) => match item.kind {
                 hir::TraitItemKind::Type(_, ty) => ty.into_iter().collect(),
-                hir::TraitItemKind::Const(ty, _, _) => vec![ty],
+                hir::TraitItemKind::Const(ty, _) => vec![ty],
                 ref item => bug!("Unexpected TraitItem {:?}", item),
             },
             hir::Node::Item(item) => match item.kind {

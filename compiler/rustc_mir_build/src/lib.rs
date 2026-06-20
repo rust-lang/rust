@@ -11,7 +11,7 @@
 mod builder;
 mod check_tail_calls;
 mod check_unsafety;
-mod errors;
+mod diagnostics;
 pub mod thir;
 
 use rustc_middle::util::Providers;

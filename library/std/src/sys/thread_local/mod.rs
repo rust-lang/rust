@@ -81,7 +81,7 @@ pub(crate) mod destructors {
 
 /// This module provides a way to schedule the execution of the destructor list
 /// and the [runtime cleanup](crate::rt::thread_cleanup) function. Calling `enable`
-/// should ensure that these functions are called at the right times.
+/// sets up the current thread to ensure that these functions are called at the right times.
 pub(crate) mod guard {
     cfg_select! {
         all(target_thread_local, target_vendor = "apple") => {

@@ -1,4 +1,5 @@
 //@compile-flags: -Zmiri-disable-isolation
+//@run-native
 
 #![feature(io_error_more)]
 #![feature(io_error_uncategorized)]
@@ -95,6 +96,11 @@ fn test_file() {
 }
 
 fn test_file_partial_reads_writes() {
+    if !cfg!(miri) {
+        // This test is not expected to work natively.
+        return;
+    }
+
     let path1 = utils::prepare_with_content("miri_test_fs_file1.txt", b"abcdefg");
     let path2 = utils::prepare_with_content("miri_test_fs_file2.txt", b"abcdefg");
 
@@ -410,8 +416,7 @@ fn test_pread_pwrite() {
     assert_eq!(&buf1, b"  m");
 }
 
-// Miri does not support the way this is implemented on Solaris
-// (https://github.com/rust-lang/miri/issues/5038).
+// Solaris does not support per-handle file locking.
 #[cfg(not(target_os = "solaris"))]
 fn test_flock() {
     let bytes = b"Hello, World!\n";

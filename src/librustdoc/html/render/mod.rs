@@ -40,6 +40,7 @@ mod type_layout;
 mod write_shared;
 
 use std::borrow::Cow;
+use std::cmp::Ordering;
 use std::collections::VecDeque;
 use std::fmt::{self, Display as _, Write};
 use std::iter::Peekable;
@@ -79,7 +80,7 @@ use crate::html::format::{
 use crate::html::markdown::{
     HeadingOffset, IdMap, Markdown, MarkdownItemInfo, MarkdownSummaryLine, short_markdown_summary,
 };
-use crate::html::render::print_item::compare_names;
+use crate::html::render::print_item::ImplString;
 use crate::html::render::search_index::get_function_type_for_search;
 use crate::html::static_files::SCRAPE_EXAMPLES_HELP_MD;
 use crate::html::{highlight, sources};
@@ -954,46 +955,50 @@ fn impl_trait_key(cx: &Context<'_>, i: &Impl) -> Option<String> {
 
 // Render the list of items inside one of the sections "Trait Implementations",
 // "Auto Trait Implementations," "Blanket Trait Implementations" (on struct/enum pages).
-fn render_impls(
-    cx: &Context<'_>,
-    mut w: impl Write,
-    impls: &[&Impl],
-    containing_item: &clean::Item,
+fn render_impls<'a, 'cx>(
+    cx: &'a Context<'cx>,
+    mut impls: Vec<&'a Impl>,
+    containing_item: &'a clean::Item,
     toggle_open_by_default: bool,
-) -> fmt::Result {
+) -> impl fmt::Display + use<'a, 'cx> {
+    impls.sort_by_cached_key(|imp| {
+        let prefix = match imp.inner_impl().polarity {
+            ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => Ordering::Greater,
+            ty::ImplPolarity::Negative => Ordering::Less,
+        };
+        (prefix, ImplString::new_path(imp, cx))
+    });
     // Render each impl alongside its `impl_trait_key`, which is used as the primary sorting key
     // to match the impl order in the sidebar.
-    let mut keyed_rendered_impls = impls
-        .iter()
-        .map(|i| {
-            let did = i.trait_did().unwrap();
-            let provided_trait_methods = i.inner_impl().provided_trait_methods(cx.tcx());
-            let assoc_link = AssocItemLink::GotoSource(did.into(), &provided_trait_methods);
-            let imp = render_impl(
-                cx,
-                i,
-                containing_item,
-                assoc_link,
-                RenderMode::Normal,
-                None,
-                &[],
-                ImplRenderingParameters {
-                    show_def_docs: true,
-                    show_default_items: true,
-                    show_non_assoc_items: true,
-                    toggle_open_by_default,
-                },
-            );
-            (impl_trait_key(cx, i).unwrap(), imp.to_string())
-        })
-        .collect::<Vec<_>>();
 
-    // Sort and then remove the `impl_trait_key`s, which are no longer needed after sorting.
-    keyed_rendered_impls
-        .sort_by(|(k1, h1), (k2, h2)| compare_names(k1, k2).then_with(|| h1.cmp(h2)));
-    let joined: String = keyed_rendered_impls.into_iter().map(|a| a.1).collect();
-
-    w.write_str(&joined)
+    fmt::from_fn(move |f| {
+        impls
+            .iter()
+            .map(|i| {
+                fmt::from_fn(|f| {
+                    let did = i.trait_did().unwrap();
+                    let provided_trait_methods = i.inner_impl().provided_trait_methods(cx.tcx());
+                    let assoc_link = AssocItemLink::GotoSource(did.into(), &provided_trait_methods);
+                    render_impl(
+                        cx,
+                        i,
+                        containing_item,
+                        assoc_link,
+                        RenderMode::Normal,
+                        None,
+                        &[],
+                        ImplRenderingParameters {
+                            show_def_docs: true,
+                            show_default_items: true,
+                            show_non_assoc_items: true,
+                            toggle_open_by_default,
+                        },
+                    )
+                    .fmt(f)
+                })
+            })
+            .joined("", f)
+    })
 }
 
 /// Build a (possibly empty) `href` attribute (a key-value pair) for the given associated item.
@@ -1415,16 +1420,12 @@ fn render_all_impls(
     mut w: impl Write,
     cx: &Context<'_>,
     containing_item: &clean::Item,
-    concrete_impls: &[&Impl],
-    auto_trait_impls: &[&Impl],
-    blanket_impls: &[&Impl],
+    concrete_impls: Vec<&Impl>,
+    auto_trait_impls: Vec<&Impl>,
+    blanket_impls: Vec<&Impl>,
 ) -> fmt::Result {
-    let impls = {
-        let mut buf = String::new();
-        render_impls(cx, &mut buf, concrete_impls, containing_item, true)?;
-        buf
-    };
-    if !impls.is_empty() {
+    if !concrete_impls.is_empty() {
+        let impls = render_impls(cx, concrete_impls, containing_item, true);
         write!(
             w,
             "{}<div id=\"trait-implementations-list\">{impls}</div>",
@@ -1433,25 +1434,24 @@ fn render_all_impls(
     }
 
     if !auto_trait_impls.is_empty() {
+        let impls = render_impls(cx, auto_trait_impls, containing_item, false);
         // FIXME: Change the ID to `auto-trait-implementations-list`!
         write!(
             w,
-            "{}<div id=\"synthetic-implementations-list\">",
+            "{}<div id=\"synthetic-implementations-list\">{impls}</div>",
             write_impl_section_heading("Auto Trait Implementations", "synthetic-implementations",)
         )?;
-        render_impls(cx, &mut w, auto_trait_impls, containing_item, false)?;
-        w.write_str("</div>")?;
     }
 
     if !blanket_impls.is_empty() {
+        let impls = render_impls(cx, blanket_impls, containing_item, false);
         write!(
             w,
-            "{}<div id=\"blanket-implementations-list\">",
+            "{}<div id=\"blanket-implementations-list\">{impls}</div>",
             write_impl_section_heading("Blanket Implementations", "blanket-implementations")
         )?;
-        render_impls(cx, &mut w, blanket_impls, containing_item, false)?;
-        w.write_str("</div>")?;
     }
+
     Ok(())
 }
 
@@ -1588,14 +1588,7 @@ fn render_assoc_items_inner(
         let (blanket_impls, concrete_impls): (Vec<&Impl>, _) =
             trait_impls.into_iter().partition(|t| t.inner_impl().kind.is_blanket());
 
-        render_all_impls(
-            w,
-            cx,
-            containing_item,
-            &concrete_impls,
-            &auto_trait_impls,
-            &blanket_impls,
-        )?;
+        render_all_impls(w, cx, containing_item, concrete_impls, auto_trait_impls, blanket_impls)?;
     }
     Ok(())
 }
@@ -2962,7 +2955,7 @@ fn render_call_locations<W: fmt::Write>(
 fn render_attributes_in_code(
     w: &mut impl fmt::Write,
     item: &clean::Item,
-    prefix: &str,
+    prefix: impl fmt::Display,
     cx: &Context<'_>,
 ) -> fmt::Result {
     render_attributes_in_code_with_options(w, item, prefix, cx, true, "")
@@ -2971,14 +2964,14 @@ fn render_attributes_in_code(
 pub(super) fn render_attributes_in_code_with_options(
     w: &mut impl fmt::Write,
     item: &clean::Item,
-    prefix: &str,
+    prefix: impl fmt::Display,
     cx: &Context<'_>,
     render_doc_hidden: bool,
     open_tag: &str,
 ) -> fmt::Result {
     w.write_str(open_tag)?;
     if render_doc_hidden && item.is_doc_hidden() {
-        render_code_attribute(prefix, "#[doc(hidden)]", w)?;
+        render_code_attribute(&prefix, "#[doc(hidden)]", w)?;
     }
     for attr in &item.attrs.other_attrs {
         let hir::Attribute::Parsed(kind) = attr else { continue };
@@ -2993,7 +2986,7 @@ pub(super) fn render_attributes_in_code_with_options(
             AttributeKind::NonExhaustive(..) => Cow::Borrowed("#[non_exhaustive]"),
             _ => continue,
         };
-        render_code_attribute(prefix, attr.as_ref(), w)?;
+        render_code_attribute(&prefix, attr.as_ref(), w)?;
     }
 
     if let Some(def_id) = item.def_id()
@@ -3015,7 +3008,11 @@ fn render_repr_attribute_in_code(
     Ok(())
 }
 
-fn render_code_attribute(prefix: &str, attr: &str, w: &mut impl fmt::Write) -> fmt::Result {
+fn render_code_attribute(
+    prefix: impl fmt::Display,
+    attr: impl fmt::Display,
+    w: &mut impl fmt::Write,
+) -> fmt::Result {
     write!(w, "<div class=\"code-attribute\">{prefix}{attr}</div>")
 }
 
@@ -3066,18 +3063,6 @@ fn repr_attribute<'tcx>(
         // Since the transparent repr can't have any other reprs or
         // repr modifiers beside it, we can safely return early here.
         return is_public.then(|| "#[repr(transparent)]".into());
-    }
-
-    // Fast path which avoids looking through the variants and fields in
-    // the common case of no `#[repr]` or in the case of `#[repr(Rust)]`.
-    // FIXME: This check is not very robust / forward compatible!
-    if !repr.c()
-        && !repr.simd()
-        && repr.int.is_none()
-        && repr.pack.is_none()
-        && repr.align.is_none()
-    {
-        return None;
     }
 
     // The repr is public iff all components are public and visible.

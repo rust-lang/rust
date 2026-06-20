@@ -67,11 +67,20 @@ LL - #[cfg_attr(a::b)]
 LL + #[cfg_attr(predicate, attr1, attr2, ...)]
    |
 
-error[E0537]: invalid predicate `a`
-  --> $DIR/cfg_attr-attr-syntax-validation.rs:19:12
+error[E0539]: malformed `cfg_attr` attribute input
+  --> $DIR/cfg_attr-attr-syntax-validation.rs:19:1
    |
 LL | #[cfg_attr(a())]
-   |            ^^^
+   | ^^^^^^^^^^^---^^
+   |            |
+   |            valid arguments are `any`, `all`, `not` or `target`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+help: must be of the form
+   |
+LL - #[cfg_attr(a())]
+LL + #[cfg_attr(predicate, attr1, attr2, ...)]
+   |
 
 error[E0539]: malformed `cfg_attr` attribute input
   --> $DIR/cfg_attr-attr-syntax-validation.rs:22:1
@@ -177,5 +186,5 @@ LL | #[cfg_attr(true, link_section)]
 
 error: aborting due to 13 previous errors; 1 warning emitted
 
-Some errors have detailed explanations: E0537, E0539, E0565, E0805.
-For more information about an error, try `rustc --explain E0537`.
+Some errors have detailed explanations: E0539, E0565, E0805.
+For more information about an error, try `rustc --explain E0539`.

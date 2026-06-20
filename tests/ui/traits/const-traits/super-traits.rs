@@ -9,11 +9,11 @@ const trait Foo {
 const trait Bar: [const] Foo {}
 
 struct S;
-impl const Foo for S {
+const impl Foo for S {
     fn a(&self) {}
 }
 
-impl const Bar for S {}
+const impl Bar for S {}
 
 const fn foo<T: [const] Bar>(t: &T) {
     t.a();

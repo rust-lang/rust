@@ -925,7 +925,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 }
                 interp_ok(true)
             }
-            ty::RawPtr(..) => {
+            ty::RawPtr(pointee, ..) => {
                 let ptr = self.read_immediate(value, ExpectedKind::RawPtr)?;
                 if self.reset_provenance_and_padding {
                     self.reset_pointer_provenance(value, &ptr)?;
@@ -933,8 +933,12 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                     self.add_data_range_place(value);
                 }
 
-                let place = self.ecx.imm_ptr_to_mplace(&ptr)?;
-                if place.layout.is_unsized() {
+                if !pointee.is_sized(*self.ecx.tcx, self.ecx.typing_env) {
+                    // Raw pointers to unsized types need to have their metadata checked.
+                    // We avoid creating this place for sized types to match codegen: those types
+                    // might actually be invalid (i.e., too big)!
+                    let place = self.ecx.imm_ptr_to_mplace(&ptr)?;
+                    assert!(place.layout.is_unsized());
                     self.check_wide_ptr_meta(place.meta(), place.layout)?;
                 }
                 interp_ok(true)

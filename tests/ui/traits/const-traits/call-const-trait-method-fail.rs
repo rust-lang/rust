@@ -5,7 +5,7 @@ pub const trait Plus {
     fn plus(self, rhs: Self) -> Self;
 }
 
-impl const Plus for i32 {
+const impl Plus for i32 {
     fn plus(self, rhs: Self) -> Self {
         self + rhs
     }

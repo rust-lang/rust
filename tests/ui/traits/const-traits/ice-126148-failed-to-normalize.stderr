@@ -1,7 +1,7 @@
 error[E0046]: not all trait items implemented, missing: `from_residual`
   --> $DIR/ice-126148-failed-to-normalize.rs:8:1
    |
-LL | impl const FromResidual<Error> for TryMe {}
+LL | const impl FromResidual<Error> for TryMe {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `from_residual` in implementation
    |
    = help: implement the missing item: `fn from_residual(_: Error) -> Self { todo!() }`
@@ -9,7 +9,7 @@ LL | impl const FromResidual<Error> for TryMe {}
 error[E0046]: not all trait items implemented, missing: `from_output`, `branch`
   --> $DIR/ice-126148-failed-to-normalize.rs:11:1
    |
-LL | impl const Try for TryMe {
+LL | const impl Try for TryMe {
    | ^^^^^^^^^^^^^^^^^^^^^^^^ missing `from_output`, `branch` in implementation
    |
    = help: implement the missing item: `fn from_output(_: <Self as Try>::Output) -> Self { todo!() }`

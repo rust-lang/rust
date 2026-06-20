@@ -1,6 +1,6 @@
 //@aux-build:proc_macros.rs
 #![warn(clippy::borrow_as_ptr)]
-#![allow(clippy::useless_vec, clippy::ptr_offset_by_literal)]
+#![expect(clippy::ptr_offset_by_literal, clippy::useless_vec)]
 
 extern crate proc_macros;
 

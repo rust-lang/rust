@@ -11,11 +11,11 @@ use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Ident, Span, Symbol, sym};
 use smallvec::smallvec;
 use tracing::{debug, instrument};
 
-use super::errors::{
+use crate::diagnostics::{
     AsyncBoundNotOnTrait, AsyncBoundOnlyForFnTraits, BadReturnTypeNotation,
     GenericTypeWithParentheses, RTNSuggestion, UseAngleBrackets,
 };
-use super::{
+use crate::{
     AllowReturnTypeNotation, GenericArgsCtor, GenericArgsMode, ImplTraitContext, ImplTraitPosition,
     LifetimeRes, LoweringContext, ParamMode,
 };

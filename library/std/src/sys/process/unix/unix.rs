@@ -16,7 +16,7 @@ use crate::num::NonZero;
 use crate::process::StdioPipes;
 use crate::sys::cvt;
 #[cfg(target_os = "linux")]
-use crate::sys::pal::linux::pidfd::PidFd;
+use crate::sys::process::PidFd;
 use crate::{fmt, mem, sys};
 
 cfg_select! {
@@ -881,7 +881,7 @@ impl Command {
 
             // we send the 0-length message even if we failed to acquire the pidfd
             // so we get a consistent SEQPACKET order
-            match cvt_r(|| libc::sendmsg(sock.as_raw(), &msg, 0)) {
+            match cvt_r(|| libc::sendmsg(sock.as_raw(), &msg, libc::MSG_EOR)) {
                 Ok(0) => {}
                 other => rtabort!("failed to communicate with parent process. {:?}", other),
             }
@@ -1279,8 +1279,7 @@ impl ExitStatusError {
 mod linux_child_ext {
     use crate::io::ErrorKind;
     use crate::os::linux::process as os;
-    use crate::sys::FromInner;
-    use crate::sys::pal::linux::pidfd as imp;
+    use crate::sys::{FromInner, process as imp};
     use crate::{io, mem};
 
     #[unstable(feature = "linux_pidfd", issue = "82971")]

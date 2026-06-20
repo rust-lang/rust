@@ -410,7 +410,7 @@ impl FromClean<rustc_hir::FnHeader> for FunctionHeader {
         };
         FunctionHeader {
             is_async: header.is_async(),
-            is_const: header.is_const(),
+            is_const: matches!(header.constness, rustc_hir::Constness::Const { .. }),
             is_unsafe,
             abi: header.abi.into_json(renderer),
         }
@@ -497,7 +497,7 @@ impl FromClean<clean::WherePredicate> for WherePredicate {
                     })
                     .collect(),
             },
-            EqPredicate { lhs, rhs } => WherePredicate::EqPredicate {
+            ProjectionPredicate { lhs, rhs } => WherePredicate::EqPredicate {
                 // The LHS currently has type `Type` but it should be a `QualifiedPath` since it may
                 // refer to an associated const. However, `EqPredicate` shouldn't exist in the first
                 // place: <https://github.com/rust-lang/rust/141368>.

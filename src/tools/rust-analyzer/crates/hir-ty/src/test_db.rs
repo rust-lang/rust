@@ -112,7 +112,7 @@ impl SourceDatabase for TestDB {
     }
 
     fn file_source_root(&self, id: base_db::FileId) -> FileSourceRootInput {
-        self.files.file_source_root(id)
+        self.files.file_source_root(self, id)
     }
 
     fn set_file_source_root_with_durability(
@@ -131,6 +131,10 @@ impl SourceDatabase for TestDB {
 
     fn nonce_and_revision(&self) -> (Nonce, salsa::Revision) {
         (self.nonce, salsa::plumbing::ZalsaDatabase::zalsa(self).current_revision())
+    }
+
+    fn line_column(&self, _file: FileId, _offset: syntax::TextSize) -> Result<(u32, u32), ()> {
+        Err(())
     }
 }
 

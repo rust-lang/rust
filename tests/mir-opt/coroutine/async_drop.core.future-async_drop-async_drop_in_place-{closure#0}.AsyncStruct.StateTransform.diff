@@ -31,89 +31,73 @@
 +     let mut _0: std::task::Poll<()>;
       let mut _3: &mut AsyncStruct;
       let mut _4: impl std::future::Future<Output = ()>;
--     let mut _5: std::future::ResumeTy;
-+     let mut _5: &mut std::task::Context<'_>;
+      let mut _5: std::future::ResumeTy;
       let mut _6: std::task::Poll<()>;
       let mut _7: isize;
       let mut _8: std::pin::Pin<&mut impl std::future::Future<Output = ()>>;
       let mut _9: &mut std::task::Context<'_>;
--     let mut _10: std::future::ResumeTy;
-+     let mut _10: &mut std::task::Context<'_>;
+      let mut _10: std::future::ResumeTy;
       let mut _11: &mut impl std::future::Future<Output = ()>;
       let mut _12: std::pin::Pin<&mut AsyncInt>;
       let mut _13: &mut AsyncInt;
       let mut _14: impl std::future::Future<Output = ()>;
--     let mut _15: std::future::ResumeTy;
-+     let mut _15: &mut std::task::Context<'_>;
+      let mut _15: std::future::ResumeTy;
       let mut _16: std::task::Poll<()>;
       let mut _17: isize;
       let mut _18: std::pin::Pin<&mut impl std::future::Future<Output = ()>>;
       let mut _19: &mut std::task::Context<'_>;
--     let mut _20: std::future::ResumeTy;
-+     let mut _20: &mut std::task::Context<'_>;
+      let mut _20: std::future::ResumeTy;
       let mut _21: &mut impl std::future::Future<Output = ()>;
       let mut _22: std::pin::Pin<&mut AsyncInt>;
       let mut _23: &mut AsyncInt;
       let mut _24: impl std::future::Future<Output = ()>;
--     let mut _25: std::future::ResumeTy;
-+     let mut _25: &mut std::task::Context<'_>;
+      let mut _25: std::future::ResumeTy;
       let mut _26: std::task::Poll<()>;
       let mut _27: isize;
       let mut _28: std::pin::Pin<&mut impl std::future::Future<Output = ()>>;
       let mut _29: &mut std::task::Context<'_>;
--     let mut _30: std::future::ResumeTy;
-+     let mut _30: &mut std::task::Context<'_>;
+      let mut _30: std::future::ResumeTy;
       let mut _31: &mut impl std::future::Future<Output = ()>;
--     let mut _32: std::future::ResumeTy;
-+     let mut _32: &mut std::task::Context<'_>;
+      let mut _32: std::future::ResumeTy;
       let mut _33: std::task::Poll<()>;
       let mut _34: isize;
       let mut _35: std::pin::Pin<&mut impl std::future::Future<Output = ()>>;
       let mut _36: &mut std::task::Context<'_>;
--     let mut _37: std::future::ResumeTy;
-+     let mut _37: &mut std::task::Context<'_>;
+      let mut _37: std::future::ResumeTy;
       let mut _38: &mut impl std::future::Future<Output = ()>;
       let mut _39: std::pin::Pin<&mut AsyncInt>;
       let mut _40: &mut AsyncInt;
       let mut _41: impl std::future::Future<Output = ()>;
--     let mut _42: std::future::ResumeTy;
-+     let mut _42: &mut std::task::Context<'_>;
+      let mut _42: std::future::ResumeTy;
       let mut _43: std::task::Poll<()>;
       let mut _44: isize;
       let mut _45: std::pin::Pin<&mut impl std::future::Future<Output = ()>>;
       let mut _46: &mut std::task::Context<'_>;
--     let mut _47: std::future::ResumeTy;
-+     let mut _47: &mut std::task::Context<'_>;
+      let mut _47: std::future::ResumeTy;
       let mut _48: &mut impl std::future::Future<Output = ()>;
--     let mut _49: std::future::ResumeTy;
-+     let mut _49: &mut std::task::Context<'_>;
+      let mut _49: std::future::ResumeTy;
       let mut _50: std::task::Poll<()>;
       let mut _51: isize;
       let mut _52: std::pin::Pin<&mut impl std::future::Future<Output = ()>>;
       let mut _53: &mut std::task::Context<'_>;
--     let mut _54: std::future::ResumeTy;
-+     let mut _54: &mut std::task::Context<'_>;
+      let mut _54: std::future::ResumeTy;
       let mut _55: &mut impl std::future::Future<Output = ()>;
       let mut _56: std::pin::Pin<&mut AsyncInt>;
       let mut _57: &mut AsyncInt;
       let mut _58: impl std::future::Future<Output = ()>;
--     let mut _59: std::future::ResumeTy;
-+     let mut _59: &mut std::task::Context<'_>;
+      let mut _59: std::future::ResumeTy;
       let mut _60: std::task::Poll<()>;
       let mut _61: isize;
       let mut _62: std::pin::Pin<&mut impl std::future::Future<Output = ()>>;
       let mut _63: &mut std::task::Context<'_>;
--     let mut _64: std::future::ResumeTy;
-+     let mut _64: &mut std::task::Context<'_>;
+      let mut _64: std::future::ResumeTy;
       let mut _65: &mut impl std::future::Future<Output = ()>;
--     let mut _66: std::future::ResumeTy;
-+     let mut _66: &mut std::task::Context<'_>;
+      let mut _66: std::future::ResumeTy;
       let mut _67: std::task::Poll<()>;
       let mut _68: isize;
       let mut _69: std::pin::Pin<&mut impl std::future::Future<Output = ()>>;
       let mut _70: &mut std::task::Context<'_>;
--     let mut _71: std::future::ResumeTy;
-+     let mut _71: &mut std::task::Context<'_>;
+      let mut _71: std::future::ResumeTy;
       let mut _72: &mut impl std::future::Future<Output = ()>;
       let mut _73: std::pin::Pin<&mut AsyncStruct>;
       let mut _74: &mut AsyncStruct;
@@ -125,11 +109,15 @@
 +     let mut _80: &mut AsyncStruct;
 +     let mut _81: &mut AsyncStruct;
 +     let mut _82: &mut AsyncStruct;
++     let _83: std::future::ResumeTy;
++     let mut _84: std::ptr::NonNull<std::task::Context<'_>>;
   
       bb0: {
 -         _3 = move (_1.0: &mut AsyncStruct);
 -         _74 = &mut (*_3);
 -         _73 = Pin::<&mut AsyncStruct>::new_unchecked(move _74) -> [return: bb85, unwind: bb4];
++         _84 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
++         _83 = std::future::ResumeTy(move _84);
 +         _77 = copy (_1.0: &mut {async fn body of std::future::async_drop_in_place<AsyncStruct>()});
 +         _76 = discriminant((*_77));
 +         switchInt(move _76) -> [0: bb56, 1: bb55, 2: bb54, 3: bb46, 4: bb47, 5: bb48, 6: bb49, 7: bb50, 8: bb51, 9: bb52, 10: bb53, otherwise: bb8];
@@ -175,7 +163,7 @@
   
       bb7: {
 -         assert(const false, "`async fn` resumed after async drop") -> [success: bb7, unwind: bb6];
-+         _2 = move _5;
++         _83 = move _5;
 +         StorageDead(_5);
 +         goto -> bb6;
       }
@@ -204,7 +192,7 @@
   
       bb11: {
 -         unreachable;
-+         _2 = move _15;
++         _83 = move _15;
 +         StorageDead(_15);
 +         goto -> bb10;
       }
@@ -232,7 +220,7 @@
       bb15: {
 -         _11 = &mut _4;
 -         _8 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _11) -> [return: bb14, unwind: bb6];
-+         _2 = move _25;
++         _83 = move _25;
 +         StorageDead(_25);
 +         goto -> bb14;
       }
@@ -240,7 +228,7 @@
       bb16: {
 -         StorageLive(_4);
 -         _4 = async_drop_in_place::<AsyncInt>(copy (_12.0: &mut AsyncInt)) -> [return: bb15, unwind: bb6];
-+         _2 = move _32;
++         _83 = move _32;
 +         StorageDead(_32);
 +         goto -> bb21;
       }
@@ -271,8 +259,8 @@
   
       bb20: {
 -         assert(const false, "`async fn` resumed after async drop") -> [success: bb20, unwind: bb19];
-+         _37 = move _2;
-+         _36 = move _37;
++         _37 = move _83;
++         _36 = copy (_37.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb19;
       }
   
@@ -317,7 +305,7 @@
       bb26: {
 -         _20 = move _2;
 -         _19 = std::future::get_context::<'_, '_>(move _20) -> [return: bb25, unwind: bb19];
-+         _2 = move _42;
++         _83 = move _42;
 +         StorageDead(_42);
 +         goto -> bb25;
       }
@@ -325,7 +313,7 @@
       bb27: {
 -         _21 = &mut _14;
 -         _18 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _21) -> [return: bb26, unwind: bb19];
-+         _2 = move _49;
++         _83 = move _49;
 +         StorageDead(_49);
 +         goto -> bb32;
       }
@@ -357,8 +345,8 @@
 -         StorageDead(_24);
 -         goto -> bb2;
 +     bb31: {
-+         _54 = move _2;
-+         _53 = move _54;
++         _54 = move _83;
++         _53 = copy (_54.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb30;
       }
   
@@ -402,7 +390,7 @@
   
       bb37: {
 -         _26 = <impl Future<Output = ()> as Future>::poll(move _28, move _29) -> [return: bb36, unwind: bb31];
-+         _2 = move _59;
++         _83 = move _59;
 +         StorageDead(_59);
 +         goto -> bb36;
       }
@@ -410,7 +398,7 @@
       bb38: {
 -         _30 = move _2;
 -         _29 = std::future::get_context::<'_, '_>(move _30) -> [return: bb37, unwind: bb31];
-+         _2 = move _66;
++         _83 = move _66;
 +         StorageDead(_66);
 +         goto -> bb43;
       }
@@ -443,8 +431,8 @@
       bb42: {
 -         StorageLive(_32);
 -         _32 = yield(const ()) -> [resume: bb40, drop: bb41];
-+         _71 = move _2;
-+         _70 = move _71;
++         _71 = move _83;
++         _70 = copy (_71.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb41;
       }
   
@@ -473,7 +461,7 @@
 -         _38 = &mut _24;
 -         _35 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _38) -> [return: bb45, unwind: bb31];
 +         StorageLive(_5);
-+         _5 = move _2;
++         _5 = move _83;
 +         goto -> bb7;
       }
   
@@ -481,7 +469,7 @@
 -         StorageLive(_24);
 -         _24 = async_drop_in_place::<AsyncInt>(copy (_39.0: &mut AsyncInt)) -> [return: bb46, unwind: bb31];
 +         StorageLive(_15);
-+         _15 = move _2;
++         _15 = move _83;
 +         goto -> bb11;
       }
   
@@ -490,7 +478,7 @@
 -         _40 = &mut ((*_3).2: AsyncInt);
 -         _39 = Pin::<&mut AsyncInt>::new_unchecked(move _40) -> [return: bb47, unwind: bb2];
 +         StorageLive(_25);
-+         _25 = move _2;
++         _25 = move _83;
 +         goto -> bb15;
       }
   
@@ -498,7 +486,7 @@
 -         StorageDead(_41);
 -         goto -> bb17;
 +         StorageLive(_32);
-+         _32 = move _2;
++         _32 = move _83;
 +         goto -> bb16;
       }
   
@@ -507,14 +495,14 @@
 -         goto -> bb3;
 +     bb50: {
 +         StorageLive(_42);
-+         _42 = move _2;
++         _42 = move _83;
 +         goto -> bb26;
       }
   
       bb51: {
 -         assert(const false, "`async fn` resumed after async drop") -> [success: bb51, unwind: bb50];
 +         StorageLive(_49);
-+         _49 = move _2;
++         _49 = move _83;
 +         goto -> bb27;
       }
   
@@ -523,7 +511,7 @@
 -         StorageDead(_42);
 -         goto -> bb51;
 +         StorageLive(_59);
-+         _59 = move _2;
++         _59 = move _83;
 +         goto -> bb37;
       }
   
@@ -532,7 +520,7 @@
 -         StorageDead(_42);
 -         goto -> bb58;
 +         StorageLive(_66);
-+         _66 = move _2;
++         _66 = move _83;
 +         goto -> bb38;
       }
   

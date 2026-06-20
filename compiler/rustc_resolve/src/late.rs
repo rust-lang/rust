@@ -42,7 +42,7 @@ use tracing::{debug, instrument, trace};
 use crate::{
     BindingError, BindingKey, Decl, DelegationFnSig, Finalize, IdentKey, LateDecl, LocalModule,
     Module, ModuleOrUniformRoot, ParentScope, PathResult, Res, ResolutionError, Resolver, Segment,
-    Stage, TyCtxt, UseError, Used, errors, path_names_to_string, rustdoc, with_owner,
+    Stage, TyCtxt, UseError, Used, path_names_to_string, rustdoc, with_owner,
 };
 
 mod diagnostics;
@@ -724,7 +724,7 @@ pub(crate) struct DiagMetadata<'ast> {
     current_trait_assoc_items: Option<&'ast [Box<AssocItem>]>,
 
     /// The current self type if inside an impl (used for better errors).
-    pub(crate) current_self_type: Option<Ty>,
+    pub(crate) current_self_type: Option<&'ast Ty>,
 
     /// The current self item if inside an ADT (used for better errors).
     current_self_item: Option<NodeId>,
@@ -1916,7 +1916,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                             lint::builtin::ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
                             node_id,
                             lifetime.ident.span,
-                            crate::errors::AssociatedConstElidedLifetime {
+                            crate::diagnostics::AssociatedConstElidedLifetime {
                                 elided,
                                 code,
                                 span: lt_span,
@@ -1934,7 +1934,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                 ..
                             } = rib.kind
                             {
-                                Some(errors::ElidedAnonymousLifetimeReportErrorSuggestion {
+                                Some(crate::diagnostics::ElidedAnonymousLifetimeReportErrorSuggestion {
                                     lo: span.shrink_to_lo(),
                                     hi: lifetime.ident.span.shrink_to_hi(),
                                 })
@@ -1956,10 +1956,12 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                 trait_id,
                                 &["core", "iter", "traits", "iterator", "Iterator"],
                             ) {
-                                self.r.dcx().emit_err(errors::LendingIteratorReportError {
-                                    lifetime: lifetime.ident.span,
-                                    ty: ty.span,
-                                })
+                                self.r.dcx().emit_err(
+                                    crate::diagnostics::LendingIteratorReportError {
+                                        lifetime: lifetime.ident.span,
+                                        ty: ty.span,
+                                    },
+                                )
                             } else {
                                 let decl = if !trait_id.is_local()
                                     && let Some(assoc) = self.diag_metadata.current_impl_item
@@ -1983,7 +1985,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                     DUMMY_SP.into()
                                 };
                                 let mut err = self.r.dcx().create_err(
-                                    errors::AnonymousLifetimeNonGatReportError {
+                                    crate::diagnostics::AnonymousLifetimeNonGatReportError {
                                         lifetime: lifetime.ident.span,
                                         decl,
                                     },
@@ -1992,15 +1994,19 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                 err.emit()
                             }
                         } else {
-                            self.r.dcx().emit_err(errors::ElidedAnonymousLifetimeReportError {
-                                span: lifetime.ident.span,
-                                suggestion,
-                            })
+                            self.r.dcx().emit_err(
+                                crate::diagnostics::ElidedAnonymousLifetimeReportError {
+                                    span: lifetime.ident.span,
+                                    suggestion,
+                                },
+                            )
                         }
                     } else {
-                        self.r.dcx().emit_err(errors::ExplicitAnonymousLifetimeReportError {
-                            span: lifetime.ident.span,
-                        })
+                        self.r.dcx().emit_err(
+                            crate::diagnostics::ExplicitAnonymousLifetimeReportError {
+                                span: lifetime.ident.span,
+                            },
+                        )
                     };
                     self.record_lifetime_err(lifetime.id, guar);
                     return;
@@ -2284,11 +2290,12 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                             !segment.has_generic_args,
                             elided_lifetime_span,
                         );
-                        let guar =
-                            self.r.dcx().emit_err(errors::ImplicitElidedLifetimeNotAllowedHere {
+                        let guar = self.r.dcx().emit_err(
+                            crate::diagnostics::ImplicitElidedLifetimeNotAllowedHere {
                                 span: path_span,
                                 subdiag,
-                            });
+                            },
+                        );
                         should_lint = false;
 
                         for id in node_ids {
@@ -2360,7 +2367,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                             .downcast_ref::<rustc_session::Session>()
                             .expect("expected a `Session`")
                             .source_map();
-                        errors::ElidedLifetimesInPaths {
+                        crate::diagnostics::ElidedLifetimesInPaths {
                             subdiag: elided_lifetime_in_path_suggestion(
                                 source_map,
                                 expected_lifetimes,
@@ -2671,7 +2678,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         let impl_self = self
             .diag_metadata
             .current_self_type
-            .as_ref()
             .and_then(|ty| {
                 if let TyKind::Path(None, _) = ty.kind {
                     self.r.partial_res_map.get(&ty.id)
@@ -2776,7 +2782,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             let report_error = |this: &Self, ns| {
                 if this.should_report_errs() {
                     let what = if ns == TypeNS { "type parameters" } else { "local variables" };
-                    this.r.dcx().emit_err(errors::ImportsCannotReferTo { span: ident.span, what });
+                    this.r.dcx().emit_err(crate::diagnostics::ImportsCannotReferTo {
+                        span: ident.span,
+                        what,
+                    });
                 }
             };
 
@@ -3166,7 +3175,9 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     let guar = self
                         .r
                         .dcx()
-                        .create_err(errors::UnderscoreLifetimeIsReserved { span: param.ident.span })
+                        .create_err(crate::diagnostics::UnderscoreLifetimeIsReserved {
+                            span: param.ident.span,
+                        })
                         .emit_unless_delay(is_raw_underscore_lifetime);
                     // Record lifetime res, so lowering knows there is something fishy.
                     self.record_lifetime_err(param.id, guar);
@@ -3174,10 +3185,11 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 }
 
                 if param.ident.name == kw::StaticLifetime {
-                    let guar = self.r.dcx().emit_err(errors::StaticLifetimeIsReserved {
-                        span: param.ident.span,
-                        lifetime: param.ident,
-                    });
+                    let guar =
+                        self.r.dcx().emit_err(crate::diagnostics::StaticLifetimeIsReserved {
+                            span: param.ident.span,
+                            lifetime: param.ident,
+                        });
                     // Record lifetime res, so lowering knows there is something fishy.
                     self.record_lifetime_err(param.id, guar);
                     continue;
@@ -3296,10 +3308,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         }
     }
 
-    fn with_current_self_type<T>(&mut self, self_type: &Ty, f: impl FnOnce(&mut Self) -> T) -> T {
+    fn with_current_self_type<T>(
+        &mut self,
+        self_type: &'ast Ty,
+        f: impl FnOnce(&mut Self) -> T,
+    ) -> T {
         // Handle nested impls (inside fn bodies)
-        let previous_value =
-            replace(&mut self.diag_metadata.current_self_type, Some(self_type.clone()));
+        let previous_value = replace(&mut self.diag_metadata.current_self_type, Some(self_type));
         let result = f(self);
         self.diag_metadata.current_self_type = previous_value;
         result
@@ -3899,24 +3914,24 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             this.visit_path(&delegation.path);
         });
 
-        let resolution_id = if is_in_trait_impl { item_id } else { delegation.id };
+        let resolution_node_id = if is_in_trait_impl { item_id } else { delegation.id };
         let def_id = self
             .r
             .partial_res_map
-            .get(&resolution_id)
+            .get(&resolution_node_id)
             .and_then(|r| r.expect_full_res().opt_def_id());
-        if let Some(resolution_id) = def_id {
-            self.r
-                .delegation_infos
-                .insert(self.r.current_owner.def_id, DelegationInfo { resolution_id });
-        } else {
+
+        let resolution_id = def_id.ok_or_else(|| {
             self.r.tcx.dcx().span_delayed_bug(
                 delegation.path.span,
                 format!(
-                    "LoweringContext: couldn't resolve node {resolution_id:?} in delegation item",
+                    "LateResolutionVisitor: couldn't resolve node {resolution_node_id:?} in delegation item",
                 ),
-            );
-        };
+            )
+        });
+
+        let info = DelegationInfo { resolution_id };
+        self.r.delegation_infos.insert(self.r.current_owner.def_id, info);
 
         let Some(body) = &delegation.body else { return };
         self.with_rib(ValueNS, RibKind::FnOrCoroutine, |this| {
@@ -4499,7 +4514,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         Visibility::Restricted(def_id),
                         self.parent_scope.module,
                     ) {
-                        self.r.dcx().create_err(errors::RestrictionAncestorOnly(path.span)).emit();
+                        self.r
+                            .dcx()
+                            .create_err(crate::diagnostics::RestrictionAncestorOnly(path.span))
+                            .emit();
                     }
                 }
             }
@@ -5015,7 +5033,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 label,
                 suggestion,
                 module,
-                segment_name,
+                segment,
                 error_implied_by_parse_error: _,
                 message,
                 note: _,
@@ -5023,7 +5041,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 return Err(respan(
                     span,
                     ResolutionError::FailedToResolve {
-                        segment: segment_name,
+                        segment: segment.name,
                         label,
                         suggestion,
                         module,
@@ -5688,7 +5706,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     lint::builtin::UNUSED_LABELS,
                     *id,
                     *span,
-                    errors::UnusedLabel,
+                    crate::diagnostics::UnusedLabel,
                 );
             }
         })

@@ -16,6 +16,7 @@
 #![feature(variant_count)]
 #![recursion_limit = "256"]
 #![warn(rustc::internal)]
+#![warn(rustc::symbol_intern_string_literal)]
 // tidy-alphabetical-end
 
 // N.B. these need `extern crate` even in 2018 edition

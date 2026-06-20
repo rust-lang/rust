@@ -18,7 +18,7 @@ pub(super) const trait SimdExt: Sized {
 macro_rules! impl_simd_ext {
     ($v:ident, $e:ty) => {
         #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-        impl const SimdExt for crate::core_arch::simd::$v {
+        const impl SimdExt for crate::core_arch::simd::$v {
             type Elem = $e;
 
             #[inline(always)]
@@ -48,21 +48,21 @@ impl_simd_ext!(u64x4, u64);
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(crate) const unsafe fn simd_abs<T: Copy + const SimdExt>(a: T) -> T {
+pub(super) const unsafe fn simd_abs<T: Copy + const SimdExt>(a: T) -> T {
     let m: T = is::simd_lt(a, ls::simd_splat(0));
     is::simd_select(m, is::simd_neg(a), a)
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(crate) const unsafe fn simd_absd<T: Copy>(a: T, b: T) -> T {
+pub(super) const unsafe fn simd_absd<T: Copy>(a: T, b: T) -> T {
     let m: T = is::simd_gt(a, b);
     is::simd_select(m, is::simd_sub(a, b), is::simd_sub(b, a))
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(crate) const unsafe fn simd_adda<T: Copy + const SimdExt>(a: T, b: T) -> T {
+pub(super) const unsafe fn simd_adda<T: Copy + const SimdExt>(a: T, b: T) -> T {
     is::simd_add(ls::simd_abs(a), ls::simd_abs(b))
 }
 
@@ -334,11 +334,31 @@ macro_rules! impl_vvvv {
 
 pub(super) use impl_vvvv;
 
+macro_rules! impl_vvuv {
+    ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ident, $ibs:expr, const) => {
+        #[inline]
+        #[target_feature(enable = $ft)]
+        #[rustc_legacy_const_generics(2)]
+        #[unstable(feature = "stdarch_loongarch", issue = "117427")]
+        pub fn $name<const IMM: u32>(a: $oty, b: $oty) -> $oty {
+            static_assert_uimm_bits!(IMM, $ibs);
+            unsafe {
+                let a: $ity = transmute(a);
+                let b: $ity = transmute(b);
+                let r: $ity = $op::<IMM, _>(a, b);
+                transmute(r)
+            }
+        }
+    };
+}
+
+pub(super) use impl_vvuv;
+
 macro_rules! impl_vugv {
     ($ft:literal, $name:ident, $op:path, $oty:ty, $ity:ident, $gty:ty, $ibs:expr) => {
         #[inline]
         #[target_feature(enable = $ft)]
-        #[rustc_legacy_const_generics(1)]
+        #[rustc_legacy_const_generics(2)]
         #[unstable(feature = "stdarch_loongarch", issue = "117427")]
         pub fn $name<const IMM: u32>(a: $oty, b: $gty) -> $oty {
             static_assert_uimm_bits!(IMM, $ibs);

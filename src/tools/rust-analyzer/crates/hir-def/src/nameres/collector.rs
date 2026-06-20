@@ -1027,7 +1027,7 @@ impl<'db> DefCollector<'db> {
                             .enum_variants(self.db)
                             .variants
                             .iter()
-                            .map(|&(variant, ref name, _)| {
+                            .map(|(name, &(variant, _))| {
                                 let res = PerNs::both(variant.into(), variant.into(), vis, None);
                                 (Some(name.clone()), res)
                             })
@@ -2428,6 +2428,8 @@ impl ModCollector<'_, '_> {
                 self.def_collector.db,
                 self.def_collector.def_map.krate,
                 self.def_collector.def_map.block_id(),
+                Some(self.module_id),
+                name.clone(),
             )
             .to_static()
         };
@@ -2560,7 +2562,7 @@ impl ModCollector<'_, '_> {
                         .def_map
                         .diagnostics
                         .push(DefDiagnostic::unimplemented_builtin_macro(self.module_id, f_ast_id));
-                    return;
+                    MacroExpander::UnimplementedBuiltIn
                 }
             }
         } else {
@@ -2639,7 +2641,7 @@ impl ModCollector<'_, '_> {
                     .def_map
                     .diagnostics
                     .push(DefDiagnostic::unimplemented_builtin_macro(self.module_id, f_ast_id));
-                return;
+                MacroExpander::UnimplementedBuiltIn
             }
         } else {
             // Case 2: normal `macro`

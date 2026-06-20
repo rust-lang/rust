@@ -1,5 +1,5 @@
 error: all if blocks contain the same code at the end
-  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:35:5
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:34:5
    |
 LL | /         let result = false;
 LL | |
@@ -11,10 +11,10 @@ LL | |     };
    |
    = note: the end suggestion probably needs some adjustments to use the expression result correctly
 note: the lint level is defined here
-  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:1:36
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:1:9
    |
-LL | #![deny(clippy::if_same_then_else, clippy::branches_sharing_code)]
-   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![deny(clippy::branches_sharing_code, clippy::if_same_then_else)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider moving these statements after the if
    |
 LL ~     }
@@ -26,7 +26,7 @@ LL ~     result;
    |
 
 error: all if blocks contain the same code at the end
-  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:55:5
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:54:5
    |
 LL | /         println!("Same end of block");
 LL | |
@@ -40,7 +40,7 @@ LL +     println!("Same end of block");
    |
 
 error: all if blocks contain the same code at the end
-  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:73:5
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:72:5
    |
 LL | /         println!(
 LL | |
@@ -61,7 +61,7 @@ LL +     );
    |
 
 error: all if blocks contain the same code at the end
-  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:86:9
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:85:9
    |
 LL | /             println!("Hello World");
 LL | |
@@ -75,7 +75,7 @@ LL +         println!("Hello World");
    |
 
 error: all if blocks contain the same code at the end
-  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:103:5
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:102:5
    |
 LL | /         let later_used_value = "A string value";
 LL | |
@@ -96,7 +96,7 @@ LL +     println!("{}", later_used_value);
    |
 
 error: all if blocks contain the same code at the end
-  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:118:5
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:117:5
    |
 LL | /         let simple_examples = "I now identify as a &str :)";
 LL | |
@@ -116,7 +116,7 @@ LL +     println!("This is the new simple_example: {}", simple_examples);
    |
 
 error: all if blocks contain the same code at the end
-  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:185:5
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:184:5
    |
 LL | /         x << 2
 LL | |
@@ -131,7 +131,7 @@ LL ~     x << 2;
    |
 
 error: all if blocks contain the same code at the end
-  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:193:5
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:192:5
    |
 LL | /         x * 4
 LL | |
@@ -146,7 +146,7 @@ LL +     x * 4
    |
 
 error: all if blocks contain the same code at the end
-  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:206:44
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:205:44
    |
 LL |     if x == 17 { b = 1; a = 0x99; } else { a = 0x99; }
    |                                            ^^^^^^^^^^^
@@ -158,7 +158,7 @@ LL +     a = 0x99;
    |
 
 error: all if blocks contain the same code at the end
-  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:274:9
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:273:9
    |
 LL | /             let y = 1;
 LL | |
@@ -173,7 +173,7 @@ LL +         let y = 1;
    |
 
 error: all if blocks contain the same code at the end
-  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:290:5
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:289:5
    |
 LL | /         0
 LL | |
@@ -188,7 +188,7 @@ LL ~     0;
    |
 
 error: all if blocks contain the same code at the end
-  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:299:5
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:298:5
    |
 LL | /         1
 LL | |
@@ -203,7 +203,7 @@ LL ~     1;
    |
 
 error: all if blocks contain the same code at the start
-  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:313:5
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:312:5
    |
 LL | /     if false {
 LL | |
@@ -219,7 +219,7 @@ LL +     if false {
    |
 
 error: all if blocks contain the same code at the start
-  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:322:5
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:321:5
    |
 LL | /     if false {
 LL | |
@@ -239,7 +239,7 @@ LL +     if false {
    |
 
 error: all if blocks contain the same code at the start
-  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:335:5
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:334:5
    |
 LL | /     if false {
 LL | |
@@ -255,7 +255,7 @@ LL +     if false {
    |
 
 error: all if blocks contain the same code at the start
-  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:344:5
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:343:5
    |
 LL | /     if false {
 LL | |

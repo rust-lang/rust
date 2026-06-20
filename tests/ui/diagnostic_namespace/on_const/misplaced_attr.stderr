@@ -4,7 +4,7 @@ error: `#[diagnostic::on_const]` can only be applied to non-const trait implemen
 LL | #[diagnostic::on_const(message = "tadaa", note = "boing")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
-LL | impl const PartialEq for Foo {
+LL | const impl PartialEq for Foo {
    | ---------------------------- this is a const trait implementation
    |
 note: the lint level is defined here

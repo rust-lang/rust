@@ -7,7 +7,7 @@
 use std::iter::zip;
 
 use either::Either;
-use hir::{EditionedFileId, Semantics};
+use hir::{EditionedFileId, Semantics, name};
 use ide_db::{RootDatabase, famous_defs::FamousDefs};
 
 use stdx::to_lower_snake_case;
@@ -197,13 +197,14 @@ fn should_hide_param_name_hint(
     //   parameter is a prefix/suffix of argument with _ splitting it off
     // - param starts with `ra_fixture`
     // - param is a well known name in a unary function
+    // - param is generated name
 
     let param_name = param_name.trim_matches('_');
     if param_name.is_empty() {
         return true;
     }
 
-    if param_name.starts_with("ra_fixture") {
+    if param_name.starts_with("ra_fixture") || name::is_generated(param_name) {
         return true;
     }
 
@@ -608,6 +609,7 @@ impl Test {
 fn test_func(mut foo: i32, bar: i32, msg: &str, _: i32, last: i32) -> i32 {
     foo + bar
 }
+async fn test_async(foo: i32, _: i32) {}
 
 fn main() {
     let not_literal = 1;
@@ -631,6 +633,8 @@ fn main() {
         None,
       //^^^^ docs
     );
+    test_async(1, 2)
+             //^ foo
 }"#,
         );
     }

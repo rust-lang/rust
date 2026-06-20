@@ -289,6 +289,8 @@ macro_rules! uint_impl {
         /// Returns the index of the highest bit set to one in `self`, or `None`
         /// if `self` is `0`.
         ///
+        /// Note that this is equivalent to [`checked_ilog2`](Self::checked_ilog2).
+        ///
         /// # Examples
         ///
         /// ```
@@ -1809,6 +1811,10 @@ macro_rules! uint_impl {
         ///
         /// ```
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".checked_ilog(5), Some(1));")]
+        #[doc = concat!("assert_eq!(4", stringify!($SelfT), ".checked_ilog(5), Some(0));")]
+        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".checked_ilog(0), None);")]
+        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".checked_ilog(1), None);")]
+        #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".checked_ilog(1), None);")]
         /// ```
         #[stable(feature = "int_log", since = "1.67.0")]
         #[rustc_const_stable(feature = "int_log", since = "1.67.0")]
@@ -1823,9 +1829,14 @@ macro_rules! uint_impl {
             // applied by the compiler. If you want those specific bases,
             // use `.checked_ilog2()` or `.checked_ilog10()` directly.
             if core::intrinsics::is_val_statically_known(base) {
-                if base == 2 {
-                    return self.checked_ilog2();
-                } else if base == 10 {
+                // change of base:
+                // if base == 2 ** k, then
+                // log(base, n) == log(2, n) / k
+                if base.is_power_of_two() && base > 1 {
+                    let k = base.ilog2();
+                    return Some(try_opt!(self.checked_ilog2()) / k);
+                }
+                if base == 10 {
                     return self.checked_ilog10();
                 }
             }
@@ -1864,6 +1875,8 @@ macro_rules! uint_impl {
         /// Returns the base 2 logarithm of the number, rounded down.
         ///
         /// Returns `None` if the number is zero.
+        ///
+        /// Note that this is equivalent to [`highest_one`](Self::highest_one).
         ///
         /// # Examples
         ///
@@ -2344,11 +2357,39 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn checked_pow(self, mut exp: u32) -> Option<Self> {
+            let mut base = self;
+            let mut acc: Self = 1;
+
+            if intrinsics::is_val_statically_known(base) && base.is_power_of_two() {
+                // change of base:
+                // if base == 2 ** k, then
+                //    (2 ** k) ** n
+                // == 2 ** (k * n)
+                // == 1 << (k * n)
+                let k = base.ilog2();
+                let shift = try_opt!(k.checked_mul(exp));
+                return (1 as Self).checked_shl(shift);
+            }
+
             if exp == 0 {
                 return Some(1);
             }
-            let mut base = self;
-            let mut acc: Self = 1;
+
+            if intrinsics::is_val_statically_known(exp) {
+                while exp > 1 {
+                    if (exp & 1) == 1 {
+                        acc = try_opt!(acc.checked_mul(base));
+                    }
+                    exp /= 2;
+                    base = try_opt!(base.checked_mul(base));
+                }
+
+                // since exp!=0, finally the exp must be 1.
+                // Deal with the final bit of the exponent separately, since
+                // squaring the base afterwards is not necessary and may cause a
+                // needless overflow.
+                return acc.checked_mul(base);
+            }
 
             loop {
                 if (exp & 1) == 1 {
@@ -2390,23 +2431,10 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         #[track_caller]
-        pub const fn strict_pow(self, mut exp: u32) -> Self {
-            if exp == 0 {
-                return 1;
-            }
-            let mut base = self;
-            let mut acc: Self = 1;
-
-            loop {
-                if (exp & 1) == 1 {
-                    acc = acc.strict_mul(base);
-                    // since exp!=0, finally the exp must be 1.
-                    if exp == 1 {
-                        return acc;
-                    }
-                }
-                exp /= 2;
-                base = base.strict_mul(base);
+        pub const fn strict_pow(self, exp: u32) -> Self {
+            match self.checked_pow(exp) {
+                None => imp::overflow_panic::pow(),
+                Some(a) => a,
             }
         }
 
@@ -2896,43 +2924,9 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn wrapping_pow(self, mut exp: u32) -> Self {
-            if exp == 0 {
-                return 1;
-            }
-            let mut base = self;
-            let mut acc: Self = 1;
-
-            if intrinsics::is_val_statically_known(exp) {
-                while exp > 1 {
-                    if (exp & 1) == 1 {
-                        acc = acc.wrapping_mul(base);
-                    }
-                    exp /= 2;
-                    base = base.wrapping_mul(base);
-                }
-
-                // since exp!=0, finally the exp must be 1.
-                // Deal with the final bit of the exponent separately, since
-                // squaring the base afterwards is not necessary.
-                acc.wrapping_mul(base)
-            } else {
-                // This is faster than the above when the exponent is not known
-                // at compile time. We can't use the same code for the constant
-                // exponent case because LLVM is currently unable to unroll
-                // this loop.
-                loop {
-                    if (exp & 1) == 1 {
-                        acc = acc.wrapping_mul(base);
-                        // since exp!=0, finally the exp must be 1.
-                        if exp == 1 {
-                            return acc;
-                        }
-                    }
-                    exp /= 2;
-                    base = base.wrapping_mul(base);
-                }
-            }
+        pub const fn wrapping_pow(self, exp: u32) -> Self {
+            let (a, _) = self.overflowing_pow(exp);
+            a
         }
 
         /// Calculates `self` + `rhs`.
@@ -3526,30 +3520,60 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn overflowing_pow(self, mut exp: u32) -> (Self, bool) {
-            if exp == 0{
-                return (1,false);
-            }
             let mut base = self;
             let mut acc: Self = 1;
-            let mut overflown = false;
-            // Scratch space for storing results of overflowing_mul.
-            let mut r;
+            let mut overflow = false;
+            let mut tmp_overflow;
+
+            if intrinsics::is_val_statically_known(base) && base.is_power_of_two() {
+                // change of base:
+                // if base == 2 ** k, then
+                //    (2 ** k) ** n
+                // == 2 ** (k * n)
+                // == 1 << (k * n)
+                let k = base.ilog2();
+                let Some(shift) = k.checked_mul(exp) else {
+                    return (0, true)
+                };
+                return ((1 as Self).unbounded_shl(shift), shift >= Self::BITS)
+            }
+
+            if exp == 0 {
+                return (1, false);
+            }
+
+            if intrinsics::is_val_statically_known(exp) {
+                while exp > 1 {
+                    if (exp & 1) == 1 {
+                        (acc, tmp_overflow) = acc.overflowing_mul(base);
+                        overflow |= tmp_overflow;
+                    }
+                    exp /= 2;
+                    (base, tmp_overflow) = base.overflowing_mul(base);
+                    overflow |= tmp_overflow;
+                }
+
+                // since exp!=0, finally the exp must be 1.
+                // Deal with the final bit of the exponent separately, since
+                // squaring the base afterwards is not necessary and may cause a
+                // needless overflow.
+                (acc, tmp_overflow) = acc.overflowing_mul(base);
+                overflow |= tmp_overflow;
+                return (acc, overflow);
+            }
 
             loop {
                 if (exp & 1) == 1 {
-                    r = acc.overflowing_mul(base);
+                    (acc, tmp_overflow) = acc.overflowing_mul(base);
+                    overflow |= tmp_overflow;
                     // since exp!=0, finally the exp must be 1.
                     if exp == 1 {
-                        r.1 |= overflown;
-                        return r;
+                        return (acc, overflow);
                     }
-                    acc = r.0;
-                    overflown |= r.1;
                 }
                 exp /= 2;
-                r = base.overflowing_mul(base);
-                base = r.0;
-                overflown |= r.1;
+                (base, tmp_overflow) = base.overflowing_mul(base);
+                overflow |= tmp_overflow;
             }
         }
 
@@ -3567,43 +3591,11 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         #[rustc_inherit_overflow_checks]
-        pub const fn pow(self, mut exp: u32) -> Self {
-            if exp == 0 {
-                return 1;
-            }
-            let mut base = self;
-            let mut acc = 1;
-
-            if intrinsics::is_val_statically_known(exp) {
-                while exp > 1 {
-                    if (exp & 1) == 1 {
-                        acc = acc * base;
-                    }
-                    exp /= 2;
-                    base = base * base;
-                }
-
-                // since exp!=0, finally the exp must be 1.
-                // Deal with the final bit of the exponent separately, since
-                // squaring the base afterwards is not necessary and may cause a
-                // needless overflow.
-                acc * base
+        pub const fn pow(self, exp: u32) -> Self {
+            if intrinsics::overflow_checks() {
+                self.strict_pow(exp)
             } else {
-                // This is faster than the above when the exponent is not known
-                // at compile time. We can't use the same code for the constant
-                // exponent case because LLVM is currently unable to unroll
-                // this loop.
-                loop {
-                    if (exp & 1) == 1 {
-                        acc = acc * base;
-                        // since exp!=0, finally the exp must be 1.
-                        if exp == 1 {
-                            return acc;
-                        }
-                    }
-                    exp /= 2;
-                    base = base * base;
-                }
+                self.wrapping_pow(exp)
             }
         }
 
@@ -4228,6 +4220,121 @@ macro_rules! uint_impl {
             where Self: [const] traits::WidenTarget<Target>
         {
             traits::WidenTarget::internal_widen(self)
+        }
+
+        /// Converts `self` to the target integer type, saturating at the numeric
+        /// bounds instead of overflowing.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(integer_casts)]
+        #[doc = concat!("assert_eq!(255u8, ", stringify!($SelfT), "::MAX.saturating_cast());")]
+        #[doc = concat!("assert_eq!(127i8, ", stringify!($SelfT), "::MAX.saturating_cast());")]
+        #[doc = concat!("assert_eq!(42i8, 42", stringify!($SelfT), ".saturating_cast());")]
+        /// ```
+        #[must_use = "this returns the cast result and does not modify the original"]
+        #[unstable(feature = "integer_casts", issue = "157388")]
+        #[rustc_const_unstable(feature = "integer_casts", issue = "157388")]
+        #[inline(always)]
+        pub const fn saturating_cast<T: [const] BoundedCastFromInt<Self>>(self) -> T {
+            T::saturating_cast_from(self)
+        }
+
+        /// Converts `self` to the target integer type, wrapping around at the
+        /// boundary of the target type.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(integer_casts)]
+        #[doc = concat!("assert_eq!(255u8, ", stringify!($SelfT), "::MAX.wrapping_cast());")]
+        #[doc = concat!("assert_eq!(42i8, 42", stringify!($SelfT), ".wrapping_cast());")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX as i8, ", stringify!($SelfT), "::MAX.wrapping_cast());")]
+        /// ```
+        #[must_use = "this returns the cast result and does not modify the original"]
+        #[unstable(feature = "integer_casts", issue = "157388")]
+        #[rustc_const_unstable(feature = "integer_casts", issue = "157388")]
+        #[inline(always)]
+        pub const fn wrapping_cast<T: [const] BoundedCastFromInt<Self>>(self) -> T {
+            T::wrapping_cast_from(self)
+        }
+
+        /// Converts `self` to the target integer type, returning `None` if the value
+        /// is not representable by the target type.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(integer_casts)]
+        #[doc = concat!("assert_eq!(Some(42u8), 42", stringify!($SelfT), ".checked_cast());")]
+        #[doc = concat!("assert_eq!(128", stringify!($SelfT), ".checked_cast::<i8>(), None);")]
+        /// ```
+        #[must_use = "this returns the cast result and does not modify the original"]
+        #[unstable(feature = "integer_casts", issue = "157388")]
+        #[rustc_const_unstable(feature = "integer_casts", issue = "157388")]
+        #[inline(always)]
+        pub const fn checked_cast<T: [const] CheckedCastFromInt<Self>>(self) -> Option<T> {
+            T::checked_cast_from(self)
+        }
+
+        /// Converts `self` to the target integer type, panicking if the value
+        /// is not representable by the target type.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if the value is not representable by the target type.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(integer_casts)]
+        #[doc = concat!("assert_eq!(42u8, 42", stringify!($SelfT), ".strict_cast());")]
+        /// ```
+        ///
+        /// The following will panic:
+        ///
+        /// ```should_panic
+        /// #![feature(integer_casts)]
+        #[doc = concat!("let _ = 128", stringify!($SelfT), ".strict_cast::<i8>();")]
+        /// ```
+        #[must_use = "this returns the cast result and does not modify the original"]
+        #[unstable(feature = "integer_casts", issue = "157388")]
+        #[rustc_const_unstable(feature = "integer_casts", issue = "157388")]
+        #[inline(always)]
+        #[track_caller]
+        pub const fn strict_cast<T: [const] CheckedCastFromInt<Self>>(self) -> T {
+            T::strict_cast_from(self)
+        }
+
+        /// Converts `self` to the target integer type, assuming the value is
+        /// representable by the target type.
+        ///
+        /// # Safety
+        ///
+        /// This results in undefined behavior if the integer value of `self` is bigger than `T::MAX`,
+        /// or smaller than `T::MIN`, where `T` is the target type.
+        #[must_use = "this returns the cast result and does not modify the original"]
+        #[unstable(feature = "integer_casts", issue = "157388")]
+        #[rustc_const_unstable(feature = "integer_casts", issue = "157388")]
+        #[inline(always)]
+        pub const unsafe fn unchecked_cast<T: [const] CheckedCastFromInt<Self>>(self) -> T {
+            assert_unsafe_precondition!(
+                check_language_ub,
+                concat!(stringify!($SelfT), "::unchecked_cast must fit in the target type"),
+                (
+                    // Check has to be performed up-front because it depends on generic T.
+                    in_bounds: bool = {
+                        let cast_val = self.checked_cast::<T>();
+                        let ret = cast_val.is_some();
+                        core::mem::forget(cast_val); // We don't have const Drop, but we know it's an int.
+                        ret
+                    },
+                ) => in_bounds,
+            );
+
+            // SAFETY: this is guaranteed to be safe by the caller.
+            unsafe { T::unchecked_cast_from(self) }
         }
     }
 }

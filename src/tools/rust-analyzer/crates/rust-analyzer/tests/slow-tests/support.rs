@@ -378,8 +378,9 @@ impl Server {
                         {
                             continue;
                         }
+                    } else if req.method != "workspace/diagnostic/refresh" {
+                        panic!("unexpected request: {req:?}")
                     }
-                    panic!("unexpected request: {req:?}")
                 }
                 Message::Notification(_) => (),
                 Message::Response(res) => {

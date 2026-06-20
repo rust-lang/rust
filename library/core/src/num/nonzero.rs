@@ -692,6 +692,16 @@ macro_rules! nonzero_integer {
 
             /// Returns the index of the highest bit set to one in `self`.
             ///
+            #[doc = sign_dependent_expr!{
+                $signedness ?
+                if signed {
+                    ""
+                }
+                if unsigned {
+                    "Note that this is equivalent to [`ilog2`](Self::ilog2)."
+                }
+            }]
+            ///
             /// # Examples
             ///
             /// ```
@@ -1364,8 +1374,6 @@ macro_rules! nonzero_integer {
             /// # Examples
             ///
             /// ```
-            /// #![feature(nonzero_from_str_radix)]
-            ///
             /// # use std::num::NonZero;
             /// #
             /// # fn main() { test().unwrap(); }
@@ -1378,13 +1386,12 @@ macro_rules! nonzero_integer {
             /// Trailing space returns error:
             ///
             /// ```
-            /// #![feature(nonzero_from_str_radix)]
-            ///
             /// # use std::num::NonZero;
             /// #
             #[doc = concat!("assert!(NonZero::<", stringify!($Int), ">::from_str_radix(\"1 \", 10).is_err());")]
             /// ```
-            #[unstable(feature = "nonzero_from_str_radix", issue = "152193")]
+            #[stable(feature = "nonzero_from_str_radix", since = "CURRENT_RUSTC_VERSION")]
+            #[rustc_const_stable(feature = "nonzero_from_str_radix", since = "CURRENT_RUSTC_VERSION")]
             #[inline]
             pub const fn from_str_radix(src: &str, radix: u32) -> Result<Self, ParseIntError> {
                 Self::from_ascii_radix(src.as_bytes(), radix)
@@ -1757,6 +1764,8 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         #[doc = concat!("[`", stringify!($Int), "::ilog2`],")]
         /// except that it has no failure cases to worry about
         /// since this value can never be zero.
+        ///
+        /// Note that this is equivalent to [`highest_one`](Self::highest_one).
         ///
         /// # Examples
         ///

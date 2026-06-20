@@ -34,6 +34,7 @@ use tracing::debug;
 
 use super::MirBorrowckCtxt;
 use super::borrow_set::BorrowData;
+use crate::LocalMutationIsAllowed;
 use crate::constraints::OutlivesConstraint;
 use crate::nll::ConstraintDescription;
 use crate::session_diagnostics::{
@@ -537,9 +538,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     Some(self.infcx.tcx.hir_name(var_id).to_string())
                 }
                 _ => {
-                    // Might need a revision when the fields in trait RFC is implemented
-                    // (https://github.com/rust-lang/rfcs/pull/1546)
-                    bug!("End-user description not implemented for field access on `{:?}`", ty);
+                    // This can happen for field accesses on `Box<T>`: the field is
+                    // described from the boxed type, which may have no named fields
+                    Some(field.index().to_string())
                 }
             }
         }
@@ -1426,11 +1427,19 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         if let ty::Ref(_, _, hir::Mutability::Mut) =
                             moved_place.ty(self.body, self.infcx.tcx).ty.kind()
                         {
+                            // The `&mut *place` reborrow suggestion is `MachineApplicable`, so
+                            // only offer it where `*place` can be borrowed mutably: a value
+                            // captured by an `Fn` closure (held via `&self`) cannot, and the
+                            // suggestion would otherwise fail to compile with E0596.
+                            let reborrow_place = self.infcx.tcx.mk_place_deref(moved_place);
+                            let reborrow_is_valid = self
+                                .is_mutable(reborrow_place.as_ref(), LocalMutationIsAllowed::No)
+                                .is_ok();
                             // Suggest `reborrow` in other place for following situations:
                             // 1. If we are in a loop this will be suggested later.
                             // 2. If the moved value is a mut reference, it is used in a
                             // generic function and the corresponding arg's type is generic param.
-                            if !is_loop_move && !has_suggest_reborrow {
+                            if !is_loop_move && !has_suggest_reborrow && reborrow_is_valid {
                                 self.suggest_reborrow(
                                     err,
                                     move_span.shrink_to_lo(),

@@ -2641,4 +2641,67 @@ impl Trait for Struct {
         "#,
         );
     }
+
+    #[test]
+    fn drop_pin_drop() {
+        check_assist_not_applicable(
+            add_missing_impl_members,
+            r#"
+//- minicore: drop, pin
+struct Foo;
+impl Drop for Foo {$0
+    fn drop(&mut self) {}
+}
+        "#,
+        );
+        check_assist_not_applicable(
+            add_missing_impl_members,
+            r#"
+//- minicore: drop, pin
+struct Foo;
+impl Drop for Foo {$0
+    fn pin_drop(self: core::pin::Pin<&mut Self>) {}
+}
+        "#,
+        );
+
+        check_assist_not_applicable(
+            add_missing_default_members,
+            r#"
+//- minicore: drop, pin
+struct Foo;
+impl Drop for Foo {$0
+    fn drop(&mut self) {}
+}
+        "#,
+        );
+        check_assist_not_applicable(
+            add_missing_default_members,
+            r#"
+//- minicore: drop, pin
+struct Foo;
+impl Drop for Foo {$0
+    fn pin_drop(self: core::pin::Pin<&mut Self>) {}
+}
+        "#,
+        );
+
+        check_assist(
+            add_missing_impl_members,
+            r#"
+//- minicore: drop, pin
+struct Foo;
+impl Drop for Foo {$0
+}
+        "#,
+            r#"
+struct Foo;
+impl Drop for Foo {
+    fn drop(&mut self) {
+        ${0:todo!()}
+    }
+}
+        "#,
+        );
+    }
 }

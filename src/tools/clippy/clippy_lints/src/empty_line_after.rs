@@ -93,12 +93,46 @@ impl_lint_pass!(EmptyLineAfter => [
     EMPTY_LINE_AFTER_OUTER_ATTR,
 ]);
 
+/// The kind of the item a doc comment or attribute applies to. Used in lint messages and to
+/// detect the first item of a module or crate. `Other` holds the description string from
+/// `ItemKind::descr` or `assoc_item_descr`.
+#[derive(Debug, Clone, Copy)]
+enum ItemKindDescr {
+    Crate,
+    Module,
+    Other(&'static str),
+}
+
+impl ItemKindDescr {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Crate => "crate",
+            Self::Module => "module",
+            Self::Other(descr) => descr,
+        }
+    }
+}
+
 #[derive(Debug)]
 struct ItemInfo {
-    kind: &'static str,
+    kind: ItemKindDescr,
     name: Option<Symbol>,
     span: Span,
     mod_items: Option<NodeId>,
+}
+
+impl ItemInfo {
+    fn new(kind: ItemKindDescr, ident: Option<Ident>, span: Span, mod_items: Option<NodeId>) -> Self {
+        Self {
+            kind,
+            name: ident.map(|ident| ident.name),
+            span: match ident {
+                Some(ident) => span.with_hi(ident.span.hi()),
+                None => span.shrink_to_lo(),
+            },
+            mod_items,
+        }
+    }
 }
 
 pub struct EmptyLineAfter {
@@ -339,8 +373,8 @@ impl EmptyLineAfter {
                 diag.span_label(
                     info.span,
                     match kind {
-                        StopKind::Attr => format!("the attribute applies to this {}", info.kind),
-                        StopKind::Doc(_) => format!("the comment documents this {}", info.kind),
+                        StopKind::Attr => format!("the attribute applies to this {}", info.kind.as_str()),
+                        StopKind::Doc(_) => format!("the comment documents this {}", info.kind.as_str()),
                     },
                 );
 
@@ -364,7 +398,7 @@ impl EmptyLineAfter {
                         stop.comment_out(cx, &mut suggestions);
                     }
                     let name = match info.name {
-                        Some(name) => format!("{} `{name}`", info.kind).into(),
+                        Some(name) => format!("{} `{name}`", info.kind.as_str()).into(),
                         None => Cow::from("the following item"),
                     };
                     diag.multipart_suggestion(
@@ -400,7 +434,7 @@ impl EmptyLineAfter {
     /// them to inner attributes/docs
     fn suggest_inner(&self, diag: &mut Diag<'_, ()>, kind: StopKind, gaps: &[Gap<'_>], id: NodeId) {
         if let Some(parent) = self.items.iter().rev().nth(1)
-            && (parent.kind == "module" || parent.kind == "crate")
+            && matches!(parent.kind, ItemKindDescr::Module | ItemKindDescr::Crate)
             && parent.mod_items == Some(id)
             && let suggestions = gaps
                 .iter()
@@ -409,10 +443,9 @@ impl EmptyLineAfter {
                 .collect::<Vec<_>>()
             && !suggestions.is_empty()
         {
-            let desc = if parent.kind == "module" {
-                "parent module"
-            } else {
-                parent.kind
+            let desc = match parent.kind {
+                ItemKindDescr::Module => "parent module",
+                _ => parent.kind.as_str(),
             };
             diag.multipart_suggestion(
                 match kind {
@@ -425,31 +458,8 @@ impl EmptyLineAfter {
         }
     }
 
-    fn check_item_kind(
-        &mut self,
-        cx: &EarlyContext<'_>,
-        kind: &ItemKind,
-        ident: Option<Ident>,
-        span: Span,
-        attrs: &[Attribute],
-        id: NodeId,
-    ) {
-        self.items.push(ItemInfo {
-            kind: kind.descr(),
-            name: ident.map(|ident| ident.name),
-            span: match ident {
-                Some(ident) => span.with_hi(ident.span.hi()),
-                None => span.shrink_to_lo(),
-            },
-            mod_items: match kind {
-                ItemKind::Mod(_, _, ModKind::Loaded(items, _, _)) => items
-                    .iter()
-                    .filter(|i| !matches!(i.span.ctxt().outer_expn_data().kind, ExpnKind::AstPass(_)))
-                    .map(|i| i.id)
-                    .next(),
-                _ => None,
-            },
-        });
+    fn check_item_kind(&mut self, cx: &EarlyContext<'_>, info: ItemInfo, attrs: &[Attribute], id: NodeId) {
+        self.items.push(info);
 
         let mut outer = attrs
             .iter()
@@ -496,10 +506,21 @@ impl EmptyLineAfter {
     }
 }
 
+fn assoc_item_descr(kind: &AssocItemKind) -> &'static str {
+    match kind {
+        AssocItemKind::Const(_) => "constant item",
+        AssocItemKind::Fn(_) => "function",
+        AssocItemKind::Type(_) => "type alias",
+        AssocItemKind::MacCall(_) => "item macro invocation",
+        AssocItemKind::Delegation(_) => "delegated function",
+        AssocItemKind::DelegationMac(_) => "delegation",
+    }
+}
+
 impl EarlyLintPass for EmptyLineAfter {
     fn check_crate(&mut self, _: &EarlyContext<'_>, krate: &Crate) {
         self.items.push(ItemInfo {
-            kind: "crate",
+            kind: ItemKindDescr::Crate,
             name: Some(kw::Crate),
             span: krate.spans.inner_span.with_hi(krate.spans.inner_span.lo()),
             mod_items: krate
@@ -522,28 +543,31 @@ impl EarlyLintPass for EmptyLineAfter {
     }
 
     fn check_impl_item(&mut self, cx: &EarlyContext<'_>, item: &Item<AssocItemKind>) {
-        self.check_item_kind(
-            cx,
-            &item.kind.clone().into(),
-            item.kind.ident(),
-            item.span,
-            &item.attrs,
-            item.id,
-        );
+        let kind = ItemKindDescr::Other(assoc_item_descr(&item.kind));
+        let info = ItemInfo::new(kind, item.kind.ident(), item.span, None);
+        self.check_item_kind(cx, info, &item.attrs, item.id);
     }
 
     fn check_trait_item(&mut self, cx: &EarlyContext<'_>, item: &Item<AssocItemKind>) {
-        self.check_item_kind(
-            cx,
-            &item.kind.clone().into(),
-            item.kind.ident(),
-            item.span,
-            &item.attrs,
-            item.id,
-        );
+        let kind = ItemKindDescr::Other(assoc_item_descr(&item.kind));
+        let info = ItemInfo::new(kind, item.kind.ident(), item.span, None);
+        self.check_item_kind(cx, info, &item.attrs, item.id);
     }
 
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        self.check_item_kind(cx, &item.kind, item.kind.ident(), item.span, &item.attrs, item.id);
+        let (kind, mod_items) = match &item.kind {
+            ItemKind::Mod(_, _, ModKind::Loaded(items, _, _)) => {
+                let first = items
+                    .iter()
+                    .filter(|i| !matches!(i.span.ctxt().outer_expn_data().kind, ExpnKind::AstPass(_)))
+                    .map(|i| i.id)
+                    .next();
+                (ItemKindDescr::Module, first)
+            },
+            ItemKind::Mod(..) => (ItemKindDescr::Module, None),
+            _ => (ItemKindDescr::Other(item.kind.descr()), None),
+        };
+        let info = ItemInfo::new(kind, item.kind.ident(), item.span, mod_items);
+        self.check_item_kind(cx, info, &item.attrs, item.id);
     }
 }

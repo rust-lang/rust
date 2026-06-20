@@ -504,15 +504,15 @@ impl<'a> DeclValidator<'a> {
     fn validate_enum_variants(&mut self, enum_id: EnumId) {
         let data = enum_id.enum_variants(self.db);
 
-        for (variant_id, _, _) in data.variants.iter() {
+        for (variant_id, _) in data.variants.values() {
             self.validate_enum_variant_fields(*variant_id);
         }
 
         let edition = self.edition(enum_id);
         let mut enum_variants_replacements = data
             .variants
-            .iter()
-            .filter_map(|(_, name, _)| {
+            .keys()
+            .filter_map(|name| {
                 to_camel_case(&name.display_no_db(edition).to_smolstr()).map(|new_name| {
                     Replacement {
                         current_name: name.clone(),

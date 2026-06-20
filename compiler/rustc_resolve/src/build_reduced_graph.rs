@@ -9,9 +9,9 @@ use std::sync::Arc;
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor, WalkItemKind};
 use rustc_ast::{
-    self as ast, AssocItem, AssocItemKind, Block, ConstItem, DUMMY_NODE_ID, Delegation, Fn,
-    ForeignItem, ForeignItemKind, Inline, Item, ItemKind, NodeId, StaticItem, StmtKind, TraitAlias,
-    TyAlias,
+    self as ast, AssocItem, AssocItemKind, Block, ConstItem, DUMMY_NODE_ID, Delegation,
+    DelegationSource, Fn, ForeignItem, ForeignItemKind, Inline, Item, ItemKind, NodeId, StaticItem,
+    StmtKind, TraitAlias, TyAlias,
 };
 use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::{ResolverExpand, SyntaxExtension, SyntaxExtensionKind};
@@ -31,14 +31,14 @@ use tracing::debug;
 
 use crate::Namespace::{MacroNS, TypeNS, ValueNS};
 use crate::def_collector::DefCollector;
-use crate::diagnostics::StructCtor;
-use crate::imports::{ImportData, ImportKind, OnUnknownData};
+use crate::error_helper::{OnUnknownData, StructCtor};
+use crate::imports::{ImportData, ImportKind};
 use crate::macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
 use crate::ref_mut::CmCell;
 use crate::{
     BindingKey, Decl, DeclData, DeclKind, DelayedVisResolutionError, ExternModule,
     ExternPreludeEntry, Finalize, IdentKey, LocalModule, Module, ModuleKind, ModuleOrUniformRoot,
-    ParentScope, PathResult, Res, Resolver, Segment, Used, VisResolutionError, errors,
+    ParentScope, PathResult, Res, Resolver, Segment, Used, VisResolutionError, diagnostics,
 };
 
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
@@ -332,15 +332,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     PathResult::NonModule(partial_res) => {
                         expected_found_error(partial_res.expect_full_res())
                     }
-                    PathResult::Failed {
-                        span, label, suggestion, message, segment_name, ..
-                    } => Err(VisResolutionError::FailedToResolve(
-                        span,
-                        segment_name,
-                        label,
-                        suggestion,
-                        message,
-                    )),
+                    PathResult::Failed { label, suggestion, message, segment, .. } => {
+                        Err(VisResolutionError::FailedToResolve(
+                            segment.span,
+                            segment.name,
+                            label,
+                            suggestion,
+                            message,
+                        ))
+                    }
                     PathResult::Indeterminate => Err(VisResolutionError::Indeterminate(path.span)),
                 }
             }
@@ -548,7 +548,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             root_id,
             vis,
             vis_span: item.vis.span,
-            on_unknown_attr: OnUnknownData::from_attrs(self.r.tcx, item),
+            on_unknown_attr: OnUnknownData::from_attrs(self.r.tcx, &item.attrs),
         });
 
         self.r.indeterminate_imports.push(import);
@@ -706,9 +706,9 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 // Deny importing path-kw without renaming
                 if rename.is_none() && ident.is_path_segment_keyword() {
                     let ident = use_tree.ident();
-                    self.r.dcx().emit_err(errors::UnnamedImport {
+                    self.r.dcx().emit_err(diagnostics::UnnamedImport {
                         span: ident.span,
-                        sugg: errors::UnnamedImportSugg { span: ident.span, ident },
+                        sugg: diagnostics::UnnamedImportSugg { span: ident.span, ident },
                     });
                     return;
                 }
@@ -863,6 +863,9 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                         || ast::attr::contains_name(&item.attrs, sym::no_implicit_prelude),
                 );
                 self.parent_scope.module = module.to_module();
+                if let Some(directive) = OnUnknownData::from_attrs(self.r.tcx, &item.attrs) {
+                    self.r.on_unknown_data.insert(local_def_id, directive);
+                }
             }
 
             // These items live in the value namespace.
@@ -996,7 +999,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         let expansion = parent_scope.expansion;
 
         let (used, module, decl) = if orig_name.is_none() && orig_ident.name == kw::SelfLower {
-            self.r.dcx().emit_err(errors::ExternCrateSelfRequiresRenaming { span: sp });
+            self.r.dcx().emit_err(diagnostics::ExternCrateSelfRequiresRenaming { span: sp });
             return;
         } else if orig_name == Some(kw::SelfLower) {
             Some(self.r.graph_root.to_module())
@@ -1037,7 +1040,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             module_path: Vec::new(),
             vis,
             vis_span: item.vis.span,
-            on_unknown_attr: OnUnknownData::from_attrs(self.r.tcx, item),
+            on_unknown_attr: OnUnknownData::from_attrs(self.r.tcx, &item.attrs),
         });
         if used {
             self.r.import_use_map.insert(import, Used::Other);
@@ -1054,7 +1057,9 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 && entry.item_decl.is_none()
             {
                 self.r.dcx().emit_err(
-                    errors::MacroExpandedExternCrateCannotShadowExternArguments { span: item.span },
+                    diagnostics::MacroExpandedExternCrateCannotShadowExternArguments {
+                        span: item.span,
+                    },
                 );
             }
 
@@ -1125,7 +1130,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         allow_shadowing: bool,
     ) {
         if self.r.macro_use_prelude.insert(name, decl).is_some() && !allow_shadowing {
-            self.r.dcx().emit_err(errors::MacroUseNameAlreadyInUse { span, name });
+            self.r.dcx().emit_err(diagnostics::MacroUseNameAlreadyInUse { span, name });
         }
     }
 
@@ -1137,14 +1142,14 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             AttributeParser::parse_limited(self.r.tcx.sess, &item.attrs, &[sym::macro_use])
         {
             if self.parent_scope.module.expect_local().parent.is_some() {
-                self.r
-                    .dcx()
-                    .emit_err(errors::ExternCrateLoadingMacroNotAtCrateRoot { span: item.span });
+                self.r.dcx().emit_err(diagnostics::ExternCrateLoadingMacroNotAtCrateRoot {
+                    span: item.span,
+                });
             }
             if let ItemKind::ExternCrate(Some(orig_name), _) = item.kind
                 && orig_name == kw::SelfLower
             {
-                self.r.dcx().emit_err(errors::MacroUseExternCrateSelf { span });
+                self.r.dcx().emit_err(diagnostics::MacroUseExternCrateSelf { span });
             }
 
             match arguments {
@@ -1167,7 +1172,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 module_path: Vec::new(),
                 vis: Visibility::Restricted(CRATE_DEF_ID),
                 vis_span: item.vis.span,
-                on_unknown_attr: OnUnknownData::from_attrs(this.r.tcx, item),
+                on_unknown_attr: OnUnknownData::from_attrs(this.r.tcx, &item.attrs),
             })
         };
 
@@ -1208,7 +1213,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     let import_decl = self.r.new_import_decl(binding, import);
                     self.add_macro_use_decl(ident.name, import_decl, ident.span, allow_shadowing);
                 } else {
-                    self.r.dcx().emit_err(errors::ImportedMacroNotFound { span: ident.span });
+                    self.r.dcx().emit_err(diagnostics::ImportedMacroNotFound { span: ident.span });
                 }
             }
         }
@@ -1220,15 +1225,16 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         for attr in attrs {
             if attr.has_name(sym::macro_escape) {
                 let inner_attribute = matches!(attr.style, ast::AttrStyle::Inner);
-                self.r
-                    .dcx()
-                    .emit_warn(errors::MacroExternDeprecated { span: attr.span, inner_attribute });
+                self.r.dcx().emit_warn(diagnostics::MacroExternDeprecated {
+                    span: attr.span,
+                    inner_attribute,
+                });
             } else if !attr.has_name(sym::macro_use) {
                 continue;
             }
 
             if !attr.is_word() {
-                self.r.dcx().emit_err(errors::ArgumentsMacroUseNotAllowed { span: attr.span });
+                self.r.dcx().emit_err(diagnostics::ArgumentsMacroUseNotAllowed { span: attr.span });
             }
             return true;
         }
@@ -1347,7 +1353,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     module_path: Vec::new(),
                     vis,
                     vis_span: item.vis.span,
-                    on_unknown_attr: OnUnknownData::from_attrs(self.r.tcx, item),
+                    on_unknown_attr: OnUnknownData::from_attrs(self.r.tcx, &item.attrs),
                 });
                 self.r.import_use_map.insert(import, Used::Other);
                 let import_decl = self.r.new_import_decl(decl, import);
@@ -1461,7 +1467,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             let parent = self.parent_scope.module.expect_local();
             let expansion = self.parent_scope.expansion;
             self.r.define_local(parent, ident, ns, self.res(def_id), vis, item.span, expansion);
-        } else if !matches!(&item.kind, AssocItemKind::Delegation(deleg) if deleg.from_glob)
+        } else if !matches!(&item.kind, AssocItemKind::Delegation(d) if d.source == DelegationSource::Glob)
             && ident.name != kw::Underscore
         {
             // Don't add underscore names, they cannot be looked up anyway.

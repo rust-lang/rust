@@ -1,5 +1,5 @@
 #![warn(clippy::manual_option_zip)]
-#![allow(clippy::bind_instead_of_map)]
+#![expect(clippy::bind_instead_of_map)]
 
 fn main() {}
 

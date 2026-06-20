@@ -1,6 +1,7 @@
 //@ check-fail
 // Regression test for https://github.com/rust-lang/rust/issues/145779
 #![warn(unused_attributes)]
+#![feature(register_tool)]
 #![feature(sanitize)]
 
 fn main() {
@@ -105,5 +106,8 @@ fn main() {
     #[repr(simd)]
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
+    unreachable!();
+    #[register_tool(xyz)]
+    //~^ ERROR crate-level attribute should be an inner attribute
     unreachable!();
 }

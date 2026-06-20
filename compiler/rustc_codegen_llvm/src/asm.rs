@@ -43,7 +43,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             match *op {
                 InlineAsmOperandRef::Out { reg, late, place } => {
                     let is_target_supported = |reg_class: InlineAsmRegClass| {
-                        for &(_, feature) in reg_class.supported_types(asm_arch, true) {
+                        for &(_, feature) in reg_class.supported_types(asm_arch, true).as_ref() {
                             if let Some(feature) = feature {
                                 if self
                                     .tcx
@@ -229,6 +229,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 InlineAsmArch::AArch64 | InlineAsmArch::Arm64EC | InlineAsmArch::Arm => {
                     constraints.push("~{cc}".to_string());
                 }
+                InlineAsmArch::Amdgpu => {}
                 InlineAsmArch::X86 | InlineAsmArch::X86_64 => {
                     constraints.extend_from_slice(&[
                         "~{dirflag}".to_string(),
@@ -278,6 +279,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 }
                 InlineAsmArch::SpirV => {}
                 InlineAsmArch::Wasm32 | InlineAsmArch::Wasm64 => {}
+                InlineAsmArch::Xtensa => {}
                 InlineAsmArch::Bpf => {}
                 InlineAsmArch::Msp430 => {
                     constraints.push("~{sr}".to_string());
@@ -698,6 +700,8 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             | Arm(ArmInlineAsmRegClass::dreg_low8)
             | Arm(ArmInlineAsmRegClass::qreg_low4) => "x",
             Arm(ArmInlineAsmRegClass::dreg) | Arm(ArmInlineAsmRegClass::qreg) => "w",
+            Amdgpu(AmdgpuInlineAsmRegClass::Sgpr(_)) => "s",
+            Amdgpu(AmdgpuInlineAsmRegClass::Vgpr(_)) => "v",
             Hexagon(HexagonInlineAsmRegClass::reg) => "r",
             Hexagon(HexagonInlineAsmRegClass::reg_pair) => "r",
             Hexagon(HexagonInlineAsmRegClass::preg) => unreachable!("clobber-only"),
@@ -740,6 +744,11 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
                 | X86InlineAsmRegClass::kreg0
                 | X86InlineAsmRegClass::tmm_reg,
             ) => unreachable!("clobber-only"),
+            Xtensa(XtensaInlineAsmRegClass::freg) => "f",
+            Xtensa(XtensaInlineAsmRegClass::reg) => "r",
+            Xtensa(XtensaInlineAsmRegClass::sreg | XtensaInlineAsmRegClass::breg) => {
+                unreachable!("clobber-only")
+            }
             Wasm(WasmInlineAsmRegClass::local) => "r",
             Bpf(BpfInlineAsmRegClass::reg) => "r",
             Bpf(BpfInlineAsmRegClass::wreg) => "w",
@@ -803,6 +812,7 @@ fn modifier_to_llvm(
                 modifier
             }
         }
+        Amdgpu(_) => None,
         Hexagon(_) => None,
         LoongArch(_) => None,
         Mips(_) => None,
@@ -845,6 +855,7 @@ fn modifier_to_llvm(
             | X86InlineAsmRegClass::kreg0
             | X86InlineAsmRegClass::tmm_reg,
         ) => unreachable!("clobber-only"),
+        Xtensa(_) => None,
         Wasm(WasmInlineAsmRegClass::local) => None,
         Bpf(_) => None,
         Avr(AvrInlineAsmRegClass::reg_pair)
@@ -883,6 +894,7 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
         Arm(ArmInlineAsmRegClass::qreg)
         | Arm(ArmInlineAsmRegClass::qreg_low8)
         | Arm(ArmInlineAsmRegClass::qreg_low4) => cx.type_vector(cx.type_i64(), 2),
+        Amdgpu(_) => cx.type_i32(),
         Hexagon(HexagonInlineAsmRegClass::reg) => cx.type_i32(),
         Hexagon(HexagonInlineAsmRegClass::reg_pair) => cx.type_i64(),
         Hexagon(HexagonInlineAsmRegClass::preg) => unreachable!("clobber-only"),
@@ -939,6 +951,11 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
             | X86InlineAsmRegClass::kreg0
             | X86InlineAsmRegClass::tmm_reg,
         ) => unreachable!("clobber-only"),
+        Xtensa(XtensaInlineAsmRegClass::reg) => cx.type_i32(),
+        Xtensa(XtensaInlineAsmRegClass::freg) => cx.type_f32(),
+        Xtensa(XtensaInlineAsmRegClass::sreg | XtensaInlineAsmRegClass::breg) => {
+            unreachable!("clobber-only")
+        }
         Wasm(WasmInlineAsmRegClass::local) => cx.type_i32(),
         Bpf(BpfInlineAsmRegClass::reg) => cx.type_i64(),
         Bpf(BpfInlineAsmRegClass::wreg) => cx.type_i32(),

@@ -3,17 +3,16 @@ use std::sync::Arc;
 
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CompiledModules, CrateInfo};
-use rustc_data_structures::indexmap::IndexMap;
 use rustc_data_structures::svh::Svh;
 use rustc_errors::timings::TimingSection;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_metadata::EncodedMetadata;
-use rustc_middle::dep_graph::DepGraph;
+use rustc_middle::dep_graph::{DepGraph, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{self, OutputFilenames, OutputType};
 
-use crate::errors::FailedWritingFile;
+use crate::diagnostics::FailedWritingFile;
 use crate::passes;
 
 pub struct Linker {
@@ -51,7 +50,7 @@ impl Linker {
         let (compiled_modules, mut work_products) = sess.time("finish_ongoing_codegen", || {
             match self.ongoing_codegen.downcast::<CompiledModules>() {
                 // This was a check only build
-                Ok(compiled_modules) => (*compiled_modules, IndexMap::default()),
+                Ok(compiled_modules) => (*compiled_modules, WorkProductMap::default()),
 
                 Err(ongoing_codegen) => codegen_backend.join_codegen(
                     ongoing_codegen,
@@ -90,14 +89,13 @@ impl Linker {
 
         if sess.opts.incremental.is_some()
             && let Some(path) = self.metadata.path()
-            && let Some((id, product)) =
-                rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
-                    sess,
-                    "metadata",
-                    &[("rmeta", path)],
-                    &[],
-                )
         {
+            let (id, product) = rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
+                sess,
+                "metadata",
+                &[("rmeta", path)],
+                &[],
+            );
             work_products.insert(id, product);
         }
 

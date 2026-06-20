@@ -134,7 +134,8 @@ pub fn precedence(expr: &ast::Expr) -> ExprPrecedence {
         | Expr::RecordExpr(_)
         | Expr::TupleExpr(_)
         | Expr::UnderscoreExpr(_)
-        | Expr::WhileExpr(_) => ExprPrecedence::Unambiguous,
+        | Expr::WhileExpr(_)
+        | Expr::IncludeBytesExpr(_) => ExprPrecedence::Unambiguous,
     }
 }
 
@@ -375,7 +376,7 @@ impl Expr {
 
             ArrayExpr(_) | TupleExpr(_) | Literal(_) | PathExpr(_) | ParenExpr(_) | IfExpr(_)
             | WhileExpr(_) | ForExpr(_) | LoopExpr(_) | MatchExpr(_) | BlockExpr(_)
-            | RecordExpr(_) | UnderscoreExpr(_) => (0, 0),
+            | RecordExpr(_) | UnderscoreExpr(_) | IncludeBytesExpr(_) => (0, 0),
         }
     }
 
@@ -519,7 +520,8 @@ impl Expr {
                 AsmExpr(e) => e.builtin_token(),
                 ArrayExpr(_) | TupleExpr(_) | Literal(_) | PathExpr(_) | ParenExpr(_)
                 | IfExpr(_) | WhileExpr(_) | ForExpr(_) | LoopExpr(_) | MatchExpr(_)
-                | BlockExpr(_) | RecordExpr(_) | UnderscoreExpr(_) | MacroExpr(_) => None,
+                | BlockExpr(_) | RecordExpr(_) | UnderscoreExpr(_) | MacroExpr(_)
+                | IncludeBytesExpr(_) => None,
             };
 
             token.map(|t| t.text_range()).unwrap_or_else(|| this.syntax().text_range()).start()
@@ -546,7 +548,7 @@ impl Expr {
                 .map(|e| e.child_is_followed_by_a_block())
                 .unwrap_or(false),
 
-            ForExpr(_) | IfExpr(_) | MatchExpr(_) | WhileExpr(_) => true,
+            ForExpr(_) | IfExpr(_) | MatchExpr(_) | WhileExpr(_) | IncludeBytesExpr(_) => true,
         }
     }
 }

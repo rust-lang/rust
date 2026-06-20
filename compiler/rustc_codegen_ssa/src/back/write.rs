@@ -6,7 +6,6 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 use std::{assert_matches, fs, io, mem, str, thread};
 
 use rustc_abi::Size;
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::jobserver::{self, Acquired};
 use rustc_data_structures::profiling::{SelfProfilerRef, VerboseTimingGuard};
 use rustc_errors::emitter::Emitter;
@@ -22,7 +21,7 @@ use rustc_incremental::{
 use rustc_macros::{Decodable, Encodable};
 use rustc_metadata::fs::copy_to_stdout;
 use rustc_middle::bug;
-use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
+use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{
@@ -460,10 +459,11 @@ pub(crate) fn start_async_codegen<B: WriteBackendMethods>(
 fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
     sess: &Session,
     compiled_modules: &CompiledModules,
-) -> FxIndexMap<WorkProductId, WorkProduct> {
-    let mut work_products = FxIndexMap::default();
+) -> WorkProductMap {
+    let mut work_products = WorkProductMap::default();
 
-    if sess.opts.incremental.is_none() {
+    if sess.opts.incremental.is_none() || sess.opts.unstable_opts.disable_incr_comp_backend_caching
+    {
         return work_products;
     }
 
@@ -489,14 +489,13 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
         if let Some(path) = &module.bytecode {
             files.push((OutputType::Bitcode.extension(), path.as_path()));
         }
-        if let Some((id, product)) = copy_cgu_workproduct_to_incr_comp_cache_dir(
+        let (id, product) = copy_cgu_workproduct_to_incr_comp_cache_dir(
             sess,
             &module.name,
             files.as_slice(),
             &module.links_from_incr_cache,
-        ) {
-            work_products.insert(id, product);
-        }
+        );
+        work_products.insert(id, product);
     }
 
     work_products
@@ -2098,11 +2097,7 @@ pub struct OngoingCodegen<B: WriteBackendMethods> {
 }
 
 impl<B: WriteBackendMethods> OngoingCodegen<B> {
-    pub fn join(
-        self,
-        sess: &Session,
-        crate_info: &CrateInfo,
-    ) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>) {
+    pub fn join(self, sess: &Session, crate_info: &CrateInfo) -> (CompiledModules, WorkProductMap) {
         self.shared_emitter_main.check(sess, true);
 
         let maybe_lto_modules = sess.time("join_worker_thread", || match self.coordinator.join() {

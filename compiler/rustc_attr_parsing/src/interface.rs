@@ -1,3 +1,4 @@
+//! API for other crates to parse attributes themselves.
 use std::convert::identity;
 #[cfg(debug_assertions)]
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -7,7 +8,7 @@ use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{AttrItemKind, AttrStyle, CRATE_NODE_ID, NodeId, Safety};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
-use rustc_feature::{AttributeTemplate, Features};
+use rustc_feature::{BUILTIN_ATTRIBUTE_MAP, Features};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{AttrArgs, AttrItem, AttrPath, Attribute, HashIgnoredAttrId, Target};
 use rustc_lint_defs::RegisteredTools;
@@ -22,7 +23,7 @@ use crate::context::{
 use crate::early_parsed::{EARLY_PARSED_ATTRIBUTES, EarlyParsedState};
 use crate::parser::{AllowExprMetavar, ArgParser, PathParser, RefPathParser};
 use crate::session_diagnostics::ParsedDescription;
-use crate::{OmitDoc, ShouldEmit};
+use crate::{AttributeTemplate, OmitDoc, ShouldEmit};
 
 pub struct EmitAttribute(
     pub  Box<
@@ -354,6 +355,9 @@ impl<'sess> AttributeParser<'sess> {
                             &mut emit_lint,
                         );
                         self.check_attribute_stability(&attr_path, attr_span, accept.stability);
+                        if let [part] = parts.as_slice() {
+                            debug_assert!(BUILTIN_ATTRIBUTE_MAP.contains(&part));
+                        }
 
                         let Some(args) = ArgParser::from_attr_args(
                             args,

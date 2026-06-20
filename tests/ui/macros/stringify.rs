@@ -491,7 +491,7 @@ fn test_item() {
     c1!(item, [ pub impl Struct {} ], "pub impl Struct {}");
     c1!(item, [ impl<T> Struct<T> {} ], "impl<T> Struct<T> {}");
     c1!(item, [ pub impl Trait for Struct {} ], "pub impl Trait for Struct {}");
-    c1!(item, [ impl<T> const Trait for T {} ], "impl<T> const Trait for T {}");
+    c1!(item, [ const impl<T> Trait for T {} ], "const impl<T> Trait for T {}");
 
     // ItemKind::MacCall
     c1!(item, [ mac!(); ], "mac!();");

@@ -114,6 +114,8 @@ def __lldb_init_module(debugger: lldb.SBDebugger, _dict: LLDBOpaque):
         FEATURE_FLAGS |= LLDBFeature.StaticFields
     if getattr(lldb, "eFormatterMatchCallback", None) is not None:
         FEATURE_FLAGS |= LLDBFeature.TypeRecognizers
+    if getattr(lldb, "eBasicTypeFloat128", None) is not None:
+        FEATURE_FLAGS |= LLDBFeature.Float128
 
     register_providers_compatibility()
 
@@ -393,7 +395,7 @@ def arc_synthetic(valobj: lldb.SBValue, _dict: LLDBOpaque) -> object:
 def is_udt(type: lldb.SBType, _dict: LLDBOpaque) -> bool:
     return (
         type.GetBasicType() == lldb.eBasicTypeInvalid
-        and not type.IsScopedEnumerationType()
+        and not type.GetEnumerationIntegerType().IsValid()
         and not type.IsPointerType()
         and not type.IsArrayType()
     )

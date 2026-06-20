@@ -71,11 +71,12 @@
 //! index of that offset is utilized as the answer to whether we're in the set
 //! or not.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write;
 use std::ops::Range;
 
-use ucd_parse::Codepoints;
+use rustc_hash::{FxHashMap, FxHashSet};
+use ucd_parse::{Codepoint, Codepoints};
 
 mod cascading_map;
 mod case_mapping;
@@ -88,14 +89,19 @@ use fmt_helpers::CharEscape;
 use raw_emitter::{RawEmitter, emit_codepoints, emit_whitespace};
 
 static PROPERTIES: &[&str] = &[
+    // tidy-alphabetical-start
     "Alphabetic",
-    "Lowercase",
-    "Uppercase",
     "Case_Ignorable",
+    "Cf",
+    "Cn_Planes_0_3",
+    "Default_Ignorable_Code_Point",
     "Grapheme_Extend",
-    "White_Space",
-    "N",
+    "Lowercase",
     "Lt",
+    "N",
+    "Uppercase",
+    "White_Space",
+    // tidy-alphabetical-end
 ];
 
 struct UnicodeData {
@@ -106,6 +112,9 @@ struct UnicodeData {
     to_title: BTreeMap<u32, [u32; 3]>,
     /// Only stores mappings that are not to self
     to_lower: BTreeMap<u32, [u32; 3]>,
+    /// Only stores mappings that differ from
+    /// `to_upper` followed by `to_lower`
+    to_casefold: BTreeMap<u32, [u32; 3]>,
 }
 
 fn to_mapping(
@@ -126,7 +135,7 @@ static UNICODE_DIRECTORY: &str = "unicode-downloads";
 fn load_data() -> UnicodeData {
     unicode_download::fetch_latest();
 
-    let mut properties = HashMap::new();
+    let mut properties = FxHashMap::default();
     for row in ucd_parse::parse::<_, ucd_parse::CoreProperty>(&UNICODE_DIRECTORY).unwrap() {
         if let Some(name) = PROPERTIES.iter().find(|prop| **prop == row.property.as_str()) {
             properties.entry(*name).or_insert_with(Vec::new).push(row.codepoints);
@@ -138,7 +147,11 @@ fn load_data() -> UnicodeData {
         }
     }
 
-    let [mut to_lower, mut to_upper, mut to_title] = [const { BTreeMap::new() }; 3];
+    // Unassigned characters are not listed in `UnicodeData.txt`,
+    // so get a list of all the assigned ones
+    let mut assigned_chars = BTreeSet::new();
+    let [mut to_lower, mut to_upper, mut to_title, mut to_casefold] =
+        [const { BTreeMap::new() }; 4];
     for row in ucd_parse::UnicodeDataExpander::new(
         ucd_parse::parse::<_, ucd_parse::UnicodeData>(&UNICODE_DIRECTORY).unwrap(),
     ) {
@@ -147,6 +160,11 @@ fn load_data() -> UnicodeData {
         } else {
             row.general_category.as_str()
         };
+
+        if !matches!(general_category, "Cs" | "Cn") {
+            assigned_chars.insert(row.codepoint.value());
+        }
+
         if let Some(name) = PROPERTIES.iter().find(|prop| **prop == general_category) {
             properties
                 .entry(*name)
@@ -171,6 +189,25 @@ fn load_data() -> UnicodeData {
         }
     }
 
+    // Find all unassigned chars in the first 4 planes
+    for c in '\0'..='\u{3FFFD}' {
+        let cp = Codepoint::from_u32(c.into()).unwrap();
+        if !assigned_chars.contains(&cp.value()) {
+            properties.entry("Cn_Planes_0_3").or_insert_with(Vec::new).push(Codepoints::Single(cp));
+        }
+    }
+
+    // For now, we hardcode the assigned/unassigned status of characters
+    // U+3FFFE and above. The assertion below must be kept in sync
+    // with the `is_unassigned()` method in `library/core/char/methods.rs`.
+    for c in '\u{3FFFE}'..=char::MAX {
+        assert_eq!(
+            assigned_chars.contains(&u32::from(c)),
+            matches!(c, '\u{E0001}' | '\u{E0020}'..='\u{E007F}' | '\u{E0100}'..='\u{E01EF}' | '\u{F0000}'..='\u{FFFFD}' | '\u{100000}'..='\u{10FFFD}'),
+            "{c:?}",
+        );
+    }
+
     for row in ucd_parse::parse::<_, ucd_parse::SpecialCaseMapping>(&UNICODE_DIRECTORY).unwrap() {
         if !row.conditions.is_empty() {
             // Skip conditional case mappings
@@ -186,6 +223,78 @@ fn load_data() -> UnicodeData {
         }
         if let Some(title) = to_mapping(&row.uppercase, &row.titlecase) {
             to_title.insert(key, title);
+        }
+    }
+
+    fn get_mapping_from_btreemap<'a>(
+        cp: Codepoint,
+        map: &'a BTreeMap<u32, [u32; 3]>,
+    ) -> Vec<Codepoint> {
+        let mapping =
+            map.get(&cp.value()).copied().map(|cs| cs.map(|c| Codepoint::from_u32(c).unwrap()));
+
+        mapping
+            .as_ref()
+            .map(|cs| {
+                let nul = Codepoint::from_u32(0).unwrap();
+                if cs[1] == nul {
+                    &cs[..1]
+                } else if cs[2] == nul {
+                    &cs[..2]
+                } else {
+                    &cs[..]
+                }
+            })
+            .map_or_else(|| vec![cp], ToOwned::to_owned)
+    }
+
+    let mut nontrivial_casefold = FxHashSet::default();
+
+    for row in ucd_parse::parse::<_, ucd_parse::CaseFold>(&UNICODE_DIRECTORY).unwrap() {
+        use ucd_parse::{CaseStatus, Codepoint};
+        if matches!(row.status, CaseStatus::Common | CaseStatus::Full) {
+            let key = row.codepoint.value();
+            nontrivial_casefold.insert(key);
+
+            // We store case-fold data only for characters whose case-folding
+            // differs from the lowercase of their uppercase.
+
+            let lower_upper_mapping: Vec<Codepoint> =
+                get_mapping_from_btreemap(row.codepoint, &to_upper)
+                    .into_iter()
+                    .flat_map(|cp| get_mapping_from_btreemap(cp, &to_lower))
+                    .collect();
+
+            if let Some(casefold) = to_mapping(&lower_upper_mapping, &row.mapping) {
+                to_casefold.insert(key, casefold);
+            }
+        }
+    }
+
+    // Now, account for characters that remain unchanged by case-folding
+    // (and are therefore omitted from `CaseFolding.txt`),
+    // but yet differ from the lowercase of their uppercase.
+
+    for c in '\0'..=char::MAX {
+        let cnum: u32 = c.into();
+        if !nontrivial_casefold.contains(&cnum) {
+            let cp = Codepoint::from_u32(cnum).unwrap();
+
+            use std::collections::btree_map::Entry;
+            match to_casefold.entry(cnum) {
+                Entry::Vacant(vacant_entry) => {
+                    let lower_upper_mapping: Vec<Codepoint> =
+                        get_mapping_from_btreemap(cp, &to_upper)
+                            .into_iter()
+                            .flat_map(|cp| get_mapping_from_btreemap(cp, &to_lower))
+                            .collect();
+
+                    if let Some(casefold) = to_mapping(&lower_upper_mapping, &[cp]) {
+                        vacant_entry.insert(casefold);
+                    }
+                }
+                Entry::Occupied(_) => {}
+            }
         }
     }
 
@@ -207,7 +316,7 @@ fn load_data() -> UnicodeData {
         .collect();
 
     properties.sort_by_key(|p| p.0);
-    UnicodeData { ranges: properties, to_lower, to_title, to_upper }
+    UnicodeData { ranges: properties, to_lower, to_title, to_upper, to_casefold }
 }
 
 fn main() {
@@ -247,7 +356,7 @@ fn main() {
 
         modules.push((property.to_lowercase().to_string(), emitter.file));
         table_file.push_str(&format!(
-            "// {:16}: {:5} bytes, {:6} codepoints in {:3} ranges (U+{:06X} - U+{:06X}) using {}\n",
+            "// {:28}: {:5} bytes, {:6} codepoints in {:3} ranges (U+{:06X} - U+{:06X}) using {}\n",
             property,
             emitter.bytes_used,
             datapoints,
@@ -259,11 +368,13 @@ fn main() {
         total_bytes += emitter.bytes_used;
     }
     let (conversions, sizes) = case_mapping::generate_case_mapping(&unicode_data);
-    for (name, (desc, size)) in ["to_lower", "to_upper", "to_title"].iter().zip(sizes) {
-        table_file.push_str(&format!("// {:16}: {:5} bytes, {desc}\n", name, size,));
+    for (name, (desc, size)) in
+        ["to_lower", "to_upper", "to_title", "to_casefold"].iter().zip(sizes)
+    {
+        table_file.push_str(&format!("// {:28}: {:5} bytes, {desc}\n", name, size,));
         total_bytes += size;
     }
-    table_file.push_str(&format!("// {:16}: {:5} bytes\n", "Total", total_bytes));
+    table_file.push_str(&format!("// {:28}: {:5} bytes\n", "Total", total_bytes));
 
     // Include the range search function
     table_file.push('\n');
@@ -369,10 +480,11 @@ pub(super) static {prop_upper}: &[RangeInclusive<char>; {is_true_len}] = &[{is_t
         .unwrap();
     }
 
-    for (name, lut) in ["TO_LOWER", "TO_UPPER", "TO_TITLE"].iter().zip([
+    for (name, lut) in ["TO_LOWER", "TO_UPPER", "TO_TITLE", "TO_CASEFOLD"].iter().zip([
         &data.to_lower,
         &data.to_upper,
         &data.to_title,
+        &data.to_casefold,
     ]) {
         let lut = lut
             .iter()

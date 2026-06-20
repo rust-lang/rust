@@ -62,9 +62,9 @@ static STATIC_LINKAGE: u8 = 0;
 static STATIC_NO_MANGLE: u8 = 0;
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2")]
+#[rustc_clean(cfg="bpass2", except="hir_owner")] // dirty because of stashed UNSAFE_CODE lint
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5")]
+#[rustc_clean(cfg="bpass5", except="hir_owner")] // dirty because of stashed UNSAFE_CODE lint
 #[rustc_clean(cfg="bpass6")]
 #[unsafe(no_mangle)]
 static STATIC_NO_MANGLE: u8 = 0;

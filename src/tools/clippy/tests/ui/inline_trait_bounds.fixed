@@ -92,3 +92,39 @@ enum InlineEnum<T: Clone> {
 fn with_default_value<T = u32>(x: T) -> T where T: Clone {
     x
 }
+
+mod issue17110 {
+    #[automatically_derived]
+    #[allow(invalid_type_param_default)]
+    fn with_default_value<T: Clone = u32>(x: T) -> T {
+        x
+    }
+
+    struct S;
+
+    #[automatically_derived]
+    impl S {
+        #[allow(invalid_type_param_default)]
+        fn with_default_value<T: Clone = u32>(x: T) -> T {
+            x
+        }
+    }
+
+    impl S {
+        #[allow(invalid_type_param_default)]
+        //~v inline_trait_bounds
+        fn with_default_value_but_not_auto_derived<T = u32>(x: T) -> T where T: Clone {
+            x
+        }
+    }
+
+    #[automatically_derived]
+    mod inner {
+        impl super::S {
+            #[allow(invalid_type_param_default)]
+            fn with_default_value_again<T: Clone = u32>(x: T) -> T {
+                x
+            }
+        }
+    }
+}

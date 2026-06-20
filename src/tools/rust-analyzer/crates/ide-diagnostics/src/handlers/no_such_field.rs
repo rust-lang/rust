@@ -116,14 +116,13 @@ fn missing_record_expr_field_fixes(
 
     let mut new_field = new_field.to_string();
     // FIXME: check submodule instead of FileId
-    if usage_file_id != def_file_id && !matches!(def_id, hir::Variant::EnumVariant(_)) {
-        new_field = format!("pub(crate) {new_field}");
-    }
-    new_field = format!("\n{indent}{new_field}{postfix}");
-
-    if needs_comma {
-        new_field = format!(",{new_field}");
-    }
+    let vis = if usage_file_id != def_file_id && !matches!(def_id, hir::Variant::EnumVariant(_)) {
+        "pub(crate) "
+    } else {
+        ""
+    };
+    let comma = if needs_comma { "," } else { "" };
+    new_field = format!("{comma}\n{indent}{vis}{new_field}{postfix}");
 
     let source_change = SourceChange::from_text_edit(
         def_file_id.file_id(sema.db),

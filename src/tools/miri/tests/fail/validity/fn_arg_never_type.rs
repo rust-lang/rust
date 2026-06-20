@@ -2,7 +2,8 @@ use std::mem::transmute;
 
 enum Never {}
 
-fn foo(x: Never) { //~ERROR: invalid value of type Never
+fn foo(x: Never) {
+    //~^ERROR: invalid value of type Never
     let ptr = &raw const x;
     println!("{ptr:p}");
 }

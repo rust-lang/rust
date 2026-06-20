@@ -32,7 +32,7 @@ use hir_expand::{
     name::AsName,
 };
 use hir_ty::{
-    InferBodyId, InferenceResult,
+    InferBodyId, InferenceResult, LoweringMode,
     db::AnonConstId,
     diagnostics::unsafe_operations,
     infer_query_with_inspect,
@@ -1088,7 +1088,12 @@ impl<'db> SemanticsImpl<'db> {
     /// That is, we strictly check if it lies inside the input of a macro call.
     pub fn is_inside_macro_call(&self, token @ InFile { value, .. }: InFile<&SyntaxToken>) -> bool {
         value.parent_ancestors().any(|ancestor| {
-            if ast::MacroCall::can_cast(ancestor.kind()) {
+            if let Some(macro_call) = ast::MacroCall::cast(ancestor.clone())
+                // If this is the *path* of a macro, it's not inside the call.
+                && macro_call.path().is_none_or(|path| {
+                    !path.syntax().text_range().contains_range(value.text_range())
+                })
+            {
                 return true;
             }
 
@@ -1323,7 +1328,7 @@ impl<'db> SemanticsImpl<'db> {
                             .map(|(call_id, item)| {
                                 let item_range = item.syntax().text_range();
                                 let loc = call_id.loc(db);
-                                let text_range = match loc.kind {
+                                let text_range = match &loc.kind {
                                     hir_expand::MacroCallKind::Attr {
                                         censored_attr_ids: attr_ids,
                                         ..
@@ -1740,11 +1745,7 @@ impl<'db> SemanticsImpl<'db> {
         analyzer.expr_adjustments(expr).map(|it| {
             it.iter()
                 .map(|adjust| {
-                    let target = Type::new_with_resolver(
-                        self.db,
-                        &analyzer.resolver,
-                        adjust.target.as_ref(),
-                    );
+                    let target = analyzer.ty(adjust.target.as_ref());
                     let kind = match adjust.kind {
                         hir_ty::Adjust::NeverToAny => Adjust::NeverToAny,
                         hir_ty::Adjust::Deref(Some(hir_ty::OverloadedDeref(m))) => {
@@ -1769,6 +1770,10 @@ impl<'db> SemanticsImpl<'db> {
                 })
                 .collect()
         })
+    }
+
+    pub fn expr_is_diverging(&self, expr: &ast::Expr) -> bool {
+        (|| self.analyze(expr.syntax())?.expr_is_diverging(self.db, expr))().unwrap_or(false)
     }
 
     pub fn type_of_expr(&self, expr: &ast::Expr) -> Option<TypeInfo<'db>> {
@@ -1835,10 +1840,10 @@ impl<'db> SemanticsImpl<'db> {
         let substs =
             hir_ty::next_solver::GenericArgs::for_item(interner, trait_.id.into(), |_, id, _| {
                 assert!(matches!(id, hir_def::GenericParamId::TypeParamId(_)), "expected a type");
-                subst.next().expect("too few subst").ty.into()
+                subst.next().expect("too few subst").ty.skip_binder().into()
             });
         assert!(subst.next().is_none(), "too many subst");
-        Some(match self.db.lookup_impl_method(env.env, func, substs).0 {
+        Some(match self.db.lookup_impl_method(env.param_env(self.db), func, substs).0 {
             Either::Left(it) => it.into(),
             Either::Right((impl_, method)) => {
                 Function { id: AnyFunctionId::BuiltinDeriveImplMethod { method, impl_ } }
@@ -1944,6 +1949,15 @@ impl<'db> SemanticsImpl<'db> {
         field: &ast::RecordPatField,
     ) -> Option<(Field, Type<'db>, GenericSubstitution<'db>)> {
         self.analyze(field.syntax())?.resolve_record_pat_field(self.db, field)
+    }
+
+    // FIXME: Remove this from https://github.com/rust-lang/rust-analyzer/pull/22449#discussion_r3299763452
+    pub fn resolve_tuple_struct_pat_fields(
+        &self,
+        tuple_struct_pat: &ast::TupleStructPat,
+    ) -> Option<Vec<(Field, Type<'db>)>> {
+        self.analyze(tuple_struct_pat.syntax())?
+            .resolve_tuple_struct_pat_fields(self.db, tuple_struct_pat)
     }
 
     // FIXME: Replace this with `resolve_macro_call2`
@@ -2436,7 +2450,7 @@ impl<'db> SemanticsImpl<'db> {
             AnyImplId::ImplId(id) => id,
             AnyImplId::BuiltinDeriveImplId(id) => return Some(id.loc(self.db).adt.into()),
         };
-        let source = hir_def::src::HasSource::ast_ptr(&id.loc(self.db), self.db);
+        let source = hir_def::src::HasSource::ast_ptr(id.loc(self.db), self.db);
         let mut file_id = source.file_id;
         let adt_ast_id = loop {
             let macro_call = file_id.macro_file()?;
@@ -2550,6 +2564,20 @@ impl<'db> SemanticsImpl<'db> {
         Some(locals)
     }
 
+    pub fn evaluate_where_clause_at(
+        &self,
+        node: &SyntaxNode,
+        offset: TextSize,
+        where_clause: ast::WhereClause,
+    ) -> crate::PredicateEvaluationResult {
+        let Some(analyzer) = self.analyze_with_offset_no_infer(node, offset) else {
+            return crate::PredicateEvaluationResult::unsupported(
+                "predicate evaluation is only supported in files that belong to a crate",
+            );
+        };
+        analyzer.evaluate_where_clause(self.db, where_clause)
+    }
+
     pub fn get_failed_obligations(&self, token: SyntaxToken) -> Option<String> {
         let node = token.parent()?;
         let node = self.find_file(&node);
@@ -2573,6 +2601,7 @@ impl<'db> SemanticsImpl<'db> {
                             RESULT.with(|ctx| ctx.borrow_mut().push(data));
                         }
                     }),
+                    LoweringMode::Ide,
                 );
                 let data: Vec<ProofTreeData> =
                     RESULT.with(|data| data.borrow_mut().drain(..).collect());

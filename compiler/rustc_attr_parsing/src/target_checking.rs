@@ -8,7 +8,7 @@ use rustc_hir::{AttrItem, Attribute, MethodKind, Target};
 use rustc_span::{BytePos, FileName, RemapPathScopeComponents, Span, Symbol, sym};
 
 use crate::context::AcceptContext;
-use crate::errors::{
+use crate::diagnostics::{
     InvalidAttrAtCrateLevel, ItemFollowingInnerAttr, UnsupportedAttributesInWhere,
 };
 use crate::session_diagnostics::{InvalidTarget, InvalidTargetHelp};
@@ -114,7 +114,11 @@ impl<'sess> AttributeParser<'sess> {
         // For crate-level attributes we emit a specific set of lints to warn
         // people about accidentally not using them on the crate.
         if let &AllowedTargets::AllowList(&[Allow(Target::Crate)]) = allowed_targets {
-            Self::check_crate_level(cx);
+            Self::check_crate_level(cx, false);
+            return;
+        }
+        if let &AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]) = allowed_targets {
+            Self::check_crate_level(cx, true);
             return;
         }
 
@@ -125,6 +129,7 @@ impl<'sess> AttributeParser<'sess> {
 
         let allowed_targets = allowed_targets.allowed_targets();
         let (applied, only) = allowed_targets_applied(allowed_targets, cx.target, cx.features);
+
         let diag = InvalidTarget {
             span: cx.attr_span.clone(),
             name: cx.attr_path.clone(),
@@ -134,6 +139,7 @@ impl<'sess> AttributeParser<'sess> {
             attribute_args,
             help: Self::target_checking_help(attribute_args, cx),
             previously_accepted: matches!(result, AllowedResult::Warn),
+            on_macro_call: matches!(cx.target, Target::MacroCall),
         };
 
         match result {
@@ -181,7 +187,7 @@ impl<'sess> AttributeParser<'sess> {
         }
     }
 
-    pub(crate) fn check_crate_level(cx: &mut AcceptContext<'_, 'sess>) {
+    pub(crate) fn check_crate_level(cx: &mut AcceptContext<'_, 'sess>, warn: bool) {
         if cx.target == Target::Crate {
             return;
         }
@@ -205,19 +211,20 @@ impl<'sess> AttributeParser<'sess> {
             })
             .unwrap_or_default();
 
-        let target = cx.target;
-        cx.emit_lint(
-            rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
-            crate::errors::InvalidAttrStyle {
-                name,
-                is_used_as_inner,
-                target_span: (!is_used_as_inner).then_some(target_span),
-                target: target.name(),
-                crate_root_path,
-                show_crate_root_help,
-            },
-            attr_span,
-        );
+        let diag = crate::diagnostics::InvalidAttrStyle {
+            name,
+            is_used_as_inner,
+            target_span: (!is_used_as_inner).then_some(target_span),
+            target: cx.target.name(),
+            crate_root_path,
+            show_crate_root_help,
+            span: attr_span,
+        };
+        if warn {
+            cx.emit_lint(rustc_session::lint::builtin::UNUSED_ATTRIBUTES, diag, attr_span);
+        } else {
+            cx.emit_err(diag);
+        }
     }
 
     // FIXME: Fix "Cannot determine resolution" error and remove built-in macros
@@ -519,5 +526,9 @@ pub(crate) const ALL_TARGETS: &'static [Policy] = {
             kind: rustc_hir::target::GenericParamKind::Type,
             has_default: true,
         }),
+        Allow(Target::Loop),
+        Allow(Target::ForLoop),
+        Allow(Target::While),
+        Allow(Target::Break),
     ]
 };

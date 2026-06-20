@@ -1,5 +1,5 @@
 #![warn(clippy::manual_is_power_of_two)]
-#![allow(clippy::precedence)]
+#![expect(clippy::precedence)]
 
 macro_rules! binop {
     ($a: expr, equal, $b: expr) => {

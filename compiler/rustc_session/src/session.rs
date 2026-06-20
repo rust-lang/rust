@@ -181,6 +181,10 @@ pub struct Session {
     ///
     /// The value is the `DepNodeIndex` of the node encodes the used feature.
     pub used_features: Lock<FxHashMap<Symbol, u32>>,
+
+    /// Whether the test harness removed a user-written `#[rustc_main]` attribute
+    /// while generating the synthetic test entry point.
+    pub removed_rustc_main_attr: AtomicBool,
 }
 
 #[derive(Clone, Copy)]
@@ -1036,6 +1040,10 @@ pub fn build_session(
         dcx = dcx.with_ice_file(ice_file);
     }
 
+    if let Some(msrv) = sopts.unstable_opts.hint_msrv {
+        dcx = dcx.with_msrv(msrv);
+    }
+
     let host_triple = TargetTuple::from_tuple(config::host_tuple());
     let (host, target_warnings) =
         Target::search(&host_triple, sopts.sysroot.path(), sopts.unstable_opts.unstable_options)
@@ -1133,6 +1141,7 @@ pub fn build_session(
         thin_lto_supported: true,                  // filled by `run_compiler`
         mir_opt_bisect_eval_count: AtomicUsize::new(0),
         used_features: Lock::default(),
+        removed_rustc_main_attr: AtomicBool::new(false),
     };
 
     validate_commandline_args_with_session_available(&sess);

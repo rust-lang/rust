@@ -27,7 +27,7 @@ note: cycle used when checking that `main::KooArc::{constant#0}::Frc` is well-fo
    |
 LL |                 type Frc = Frc<{}>::Arc;;
    |                 ^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 
 error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:15:24
@@ -66,7 +66,7 @@ note: cycle used when checking that `main::KooArc::{constant#0}::Frc` is well-fo
    |
 LL |             type Frc = Frc<
    |             ^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 
 error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:23:36
@@ -97,7 +97,7 @@ note: cycle used when checking that `main::KooArc::{constant#0}::Frc::{constant#
    |
 LL |                         type Frc = Frc<{}>::Arc;;
    |                         ^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 
 error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:27:32
@@ -136,7 +136,7 @@ note: cycle used when checking that `main::KooArc::{constant#0}::Frc::{constant#
    |
 LL |                     type Frc = Frc<
    |                     ^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 
 error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:35:44
@@ -167,7 +167,7 @@ note: cycle used when checking that `main::KooArc::{constant#0}::Frc::{constant#
    |
 LL | ...                   type Frc = Frc<{}>::Arc;;
    |                       ^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 
 error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:39:40
@@ -206,7 +206,7 @@ note: cycle used when checking that `main::KooArc::{constant#0}::Frc::{constant#
    |
 LL | ...                   type Frc = Frc<
    |                       ^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 
 error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:47:52
@@ -237,7 +237,7 @@ note: cycle used when checking that `main::KooArc::{constant#0}::Frc::{constant#
    |
 LL | ...                   type Frc = Frc<{}>::Arc;;
    |                       ^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 
 error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:51:48
@@ -276,7 +276,7 @@ note: cycle used when checking that `main::KooArc::{constant#0}::Frc::{constant#
    |
 LL | ...                   type Frc = Frc<
    |                       ^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 
 error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:60:64
@@ -307,7 +307,7 @@ note: cycle used when checking that `main::KooArc::{constant#0}::Frc::{constant#
    |
 LL | ...                   type Frc = Frc<{}>::Arc;;
    |                       ^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 
 error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:65:56
@@ -346,7 +346,7 @@ note: cycle used when checking that `main::KooArc::{constant#0}::Frc::{constant#
    |
 LL | ...                   type Frc = Frc<
    |                       ^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 
 error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:74:64
@@ -377,7 +377,7 @@ note: cycle used when checking that `main::KooArc::{constant#0}::Frc::{constant#
    |
 LL | ...                   type Frc = Frc<{}>::Arc;;
    |                       ^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 
 error[E0433]: cannot find type `Frc` in this scope
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:4:19

@@ -224,8 +224,6 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         mir = tcx.arena.alloc(optimize_use_clone::<Bx>(cx, monomorphized_mir));
     }
 
-    let debug_context = cx.create_function_debug_context(instance, fn_abi, llfn, &mir);
-
     let start_llbb = Bx::append_block(cx, llfn, "start");
     let mut start_bx = Bx::build(cx, start_llbb);
 
@@ -261,7 +259,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         funclets: IndexVec::from_fn_n(|_| None, mir.basic_blocks.len()),
         cold_blocks: find_cold_blocks(tcx, mir),
         locals: locals::Locals::empty(),
-        debug_context,
+        debug_context: None,
         per_local_var_debug_info: None,
         caller_location: None,
     };
@@ -270,6 +268,8 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // evaluate; however, the `MirUsedCollector` already did that during the collection phase of
     // monomorphization, and if there is an error during collection then codegen never starts -- so
     // we don't have to do it again.
+
+    fx.fill_function_debug_context();
 
     let (per_local_var_debug_info, consts_debug_info) =
         fx.compute_per_local_var_debug_info(&mut start_bx).unzip();

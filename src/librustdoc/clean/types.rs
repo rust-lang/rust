@@ -822,7 +822,7 @@ impl Item {
                 {
                     hir::Constness::NotConst
                 } else {
-                    hir::Constness::Const
+                    hir::Constness::Const { always: false }
                 }
             } else {
                 hir::Constness::NotConst
@@ -853,11 +853,8 @@ impl Item {
                         safety.into()
                     },
                     abi,
-                    constness: if tcx.is_const_fn(def_id) {
-                        hir::Constness::Const
-                    } else {
-                        hir::Constness::NotConst
-                    },
+                    // Foreign functions can never be const or comptime
+                    constness: hir::Constness::NotConst,
                     asyncness: hir::IsAsync::NotAsync,
                 }
             }
@@ -1250,7 +1247,7 @@ impl PreciseCapturingArg {
 pub(crate) enum WherePredicate {
     BoundPredicate { ty: Type, bounds: Vec<GenericBound>, bound_params: Vec<GenericParamDef> },
     RegionPredicate { lifetime: Lifetime, bounds: Vec<GenericBound> },
-    EqPredicate { lhs: QPathData, rhs: Term },
+    ProjectionPredicate { lhs: QPathData, rhs: Term },
 }
 
 impl WherePredicate {

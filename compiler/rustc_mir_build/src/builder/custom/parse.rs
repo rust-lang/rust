@@ -1,3 +1,4 @@
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::IndexSlice;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
@@ -318,6 +319,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
         data.terminator = Some(Terminator {
             source_info: SourceInfo { span, scope: self.source_scope },
             kind: terminator,
+            attributes: ThinVec::new(),
         });
 
         Ok(data)

@@ -1,0 +1,43 @@
+error[E0432]: crate_level `crate_level_test`
+  --> $DIR/crate_level.rs:14:9
+   |
+LL | pub use crate::foo;
+   |         ^^^^^^^---
+   |                |
+   |                no `foo` in the root
+   |
+   = note: unresolved import `crate::foo`
+
+error[E0432]: unresolved import `bar`
+  --> $DIR/crate_level.rs:17:9
+   |
+LL | pub use ::bar;
+   |         ^^---
+   |           |
+   |           no external crate `bar`
+
+error[E0432]: unresolved import `baz`
+  --> $DIR/crate_level.rs:20:9
+   |
+LL | pub use baz;
+   |         ^^^ no external crate `baz`
+
+error[E0432]: unresolved import `crate::module::waz`
+  --> $DIR/crate_level.rs:23:9
+   |
+LL | pub use crate::module::waz;
+   |         ^^^^^^^^^^^^^^^---
+   |                        |
+   |                        no `waz` in `module`
+
+error[E0432]: unresolved import `module::bluz`
+  --> $DIR/crate_level.rs:26:9
+   |
+LL | pub use module::bluz;
+   |         ^^^^^^^^----
+   |                 |
+   |                 no `bluz` in `module`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0432`.

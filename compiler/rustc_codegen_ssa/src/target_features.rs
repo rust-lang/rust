@@ -14,7 +14,7 @@ use rustc_target::spec::{Arch, SanitizerSet};
 use rustc_target::target_features::{RUSTC_SPECIFIC_FEATURES, Stability};
 use smallvec::SmallVec;
 
-use crate::errors::{FeatureNotValid, FeatureNotValidHint};
+use crate::errors::{CrossArchFeatureNote, FeatureNotValid, FeatureNotValidHint};
 use crate::{errors, target_features};
 
 /// Compute the enabled target features from the `#[target_feature]` function attribute.
@@ -50,7 +50,22 @@ pub(crate) fn from_target_feature_attr(
                     and_more: rust_target_features.len().saturating_sub(5),
                 }
             };
-            tcx.dcx().emit_err(FeatureNotValid { feature: feature_str, span: feature_span, hint });
+            tcx.dcx().emit_err(FeatureNotValid {
+                feature: feature_str,
+                span: feature_span,
+                hint,
+                cross_arch: {
+                    let arches = rustc_target::target_features::feature_to_arch_names(feature_str);
+                    match arches {
+                        [] => None,
+                        [arch] => Some(CrossArchFeatureNote::Single { feature: feature_str, arch }),
+                        [..] => Some(CrossArchFeatureNote::Multiple {
+                            feature: feature_str,
+                            arches: arches.into(),
+                        }),
+                    }
+                },
+            });
             continue;
         };
 

@@ -962,6 +962,7 @@ impl CrateInfo {
             natvis_debugger_visualizers: Default::default(),
             lint_level_specs: CodegenLintLevelSpecs::from_tcx(tcx),
             metadata_symbol: exported_symbols::metadata_symbol_name(tcx),
+            symbol_rename_suffix: format!(".rs{:x}", tcx.stable_crate_id(LOCAL_CRATE)),
             each_linked_rlib_file_for_lto: Default::default(),
             exported_symbols_for_lto: Default::default(),
         };
@@ -1132,7 +1133,9 @@ pub(crate) fn provide(providers: &mut Providers) {
 }
 
 pub fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> CguReuse {
-    if !tcx.dep_graph.is_fully_enabled() {
+    if !tcx.dep_graph.is_fully_enabled()
+        || tcx.sess.opts.unstable_opts.disable_incr_comp_backend_caching
+    {
         return CguReuse::No;
     }
 

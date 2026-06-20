@@ -1,3 +1,5 @@
+//! Traits for parsing attributes.
+//!
 //! This module defines traits for attribute parsers, little state machines that recognize and parse
 //! attributes out of a longer list of attributes. The main trait is called [`AttributeParser`].
 //! You can find more docs about [`AttributeParser`]s on the trait itself.
@@ -7,16 +9,18 @@
 //! Specifically, you might not care about managing the state of your [`AttributeParser`]
 //! state machine yourself. In this case you can choose to implement:
 //!
-//! - [`SingleAttributeParser`](crate::attributes::SingleAttributeParser): makes it easy to implement an attribute which should error if it
+//! - [`NoArgsAttributeParser`]: used for implementing an attribute that appears only once and
+//! accepts no arguments
+//! - [`SingleAttributeParser`]: makes it easy to implement an attribute which should error if it
 //! appears more than once in a list of attributes
-//! - [`CombineAttributeParser`](crate::attributes::CombineAttributeParser): makes it easy to implement an attribute which should combine the
+//! - [`CombineAttributeParser`]: makes it easy to implement an attribute which should combine the
 //! contents of attributes, if an attribute appear multiple times in a list
 //!
 //! Attributes should be added to `crate::context::ATTRIBUTE_PARSERS` to be parsed.
 
 use std::marker::PhantomData;
 
-use rustc_feature::{AttributeStability, AttributeTemplate, template};
+use rustc_feature::AttributeStability;
 use rustc_hir::attrs::AttributeKind;
 use rustc_span::edition::Edition;
 use rustc_span::{Span, Symbol};
@@ -26,6 +30,7 @@ use crate::context::{AcceptContext, FinalizeContext};
 use crate::parser::ArgParser;
 use crate::session_diagnostics::UnusedMultiple;
 use crate::target_checking::AllowedTargets;
+use crate::{AttributeTemplate, template};
 
 /// All the parsers require roughly the same imports, so this prelude has most of the often-needed ones.
 mod prelude;
@@ -64,10 +69,12 @@ pub(crate) mod rustc_allocator;
 pub(crate) mod rustc_dump;
 pub(crate) mod rustc_internal;
 pub(crate) mod semantics;
+pub(crate) mod splat;
 pub(crate) mod stability;
 pub(crate) mod test_attrs;
 pub(crate) mod traits;
 pub(crate) mod transparency;
+pub(crate) mod unroll;
 pub(crate) mod util;
 
 type AcceptFn<T> = for<'sess> fn(&mut T, &mut AcceptContext<'_, 'sess>, &ArgParser);
@@ -230,7 +237,11 @@ pub enum AttributeSafety {
     /// An error is emitted when `#[unsafe(...)]` is omitted, except when the attribute's edition
     /// is less than the one stored in `unsafe_since`. This handles attributes that were safe in
     /// earlier editions, but become unsafe in later ones.
-    Unsafe { unsafe_since: Option<Edition> },
+    Unsafe {
+        /// The `note` is emitted during the `unsafe_code`, and explains to the user why this attribute is unsafe.
+        note: &'static str,
+        unsafe_since: Option<Edition>,
+    },
 }
 
 /// An even simpler version of [`SingleAttributeParser`]:

@@ -999,24 +999,6 @@ struct FlatPat<'tcx> {
     extra_data: PatternExtraData<'tcx>,
 }
 
-impl<'tcx> FlatPat<'tcx> {
-    /// Creates a `FlatPat` containing a simplified [`MatchPairTree`] list/forest
-    /// for the given pattern.
-    fn new(place: PlaceBuilder<'tcx>, pattern: &Pat<'tcx>, cx: &mut Builder<'_, 'tcx>) -> Self {
-        // Recursively build a tree of match pairs for the given pattern.
-        let mut match_pairs = vec![];
-        let mut extra_data = PatternExtraData {
-            span: pattern.span,
-            bindings: Vec::new(),
-            ascriptions: Vec::new(),
-            is_never: pattern.is_never_pattern(),
-        };
-        MatchPairTree::for_pattern(place, pattern, cx, &mut match_pairs, &mut extra_data);
-
-        Self { match_pairs, extra_data }
-    }
-}
-
 /// Candidates are a generalization of (a) top-level match arms, and
 /// (b) sub-branches of or-patterns, allowing the match-lowering process to handle
 /// them both in a mostly-uniform way. For example, the list of candidates passed
@@ -1226,7 +1208,7 @@ struct Ascription<'tcx> {
 /// and helps [`TestKind::Switch`] and [`TestKind::SwitchInt`] know what target
 /// values to use.
 ///
-/// Created by [`MatchPairTree::for_pattern`], and then inspected primarily by:
+/// Created by [`MatchPairTree`], and then inspected primarily by:
 /// - [`Builder::pick_test_for_match_pair`] (to choose a test)
 /// - [`Builder::choose_bucket_for_candidate`] (to see how the test interacts with a match pair)
 ///

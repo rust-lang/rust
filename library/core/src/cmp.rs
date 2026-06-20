@@ -1873,7 +1873,7 @@ mod impls {
         ($($t:ty)*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-            impl const PartialEq for $t {
+            const impl PartialEq for $t {
                 #[inline]
                 fn eq(&self, other: &Self) -> bool { *self == *other }
                 #[inline]
@@ -1903,7 +1903,7 @@ mod impls {
         ($($t:ty)*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-            impl const Eq for $t {}
+            const impl Eq for $t {}
         )*)
     }
 
@@ -1952,7 +1952,7 @@ mod impls {
         ($($t:ty)*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-            impl const PartialOrd for $t {
+            const impl PartialOrd for $t {
                 #[inline]
                 fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
                     match (*self <= *other, *self >= *other) {
@@ -1994,7 +1994,7 @@ mod impls {
         ($($t:ty)*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-            impl const PartialOrd for $t {
+            const impl PartialOrd for $t {
                 #[inline]
                 fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
                     Some(crate::intrinsics::three_way_compare(*self, *other))
@@ -2005,7 +2005,7 @@ mod impls {
 
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-            impl const Ord for $t {
+            const impl Ord for $t {
                 #[inline]
                 fn cmp(&self, other: &Self) -> Ordering {
                     crate::intrinsics::three_way_compare(*self, *other)

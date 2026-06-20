@@ -107,3 +107,36 @@ mod macros {
         }
     }
 }
+
+mod issue17179 {
+    struct Test;
+
+    impl crate::HasAsyncMethod for Test {
+        async fn do_something() -> u32 {
+            //~^ unused_async_trait_impl
+
+            // Test that local functions are not touched by the suggestion.
+            fn local_func() -> u32 {
+                if 5 == 2 {
+                    return 1;
+                }
+                2
+            }
+
+            // Test that we do not change the tail expr or return in a (unrelated) closure.
+            let f = || {
+                if 5 == 2 {
+                    return 1;
+                }
+                2
+            };
+
+            // However the following return statement and tail expression should be changed.
+            if f() == 5 {
+                return 3;
+            }
+
+            5
+        }
+    }
+}

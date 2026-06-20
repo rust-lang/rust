@@ -9,11 +9,11 @@ use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
-use crate::errors::{
+use crate::diagnostics::{
     EiiAttributeNotSupported, EiiExternTargetExpectedList, EiiExternTargetExpectedMacro,
     EiiExternTargetExpectedUnsafe, EiiMacroExpectedMaxOneArgument, EiiOnlyOnce,
     EiiSharedMacroInStatementPosition, EiiSharedMacroTarget, EiiStaticArgumentRequired,
-    EiiStaticDefault, EiiStaticMultipleImplementations, EiiStaticMutable,
+    EiiStaticDefaultApple, EiiStaticMultipleImplementations, EiiStaticMutable,
 };
 
 /// ```rust
@@ -86,14 +86,17 @@ fn eii_(
     let (item_span, foreign_item_name) = match kind {
         ItemKind::Fn(func) => (func.sig.span, func.ident),
         ItemKind::Static(stat) => {
-            // Statics with a default are not supported yet
-            if let Some(stat_body) = &stat.expr {
-                ecx.dcx().emit_err(EiiStaticDefault {
-                    span: stat_body.span,
+            // See https://github.com/rust-lang/rust/issues/157649
+            if let Some(expr) = &stat.expr
+                && ecx.sess.target.is_like_darwin
+            {
+                ecx.dcx().emit_err(EiiStaticDefaultApple {
+                    span: expr.span,
                     name: path_to_string(&meta_item.path),
                 });
                 return vec![];
             }
+
             // Statics must have an explicit name for the eii
             if meta_item.is_word() {
                 ecx.dcx().emit_err(EiiStaticArgumentRequired {
@@ -139,19 +142,17 @@ fn eii_(
 
     let mut module_items = Vec::new();
 
-    if let ItemKind::Fn(func) = kind
-        && func.body.is_some()
-    {
-        module_items.push(generate_default_func_impl(
-            ecx,
-            &func,
-            impl_unsafe,
-            macro_name,
-            eii_attr_span,
-            item_span,
-            foreign_item_name,
-            default_func_attrs,
-        ))
+    if let Some(default_impl) = generate_default_impl(
+        ecx,
+        kind,
+        impl_unsafe,
+        macro_name,
+        eii_attr_span,
+        item_span,
+        foreign_item_name,
+        default_func_attrs,
+    ) {
+        module_items.push(default_impl);
     }
 
     module_items.push(generate_foreign_item(
@@ -266,18 +267,31 @@ fn filter_attrs_for_multiple_eii_attr(
         .collect()
 }
 
-fn generate_default_func_impl(
+fn generate_default_impl(
     ecx: &mut ExtCtxt<'_>,
-    func: &ast::Fn,
+    item_kind: &ItemKind,
     impl_unsafe: bool,
     macro_name: Ident,
     eii_attr_span: Span,
     item_span: Span,
     foreign_item_name: Ident,
     attrs: ThinVec<Attribute>,
-) -> Box<ast::Item> {
-    let mut default_func = func.clone();
-    default_func.eii_impls.push(EiiImpl {
+) -> Option<Box<ast::Item>> {
+    match item_kind {
+        ItemKind::Fn(func) => {
+            if func.body.is_none() {
+                return None;
+            }
+        }
+        ItemKind::Static(stat) => {
+            if stat.expr.is_none() {
+                return None;
+            }
+        }
+        _ => unreachable!("Target was checked earlier"),
+    };
+
+    let eii_impl = EiiImpl {
         node_id: DUMMY_NODE_ID,
         inner_span: macro_name.span,
         eii_macro_path: ast::Path::from_ident(macro_name),
@@ -297,7 +311,18 @@ fn generate_default_func_impl(
             ),
             impl_unsafe,
         }),
-    });
+    };
+
+    let mut item_kind = item_kind.clone();
+    match &mut item_kind {
+        ItemKind::Fn(func) => {
+            func.eii_impls.push(eii_impl);
+        }
+        ItemKind::Static(stat) => {
+            stat.eii_impls.push(eii_impl);
+        }
+        _ => unreachable!("Target was checked earlier"),
+    };
 
     let anon_mod = |span: Span, stmts: ThinVec<ast::Stmt>| {
         let unit = ecx.ty(item_span, ast::TyKind::Tup(ThinVec::new()));
@@ -311,15 +336,12 @@ fn generate_default_func_impl(
     };
 
     // const _: () = {
-    //     <orig fn>
+    //     <orig item>
     // }
-    anon_mod(
+    Some(anon_mod(
         item_span,
-        thin_vec![ecx.stmt_item(
-            item_span,
-            ecx.item(item_span, attrs, ItemKind::Fn(Box::new(default_func)))
-        ),],
-    )
+        thin_vec![ecx.stmt_item(item_span, ecx.item(item_span, attrs, item_kind))],
+    ))
 }
 
 /// Generates a foreign item, like
@@ -404,6 +426,8 @@ fn generate_foreign_static(mut stat: Box<ast::StaticItem>) -> ast::ForeignItemKi
     if stat.safety == ast::Safety::Default {
         stat.safety = ast::Safety::Safe(stat.ident.span);
     }
+
+    stat.expr = None;
 
     ast::ForeignItemKind::Static(stat)
 }

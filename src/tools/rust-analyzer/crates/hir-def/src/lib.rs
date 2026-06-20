@@ -48,7 +48,7 @@ pub mod find_path;
 pub mod import_map;
 pub mod visibility;
 
-use intern::Interned;
+use intern::{Interned, sym};
 use rustc_abi::ExternAbi;
 use thin_vec::ThinVec;
 
@@ -298,7 +298,7 @@ impl EnumId {
     pub fn enum_variants_with_diagnostics(
         self,
         db: &dyn DefDatabase,
-    ) -> &(EnumVariants, Option<ThinVec<InactiveEnumVariantCode>>) {
+    ) -> &(EnumVariants, ThinVec<InactiveEnumVariantCode>) {
         EnumVariants::of(db, self)
     }
 }
@@ -367,18 +367,33 @@ impl ExternBlockId {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EnumVariantLoc {
     pub id: AstId<ast::Variant>,
     pub parent: EnumId,
-    pub index: u32,
+    pub name: Name,
 }
 impl_intern!(EnumVariantId, EnumVariantLoc);
 impl_loc!(EnumVariantLoc, id: Variant, parent: EnumId);
 
+impl EnumVariantLoc {
+    pub fn index(&self, db: &dyn DefDatabase) -> usize {
+        self.parent
+            .enum_variants(db)
+            .variants
+            .get_full(&self.name)
+            .expect("parent enum should include this variant")
+            .0
+    }
+}
+
 impl EnumVariantId {
     pub fn fields(self, db: &dyn DefDatabase) -> &VariantFields {
         VariantFields::of(db, self.into())
+    }
+
+    pub fn index(self, db: &dyn DefDatabase) -> usize {
+        self.loc(db).index(db)
     }
 
     pub fn fields_with_source_map(
@@ -427,6 +442,7 @@ pub enum MacroExpander {
     BuiltInAttr(BuiltinAttrExpander),
     BuiltInDerive(BuiltinDeriveExpander),
     BuiltInEager(EagerExpander),
+    UnimplementedBuiltIn,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -457,6 +473,11 @@ pub struct ModuleIdLt<'db> {
     /// `BlockId` of that block expression. If `None`, this module is part of the crate-level
     /// `DefMap` of `krate`.
     pub block: Option<BlockId>,
+    /// The parent module of this module, or `None` if this is the root module inside the def
+    /// map (including for block def maps).
+    pub containing_module_inside_def_map: Option<ModuleIdLt<'db>>,
+    /// The name of this module, or [`sym::__empty`] for the root module.
+    name_or_empty: Name,
 }
 pub type ModuleId = ModuleIdLt<'static>;
 
@@ -502,21 +523,23 @@ impl ModuleId {
     }
 
     pub fn name(self, db: &dyn DefDatabase) -> Option<Name> {
-        let def_map = self.def_map(db);
-        let parent = def_map[self].parent?;
-        def_map[parent].children.iter().find_map(|(name, module_id)| {
-            if *module_id == self { Some(name.clone()) } else { None }
-        })
+        let name = self.name_or_empty(db);
+        if *name.symbol() == sym::__empty { None } else { Some(name) }
     }
 
     /// Returns the module containing `self`, either the parent `mod`, or the module (or block) containing
     /// the block, if `self` corresponds to a block expression.
     pub fn containing_module(self, db: &dyn DefDatabase) -> Option<ModuleId> {
-        self.def_map(db).containing_module(self)
+        self.containing_module_inside_def_map(db)
+            .or_else(|| self.block(db).map(|block| block.loc(db).module))
+            .map(|module| {
+                // SAFETY: Not sure.
+                unsafe { module.to_static() }
+            })
     }
 
     pub fn is_block_module(self, db: &dyn DefDatabase) -> bool {
-        self.block(db).is_some() && self.def_map(db).root_module_id() == self
+        self.block(db).is_some() && self.containing_module_inside_def_map(db).is_none()
     }
 }
 
@@ -837,6 +860,12 @@ impl From<VariantId> for ExpressionStoreOwnerId {
     }
 }
 
+impl From<ImplId> for ExpressionStoreOwnerId {
+    fn from(id: ImplId) -> Self {
+        ExpressionStoreOwnerId::Signature(id.into())
+    }
+}
+
 impl GenericDefId {
     pub fn file_id_and_params_of(
         self,
@@ -988,6 +1017,14 @@ pub enum VariantId {
 impl_from!(EnumVariantId, StructId, UnionId for VariantId);
 
 impl VariantId {
+    pub fn from_non_enum(adt_id: AdtId) -> Option<Self> {
+        Some(match adt_id {
+            AdtId::StructId(struct_id) => struct_id.into(),
+            AdtId::UnionId(union_id) => union_id.into(),
+            AdtId::EnumId(_) => return None,
+        })
+    }
+
     pub fn fields(self, db: &dyn DefDatabase) -> &VariantFields {
         VariantFields::of(db, self)
     }
