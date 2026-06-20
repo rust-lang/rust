@@ -22,13 +22,12 @@ Before generating the llvm-ir, keep in mind two techniques that can help ensure 
 ## 1) Generate an llvm-ir reproducer
 
 ```sh
-RUSTFLAGS="-Z autodiff=Enable,PrintModBefore" cargo +enzyme build --release &> out.ll 
+RUSTFLAGS="-Z autodiff=Enable,PrintModBefore" cargo +enzyme build --release &> out.ll
 ```
 
 This also captures a few warnings and info messages above and below your module. open out.ll and remove every line above `; moduleid = <somehash>`. Now look at the end of the file and remove everything that's not part of llvm-ir, i.e. remove errors and warnings. The last line of your llvm-ir should now start with `!<somenumber> = `, i.e. `!40831 = !{i32 0, i32 1037508, i32 1037538, i32 1037559}` or `!43760 = !dilocation(line: 297, column: 5, scope: !43746)`.
 
 The actual numbers will depend on your code.
-
 
 ## 2) Check your llvm-ir reproducer
 
@@ -50,12 +49,13 @@ If the previous step succeeded, you are going to see the same error that you saw
 
 If you fail to get the same error, please open an issue in the rust repository.
 If you succeed, congrats!
-the file is still huge, so let's automatically minimize it.
+The file is still huge, so let's automatically minimize it.
 
 ## 3) Minimize your llvm-ir reproducer
 
-First find your `llvm-extract` binary, it's in the same folder as your opt binary.
-then run:
+First, find your `llvm-extract` binary;
+it should be in the same folder as your opt binary.
+Then run:
 
 ```sh
 <path/to/llvm-extract> -S --func=<name> --recursive --rfunc="enzyme_autodiff*" --rfunc="enzyme_fwddiff*" --rfunc=<fnc_called_by_enzyme> out.ll -o mwe.ll
@@ -65,12 +65,12 @@ This command creates `mwe.ll`, a minimal working example.
 
 Please adjust the name passed with the last `--func` flag.
 You can either apply the `#[no_mangle]` attribute to the function you differentiate, then you can replace it with the rust name.
-otherwise you will need to look up the mangled function name.
+Otherwise you will need to look up the mangled function name.
 To do that, open `out.ll` and search for `__enzyme_fwddiff` or `__enzyme_autodiff`.
-the first string in that function call is the name of your function.
-example:
+The first string in that function call is the name of your function.
+Example:
 
-```llvm-ir 
+```llvm-ir
 define double @enzyme_opt_helper_0(ptr %0, i64 %1, double %2) {
   %4 = call double (...) @__enzyme_fwddiff(ptr @_zn2ad3_f217h3b3b1800bd39fde3e, metadata !"enzyme_const", ptr %0, metadata !"enzyme_const", i64 %1, metadata !"enzyme_dup", double %2, double %2)
   ret double %4
@@ -78,14 +78,14 @@ define double @enzyme_opt_helper_0(ptr %0, i64 %1, double %2) {
 ```
 
 Here, `_zn2ad3_f217h3b3b1800bd39fde3e` is the correct name.
-make sure to not copy the leading `@`.
-redo step 2) by running the `opt` command again, but this time passing `mwe.ll` as the input file instead of `out.ll`.
+Make sure to not copy the leading `@`.
+Redo step 2) by running the `opt` command again, but this time passing `mwe.ll` as the input file instead of `out.ll`.
 Check if this minimized example still reproduces the crash.
 
 ## 4) (Optional) Minimize your llvm-ir reproducer further.
 
 After the previous step you should have an `mwe.ll` file with ~5k loc.
-let's try to get it down to 50. find your `llvm-reduce` binary next to `opt` and `llvm-extract`.
+Let's try to get it down to 50. find your `llvm-reduce` binary next to `opt` and `llvm-extract`.
 Copy the first line of your error message, an example could be:
 
 ```sh
@@ -94,7 +94,7 @@ opt: /home/manuel/prog/rust/src/llvm-project/llvm/lib/ir/instructions.cpp:686: v
 
 If you just get a `segfault` there is no sensible error message and not much to do automatically, so continue to 5).
 
-otherwise, create a `script.sh` file containing
+Otherwise, create a `script.sh` file containing
 
 ```sh
 #!/bin/bash
@@ -103,16 +103,16 @@ otherwise, create a `script.sh` file containing
 ```
 
 Experiment a bit with which error message you pass to grep.
-it should be long enough to make sure that the error is unique.
+It should be long enough to make sure that the error is unique.
 However, for longer errors including `(` or `)` you will need to escape them correctly which can become annoying.
-Run
+Run:
 
-```sh 
-<path/to/llvm-reduce> --test=script.sh mwe.ll 
+```sh
+<path/to/llvm-reduce> --test=script.sh mwe.ll
 ```
 
-If you see `input isn't interesting!
-verify interesting-ness test`, you got the error message in script.sh wrong, you need to make sure that grep matches your actual error.
+If you see `input isn't interesting! verify interesting-ness test`,
+you got the error message in script.sh wrong, and need to make sure that grep matches your actual error.
 If all works out, you will see a lot of iterations, ending with a new `reduced.ll` file.
 Verify with `opt` that you still get the same error.
 
@@ -121,7 +121,7 @@ Verify with `opt` that you still get the same error.
 Once you have a minimized reproducer (`mwe.ll` or `reduced.ll`), you can delve deeper:
 
 - **manual editing:** try manually rewriting the llvm-ir.
-  for certain issues, like those involving indirect calls, you might investigate enzyme-specific intrinsics like `__enzyme_virtualreverse`.
+  For certain issues, like those involving indirect calls, you might investigate enzyme-specific intrinsics like `__enzyme_virtualreverse`.
   Understanding how to use these might require consulting enzyme's documentation or source code.
 - **enzyme test cases:** look for relevant test cases within the [enzyme repository](https://github.com/enzymead/enzyme/tree/main/enzyme/test) that might demonstrate the correct usage of features or intrinsics related to your problem.
 
@@ -138,7 +138,7 @@ Afterwards, you should be able to copy and paste your `mwe.ll` (or `reduced.ll`)
 
 #### Documenting findings
 
-some enzyme errors, like `"attempting to call an indirect active function whose runtime value is inactive"`, have historically caused confusion.
+Some enzyme errors, like `"attempting to call an indirect active function whose runtime value is inactive"`, have historically caused confusion.
 If you investigate such an issue, even if you don't find a complete solution, please consider documenting your findings.
 If the insights are general to enzyme and not specific to its rust usage, contributing them to the main [enzyme documentation](https://github.com/enzymead/www) is often the best first step.
 You can also mention your findings in the relevant enzyme github issue or propose updates to these docs if appropriate.
