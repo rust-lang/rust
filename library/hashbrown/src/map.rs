@@ -2608,7 +2608,12 @@ where
     }
 }
 
-impl<K, V, F> FusedIterator for ExtractIf<'_, K, V, F> where F: FnMut(&K, &mut V) -> bool {}
+impl<K, V, F, A> FusedIterator for ExtractIf<'_, K, V, F, A>
+where
+    F: FnMut(&K, &mut V) -> bool,
+    A: Allocator,
+{
+}
 
 /// A mutable iterator over the values of a `HashMap` in arbitrary order.
 /// The iterator element type is `&'a mut V`.
@@ -5026,10 +5031,14 @@ where
 
 #[expect(dead_code)]
 fn assert_covariance() {
-    fn map_key<'new>(v: HashMap<&'static str, u8>) -> HashMap<&'new str, u8> {
+    fn map_key<'new, S: BuildHasher, A: Allocator>(
+        v: HashMap<&'static str, u8, S, A>,
+    ) -> HashMap<&'new str, u8, S, A> {
         v
     }
-    fn map_val<'new>(v: HashMap<u8, &'static str>) -> HashMap<u8, &'new str> {
+    fn map_val<'new, S: BuildHasher, A: Allocator>(
+        v: HashMap<u8, &'static str, S, A>,
+    ) -> HashMap<u8, &'new str, S, A> {
         v
     }
     fn iter_key<'a, 'new>(v: Iter<'a, &'static str, u8>) -> Iter<'a, &'new str, u8> {
@@ -5060,9 +5069,9 @@ fn assert_covariance() {
     fn values_val<'a, 'new>(v: Values<'a, u8, &'static str>) -> Values<'a, u8, &'new str> {
         v
     }
-    fn drain<'new>(
-        d: Drain<'static, &'static str, &'static str>,
-    ) -> Drain<'new, &'new str, &'new str> {
+    fn drain<'new, A: Allocator>(
+        d: Drain<'static, &'static str, &'static str, A>,
+    ) -> Drain<'new, &'new str, &'new str, A> {
         d
     }
 }
