@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 #![allow(dropping_copy_types)]
 

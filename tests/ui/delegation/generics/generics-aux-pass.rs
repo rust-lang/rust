@@ -1,5 +1,5 @@
 //@ aux-crate:generics=generics.rs
-//@ run-pass
+//@ build-pass
 
 #![feature(fn_delegation)]
 

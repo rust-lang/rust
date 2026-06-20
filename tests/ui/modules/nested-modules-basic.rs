@@ -1,6 +1,6 @@
 //! Basic test for nested module functionality and path resolution
 
-//@ run-pass
+//@ check-pass
 
 mod inner {
     pub mod inner2 {

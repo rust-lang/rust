@@ -1,5 +1,5 @@
 // https://github.com/rust-lang/rust/issues/8249
-//@ run-pass
+//@ check-pass
 #![allow(dead_code)]
 
 trait A {

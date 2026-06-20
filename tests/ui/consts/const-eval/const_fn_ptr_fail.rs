@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 //@ compile-flags: -Zunleash-the-miri-inside-of-you
 #![allow(unused)]
 

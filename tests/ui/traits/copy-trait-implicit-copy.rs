@@ -1,6 +1,6 @@
 //! Tests that type parameters with the `Copy` are implicitly copyable.
 
-//@ run-pass
+//@ check-pass
 
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */

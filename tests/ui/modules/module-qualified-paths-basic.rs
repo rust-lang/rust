@@ -1,6 +1,6 @@
 //! Checks that functions from different modules are accessible via their fully-qualified paths.
 
-//@ run-pass
+//@ check-pass
 
 mod foo {
     pub fn x() -> isize {

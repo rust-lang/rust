@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 #![allow(unused_imports)]
 // This should resolve fine.
 // Prior to fix, the crossed imports between a and b

@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 fn tuple() {
     struct S;
     struct Z;

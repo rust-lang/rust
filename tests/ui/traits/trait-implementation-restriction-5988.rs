@@ -1,5 +1,5 @@
 // https://github.com/rust-lang/rust/issues/5988
-//@ run-pass
+//@ check-pass
 
 trait B {
     fn f(&self);

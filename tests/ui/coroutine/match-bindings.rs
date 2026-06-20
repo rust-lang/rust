@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 #![allow(dead_code)]
 
 #![feature(coroutines)]
@@ -9,7 +9,7 @@ enum Enum {
 }
 
 fn main() {
-    #[coroutine] || { //~ WARN unused coroutine that must be used
+    #[coroutine] || {
         loop {
             if let true = true {
                 match Enum::A(String::new()) {

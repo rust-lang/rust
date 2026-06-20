@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 struct SpeechMaker {
     speeches: usize

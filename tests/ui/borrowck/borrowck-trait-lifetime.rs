@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 #![allow(unused_imports)]
 // This test verifies that casting from the same lifetime on a value
 // to the same lifetime on a trait succeeds. See issue #10766.

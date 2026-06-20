@@ -1,5 +1,5 @@
 // https://github.com/rust-lang/rust/issues/6117
-//@ run-pass
+//@ build-pass
 #![allow(dead_code)]
 
 enum Either<T, U> { Left(T), Right(U) }

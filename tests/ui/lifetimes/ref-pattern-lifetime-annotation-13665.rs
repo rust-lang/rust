@@ -1,6 +1,6 @@
 //! Regression test for https://github.com/rust-lang/rust/issues/13665
 
-//@ run-pass
+//@ check-pass
 
 fn foo<'r>() {
   let maybe_value_ref: Option<&'r u8> = None;

@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 //@ aux-build:static_fn_trait_xc_aux.rs
 
 

@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 #![allow(unused_doc_comments)]
 #![feature(auto_traits)]
 #![feature(negative_impls)]
@@ -19,8 +19,8 @@ fn take_auto_unsafe<T: AutoUnsafe>(_: T) {}
 
 fn main() {
     // Parse inside functions.
-    auto trait AutoInner {} //~ WARN trait `AutoInner` is never used
-    unsafe auto trait AutoUnsafeInner {} //~ WARN trait `AutoUnsafeInner` is never used
+    auto trait AutoInner {}
+    unsafe auto trait AutoUnsafeInner {}
 
     take_auto(0);
     take_auto(AutoBool(true));

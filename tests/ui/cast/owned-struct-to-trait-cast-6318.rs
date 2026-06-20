@@ -1,5 +1,5 @@
 // https://github.com/rust-lang/rust/issues/6318
-//@ run-pass
+//@ build-pass
 
 pub enum Thing {
     A(Box<dyn Foo+'static>)

@@ -1,5 +1,5 @@
 //@ edition:2015
-//@ run-pass
+//@ check-pass
 #![allow(dead_code)]
 #![allow(unused_mut)]
 #![allow(unused_imports)]

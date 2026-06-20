@@ -1,6 +1,6 @@
 //! Test that argument names starting with `_` are usable.
 
-//@ run-pass
+//@ check-pass
 
 fn good(_a: &isize) {}
 

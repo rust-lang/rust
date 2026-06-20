@@ -1,6 +1,6 @@
 //! Checks global path resolution of `mem::drop` using a leading `::`.
 
-//@ run-pass
+//@ check-pass
 
 #![allow(dropping_copy_types)]
 

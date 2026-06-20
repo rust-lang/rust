@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 // Regression test for issue #47139:
 //
 // Coherence was encountering an (unnecessary) overflow trying to

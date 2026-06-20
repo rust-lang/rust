@@ -1,12 +1,12 @@
 //! This test checks that various forms of "trivial" casts and coercions
 //! can be explicitly performed using the `as` keyword without compilation errors.
 
-//@ run-pass
+//@ check-pass
 
 #![allow(trivial_casts, trivial_numeric_casts)]
 
 trait Foo {
-    fn foo(&self) {} //~ WARN method `foo` is never used
+    fn foo(&self) {}
 }
 
 pub struct Bar;

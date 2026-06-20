@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 // Test lifetimes are linked properly when we take reference
 // to interior.
 

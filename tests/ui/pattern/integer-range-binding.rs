@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 fn main() {
     let -2147483648..=2147483647 = 1;

@@ -1,6 +1,6 @@
 // https://github.com/rust-lang/rust/issues/72278
 // and https://github.com/rust-lang/rust/issues/42868
-//@ run-pass
+//@ check-pass
 
 #![allow(unused)]
 

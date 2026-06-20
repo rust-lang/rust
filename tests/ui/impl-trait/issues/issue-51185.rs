@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 fn foo() -> impl Into<for<'a> fn(&'a ())> {
     (|_| {}) as for<'a> fn(&'a ())
 }

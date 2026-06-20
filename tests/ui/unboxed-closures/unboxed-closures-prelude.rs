@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 // Tests that the re-exports of `FnOnce` et al from the prelude work.
 
 

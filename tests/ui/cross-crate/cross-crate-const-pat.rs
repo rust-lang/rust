@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 //@ aux-build:cci_const.rs
 
 

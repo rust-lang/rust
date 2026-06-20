@@ -1,5 +1,5 @@
 // https://github.com/rust-lang/rust/issues/7660
-//@ run-pass
+//@ check-pass
 #![allow(unused_variables)]
 // Regression test for issue 7660
 // rvalue lifetime too short when equivalent `match` works

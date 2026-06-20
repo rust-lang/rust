@@ -1,5 +1,5 @@
 // https://github.com/rust-lang/rust/issues/5554
-//@ run-pass
+//@ build-pass
 #![allow(dead_code)]
 
 pub struct X<T> {

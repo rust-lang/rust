@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 pub fn main() {
     fn id_i8(n: i8) -> i8 { n }

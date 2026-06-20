@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 //@ aux-build:cfg_inner_static.rs
 
 

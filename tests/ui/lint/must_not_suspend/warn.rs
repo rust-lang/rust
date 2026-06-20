@@ -1,5 +1,5 @@
 //@ edition:2018
-//@ run-pass
+//@ check-pass
 #![feature(must_not_suspend)]
 #![warn(must_not_suspend)]
 

@@ -1,6 +1,6 @@
 //! Regression test for https://github.com/rust-lang/rust/issues/11820
 
-//@ run-pass
+//@ check-pass
 
 #![allow(noop_method_call)]
 

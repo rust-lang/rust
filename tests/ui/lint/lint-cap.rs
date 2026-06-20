@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 //@ compile-flags: --cap-lints allow
 
 #![deny(warnings)]

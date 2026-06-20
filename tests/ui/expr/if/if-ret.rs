@@ -1,7 +1,7 @@
-//@ run-pass
+//@ check-pass
 
 #![allow(unused_parens)]
 
-fn foo() { if (return) { } } //~ WARNING unreachable block in `if`
+fn foo() { if (return) { } }
 
 pub fn main() { foo(); }

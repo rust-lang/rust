@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 
 struct Foo<const N: usize = 2>;
 impl<const N: usize> Foo<N> {

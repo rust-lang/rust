@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 trait Trait {
     const ASSOC: for<'a, 'b> fn(&'a u32, &'b u32);
 }

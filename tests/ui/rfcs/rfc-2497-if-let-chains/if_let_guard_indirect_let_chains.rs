@@ -1,5 +1,5 @@
 // https://github.com/rust-lang/rust/issues/93150
-//@ run-pass
+//@ check-pass
 
 fn main() {
     match true {

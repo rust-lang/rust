@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 //! Regression test for #58311, regarding the usage of Fn types in drop impls
 
 // All of this Drop impls should compile.

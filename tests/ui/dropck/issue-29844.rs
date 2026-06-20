@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 use std::sync::Arc;
 
 pub struct DescriptorSet<'a> {

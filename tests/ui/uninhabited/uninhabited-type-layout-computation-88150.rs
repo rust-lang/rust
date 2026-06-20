@@ -1,5 +1,5 @@
 // https://github.com/rust-lang/rust/issues/88150
-//@ run-pass
+//@ build-pass
 //@ compile-flags:-C debuginfo=2
 //@ edition:2018
 

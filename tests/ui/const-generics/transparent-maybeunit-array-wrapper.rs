@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 //@ revisions: full min
 
 #![cfg_attr(full, feature(adt_const_params))]

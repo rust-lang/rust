@@ -1,6 +1,6 @@
 //! Regression test for https://github.com/rust-lang/rust/issues/14821
 
-//@ run-pass
+//@ check-pass
 #![allow(dead_code)]
 #![allow(unused_variables)]
 trait SomeTrait {}

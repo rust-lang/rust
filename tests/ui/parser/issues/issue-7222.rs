@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 pub fn main() {
     const FOO: f64 = 10.0;

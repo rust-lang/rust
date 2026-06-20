@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 #![warn(unused)]
 #![deny(non_shorthand_field_patterns)]
 

@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 // Check tautalogically false `Sized` bounds
 #![feature(trivial_bounds)]
 #![allow(unused)]

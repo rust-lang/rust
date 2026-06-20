@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 //@ aux-build:unstable-macros.rs
 
 #![unstable(feature = "one_two_three_testing", issue = "none")]

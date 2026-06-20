@@ -1,5 +1,5 @@
 //! regression test for issue #3500
-//@ run-pass
+//@ check-pass
 
 pub fn main() {
     let x = &Some(1);

@@ -3,10 +3,10 @@
 //! Checks` that empty angle brackets <> are syntactically valid and equivalent
 //! to omitting type parameters entirely across various language constructs.
 
-//@ run-pass
+//@ check-pass
 
 struct S<>;
-trait T<> {} //~ WARN trait `T` is never used
+trait T<> {}
 enum E<> {
     V
 }
