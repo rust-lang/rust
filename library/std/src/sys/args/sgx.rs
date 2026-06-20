@@ -1,9 +1,7 @@
-#![allow(implicit_provenance_casts)] // FIXME: this module systematically confuses pointers and integers
-
 use crate::ffi::OsString;
 use crate::num::NonZero;
 use crate::ops::Try;
-use crate::sync::atomic::{Atomic, AtomicUsize, Ordering};
+use crate::sync::OnceLock;
 use crate::sys::FromInner;
 use crate::sys::os_str::Buf;
 use crate::sys::pal::abi::usercalls::alloc;
@@ -13,8 +11,7 @@ use crate::{fmt, slice};
 // Specifying linkage/symbol name is solely to ensure a single instance between this crate and its unit tests
 #[cfg_attr(test, linkage = "available_externally")]
 #[unsafe(export_name = "_ZN16__rust_internals3std3sys3sgx4args4ARGSE")]
-static ARGS: Atomic<usize> = AtomicUsize::new(0);
-type ArgsStore = Vec<OsString>;
+static ARGS: OnceLock<Vec<OsString>> = OnceLock::new();
 
 #[cfg_attr(test, allow(dead_code))]
 pub unsafe fn init(argc: isize, argv: *const *const u8) {
@@ -23,15 +20,16 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
         let args = args
             .iter()
             .map(|a| OsString::from_inner(Buf { inner: a.copy_user_buffer() }))
-            .collect::<ArgsStore>();
-        ARGS.store(Box::into_raw(Box::new(args)) as _, Ordering::Relaxed);
+            .collect::<Vec<_>>();
+
+        if let Err(_) = ARGS.set(args) {
+            rtabort!("init called twice");
+        }
     }
 }
 
 pub fn args() -> Args {
-    let args = unsafe { (ARGS.load(Ordering::Relaxed) as *const ArgsStore).as_ref() };
-    let slice = args.map(|args| args.as_slice()).unwrap_or(&[]);
-    Args { iter: slice.iter() }
+    Args { iter: ARGS.get().map_or_default(|args| args.iter()) }
 }
 
 pub struct Args {
