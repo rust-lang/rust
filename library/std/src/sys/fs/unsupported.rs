@@ -313,6 +313,10 @@ pub fn set_perm(_p: &Path, perm: FilePermissions) -> io::Result<()> {
     match perm.0 {}
 }
 
+pub fn set_perm_nofollow(_p: &Path, perm: FilePermissions) -> io::Result<()> {
+    match perm.0 {}
+}
+
 pub fn set_times(_p: &Path, _times: FileTimes) -> io::Result<()> {
     unsupported()
 }
