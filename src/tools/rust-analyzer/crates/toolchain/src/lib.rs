@@ -119,7 +119,7 @@ fn get_cargo_home() -> Option<Utf8PathBuf> {
         return Utf8PathBuf::try_from(PathBuf::from(path)).ok();
     }
 
-    if let Some(mut path) = home::home_dir() {
+    if let Some(mut path) = env::home_dir() {
         path.push(".cargo");
         return Utf8PathBuf::try_from(path).ok();
     }
