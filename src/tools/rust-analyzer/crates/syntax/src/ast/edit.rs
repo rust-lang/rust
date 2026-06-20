@@ -2,7 +2,6 @@
 //! immutable, all function here return a fresh copy of the tree, instead of
 //! doing an in-place modification.
 use parser::T;
-use rowan::Direction;
 use std::{
     fmt,
     iter::{self, once},
@@ -13,9 +12,8 @@ use crate::{
     AstToken, NodeOrToken, SyntaxElement,
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
     SyntaxNode, SyntaxToken,
-    algo::neighbor,
     ast::{self, AstNode, HasName, make},
-    syntax_editor::{Position, SyntaxEditor, SyntaxMappingBuilder},
+    syntax_editor::{Position, Removable, SyntaxEditor, SyntaxMappingBuilder},
 };
 
 use super::syntax_factory::SyntaxFactory;
@@ -286,24 +284,6 @@ impl ast::GenericParamList {
 }
 
 impl ast::UseTree {
-    /// Editor variant of UseTree remove
-    fn remove_with_editor(&self, editor: &SyntaxEditor) {
-        for dir in [Direction::Next, Direction::Prev] {
-            if let Some(next_use_tree) = neighbor(self, dir) {
-                let separators = self
-                    .syntax()
-                    .siblings_with_tokens(dir)
-                    .skip(1)
-                    .take_while(|it| it.as_node() != Some(next_use_tree.syntax()));
-                for separator in separators {
-                    editor.delete(separator);
-                }
-                break;
-            }
-        }
-        editor.delete(self.syntax());
-    }
-
     /// Deletes the usetree node represented by the input. Recursively removes parents, including use nodes that become empty.
     pub fn remove_recursive(self, editor: &SyntaxEditor) {
         let parent = self.syntax().parent();
@@ -319,7 +299,7 @@ impl ast::UseTree {
                 u.parent_use_tree().remove_recursive(editor);
                 return;
             }
-            self.remove_with_editor(editor);
+            self.remove(editor);
             u.remove_unnecessary_braces(editor);
         }
     }
@@ -362,51 +342,6 @@ impl ast::UseTree {
         let new_use_tree = make.use_tree(prefix.clone(), Some(use_tree_list), None, false);
 
         editor.replace(self.syntax(), new_use_tree.syntax());
-    }
-}
-
-impl ast::Use {
-    fn remove(&self, editor: &SyntaxEditor) {
-        let make = editor.make();
-        let next_ws = self
-            .syntax()
-            .next_sibling_or_token()
-            .and_then(|it| it.into_token())
-            .and_then(ast::Whitespace::cast);
-        if let Some(next_ws) = next_ws {
-            let ws_text = next_ws.syntax().text();
-            if let Some(rest) = ws_text.strip_prefix('\n') {
-                let next_use_removed = next_ws
-                    .syntax()
-                    .next_sibling_or_token()
-                    .and_then(|it| it.into_node())
-                    .and_then(ast::Use::cast)
-                    .and_then(|use_| use_.use_tree())
-                    .is_some_and(|use_tree| editor.deleted(use_tree.syntax()));
-                if rest.is_empty() || next_use_removed {
-                    editor.delete(next_ws.syntax());
-                } else {
-                    editor.replace(next_ws.syntax(), make.whitespace(rest));
-                }
-            }
-        }
-        let prev_ws = self
-            .syntax()
-            .prev_sibling_or_token()
-            .and_then(|it| it.into_token())
-            .and_then(ast::Whitespace::cast);
-        if let Some(prev_ws) = prev_ws {
-            let ws_text = prev_ws.syntax().text();
-            let prev_newline = ws_text.rfind('\n').map(|x| x + 1).unwrap_or(0);
-            let rest = &ws_text[0..prev_newline];
-            if rest.is_empty() {
-                editor.delete(prev_ws.syntax());
-            } else {
-                editor.replace(prev_ws.syntax(), make.whitespace(rest));
-            }
-        }
-
-        editor.delete(self.syntax());
     }
 }
 
