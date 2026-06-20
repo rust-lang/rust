@@ -1314,13 +1314,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             self.tcx.emit_node_span_lint(
                 CONFLICTING_REPR_HINTS,
                 hir_id,
-<<<<<<< HEAD
                 hint_spans.collect::<Vec<Span>>(),
                 diagnostics::ReprConflictingLint,
-=======
-                hint_spans.clone().collect::<Vec<Span>>(),
-                errors::ReprConflictingLint,
->>>>>>> d71bc523ed8 (lint against repeated repr attributes)
             );
         }
     }
