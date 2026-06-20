@@ -104,7 +104,7 @@ pub(crate) fn variances_of<'tcx>(
     err: Diag<'_>,
 ) -> &'tcx [ty::Variance] {
     let _guar = err.delay_as_bug();
-    let n = tcx.generics_of(def_id).own_params.len();
+    let n = tcx.generics_of(def_id).count();
     tcx.arena.alloc_from_iter(iter::repeat_n(ty::Bivariant, n))
 }
 
