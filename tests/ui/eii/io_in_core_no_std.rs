@@ -9,6 +9,7 @@
 #![feature(core_io_internals)]
 #![feature(core_io)]
 #![feature(raw_os_error_ty)]
+#![feature(lang_items)]
 #![no_std]
 #![no_implicit_prelude]
 
