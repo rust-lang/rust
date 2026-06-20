@@ -62,7 +62,8 @@ First we generate the device (GPU) code.
 
 <div class="warning">
 
-Replace the `target-cpu` (gfx90a) with the right code for your GPU. These are often referred to as "LLVM target names"[^list].
+Replace the `target-cpu` (gfx90a) with the right code for your GPU.
+These are often referred to as "LLVM target names"[^list].
 
 </div>
 
