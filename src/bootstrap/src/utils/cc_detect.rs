@@ -36,6 +36,8 @@ fn new_cc_build(build: &Build, target: TargetSelection) -> cc::Build {
         .opt_level(2)
         .warnings(false)
         .debug(false)
+        // We have to configure out_dir, otherwise flag_if_supported will not work
+        .out_dir(build.tempdir().join("cc-rs-out-dir"))
         // Compress debuginfo
         .flag_if_supported("-gz")
         .target(&target.triple)
