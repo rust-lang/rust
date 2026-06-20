@@ -1039,19 +1039,17 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeVisitor<I>
     fn visit_region(&mut self, r: I::Region) {
         match r.kind() {
             RegionKind::RePlaceholder(p) => self.max_universe = self.max_universe.max(p.universe),
-            RegionKind::ReVar(var) => {
-                match self.infcx.opportunistic_resolve_lt_var(var).kind() {
-                    RegionKind::RePlaceholder(p) => {
-                        self.max_universe = self.max_universe.max(p.universe)
-                    }
-                    RegionKind::ReVar(var) => {
-                        let u = self.infcx.universe_of_lt(var).unwrap();
-                        debug!("var {var:?} in universe {u:?}");
-                        self.max_universe = self.max_universe.max(u);
-                    }
-                    _ => (),
+            RegionKind::ReVar(var) => match self.infcx.opportunistic_resolve_lt_var(var).kind() {
+                RegionKind::RePlaceholder(p) => {
+                    self.max_universe = self.max_universe.max(p.universe)
                 }
-            }
+                RegionKind::ReVar(var) => {
+                    let u = self.infcx.universe_of_lt(var).unwrap();
+                    debug!("var {var:?} in universe {u:?}");
+                    self.max_universe = self.max_universe.max(u);
+                }
+                _ => (),
+            },
             _ => (),
         }
     }
