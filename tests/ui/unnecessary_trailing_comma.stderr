@@ -115,5 +115,11 @@ error: unnecessary trailing comma
 LL |     println!{"Foo[,", };
    |                     ^^ help: remove the trailing comma
 
-error: aborting due to 19 previous errors
+error: unnecessary trailing comma
+  --> tests/ui/unnecessary_trailing_comma.rs:29:42
+   |
+LL |     println!(concat!("Foo", "=", "{}"), 1,);
+   |                                          ^ help: remove the trailing comma
+
+error: aborting due to 20 previous errors
 
