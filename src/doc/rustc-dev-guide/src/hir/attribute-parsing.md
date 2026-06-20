@@ -9,14 +9,14 @@ The parsed form [is defined][hir_attrs] in the `rustc_hir` crate, and the parser
 
 ## A step by step guide of adding a new inert attribute parser
 
-1. Add the attribute name to the [BUILTIN_ATTRIBUTES][builtin_attributes].
+1. Add the attribute name to the [BUILTIN_ATTRIBUTES].
    This list defines the set of inert attributes.
 2. Add a variant to `AttributeKind` in the [hir definition of attributes][hir_attrs].
    This will define the parsed form of the attribute that the attribute parser will produce.
 3. Add your variant to the match in `rustc_hir/attrs/encode_cross_crate.rs`, which should return whether your attribute should be visible in dependent crates.
-   This is usually `No` for code-gen related attributes, and `Yes` for analysis related attributes.
+   This is usually `No` for codegen related attributes, and `Yes` for analysis related attributes.
 4. Create a new struct in `rustc_attr_parsing/attributes/*.rs` that will hold the state for your attribute parser.
-   For most parsers this will be an empty struct.
+   For most parsers, this will be an empty struct.
 5. Implement one of the attribute parsing traits for this struct:
    * `NoArgsAttributeParser` for attributes that may appear only a single time per item, and take no arguments.
      For example `#[no_mangle]`.
@@ -30,7 +30,7 @@ The parsed form [is defined][hir_attrs] in the `rustc_hir` crate, and the parser
    Not all of these constants are applicable to all traits.
    * `PATH`: The name of the attribute that is added
    * `TEMPLATE`: A structural description of your attribute, used only to guide diagnostics.
-     Use the [template!][template] macro to construct this type.
+     Use the [template!] macro to construct this type.
    * `STABILITY`: Whether your attribute is stable (ungated) or unstable (feature gated).
    * `ALLOWED_TARGETS`: Which targets the attribute may appear on.
      For new attributes, all incorrect targets should error, so use the `AllowedTargets::AllowList` for new attributes, and only use `Policy::Allow` to allow targets.
@@ -78,6 +78,6 @@ In other words, we expect attributes parsed with `parse_limited` to be reparsed 
 [attr_parsing]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_parsing/
 [attribute_parsers]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_parsing/context/static.ATTRIBUTE_PARSERS.html
 [builtin_attributes]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_feature/builtin_attrs/static.BUILTIN_ATTRIBUTES.html
-[template]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_feature/macro.template.html
+[template!]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_parsing/macro.template.html
 [find_attr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/macro.find_attr.html
 [parse_limited]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_parsing/interface/struct.AttributeParser.html#method.parse_limited
