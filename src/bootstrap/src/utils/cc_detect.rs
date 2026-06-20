@@ -102,17 +102,15 @@ pub fn fill_target_compiler(build: &mut Build, target: TargetSelection) {
     let config = build.config.target_config.get(&target);
     if let Some(cc) = config
         .and_then(|c| c.cc.clone())
-        .or_else(|| default_compiler(&mut cfg, Language::C, target, build))
+        .or_else(|| default_compiler(&cfg, Language::C, target, build))
     {
         cfg.compiler(cc);
     }
 
     let compiler = cfg.get_compiler();
-    let ar = if let ar @ Some(..) = config.and_then(|c| c.ar.clone()) {
-        ar
-    } else {
-        cfg.try_get_archiver().map(|c| PathBuf::from(c.get_program())).ok()
-    };
+    let ar = config
+        .and_then(|c| c.ar.clone())
+        .or_else(|| cfg.try_get_archiver().map(|c| PathBuf::from(c.get_program())).ok());
 
     build.cc.insert(target, compiler.clone());
     let mut cflags = build.cc_handled_clags(target, CLang::C);
@@ -124,7 +122,7 @@ pub fn fill_target_compiler(build: &mut Build, target: TargetSelection) {
     cfg.cpp(true);
     let cxx_configured = if let Some(cxx) = config
         .and_then(|c| c.cxx.clone())
-        .or_else(|| default_compiler(&mut cfg, Language::CPlusPlus, target, build))
+        .or_else(|| default_compiler(&cfg, Language::CPlusPlus, target, build))
     {
         cfg.compiler(cxx);
         true
@@ -160,7 +158,7 @@ pub fn fill_target_compiler(build: &mut Build, target: TargetSelection) {
 /// Determines the default compiler for a given target and language when not explicitly
 /// configured in `bootstrap.toml`.
 fn default_compiler(
-    cfg: &mut cc::Build,
+    cfg: &cc::Build,
     compiler: Language,
     target: TargetSelection,
     build: &Build,
