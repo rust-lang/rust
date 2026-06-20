@@ -555,15 +555,15 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             )
         },
         crates: |tcx, ()| {
-            // The list of loaded crates is now frozen in query cache,
-            // so make sure cstore is not mutably accessed from here on.
-            tcx.untracked().cstore.freeze();
+            // The loaded-crate list is now frozen in the query cache; stop
+            // mutating the cstore and stable crate id map from here on.
+            tcx.untracked().freeze_cstore();
             tcx.arena.alloc_from_iter(CStore::from_tcx(tcx).iter_crate_data().map(|(cnum, _)| cnum))
         },
         used_crates: |tcx, ()| {
-            // The list of loaded crates is now frozen in query cache,
-            // so make sure cstore is not mutably accessed from here on.
-            tcx.untracked().cstore.freeze();
+            // The loaded-crate list is now frozen in the query cache; stop
+            // mutating the cstore and stable crate id map from here on.
+            tcx.untracked().freeze_cstore();
             tcx.arena.alloc_from_iter(
                 CStore::from_tcx(tcx)
                     .iter_crate_data()

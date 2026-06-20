@@ -805,8 +805,8 @@ fn resolver_for_lowering_raw<'tcx>(
     );
     let krate = configure_and_expand(krate, &pre_configured_attrs, &mut resolver);
 
-    // Make sure we don't mutate the cstore from here on.
-    tcx.untracked().cstore.freeze();
+    // Don't mutate the cstore or stable crate id map from here on.
+    tcx.untracked().freeze_cstore();
 
     let ResolverOutputs {
         global_ctxt: untracked_resolutions,
