@@ -5,30 +5,36 @@ use crate::fmt;
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 #[doc(hidden)]
 pub mod raw_os_error {
-    #![expect(dead_code)]
-    // FIXME: Apple platforms do not yet support weak linkage
-    #![cfg(not(target_vendor = "apple"))]
-    // FIXME: Windows GNU (e.g., MinGW) does not yet support weak linkage
-    #![cfg(not(all(target_os = "windows", target_env = "gnu")))]
+    #![allow(dead_code)]
 
-    use super::{ErrorKind, RawOsError};
+    cfg_select! {
+        target_vendor = "apple" => {
+            // FIXME: Apple platforms do not yet support weak linkage
+        }
+        all(target_os = "windows", target_env = "gnu") => {
+            // FIXME: Windows GNU (e.g., MinGW) does not yet support weak linkage
+        }
+        _ => {
+            use super::{ErrorKind, RawOsError};
 
-    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-    #[eii]
-    pub fn decode_error_kind(_: RawOsError) -> ErrorKind {
-        ErrorKind::Uncategorized
-    }
+            #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+            #[eii]
+            pub fn decode_error_kind(_: RawOsError) -> ErrorKind {
+                ErrorKind::Uncategorized
+            }
 
-    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-    #[eii]
-    pub fn fmt(errno: RawOsError, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        <ErrorKind as core::fmt::Display>::fmt(&decode_error_kind(errno), fmt)
-    }
+            #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+            #[eii]
+            pub fn fmt(errno: RawOsError, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                <ErrorKind as core::fmt::Display>::fmt(&decode_error_kind(errno), fmt)
+            }
 
-    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-    #[eii]
-    pub fn is_interrupted(errno: RawOsError) -> bool {
-        matches!(decode_error_kind(errno), ErrorKind::Interrupted)
+            #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+            #[eii]
+            pub fn is_interrupted(errno: RawOsError) -> bool {
+                matches!(decode_error_kind(errno), ErrorKind::Interrupted)
+            }
+        }
     }
 }
 
