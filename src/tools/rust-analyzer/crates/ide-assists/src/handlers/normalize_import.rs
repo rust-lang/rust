@@ -1,5 +1,5 @@
 use ide_db::imports::merge_imports::try_normalize_import;
-use syntax::{AstNode, ast};
+use syntax::{AstNode, ast, syntax_editor::SyntaxEditor};
 
 use crate::{
     AssistId,
@@ -25,11 +25,13 @@ pub(crate) fn normalize_import(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -
     };
 
     let target = use_item.syntax().text_range();
+    let (editor, _) = SyntaxEditor::new(use_item.syntax().ancestors().last().unwrap());
     let normalized_use_item =
-        try_normalize_import(&use_item, ctx.config.insert_use.granularity.into())?;
+        try_normalize_import(editor.make(), &use_item, ctx.config.insert_use.granularity.into())?;
+    editor.replace(use_item.syntax(), normalized_use_item.syntax());
 
     acc.add(AssistId::refactor_rewrite("normalize_import"), "Normalize import", target, |builder| {
-        builder.replace_ast(use_item, normalized_use_item);
+        builder.add_file_edits(ctx.vfs_file_id(), editor);
     })
 }
 
