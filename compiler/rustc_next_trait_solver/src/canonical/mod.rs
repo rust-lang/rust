@@ -261,7 +261,6 @@ where
 struct ResponseRelating<'infcx, Infcx, I: Interner> {
     infcx: &'infcx Infcx,
     span: I::Span,
-    region_constraints: Option<Vec<ty::RegionConstraint<I>>>,
 }
 
 impl<'infcx, Infcx, I> ResponseRelating<'infcx, Infcx, I>
@@ -269,12 +268,8 @@ where
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
 {
-    fn new(infcx: &'infcx Infcx, span: I::Span, collect_region_constraints: bool) -> Self {
-        ResponseRelating {
-            infcx,
-            span,
-            region_constraints: collect_region_constraints.then(Vec::new),
-        }
+    fn new(infcx: &'infcx Infcx, span: I::Span) -> Self {
+        ResponseRelating { infcx, span }
     }
 }
 
@@ -385,10 +380,12 @@ where
 
     #[instrument(skip(self), level = "trace")]
     fn regions(&mut self, a: Region<I>, b: Region<I>) -> RelateResult<I, Region<I>> {
-        if let Some(region_constraints) = &mut self.region_constraints {
+        if self.cx().assumptions_on_binders() {
             if a != b {
-                region_constraints.push(ty::RegionConstraint::RegionOutlives(a, b));
-                region_constraints.push(ty::RegionConstraint::RegionOutlives(b, a));
+                self.infcx
+                    .register_solver_region_constraint(ty::RegionConstraint::RegionOutlives(a, b));
+                self.infcx
+                    .register_solver_region_constraint(ty::RegionConstraint::RegionOutlives(b, a));
             }
         } else {
             self.infcx.equate_regions(a, b, VisibleForLeakCheck::Yes, self.span);
@@ -479,15 +476,8 @@ fn unify_query_var_values<D, I>(
     assert_eq!(original_values.len(), var_values.len());
 
     for (&orig, response) in iter::zip(original_values, var_values.var_values.iter()) {
-        let collect_region_constraints = delegate.cx().assumptions_on_binders();
-        let mut must_eq =
-            ResponseRelating::new(&**delegate, span, collect_region_constraints);
+        let mut must_eq = ResponseRelating::new(&**delegate, span);
         must_eq.relate(orig, response).unwrap();
-        if let Some(region_constraints) = must_eq.region_constraints {
-            delegate.register_solver_region_constraint(ty::RegionConstraint::And(
-                region_constraints.into_boxed_slice(),
-            ));
-        }
     }
 }
 
