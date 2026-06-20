@@ -38,7 +38,10 @@ use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read};
 use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 #[cfg(all(target_os = "android", target_pointer_width = "64"))]
 use crate::sys::pal::weak::syscall;
-#[cfg(any(all(target_os = "android", target_pointer_width = "32"), target_vendor = "apple"))]
+#[cfg(any(
+    all(target_os = "android", target_pointer_width = "32"),
+    all(target_vendor = "apple", not(all(target_os = "macos", target_arch = "aarch64")))
+))]
 use crate::sys::pal::weak::weak;
 use crate::sys::{AsInner, FromInner, IntoInner, cvt};
 
@@ -219,6 +222,9 @@ impl FileDesc {
         target_os = "linux",
         target_os = "netbsd",
         target_os = "openbsd", // OpenBSD 2.7
+        // macOS only supports preadv since 11.0, which incidentally is the first
+        // version with AArch64 support, so we can use it unconditionally.
+        all(target_os = "macos", target_arch = "aarch64")
     ))]
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         let ret = cvt(unsafe {
@@ -314,7 +320,10 @@ impl FileDesc {
     //
     // These versions may be newer than the minimum supported versions of OS's we support so we must
     // use "weak" linking.
-    #[cfg(target_vendor = "apple")]
+    #[cfg(all(
+        target_vendor = "apple",
+        not(all(target_os = "macos", target_arch = "aarch64")) // See above.
+    ))]
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         weak!(
             fn preadv(
@@ -426,6 +435,9 @@ impl FileDesc {
         target_os = "linux",
         target_os = "netbsd",
         target_os = "openbsd", // OpenBSD 2.7
+        // macOS only supports preadv since 11.0, which incidentally is the first
+        // version with AArch64 support, so we can use it unconditionally.
+        all(target_os = "macos", target_arch = "aarch64")
     ))]
     pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
         let ret = cvt(unsafe {
@@ -521,7 +533,10 @@ impl FileDesc {
     //
     // These versions may be newer than the minimum supported versions of OS's we support so we must
     // use "weak" linking.
-    #[cfg(target_vendor = "apple")]
+    #[cfg(all(
+        target_vendor = "apple",
+        not(all(target_os = "macos", target_arch = "aarch64")) // See above.
+    ))]
     pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
         weak!(
             fn pwritev(
