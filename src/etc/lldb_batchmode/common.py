@@ -1,4 +1,5 @@
-# Contains the class definitions outlining the schema of the test data
+"""Contains the class definitions outlining the schema of the test data. For LLDB conversion
+from/into these types, see `./from_lldb.py`"""
 
 import enum
 import json
@@ -78,7 +79,7 @@ def from_dict(ty: type[Any], data: JsonType):
     """Translates a dictionary into an instance of the given dataclass type (with possibly nested
     dataclasses).
 
-    Relies on accurate type hints for the dataclass's fields, and the standard `dataclass.__init__`
+    Relies on accurate type hints for the dataclass's fields, and the default `dataclass.__init__`
     definition."""
 
     # Optional isn't a constructor, so we have to "unwrap" it.
@@ -295,19 +296,31 @@ generated for this test yet, consider using the `--bless` option."
         return result
 
     def save_blessing(self, metadata: BlessMetadata):
-        """Writes the entirety of `self` to the input file. Used to finalize changes made by
-        one or more `TestData.bless_variable` calls."""
+        """Writes the entirety of `self` to the env var `LLDB_BATCHMODE_INPUT_DATA_PATH`, which is
+        set by `compiletest` before running `lldb_batchmode. Used to finalize changes made by one or
+        more `from_lldb.bless_variable` calls.
+
+        This function should be called exactly once, right before
+        `lldb_batchmode.runner.main` exits if the following conditions are met:
+
+        1. No other exceptions or error states occurred
+        2. `BLESS == True`
+        3. At least one `repr` pseudo-command was processed
+
+        This prevents us from saving incomplete data or invalid data. It also prevents us from
+        creating input data files for tests that do not need it.
+        """
 
         self.bless_metadata = metadata
         path = os.environ["LLDB_BATCHMODE_INPUT_DATA_PATH"]
-        # dumping directly to a file is somewhat unsafe. If the json ends up malformed, we could
-        # end up overwriting valid test data with a complete mess. Since the in-memory data
-        # typically *isn't* malformed, the `--bless` will pass and make it seem like nothing is
-        # wrong.
+        # dumping directly to a file is somewhat unsafe. If the `Variable`/`Type` data ends up in a
+        # state that cannot be serialized correctly, the json ends up malformed, and we could end up
+        # overwriting valid test data with a complete mess. Since the in-memory data is typically
+        # completely valid, the testing logic will pass and make it seem like nothing is wrong.
 
         # While we could rely on git to help revert the test file, it's better to just not allow it
-        # to save malformed json in the first place. Thus, we dump the JSON, re-read it, and then
-        # only when that succeeds do we save it.
+        # to save malformed json in the first place. Thus, we dump the JSON, re-read it to check
+        # for `JSONDecodeError`, and write it to the target file if no error occurred.
         x = json.dumps(asdict(self), indent=" ")
         _ = json.loads(x)
 

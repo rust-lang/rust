@@ -1,5 +1,12 @@
-# Contains LLDB conversion functions from LLDB's in-memory representations to the test classes
-# defined in `.common`
+"""Contains LLDB conversion functions from LLDB's in-memory representations to the test classes
+defined in `./common.py`.
+
+We primarily interface with the following LLDB classes:
+
+* [`SBValue`](https://lldb.llvm.org/python_api/lldb.SBValue.html)
+* [`SBType`](https://lldb.llvm.org/python_api/lldb.SBType.html)
+* [`SBTypeMember`](https://lldb.llvm.org/python_api/lldb.SBTypeMember.html)
+"""
 
 from struct import unpack, calcsize
 
@@ -118,6 +125,7 @@ def get_summary_or_value(valobj: lldb.SBValue) -> str | None:
     want any printable representation at all, so this function falls back to `SBValue.GetValue`.
     That covers things like primitives and flat enums that typically don't have summary providers.
     """
+
     summary = valobj.GetSummary()
     if summary is None:
         return valobj.GetValue()
@@ -130,6 +138,22 @@ def field_from_lldb(field: lldb.SBTypeMember) -> Field:
 
 
 def get_generics(ty: lldb.SBType, sbtarget: lldb.SBTarget) -> list[lldb.SBType]:
+    """Platform-agnostic equivalent to `SBType.template_args`. `SBType`'s template functions do not
+    work correctly with PDB debug info because PDB has no way to represent template parameters.
+
+    Due to the DWARF spec using
+    C++-centric terminology (e.g. `DW_TAG_template_type_parameter`), the following terms are
+    interchangable:
+
+    * template type param/arg <-> generic param
+    * template value param/arg <-> const generic param
+
+    The difference between "param" and "arg" is largely irrelevant for our purposes.
+    Pre-parameterized types (e.g. `Vec<T>`, which could be parameterized to `Vec<u8>`, LLDB calls
+    this "template specialization") are not reflected in the DWARF data at all, and are largely an
+    LLDB/clang implementation detail that isn't directly exposed to us.
+    """
+
     name = ty.GetName()
     # FIXME Rust doesn't output template *values* (the `10` in `ArrayVec<u8, 10>`), only
     # template args (the `u8` in `ArrayVec<u8, 10>`). That means these can possibly have
@@ -232,10 +256,11 @@ def variable_from_lldb(var: lldb.SBValue) -> Variable:
 def bless_variable(
     target_data: TargetData, var_name: str, breakpoint_idx: int, frame: lldb.SBFrame
 ):
-    """Updates the mapping with data generated from the given variable. Only affects the mapping
-    of the current target and breakpoint. This function **does not** write to the input file.
-    Update all necessary vars, then write the entire input data at once using
-    `TestData.save_blessing`"""
+    """Updates the given `TargetData` with data generated from the given variable at the given
+    breakpoint. This function **does not** write to the input file. Please see
+    `TargetData.save_blessing` for more info on when and how to save the data.
+    """
+
     valobj = frame.FindVariable(var_name)
     if not valobj.IsValid():
         # FIXME (todo) error handling
