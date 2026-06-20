@@ -11,19 +11,19 @@ pub mod raw_os_error {
 
     #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
     #[eii]
-    pub(super) fn decode_error_kind(_: RawOsError) -> ErrorKind {
+    pub fn decode_error_kind(_: RawOsError) -> ErrorKind {
         ErrorKind::Uncategorized
     }
 
     #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
     #[eii]
-    pub(super) fn fmt(errno: RawOsError, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    pub fn fmt(errno: RawOsError, fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         <ErrorKind as core::fmt::Display>::fmt(&decode_error_kind(errno), fmt)
     }
 
     #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
     #[eii]
-    pub(super) fn is_interrupted(errno: RawOsError) -> bool {
+    pub fn is_interrupted(errno: RawOsError) -> bool {
         matches!(decode_error_kind(errno), ErrorKind::Interrupted)
     }
 }
