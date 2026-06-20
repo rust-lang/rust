@@ -234,7 +234,7 @@ The compiler uses the [`tracing`] crate for logging.
 
 [`tracing`]: https://docs.rs/tracing
 
-For details see [the guide section on tracing](./tracing.md)
+For details, see [the chapter on tracing](./tracing.md).
 
 ## Narrowing (Bisecting) Regressions
 
