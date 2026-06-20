@@ -65,7 +65,6 @@ def annot_to_ty(annot: str) -> type[Any]:
         "dict": dict,
         "str": str,
         "ByteSize": int,
-        "TestData": TestData,
         "TargetData": TargetData,
         "Variable": Variable,
         "Type": Type,
@@ -244,6 +243,20 @@ class BlessMetadata:
 
 @dataclass(slots=True)
 class TargetData:
+    """
+    Top-level container for all test data.
+
+    Due to the differences between PDB and DWARF debug info, we cannot guarantee their output
+    will be identical. Since LLDB can handle both, we need to conditionally select the correct
+    test data to use.
+
+    Additionally, since there are differences in the internals of some structs based on OS (e.g.
+    `PathBuf`/`OsString`), we need to be aware of whether we're on Windows or not.
+
+    A global var `TARGET` is set to the current variant upon `lldb_batchmode`'s instantiation using
+    an env var passed from `compiletest` and is not expected to change afterwards.
+    """
+
     bless_metadata: BlessMetadata = field(default_factory=BlessMetadata)
     """Miscellaneous data included to make diagnosing issues easier. This data is not intended to be
     tested against."""
@@ -260,30 +273,9 @@ class TargetData:
     """Each element corresponds to one stopping point in the test. The element itself is a
     dictionary mapping variable names to their respective test data."""
 
-
-@dataclass(slots=True)
-class TestData:
-    """
-    Top-level container for all test data.
-
-    Due to the differences between PDB and DWARF debug info, we cannot guarantee their output
-    will be identical. Since LLDB can handle both, we need to conditionally select the correct
-    test data to use.
-
-    Additionally, since there are differences in the internals of some structs based on OS (e.g.
-    `PathBuf`/`OsString`), we need to be aware of whether we're on Windows or not.
-
-    A global var `TARGET` is set to the current variant upon `lldb_batchmode`'s instantiation using
-    an env var passed from `compiletest` and is not expected to change afterwards.
-    """
-
-    non_windows: TargetData = field(default_factory=TargetData)
-    windows_gnu: TargetData = field(default_factory=TargetData)
-    windows_msvc: TargetData = field(default_factory=TargetData)
-
     @staticmethod
-    def initialize() -> "TestData":
-        result = TestData()
+    def initialize() -> "TargetData":
+        result = TargetData()
         path = os.environ["LLDB_BATCHMODE_INPUT_DATA_PATH"]
         if not os.path.isfile(path):
             if BLESS:
@@ -296,47 +288,17 @@ generated for this test yet, consider using the `--bless` option."
 
         with open(path, "r") as f:
             try:
-                data: dict[str, JsonType] = json.load(f)
+                result = from_dict(TargetData, json.load(f))
             except json.decoder.JSONDecodeError:
                 print("Warning: Malformed input data, reverting to default")
-                result.non_windows = TargetData()
-                result.windows_gnu = TargetData()
-                result.windows_msvc = TargetData()
-                return result
-
-        if BLESS and TARGET == Target.WindowsGnu:
-            result.windows_gnu = TargetData()
-        else:
-            result.windows_gnu = from_dict(TargetData, data["windows_gnu"])
-
-        if BLESS and TARGET == Target.WindowsMsvc:
-            result.windows_msvc = TargetData()
-        else:
-            result.windows_msvc = from_dict(TargetData, data["windows_msvc"])
-
-        if BLESS and TARGET == Target.NonWindows:
-            result.non_windows = TargetData()
-        else:
-            result.non_windows = from_dict(TargetData, data["non_windows"])
 
         return result
-
-    def get_target_data(self) -> TargetData:
-        """Retrieves data from the target specified by `compiletest`"""
-
-        if TARGET == Target.WindowsGnu:
-            return self.windows_gnu
-
-        if TARGET == Target.WindowsMsvc:
-            return self.windows_msvc
-
-        return self.non_windows
 
     def save_blessing(self, metadata: BlessMetadata):
         """Writes the entirety of `self` to the input file. Used to finalize changes made by
         one or more `TestData.bless_variable` calls."""
 
-        self.get_target_data().bless_metadata = metadata
+        self.bless_metadata = metadata
         path = os.environ["LLDB_BATCHMODE_INPUT_DATA_PATH"]
         # dumping directly to a file is somewhat unsafe. If the json ends up malformed, we could
         # end up overwriting valid test data with a complete mess. Since the in-memory data

@@ -12,7 +12,6 @@ from .common import (
     Field,
     Target,
     TargetData,
-    TestData,
     Type,
     Variable,
 )
@@ -231,7 +230,7 @@ def variable_from_lldb(var: lldb.SBValue) -> Variable:
 
 
 def bless_variable(
-    test_data: TestData, var_name: str, breakpoint_idx: int, frame: lldb.SBFrame
+    target_data: TargetData, var_name: str, breakpoint_idx: int, frame: lldb.SBFrame
 ):
     """Updates the mapping with data generated from the given variable. Only affects the mapping
     of the current target and breakpoint. This function **does not** write to the input file.
@@ -241,8 +240,6 @@ def bless_variable(
     if not valobj.IsValid():
         # FIXME (todo) error handling
         raise Exception(f"<bless error: Cannot find variable {var_name}>")
-
-    target_data = test_data.get_target_data()
 
     if len(target_data.breakpoints) <= breakpoint_idx:
         target_data.breakpoints.append({})
