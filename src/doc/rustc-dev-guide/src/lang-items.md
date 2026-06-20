@@ -7,8 +7,8 @@ The marker is the attribute `#[lang = "..."]`, and there are various different v
 
 Many such lang items can be implemented only in one sensible way, such as `add` (`trait
 core::ops::Add`) or `future_trait` (`trait core::future::Future`).
-Others can be overridden to
-achieve some specific goals; for example, you can control your binary's entrypoint.
+Others can be overridden to achieve some specific goals;
+for example, you can control your binary's entrypoint.
 
 Features provided by lang items include:
 
