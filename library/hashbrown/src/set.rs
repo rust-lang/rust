@@ -2507,7 +2507,9 @@ impl<'a, T, S, A: Allocator> VacantEntry<'a, T, S, A> {
 
 #[expect(dead_code)]
 fn assert_covariance() {
-    fn set<'new>(v: HashSet<&'static str>) -> HashSet<&'new str> {
+    fn set<'new, S: BuildHasher, A: Allocator>(
+        v: HashSet<&'static str, S, A>,
+    ) -> HashSet<&'new str, S, A> {
         v
     }
     fn iter<'a, 'new>(v: Iter<'a, &'static str>) -> Iter<'a, &'new str> {
