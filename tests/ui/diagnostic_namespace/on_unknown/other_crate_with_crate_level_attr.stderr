@@ -1,0 +1,13 @@
+error[E0432]: you silly, the crate `other_crate_level` is empty
+  --> $DIR/other_crate_with_crate_level_attr.rs:6:9
+   |
+LL | pub use ::other::nothing;
+   |         ^^^^^^^^^-------
+   |                  |
+   |                  no `nothing` in the root
+   |
+   = note: unresolved import `other::nothing`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0432`.

@@ -49,9 +49,6 @@
 #include "llvm/Transforms/Instrumentation/RealtimeSanitizer.h"
 #include "llvm/Transforms/Instrumentation/ThreadSanitizer.h"
 #include "llvm/Transforms/Scalar/AnnotationRemarks.h"
-#if LLVM_VERSION_GE(23, 0)
-#include "llvm/Transforms/Utils/AssignGUID.h"
-#endif
 #include "llvm/Transforms/Utils/CanonicalizeAliases.h"
 #include "llvm/Transforms/Utils/FunctionImportUtils.h"
 #include "llvm/Transforms/Utils/NameAnonGlobals.h"
@@ -918,9 +915,6 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   if (NeedThinLTOBufferPasses) {
     MPM.addPass(CanonicalizeAliasesPass());
     MPM.addPass(NameAnonGlobalPass());
-#if LLVM_VERSION_GE(23, 0)
-    MPM.addPass(AssignGUIDPass());
-#endif
   }
   // For `-Copt-level=0`, and the pre-link fat/thin LTO stages.
   if (ThinLTOBufferRef && *ThinLTOBufferRef == nullptr) {
@@ -1460,9 +1454,6 @@ extern "C" LLVMRustBuffer *LLVMRustModuleSerialize(LLVMModuleRef M,
         PB.registerLoopAnalyses(LAM);
         PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
         ModulePassManager MPM;
-#if LLVM_VERSION_GE(23, 0)
-        MPM.addPass(AssignGUIDPass());
-#endif
         MPM.addPass(ThinLTOBitcodeWriterPass(OS, nullptr));
         MPM.run(*unwrap(M), MAM);
       } else {
@@ -1512,12 +1503,19 @@ extern "C" void LLVMRustComputeLTOCacheKey(RustStringRef KeyOut,
   DenseSet<GlobalValue::GUID> CfiFunctionDecls;
 
   // Based on the 'InProcessThinBackend' constructor in LLVM
+#if LLVM_VERSION_GE(23, 0)
+  CfiFunctionDefs.insert_range(
+      Data->Index.cfiFunctionDefs().getExportedThinLTOGUIDs());
+  CfiFunctionDecls.insert_range(
+      Data->Index.cfiFunctionDecls().getExportedThinLTOGUIDs());
+#else
   for (auto &Name : Data->Index.cfiFunctionDefs().symbols())
     CfiFunctionDefs.insert(GlobalValue::getGUIDAssumingExternalLinkage(
         GlobalValue::dropLLVMManglingEscape(Name)));
   for (auto &Name : Data->Index.cfiFunctionDecls().symbols())
     CfiFunctionDecls.insert(GlobalValue::getGUIDAssumingExternalLinkage(
         GlobalValue::dropLLVMManglingEscape(Name)));
+#endif
 
   Key = llvm::computeLTOCacheKey(conf, Data->Index, ModId, ImportList,
                                  ExportList, ResolvedODR, DefinedGlobals,

@@ -24,9 +24,12 @@ pub(crate) struct ParseTargetMachineConfig<'a>(pub LlvmError<'a>);
 
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for ParseTargetMachineConfig<'_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
-        let diag: Diag<'_, G> = self.0.into_diag(dcx, level);
+        // Reuse the formatted primary message from `LlvmError` without emitting it.
+        let diag: Diag<'_, ()> = self.0.into_diag(dcx, level);
         let (message, _) = diag.messages.first().expect("`LlvmError` with no message");
-        let message = format_diag_message(message, &diag.args);
+        let message = format_diag_message(message, &diag.args).into_owned();
+        diag.cancel();
+
         Diag::new(
             dcx,
             level,

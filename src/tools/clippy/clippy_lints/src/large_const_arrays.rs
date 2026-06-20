@@ -3,9 +3,8 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
-use rustc_middle::ty::Unnormalized;
 use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::{self, Ty, Unnormalized};
 use rustc_session::impl_lint_pass;
 use rustc_span::{BytePos, Pos, Span};
 
@@ -45,6 +44,31 @@ impl LargeConstArrays {
             maximum_allowed_size: conf.array_size_threshold,
         }
     }
+
+    /// Checks recursively checks whether `ty` has an array exceeding allowed size
+    fn check_impl<'a>(&self, cx: &LateContext<'a>, ty: Ty<'a>) -> bool {
+        match ty.kind() {
+            ty::Adt(adt_def, args) => adt_def
+                .all_fields()
+                .any(|f| self.check_impl(cx, f.ty(cx.tcx, args).skip_norm_wip())),
+            ty::Array(element_type, cst) => {
+                let normalized = cx
+                    .tcx
+                    .try_normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(*cst))
+                    .unwrap_or(*cst);
+                if let Some(element_count) = normalized.try_to_target_usize(cx.tcx)
+                    && let Ok(element_size) = cx.layout_of(*element_type).map(|l| l.size.bytes())
+                    && u128::from(self.maximum_allowed_size) < u128::from(element_count) * u128::from(element_size)
+                {
+                    true
+                } else {
+                    false
+                }
+            },
+            ty::Tuple(fields) => fields.iter().any(|f| self.check_impl(cx, f)),
+            _ => false,
+        }
+    }
 }
 
 impl<'tcx> LateLintPass<'tcx> for LargeConstArrays {
@@ -56,13 +80,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeConstArrays {
             && generics.params.is_empty() && !generics.has_where_clause_predicates
             && !item.span.from_expansion()
             && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip()
-            && let ty::Array(element_type, cst) = ty.kind()
-            && let Some(element_count) = cx.tcx
-                .try_normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(*cst))
-                .unwrap_or(*cst)
-                .try_to_target_usize(cx.tcx)
-            && let Ok(element_size) = cx.layout_of(*element_type).map(|l| l.size.bytes())
-            && u128::from(self.maximum_allowed_size) < u128::from(element_count) * u128::from(element_size)
+            && self.check_impl(cx, ty)
         {
             let hi_pos = ident.span.lo() - BytePos::from_usize(1);
             let sugg_span = Span::new(

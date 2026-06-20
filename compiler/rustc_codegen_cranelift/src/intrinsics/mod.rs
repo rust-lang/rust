@@ -1512,7 +1512,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
         }
 
         // FIXME implement variadics in cranelift
-        sym::va_arg | sym::va_end => {
+        sym::va_arg => {
             fx.tcx.dcx().span_fatal(
                 source_info.span,
                 "Defining variadic functions is not yet supported by Cranelift",

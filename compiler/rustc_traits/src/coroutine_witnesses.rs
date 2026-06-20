@@ -1,4 +1,5 @@
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::canonical::QueryRegionConstraint;
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::traits::{Obligation, ObligationCause};
@@ -48,9 +49,9 @@ fn compute_assumptions<'tcx>(
     def_id: DefId,
     bound_tys: &'tcx ty::List<Ty<'tcx>>,
 ) -> &'tcx ty::List<ty::ArgOutlivesPredicate<'tcx>> {
-    let infcx = tcx.infer_ctxt().build(ty::TypingMode::Analysis {
-        defining_opaque_types_and_generators: ty::List::empty(),
-    });
+    let infcx = tcx
+        .infer_ctxt()
+        .build(ty::TypingMode::Typeck { defining_opaque_types_and_generators: ty::List::empty() });
     with_replaced_escaping_bound_vars(&infcx, &mut vec![None], bound_tys, |bound_tys| {
         let param_env = tcx.param_env(def_id);
         let ocx = ObligationCtxt::new(&infcx);
@@ -80,7 +81,7 @@ fn compute_assumptions<'tcx>(
         tcx.mk_outlives_from_iter(
             constraints
                 .into_iter()
-                .flat_map(|(constraint, _, _)| constraint.iter_outlives())
+                .flat_map(|QueryRegionConstraint { constraint, .. }| constraint.iter_outlives())
                 // FIXME(higher_ranked_auto): We probably should deeply resolve these before
                 // filtering out infers which only correspond to unconstrained infer regions
                 // which we can sometimes get.

@@ -2,11 +2,10 @@ use std::any::Any;
 use std::hash::Hash;
 
 use rustc_ast::expand::allocator::AllocatorMethod;
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_metadata::EncodedMetadata;
 use rustc_metadata::creader::MetadataLoaderDyn;
-use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
+use rustc_middle::dep_graph::WorkProductMap;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::Session;
@@ -130,7 +129,7 @@ pub trait CodegenBackend {
         sess: &Session,
         outputs: &OutputFilenames,
         crate_info: &CrateInfo,
-    ) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>);
+    ) -> (CompiledModules, WorkProductMap);
 
     fn print_pass_timings(&self) {}
 

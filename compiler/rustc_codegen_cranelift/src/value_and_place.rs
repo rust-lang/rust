@@ -686,17 +686,14 @@ impl<'tcx> CPlace<'tcx> {
     ) -> CPlace<'tcx> {
         let layout = self.layout();
 
-        match self.inner {
-            CPlaceInner::VarPair(local, var1, var2) => {
-                let layout = layout.field(&*fx, field.index());
+        if let CPlaceInner::VarPair(local, var1, var2) = self.inner {
+            let layout = layout.field(&*fx, field.index());
 
-                match field.as_u32() {
-                    0 => return CPlace { inner: CPlaceInner::Var(local, var1), layout },
-                    1 => return CPlace { inner: CPlaceInner::Var(local, var2), layout },
-                    _ => unreachable!("field should be 0 or 1"),
-                }
+            match field.as_u32() {
+                0 => return CPlace { inner: CPlaceInner::Var(local, var1), layout },
+                1 => return CPlace { inner: CPlaceInner::Var(local, var2), layout },
+                _ => unreachable!("field should be 0 or 1"),
             }
-            _ => {}
         }
 
         let (base, extra) = match self.inner {

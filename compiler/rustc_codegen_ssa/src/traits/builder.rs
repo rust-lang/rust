@@ -2,6 +2,7 @@ use std::assert_matches;
 use std::ops::Deref;
 
 use rustc_abi::{Align, Scalar, Size, WrappingRange};
+use rustc_hir::attrs::AttributeKind;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
@@ -77,6 +78,9 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn ret_void(&mut self);
     fn ret(&mut self, v: Self::Value);
     fn br(&mut self, dest: Self::BasicBlock);
+    fn br_with_attrs(&mut self, dest: Self::BasicBlock, _attributes: &[AttributeKind]) {
+        self.br(dest)
+    }
     fn cond_br(
         &mut self,
         cond: Self::Value,

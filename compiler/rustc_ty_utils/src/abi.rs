@@ -356,13 +356,7 @@ fn arg_attrs_for_rust_scalar<'tcx>(
                 Some(pointee.align.min(cx.tcx().sess.target.max_reliable_alignment()));
         }
 
-        // LLVM dereferenceable attribute has unclear semantics on the return type,
-        // they seem to be "dereferenceable until the end of the program", which is
-        // generally, not valid for references. See
-        // <https://rust-lang.zulipchat.com/#narrow/channel/136281-t-opsem/topic/LLVM.20dereferenceable.20on.20return.20type/with/563001493>
-        if !is_return {
-            attrs.pointee_size = pointee.size;
-        };
+        attrs.pointee_size = pointee.size;
 
         if let Some(kind) = pointee.safe {
             // The aliasing rules for `Box<T>` are still not decided, but currently we emit
@@ -407,6 +401,26 @@ fn arg_attrs_for_rust_scalar<'tcx>(
                 }
             }
 
+            // NoFree is not valid on return values. If it were, it would mean something like
+            // "will not be freed until the end of the program", which is generally not valid for
+            // references.
+            let no_free = !is_return
+                && match kind {
+                    // Non-frozen shared references are not necessarily dereferenceable for the
+                    // entire duration of the function
+                    // (see <https://github.com/rust-lang/rust/pull/98017>).
+                    PointerKind::SharedRef { frozen } => frozen,
+                    // Mutable references to potentially self-referential types are not necessarily
+                    // dereferenceable for the entire duration of the function
+                    // (see <https://github.com/rust-lang/unsafe-code-guidelines/issues/381>).
+                    PointerKind::MutableRef { unpin } => unpin,
+                    // Box may be deallocated during execution of the function.
+                    PointerKind::Box { .. } => false,
+                };
+            if no_free {
+                attrs.set(ArgAttribute::NoFree);
+            }
+
             if matches!(kind, PointerKind::SharedRef { frozen: true }) && !is_return {
                 attrs.set(ArgAttribute::ReadOnly);
                 attrs.set(ArgAttribute::CapturesReadOnly);
@@ -423,11 +437,18 @@ fn fn_abi_sanity_check<'tcx>(
     fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
     spec_abi: ExternAbi,
 ) {
+    fn fn_arg_attrs_sanity_check(attrs: &ArgAttributes, is_ret: bool) {
+        if attrs.regular.contains(ArgAttribute::NoFree) {
+            assert!(!is_ret, "NoFree not valid on return values");
+        }
+    }
+
     fn fn_arg_sanity_check<'tcx>(
         cx: &LayoutCx<'tcx>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         spec_abi: ExternAbi,
         arg: &ArgAbi<'tcx, Ty<'tcx>>,
+        is_ret: bool,
     ) {
         let tcx = cx.tcx();
 
@@ -452,7 +473,7 @@ fn fn_abi_sanity_check<'tcx>(
             PassMode::Ignore => {
                 assert!(arg.layout.is_zst());
             }
-            PassMode::Direct(_) => {
+            PassMode::Direct(attrs) => {
                 // Here the Rust type is used to determine the actual ABI, so we have to be very
                 // careful. Scalar/Vector is fine, since backends will generally use
                 // `layout.backend_repr` and ignore everything else. We should just reject
@@ -482,8 +503,9 @@ fn fn_abi_sanity_check<'tcx>(
                         );
                     }
                 }
+                fn_arg_attrs_sanity_check(attrs, is_ret);
             }
-            PassMode::Pair(_, _) => {
+            PassMode::Pair(attrs1, attrs2) => {
                 // Similar to `Direct`, we need to make sure that backends use `layout.backend_repr`
                 // and ignore the rest of the layout.
                 assert!(
@@ -491,19 +513,23 @@ fn fn_abi_sanity_check<'tcx>(
                     "PassMode::Pair for type {}",
                     arg.layout.ty
                 );
+                fn_arg_attrs_sanity_check(attrs1, is_ret);
+                fn_arg_attrs_sanity_check(attrs2, is_ret);
             }
             PassMode::Cast { .. } => {
                 // `Cast` means "transmute to `CastType`"; that only makes sense for sized types.
                 assert!(arg.layout.is_sized());
             }
-            PassMode::Indirect { meta_attrs: None, .. } => {
+            PassMode::Indirect { meta_attrs: None, attrs, .. } => {
                 // No metadata, must be sized.
                 // Conceptually, unsized arguments must be copied around, which requires dynamically
                 // determining their size, which we cannot do without metadata. Consult
                 // t-opsem before removing this check.
                 assert!(arg.layout.is_sized());
+                // Indirect returns are arguments from an ABI perspective.
+                fn_arg_attrs_sanity_check(attrs, false);
             }
-            PassMode::Indirect { meta_attrs: Some(_), on_stack, .. } => {
+            PassMode::Indirect { meta_attrs: Some(meta_attrs), attrs, on_stack } => {
                 // With metadata. Must be unsized and not on the stack.
                 assert!(arg.layout.is_unsized() && !on_stack);
                 // Also, must not be `extern` type.
@@ -515,14 +541,17 @@ fn fn_abi_sanity_check<'tcx>(
                     // t-opsem before removing this check.
                     panic!("unsized arguments must not be `extern` types");
                 }
+                // Indirect returns are arguments from an ABI perspective.
+                fn_arg_attrs_sanity_check(attrs, false);
+                fn_arg_attrs_sanity_check(meta_attrs, false);
             }
         }
     }
 
     for arg in fn_abi.args.iter() {
-        fn_arg_sanity_check(cx, fn_abi, spec_abi, arg);
+        fn_arg_sanity_check(cx, fn_abi, spec_abi, arg, false);
     }
-    fn_arg_sanity_check(cx, fn_abi, spec_abi, &fn_abi.ret);
+    fn_arg_sanity_check(cx, fn_abi, spec_abi, &fn_abi.ret, true);
 }
 
 #[tracing::instrument(

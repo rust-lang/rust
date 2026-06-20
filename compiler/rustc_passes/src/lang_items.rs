@@ -18,7 +18,7 @@ use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_session::cstore::ExternCrate;
 use rustc_span::{Span, Symbol, sym};
 
-use crate::errors::{
+use crate::diagnostics::{
     DuplicateLangItem, IncorrectCrateType, IncorrectTarget, LangItemOnIncorrectTarget,
 };
 use crate::weak_lang_items;
@@ -246,8 +246,9 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
 
 /// Traverses and collects all the lang items in all crates.
 fn get_lang_items(tcx: TyCtxt<'_>, (): ()) -> LanguageItems {
-    let resolver = tcx.resolver_for_lowering().borrow();
-    let (resolver, krate) = &*resolver;
+    let (resolver, krate) = tcx.resolver_for_lowering();
+    let resolver = &*resolver.borrow();
+    let krate = &*krate.borrow();
 
     // Initialize the collector.
     let mut collector = LanguageItemCollector::new(tcx, resolver);

@@ -4,7 +4,7 @@
 //! this feature, turn back. This is *exceptionally* unstable. There is no attempt at all to make
 //! anything work besides those things which the rustc test suite happened to need. If you make a
 //! typo you'll probably ICE. Really, this is not the solution to your problems. Consider instead
-//! supporting the [stable MIR project group](https://github.com/rust-lang/project-stable-mir).
+//! supporting the [rustc public project group](https://github.com/rust-lang/rustc_public).
 //!
 //! The documentation for this module describes how to use this feature. If you are interested in
 //! hacking on the implementation, most of that documentation lives at

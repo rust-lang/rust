@@ -31,23 +31,23 @@ fn test_derive_empty() {
               IDENT 1 r#u32
         "#]],
         expect![[r#"
-            IDENT 42:Root[0000, 0]@0..6#ROOT2024 struct
-            IDENT 42:Root[0000, 0]@7..8#ROOT2024 S
-            GROUP {} 42:Root[0000, 0]@9..10#ROOT2024 42:Root[0000, 0]@46..47#ROOT2024 42:Root[0000, 0]@9..47#ROOT2024
-              IDENT 42:Root[0000, 0]@11..16#ROOT2024 field
-              PUNCT 42:Root[0000, 0]@16..17#ROOT2024 : [alone]
-              PUNCT 42:Root[0000, 0]@18..19#ROOT2024 & [joint]
-              PUNCT 42:Root[0000, 0]@22..23#ROOT2024 ' [joint]
-              IDENT 42:Root[0000, 0]@22..24#ROOT2024 r#lt
-              IDENT 42:Root[0000, 0]@25..27#ROOT2024 fn
-              GROUP () 42:Root[0000, 0]@27..28#ROOT2024 42:Root[0000, 0]@31..32#ROOT2024 42:Root[0000, 0]@27..32#ROOT2024
-                IDENT 42:Root[0000, 0]@28..31#ROOT2024 u32
-              PUNCT 42:Root[0000, 0]@33..34#ROOT2024 - [joint]
-              PUNCT 42:Root[0000, 0]@34..35#ROOT2024 > [alone]
-              PUNCT 42:Root[0000, 0]@36..37#ROOT2024 & [joint]
-              PUNCT 42:Root[0000, 0]@38..39#ROOT2024 ' [joint]
-              IDENT 42:Root[0000, 0]@38..39#ROOT2024 a
-              IDENT 42:Root[0000, 0]@42..45#ROOT2024 r#u32
+            IDENT 42:Root[0000, 0]@0..6#0 struct
+            IDENT 42:Root[0000, 0]@7..8#0 S
+            GROUP {} 42:Root[0000, 0]@9..10#0 42:Root[0000, 0]@46..47#0 42:Root[0000, 0]@9..47#0
+              IDENT 42:Root[0000, 0]@11..16#0 field
+              PUNCT 42:Root[0000, 0]@16..17#0 : [alone]
+              PUNCT 42:Root[0000, 0]@18..19#0 & [joint]
+              PUNCT 42:Root[0000, 0]@22..23#0 ' [joint]
+              IDENT 42:Root[0000, 0]@22..24#0 r#lt
+              IDENT 42:Root[0000, 0]@25..27#0 fn
+              GROUP () 42:Root[0000, 0]@27..28#0 42:Root[0000, 0]@31..32#0 42:Root[0000, 0]@27..32#0
+                IDENT 42:Root[0000, 0]@28..31#0 u32
+              PUNCT 42:Root[0000, 0]@33..34#0 - [joint]
+              PUNCT 42:Root[0000, 0]@34..35#0 > [alone]
+              PUNCT 42:Root[0000, 0]@36..37#0 & [joint]
+              PUNCT 42:Root[0000, 0]@38..39#0 ' [joint]
+              IDENT 42:Root[0000, 0]@38..39#0 a
+              IDENT 42:Root[0000, 0]@42..45#0 r#u32
         "#]],
     );
 }
@@ -137,76 +137,76 @@ pub struct Foo {
               PUNCT 1 , [alone]
         "#]],
         expect![[r#"
-            PUNCT 42:Root[0000, 0]@1..2#ROOT2024 # [joint]
-            GROUP [] 42:Root[0000, 0]@2..3#ROOT2024 42:Root[0000, 0]@52..53#ROOT2024 42:Root[0000, 0]@2..53#ROOT2024
-              IDENT 42:Root[0000, 0]@3..9#ROOT2024 helper
-              GROUP () 42:Root[0000, 0]@9..10#ROOT2024 42:Root[0000, 0]@51..52#ROOT2024 42:Root[0000, 0]@9..52#ROOT2024
-                IDENT 42:Root[0000, 0]@10..18#ROOT2024 build_fn
-                GROUP () 42:Root[0000, 0]@18..19#ROOT2024 42:Root[0000, 0]@50..51#ROOT2024 42:Root[0000, 0]@18..51#ROOT2024
-                  IDENT 42:Root[0000, 0]@19..26#ROOT2024 private
-                  PUNCT 42:Root[0000, 0]@26..27#ROOT2024 , [alone]
-                  IDENT 42:Root[0000, 0]@28..32#ROOT2024 name
-                  PUNCT 42:Root[0000, 0]@33..34#ROOT2024 = [alone]
-                  LITER 42:Root[0000, 0]@35..50#ROOT2024 Str partial_build
-            IDENT 42:Root[0000, 0]@54..57#ROOT2024 pub
-            IDENT 42:Root[0000, 0]@58..64#ROOT2024 struct
-            IDENT 42:Root[0000, 0]@65..68#ROOT2024 Foo
-            GROUP {} 42:Root[0000, 0]@69..70#ROOT2024 42:Root[0000, 0]@190..191#ROOT2024 42:Root[0000, 0]@69..191#ROOT2024
-              PUNCT 42:Root[0000, 0]@0..0#ROOT2024 # [alone]
-              GROUP [] 42:Root[0000, 0]@0..0#ROOT2024 42:Root[0000, 0]@0..0#ROOT2024 42:Root[0000, 0]@0..0#ROOT2024
-                IDENT 42:Root[0000, 0]@0..0#ROOT2024 doc
-                PUNCT 42:Root[0000, 0]@0..0#ROOT2024 = [alone]
-                LITER 42:Root[0000, 0]@75..130#ROOT2024 Str / The domain where this federated instance is running
-              PUNCT 42:Root[0000, 0]@135..136#ROOT2024 # [joint]
-              GROUP [] 42:Root[0000, 0]@136..137#ROOT2024 42:Root[0000, 0]@157..158#ROOT2024 42:Root[0000, 0]@136..158#ROOT2024
-                IDENT 42:Root[0000, 0]@137..143#ROOT2024 helper
-                GROUP () 42:Root[0000, 0]@143..144#ROOT2024 42:Root[0000, 0]@156..157#ROOT2024 42:Root[0000, 0]@143..157#ROOT2024
-                  IDENT 42:Root[0000, 0]@144..150#ROOT2024 setter
-                  GROUP () 42:Root[0000, 0]@150..151#ROOT2024 42:Root[0000, 0]@155..156#ROOT2024 42:Root[0000, 0]@150..156#ROOT2024
-                    IDENT 42:Root[0000, 0]@151..155#ROOT2024 into
-              IDENT 42:Root[0000, 0]@163..166#ROOT2024 pub
-              GROUP () 42:Root[0000, 0]@166..167#ROOT2024 42:Root[0000, 0]@172..173#ROOT2024 42:Root[0000, 0]@166..173#ROOT2024
-                IDENT 42:Root[0000, 0]@167..172#ROOT2024 crate
-              IDENT 42:Root[0000, 0]@174..180#ROOT2024 domain
-              PUNCT 42:Root[0000, 0]@180..181#ROOT2024 : [alone]
-              IDENT 42:Root[0000, 0]@182..188#ROOT2024 String
-              PUNCT 42:Root[0000, 0]@188..189#ROOT2024 , [alone]
+            PUNCT 42:Root[0000, 0]@1..2#0 # [joint]
+            GROUP [] 42:Root[0000, 0]@2..3#0 42:Root[0000, 0]@52..53#0 42:Root[0000, 0]@2..53#0
+              IDENT 42:Root[0000, 0]@3..9#0 helper
+              GROUP () 42:Root[0000, 0]@9..10#0 42:Root[0000, 0]@51..52#0 42:Root[0000, 0]@9..52#0
+                IDENT 42:Root[0000, 0]@10..18#0 build_fn
+                GROUP () 42:Root[0000, 0]@18..19#0 42:Root[0000, 0]@50..51#0 42:Root[0000, 0]@18..51#0
+                  IDENT 42:Root[0000, 0]@19..26#0 private
+                  PUNCT 42:Root[0000, 0]@26..27#0 , [alone]
+                  IDENT 42:Root[0000, 0]@28..32#0 name
+                  PUNCT 42:Root[0000, 0]@33..34#0 = [alone]
+                  LITER 42:Root[0000, 0]@35..50#0 Str partial_build
+            IDENT 42:Root[0000, 0]@54..57#0 pub
+            IDENT 42:Root[0000, 0]@58..64#0 struct
+            IDENT 42:Root[0000, 0]@65..68#0 Foo
+            GROUP {} 42:Root[0000, 0]@69..70#0 42:Root[0000, 0]@190..191#0 42:Root[0000, 0]@69..191#0
+              PUNCT 42:Root[0000, 0]@0..0#0 # [alone]
+              GROUP [] 42:Root[0000, 0]@0..0#0 42:Root[0000, 0]@0..0#0 42:Root[0000, 0]@0..0#0
+                IDENT 42:Root[0000, 0]@0..0#0 doc
+                PUNCT 42:Root[0000, 0]@0..0#0 = [alone]
+                LITER 42:Root[0000, 0]@75..130#0 Str / The domain where this federated instance is running
+              PUNCT 42:Root[0000, 0]@135..136#0 # [joint]
+              GROUP [] 42:Root[0000, 0]@136..137#0 42:Root[0000, 0]@157..158#0 42:Root[0000, 0]@136..158#0
+                IDENT 42:Root[0000, 0]@137..143#0 helper
+                GROUP () 42:Root[0000, 0]@143..144#0 42:Root[0000, 0]@156..157#0 42:Root[0000, 0]@143..157#0
+                  IDENT 42:Root[0000, 0]@144..150#0 setter
+                  GROUP () 42:Root[0000, 0]@150..151#0 42:Root[0000, 0]@155..156#0 42:Root[0000, 0]@150..156#0
+                    IDENT 42:Root[0000, 0]@151..155#0 into
+              IDENT 42:Root[0000, 0]@163..166#0 pub
+              GROUP () 42:Root[0000, 0]@166..167#0 42:Root[0000, 0]@172..173#0 42:Root[0000, 0]@166..173#0
+                IDENT 42:Root[0000, 0]@167..172#0 crate
+              IDENT 42:Root[0000, 0]@174..180#0 domain
+              PUNCT 42:Root[0000, 0]@180..181#0 : [alone]
+              IDENT 42:Root[0000, 0]@182..188#0 String
+              PUNCT 42:Root[0000, 0]@188..189#0 , [alone]
 
 
-            PUNCT 42:Root[0000, 0]@1..2#ROOT2024 # [joint]
-            GROUP [] 42:Root[0000, 0]@2..3#ROOT2024 42:Root[0000, 0]@52..53#ROOT2024 42:Root[0000, 0]@2..53#ROOT2024
-              IDENT 42:Root[0000, 0]@3..9#ROOT2024 helper
-              GROUP () 42:Root[0000, 0]@9..10#ROOT2024 42:Root[0000, 0]@51..52#ROOT2024 42:Root[0000, 0]@9..52#ROOT2024
-                IDENT 42:Root[0000, 0]@10..18#ROOT2024 build_fn
-                GROUP () 42:Root[0000, 0]@18..19#ROOT2024 42:Root[0000, 0]@50..51#ROOT2024 42:Root[0000, 0]@18..51#ROOT2024
-                  IDENT 42:Root[0000, 0]@19..26#ROOT2024 private
-                  PUNCT 42:Root[0000, 0]@26..27#ROOT2024 , [alone]
-                  IDENT 42:Root[0000, 0]@28..32#ROOT2024 name
-                  PUNCT 42:Root[0000, 0]@33..34#ROOT2024 = [alone]
-                  LITER 42:Root[0000, 0]@35..50#ROOT2024 Str partial_build
-            IDENT 42:Root[0000, 0]@54..57#ROOT2024 pub
-            IDENT 42:Root[0000, 0]@58..64#ROOT2024 struct
-            IDENT 42:Root[0000, 0]@65..68#ROOT2024 Foo
-            GROUP {} 42:Root[0000, 0]@69..70#ROOT2024 42:Root[0000, 0]@190..191#ROOT2024 42:Root[0000, 0]@69..191#ROOT2024
-              PUNCT 42:Root[0000, 0]@0..0#ROOT2024 # [alone]
-              GROUP [] 42:Root[0000, 0]@0..0#ROOT2024 42:Root[0000, 0]@0..0#ROOT2024 42:Root[0000, 0]@0..0#ROOT2024
-                IDENT 42:Root[0000, 0]@0..0#ROOT2024 doc
-                PUNCT 42:Root[0000, 0]@0..0#ROOT2024 = [alone]
-                LITER 42:Root[0000, 0]@75..130#ROOT2024 Str / The domain where this federated instance is running
-              PUNCT 42:Root[0000, 0]@135..136#ROOT2024 # [joint]
-              GROUP [] 42:Root[0000, 0]@136..137#ROOT2024 42:Root[0000, 0]@157..158#ROOT2024 42:Root[0000, 0]@136..158#ROOT2024
-                IDENT 42:Root[0000, 0]@137..143#ROOT2024 helper
-                GROUP () 42:Root[0000, 0]@143..144#ROOT2024 42:Root[0000, 0]@156..157#ROOT2024 42:Root[0000, 0]@143..157#ROOT2024
-                  IDENT 42:Root[0000, 0]@144..150#ROOT2024 setter
-                  GROUP () 42:Root[0000, 0]@150..151#ROOT2024 42:Root[0000, 0]@155..156#ROOT2024 42:Root[0000, 0]@150..156#ROOT2024
-                    IDENT 42:Root[0000, 0]@151..155#ROOT2024 into
-              IDENT 42:Root[0000, 0]@163..166#ROOT2024 pub
-              GROUP () 42:Root[0000, 0]@166..167#ROOT2024 42:Root[0000, 0]@172..173#ROOT2024 42:Root[0000, 0]@166..173#ROOT2024
-                IDENT 42:Root[0000, 0]@167..172#ROOT2024 crate
-              IDENT 42:Root[0000, 0]@174..180#ROOT2024 domain
-              PUNCT 42:Root[0000, 0]@180..181#ROOT2024 : [alone]
-              IDENT 42:Root[0000, 0]@182..188#ROOT2024 String
-              PUNCT 42:Root[0000, 0]@188..189#ROOT2024 , [alone]
+            PUNCT 42:Root[0000, 0]@1..2#0 # [joint]
+            GROUP [] 42:Root[0000, 0]@2..3#0 42:Root[0000, 0]@52..53#0 42:Root[0000, 0]@2..53#0
+              IDENT 42:Root[0000, 0]@3..9#0 helper
+              GROUP () 42:Root[0000, 0]@9..10#0 42:Root[0000, 0]@51..52#0 42:Root[0000, 0]@9..52#0
+                IDENT 42:Root[0000, 0]@10..18#0 build_fn
+                GROUP () 42:Root[0000, 0]@18..19#0 42:Root[0000, 0]@50..51#0 42:Root[0000, 0]@18..51#0
+                  IDENT 42:Root[0000, 0]@19..26#0 private
+                  PUNCT 42:Root[0000, 0]@26..27#0 , [alone]
+                  IDENT 42:Root[0000, 0]@28..32#0 name
+                  PUNCT 42:Root[0000, 0]@33..34#0 = [alone]
+                  LITER 42:Root[0000, 0]@35..50#0 Str partial_build
+            IDENT 42:Root[0000, 0]@54..57#0 pub
+            IDENT 42:Root[0000, 0]@58..64#0 struct
+            IDENT 42:Root[0000, 0]@65..68#0 Foo
+            GROUP {} 42:Root[0000, 0]@69..70#0 42:Root[0000, 0]@190..191#0 42:Root[0000, 0]@69..191#0
+              PUNCT 42:Root[0000, 0]@0..0#0 # [alone]
+              GROUP [] 42:Root[0000, 0]@0..0#0 42:Root[0000, 0]@0..0#0 42:Root[0000, 0]@0..0#0
+                IDENT 42:Root[0000, 0]@0..0#0 doc
+                PUNCT 42:Root[0000, 0]@0..0#0 = [alone]
+                LITER 42:Root[0000, 0]@75..130#0 Str / The domain where this federated instance is running
+              PUNCT 42:Root[0000, 0]@135..136#0 # [joint]
+              GROUP [] 42:Root[0000, 0]@136..137#0 42:Root[0000, 0]@157..158#0 42:Root[0000, 0]@136..158#0
+                IDENT 42:Root[0000, 0]@137..143#0 helper
+                GROUP () 42:Root[0000, 0]@143..144#0 42:Root[0000, 0]@156..157#0 42:Root[0000, 0]@143..157#0
+                  IDENT 42:Root[0000, 0]@144..150#0 setter
+                  GROUP () 42:Root[0000, 0]@150..151#0 42:Root[0000, 0]@155..156#0 42:Root[0000, 0]@150..156#0
+                    IDENT 42:Root[0000, 0]@151..155#0 into
+              IDENT 42:Root[0000, 0]@163..166#0 pub
+              GROUP () 42:Root[0000, 0]@166..167#0 42:Root[0000, 0]@172..173#0 42:Root[0000, 0]@166..173#0
+                IDENT 42:Root[0000, 0]@167..172#0 crate
+              IDENT 42:Root[0000, 0]@174..180#0 domain
+              PUNCT 42:Root[0000, 0]@180..181#0 : [alone]
+              IDENT 42:Root[0000, 0]@182..188#0 String
+              PUNCT 42:Root[0000, 0]@188..189#0 , [alone]
         "#]],
     );
 }
@@ -232,19 +232,19 @@ fn test_derive_error() {
             PUNCT 1 ; [alone]
         "#]],
         expect![[r#"
-            IDENT 42:Root[0000, 0]@0..6#ROOT2024 struct
-            IDENT 42:Root[0000, 0]@7..8#ROOT2024 S
-            GROUP {} 42:Root[0000, 0]@9..10#ROOT2024 42:Root[0000, 0]@22..23#ROOT2024 42:Root[0000, 0]@9..23#ROOT2024
-              IDENT 42:Root[0000, 0]@11..16#ROOT2024 field
-              PUNCT 42:Root[0000, 0]@16..17#ROOT2024 : [alone]
-              IDENT 42:Root[0000, 0]@18..21#ROOT2024 u32
+            IDENT 42:Root[0000, 0]@0..6#0 struct
+            IDENT 42:Root[0000, 0]@7..8#0 S
+            GROUP {} 42:Root[0000, 0]@9..10#0 42:Root[0000, 0]@22..23#0 42:Root[0000, 0]@9..23#0
+              IDENT 42:Root[0000, 0]@11..16#0 field
+              PUNCT 42:Root[0000, 0]@16..17#0 : [alone]
+              IDENT 42:Root[0000, 0]@18..21#0 u32
 
 
-            IDENT 42:Root[0000, 0]@0..13#ROOT2024 compile_error
-            PUNCT 42:Root[0000, 0]@13..14#ROOT2024 ! [joint]
-            GROUP () 42:Root[0000, 0]@14..15#ROOT2024 42:Root[0000, 0]@62..63#ROOT2024 42:Root[0000, 0]@14..63#ROOT2024
-              LITER 42:Root[0000, 0]@15..62#ROOT2024 Str #[derive(DeriveError)] struct S {field : u32}
-            PUNCT 42:Root[0000, 0]@63..64#ROOT2024 ; [alone]
+            IDENT 42:Root[0000, 0]@0..13#0 compile_error
+            PUNCT 42:Root[0000, 0]@13..14#0 ! [joint]
+            GROUP () 42:Root[0000, 0]@14..15#0 42:Root[0000, 0]@62..63#0 42:Root[0000, 0]@14..63#0
+              LITER 42:Root[0000, 0]@15..62#0 Str #[derive(DeriveError)] struct S {field : u32}
+            PUNCT 42:Root[0000, 0]@63..64#0 ; [alone]
         "#]],
     );
 }
@@ -273,22 +273,22 @@ fn test_fn_like_macro_noop() {
             GROUP [] 1 1 1
         "#]],
         expect![[r#"
-            IDENT 42:Root[0000, 0]@0..5#ROOT2024 ident
-            PUNCT 42:Root[0000, 0]@5..6#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@7..8#ROOT2024 Integer 0
-            PUNCT 42:Root[0000, 0]@8..9#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@10..11#ROOT2024 Integer 1
-            PUNCT 42:Root[0000, 0]@11..12#ROOT2024 , [alone]
-            GROUP [] 42:Root[0000, 0]@13..14#ROOT2024 42:Root[0000, 0]@14..15#ROOT2024 42:Root[0000, 0]@13..15#ROOT2024
+            IDENT 42:Root[0000, 0]@0..5#0 ident
+            PUNCT 42:Root[0000, 0]@5..6#0 , [alone]
+            LITER 42:Root[0000, 0]@7..8#0 Integer 0
+            PUNCT 42:Root[0000, 0]@8..9#0 , [alone]
+            LITER 42:Root[0000, 0]@10..11#0 Integer 1
+            PUNCT 42:Root[0000, 0]@11..12#0 , [alone]
+            GROUP [] 42:Root[0000, 0]@13..14#0 42:Root[0000, 0]@14..15#0 42:Root[0000, 0]@13..15#0
 
 
-            IDENT 42:Root[0000, 0]@0..5#ROOT2024 ident
-            PUNCT 42:Root[0000, 0]@5..6#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@7..8#ROOT2024 Integer 0
-            PUNCT 42:Root[0000, 0]@8..9#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@10..11#ROOT2024 Integer 1
-            PUNCT 42:Root[0000, 0]@11..12#ROOT2024 , [alone]
-            GROUP [] 42:Root[0000, 0]@13..14#ROOT2024 42:Root[0000, 0]@14..15#ROOT2024 42:Root[0000, 0]@13..15#ROOT2024
+            IDENT 42:Root[0000, 0]@0..5#0 ident
+            PUNCT 42:Root[0000, 0]@5..6#0 , [alone]
+            LITER 42:Root[0000, 0]@7..8#0 Integer 0
+            PUNCT 42:Root[0000, 0]@8..9#0 , [alone]
+            LITER 42:Root[0000, 0]@10..11#0 Integer 1
+            PUNCT 42:Root[0000, 0]@11..12#0 , [alone]
+            GROUP [] 42:Root[0000, 0]@13..14#0 42:Root[0000, 0]@14..15#0 42:Root[0000, 0]@13..15#0
         "#]],
     );
 }
@@ -315,20 +315,20 @@ fn test_fn_like_macro_clone_ident_subtree() {
               IDENT 1 ident3
         "#]],
         expect![[r#"
-            IDENT 42:Root[0000, 0]@0..5#ROOT2024 ident
-            PUNCT 42:Root[0000, 0]@5..6#ROOT2024 , [alone]
-            GROUP [] 42:Root[0000, 0]@7..8#ROOT2024 42:Root[0000, 0]@22..23#ROOT2024 42:Root[0000, 0]@7..23#ROOT2024
-              IDENT 42:Root[0000, 0]@8..14#ROOT2024 ident2
-              PUNCT 42:Root[0000, 0]@14..15#ROOT2024 , [alone]
-              IDENT 42:Root[0000, 0]@16..22#ROOT2024 ident3
+            IDENT 42:Root[0000, 0]@0..5#0 ident
+            PUNCT 42:Root[0000, 0]@5..6#0 , [alone]
+            GROUP [] 42:Root[0000, 0]@7..8#0 42:Root[0000, 0]@22..23#0 42:Root[0000, 0]@7..23#0
+              IDENT 42:Root[0000, 0]@8..14#0 ident2
+              PUNCT 42:Root[0000, 0]@14..15#0 , [alone]
+              IDENT 42:Root[0000, 0]@16..22#0 ident3
 
 
-            IDENT 42:Root[0000, 0]@0..5#ROOT2024 ident
-            PUNCT 42:Root[0000, 0]@5..6#ROOT2024 , [alone]
-            GROUP [] 42:Root[0000, 0]@7..23#ROOT2024 42:Root[0000, 0]@7..23#ROOT2024 42:Root[0000, 0]@7..23#ROOT2024
-              IDENT 42:Root[0000, 0]@8..14#ROOT2024 ident2
-              PUNCT 42:Root[0000, 0]@14..15#ROOT2024 , [alone]
-              IDENT 42:Root[0000, 0]@16..22#ROOT2024 ident3
+            IDENT 42:Root[0000, 0]@0..5#0 ident
+            PUNCT 42:Root[0000, 0]@5..6#0 , [alone]
+            GROUP [] 42:Root[0000, 0]@7..23#0 42:Root[0000, 0]@7..23#0 42:Root[0000, 0]@7..23#0
+              IDENT 42:Root[0000, 0]@8..14#0 ident2
+              PUNCT 42:Root[0000, 0]@14..15#0 , [alone]
+              IDENT 42:Root[0000, 0]@16..22#0 ident3
         "#]],
     );
 }
@@ -345,10 +345,10 @@ fn test_fn_like_macro_clone_raw_ident() {
             IDENT 1 r#async
         "#]],
         expect![[r#"
-            IDENT 42:Root[0000, 0]@2..7#ROOT2024 r#async
+            IDENT 42:Root[0000, 0]@2..7#0 r#async
 
 
-            IDENT 42:Root[0000, 0]@2..7#ROOT2024 r#async
+            IDENT 42:Root[0000, 0]@2..7#0 r#async
         "#]],
     );
 }
@@ -366,11 +366,11 @@ fn test_fn_like_fn_like_span_join() {
             IDENT 1 r#joined
         "#]],
         expect![[r#"
-            IDENT 42:Root[0000, 0]@0..3#ROOT2024 foo
-            IDENT 42:Root[0000, 0]@8..11#ROOT2024 bar
+            IDENT 42:Root[0000, 0]@0..3#0 foo
+            IDENT 42:Root[0000, 0]@8..11#0 bar
 
 
-            IDENT 42:Root[0000, 0]@0..11#ROOT2024 r#joined
+            IDENT 42:Root[0000, 0]@0..11#0 r#joined
         "#]],
     );
 }
@@ -391,14 +391,14 @@ fn test_fn_like_fn_like_span_ops() {
             IDENT 1 start_span
         "#]],
         expect![[r#"
-            IDENT 42:Root[0000, 0]@0..12#ROOT2024 set_def_site
-            IDENT 42:Root[0000, 0]@13..33#ROOT2024 resolved_at_def_site
-            IDENT 42:Root[0000, 0]@34..44#ROOT2024 start_span
+            IDENT 42:Root[0000, 0]@0..12#0 set_def_site
+            IDENT 42:Root[0000, 0]@13..33#0 resolved_at_def_site
+            IDENT 42:Root[0000, 0]@34..44#0 start_span
 
 
-            IDENT 41:Root[0000, 0]@0..150#ROOT2024 set_def_site
-            IDENT 42:Root[0000, 0]@13..33#ROOT2024 resolved_at_def_site
-            IDENT 42:Root[0000, 0]@34..34#ROOT2024 start_span
+            IDENT 41:Root[0000, 0]@0..150#0 set_def_site
+            IDENT 42:Root[0000, 0]@13..33#0 resolved_at_def_site
+            IDENT 42:Root[0000, 0]@34..34#0 start_span
         "#]],
     );
 }
@@ -428,19 +428,19 @@ fn test_fn_like_mk_literals() {
         expect![[r#"
 
 
-            LITER 42:Root[0000, 0]@0..100#ROOT2024 ByteStr byte_string
-            LITER 42:Root[0000, 0]@0..100#ROOT2024 Char c
-            LITER 42:Root[0000, 0]@0..100#ROOT2024 Str string
-            LITER 42:Root[0000, 0]@0..100#ROOT2024 Str -string
-            LITER 42:Root[0000, 0]@0..100#ROOT2024 CStr cstring
-            LITER 42:Root[0000, 0]@0..100#ROOT2024 Float 3.14f64
-            LITER 42:Root[0000, 0]@0..100#ROOT2024 Float -3.14f64
-            LITER 42:Root[0000, 0]@0..100#ROOT2024 Float 3.14
-            LITER 42:Root[0000, 0]@0..100#ROOT2024 Float -3.14
-            LITER 42:Root[0000, 0]@0..100#ROOT2024 Integer 123i64
-            LITER 42:Root[0000, 0]@0..100#ROOT2024 Integer -123i64
-            LITER 42:Root[0000, 0]@0..100#ROOT2024 Integer 123
-            LITER 42:Root[0000, 0]@0..100#ROOT2024 Integer -123
+            LITER 42:Root[0000, 0]@0..100#0 ByteStr byte_string
+            LITER 42:Root[0000, 0]@0..100#0 Char c
+            LITER 42:Root[0000, 0]@0..100#0 Str string
+            LITER 42:Root[0000, 0]@0..100#0 Str -string
+            LITER 42:Root[0000, 0]@0..100#0 CStr cstring
+            LITER 42:Root[0000, 0]@0..100#0 Float 3.14f64
+            LITER 42:Root[0000, 0]@0..100#0 Float -3.14f64
+            LITER 42:Root[0000, 0]@0..100#0 Float 3.14
+            LITER 42:Root[0000, 0]@0..100#0 Float -3.14
+            LITER 42:Root[0000, 0]@0..100#0 Integer 123i64
+            LITER 42:Root[0000, 0]@0..100#0 Integer -123i64
+            LITER 42:Root[0000, 0]@0..100#0 Integer 123
+            LITER 42:Root[0000, 0]@0..100#0 Integer -123
         "#]],
     );
 }
@@ -459,8 +459,8 @@ fn test_fn_like_mk_idents() {
         expect![[r#"
 
 
-            IDENT 42:Root[0000, 0]@0..100#ROOT2024 standard
-            IDENT 42:Root[0000, 0]@0..100#ROOT2024 r#raw
+            IDENT 42:Root[0000, 0]@0..100#0 standard
+            IDENT 42:Root[0000, 0]@0..100#0 r#raw
         "#]],
     );
 }
@@ -515,48 +515,48 @@ fn test_fn_like_macro_clone_literals() {
             LITER 1 CStr null
         "#]],
         expect![[r#"
-            LITER 42:Root[0000, 0]@0..4#ROOT2024 Integer 1u16
-            PUNCT 42:Root[0000, 0]@4..5#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@6..11#ROOT2024 Integer 2_u32
-            PUNCT 42:Root[0000, 0]@11..12#ROOT2024 , [alone]
-            PUNCT 42:Root[0000, 0]@13..14#ROOT2024 - [alone]
-            LITER 42:Root[0000, 0]@14..18#ROOT2024 Integer 4i64
-            PUNCT 42:Root[0000, 0]@18..19#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@20..27#ROOT2024 Float 3.14f32
-            PUNCT 42:Root[0000, 0]@27..28#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@29..43#ROOT2024 Str hello bridge
-            PUNCT 42:Root[0000, 0]@43..44#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@45..61#ROOT2024 Str suffixedsuffix
-            PUNCT 42:Root[0000, 0]@61..62#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@63..73#ROOT2024 StrRaw(2) raw
-            PUNCT 42:Root[0000, 0]@73..74#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@75..78#ROOT2024 Char a
-            PUNCT 42:Root[0000, 0]@78..79#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@80..84#ROOT2024 Byte b
-            PUNCT 42:Root[0000, 0]@84..85#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@86..93#ROOT2024 CStr null
+            LITER 42:Root[0000, 0]@0..4#0 Integer 1u16
+            PUNCT 42:Root[0000, 0]@4..5#0 , [alone]
+            LITER 42:Root[0000, 0]@6..11#0 Integer 2_u32
+            PUNCT 42:Root[0000, 0]@11..12#0 , [alone]
+            PUNCT 42:Root[0000, 0]@13..14#0 - [alone]
+            LITER 42:Root[0000, 0]@14..18#0 Integer 4i64
+            PUNCT 42:Root[0000, 0]@18..19#0 , [alone]
+            LITER 42:Root[0000, 0]@20..27#0 Float 3.14f32
+            PUNCT 42:Root[0000, 0]@27..28#0 , [alone]
+            LITER 42:Root[0000, 0]@29..43#0 Str hello bridge
+            PUNCT 42:Root[0000, 0]@43..44#0 , [alone]
+            LITER 42:Root[0000, 0]@45..61#0 Str suffixedsuffix
+            PUNCT 42:Root[0000, 0]@61..62#0 , [alone]
+            LITER 42:Root[0000, 0]@63..73#0 StrRaw(2) raw
+            PUNCT 42:Root[0000, 0]@73..74#0 , [alone]
+            LITER 42:Root[0000, 0]@75..78#0 Char a
+            PUNCT 42:Root[0000, 0]@78..79#0 , [alone]
+            LITER 42:Root[0000, 0]@80..84#0 Byte b
+            PUNCT 42:Root[0000, 0]@84..85#0 , [alone]
+            LITER 42:Root[0000, 0]@86..93#0 CStr null
 
 
-            LITER 42:Root[0000, 0]@0..4#ROOT2024 Integer 1u16
-            PUNCT 42:Root[0000, 0]@4..5#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@6..11#ROOT2024 Integer 2_u32
-            PUNCT 42:Root[0000, 0]@11..12#ROOT2024 , [alone]
-            PUNCT 42:Root[0000, 0]@13..14#ROOT2024 - [alone]
-            LITER 42:Root[0000, 0]@14..18#ROOT2024 Integer 4i64
-            PUNCT 42:Root[0000, 0]@18..19#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@20..27#ROOT2024 Float 3.14f32
-            PUNCT 42:Root[0000, 0]@27..28#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@29..43#ROOT2024 Str hello bridge
-            PUNCT 42:Root[0000, 0]@43..44#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@45..61#ROOT2024 Str suffixedsuffix
-            PUNCT 42:Root[0000, 0]@61..62#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@63..73#ROOT2024 StrRaw(2) raw
-            PUNCT 42:Root[0000, 0]@73..74#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@75..78#ROOT2024 Char a
-            PUNCT 42:Root[0000, 0]@78..79#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@80..84#ROOT2024 Byte b
-            PUNCT 42:Root[0000, 0]@84..85#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@86..93#ROOT2024 CStr null
+            LITER 42:Root[0000, 0]@0..4#0 Integer 1u16
+            PUNCT 42:Root[0000, 0]@4..5#0 , [alone]
+            LITER 42:Root[0000, 0]@6..11#0 Integer 2_u32
+            PUNCT 42:Root[0000, 0]@11..12#0 , [alone]
+            PUNCT 42:Root[0000, 0]@13..14#0 - [alone]
+            LITER 42:Root[0000, 0]@14..18#0 Integer 4i64
+            PUNCT 42:Root[0000, 0]@18..19#0 , [alone]
+            LITER 42:Root[0000, 0]@20..27#0 Float 3.14f32
+            PUNCT 42:Root[0000, 0]@27..28#0 , [alone]
+            LITER 42:Root[0000, 0]@29..43#0 Str hello bridge
+            PUNCT 42:Root[0000, 0]@43..44#0 , [alone]
+            LITER 42:Root[0000, 0]@45..61#0 Str suffixedsuffix
+            PUNCT 42:Root[0000, 0]@61..62#0 , [alone]
+            LITER 42:Root[0000, 0]@63..73#0 StrRaw(2) raw
+            PUNCT 42:Root[0000, 0]@73..74#0 , [alone]
+            LITER 42:Root[0000, 0]@75..78#0 Char a
+            PUNCT 42:Root[0000, 0]@78..79#0 , [alone]
+            LITER 42:Root[0000, 0]@80..84#0 Byte b
+            PUNCT 42:Root[0000, 0]@84..85#0 , [alone]
+            LITER 42:Root[0000, 0]@86..93#0 CStr null
         "#]],
     );
 }
@@ -593,30 +593,30 @@ fn test_fn_like_macro_negative_literals() {
             LITER 1 Float 2.7
         "#]],
         expect![[r#"
-            PUNCT 42:Root[0000, 0]@0..1#ROOT2024 - [alone]
-            LITER 42:Root[0000, 0]@1..5#ROOT2024 Integer 1u16
-            PUNCT 42:Root[0000, 0]@5..6#ROOT2024 , [alone]
-            PUNCT 42:Root[0000, 0]@7..8#ROOT2024 - [alone]
-            LITER 42:Root[0000, 0]@9..14#ROOT2024 Integer 2_u32
-            PUNCT 42:Root[0000, 0]@14..15#ROOT2024 , [alone]
-            PUNCT 42:Root[0000, 0]@16..17#ROOT2024 - [alone]
-            LITER 42:Root[0000, 0]@17..24#ROOT2024 Float 3.14f32
-            PUNCT 42:Root[0000, 0]@24..25#ROOT2024 , [alone]
-            PUNCT 42:Root[0000, 0]@26..27#ROOT2024 - [alone]
-            LITER 42:Root[0000, 0]@28..31#ROOT2024 Float 2.7
+            PUNCT 42:Root[0000, 0]@0..1#0 - [alone]
+            LITER 42:Root[0000, 0]@1..5#0 Integer 1u16
+            PUNCT 42:Root[0000, 0]@5..6#0 , [alone]
+            PUNCT 42:Root[0000, 0]@7..8#0 - [alone]
+            LITER 42:Root[0000, 0]@9..14#0 Integer 2_u32
+            PUNCT 42:Root[0000, 0]@14..15#0 , [alone]
+            PUNCT 42:Root[0000, 0]@16..17#0 - [alone]
+            LITER 42:Root[0000, 0]@17..24#0 Float 3.14f32
+            PUNCT 42:Root[0000, 0]@24..25#0 , [alone]
+            PUNCT 42:Root[0000, 0]@26..27#0 - [alone]
+            LITER 42:Root[0000, 0]@28..31#0 Float 2.7
 
 
-            PUNCT 42:Root[0000, 0]@0..1#ROOT2024 - [alone]
-            LITER 42:Root[0000, 0]@1..5#ROOT2024 Integer 1u16
-            PUNCT 42:Root[0000, 0]@5..6#ROOT2024 , [alone]
-            PUNCT 42:Root[0000, 0]@7..8#ROOT2024 - [alone]
-            LITER 42:Root[0000, 0]@9..14#ROOT2024 Integer 2_u32
-            PUNCT 42:Root[0000, 0]@14..15#ROOT2024 , [alone]
-            PUNCT 42:Root[0000, 0]@16..17#ROOT2024 - [alone]
-            LITER 42:Root[0000, 0]@17..24#ROOT2024 Float 3.14f32
-            PUNCT 42:Root[0000, 0]@24..25#ROOT2024 , [alone]
-            PUNCT 42:Root[0000, 0]@26..27#ROOT2024 - [alone]
-            LITER 42:Root[0000, 0]@28..31#ROOT2024 Float 2.7
+            PUNCT 42:Root[0000, 0]@0..1#0 - [alone]
+            LITER 42:Root[0000, 0]@1..5#0 Integer 1u16
+            PUNCT 42:Root[0000, 0]@5..6#0 , [alone]
+            PUNCT 42:Root[0000, 0]@7..8#0 - [alone]
+            LITER 42:Root[0000, 0]@9..14#0 Integer 2_u32
+            PUNCT 42:Root[0000, 0]@14..15#0 , [alone]
+            PUNCT 42:Root[0000, 0]@16..17#0 - [alone]
+            LITER 42:Root[0000, 0]@17..24#0 Float 3.14f32
+            PUNCT 42:Root[0000, 0]@24..25#0 , [alone]
+            PUNCT 42:Root[0000, 0]@26..27#0 - [alone]
+            LITER 42:Root[0000, 0]@28..31#0 Float 2.7
         "#]],
     );
 }
@@ -647,20 +647,20 @@ fn test_attr_macro() {
             PUNCT 1 ; [alone]
         "#]],
         expect![[r#"
-            IDENT 42:Root[0000, 0]@0..3#ROOT2024 mod
-            IDENT 42:Root[0000, 0]@4..5#ROOT2024 m
-            GROUP {} 42:Root[0000, 0]@6..7#ROOT2024 42:Root[0000, 0]@7..8#ROOT2024 42:Root[0000, 0]@6..8#ROOT2024
+            IDENT 42:Root[0000, 0]@0..3#0 mod
+            IDENT 42:Root[0000, 0]@4..5#0 m
+            GROUP {} 42:Root[0000, 0]@6..7#0 42:Root[0000, 0]@7..8#0 42:Root[0000, 0]@6..8#0
 
 
-            IDENT 42:Root[0000, 0]@0..4#ROOT2024 some
-            IDENT 42:Root[0000, 0]@5..14#ROOT2024 arguments
+            IDENT 42:Root[0000, 0]@0..4#0 some
+            IDENT 42:Root[0000, 0]@5..14#0 arguments
 
 
-            IDENT 42:Root[0000, 0]@0..13#ROOT2024 compile_error
-            PUNCT 42:Root[0000, 0]@13..14#ROOT2024 ! [joint]
-            GROUP () 42:Root[0000, 0]@14..15#ROOT2024 42:Root[0000, 0]@55..56#ROOT2024 42:Root[0000, 0]@14..56#ROOT2024
-              LITER 42:Root[0000, 0]@15..55#ROOT2024 Str #[attr_error(some arguments)] mod m {}
-            PUNCT 42:Root[0000, 0]@56..57#ROOT2024 ; [alone]
+            IDENT 42:Root[0000, 0]@0..13#0 compile_error
+            PUNCT 42:Root[0000, 0]@13..14#0 ! [joint]
+            GROUP () 42:Root[0000, 0]@14..15#0 42:Root[0000, 0]@55..56#0 42:Root[0000, 0]@14..56#0
+              LITER 42:Root[0000, 0]@15..55#0 Str #[attr_error(some arguments)] mod m {}
+            PUNCT 42:Root[0000, 0]@56..57#0 ; [alone]
         "#]],
     );
 }
@@ -722,8 +722,8 @@ fn test_fn_like_span_line_column() {
         "
 hello",
         expect![[r#"
-            LITER 42:Root[0000, 0]@0..100#ROOT2024 Integer 2
-            LITER 42:Root[0000, 0]@0..100#ROOT2024 Integer 1
+            LITER 42:Root[0000, 0]@0..100#0 Integer 2
+            LITER 42:Root[0000, 0]@0..100#0 Integer 1
         "#]],
     );
 }

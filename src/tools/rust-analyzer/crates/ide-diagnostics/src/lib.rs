@@ -29,13 +29,19 @@
 extern crate rustc_driver as _;
 
 mod handlers {
+    pub(crate) mod array_pattern_without_fixed_length;
     pub(crate) mod await_outside_of_async;
     pub(crate) mod bad_rtn;
     pub(crate) mod break_outside_of_loop;
+    pub(crate) mod cannot_be_dereferenced;
+    pub(crate) mod cannot_implicitly_deref_trait_object;
+    pub(crate) mod cannot_index_into;
     pub(crate) mod duplicate_field;
     pub(crate) mod elided_lifetimes_in_path;
     pub(crate) mod expected_array_or_slice_pat;
     pub(crate) mod expected_function;
+    pub(crate) mod explicit_drop_method_use;
+    pub(crate) mod fru_in_destructuring_assignment;
     pub(crate) mod functional_record_update_on_non_struct;
     pub(crate) mod generic_args_prohibited;
     pub(crate) mod generic_default_refers_to_self;
@@ -44,11 +50,14 @@ mod handlers {
     pub(crate) mod incorrect_case;
     pub(crate) mod incorrect_generics_len;
     pub(crate) mod incorrect_generics_order;
+    pub(crate) mod infer_vars_not_allowed;
     pub(crate) mod invalid_cast;
     pub(crate) mod invalid_derive_target;
     pub(crate) mod invalid_lhs_of_assignment;
+    pub(crate) mod invalid_range_pat_type;
     pub(crate) mod macro_error;
     pub(crate) mod malformed_derive;
+    pub(crate) mod method_call_illegal_sized_bound;
     pub(crate) mod mismatched_arg_count;
     pub(crate) mod mismatched_array_pat_len;
     pub(crate) mod missing_fields;
@@ -57,9 +66,11 @@ mod handlers {
     pub(crate) mod missing_unsafe;
     pub(crate) mod moved_out_of_ref;
     pub(crate) mod mutability_errors;
+    pub(crate) mod mutable_ref;
     pub(crate) mod no_such_field;
     pub(crate) mod non_exhaustive_let;
     pub(crate) mod non_exhaustive_record_expr;
+    pub(crate) mod non_exhaustive_record_pat;
     pub(crate) mod parenthesized_generic_args_without_fn_trait;
     pub(crate) mod pattern_arg_in_extern_fn;
     pub(crate) mod private_assoc_item;
@@ -426,7 +437,16 @@ pub fn semantic_diagnostics(
     for diag in diags {
         let d = match diag {
             AnyDiagnostic::AwaitOutsideOfAsync(d) => handlers::await_outside_of_async::await_outside_of_async(&ctx, &d),
+            AnyDiagnostic::CannotBeDereferenced(d) => handlers::cannot_be_dereferenced::cannot_be_dereferenced(&ctx, &d),
+            AnyDiagnostic::CannotImplicitlyDerefTraitObject(d) => handlers::cannot_implicitly_deref_trait_object::cannot_implicitly_deref_trait_object(&ctx, &d),
+            AnyDiagnostic::CannotIndexInto(d) => handlers::cannot_index_into::cannot_index_into(&ctx, &d),
             AnyDiagnostic::CastToUnsized(d) => handlers::invalid_cast::cast_to_unsized(&ctx, &d),
+            AnyDiagnostic::InferVarsNotAllowed(d) => handlers::infer_vars_not_allowed::infer_vars_not_allowed(&ctx, &d),
+            AnyDiagnostic::ArrayPatternWithoutFixedLength(d) => {
+                handlers::array_pattern_without_fixed_length::array_pattern_without_fixed_length(
+                    &ctx, &d,
+                )
+            }
             AnyDiagnostic::ExpectedArrayOrSlicePat(d) => handlers::expected_array_or_slice_pat::expected_array_or_slice_pat(&ctx, &d),
             AnyDiagnostic::ExpectedFunction(d) => handlers::expected_function::expected_function(&ctx, &d),
             AnyDiagnostic::FunctionalRecordUpdateOnNonStruct(d) => handlers::functional_record_update_on_non_struct::functional_record_update_on_non_struct(&ctx, &d),
@@ -452,12 +472,14 @@ pub fn semantic_diagnostics(
                 continue;
             },
             AnyDiagnostic::MalformedDerive(d) => handlers::malformed_derive::malformed_derive(&ctx, &d),
+            AnyDiagnostic::MethodCallIllegalSizedBound(d) => handlers::method_call_illegal_sized_bound::method_call_illegal_sized_bound(&ctx, &d),
             AnyDiagnostic::MismatchedArgCount(d) => handlers::mismatched_arg_count::mismatched_arg_count(&ctx, &d),
             AnyDiagnostic::MismatchedArrayPatLen(d) => handlers::mismatched_array_pat_len::mismatched_array_pat_len(&ctx, &d),
             AnyDiagnostic::MissingFields(d) => handlers::missing_fields::missing_fields(&ctx, &d),
             AnyDiagnostic::MissingMatchArms(d) => handlers::missing_match_arms::missing_match_arms(&ctx, &d),
             AnyDiagnostic::MissingUnsafe(d) => handlers::missing_unsafe::missing_unsafe(&ctx, &d),
             AnyDiagnostic::MovedOutOfRef(d) => handlers::moved_out_of_ref::moved_out_of_ref(&ctx, &d),
+            AnyDiagnostic::MutableRefBinding(d) => handlers::mutable_ref::mutable_ref_binding(&ctx, &d),
             AnyDiagnostic::NeedMut(d) => match handlers::mutability_errors::need_mut(&ctx, &d) {
                 Some(it) => it,
                 None => continue,
@@ -465,6 +487,9 @@ pub fn semantic_diagnostics(
             AnyDiagnostic::NonExhaustiveLet(d) => handlers::non_exhaustive_let::non_exhaustive_let(&ctx, &d),
             AnyDiagnostic::NonExhaustiveRecordExpr(d) => {
                 handlers::non_exhaustive_record_expr::non_exhaustive_record_expr(&ctx, &d)
+            }
+            AnyDiagnostic::NonExhaustiveRecordPat(d) => {
+                handlers::non_exhaustive_record_pat::non_exhaustive_record_pat(&ctx, &d)
             }
             AnyDiagnostic::NoSuchField(d) => handlers::no_such_field::no_such_field(&ctx, &d),
             AnyDiagnostic::DuplicateField(d) => handlers::duplicate_field::duplicate_field(&ctx, &d),
@@ -519,10 +544,13 @@ pub fn semantic_diagnostics(
             AnyDiagnostic::ElidedLifetimesInPath(d) => handlers::elided_lifetimes_in_path::elided_lifetimes_in_path(&ctx, &d),
             AnyDiagnostic::GenericDefaultRefersToSelf(d) => handlers::generic_default_refers_to_self::generic_default_refers_to_self(&ctx, &d),
             AnyDiagnostic::InvalidLhsOfAssignment(d) => handlers::invalid_lhs_of_assignment::invalid_lhs_of_assignment(&ctx, &d),
+            AnyDiagnostic::InvalidRangePatType(d) => handlers::invalid_range_pat_type::invalid_range_pat_type(&ctx, &d),
             AnyDiagnostic::TypeMustBeKnown(d) => handlers::type_must_be_known::type_must_be_known(&ctx, &d),
             AnyDiagnostic::PatternArgInExternFn(d) => handlers::pattern_arg_in_extern_fn::pattern_arg_in_extern_fn(&ctx, &d),
             AnyDiagnostic::UnionExprMustHaveExactlyOneField(d) => handlers::union_expr_must_have_exactly_one_field::union_expr_must_have_exactly_one_field(&ctx, &d),
             AnyDiagnostic::UnimplementedTrait(d) => handlers::unimplemented_trait::unimplemented_trait(&ctx, &d),
+            AnyDiagnostic::FruInDestructuringAssignment(d) => handlers::fru_in_destructuring_assignment::fru_in_destructuring_assignment(&ctx, &d),
+            AnyDiagnostic::ExplicitDropMethodUse(d) => handlers::explicit_drop_method_use::explicit_drop_method_use(&ctx, &d),
         };
         res.push(d)
     }

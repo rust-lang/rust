@@ -148,9 +148,6 @@ impl From<OwnedHandle> for process::ChildStderr {
 }
 
 /// Windows-specific extensions to [`process::ExitStatus`].
-///
-/// This trait is sealed: it cannot be implemented outside the standard library.
-/// This is so that future additional methods are not breaking changes.
 #[stable(feature = "exit_status_from", since = "1.12.0")]
 pub impl(self) trait ExitStatusExt {
     /// Creates a new `ExitStatus` from the raw underlying `u32` return value of
@@ -167,9 +164,6 @@ impl ExitStatusExt for process::ExitStatus {
 }
 
 /// Windows-specific extensions to the [`process::Command`] builder.
-///
-/// This trait is sealed: it cannot be implemented outside the standard library.
-/// This is so that future additional methods are not breaking changes.
 #[stable(feature = "windows_process_extensions", since = "1.16.0")]
 pub impl(self) trait CommandExt {
     /// Sets the [process creation flags][1] to be passed to `CreateProcess`.
@@ -456,9 +450,6 @@ impl ChildExt for process::Child {
 }
 
 /// Windows-specific extensions to [`process::ExitCode`].
-///
-/// This trait is sealed: it cannot be implemented outside the standard library.
-/// This is so that future additional methods are not breaking changes.
 #[unstable(feature = "windows_process_exit_code_from", issue = "111688")]
 pub impl(self) trait ExitCodeExt {
     /// Creates a new `ExitCode` from the raw underlying `u32` return value of

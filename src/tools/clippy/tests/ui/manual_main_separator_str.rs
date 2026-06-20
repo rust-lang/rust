@@ -1,4 +1,3 @@
-#![allow(unused)]
 #![warn(clippy::manual_main_separator_str)]
 
 use std::path::MAIN_SEPARATOR;

@@ -1,5 +1,5 @@
 error: these match arms have identical bodies
-  --> tests/ui/match_same_arms2.rs:17:9
+  --> tests/ui/match_same_arms2.rs:12:9
    |
 LL | /         42 => {
 LL | |             foo();
@@ -36,7 +36,7 @@ LL -         },
    |
 
 error: these match arms have identical bodies
-  --> tests/ui/match_same_arms2.rs:39:9
+  --> tests/ui/match_same_arms2.rs:34:9
    |
 LL |         42 => foo(),
    |         ^^^^^^^^^^^
@@ -52,7 +52,7 @@ LL ~         42 | 51 => foo(),
    |
 
 error: these match arms have identical bodies
-  --> tests/ui/match_same_arms2.rs:46:9
+  --> tests/ui/match_same_arms2.rs:41:9
    |
 LL |         Some(_) => 24,
    |         ^^^^^^^^^^^^^
@@ -68,7 +68,7 @@ LL ~         Some(_) | None => 24,
    |
 
 error: these match arms have identical bodies
-  --> tests/ui/match_same_arms2.rs:69:9
+  --> tests/ui/match_same_arms2.rs:64:9
    |
 LL |         (Some(a), None) => bar(a),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -84,7 +84,7 @@ LL ~         (Some(a), None) | (None, Some(a)) => bar(a),
    |
 
 error: these match arms have identical bodies
-  --> tests/ui/match_same_arms2.rs:84:9
+  --> tests/ui/match_same_arms2.rs:79:9
    |
 LL |         (Some(a), None) if a == 42 => a,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -100,7 +100,7 @@ LL ~         (Some(a), None) | (None, Some(a)) if a == 42 => a,
    |
 
 error: these match arms have identical bodies
-  --> tests/ui/match_same_arms2.rs:91:9
+  --> tests/ui/match_same_arms2.rs:86:9
    |
 LL |         (Some(a), ..) => bar(a),
    |         ^^^^^^^^^^^^^^^^^^^^^^^
@@ -117,7 +117,7 @@ LL ~         _ => (),
    |
 
 error: these match arms have identical bodies
-  --> tests/ui/match_same_arms2.rs:126:9
+  --> tests/ui/match_same_arms2.rs:121:9
    |
 LL |         (Ok(x), Some(_)) => println!("ok {}", x),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -134,7 +134,7 @@ LL ~         _ => println!("err"),
    |
 
 error: these match arms have identical bodies
-  --> tests/ui/match_same_arms2.rs:142:9
+  --> tests/ui/match_same_arms2.rs:137:9
    |
 LL |         Ok(3) => println!("ok"),
    |         ^^^^^^^^^^^^^^^^^^^^^^^
@@ -150,7 +150,7 @@ LL ~         Ok(3) | Ok(_) => println!("ok"),
    |
 
 error: these match arms have identical bodies
-  --> tests/ui/match_same_arms2.rs:168:9
+  --> tests/ui/match_same_arms2.rs:163:9
    |
 LL | /         0 => {
 LL | |             empty!(0);
@@ -170,7 +170,7 @@ LL ~         0 | 1 => {
    |
 
 error: these match arms have identical bodies
-  --> tests/ui/match_same_arms2.rs:222:9
+  --> tests/ui/match_same_arms2.rs:217:9
    |
 LL |         Foo::X(0) => 1,
    |         ^^^^^^^^^^^^^^
@@ -188,7 +188,7 @@ LL ~         _ => 0,
    |
 
 error: these match arms have identical bodies
-  --> tests/ui/match_same_arms2.rs:231:9
+  --> tests/ui/match_same_arms2.rs:226:9
    |
 LL |         Foo::X(0) => 1,
    |         ^^^^^^^^^^^^^^
@@ -205,7 +205,7 @@ LL ~         Foo::X(0) | Foo::Z(_) => 1,
    |
 
 error: these match arms have identical bodies
-  --> tests/ui/match_same_arms2.rs:254:9
+  --> tests/ui/match_same_arms2.rs:249:9
    |
 LL |         Some(Bar { x: 0, y: 5, .. }) => 1,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -223,7 +223,7 @@ LL ~         Some(Bar { x: 0, y: 5, .. }) | Some(Bar { y: 0, x: 5, .. }) => 1,
    |
 
 error: these match arms have identical bodies
-  --> tests/ui/match_same_arms2.rs:271:9
+  --> tests/ui/match_same_arms2.rs:266:9
    |
 LL |         0 => cfg!(not_enable),
    |         ^^^^^^^^^^^^^^^^^^^^^
@@ -239,7 +239,7 @@ LL ~         0 | 1 => cfg!(not_enable),
    |
 
 error: these match arms have identical bodies
-  --> tests/ui/match_same_arms2.rs:288:17
+  --> tests/ui/match_same_arms2.rs:283:17
    |
 LL |                 MaybeStaticStr::Static(s) => s,
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -255,7 +255,7 @@ LL ~                 MaybeStaticStr::Static(s) | MaybeStaticStr::Borrowed(s) => 
    |
 
 error: these match arms have identical bodies
-  --> tests/ui/match_same_arms2.rs:306:9
+  --> tests/ui/match_same_arms2.rs:301:9
    |
 LL |         1 => "b",
    |         ^^^^^^^^
@@ -272,7 +272,7 @@ LL ~         #[allow(clippy::match_same_arms)]
    |
 
 error: these match arms have identical bodies
-  --> tests/ui/match_same_arms2.rs:315:9
+  --> tests/ui/match_same_arms2.rs:310:9
    |
 LL |         1 => "b",
    |         ^^^^^^^^

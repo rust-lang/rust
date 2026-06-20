@@ -6,6 +6,7 @@ use std::os::raw::{c_char, c_int};
 
 use cranelift_jit::{JITBuilder, JITModule};
 use rustc_codegen_ssa::CrateInfo;
+use rustc_codegen_ssa::base::{allocator_kind_for_codegen, allocator_shim_contents};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mono::MonoItem;
 use rustc_session::Session;
@@ -28,7 +29,9 @@ fn create_jit_module(
 
     let cx = DebugContext::new(tcx, jit_module.isa(), false, "dummy_cgu_name");
 
-    crate::allocator::codegen(tcx, &mut jit_module);
+    if let Some(kind) = allocator_kind_for_codegen(tcx) {
+        crate::allocator::codegen(tcx, &mut jit_module, &allocator_shim_contents(tcx, kind));
+    }
 
     (jit_module, cx)
 }

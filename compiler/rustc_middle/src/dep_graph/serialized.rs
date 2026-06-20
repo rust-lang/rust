@@ -41,8 +41,8 @@
 
 use std::cell::RefCell;
 use std::cmp::max;
-use std::sync::Arc;
 use std::sync::atomic::Ordering;
+use std::sync::{Arc, OnceLock};
 use std::{iter, mem};
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
@@ -51,7 +51,7 @@ use rustc_data_structures::outline;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::{AtomicU64, Lock, WorkerLocal, broadcast};
 use rustc_data_structures::unhash::UnhashMap;
-use rustc_index::IndexVec;
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_serialize::opaque::mem_encoder::MemEncoder;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -95,7 +95,7 @@ const DEP_NODE_WIDTH_BITS: usize = DEP_NODE_SIZE / 2;
 ///
 /// There may be unused indices with DepKind::Null in this graph due to batch allocation of
 /// indices to threads.
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct SerializedDepGraph {
     /// The set of all DepNodes in the graph
     nodes: IndexVec<SerializedDepNodeIndex, DepNode>,
@@ -113,12 +113,95 @@ pub struct SerializedDepGraph {
     /// A flattened list of all edge targets in the graph, stored in the same
     /// varint encoding that we use on disk. Edge sources are implicit in edge_list_indices.
     edge_list_data: Vec<u8>,
-    /// For each dep kind, stores a map from key fingerprints back to the index
-    /// of the corresponding node. This is the inverse of `nodes`.
-    index: Vec<UnhashMap<PackedFingerprint, SerializedDepNodeIndex>>,
+    /// The lazily-built inverse of `nodes`: maps a [`DepNode`] back to its
+    /// [`SerializedDepNodeIndex`] via the node's key fingerprint. See
+    /// [`LazyNodeIndex`].
+    reverse_index: LazyNodeIndex,
     /// The number of previous compilation sessions. This is used to generate
     /// unique anon dep nodes per session.
     session_count: u64,
+    /// Used to time the lazy per-`DepKind` reverse-index build. `None` only for
+    /// the empty default graph, which is never looked up.
+    profiler: Option<SelfProfilerRef>,
+}
+
+// `SelfProfilerRef` is not `Debug`, so we can't derive this.
+impl std::fmt::Debug for SerializedDepGraph {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SerializedDepGraph")
+            .field("nodes", &self.nodes)
+            .field("value_fingerprints", &self.value_fingerprints)
+            .field("edge_list_indices", &self.edge_list_indices)
+            .field("edge_list_data", &self.edge_list_data)
+            .field("reverse_index", &self.reverse_index)
+            .field("session_count", &self.session_count)
+            .finish_non_exhaustive()
+    }
+}
+
+/// The inverse of [`SerializedDepGraph::nodes`], built lazily per [`DepKind`].
+///
+/// Only few nodes are ever looked up here, and those cluster into a handful of
+/// `DepKind`s. Building a map for every kind up front would be wasted work.
+#[derive(Debug, Default)]
+struct LazyNodeIndex {
+    /// All (non-`Null`) node indices, grouped into contiguous per-`DepKind`
+    /// ranges described by `kinds`. For any non-`Null` `DepKind` `k`, all values in
+    /// `nodes_by_kind[kinds[k].start..][..kinds[k].len]`
+    /// must be `Some` and have kind `k`.
+    nodes_by_kind: Vec<Option<SerializedDepNodeIndex>>,
+    /// For each `DepKind`, the range of `nodes_by_kind` holding its node indices
+    /// and the lazily-built fingerprint map over that range.
+    kinds: Vec<LazyKindIndex>,
+}
+
+#[derive(Debug, Default)]
+struct LazyKindIndex {
+    /// Offset into `LazyNodeIndex::nodes_by_kind` of this kind's first node.
+    start: u32,
+    /// Number of nodes of this kind.
+    len: u32,
+    /// `key_fingerprint -> node index`, built from this kind's range on first
+    /// lookup. Empty kinds (and kinds never looked up) never build a map.
+    map: OnceLock<UnhashMap<PackedFingerprint, SerializedDepNodeIndex>>,
+}
+
+impl LazyKindIndex {
+    /// Returns this kind's `key_fingerprint -> node index` map.
+    fn fingerprint_map(
+        &self,
+        kind: DepKind,
+        nodes: &IndexSlice<SerializedDepNodeIndex, DepNode>,
+        nodes_by_kind: &[Option<SerializedDepNodeIndex>],
+        profiler: &Option<SelfProfilerRef>,
+    ) -> &UnhashMap<PackedFingerprint, SerializedDepNodeIndex> {
+        self.map.get_or_init(|| {
+            let _prof_timer = profiler
+                .as_ref()
+                .map(|p| p.generic_activity("incr_comp_load_dep_graph_reverse_index"));
+            let range = (self.start as usize)..(self.start as usize + self.len as usize);
+            let mut map =
+                UnhashMap::with_capacity_and_hasher(self.len as usize, Default::default());
+            for &idx in &nodes_by_kind[range] {
+                let idx = idx.expect("counting sort fills every slot of a kind's range");
+                let node = nodes[idx];
+                debug_assert_eq!(node.kind, kind);
+                if map.insert(node.key_fingerprint, idx).is_some()
+                    // Side effect nodes can legitimately share a fingerprint.
+                    && node.kind != DepKind::SideEffect
+                {
+                    panic!(
+                        "Error: A dep graph node ({kind:?}) does not have an unique index. \
+                         Running a clean build on a nightly compiler with \
+                         `-Z incremental-verify-ich` can help narrow down the issue for reporting. \
+                         A clean build may also work around the issue.\n
+                         DepNode: {node:?}"
+                    )
+                }
+            }
+            map
+        })
+    }
 }
 
 impl SerializedDepGraph {
@@ -151,7 +234,14 @@ impl SerializedDepGraph {
 
     #[inline]
     pub fn node_to_index_opt(&self, dep_node: &DepNode) -> Option<SerializedDepNodeIndex> {
-        self.index.get(dep_node.kind.as_usize())?.get(&dep_node.key_fingerprint).copied()
+        let kind = self.reverse_index.kinds.get(dep_node.kind.as_usize())?;
+        let map = kind.fingerprint_map(
+            dep_node.kind,
+            &self.nodes,
+            &self.reverse_index.nodes_by_kind,
+            &self.profiler,
+        );
+        map.get(&dep_node.key_fingerprint).copied()
     }
 
     #[inline]
@@ -206,8 +296,8 @@ fn mask(bits: usize) -> usize {
 }
 
 impl SerializedDepGraph {
-    #[instrument(level = "debug", skip(d))]
-    pub fn decode(d: &mut MemDecoder<'_>) -> Arc<SerializedDepGraph> {
+    #[instrument(level = "debug", skip(d, profiler))]
+    pub fn decode(d: &mut MemDecoder<'_>, profiler: &SelfProfilerRef) -> Arc<SerializedDepGraph> {
         // The last 16 bytes are the node count and edge count.
         debug!("position: {:?}", d.position());
 
@@ -286,36 +376,47 @@ impl SerializedDepGraph {
         // end of the array. This padding ensure it doesn't.
         edge_list_data.extend(&[0u8; DEP_NODE_PAD]);
 
-        // Read the number of each dep kind and use it to create an hash map with a suitable size.
-        let mut index: Vec<_> = (0..(DepKind::MAX + 1))
-            .map(|_| UnhashMap::with_capacity_and_hasher(d.read_u32() as usize, Default::default()))
-            .collect();
+        // Read the number of nodes of each dep kind, and perform
+        // counting sort for `LazyNodeIndex`.
+        let mut kinds = Vec::with_capacity(DepKind::MAX as usize + 1);
+        let mut offset = 0u32;
+        for _ in 0..(DepKind::MAX + 1) {
+            let len = d.read_u32();
+            kinds.push(LazyKindIndex { start: offset, len, map: OnceLock::new() });
+            offset += len;
+        }
+        debug_assert_eq!(offset as usize, node_count);
 
         let session_count = d.read_u64();
 
+        // Counting sort: place each node index into its kind's range. `fill[k]`
+        // points at the next free slot in kind `k`'s range, so a kind's nodes end
+        // up contiguous. Slots start as `None` and are each filled exactly once
+        // (the counts sum to the number of non-`Null` nodes).
+        let mut nodes_by_kind = vec![None; node_count];
+        let mut fill: Vec<u32> = kinds.iter().map(|k| k.start).collect();
         for (idx, node) in nodes.iter_enumerated() {
-            if index[node.kind.as_usize()].insert(node.key_fingerprint, idx).is_some() {
-                // Empty nodes and side effect nodes can have duplicates
-                if node.kind != DepKind::Null && node.kind != DepKind::SideEffect {
-                    let kind = node.kind;
-                    panic!(
-                        "Error: A dep graph node ({kind:?}) does not have an unique index. \
-                         Running a clean build on a nightly compiler with \
-                         `-Z incremental-verify-ich` can help narrow down the issue for reporting. \
-                         A clean build may also work around the issue.\n
-                         DepNode: {node:?}"
-                    )
-                }
+            // Unused indices from batch allocation stay `Null`; they carry no
+            // encoded node and are never looked up by fingerprint, so skip them.
+            if node.kind == DepKind::Null {
+                continue;
             }
+            let k = node.kind.as_usize();
+            nodes_by_kind[fill[k] as usize] = Some(idx);
+            fill[k] += 1;
         }
+        // Each kind's range was filled exactly to its end.
+        debug_assert!(kinds.iter().zip(&fill).all(|(k, &f)| f == k.start + k.len));
+        let reverse_index = LazyNodeIndex { nodes_by_kind, kinds };
 
         Arc::new(SerializedDepGraph {
             nodes,
             value_fingerprints,
             edge_list_indices,
             edge_list_data,
-            index,
+            reverse_index,
             session_count,
+            profiler: Some(profiler.clone()),
         })
     }
 }
@@ -502,16 +603,12 @@ impl NodeInfo {
         node: &DepNode,
         index: DepNodeIndex,
         value_fingerprint: Fingerprint,
-        prev_index: SerializedDepNodeIndex,
-        colors: &DepNodeColorMap,
-        previous: &SerializedDepGraph,
+        edges: &[DepNodeIndex],
     ) -> usize {
-        let edges = previous.edge_targets_from(prev_index);
-        let edge_count = edges.size_hint().0;
+        let edge_count = edges.len();
 
         // Find the highest edge in the new dep node indices
-        let edge_max =
-            edges.clone().map(|i| colors.current(i).unwrap().as_u32()).max().unwrap_or(0);
+        let edge_max = edges.iter().map(|x| x.as_u32()).max().unwrap_or(0);
 
         let header =
             SerializedNodeHeader::new(node, index, value_fingerprint, edge_max, edge_count);
@@ -523,10 +620,10 @@ impl NodeInfo {
         }
 
         let bytes_per_index = header.bytes_per_index();
-        for node_index in edges {
-            let node_index = colors.current(node_index).unwrap();
+        for edge in edges {
+            let edge = edge.as_u32();
             e.write_with(|dest| {
-                *dest = node_index.as_u32().to_le_bytes();
+                *dest = edge.to_le_bytes();
                 bytes_per_index
             });
         }
@@ -564,13 +661,17 @@ struct LocalEncoderResult {
 struct EncoderState {
     next_node_index: AtomicU64,
     previous: Arc<SerializedDepGraph>,
-    file: Lock<Option<FileEncoder>>,
+    file: Lock<Option<FileEncoder<'static>>>,
     local: WorkerLocal<RefCell<LocalEncoderState>>,
     stats: Option<Lock<FxHashMap<DepKind, Stat>>>,
 }
 
 impl EncoderState {
-    fn new(encoder: FileEncoder, record_stats: bool, previous: Arc<SerializedDepGraph>) -> Self {
+    fn new(
+        encoder: FileEncoder<'static>,
+        record_stats: bool,
+        previous: Arc<SerializedDepGraph>,
+    ) -> Self {
         Self {
             previous,
             next_node_index: AtomicU64::new(0),
@@ -623,7 +724,7 @@ impl EncoderState {
         node: &DepNode,
         index: DepNodeIndex,
         edge_count: usize,
-        edges: impl FnOnce(&Self) -> Vec<DepNodeIndex>,
+        edges: &[DepNodeIndex],
         retained_graph: &Option<Lock<RetainedDepGraph>>,
         local: &mut LocalEncoderState,
     ) {
@@ -631,15 +732,14 @@ impl EncoderState {
         local.edge_count += edge_count;
 
         if let Some(retained_graph) = &retained_graph {
-            // Call `edges` before the outlined code to allow the closure to be optimized out.
-            let edges = edges(self);
-
             // Outline the build of the full dep graph as it's typically disabled and cold.
             outline(move || {
-                // Do not ICE when a query is called from within `with_query`.
-                if let Some(retained_graph) = &mut retained_graph.try_lock() {
-                    retained_graph.push(index, *node, &edges);
-                }
+                // Block on the lock rather than using `try_lock`: under the parallel frontend
+                // several threads record nodes concurrently, and dropping a node on lock
+                // contention would make the retained graph nondeterministic. Readers take a
+                // clone of the graph (`retained_dep_graph`) rather than holding the lock, so
+                // this never deadlocks against a reentrant `record`.
+                retained_graph.lock().push(index, *node, edges);
             });
         }
 
@@ -676,14 +776,7 @@ impl EncoderState {
     ) {
         node.encode(&mut local.encoder, index);
         self.flush_mem_encoder(&mut *local);
-        self.record(
-            &node.node,
-            index,
-            node.edges.len(),
-            |_| node.edges[..].to_vec(),
-            retained_graph,
-            &mut *local,
-        );
+        self.record(&node.node, index, node.edges.len(), &node.edges, retained_graph, &mut *local);
     }
 
     /// Encodes a node that was promoted from the previous graph. It reads the information directly from
@@ -698,34 +791,15 @@ impl EncoderState {
         index: DepNodeIndex,
         prev_index: SerializedDepNodeIndex,
         retained_graph: &Option<Lock<RetainedDepGraph>>,
-        colors: &DepNodeColorMap,
         local: &mut LocalEncoderState,
+        edges: &[DepNodeIndex],
     ) {
         let node = self.previous.index_to_node(prev_index);
         let value_fingerprint = self.previous.value_fingerprint_for_index(prev_index);
-        let edge_count = NodeInfo::encode_promoted(
-            &mut local.encoder,
-            node,
-            index,
-            value_fingerprint,
-            prev_index,
-            colors,
-            &self.previous,
-        );
+        let edge_count =
+            NodeInfo::encode_promoted(&mut local.encoder, node, index, value_fingerprint, edges);
         self.flush_mem_encoder(&mut *local);
-        self.record(
-            node,
-            index,
-            edge_count,
-            |this| {
-                this.previous
-                    .edge_targets_from(prev_index)
-                    .map(|i| colors.current(i).unwrap())
-                    .collect()
-            },
-            retained_graph,
-            &mut *local,
-        );
+        self.record(node, index, edge_count, edges, retained_graph, &mut *local);
     }
 
     fn finish(&self, profiler: &SelfProfilerRef, current: &CurrentDepGraph) -> FileEncodeResult {
@@ -861,7 +935,7 @@ pub(crate) struct GraphEncoder {
 impl GraphEncoder {
     pub(crate) fn new(
         sess: &Session,
-        encoder: FileEncoder,
+        encoder: FileEncoder<'static>,
         prev_node_count: usize,
         previous: Arc<SerializedDepGraph>,
     ) -> Self {
@@ -874,10 +948,8 @@ impl GraphEncoder {
         GraphEncoder { status, retained_graph, profiler: sess.prof.clone() }
     }
 
-    pub(crate) fn with_retained_dep_graph(&self, f: impl Fn(&RetainedDepGraph)) {
-        if let Some(retained_graph) = &self.retained_graph {
-            f(&retained_graph.lock())
-        }
+    pub(crate) fn retained_dep_graph(&self) -> Option<RetainedDepGraph> {
+        self.retained_graph.as_ref().map(|retained_graph| retained_graph.lock().clone())
     }
 
     /// Encodes a node that does not exists in the previous graph.
@@ -940,6 +1012,7 @@ impl GraphEncoder {
         &self,
         prev_index: SerializedDepNodeIndex,
         colors: &DepNodeColorMap,
+        edges: &[DepNodeIndex],
     ) -> Option<DepNodeIndex> {
         let _prof_timer = self.profiler.generic_activity("incr_comp_encode_dep_graph");
 
@@ -955,8 +1028,8 @@ impl GraphEncoder {
                     index,
                     prev_index,
                     &self.retained_graph,
-                    colors,
                     &mut *local,
+                    edges,
                 );
                 Some(index)
             }

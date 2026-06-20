@@ -184,7 +184,6 @@ impl<'tcx> fmt::Debug for Region<'tcx> {
 // For things for which the type library provides traversal implementations
 // for all Interners, we only need to provide a Lift implementation.
 TrivialLiftImpls! {
-    (),
     bool,
     usize,
     u64,
@@ -197,6 +196,7 @@ TrivialLiftImpls! {
     rustc_abi::Size,
     rustc_hir::Safety,
     rustc_middle::mir::ConstValue,
+    rustc_span::Symbol,
     rustc_type_ir::BoundConstness,
     rustc_type_ir::PredicatePolarity,
     // tidy-alphabetical-end
@@ -245,6 +245,7 @@ TrivialTypeTraversalImpls! {
     rustc_hir::HirId,
     rustc_hir::MatchSource,
     rustc_hir::RangeEnd,
+    rustc_hir::attrs::AttributeKind,
     rustc_hir::def_id::LocalDefId,
     rustc_span::Ident,
     rustc_span::Span,
@@ -268,6 +269,14 @@ TrivialTypeTraversalAndLiftImpls! {
 
 ///////////////////////////////////////////////////////////////////////////
 // Lift implementations
+
+impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for ty::ParamEnv<'a> {
+    type Lifted = ty::ParamEnv<'tcx>;
+
+    fn lift_to_interner(self, tcx: TyCtxt<'tcx>) -> Self::Lifted {
+        ty::ParamEnv::new(tcx.lift(self.caller_bounds()))
+    }
+}
 
 impl<'tcx, T: Lift<TyCtxt<'tcx>>> Lift<TyCtxt<'tcx>> for Option<T> {
     type Lifted = Option<T::Lifted>;

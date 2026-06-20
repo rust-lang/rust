@@ -692,6 +692,8 @@ impl<'a, 'b, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'b, 'db, D> {
                     self.consume_expr(rhs)?;
                 }
             }
+
+            Expr::IncludeBytes => {}
         }
         Ok(())
     }
@@ -772,7 +774,7 @@ impl<'a, 'b, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'b, 'db, D> {
                             with_expr.into(),
                             with_place.clone(),
                             adt_field_types[f_index]
-                                .get()
+                                .ty()
                                 .instantiate(self.cx.interner(), args)
                                 .skip_norm_wip(),
                             ProjectionKind::Field {
@@ -1023,6 +1025,7 @@ impl<'a, 'b, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'b, 'db, D> {
                 | Pat::Tuple { .. }
                 | Pat::Wild
                 | Pat::Missing
+                | Pat::NotNull
                 | Pat::Rest => {
                     // If the PatKind is Or, Box, Ref, Guard, or Tuple, the relevant accesses
                     // are made later as these patterns contains subpatterns.
@@ -1473,7 +1476,7 @@ impl<'db, D: Delegate<'db>> ExprUseVisitor<'_, '_, 'db, D> {
     fn variant_index_for_adt(&self, pat_id: PatId) -> Result<(u32, VariantId)> {
         let variant = self.cx.result.variant_resolution_for_pat(pat_id).ok_or(ErrorGuaranteed)?;
         let variant_idx = match variant {
-            VariantId::EnumVariantId(variant) => variant.loc(self.cx.db).index,
+            VariantId::EnumVariantId(variant) => variant.index(self.cx.db) as u32,
             VariantId::StructId(_) | VariantId::UnionId(_) => 0,
         };
         Ok((variant_idx, variant))
@@ -1696,6 +1699,7 @@ impl<'db, D: Delegate<'db>> ExprUseVisitor<'_, '_, 'db, D> {
             | Pat::Range { .. }
             | Pat::Missing
             | Pat::Rest
+            | Pat::NotNull
             | Pat::Wild => {
                 // always ok
             }

@@ -659,7 +659,7 @@ impl<'a> Parser<'a> {
         defaultness: Defaultness,
         is_reuse: bool,
     ) -> PResult<'a, ItemKind> {
-        let mut constness = self.parse_constness(Case::Sensitive);
+        let constness = self.parse_constness(Case::Sensitive);
         let safety = self.parse_safety(Case::Sensitive);
         self.expect_keyword(exp!(Impl))?;
 
@@ -673,11 +673,6 @@ impl<'a> Parser<'a> {
             generics.span = self.prev_token.span.shrink_to_hi();
             generics
         };
-
-        if let Const::No = constness {
-            // FIXME(const_trait_impl): disallow `impl const Trait`
-            constness = self.parse_constness(Case::Sensitive);
-        }
 
         if let Const::Yes(span) = constness {
             self.psess.gated_spans.gate(sym::const_trait_impl, span);
@@ -909,7 +904,7 @@ impl<'a> Parser<'a> {
                 ident,
                 rename,
                 body: self.parse_delegation_body()?,
-                from_glob: false,
+                source: DelegationSource::Single,
             }))
         })
     }
@@ -1915,6 +1910,10 @@ impl<'a> Parser<'a> {
                 None
             };
 
+            let span = vlo.to(this.prev_token.span);
+            if ident.name == kw::Underscore {
+                this.psess.gated_spans.gate(sym::unnamed_enum_variants, span);
+            }
             let vr = ast::Variant {
                 ident,
                 vis,
@@ -1922,7 +1921,7 @@ impl<'a> Parser<'a> {
                 attrs: variant_attrs,
                 data: struct_def,
                 disr_expr,
-                span: vlo.to(this.prev_token.span),
+                span,
                 is_placeholder: false,
             };
 
@@ -2384,7 +2383,10 @@ impl<'a> Parser<'a> {
     /// for better diagnostics and suggestions.
     fn parse_field_ident(&mut self, adt_ty: &str, lo: Span) -> PResult<'a, Ident> {
         let (ident, is_raw) = self.ident_or_err(true)?;
-        if is_raw == IdentIsRaw::No && ident.is_reserved() {
+        if is_raw == IdentIsRaw::No
+            && ident.is_reserved()
+            && !(ident.name == kw::Underscore && adt_ty == "enum")
+        {
             let snapshot = self.create_snapshot_for_diagnostic();
             let err = if self.check_fn_front_matter(false, Case::Sensitive) {
                 let inherited_vis =

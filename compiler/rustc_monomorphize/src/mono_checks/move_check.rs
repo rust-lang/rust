@@ -9,7 +9,7 @@ use rustc_session::lint::builtin::LARGE_ASSIGNMENTS;
 use rustc_span::{Span, Spanned, sym};
 use tracing::{debug, trace};
 
-use crate::errors::LargeAssignmentsLint;
+use crate::diagnostics::LargeAssignmentsLint;
 
 struct MoveCheckVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,

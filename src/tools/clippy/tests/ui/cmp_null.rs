@@ -1,5 +1,4 @@
 #![warn(clippy::cmp_null)]
-#![allow(clippy::manual_assert_eq)]
 
 use std::ptr;
 

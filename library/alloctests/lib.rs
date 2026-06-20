@@ -20,6 +20,7 @@
 #![feature(const_alloc_error)]
 #![feature(const_cmp)]
 #![feature(const_convert)]
+#![feature(const_default)]
 #![feature(const_destruct)]
 #![feature(const_heap)]
 #![feature(const_option_ops)]
@@ -51,6 +52,7 @@
 #![feature(trusted_random_access)]
 #![feature(try_reserve_kind)]
 #![feature(try_trait_v2)]
+#![feature(unwrap_infallible)]
 #![feature(wtf8_internals)]
 // tidy-alphabetical-end
 //

@@ -145,7 +145,7 @@ impl<T: Copy + Debug + Hash + Eq> AsRef<[T]> for SmallCopyList<T> {
 /// | never                   | no    | no                                                                                                                   |
 /// | always                  | yes   | yes                                                                                                                  |
 /// | [defid in storage]      | no    | only if any of the defids in the list is in the opaque type storage OR if TypingMode::PostAnalysis                   |
-/// | opaque with hidden type | no    | only if any of the opaques in the opaque type storage has a hidden type in this list AND if TypingMode::Analysis |
+/// | opaque with hidden type | no    | only if any of the opaques in the opaque type storage has a hidden type in this list AND if TypingMode::Typeck       |
 ///
 /// - "bail" is implemented with [`should_bail`](Self::should_bail).
 ///   If true, we're abandoning our attempt to canonicalize in [`TypingMode::ErasedNotCoherence`],
@@ -161,14 +161,14 @@ impl<T: Copy + Debug + Hash + Eq> AsRef<[T]> for SmallCopyList<T> {
 pub enum RerunCondition<I: Interner> {
     Never,
 
-    /// Note that this only reruns according to the condition *if* we are in [`TypingMode::Analysis`].
+    /// Note that this only reruns according to the condition *if* we are in [`TypingMode::Typeck`].
     AnyOpaqueHasInferAsHidden,
     /// Note: unconditionally reruns in postanalysis
     OpaqueInStorage(SmallCopyList<I::LocalDefId>),
 
     /// Merges [`Self::AnyOpaqueHasInferAsHidden`] and [`Self::OpaqueInStorage`].
     /// Note that just like the unmerged [`Self::OpaqueInStorage`], that part of the
-    /// condition only matters in [`TypingMode::Analysis`]
+    /// condition only matters in [`TypingMode::Typeck`]
     OpaqueInStorageOrAnyOpaqueHasInferAsHidden(SmallCopyList<I::LocalDefId>),
 
     Always,
@@ -333,12 +333,12 @@ impl<I: Interner> AccessedOpaques<I> {
     pub fn rerun_if_opaque_in_opaque_type_storage(
         &mut self,
         reason: RerunReason,
-        defid: I::LocalDefId,
+        defid: I::LocalOpaqueTyId,
     ) -> Result<(), RerunNonErased> {
         debug!("set rerun if opaque type {defid:?} in storage");
         self.update(AccessedOpaques {
             reason: Some(reason),
-            rerun: RerunCondition::OpaqueInStorage(SmallCopyList::new(defid)),
+            rerun: RerunCondition::OpaqueInStorage(SmallCopyList::new(defid.into())),
         })
     }
 

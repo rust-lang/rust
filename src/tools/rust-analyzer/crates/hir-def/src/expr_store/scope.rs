@@ -350,7 +350,7 @@ fn compute_expr_scopes(
         Expr::Unsafe { id, statements, tail } => {
             handle_block(*id, statements, *tail, None, scopes, scope, const_scope);
         }
-        Expr::Loop { body: body_expr, label } => {
+        Expr::Loop { body: body_expr, label, source: _ } => {
             let mut scope = scopes.new_labeled_scope(*scope, make_label(*label));
             compute_expr_scopes(scopes, *body_expr, &mut scope, const_scope);
         }

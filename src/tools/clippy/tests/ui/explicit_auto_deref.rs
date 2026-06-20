@@ -1,17 +1,14 @@
 #![feature(closure_lifetime_binder)]
 #![warn(clippy::explicit_auto_deref)]
-#![allow(
-    dead_code,
-    unused_braces,
-    clippy::borrowed_box,
-    clippy::needless_borrow,
-    clippy::needless_return,
-    clippy::ptr_arg,
-    clippy::redundant_field_names,
-    clippy::too_many_arguments,
+#![allow(clippy::redundant_field_names)]
+#![expect(
     clippy::borrow_deref_ref,
+    clippy::borrowed_box,
     clippy::let_unit_value,
-    clippy::needless_lifetimes
+    clippy::needless_borrow,
+    clippy::needless_lifetimes,
+    clippy::needless_return,
+    clippy::too_many_arguments
 )]
 
 trait CallableStr {

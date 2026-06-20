@@ -42,7 +42,7 @@ use rustc_trait_selection::traits::{
 use tracing::{debug, instrument};
 
 use crate::callee::{self, DeferredCallResolution};
-use crate::errors::{self, CtorIsPrivate};
+use crate::diagnostics::{self, CtorIsPrivate};
 use crate::method::{self, MethodCallee};
 use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy};
 
@@ -657,12 +657,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.select_obligations_where_possible(|_| {});
 
         let defining_opaque_types_and_generators = match self.typing_mode() {
-            ty::TypingMode::Analysis { defining_opaque_types_and_generators } => {
+            ty::TypingMode::Typeck { defining_opaque_types_and_generators } => {
                 defining_opaque_types_and_generators
             }
             ty::TypingMode::Coherence
-            | ty::TypingMode::Borrowck { .. }
-            | ty::TypingMode::PostBorrowckAnalysis { .. }
+            | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+            | ty::TypingMode::PostBorrowck { .. }
             | ty::TypingMode::PostAnalysis
             | ty::TypingMode::Codegen => {
                 bug!()
@@ -1158,7 +1158,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             })
             .all(|def_id| def_id != impl_def_id)
             {
-                let sugg = ty.normalized.ty_adt_def().map(|def| errors::ReplaceWithName {
+                let sugg = ty.normalized.ty_adt_def().map(|def| diagnostics::ReplaceWithName {
                     span: path_span,
                     name: self.tcx.item_name(def.did()).to_ident_string(),
                 });
@@ -1166,13 +1166,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .tcx
                     .hir_node_by_def_id(self.tcx.hir_get_parent_item(hir_id).def_id)
                 {
-                    hir::Node::Item(item) => Some(errors::InnerItem {
+                    hir::Node::Item(item) => Some(diagnostics::InnerItem {
                         span: item.kind.ident().map(|i| i.span).unwrap_or(item.span),
                     }),
                     _ => None,
                 };
                 if ty.raw.has_param() {
-                    let guar = self.dcx().emit_err(errors::SelfCtorFromOuterItem {
+                    let guar = self.dcx().emit_err(diagnostics::SelfCtorFromOuterItem {
                         span: path_span,
                         impl_span: tcx.def_span(impl_def_id),
                         sugg,
@@ -1184,7 +1184,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         SELF_CONSTRUCTOR_FROM_OUTER_ITEM,
                         hir_id,
                         path_span,
-                        errors::SelfCtorFromOuterItemLint {
+                        diagnostics::SelfCtorFromOuterItemLint {
                             impl_span: tcx.def_span(impl_def_id),
                             sugg,
                             item,

@@ -7,7 +7,6 @@ use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId, LangItem, find_attr};
 use rustc_hir_analysis::autoderef::Autoderef;
-use rustc_hir_analysis::delegation::opt_get_delegation_info;
 use rustc_infer::infer::BoundRegionConversionTime;
 use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::adjustment::{
@@ -26,7 +25,7 @@ use tracing::{debug, instrument};
 use super::method::MethodCallee;
 use super::method::probe::ProbeScope;
 use super::{Expectation, FnCtxt, TupleArgumentsFlag};
-use crate::errors;
+use crate::diagnostics;
 use crate::method::TreatNotYetDefinedOpaques;
 use crate::method::confirm::ConfirmContext;
 use crate::method::probe::{IsSuggestion, Mode};
@@ -47,14 +46,14 @@ pub(crate) fn check_legal_trait_for_method_call(
         && !tcx.is_lang_item(tcx.parent(body_id), LangItem::Drop)
     {
         let sugg = if let Some(receiver) = receiver.filter(|s| !s.is_empty()) {
-            errors::ExplicitDestructorCallSugg::Snippet {
+            diagnostics::ExplicitDestructorCallSugg::Snippet {
                 lo: expr_span.shrink_to_lo().to(receiver.shrink_to_lo()),
                 hi: receiver.shrink_to_hi().to(expr_span.shrink_to_hi()),
             }
         } else {
-            errors::ExplicitDestructorCallSugg::Empty(span)
+            diagnostics::ExplicitDestructorCallSugg::Empty(span)
         };
-        return Err(tcx.dcx().emit_err(errors::ExplicitDestructorCall { span, sugg }));
+        return Err(tcx.dcx().emit_err(diagnostics::ExplicitDestructorCall { span, sugg }));
     }
     tcx.ensure_result().coherent_trait(trait_id)
 }
@@ -106,7 +105,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         if self.is_scalable_vector_ctor(autoderef.final_ty()) {
-            let mut err = self.dcx().create_err(errors::ScalableVectorCtor {
+            let mut err = self.dcx().create_err(diagnostics::ScalableVectorCtor {
                 span: callee_expr.span,
                 ty: autoderef.final_ty(),
             });
@@ -191,13 +190,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // The interrupt ABIs should only be called by the CPU. They have complex
             // pre- and postconditions, and can use non-standard instructions like `iret` on x86.
             | CanonAbi::Interrupt(_) => {
-                let err = crate::errors::AbiCannotBeCalled { span, abi };
+                let err = crate::diagnostics::AbiCannotBeCalled { span, abi };
                 self.tcx.dcx().emit_err(err);
             }
 
             // This is an entry point for the host, and cannot be called directly.
             CanonAbi::GpuKernel => {
-                let err = crate::errors::GpuKernelAbiCannotBeCalled { span };
+                let err = crate::diagnostics::GpuKernelAbiCannotBeCalled { span };
                 self.tcx.dcx().emit_err(err);
             }
 
@@ -205,6 +204,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | CanonAbi::Rust
             | CanonAbi::RustCold
             | CanonAbi::RustPreserveNone
+            | CanonAbi::RustTail
             | CanonAbi::Swift
             | CanonAbi::Arm(_)
             | CanonAbi::X86(_) => {}
@@ -608,7 +608,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
                 self.require_type_is_sized(ty, sp, ObligationCauseCode::RustCall);
             } else {
-                self.dcx().emit_err(errors::RustCallIncorrectArgs { span: sp });
+                self.dcx().emit_err(diagnostics::RustCallIncorrectArgs { span: sp });
             }
         }
 
@@ -700,7 +700,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // by comparing their hir ids (otherwise we will encounter errors in nested delegations,
         // see tests\ui\delegation\impl-reuse-pass.rs:237).
         let parent_def = self.tcx.hir_get_parent_item(call_expr.hir_id).def_id;
-        let Some(info) = opt_get_delegation_info(self.tcx, parent_def) else { return None };
+        let Some(info) = self.tcx.hir_opt_delegation_info(parent_def) else {
+            return None;
+        };
 
         if call_expr.hir_id != info.call_expr_id {
             return None;
@@ -843,7 +845,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let callee_ty = self.resolve_vars_if_possible(callee_ty);
         let mut path = None;
-        let mut err = self.dcx().create_err(errors::InvalidCallee {
+        let mut err = self.dcx().create_err(diagnostics::InvalidCallee {
             span: callee_expr.span,
             found: match &unit_variant {
                 Some((_, kind, path)) => format!("{kind} `{path}`"),
@@ -1023,6 +1025,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         callee_did: DefId,
         callee_args: GenericArgsRef<'tcx>,
     ) {
+        let const_context = self.tcx.hir_body_const_context(self.body_id);
+
+        if let hir::Constness::Const { always: true } = self.tcx.constness(callee_did) {
+            match const_context {
+                Some(hir::ConstContext::Const { .. } | hir::ConstContext::Static(_)) => {}
+                Some(hir::ConstContext::ConstFn) | None => {
+                    self.dcx().span_err(span, "comptime fns can only be called at compile time");
+                }
+            }
+        }
+
         // FIXME(const_trait_impl): We should be enforcing these effects unconditionally.
         // This can be done as soon as we convert the standard library back to
         // using const traits, since if we were to enforce these conditions now,
@@ -1036,7 +1049,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        let host = match self.tcx.hir_body_const_context(self.body_id) {
+        let host = match const_context {
             Some(hir::ConstContext::Const { .. } | hir::ConstContext::Static(_)) => {
                 ty::BoundConstness::Const
             }

@@ -9,9 +9,8 @@
 #![deny(unsafe_code)]
 
 use std::hash::Hash;
+use std::marker;
 use std::ops::{Bound, Range};
-use std::sync::Once;
-use std::{fmt, marker, mem, panic, thread};
 
 use crate::{Delimiter, Level};
 
@@ -100,6 +99,8 @@ mod handle;
 #[macro_use]
 #[forbid(unsafe_code)]
 mod rpc;
+#[forbid(unsafe_code)]
+mod panic_message;
 #[allow(unsafe_code)]
 mod selfless_reify;
 #[forbid(unsafe_code)]
@@ -108,7 +109,7 @@ pub mod server;
 mod symbol;
 
 use buffer::Buffer;
-pub use rpc::PanicMessage;
+pub use panic_message::PanicMessage;
 use rpc::{Decode, Encode};
 
 /// Configuration for establishing an active connection between a server and a
@@ -162,9 +163,11 @@ struct Marked<T, M> {
 
 impl<T, M> Mark for Marked<T, M> {
     type Unmarked = T;
+    #[inline]
     fn mark(unmarked: Self::Unmarked) -> Self {
         Marked { value: unmarked, _marker: marker::PhantomData }
     }
+    #[inline]
     fn unmark(self) -> Self::Unmarked {
         self.value
     }
@@ -174,6 +177,7 @@ impl<'a, T> Mark for &'a Marked<T, client::TokenStream> {
     fn mark(_: Self::Unmarked) -> Self {
         unreachable!()
     }
+    #[inline]
     fn unmark(self) -> Self::Unmarked {
         &self.value
     }
@@ -181,10 +185,12 @@ impl<'a, T> Mark for &'a Marked<T, client::TokenStream> {
 
 impl<T: Mark> Mark for Vec<T> {
     type Unmarked = Vec<T::Unmarked>;
+    #[inline]
     fn mark(unmarked: Self::Unmarked) -> Self {
         // Should be a no-op due to std's in-place collect optimizations.
         unmarked.into_iter().map(T::mark).collect()
     }
+    #[inline]
     fn unmark(self) -> Self::Unmarked {
         // Should be a no-op due to std's in-place collect optimizations.
         self.into_iter().map(T::unmark).collect()
@@ -196,9 +202,11 @@ macro_rules! mark_noop {
         $(
             impl Mark for $ty {
                 type Unmarked = Self;
+                #[inline]
                 fn mark(unmarked: Self::Unmarked) -> Self {
                     unmarked
                 }
+                #[inline]
                 fn unmark(self) -> Self::Unmarked {
                     self
                 }
@@ -276,11 +284,13 @@ macro_rules! mark_compound {
     (struct $name:ident <$($T:ident),+> { $($field:ident),* $(,)? }) => {
         impl<$($T: Mark),+> Mark for $name <$($T),+> {
             type Unmarked = $name <$($T::Unmarked),+>;
+            #[inline]
             fn mark(unmarked: Self::Unmarked) -> Self {
                 $name {
                     $($field: Mark::mark(unmarked.$field)),*
                 }
             }
+            #[inline]
             fn unmark(self) -> Self::Unmarked {
                 $name {
                     $($field: Mark::unmark(self.$field)),*
@@ -291,6 +301,7 @@ macro_rules! mark_compound {
     (enum $name:ident <$($T:ident),+> { $($variant:ident $(($field:ident))?),* $(,)? }) => {
         impl<$($T: Mark),+> Mark for $name <$($T),+> {
             type Unmarked = $name <$($T::Unmarked),+>;
+            #[inline]
             fn mark(unmarked: Self::Unmarked) -> Self {
                 match unmarked {
                     $($name::$variant $(($field))? => {
@@ -298,6 +309,7 @@ macro_rules! mark_compound {
                     })*
                 }
             }
+            #[inline]
             fn unmark(self) -> Self::Unmarked {
                 match self {
                     $($name::$variant $(($field))? => {

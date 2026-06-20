@@ -305,7 +305,7 @@ VariantList =
 
 Variant =
   Attr* Visibility?
-  Name FieldList? ('=' ConstArg)?
+  (Name | '_') FieldList? ('=' ConstArg)?
 
 Union =
   Attr* Visibility?
@@ -442,6 +442,12 @@ Expr =
 | YeetExpr
 | LetExpr
 | UnderscoreExpr
+| IncludeBytesExpr
+
+// We need a special expression for this because we don't have access to the file,
+// and emitting a specific array will have problems with the length.
+IncludeBytesExpr =
+  'builtin' '#' 'include_bytes'
 
 OffsetOfExpr =
   Attr* 'builtin' '#' 'offset_of' '(' Type ',' fields:(NameRef ('.' NameRef)* ) ')'
@@ -665,6 +671,7 @@ Type =
 | NeverType
 | ParenType
 | PathType
+| PatternType
 | PtrType
 | RefType
 | SliceType
@@ -705,6 +712,9 @@ FnPtrType =
 
 ForType =
   ForBinder Type
+
+PatternType =
+  'builtin' '#' 'pattern_type' '(' Type 'is' Pat ')'
 
 ImplTraitType =
   'impl' TypeBoundList
@@ -749,6 +759,10 @@ Pat =
 | TupleStructPat
 | ConstBlockPat
 | DerefPat
+| NotNull
+
+NotNull =
+    '!' 'null'
 
 DerefPat =
     'builtin' '#' 'deref' '(' Pat ')'

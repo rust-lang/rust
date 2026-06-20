@@ -5,6 +5,7 @@ LL | #[pin_v2]
    | ^^^^^^^^^
    |
    = help: `#[pin_v2]` can only be applied to data types
+   = note: placing this attribute on a macro invocation does nothing even if the macro expands to what would be a valid target for the attribute
 
 error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
   --> $DIR/pin_v2-attr.rs:84:12
@@ -113,6 +114,14 @@ error: `#[pin_v2]` attribute cannot be used on inherent impl blocks
    |
 LL | #[pin_v2]
    | ^^^^^^^^^
+   |
+   = help: `#[pin_v2]` can only be applied to data types
+
+error: `#[pin_v2]` attribute cannot be used on delegations
+  --> $DIR/pin_v2-attr.rs:58:5
+   |
+LL |     #[pin_v2]
+   |     ^^^^^^^^^
    |
    = help: `#[pin_v2]` can only be applied to data types
 
@@ -297,14 +306,6 @@ error: `#[pin_v2]` attribute cannot be used on macro defs
    |
 LL | #[pin_v2]
    | ^^^^^^^^^
-   |
-   = help: `#[pin_v2]` can only be applied to data types
-
-error: `#[pin_v2]` attribute cannot be used on delegations
-  --> $DIR/pin_v2-attr.rs:58:5
-   |
-LL |     #[pin_v2]
-   |     ^^^^^^^^^
    |
    = help: `#[pin_v2]` can only be applied to data types
 

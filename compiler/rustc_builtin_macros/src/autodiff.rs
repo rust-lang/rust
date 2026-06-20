@@ -24,7 +24,7 @@ mod llvm_enzyme {
     use thin_vec::{ThinVec, thin_vec};
     use tracing::{debug, trace};
 
-    use crate::errors;
+    use crate::diagnostics;
 
     pub(crate) fn outer_normal_attr(
         kind: &Box<rustc_ast::NormalAttr>,
@@ -101,7 +101,7 @@ mod llvm_enzyme {
             match x.try_into() {
                 Ok(x) => x,
                 Err(_) => {
-                    dcx.emit_err(errors::AutoDiffInvalidWidth {
+                    dcx.emit_err(diagnostics::AutoDiffInvalidWidth {
                         span: meta_item[1].span(),
                         width: x,
                     });
@@ -120,7 +120,7 @@ mod llvm_enzyme {
             match res {
                 Ok(x) => activities.push(x),
                 Err(_) => {
-                    dcx.emit_err(errors::AutoDiffUnknownActivity {
+                    dcx.emit_err(diagnostics::AutoDiffUnknownActivity {
                         span: x.span(),
                         act: activity_str,
                     });
@@ -238,14 +238,14 @@ mod llvm_enzyme {
             }
             _ => None,
         }) else {
-            dcx.emit_err(errors::AutoDiffInvalidApplication { span: item.span() });
+            dcx.emit_err(diagnostics::AutoDiffInvalidApplication { span: item.span() });
             return vec![item];
         };
 
         let meta_item_vec: ThinVec<MetaItemInner> = match meta_item.kind {
             ast::MetaItemKind::List(ref vec) => vec.clone(),
             _ => {
-                dcx.emit_err(errors::AutoDiffMissingConfig { span: item.span() });
+                dcx.emit_err(diagnostics::AutoDiffMissingConfig { span: item.span() });
                 return vec![item];
             }
         };
@@ -257,7 +257,7 @@ mod llvm_enzyme {
         let mut ts: Vec<TokenTree> = vec![];
         if meta_item_vec.len() < 1 {
             // At the bare minimum, we need a fnc name.
-            dcx.emit_err(errors::AutoDiffMissingConfig { span: item.span() });
+            dcx.emit_err(diagnostics::AutoDiffMissingConfig { span: item.span() });
             return vec![item];
         }
 
@@ -567,8 +567,7 @@ mod llvm_enzyme {
                     PatKind::Ident(_, ident, _) => ecx.expr_path(ecx.path_ident(span, ident)),
                     _ => todo!(),
                 })
-                .collect::<ThinVec<_>>()
-                .into(),
+                .collect::<ThinVec<_>>(),
         );
 
         let enzyme_path_idents = ecx.std_path(&[sym::intrinsics, sym::autodiff]);
@@ -658,7 +657,7 @@ mod llvm_enzyme {
         let sig_args = sig.decl.inputs.len() + if has_ret { 1 } else { 0 };
         let num_activities = x.input_activity.len() + if x.has_ret_activity() { 1 } else { 0 };
         if sig_args != num_activities {
-            dcx.emit_err(errors::AutoDiffInvalidNumberActivities {
+            dcx.emit_err(diagnostics::AutoDiffInvalidNumberActivities {
                 span,
                 expected: sig_args,
                 found: num_activities,
@@ -679,7 +678,7 @@ mod llvm_enzyme {
         let mut errors = false;
         for (arg, activity) in sig.decl.inputs.iter().zip(x.input_activity.iter()) {
             if !valid_input_activity(x.mode, *activity) {
-                dcx.emit_err(errors::AutoDiffInvalidApplicationModeAct {
+                dcx.emit_err(diagnostics::AutoDiffInvalidApplicationModeAct {
                     span,
                     mode: x.mode.to_string(),
                     act: activity.to_string(),
@@ -687,7 +686,7 @@ mod llvm_enzyme {
                 errors = true;
             }
             if !valid_ty_for_activity(&arg.ty, *activity) {
-                dcx.emit_err(errors::AutoDiffInvalidTypeForActivity {
+                dcx.emit_err(diagnostics::AutoDiffInvalidTypeForActivity {
                     span: arg.ty.span,
                     act: activity.to_string(),
                 });
@@ -696,7 +695,7 @@ mod llvm_enzyme {
         }
 
         if has_ret && !valid_ret_activity(x.mode, x.ret_activity) {
-            dcx.emit_err(errors::AutoDiffInvalidRetAct {
+            dcx.emit_err(diagnostics::AutoDiffInvalidRetAct {
                 span,
                 mode: x.mode.to_string(),
                 act: x.ret_activity.to_string(),

@@ -1,0 +1,25 @@
+error[E0228]: cannot deduce the lifetime bound for this trait object type from context
+  --> $DIR/object-lifetime-default-inherent-gac.rs:19:48
+   |
+LL |     fn check<'r>() where [(); Parent::CT::<'r, dyn super::Trait>]: {}
+   |                                                ^^^^^^^^^^^^^^^^
+   |
+help: please supply an explicit bound
+   |
+LL |     fn check<'r>() where [(); Parent::CT::<'r, dyn super::Trait + /* 'a */>]: {}
+   |                                                                 ++++++++++
+
+error[E0228]: cannot deduce the lifetime bound for this trait object type from context
+  --> $DIR/object-lifetime-default-inherent-gac.rs:32:50
+   |
+LL |     fn check<'r>() where [(); Parent::<'r>::CT::<dyn super::Trait>]: {}
+   |                                                  ^^^^^^^^^^^^^^^^
+   |
+help: please supply an explicit bound
+   |
+LL |     fn check<'r>() where [(); Parent::<'r>::CT::<dyn super::Trait + /* 'a */>]: {}
+   |                                                                   ++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0228`.

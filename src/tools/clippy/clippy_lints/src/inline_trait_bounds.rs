@@ -1,11 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{HasSession, snippet};
-use rustc_ast::NodeId;
+use clippy_utils::sym;
 use rustc_ast::ast::{Fn, FnRetTy, GenericParam, GenericParamKind};
 use rustc_ast::visit::{FnCtxt, FnKind};
+use rustc_ast::{HasAttrs as _, NodeId};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -37,9 +38,30 @@ declare_clippy_lint! {
     "enforce that `where` bounds are used for all trait bounds"
 }
 
-declare_lint_pass!(InlineTraitBounds => [INLINE_TRAIT_BOUNDS]);
+impl_lint_pass!(InlineTraitBounds => [INLINE_TRAIT_BOUNDS]);
+
+#[derive(Default)]
+pub struct InlineTraitBounds {
+    /// The top-level item onto which `#[automatically_derived]` has been encountered
+    automatically_derived_at: Option<NodeId>,
+}
 
 impl EarlyLintPass for InlineTraitBounds {
+    fn check_item(&mut self, _: &EarlyContext<'_>, item: &rustc_ast::Item) {
+        if self.automatically_derived_at.is_none()
+            && item
+                .attrs()
+                .iter()
+                .any(|attr| attr.has_name(sym::automatically_derived))
+        {
+            self.automatically_derived_at = Some(item.id);
+        }
+    }
+
+    fn check_item_post(&mut self, _: &EarlyContext<'_>, item: &rustc_ast::Item) {
+        self.automatically_derived_at.take_if(|id| *id == item.id);
+    }
+
     fn check_fn(&mut self, cx: &EarlyContext<'_>, kind: FnKind<'_>, _: Span, _: NodeId) {
         let FnKind::Fn(ctxt, _vis, f) = kind else {
             return;
@@ -47,6 +69,11 @@ impl EarlyLintPass for InlineTraitBounds {
 
         // Skip foreign functions (extern "C" etc.)
         if !matches!(ctxt, FnCtxt::Free | FnCtxt::Assoc(..)) {
+            return;
+        }
+
+        // Skip automatically derived functions
+        if self.automatically_derived_at.is_some() {
             return;
         }
 

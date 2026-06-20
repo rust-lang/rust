@@ -35,8 +35,8 @@ use thin_vec::ThinVec;
 use tt::TextRange;
 
 use crate::{
-    AdtId, BlockId, BlockLoc, DefWithBodyId, FunctionId, GenericDefId, ImplId, ItemContainerId,
-    MacroId, ModuleDefId, ModuleId, TraitId, TypeAliasId, UnresolvedMacro,
+    AdtId, BlockId, BlockLoc, ConstId, DefWithBodyId, FunctionId, GenericDefId, ImplId,
+    ItemContainerId, MacroId, ModuleDefId, ModuleId, TraitId, TypeAliasId, UnresolvedMacro,
     attrs::AttrFlags,
     db::DefDatabase,
     expr_store::{
@@ -49,9 +49,9 @@ use crate::{
     },
     hir::{
         Array, Binding, BindingAnnotation, BindingId, BindingProblems, CaptureBy, ClosureKind,
-        CoroutineKind, CoroutineSource, Expr, ExprId, Item, Label, LabelId, Literal, MatchArm,
-        Movability, OffsetOf, Pat, PatId, RecordFieldPat, RecordLitField, RecordSpread, Statement,
-        generics::GenericParams,
+        CoroutineKind, CoroutineSource, Expr, ExprId, Item, Label, LabelId, Literal, LoopSource,
+        MatchArm, Movability, OffsetOf, Pat, PatId, RecordFieldPat, RecordLitField, RecordSpread,
+        Statement, generics::GenericParams,
     },
     item_scope::BuiltinShadowMode,
     item_tree::FieldsShape,
@@ -204,7 +204,7 @@ pub(crate) fn lower_type_ref(
     (store, source_map, type_ref)
 }
 
-pub(crate) fn lower_generic_params(
+pub fn lower_generic_params(
     db: &dyn DefDatabase,
     module: ModuleId,
     def: GenericDefId,
@@ -718,6 +718,10 @@ impl<'db> ExprCollector<'db> {
             }
             ast::Type::DynTraitType(inner) => TypeRef::DynTrait(
                 self.type_bounds_from_ast(inner.type_bound_list(), impl_trait_lower_fn),
+            ),
+            ast::Type::PatternType(inner) => TypeRef::PatternType(
+                self.lower_type_ref_opt(inner.ty(), impl_trait_lower_fn),
+                self.collect_ty_pat_opt(inner.pat()),
             ),
             ast::Type::MacroType(mt) => match mt.macro_call() {
                 Some(mcall) => {
@@ -1347,7 +1351,7 @@ impl<'db> ExprCollector<'db> {
                     (self.hygiene_id_for(label.syntax().text_range()), self.collect_label(label))
                 });
                 let body = self.collect_labelled_block_opt(label, e.loop_body());
-                self.alloc_expr(Expr::Loop { body, label: label.map(|it| it.1) }, syntax_ptr)
+                self.alloc_expr(Expr::Loop { body, label: label.map(|it| it.1), source: LoopSource::Loop }, syntax_ptr)
             }
             ast::Expr::WhileExpr(e) => self.collect_while_loop(syntax_ptr, e),
             ast::Expr::ForExpr(e) => self.collect_for_loop(syntax_ptr, e),
@@ -1744,6 +1748,7 @@ impl<'db> ExprCollector<'db> {
                 self.alloc_expr(Expr::OffsetOf(OffsetOf { container, fields }), syntax_ptr)
             }
             ast::Expr::FormatArgsExpr(f) => self.collect_format_args(f, syntax_ptr),
+            ast::Expr::IncludeBytesExpr(_) => self.alloc_expr(Expr::IncludeBytes, syntax_ptr)
         })
     }
 
@@ -1890,9 +1895,13 @@ impl<'db> ExprCollector<'db> {
                 };
                 let record_field_list = e.record_expr_field_list()?;
                 let ellipsis = record_field_list.dotdot_token().is_some();
-                // We wanted to emit an error here if `record_field_list.spread().is_some()`,
-                // but that's already a syntax error in rustc, so we decided not to.
-                // See https://github.com/rust-lang/rust-analyzer/pull/22206#discussion_r3156097370
+                if let Some(spread) = record_field_list.spread() {
+                    self.store.diagnostics.push(
+                        ExpressionStoreDiagnostics::FruInDestructuringAssignment {
+                            node: self.expander.in_file(AstPtr::new(&spread)),
+                        },
+                    );
+                }
                 let args = record_field_list
                     .fields()
                     .filter_map(|f| {
@@ -2125,7 +2134,10 @@ impl<'db> ExprCollector<'db> {
             Expr::If { condition, then_branch: body, else_branch: Some(break_expr) },
             syntax_ptr,
         );
-        self.alloc_expr(Expr::Loop { body: if_expr, label: label.map(|it| it.1) }, syntax_ptr)
+        self.alloc_expr(
+            Expr::Loop { body: if_expr, label: label.map(|it| it.1), source: LoopSource::While },
+            syntax_ptr,
+        )
     }
 
     /// Desugar `ast::ForExpr` from: `[opt_ident]: for <pat> in <head> <body>` into:
@@ -2151,16 +2163,21 @@ impl<'db> ExprCollector<'db> {
         ) else {
             return self.missing_expr();
         };
-        let head = self.collect_expr_opt(e.iterable());
-        let into_iter_fn_expr = self.alloc_expr(Expr::Path(into_iter_fn), syntax_ptr);
-        let iterator = self.alloc_expr(
+        let iterable = e.iterable();
+        let syntax_ptr_iterable = iterable.as_ref().map_or(syntax_ptr, AstPtr::new);
+        let loop_body = e.loop_body().map(|it| it.into());
+        let head = self.collect_expr_opt(iterable);
+        let into_iter_fn_expr =
+            self.alloc_expr_desugared_with_ptr(Expr::Path(into_iter_fn), syntax_ptr_iterable);
+        let iterator = self.alloc_expr_desugared_with_ptr(
             Expr::Call { callee: into_iter_fn_expr, args: Box::new([head]) },
-            syntax_ptr,
+            syntax_ptr_iterable,
         );
         let none_arm = MatchArm {
             pat: self.alloc_pat_desugared(Pat::Path(option_none)),
             guard: None,
-            expr: self.alloc_expr(Expr::Break { expr: None, label: None }, syntax_ptr),
+            expr: self
+                .alloc_expr_desugared_with_ptr(Expr::Break { expr: None, label: None }, syntax_ptr),
         };
         let some_pat = Pat::TupleStruct {
             path: option_some,
@@ -2173,26 +2190,26 @@ impl<'db> ExprCollector<'db> {
         let some_arm = MatchArm {
             pat: self.alloc_pat_desugared(some_pat),
             guard: None,
-            expr: self.with_opt_labeled_rib(label, |this| {
-                this.collect_expr_opt(e.loop_body().map(|it| it.into()))
-            }),
+            expr: self.with_opt_labeled_rib(label, |this| this.collect_expr_opt(loop_body)),
         };
         let iter_name = self.generate_new_name();
-        let iter_expr = self.alloc_expr(Expr::Path(Path::from(iter_name.clone())), syntax_ptr);
-        let iter_expr_mut = self.alloc_expr(
+        let iter_expr = self
+            .alloc_expr_desugared_with_ptr(Expr::Path(Path::from(iter_name.clone())), syntax_ptr);
+        let iter_expr_mut = self.alloc_expr_desugared_with_ptr(
             Expr::Ref { expr: iter_expr, rawness: Rawness::Ref, mutability: Mutability::Mut },
             syntax_ptr,
         );
-        let iter_next_fn_expr = self.alloc_expr(Expr::Path(iter_next_fn), syntax_ptr);
-        let iter_next_expr = self.alloc_expr(
+        let iter_next_fn_expr =
+            self.alloc_expr_desugared_with_ptr(Expr::Path(iter_next_fn), syntax_ptr);
+        let iter_next_expr = self.alloc_expr_desugared_with_ptr(
             Expr::Call { callee: iter_next_fn_expr, args: Box::new([iter_expr_mut]) },
             syntax_ptr,
         );
-        let loop_inner = self.alloc_expr(
+        let loop_inner = self.alloc_expr_desugared_with_ptr(
             Expr::Match { expr: iter_next_expr, arms: Box::new([none_arm, some_arm]) },
             syntax_ptr,
         );
-        let loop_inner = self.alloc_expr(
+        let loop_inner = self.alloc_expr_desugared_with_ptr(
             Expr::Block {
                 id: None,
                 statements: Box::default(),
@@ -2201,8 +2218,14 @@ impl<'db> ExprCollector<'db> {
             },
             syntax_ptr,
         );
-        let loop_outer = self
-            .alloc_expr(Expr::Loop { body: loop_inner, label: label.map(|it| it.1) }, syntax_ptr);
+        let loop_outer = self.alloc_expr_desugared_with_ptr(
+            Expr::Loop {
+                body: loop_inner,
+                label: label.map(|it| it.1),
+                source: LoopSource::ForLoop,
+            },
+            syntax_ptr,
+        );
         let iter_binding =
             self.alloc_binding(iter_name, BindingAnnotation::Mutable, HygieneId::ROOT);
         let iter_pat = self.alloc_pat_desugared(Pat::Bind { id: iter_binding, subpat: None });
@@ -2562,9 +2585,9 @@ impl<'db> ExprCollector<'db> {
     }
 
     fn collect_extern_fn_param(&mut self, pat: Option<ast::Pat>) -> PatId {
-        // `extern` functions cannot have pattern-matched parameters, and furthermore, the identifiers
-        // in their parameters are always interpreted as bindings, even if in a normal function they
-        // won't be, because they would refer to a path pattern.
+        // parameters of functions in `extern` blocks can only be simple identifiers and wildcards.
+        // Furthermore, the identifiers in their parameters are always interpreted as bindings, even
+        // if in a normal function they won't be, because they would refer to a path pattern.
         let Some(pat) = pat else { return self.missing_pat() };
 
         match &pat {
@@ -2580,6 +2603,7 @@ impl<'db> ExprCollector<'db> {
                 self.add_definition_to_binding(binding, pat);
                 pat
             }
+            ast::Pat::WildcardPat(_) => self.alloc_pat(Pat::Wild, AstPtr::new(&pat)),
             _ => {
                 self.store.diagnostics.push(ExpressionStoreDiagnostics::PatternArgInExternFn {
                     node: self.expander.in_file(AstPtr::new(&pat)),
@@ -2782,6 +2806,7 @@ impl<'db> ExprCollector<'db> {
                 let inner = self.collect_pat_opt(inner.pat(), binding_list);
                 Pat::Deref { inner }
             }
+            ast::Pat::NotNull(_) => Pat::NotNull,
             ast::Pat::ConstBlockPat(const_block_pat) => {
                 if let Some(block) = const_block_pat.block_expr() {
                     let expr_id = self.with_label_rib(RibKind::Constant, |this| {
@@ -2905,6 +2930,114 @@ impl<'db> ExprCollector<'db> {
             },
             _ => Either::Left(self.collect_pat(pat, binding_list)),
         }
+    }
+
+    fn collect_ty_pat_opt(&mut self, pat: Option<ast::Pat>) -> PatId {
+        match pat {
+            Some(pat) => self.collect_ty_pat(pat),
+            None => self.missing_pat(),
+        }
+    }
+
+    fn collect_ty_pat(&mut self, pat: ast::Pat) -> PatId {
+        let ptr = AstPtr::new(&pat);
+        match pat {
+            ast::Pat::NotNull(_) => self.alloc_pat(Pat::NotNull, ptr),
+            ast::Pat::OrPat(pat) => {
+                let pat = pat.pats().map(|pat| self.collect_ty_pat(pat)).collect();
+                self.alloc_pat(Pat::Or(pat), ptr)
+            }
+            ast::Pat::RangePat(range_pat) => {
+                let start = range_pat
+                    .start()
+                    .map(|pat| {
+                        self.with_fresh_binding_expr_root(|this| this.lower_ty_pat_range_side(pat))
+                    })
+                    .unwrap_or_else(|| self.lower_ty_pat_range_end(self.lang_items().RangeMin));
+                let end = range_pat
+                    .end()
+                    .map(|pat| match range_pat.op_kind() {
+                        Some(ast::RangeOp::Inclusive) | None => self
+                            .with_fresh_binding_expr_root(|this| this.lower_ty_pat_range_side(pat)),
+                        Some(ast::RangeOp::Exclusive) => self.lower_excluded_range_end(pat),
+                    })
+                    .unwrap_or_else(|| self.lower_ty_pat_range_end(self.lang_items().RangeMax));
+                self.alloc_pat(
+                    Pat::Range {
+                        start: Some(start),
+                        end: Some(end),
+                        range_type: ast::RangeOp::Inclusive,
+                    },
+                    ptr,
+                )
+            }
+            ast::Pat::MacroPat(pat) => {
+                let Some(call) = pat.macro_call() else { return self.missing_pat() };
+                let ptr = AstPtr::new(&call);
+                self.collect_macro_call(call, ptr, true, |this, pat| this.collect_ty_pat_opt(pat))
+            }
+            _ => {
+                // FIXME: Emit an error.
+                self.alloc_pat(Pat::Missing, ptr)
+            }
+        }
+    }
+
+    fn lower_ty_pat_range_side(&mut self, pat: ast::Pat) -> ExprId {
+        let ptr = AstPtr::new(&pat);
+        match &pat {
+            ast::Pat::LiteralPat(it) => {
+                let Some((literal, _)) = pat_literal_to_hir(it) else { return self.missing_expr() };
+                self.alloc_expr_from_pat(Expr::Literal(literal), ptr)
+            }
+            ast::Pat::ConstBlockPat(it) => {
+                if let Some(block) = it.block_expr() {
+                    let expr_id = self.with_label_rib(RibKind::Constant, |this| {
+                        this.with_binding_owner(|this| this.collect_block(block))
+                    });
+                    self.alloc_expr_from_pat(Expr::Const(expr_id), ptr)
+                } else {
+                    self.missing_expr()
+                }
+            }
+            ast::Pat::PathPat(it) => {
+                let path = it
+                    .path()
+                    .and_then(|path| self.lower_path(path, &mut Self::impl_trait_error_allocator));
+                self.alloc_expr_from_pat(path.map(Expr::Path).unwrap_or(Expr::Missing), ptr)
+            }
+            ast::Pat::IdentPat(it) if it.is_simple_ident() => {
+                let name = it.name().map(|nr| nr.as_name()).unwrap_or_else(Name::missing);
+                self.alloc_expr_from_pat(Expr::Path(name.into()), ptr)
+            }
+            _ => self.missing_expr(), // FIXME: Emit an error.
+        }
+    }
+
+    /// When a range has no end specified (`1..` or `1..=`) or no start specified (`..5` or `..=5`),
+    /// we instead use a constant of the MAX/MIN of the type.
+    /// This way the type system does not have to handle the lack of a start/end.
+    fn lower_ty_pat_range_end(&mut self, lang_item: Option<ConstId>) -> ExprId {
+        self.with_fresh_binding_expr_root(|this| {
+            this.alloc_expr_desugared(
+                this.lang_path(lang_item).map(Expr::Path).unwrap_or(Expr::Missing),
+            )
+        })
+    }
+
+    /// Lowers the range end of an exclusive range (`2..5`) to an inclusive range 2..=(5 - 1).
+    /// This way the type system doesn't have to handle the distinction between inclusive/exclusive ranges.
+    fn lower_excluded_range_end(&mut self, pat: ast::Pat) -> ExprId {
+        self.with_fresh_binding_expr_root(|this| {
+            let excluded_end = this.lower_ty_pat_range_side(pat);
+            let range_sub_path =
+                this.lang_path(this.lang_items().RangeSub).map(Expr::Path).unwrap_or(Expr::Missing);
+            let range_sub_path = this.alloc_expr_desugared(range_sub_path);
+            this.alloc_expr_desugared(Expr::Call {
+                callee: range_sub_path,
+                args: Box::new([excluded_end]),
+            })
+        })
     }
 
     // endregion: patterns

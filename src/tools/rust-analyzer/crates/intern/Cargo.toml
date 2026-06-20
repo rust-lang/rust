@@ -15,7 +15,10 @@ doctest = false
 
 [dependencies]
 dashmap.workspace = true
-hashbrown.workspace = true
+# We need to freeze the version of the crate, as it needs to match with dashmap
+hashbrown = { version = "0.14.*", features = [
+    "inline-more",
+], default-features = false }
 rustc-hash.workspace = true
 triomphe.workspace = true
 rayon.workspace = true

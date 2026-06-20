@@ -5,12 +5,13 @@ use std::ops::Range;
 use rustc_abi::{BackendRepr, FieldIdx, FieldsShape, Size, VariantIdx};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::IndexVec;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{Instance, Ty};
 use rustc_middle::{bug, mir, ty};
-use rustc_session::config::DebugInfo;
-use rustc_span::{BytePos, Span, Symbol, hygiene, sym};
+use rustc_session::config::{DebugInfo, OptLevel};
+use rustc_span::{BytePos, DUMMY_SP, Span, Symbol, hygiene, sym};
 
 use super::operand::{OperandRef, OperandValue};
 use super::place::{PlaceRef, PlaceValue};
@@ -455,6 +456,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             LocalRef::UnsizedPlace(_) => return,
         };
 
+        // FIXME(arm-maintainers): LLVM uses GlobalISel with -O0 that doesn't support scalable
+        // vectors. It normally falls back to SDAG which does support scalable vectors, but there's
+        // a bug that means that isn't happening for debuginfo - so temporarily don't emit debuginfo
+        // for scalable vector locals when there are no optimisations until that bug is
+        // fixed. See <https://github.com/llvm/llvm-project/issues/204585>.
+        if base.layout.peel_transparent_wrappers(bx).ty.is_scalable_vector()
+            && bx.tcx().backend_optimization_level(()) == OptLevel::No
+            && bx.sess().opts.debuginfo != DebugInfo::None
+        {
+            return;
+        }
+
         let vars = vars.iter().cloned().chain(fallback_var);
 
         for var in vars {
@@ -673,5 +686,142 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
         }
         Some((per_local, constants))
+    }
+
+    /// Creates the function-specific debug context.
+    ///
+    /// Returns the FunctionDebugContext for the function which holds state needed
+    /// for debug info creation, if it is enabled.
+    pub(super) fn fill_function_debug_context(&mut self) {
+        if self.cx.sess().opts.debuginfo == DebugInfo::None {
+            return;
+        }
+
+        // Initialize fn debug context (including scopes).
+        self.debug_context = Some(FunctionDebugContext {
+            scopes: IndexVec::with_capacity(self.mir.source_scopes.len()),
+            inlined_function_scopes: Default::default(),
+        });
+
+        // Find all scopes with variables defined in them.
+        let variables = if self.cx.sess().opts.debuginfo == DebugInfo::Full {
+            let mut vars = DenseBitSet::new_empty(self.mir.source_scopes.len());
+            // FIXME(eddyb) take into account that arguments always have debuginfo,
+            // irrespective of their name (assuming full debuginfo is enabled).
+            // NOTE(eddyb) actually, on second thought, those are always in the
+            // function scope, which always exists.
+            for var_debug_info in &self.mir.var_debug_info {
+                vars.insert(var_debug_info.source_info.scope);
+            }
+            Some(vars)
+        } else {
+            // Nothing to emit, of course.
+            None
+        };
+
+        // Instantiate all scopes.
+        let mut discriminators = FxHashMap::default();
+        for scope in self.mir.source_scopes.indices() {
+            let scope_data = self.make_mir_scope(&variables, &mut discriminators, scope);
+            let _s = self.debug_context.as_mut().unwrap().scopes.push(scope_data);
+            debug_assert_eq!(_s, scope);
+        }
+    }
+
+    fn make_mir_scope(
+        &mut self,
+        variables: &Option<DenseBitSet<mir::SourceScope>>,
+        discriminators: &mut FxHashMap<BytePos, u32>,
+        scope: mir::SourceScope,
+    ) -> DebugScope<Bx::DIScope, Bx::DILocation> {
+        let scope_data = &self.mir.source_scopes[scope];
+        let parent_scope = if let Some(parent) = scope_data.parent_scope {
+            debug_assert!(parent.as_u32() < scope.as_u32());
+            self.debug_context.as_ref().unwrap().scopes[parent]
+        } else {
+            // The root is the function itself.
+            let file = self.cx.sess().source_map().lookup_source_file(self.mir.span.lo());
+            let dbg_scope = self.cx.dbg_scope_fn(self.instance, self.fn_abi, Some(self.llfn));
+            return DebugScope {
+                dbg_scope,
+                inlined_at: None,
+                file_start_pos: file.start_pos,
+                file_end_pos: file.end_position(),
+            };
+        };
+
+        if let Some(vars) = variables
+            && !vars.contains(scope)
+            && scope_data.inlined.is_none()
+        {
+            // Do not create a DIScope if there are no variables defined in this
+            // MIR `SourceScope`, and it's not `inlined`, to avoid debuginfo bloat.
+            return parent_scope;
+        }
+
+        let dbg_scope = match scope_data.inlined {
+            Some((callee, _)) => {
+                let callee = self.monomorphize(callee);
+                *self
+                    .debug_context
+                    .as_mut()
+                    .unwrap()
+                    .inlined_function_scopes
+                    .entry(callee)
+                    .or_insert_with(|| {
+                        let callee_fn_abi = self.cx.fn_abi_of_instance(callee, ty::List::empty());
+                        self.cx.dbg_scope_fn(callee, callee_fn_abi, None)
+                    })
+            }
+            None => self.cx.dbg_create_lexical_block(scope_data.span.lo(), parent_scope.dbg_scope),
+        };
+
+        let inlined_at = scope_data.inlined.map(|(_, callsite_span)| {
+            let callsite_span = hygiene::walk_chain_collapsed(callsite_span, self.mir.span);
+            let callsite_scope = parent_scope.adjust_dbg_scope_for_span(self.cx, callsite_span);
+            let loc = self.cx.dbg_loc(callsite_scope, parent_scope.inlined_at, callsite_span);
+
+            // NB: In order to produce proper debug info for variables (particularly
+            // arguments) in multiply-inlined functions, LLVM expects to see a single
+            // DILocalVariable with multiple different DILocations in the IR. While
+            // the source information for each DILocation would be identical, their
+            // inlinedAt attributes will be unique to the particular callsite.
+            //
+            // We generate DILocations here based on the callsite's location in the
+            // source code. A single location in the source code usually can't
+            // produce multiple distinct calls so this mostly works, until
+            // macros get involved. A macro can generate multiple calls
+            // at the same span, which breaks the assumption that we're going to
+            // produce a unique DILocation for every scope we process here. We
+            // have to explicitly add discriminators if we see inlines into the
+            // same source code location.
+            //
+            // Note further that we can't key this hashtable on the span itself,
+            // because these spans could have distinct SyntaxContexts. We have
+            // to key on exactly what we're giving to LLVM.
+            match discriminators.entry(callsite_span.lo()) {
+                Entry::Occupied(mut o) => {
+                    *o.get_mut() += 1;
+                    // NB: We have to emit *something* here or we'll fail LLVM IR verification
+                    // in at least some circumstances (see issue #135322) so if the required
+                    // discriminant cannot be encoded fall back to the dummy location.
+                    self.cx.dbg_location_clone_with_discriminator(loc, *o.get()).unwrap_or_else(
+                        || self.cx.dbg_loc(callsite_scope, parent_scope.inlined_at, DUMMY_SP),
+                    )
+                }
+                Entry::Vacant(v) => {
+                    v.insert(0);
+                    loc
+                }
+            }
+        });
+
+        let file = self.cx.sess().source_map().lookup_source_file(scope_data.span.lo());
+        DebugScope {
+            dbg_scope,
+            inlined_at: inlined_at.or(parent_scope.inlined_at),
+            file_start_pos: file.start_pos,
+            file_end_pos: file.end_position(),
+        }
     }
 }

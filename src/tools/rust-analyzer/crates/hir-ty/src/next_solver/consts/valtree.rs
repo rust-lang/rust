@@ -8,6 +8,7 @@ use stdx::never;
 
 use crate::{
     MemoryMap, ParamEnvAndCrate, consteval,
+    db::HirDatabase,
     mir::pad16,
     next_solver::{Const, Consts, TyKind, WorldExposer},
 };
@@ -31,6 +32,34 @@ impl<'db> ValueConst<'db> {
     pub fn new(ty: Ty<'db>, kind: ValTreeKind<'db>) -> Self {
         let value = ValTree::new(kind);
         ValueConst { ty, value }
+    }
+
+    /// Attempts to convert to a `ValTreeKind::Leaf` value.
+    pub fn try_to_leaf(self) -> Option<ScalarInt> {
+        match self.value.inner() {
+            ValTreeKind::Leaf(s) => Some(*s),
+            ValTreeKind::Branch(_) => None,
+        }
+    }
+
+    /// Attempts to extract the raw bits from the constant.
+    ///
+    /// Fails if the value can't be represented as bits (e.g. because it is a reference
+    /// or an aggregate).
+    #[inline]
+    pub fn try_to_bits(
+        self,
+        db: &'db dyn HirDatabase,
+        param_env: ParamEnvAndCrate<'db>,
+    ) -> Option<u128> {
+        let (TyKind::Bool | TyKind::Char | TyKind::Uint(_) | TyKind::Int(_) | TyKind::Float(_)) =
+            self.ty.kind()
+        else {
+            return None;
+        };
+        let scalar = self.try_to_leaf()?;
+        let size = db.layout_of_ty(self.ty.store(), param_env.store()).ok()?.size;
+        Some(scalar.to_bits(size))
     }
 }
 

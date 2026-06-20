@@ -618,6 +618,7 @@ impl RustcInternal for Abi {
             Abi::RiscvInterruptM => rustc_abi::ExternAbi::RiscvInterruptM,
             Abi::RiscvInterruptS => rustc_abi::ExternAbi::RiscvInterruptS,
             Abi::RustPreserveNone => rustc_abi::ExternAbi::RustPreserveNone,
+            Abi::RustTail => rustc_abi::ExternAbi::RustTail,
             Abi::Custom => rustc_abi::ExternAbi::Custom,
             Abi::Swift => rustc_abi::ExternAbi::Swift,
         }
@@ -647,8 +648,8 @@ impl RustcInternal for Constness {
         _tables: &mut Tables<'_, BridgeTys>,
         _tcx: impl InternalCx<'tcx>,
     ) -> Self::T<'tcx> {
-        match self {
-            Constness::Const => rustc_hir::Constness::Const,
+        match *self {
+            Constness::Const { always } => rustc_hir::Constness::Const { always },
             Constness::NotConst => rustc_hir::Constness::NotConst,
         }
     }

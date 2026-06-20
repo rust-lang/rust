@@ -17,7 +17,7 @@ pub struct T;
 
 #[stable(feature = "foo", since = "1.0")]
 #[rustc_const_unstable(feature = "const_t_try", issue = "none")]
-impl const Try for T {
+const impl Try for T {
     type Output = T;
     type Residual = T;
 
@@ -32,13 +32,13 @@ impl const Try for T {
 
 #[stable(feature = "foo", since = "1.0")]
 #[rustc_const_unstable(feature = "const_t_try", issue = "none")]
-impl const Residual<T> for T {
+const impl Residual<T> for T {
     type TryType = T;
 }
 
 #[stable(feature = "foo", since = "1.0")]
 #[rustc_const_unstable(feature = "const_t_try", issue = "none")]
-impl const FromResidual for T {
+const impl FromResidual for T {
     fn from_residual(t: T) -> T {
         t
     }

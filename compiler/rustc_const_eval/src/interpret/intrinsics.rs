@@ -773,7 +773,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             _ => return interp_ok(false),
         }
 
-        trace!("{:?}", self.dump_place(&dest.clone().into()));
+        trace!("{:?}", self.dump_place(&dest));
         self.return_to_block(ret)?;
         interp_ok(true)
     }

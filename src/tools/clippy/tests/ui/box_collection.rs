@@ -1,9 +1,4 @@
-#![allow(
-    clippy::boxed_local,
-    clippy::needless_pass_by_value,
-    clippy::disallowed_names,
-    unused
-)]
+#![expect(clippy::boxed_local, clippy::disallowed_names, clippy::needless_pass_by_value)]
 
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque};
 

@@ -7,6 +7,7 @@ use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::{
     Canonical, CanonicalExt as _, CanonicalQueryInput, CanonicalVarKind, CanonicalVarValues,
+    QueryRegionConstraint,
 };
 use rustc_infer::infer::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TyCtxtInferExt};
 use rustc_infer::traits::solve::{FetchEligibleAssocItemResponse, Goal};
@@ -262,7 +263,9 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
 
         let mut seen = FxHashMap::default();
         let mut constraints = vec![];
-        for (outlives, _, vis) in region_constraints.constraints {
+        for QueryRegionConstraint { constraint: outlives, visible_for_leak_check: vis, .. } in
+            region_constraints.constraints
+        {
             match seen.entry(outlives) {
                 Entry::Occupied(occupied) => {
                     let idx = occupied.get();
@@ -335,9 +338,9 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             // get a result which isn't correct for all monomorphizations.
             match typing_mode {
                 TypingMode::Coherence
-                | TypingMode::Analysis { .. }
-                | TypingMode::Borrowck { .. }
-                | TypingMode::PostBorrowckAnalysis { .. } => false,
+                | TypingMode::Typeck { .. }
+                | TypingMode::PostTypeckUntilBorrowck { .. }
+                | TypingMode::PostBorrowck { .. } => false,
                 TypingMode::PostAnalysis | TypingMode::Codegen => {
                     let poly_trait_ref = self.resolve_vars_if_possible(goal_trait_ref);
                     !poly_trait_ref.still_further_specializable()

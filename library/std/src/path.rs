@@ -1803,14 +1803,13 @@ impl PathBuf {
     /// # Examples
     ///
     /// ```
-    /// #![feature(pathbuf_into_string)]
     /// use std::path::PathBuf;
     ///
     /// let path_buf = PathBuf::from("foo");
     /// let string = path_buf.into_string();
     /// assert_eq!(string, Ok(String::from("foo")));
     /// ```
-    #[unstable(feature = "pathbuf_into_string", issue = "156203")]
+    #[stable(feature = "pathbuf_into_string", since = "CURRENT_RUSTC_VERSION")]
     pub fn into_string(self) -> Result<String, PathBuf> {
         self.into_os_string().into_string().map_err(PathBuf::from)
     }
@@ -3177,7 +3176,9 @@ impl Path {
 
     /// Creates an owned [`PathBuf`] like `self` but with the extension added.
     ///
-    /// See [`PathBuf::add_extension`] for more details.
+    /// See [`PathBuf::add_extension`] for more details. The return value of
+    /// [`PathBuf::add_extension`] is ignored, which means no extension
+    /// will be added to paths with no [`Path::file_name`].
     ///
     /// # Examples
     ///
@@ -3191,6 +3192,13 @@ impl Path {
     /// assert_eq!(path.with_added_extension(""), PathBuf::from("foo.tar.gz"));
     /// assert_eq!(path.with_added_extension("xz"), PathBuf::from("foo.tar.gz.xz"));
     /// assert_eq!(path.with_added_extension("").with_added_extension("txt"), PathBuf::from("foo.tar.gz.txt"));
+    ///
+    /// let path = Path::new("/");
+    /// assert_eq!(path.with_added_extension("gz"), PathBuf::from("/"));
+    /// let path = Path::new("/dir/");
+    /// assert_eq!(path.with_added_extension("gz"), PathBuf::from("/dir.gz"));
+    /// let path = Path::new("/dir/..");
+    /// assert_eq!(path.with_added_extension("gz"), PathBuf::from("/dir/.."));
     /// ```
     #[stable(feature = "path_add_extension", since = "1.91.0")]
     pub fn with_added_extension<S: AsRef<OsStr>>(&self, extension: S) -> PathBuf {

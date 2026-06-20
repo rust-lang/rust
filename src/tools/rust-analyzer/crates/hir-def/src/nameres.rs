@@ -66,7 +66,7 @@ use hir_expand::{
     EditionedFileId, ErasedAstId, HirFileId, InFile, MacroCallId, mod_path::ModPath, name::Name,
     proc_macro::ProcMacroKind,
 };
-use intern::Symbol;
+use intern::{Symbol, sym};
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use span::{Edition, FileAstId, FileId, ROOT_ERASED_FILE_AST_ID};
@@ -427,7 +427,7 @@ pub(crate) fn crate_local_def_map(db: &dyn DefDatabase, crate_id: Crate) -> DefM
 
 #[salsa_macros::tracked(returns(ref))]
 pub fn block_def_map(db: &dyn DefDatabase, block_id: BlockId) -> DefMap {
-    let BlockLoc { ast_id, module } = block_id.lookup(db);
+    let BlockLoc { ast_id, module } = *block_id.lookup(db);
 
     let visibility = Visibility::Module(module, VisibilityExplicitness::Implicit);
     let module_data =
@@ -465,7 +465,16 @@ impl DefMap {
         block: Option<BlockInfo>,
     ) -> DefMap {
         let mut modules = ModulesMap::new();
-        let root = unsafe { ModuleIdLt::new(db, krate, block.map(|it| it.block)).to_static() };
+        let root = unsafe {
+            ModuleIdLt::new(
+                db,
+                krate,
+                block.map(|it| it.block),
+                None,
+                Name::new_symbol_root(sym::__empty),
+            )
+            .to_static()
+        };
         modules.insert(root, module_data);
 
         DefMap {
@@ -841,6 +850,7 @@ pub(crate) fn macro_styles_from_id(db: &dyn DefDatabase, macro_id: MacroId) -> M
         MacroExpander::BuiltIn(_) | MacroExpander::BuiltInEager(_) => MacroCallStyles::FN_LIKE,
         MacroExpander::BuiltInAttr(_) => MacroCallStyles::ATTR,
         MacroExpander::BuiltInDerive(_) => MacroCallStyles::DERIVE,
+        MacroExpander::UnimplementedBuiltIn => MacroCallStyles::all(), // Unknown.
     }
 }
 

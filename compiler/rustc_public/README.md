@@ -4,7 +4,7 @@ Our goal is to start publishing `stable_mir` into crates.io.
 Until then, users will use this as any other rustc crate, by installing
 the rustup component `rustc-dev`, and declaring `stable-mir` as an external crate.
 
-See the StableMIR ["Getting Started"](https://rust-lang.github.io/project-stable-mir/getting-started.html)
+See the StableMIR ["Getting Started"](https://rust-lang.github.io/rustc_public/getting-started.html)
 guide for more information.
 
 ## Stable MIR Design

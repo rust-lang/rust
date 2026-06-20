@@ -417,15 +417,10 @@ fn clean_where_predicate<'tcx>(
                 bound_params,
             }
         }
-
         hir::WherePredicateKind::RegionPredicate(wrp) => WherePredicate::RegionPredicate {
             lifetime: clean_lifetime(wrp.lifetime, cx),
             bounds: wrp.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
         },
-
-        // We should never actually reach this case because these predicates should've already been
-        // rejected in an earlier compiler pass. This feature isn't fully implemented (#20041).
-        hir::WherePredicateKind::EqPredicate(_) => bug!("EqPredicate"),
     })
 }
 
@@ -530,7 +525,7 @@ fn clean_projection_predicate<'tcx>(
     pred: ty::Binder<'tcx, ty::ProjectionPredicate<'tcx>>,
     cx: &mut DocContext<'tcx>,
 ) -> WherePredicate {
-    WherePredicate::EqPredicate {
+    WherePredicate::ProjectionPredicate {
         lhs: clean_projection(pred.map_bound(|p| p.projection_term), cx, None),
         rhs: clean_middle_term(pred.map_bound(|p| p.term), cx),
     }
@@ -572,7 +567,7 @@ fn projection_to_path_segment<'tcx>(
     proj: ty::Binder<'tcx, ty::AliasTerm<'tcx>>,
     cx: &mut DocContext<'tcx>,
 ) -> PathSegment {
-    let def_id = proj.skip_binder().def_id();
+    let def_id = proj.skip_binder().expect_projection_def_id();
     let generics = cx.tcx.generics_of(def_id);
     PathSegment {
         name: cx.tcx.item_name(def_id),
@@ -797,8 +792,8 @@ pub(crate) fn clean_generics<'tcx>(
                     }
                 }
             }
-            WherePredicate::EqPredicate { lhs, rhs } => {
-                eq_predicates.push(WherePredicate::EqPredicate { lhs, rhs });
+            WherePredicate::ProjectionPredicate { lhs, rhs } => {
+                eq_predicates.push(WherePredicate::ProjectionPredicate { lhs, rhs });
             }
         }
     }
@@ -1276,14 +1271,14 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
     let local_did = trait_item.owner_id.to_def_id();
     cx.with_param_env(local_did, |cx| {
         let inner = match trait_item.kind {
-            hir::TraitItemKind::Const(ty, Some(default), _) => {
+            hir::TraitItemKind::Const(ty, Some(default)) => {
                 ProvidedAssocConstItem(Box::new(Constant {
                     generics: enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx)),
                     kind: clean_const_item_rhs(default, local_did),
                     type_: clean_ty(ty, cx),
                 }))
             }
-            hir::TraitItemKind::Const(ty, None, _) => {
+            hir::TraitItemKind::Const(ty, None) => {
                 let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
                 RequiredAssocConstItem(generics, Box::new(clean_ty(ty, cx)))
             }
@@ -2093,6 +2088,9 @@ impl<'tcx> ContainerTy<'_, 'tcx> {
         match self {
             Self::Ref(region) => ObjectLifetimeDefault::Arg(region),
             Self::Regular { ty: container, args, arg: index } => {
+                // FIXME(fmease): Since #129543 assoc tys can now also induce trait object
+                //                lifetime defaults. Re-elide these, too!
+
                 let (DefKind::Struct
                 | DefKind::Union
                 | DefKind::Enum

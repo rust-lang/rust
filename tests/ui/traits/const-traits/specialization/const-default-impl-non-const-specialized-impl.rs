@@ -9,7 +9,7 @@ const trait Value {
     fn value() -> u32;
 }
 
-impl<T> const Value for T {
+const impl<T> Value for T {
     default fn value() -> u32 {
         0
     }

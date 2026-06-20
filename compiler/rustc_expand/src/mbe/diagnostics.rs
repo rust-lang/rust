@@ -33,7 +33,7 @@ pub(super) fn failed_to_match_macro(
     args: FailedMacro<'_>,
     body: &TokenStream,
     rules: &[MacroRule],
-    on_unmatch_args: Option<&Directive>,
+    on_unmatched_args: Option<&Directive>,
 ) -> (Span, ErrorGuaranteed) {
     debug!("failed to match macro");
     let def_head_span = if !def_span.is_dummy() && !psess.source_map().is_imported(def_span) {
@@ -77,7 +77,7 @@ pub(super) fn failed_to_match_macro(
     let CustomDiagnostic {
         message: custom_message, label: custom_label, notes: custom_notes, ..
     } = {
-        on_unmatch_args
+        on_unmatched_args
             .map(|directive| directive.eval(None, &FormatArgs { this: name.to_string(), .. }))
             .unwrap_or_default()
     };
@@ -304,8 +304,10 @@ pub(super) fn emit_frag_parse_err(
     };
 
     if parser.token.kind == token::Dollar {
+        let dollar_span = parser.token.span;
         parser.bump();
         if let token::Ident(name, _) = parser.token.kind {
+            let metavar_span = dollar_span.to(parser.token.span);
             let mut bindings_names = vec![];
             for rule in bindings {
                 let MacroRule::Func { lhs, .. } = rule else { continue };
@@ -319,6 +321,15 @@ pub(super) fn emit_frag_parse_err(
             for param in matched_rule_bindings {
                 let MatcherLoc::MetaVarDecl { bind, .. } = param else { continue };
                 matched_rule_bindings_names.push(bind.name);
+            }
+
+            // Report the unbound metavariable as the primary error up front, so every
+            // case is consistent regardless of which suggestion (if any) we attach below.
+            e.primary_message(format!("cannot find macro parameter `${name}` in this scope"));
+            e.span(metavar_span);
+            e.span_label(metavar_span, "not found in this scope");
+            if parser.psess.source_map().is_imported(metavar_span) {
+                e.span_label(site_span, "in this macro invocation");
             }
 
             if let Some(matched_name) = rustc_span::edit_distance::find_best_match_for_name(
@@ -346,17 +357,13 @@ pub(super) fn emit_frag_parse_err(
                     matched_name,
                     Applicability::MaybeIncorrect,
                 );
-            } else {
+            } else if !matched_rule_bindings_names.is_empty() {
                 let msg = matched_rule_bindings_names
                     .iter()
                     .map(|sym| format!("${}", sym))
                     .collect::<Vec<_>>()
                     .join(", ");
-
-                e.span_label(parser.token.span, "macro metavariable not found");
-                if !matched_rule_bindings_names.is_empty() {
-                    e.note(format!("available metavariable names are: {msg}"));
-                }
+                e.note(format!("available metavariable names are: {msg}"));
             }
         }
     }

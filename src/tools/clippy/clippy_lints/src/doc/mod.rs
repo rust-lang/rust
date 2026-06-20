@@ -906,29 +906,35 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         return Some(DocHeaders::default());
     }
 
-    check_for_code_clusters(
-        cx,
-        pulldown_cmark::Parser::new_with_broken_link_callback(
+    // Only emits the allow-by-default `DOC_LINK_CODE`; skip its extra markdown reparse when it's off.
+    if !clippy_utils::is_lint_allowed(cx, DOC_LINK_CODE, cx.last_node_with_lint_attrs) {
+        check_for_code_clusters(
+            cx,
+            pulldown_cmark::Parser::new_with_broken_link_callback(
+                &doc,
+                main_body_opts() - Options::ENABLE_SMART_PUNCTUATION,
+                Some(&mut fake_broken_link_callback),
+            )
+            .into_offset_iter(),
             &doc,
-            main_body_opts() - Options::ENABLE_SMART_PUNCTUATION,
-            Some(&mut fake_broken_link_callback),
-        )
-        .into_offset_iter(),
-        &doc,
-        Fragments {
-            doc: &doc,
-            fragments: &fragments,
-        },
-    );
+            Fragments {
+                doc: &doc,
+                fragments: &fragments,
+            },
+        );
+    }
 
-    doc_paragraphs_missing_punctuation::check(
-        cx,
-        &doc,
-        Fragments {
-            doc: &doc,
-            fragments: &fragments,
-        },
-    );
+    // Same for the allow-by-default `DOC_PARAGRAPHS_MISSING_PUNCTUATION`, which also reparses.
+    if !clippy_utils::is_lint_allowed(cx, DOC_PARAGRAPHS_MISSING_PUNCTUATION, cx.last_node_with_lint_attrs) {
+        doc_paragraphs_missing_punctuation::check(
+            cx,
+            &doc,
+            Fragments {
+                doc: &doc,
+                fragments: &fragments,
+            },
+        );
+    }
 
     // NOTE: check_doc uses it own cb function,
     // to avoid causing duplicated diagnostics for the broken link checker.

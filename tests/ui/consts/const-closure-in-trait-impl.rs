@@ -12,7 +12,7 @@ const trait T {
 
 struct S;
 
-impl const T for S {
+const impl T for S {
     fn a(&mut self, f: impl [const] Fn() + [const] Destruct) {
         f()
     }

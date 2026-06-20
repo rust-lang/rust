@@ -125,8 +125,10 @@ pub enum SyntaxKind {
     FORMAT_ARGS_KW,
     GEN_KW,
     GLOBAL_ASM_KW,
+    INCLUDE_BYTES_KW,
     INLATEOUT_KW,
     INOUT_KW,
+    IS_KW,
     LABEL_KW,
     LATEOUT_KW,
     MACRO_RULES_KW,
@@ -135,9 +137,11 @@ pub enum SyntaxKind {
     NOMEM_KW,
     NORETURN_KW,
     NOSTACK_KW,
+    NULL_KW,
     OFFSET_OF_KW,
     OPTIONS_KW,
     OUT_KW,
+    PATTERN_TYPE_KW,
     PRESERVES_FLAGS_KW,
     PURE_KW,
     RAW_KW,
@@ -222,6 +226,7 @@ pub enum SyntaxKind {
     IMPL,
     IMPL_RESTRICTION,
     IMPL_TRAIT_TYPE,
+    INCLUDE_BYTES_EXPR,
     INDEX_EXPR,
     INFER_TYPE,
     ITEM_LIST,
@@ -254,6 +259,7 @@ pub enum SyntaxKind {
     NAME,
     NAME_REF,
     NEVER_TYPE,
+    NOT_NULL,
     OFFSET_OF_EXPR,
     OR_PAT,
     PARAM,
@@ -268,6 +274,7 @@ pub enum SyntaxKind {
     PATH_PAT,
     PATH_SEGMENT,
     PATH_TYPE,
+    PATTERN_TYPE,
     PREFIX_EXPR,
     PTR_TYPE,
     RANGE_EXPR,
@@ -407,6 +414,7 @@ impl SyntaxKind {
             | IMPL
             | IMPL_RESTRICTION
             | IMPL_TRAIT_TYPE
+            | INCLUDE_BYTES_EXPR
             | INDEX_EXPR
             | INFER_TYPE
             | ITEM_LIST
@@ -439,6 +447,7 @@ impl SyntaxKind {
             | NAME
             | NAME_REF
             | NEVER_TYPE
+            | NOT_NULL
             | OFFSET_OF_EXPR
             | OR_PAT
             | PARAM
@@ -453,6 +462,7 @@ impl SyntaxKind {
             | PATH_PAT
             | PATH_SEGMENT
             | PATH_TYPE
+            | PATTERN_TYPE
             | PREFIX_EXPR
             | PTR_TYPE
             | RANGE_EXPR
@@ -634,8 +644,10 @@ impl SyntaxKind {
             DYN_KW => "dyn",
             FORMAT_ARGS_KW => "format_args",
             GLOBAL_ASM_KW => "global_asm",
+            INCLUDE_BYTES_KW => "include_bytes",
             INLATEOUT_KW => "inlateout",
             INOUT_KW => "inout",
+            IS_KW => "is",
             LABEL_KW => "label",
             LATEOUT_KW => "lateout",
             MACRO_RULES_KW => "macro_rules",
@@ -644,9 +656,11 @@ impl SyntaxKind {
             NOMEM_KW => "nomem",
             NORETURN_KW => "noreturn",
             NOSTACK_KW => "nostack",
+            NULL_KW => "null",
             OFFSET_OF_KW => "offset_of",
             OPTIONS_KW => "options",
             OUT_KW => "out",
+            PATTERN_TYPE_KW => "pattern_type",
             PRESERVES_FLAGS_KW => "preserves_flags",
             PURE_KW => "pure",
             RAW_KW => "raw",
@@ -740,8 +754,10 @@ impl SyntaxKind {
             DYN_KW if edition < Edition::Edition2018 => true,
             FORMAT_ARGS_KW => true,
             GLOBAL_ASM_KW => true,
+            INCLUDE_BYTES_KW => true,
             INLATEOUT_KW => true,
             INOUT_KW => true,
+            IS_KW => true,
             LABEL_KW => true,
             LATEOUT_KW => true,
             MACRO_RULES_KW => true,
@@ -750,9 +766,11 @@ impl SyntaxKind {
             NOMEM_KW => true,
             NORETURN_KW => true,
             NOSTACK_KW => true,
+            NULL_KW => true,
             OFFSET_OF_KW => true,
             OPTIONS_KW => true,
             OUT_KW => true,
+            PATTERN_TYPE_KW => true,
             PRESERVES_FLAGS_KW => true,
             PURE_KW => true,
             RAW_KW => true,
@@ -834,8 +852,10 @@ impl SyntaxKind {
             DYN_KW if edition < Edition::Edition2018 => true,
             FORMAT_ARGS_KW => true,
             GLOBAL_ASM_KW => true,
+            INCLUDE_BYTES_KW => true,
             INLATEOUT_KW => true,
             INOUT_KW => true,
+            IS_KW => true,
             LABEL_KW => true,
             LATEOUT_KW => true,
             MACRO_RULES_KW => true,
@@ -844,9 +864,11 @@ impl SyntaxKind {
             NOMEM_KW => true,
             NORETURN_KW => true,
             NOSTACK_KW => true,
+            NULL_KW => true,
             OFFSET_OF_KW => true,
             OPTIONS_KW => true,
             OUT_KW => true,
+            PATTERN_TYPE_KW => true,
             PRESERVES_FLAGS_KW => true,
             PURE_KW => true,
             RAW_KW => true,
@@ -991,8 +1013,10 @@ impl SyntaxKind {
             "dyn" if edition < Edition::Edition2018 => DYN_KW,
             "format_args" => FORMAT_ARGS_KW,
             "global_asm" => GLOBAL_ASM_KW,
+            "include_bytes" => INCLUDE_BYTES_KW,
             "inlateout" => INLATEOUT_KW,
             "inout" => INOUT_KW,
+            "is" => IS_KW,
             "label" => LABEL_KW,
             "lateout" => LATEOUT_KW,
             "macro_rules" => MACRO_RULES_KW,
@@ -1001,9 +1025,11 @@ impl SyntaxKind {
             "nomem" => NOMEM_KW,
             "noreturn" => NORETURN_KW,
             "nostack" => NOSTACK_KW,
+            "null" => NULL_KW,
             "offset_of" => OFFSET_OF_KW,
             "options" => OPTIONS_KW,
             "out" => OUT_KW,
+            "pattern_type" => PATTERN_TYPE_KW,
             "preserves_flags" => PRESERVES_FLAGS_KW,
             "pure" => PURE_KW,
             "raw" => RAW_KW,
@@ -1166,8 +1192,10 @@ macro_rules ! T_ {
     [dyn] => { $ crate :: SyntaxKind :: DYN_KW };
     [format_args] => { $ crate :: SyntaxKind :: FORMAT_ARGS_KW };
     [global_asm] => { $ crate :: SyntaxKind :: GLOBAL_ASM_KW };
+    [include_bytes] => { $ crate :: SyntaxKind :: INCLUDE_BYTES_KW };
     [inlateout] => { $ crate :: SyntaxKind :: INLATEOUT_KW };
     [inout] => { $ crate :: SyntaxKind :: INOUT_KW };
+    [is] => { $ crate :: SyntaxKind :: IS_KW };
     [label] => { $ crate :: SyntaxKind :: LABEL_KW };
     [lateout] => { $ crate :: SyntaxKind :: LATEOUT_KW };
     [macro_rules] => { $ crate :: SyntaxKind :: MACRO_RULES_KW };
@@ -1176,9 +1204,11 @@ macro_rules ! T_ {
     [nomem] => { $ crate :: SyntaxKind :: NOMEM_KW };
     [noreturn] => { $ crate :: SyntaxKind :: NORETURN_KW };
     [nostack] => { $ crate :: SyntaxKind :: NOSTACK_KW };
+    [null] => { $ crate :: SyntaxKind :: NULL_KW };
     [offset_of] => { $ crate :: SyntaxKind :: OFFSET_OF_KW };
     [options] => { $ crate :: SyntaxKind :: OPTIONS_KW };
     [out] => { $ crate :: SyntaxKind :: OUT_KW };
+    [pattern_type] => { $ crate :: SyntaxKind :: PATTERN_TYPE_KW };
     [preserves_flags] => { $ crate :: SyntaxKind :: PRESERVES_FLAGS_KW };
     [pure] => { $ crate :: SyntaxKind :: PURE_KW };
     [raw] => { $ crate :: SyntaxKind :: RAW_KW };

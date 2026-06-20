@@ -5,7 +5,7 @@
 //@ edition: 2021
 //@ build-pass
 //@ no-pass-override (codegen affects -Zprint-type-sizes)
-//@ only-x86_64
+//@ only-64bit
 
 pub async fn test() {
     let _ = a([0u8; 1024]).await;

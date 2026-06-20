@@ -9,24 +9,22 @@ pub fn map_constraints(fn_name: &str, imm_type: &String, imm_width: u32) -> Opti
         return Some(Constraint::Range(0..max));
     }
     match imm_type.as_str() {
-        // Legal values for variables of `_MM_FROUND` type are:
-        // 8 =>  (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
-        // 9 =>  (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
-        // 10 => (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
-        // 11 => (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
-        // 4 =>   _MM_FROUND_CUR_DIRECTION                      // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+        // _mm512_cvt{_round}ps_ph functions can accept a larger set of values for _MM_FROUND
+        "_MM_FROUND"
+            if fn_name.starts_with("_mm512")
+                && (fn_name.ends_with("cvtps_ph") || fn_name.ends_with("cvt_roundps_ph")) =>
+        {
+            Some(Constraint::Set(vec![0, 1, 2, 3, 4, 8, 9, 10, 11, 12]))
+        }
         "_MM_FROUND" => Some(Constraint::Set(vec![4, 8, 9, 10, 11])),
         "_MM_INDEX_SCALE" => Some(Constraint::Set(vec![1, 2, 4, 8])),
         "_MM_CMPINT" => Some(Constraint::Range(0..8)),
-        "_MM_REDUCE" => Some(Constraint::Range(0..8)),
-        "_MM_FROUND_SAE" => Some(Constraint::Equal(8)),
+        "_MM_REDUCE" => Some(Constraint::Range(0..256)),
+        "_MM_FROUND_SAE" => Some(Constraint::Set(vec![4, 8])),
         "_MM_MANTISSA_NORM" => Some(Constraint::Range(0..4)),
-        "_MM_MANTISSA_NORM_ENUM" => Some(Constraint::Range(0..4)),
         "_MM_MANTISSA_SIGN" => Some(Constraint::Range(0..3)),
         "_MM_PERM" => Some(Constraint::Range(0..256)),
-        "_MM_PERM_ENUM" => Some(Constraint::Range(0..256)),
-        "_MM_CMPINT_ENUM" => Some(Constraint::Range(0..8)),
-        "_MM_ROUND_MODE" => Some(Constraint::Set(vec![0, 0x2, 0x4, 0x6])),
+        "_MM_ROUND_MODE" => Some(Constraint::Range(0..5)),
         "_CMP_" => Some(Constraint::Range(0..32)),
         _ => None,
     }

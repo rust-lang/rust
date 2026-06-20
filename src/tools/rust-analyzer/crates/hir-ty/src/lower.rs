@@ -18,9 +18,12 @@ use hir_def::{
     TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId, VariantId,
     builtin_type::BuiltinType,
     expr_store::{ExpressionStore, path::Path},
-    hir::generics::{
-        GenericParamDataRef, GenericParams, LocalTypeOrConstParamId, TypeOrConstParamData,
-        TypeParamProvenance, WherePredicate,
+    hir::{
+        ExprId, PatId,
+        generics::{
+            GenericParamDataRef, GenericParams, LocalTypeOrConstParamId, TypeOrConstParamData,
+            TypeParamProvenance, WherePredicate,
+        },
     },
     item_tree::FieldsShape,
     lang_item::LangItems,
@@ -52,7 +55,7 @@ use thin_vec::ThinVec;
 use tracing::debug;
 
 use crate::{
-    ImplTraitId, Span, TyLoweringDiagnostic, TyLoweringDiagnosticKind,
+    ImplTraitId, Span, TyLoweringDiagnostic,
     consteval::{create_anon_const, path_to_const},
     db::{AnonConstId, GeneralConstId, HirDatabase, InternedOpaqueTyId},
     generics::{Generics, SingleGenerics, generics},
@@ -60,10 +63,10 @@ use crate::{
     next_solver::{
         AliasTy, Binder, BoundExistentialPredicates, Clause, ClauseKind, Clauses, Const, ConstKind,
         DbInterner, DefaultAny, EarlyBinder, EarlyParamRegion, ErrorGuaranteed, FnSigKind,
-        FxIndexMap, GenericArg, GenericArgs, ParamConst, ParamEnv, PolyFnSig, Predicate, Region,
-        StoredClauses, StoredEarlyBinder, StoredGenericArg, StoredGenericArgs, StoredPolyFnSig,
-        StoredTraitRef, StoredTy, TraitPredicate, TraitRef, Ty, Tys, Unnormalized, abi::Safety,
-        util::BottomUpFolder,
+        FxIndexMap, GenericArg, GenericArgs, ParamConst, ParamEnv, PatList, Pattern, PolyFnSig,
+        Predicate, Region, StoredClauses, StoredConst, StoredEarlyBinder, StoredGenericArg,
+        StoredGenericArgs, StoredPolyFnSig, StoredTraitRef, StoredTy, TraitPredicate, TraitRef, Ty,
+        Tys, Unnormalized, abi::Safety, util::BottomUpFolder,
     },
 };
 
@@ -196,9 +199,36 @@ pub trait TyLoweringInferVarsCtx<'db> {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LoweringMode {
+    Analysis,
+    Ide,
+}
+
+pub(crate) use self::tracked_struct_token::TrackedStructToken;
+mod tracked_struct_token {
+    use super::LoweringMode;
+
+    /// A token that is required to construct tracked structs.
+    /// This exists to prevent one from accidentally creating a tracked struct outside of a query which may happen for some codepaths.
+    pub(crate) struct TrackedStructToken {
+        // #[non_exhaustive] doesn't work for us here, we want it module focused.
+        _private: (),
+    }
+
+    impl LoweringMode {
+        pub(crate) fn allow_tracked_structs(self) -> Option<TrackedStructToken> {
+            match self {
+                LoweringMode::Analysis => Some(TrackedStructToken { _private: () }),
+                LoweringMode::Ide => None,
+            }
+        }
+    }
+}
+
 pub struct TyLoweringContext<'db, 'a> {
     pub db: &'db dyn HirDatabase,
-    interner: DbInterner<'db>,
+    pub(crate) interner: DbInterner<'db>,
     types: &'db crate::next_solver::DefaultAny<'db>,
     lang_items: &'db LangItems,
     resolver: &'a Resolver<'db>,
@@ -208,6 +238,7 @@ pub struct TyLoweringContext<'db, 'a> {
     generics: &'a OnceCell<Generics<'db>>,
     in_binders: DebruijnIndex,
     impl_trait_mode: ImplTraitLoweringState,
+    interning_mode: LoweringMode,
     /// Tracks types with explicit `?Sized` bounds.
     pub(crate) unsized_types: FxHashSet<Ty<'db>>,
     pub(crate) diagnostics: ThinVec<TyLoweringDiagnostic>,
@@ -244,6 +275,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             store,
             in_binders,
             impl_trait_mode,
+            interning_mode: LoweringMode::Analysis,
             unsized_types: FxHashSet::default(),
             diagnostics: ThinVec::new(),
             lifetime_elision,
@@ -256,6 +288,11 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
 
     pub(crate) fn set_lifetime_elision(&mut self, lifetime_elision: LifetimeElisionKind<'db>) {
         self.lifetime_elision = lifetime_elision;
+    }
+
+    pub(crate) fn with_interning_mode(mut self, interning_mode: LoweringMode) -> Self {
+        self.interning_mode = interning_mode;
+        self
     }
 
     pub(crate) fn with_debruijn<T>(
@@ -299,8 +336,14 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         self
     }
 
-    pub(crate) fn push_diagnostic(&mut self, type_ref: TypeRefId, kind: TyLoweringDiagnosticKind) {
-        self.diagnostics.push(TyLoweringDiagnostic { source: type_ref, kind });
+    pub(crate) fn push_diagnostic(&mut self, diagnostic: TyLoweringDiagnostic) {
+        self.diagnostics.push(diagnostic);
+    }
+
+    fn push_infer_vars_not_allowed(&mut self, span: Span) {
+        if !span.is_dummy() {
+            self.push_diagnostic(TyLoweringDiagnostic::InferVarsNotAllowed { source: span });
+        }
     }
 
     #[track_caller]
@@ -312,7 +355,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         match &mut self.infer_vars {
             Some(infer_vars) => infer_vars.next_ty_var(span),
             None => {
-                // FIXME: Emit an error: no infer vars allowed here.
+                self.push_infer_vars_not_allowed(span);
                 self.types.types.error
             }
         }
@@ -322,7 +365,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         match &mut self.infer_vars {
             Some(infer_vars) => infer_vars.next_const_var(span),
             None => {
-                // FIXME: Emit an error: no infer vars allowed here.
+                self.push_infer_vars_not_allowed(span);
                 self.types.consts.error
             }
         }
@@ -332,7 +375,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         match &mut self.infer_vars {
             Some(infer_vars) => infer_vars.next_region_var(span),
             None => {
-                // FIXME: Emit an error: no infer vars allowed here.
+                self.push_infer_vars_not_allowed(span);
                 self.types.regions.error
             }
         }
@@ -357,6 +400,14 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
     }
 
     pub(crate) fn lower_const(&mut self, const_ref: ConstRef, const_type: Ty<'db>) -> Const<'db> {
+        self.lower_expr_as_const(const_ref.expr, const_type)
+    }
+
+    pub(crate) fn lower_expr_as_const(
+        &mut self,
+        expr_id: ExprId,
+        const_type: Ty<'db>,
+    ) -> Const<'db> {
         #[expect(clippy::manual_map, reason = "a `map()` here generates a borrowck error")]
         let create_var = match &mut self.infer_vars {
             Some(infer_vars) => Some(
@@ -368,11 +419,12 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             self.interner,
             self.def,
             self.store,
-            const_ref.expr,
+            expr_id,
             self.resolver,
             const_type,
             &|| self.generics.get_or_init(|| generics(self.db, self.generic_def)),
             create_var,
+            self.interning_mode,
             self.forbid_params_after,
         );
 
@@ -528,9 +580,41 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                     }
                 }
             }
+            &TypeRef::PatternType(ty, pat) => {
+                let ty = self.lower_ty(ty);
+                let Some(pat) = self.lower_pattern_type(pat, ty) else {
+                    return (self.types.types.error, res);
+                };
+                Ty::new_pat(self.interner, ty, pat)
+            }
             TypeRef::Error => self.types.types.error,
         };
         (ty, res)
+    }
+
+    fn lower_pattern_type(&mut self, pat: PatId, ty: Ty<'db>) -> Option<Pattern<'db>> {
+        let pat_kind = match self.store[pat] {
+            hir_def::hir::Pat::Range { start: Some(start), end: Some(end), range_type: _ } => {
+                rustc_type_ir::PatternKind::Range {
+                    start: self.lower_expr_as_const(start, ty),
+                    end: self.lower_expr_as_const(end, ty),
+                }
+            }
+            hir_def::hir::Pat::NotNull => rustc_type_ir::PatternKind::NotNull,
+            hir_def::hir::Pat::Or(ref pats) => rustc_type_ir::PatternKind::Or(
+                PatList::new_from_iter(
+                    self.interner,
+                    pats.iter().map(|&pat| self.lower_pattern_type(pat, ty).ok_or(())),
+                )
+                .ok()?,
+            ),
+            hir_def::hir::Pat::Missing => return None,
+            _ => {
+                never!("pattern type can only be Range, NotNull or Or");
+                return None;
+            }
+        };
+        Some(Pattern::new(self.interner, pat_kind))
     }
 
     fn lower_fn_ptr(&mut self, fn_: &FnType) -> Ty<'db> {
@@ -591,7 +675,10 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             data: Either::Left(PathDiagnosticCallbackData(type_ref)),
             callback: |data, this, diag| {
                 let type_ref = data.as_ref().left().unwrap().0;
-                this.push_diagnostic(type_ref, TyLoweringDiagnosticKind::PathDiagnostic(diag))
+                this.push_diagnostic(TyLoweringDiagnostic::PathDiagnostic {
+                    source: type_ref,
+                    diag,
+                })
             },
         }
     }
@@ -1651,8 +1738,26 @@ fn const_param_types_with_diagnostics_cycle_result(
 pub(crate) fn field_types_query(
     db: &dyn HirDatabase,
     variant_id: VariantId,
-) -> &ArenaMap<LocalFieldId, StoredEarlyBinder<StoredTy>> {
+) -> &ArenaMap<LocalFieldId, FieldType> {
     &field_types_with_diagnostics(db, variant_id).value
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct FieldType {
+    ty: StoredEarlyBinder<StoredTy>,
+    default: Option<StoredEarlyBinder<StoredConst>>,
+}
+
+impl FieldType {
+    #[inline]
+    pub fn ty<'db>(&self) -> EarlyBinder<'db, Ty<'db>> {
+        self.ty.get()
+    }
+
+    #[inline]
+    pub fn default<'db>(&self) -> Option<EarlyBinder<'db, Const<'db>>> {
+        self.default.as_ref().map(|default| default.get_with(|it| it.as_ref()))
+    }
 }
 
 /// Build the type of all specific fields of a struct or enum variant.
@@ -1660,7 +1765,7 @@ pub(crate) fn field_types_query(
 pub(crate) fn field_types_with_diagnostics(
     db: &dyn HirDatabase,
     variant_id: VariantId,
-) -> TyLoweringResult<ArenaMap<LocalFieldId, StoredEarlyBinder<StoredTy>>> {
+) -> TyLoweringResult<ArenaMap<LocalFieldId, FieldType>> {
     let var_data = variant_id.fields(db);
     let fields = var_data.fields();
     if fields.is_empty() {
@@ -1684,7 +1789,15 @@ pub(crate) fn field_types_with_diagnostics(
         LifetimeElisionKind::AnonymousReportError,
     );
     for (field_id, field_data) in var_data.fields().iter() {
-        res.insert(field_id, StoredEarlyBinder::bind(ctx.lower_ty(field_data.type_ref).store()));
+        let ty = ctx.lower_ty(field_data.type_ref);
+        let default = field_data.default_value.map(|default| ctx.lower_const(default, ty));
+        res.insert(
+            field_id,
+            FieldType {
+                ty: StoredEarlyBinder::bind(ty.store()),
+                default: default.map(|default| StoredEarlyBinder::bind(default.store())),
+            },
+        );
     }
     TyLoweringResult::from_ctx(res, ctx)
 }
@@ -2072,12 +2185,12 @@ impl<'db> GenericPredicates {
 
 /// A cycle can occur from malformed code.
 fn generic_predicates_cycle_result(
-    _db: &dyn HirDatabase,
+    db: &dyn HirDatabase,
     _: salsa::Id,
     _def: GenericDefId,
 ) -> TyLoweringResult<GenericPredicates> {
     TyLoweringResult::empty(GenericPredicates::from_explicit_own_predicates(
-        StoredEarlyBinder::bind(Clauses::default().store()),
+        StoredEarlyBinder::bind(Clauses::empty(DbInterner::new_no_crate(db)).store()),
     ))
 }
 
@@ -2086,7 +2199,7 @@ impl GenericPredicates {
     pub fn empty() -> &'static GenericPredicates {
         static EMPTY: OnceLock<GenericPredicates> = OnceLock::new();
         EMPTY.get_or_init(|| GenericPredicates {
-            predicates: StoredEarlyBinder::bind(Clauses::default().store()),
+            predicates: StoredEarlyBinder::bind(Clauses::new_from_slice(&[]).store()),
             has_trait_implied_predicate: false,
             parent_explicit_self_predicates_start: 0,
             own_predicates_start: 0,
@@ -2197,12 +2310,7 @@ pub(crate) fn param_env_from_predicates<'db>(
     ParamEnv { clauses }
 }
 
-pub(crate) fn trait_environment<'db>(
-    db: &'db dyn HirDatabase,
-    def: ExpressionStoreOwnerId,
-) -> ParamEnv<'db> {
-    let def = def.generic_def(db);
-
+pub(crate) fn trait_environment<'db>(db: &'db dyn HirDatabase, def: GenericDefId) -> ParamEnv<'db> {
     return ParamEnv { clauses: trait_environment_query(db, def).as_ref() };
 
     #[salsa::tracked(returns(ref))]
@@ -2590,7 +2698,7 @@ fn fn_sig_for_struct_constructor(
     def: StructId,
 ) -> StoredEarlyBinder<StoredPolyFnSig> {
     let field_tys = db.field_types(def.into());
-    let params = field_tys.iter().map(|(_, ty)| ty.get().skip_binder());
+    let params = field_tys.iter().map(|(_, field)| field.ty().skip_binder());
     let ret = type_for_adt(db, def.into()).skip_binder();
 
     let inputs_and_output =
@@ -2606,7 +2714,7 @@ fn fn_sig_for_enum_variant_constructor(
     def: EnumVariantId,
 ) -> StoredEarlyBinder<StoredPolyFnSig> {
     let field_tys = db.field_types(def.into());
-    let params = field_tys.iter().map(|(_, ty)| ty.get().skip_binder());
+    let params = field_tys.iter().map(|(_, field)| field.ty().skip_binder());
     let parent = def.lookup(db).parent;
     let ret = type_for_adt(db, parent.into()).skip_binder();
 

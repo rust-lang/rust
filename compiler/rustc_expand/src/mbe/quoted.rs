@@ -9,7 +9,7 @@ use rustc_session::errors::feature_err;
 use rustc_span::edition::Edition;
 use rustc_span::{Ident, Span, kw, sym};
 
-use crate::errors;
+use crate::diagnostics;
 use crate::mbe::macro_parser::count_metavar_decls;
 use crate::mbe::{Delimited, KleeneOp, KleeneToken, MetaVarExpr, SequenceRepetition, TokenTree};
 
@@ -94,7 +94,7 @@ fn parse(
         // Emit a missing-fragment diagnostic and return a `TokenTree` fallback so parsing can
         // continue.
         let missing_fragment_specifier = |span, add_span| {
-            sess.dcx().emit_err(errors::MissingFragmentSpecifier {
+            sess.dcx().emit_err(diagnostics::MissingFragmentSpecifier {
                 span,
                 add_span,
                 valid: VALID_FRAGMENT_NAMES_MSG,
@@ -163,7 +163,7 @@ fn parse(
                 if !span.from_expansion() { edition } else { span.edition() }
             };
             let kind = NonterminalKind::from_symbol(fragment.name, edition).unwrap_or_else(|| {
-                sess.dcx().emit_err(errors::InvalidFragmentSpecifier {
+                sess.dcx().emit_err(diagnostics::InvalidFragmentSpecifier {
                     span,
                     fragment,
                     help: VALID_FRAGMENT_NAMES_MSG,
@@ -299,7 +299,7 @@ fn parse_tree<'a>(
                             _ => {
                                 let token =
                                     pprust::token_kind_to_string(&delim.as_open_token_kind());
-                                sess.dcx().emit_err(errors::ExpectedParenOrBrace {
+                                sess.dcx().emit_err(diagnostics::ExpectedParenOrBrace {
                                     span: delim_span.entire(),
                                     token,
                                 });

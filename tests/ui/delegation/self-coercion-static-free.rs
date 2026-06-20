@@ -20,10 +20,12 @@ struct S(F);
 
 impl Trait for S {
     reuse <F as Trait>::{static_value, static_mut_ref, static_ref} {
-        let _ = self;
-        S::static_self()
         //~^ ERROR: mismatched types
         //~| ERROR: mismatched types
+        //~| ERROR: mismatched types
+        //~| ERROR: unused target expression is specified for glob or list delegation
+        let _ = self;
+        S::static_self()
     }
 }
 
@@ -31,10 +33,12 @@ struct S1(Box<Box<Box<Box<Box<Box<F>>>>>>);
 
 impl Trait for S1 {
     reuse <F as Trait>::{static_value, static_mut_ref, static_ref} {
-        let _ = self;
-        S1::static_self()
         //~^ ERROR: mismatched types
         //~| ERROR: mismatched types
+        //~| ERROR: mismatched types
+        //~| ERROR: unused target expression is specified for glob or list delegation
+        let _ = self;
+        S1::static_self()
     }
 }
 

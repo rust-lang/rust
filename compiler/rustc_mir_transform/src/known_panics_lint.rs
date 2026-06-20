@@ -22,7 +22,7 @@ use rustc_middle::ty::{self, ConstInt, ScalarInt, Ty, TyCtxt, TypeVisitableExt, 
 use rustc_span::Span;
 use tracing::{debug, instrument, trace};
 
-use crate::errors::{AssertLint, AssertLintKind};
+use crate::diagnostics::{AssertLint, AssertLintKind};
 
 pub(super) struct KnownPanicsLint;
 

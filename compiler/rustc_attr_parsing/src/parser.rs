@@ -1,3 +1,8 @@
+//! Parsing of attribute arguments.
+//!
+//! Depending on the attribute parser, an [`ArgParser`] can be used to parse the arguments given to
+//! an attribute. See its documentation for more information.
+//!
 //! This is in essence an (improved) duplicate of `rustc_ast/attr/mod.rs`.
 //! That module is intended to be deleted in its entirety.
 //!
@@ -25,8 +30,8 @@ use thin_vec::ThinVec;
 
 use crate::ShouldEmit;
 use crate::session_diagnostics::{
-    InvalidMetaItem, InvalidMetaItemQuoteIdentSugg, InvalidMetaItemRemoveNegSugg, MetaBadDelim,
-    MetaBadDelimSugg, SuffixedLiteralInAttribute,
+    AdditionalCommaSuggestion, ExpectedComma, InvalidMetaItem, InvalidMetaItemQuoteIdentSugg,
+    InvalidMetaItemRemoveNegSugg, MetaBadDelim, MetaBadDelimSugg, SuffixedLiteralInAttribute,
 };
 
 #[derive(Clone, Debug)]
@@ -89,6 +94,12 @@ impl<P: Borrow<Path>> Display for PathParser<P> {
     }
 }
 
+/// Used for parsing attribute arguments.
+///
+/// See also [`AttributeDiagnosticContext`], which is the preferred interface for issuing argument
+/// parsing related diagnostics.
+///
+/// [`AttributeDiagnosticContext`]: crate::context::AttributeDiagnosticContext
 #[derive(Debug)]
 #[must_use]
 pub enum ArgParser {
@@ -693,6 +704,44 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
         self.parser.dcx().create_err(err)
     }
 
+    fn should_continue_parsing_meta_items(&mut self) -> Result<bool, Diag<'sess>> {
+        if self.parser.eat(exp!(Comma)) {
+            return Ok(true);
+        } else if self.parser.token == token::Eof {
+            return Ok(false);
+        }
+
+        let mut snapshot = self.parser.create_snapshot_for_diagnostic();
+        if matches!(self.should_emit, ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed }) {
+            let mut missing_commas = ThinVec::new();
+            let mut found_comma = false;
+            while self.parser.token != token::Eof {
+                let span = self.parser.prev_token.span.shrink_to_hi();
+                self.should_emit = ShouldEmit::Nothing;
+                match self.parse_meta_item_inner() {
+                    Ok(_) => {
+                        if !found_comma {
+                            missing_commas.push(span);
+                        }
+                    }
+                    Err(e) => {
+                        e.cancel();
+                        break;
+                    }
+                }
+                found_comma = self.parser.eat(exp!(Comma));
+            }
+
+            let mut missing_commas = missing_commas.into_iter();
+            if let Some(span) = missing_commas.next() {
+                let additional =
+                    missing_commas.map(|span| AdditionalCommaSuggestion { span }).collect();
+                return Err(self.parser.dcx().create_err(ExpectedComma { span, additional }));
+            }
+        }
+        snapshot.unexpected_any()
+    }
+
     fn parse(
         tokens: TokenStream,
         psess: &'sess ParseSess,
@@ -713,13 +762,9 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
         while this.parser.token != token::Eof {
             sub_parsers.push(this.parse_meta_item_inner()?);
 
-            if !this.parser.eat(exp!(Comma)) {
+            if !this.should_continue_parsing_meta_items()? {
                 break;
             }
-        }
-
-        if parser.token != token::Eof {
-            parser.unexpected()?;
         }
 
         Ok(MetaItemListParser { sub_parsers, span })

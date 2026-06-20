@@ -2120,9 +2120,11 @@ impl Compiler {
 }
 
 fn envify(s: &str) -> String {
+    // Converting foo-bar to FOO_BAR is a fairly idomatic mapping to an environment variable name.
+    // We also convert '.' to '_' to fix https://github.com/rust-lang/rust/issues/158090
     s.chars()
         .map(|c| match c {
-            '-' => '_',
+            '-' | '.' => '_',
             c => c,
         })
         .flat_map(|c| c.to_uppercase())

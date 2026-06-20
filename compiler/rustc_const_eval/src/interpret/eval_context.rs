@@ -1,5 +1,9 @@
+use std::cell::RefCell;
+use std::collections::hash_map::Entry;
+
 use either::{Left, Right};
 use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_hir::limit::Limit;
 use rustc_middle::mir::interpret::{ErrorHandled, InvalidMetaKind, ReportedErrorInfo};
@@ -37,6 +41,9 @@ pub struct InterpCx<'tcx, M: Machine<'tcx>> {
     /// The current context in case we're evaluating in a
     /// polymorphic context. This always uses `ty::TypingMode::PostAnalysis`.
     pub(super) typing_env: ty::TypingEnv<'tcx>,
+
+    /// The query cache is slow so we have our own cache in front of it.
+    pub(super) layout_cache: RefCell<FxHashMap<Ty<'tcx>, rustc_abi::Layout<'tcx>>>,
 
     /// The virtual memory system.
     pub memory: Memory<'tcx, M>,
@@ -130,10 +137,19 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// This inherent method takes priority over the trait method with the same name in LayoutOf,
     /// and allows wrapping the actual [LayoutOf::layout_of] with a tracing span.
     /// See [LayoutOf::layout_of] for the original documentation.
-    #[inline(always)]
+    #[inline]
     pub fn layout_of(&self, ty: Ty<'tcx>) -> Result<TyAndLayout<'tcx>, InterpErrorKind<'tcx>> {
-        let _trace = enter_trace_span!(M, layouting::layout_of, ty = ?ty.kind());
-        LayoutOf::layout_of(self, ty)
+        match self.layout_cache.borrow_mut().entry(ty) {
+            Entry::Occupied(occupied_entry) => {
+                Ok(TyAndLayout { ty, layout: *occupied_entry.get() })
+            }
+            Entry::Vacant(vacant_entry) => {
+                let _trace = enter_trace_span!(M, layouting::layout_of, ty = ?ty.kind());
+                let layout = LayoutOf::layout_of(self, ty)?;
+                vacant_entry.insert(layout.layout);
+                Ok(layout)
+            }
+        }
     }
 
     /// This inherent method takes priority over the trait method with the same name in FnAbiOf,
@@ -248,6 +264,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             machine,
             tcx: tcx.at(root_span),
             typing_env,
+            layout_cache: RefCell::new(FxHashMap::default()),
             memory: Memory::new(),
             recursion_limit: tcx.recursion_limit(),
         }

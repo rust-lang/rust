@@ -23,7 +23,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::lint::fcw;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{Span, Symbol};
-use rustc_trait_selection::errors::{
+use rustc_trait_selection::diagnostics::{
     AddPreciseCapturingForOvercapture, impl_trait_overcapture_suggestion,
 };
 use rustc_trait_selection::regions::OutlivesEnvironmentBuildExt;

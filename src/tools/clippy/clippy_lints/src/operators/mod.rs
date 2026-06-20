@@ -16,6 +16,7 @@ mod integer_division_remainder_used;
 mod invalid_upcast_comparisons;
 mod manual_div_ceil;
 mod manual_is_multiple_of;
+mod manual_isolate_lowest_one;
 mod manual_midpoint;
 mod misrefactored_assign_op;
 mod modulo_arithmetic;
@@ -724,6 +725,30 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for manual implementations of isolating the lowest set bit.
+    ///
+    /// ### Why is this bad?
+    /// The manual bit-twiddling forms are harder to read than the standard library method.
+    /// Using `-x` can also overflow for signed minimum values.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let x: u32 = 5;
+    /// let lsb = x & x.wrapping_neg();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let x: u32 = 5;
+    /// let lsb = x.isolate_lowest_one();
+    /// ```
+    #[clippy::version = "1.98.0"]
+    pub MANUAL_ISOLATE_LOWEST_ONE,
+    complexity,
+    "manual implementation of `isolate_lowest_one`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for manual implementation of `midpoint`.
     ///
     /// ### Why is this bad?
@@ -989,6 +1014,7 @@ impl_lint_pass!(Operators => [
     INTEGER_DIVISION_REMAINDER_USED,
     INVALID_UPCAST_COMPARISONS,
     MANUAL_DIV_CEIL,
+    MANUAL_ISOLATE_LOWEST_ONE,
     MANUAL_IS_MULTIPLE_OF,
     MANUAL_MIDPOINT,
     MISREFACTORED_ASSIGN_OP,
@@ -1036,6 +1062,7 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
                     needless_bitwise_bool::check(cx, e, op.node, lhs, rhs);
                     manual_midpoint::check(cx, e, op.node, lhs, rhs, self.msrv);
                     manual_is_multiple_of::check(cx, e, op.node, lhs, rhs, self.msrv);
+                    manual_isolate_lowest_one::check(cx, e, op.node, lhs, rhs, self.msrv);
                     decimal_bitwise_operands::check(cx, op.node, lhs, rhs);
                 }
                 self.arithmetic_context.check_binary(cx, e, op.node, lhs, rhs);

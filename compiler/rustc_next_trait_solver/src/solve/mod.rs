@@ -246,9 +246,7 @@ where
                     .evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                     .map_err(Into::into);
             }
-            ty::ConstKind::Unevaluated(uv) => {
-                self.cx().type_of(uv.kind.def_id()).instantiate(self.cx(), uv.args).skip_norm_wip()
-            }
+            ty::ConstKind::Unevaluated(uv) => uv.type_of(self.cx()).skip_norm_wip(),
             ty::ConstKind::Expr(_) => unimplemented!(
                 "`feature(generic_const_exprs)` is not supported in the new trait solver"
             ),
@@ -368,20 +366,16 @@ where
         param_env: I::ParamEnv,
         term: I::Term,
     ) -> Result<I::Term, NoSolutionOrRerunNonErased> {
-        if let Some(_) = term.to_alias_term() {
+        if let Some(alias) = term.to_alias_term() {
             let normalized_term = self.next_term_infer_of_kind(term);
-            let alias_relate_goal = Goal::new(
+            let projection_goal = Goal::new(
                 self.cx(),
                 param_env,
-                ty::PredicateKind::AliasRelate(
-                    term,
-                    normalized_term,
-                    ty::AliasRelationDirection::Equate,
-                ),
+                ty::ProjectionPredicate { projection_term: alias, term: normalized_term },
             );
             // We normalize the self type to be able to relate it with
             // types from candidates.
-            self.add_goal(GoalSource::TypeRelating, alias_relate_goal);
+            self.add_goal(GoalSource::TypeRelating, projection_goal);
             self.try_evaluate_added_goals()?;
             Ok(self.resolve_vars_if_possible(normalized_term))
         } else {
@@ -399,9 +393,9 @@ where
             TypingMode::Coherence | TypingMode::PostAnalysis | TypingMode::Codegen => false,
             // During analysis, opaques are rigid unless they may be defined by
             // the current body.
-            TypingMode::Analysis { defining_opaque_types_and_generators: non_rigid_opaques }
-            | TypingMode::Borrowck { defining_opaque_types: non_rigid_opaques }
-            | TypingMode::PostBorrowckAnalysis { defined_opaque_types: non_rigid_opaques } => {
+            TypingMode::Typeck { defining_opaque_types_and_generators: non_rigid_opaques }
+            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: non_rigid_opaques }
+            | TypingMode::PostBorrowck { defined_opaque_types: non_rigid_opaques } => {
                 !def_id.as_local().is_some_and(|def_id| non_rigid_opaques.contains(&def_id.into()))
             }
         }
@@ -444,4 +438,11 @@ pub struct GoalStalledOn<I: Interner> {
     /// The certainty that will be returned on subsequent evaluations if this
     /// goal remains stalled.
     pub stalled_certainty: Certainty,
+    pub previously_succeeded_in_erased: SucceededInErased<I>,
+}
+
+#[derive_where(Clone, Debug; I: Interner)]
+pub enum SucceededInErased<I: Interner> {
+    Yes { accessed_opaques: AccessedOpaques<I> },
+    No,
 }
