@@ -313,7 +313,7 @@ impl ast::UseTree {
     ///
     /// `prefix$0` -> `prefix::{self}`
     ///
-    /// `prefix$0::*` -> `prefix::{*}````
+    /// `prefix$0::*` -> `prefix::{*}`
     pub fn split_prefix_with_editor(&self, editor: &SyntaxEditor, prefix: &ast::Path) {
         debug_assert_eq!(self.path(), Some(prefix.top_path()));
 
@@ -387,4 +387,30 @@ fn test_increase_indent() {
             _ => (),
         }"
     );
+}
+
+#[test]
+fn split_prefix_inserts_self() {
+    check_split_prefix("use foo;", "foo::{self}");
+}
+
+#[test]
+fn split_prefix_preserves_rename() {
+    check_split_prefix("use foo as bar;", "foo::{self as bar}");
+}
+
+#[test]
+fn split_prefix_wraps_glob() {
+    check_split_prefix("use foo::*;", "foo::{*}");
+}
+
+#[cfg(test)]
+fn check_split_prefix(before: &str, expected: &str) {
+    let source = crate::SourceFile::parse(before, parser::Edition::CURRENT).tree();
+    let use_tree = source.syntax().descendants().find_map(ast::UseTree::cast).unwrap();
+    let (editor, use_tree) = SyntaxEditor::with_ast_node(&use_tree);
+    let prefix = use_tree.path().unwrap();
+    use_tree.split_prefix_with_editor(&editor, &prefix);
+    let edit = editor.finish();
+    assert_eq!(edit.new_root().to_string(), expected);
 }
