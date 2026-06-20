@@ -6,22 +6,29 @@ pub use core::io::ErrorKind;
 #[unstable(feature = "raw_os_error_ty", issue = "107792")]
 pub use core::io::RawOsError;
 
+// `std` is linked twice during testing which causes duplicate strong symbols.
 #[cfg(not(test))]
-#[core::io::raw_os_error::decode_error_kind]
-fn raw_os_error_decode(code: RawOsError) -> ErrorKind {
-    sys::io::decode_error_kind(code)
-}
+// FIXME: Apple platforms do not yet support weak linkage
+#[cfg(not(target_vendor = "apple"))]
+// FIXME: Windows GNU (e.g., MinGW) does not yet support weak linkage
+#[cfg(not(all(target_os = "windows", target_env = "gnu")))]
+mod eii_impls {
+    use super::*;
 
-#[cfg(not(test))]
-#[core::io::raw_os_error::fmt]
-fn raw_os_error_fmt(code: RawOsError, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-    fmt.write_str(&sys::io::error_string(code))
-}
+    #[core::io::raw_os_error::decode_error_kind]
+    fn raw_os_error_decode(code: RawOsError) -> ErrorKind {
+        sys::io::decode_error_kind(code)
+    }
 
-#[cfg(not(test))]
-#[core::io::raw_os_error::is_interrupted]
-fn raw_os_error_is_interrupted(code: RawOsError) -> bool {
-    sys::io::is_interrupted(code)
+    #[core::io::raw_os_error::fmt]
+    fn raw_os_error_fmt(code: RawOsError, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.write_str(&sys::io::error_string(code))
+    }
+
+    #[core::io::raw_os_error::is_interrupted]
+    fn raw_os_error_is_interrupted(code: RawOsError) -> bool {
+        sys::io::is_interrupted(code)
+    }
 }
 
 // On 64-bit platforms, `io::Error` may use a bit-packed representation to

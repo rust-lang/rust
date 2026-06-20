@@ -6,6 +6,10 @@ use crate::fmt;
 #[doc(hidden)]
 pub mod raw_os_error {
     #![expect(dead_code)]
+    // FIXME: Apple platforms do not yet support weak linkage
+    #![cfg(not(target_vendor = "apple"))]
+    // FIXME: Windows GNU (e.g., MinGW) does not yet support weak linkage
+    #![cfg(not(all(target_os = "windows", target_env = "gnu")))]
 
     use super::{ErrorKind, RawOsError};
 
