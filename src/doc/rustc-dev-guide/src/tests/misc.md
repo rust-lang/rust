@@ -9,9 +9,8 @@ This is a bootstrap/compiler implementation detail, but it can also be useful fo
   you to use unstable features and cli flags on a stable `rustc`.
 - `RUSTC_BOOTSTRAP=-1` will force a given `rustc` to pretend it is a stable
   compiler, even if it's actually a nightly `rustc`.
-  This is useful because some
-  behaviors of the compiler (e.g. diagnostics) can differ depending on whether
-  the compiler is nightly or not.
+  This is useful because some behaviors of the compiler (e.g. diagnostics)
+  can differ depending on whether the compiler is nightly or not.
 
 In `ui` tests and other test suites that support `//@ rustc-env`, you can specify
 
