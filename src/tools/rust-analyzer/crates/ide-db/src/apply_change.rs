@@ -1,16 +1,21 @@
 //! Applies changes to the IDE state transactionally.
 
+use std::time::{Duration, Instant};
+
 use profile::Bytes;
 use salsa::Database as _;
 
 use crate::{ChangeWithProcMacros, RootDatabase};
 
 impl RootDatabase {
-    pub fn apply_change(&mut self, change: ChangeWithProcMacros) {
+    pub fn apply_change(&mut self, change: ChangeWithProcMacros) -> Duration {
         let _p = tracing::info_span!("RootDatabase::apply_change").entered();
+        let now = Instant::now();
         self.trigger_cancellation();
+        let elapsed = now.elapsed();
         tracing::trace!("apply_change {:?}", change);
         change.apply(self);
+        elapsed
     }
 
     // Feature: Memory Usage
