@@ -24,7 +24,7 @@ pub fn test_values_array_static<T: IntrinsicTypeDefinition>(
 ) -> std::io::Result<()> {
     writeln!(
         w,
-        "static {name}: [{ty}; {load_size}] = {values};\n",
+        "static {name}: [{ty}; {load_size}] = {values};",
         name = test_values_array_name(ty),
         ty = ty.rust_scalar_type(),
         load_size = test_values_array_length(&ty),
