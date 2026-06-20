@@ -614,6 +614,66 @@ fn set_get_unix_permissions() {
 }
 
 #[test]
+fn set_get_permissions_nofollows() {
+    let tmpdir = tmpdir();
+    let filename = tmpdir.join("set_get_unix_permissions_file");
+    check!(File::create(&filename));
+    let file_metadata = check!(fs::metadata(&filename));
+    assert!(!file_metadata.permissions().readonly());
+    let mut permission_bits = file_metadata.permissions();
+    permission_bits.set_readonly(true);
+    let result = fs::set_permissions_nofollow(&filename, permission_bits);
+
+    cfg_select! {
+        any(windows, unix, target_os = "uefi", target_os = "solid_asp3", target_os = "motor") => {
+            assert_eq!(result.unwrap(), ());
+            let metadata0 = check!(fs::metadata(&filename));
+            assert!(metadata0.permissions().readonly());
+        },
+        _ => {
+            let error_kind = result.unwrap_err().kind();
+            assert_eq!(error_kind, crate::io::ErrorKind::Unsupported);
+        }
+    }
+}
+
+// Only Windows and Unix support `fs::set_permissions_nofollow`
+#[test]
+#[cfg(any(windows, unix))]
+fn set_get_permissions_nofollows_symlink() {
+    #[cfg(not(windows))]
+    use crate::os::unix::fs::symlink;
+    #[cfg(windows)]
+    use crate::os::windows::fs::symlink_dir;
+
+    let tmpdir = tmpdir();
+    let filename = tmpdir.join("set_get_unix_permissions_file");
+    let symlink_name = tmpdir.join("set_get_unix_permissions");
+    check!(File::create(&filename));
+    #[cfg(not(windows))]
+    check!(symlink(&filename, &symlink_name));
+    #[cfg(windows)]
+    check!(symlink_dir(&filename, &symlink_name));
+
+    let sym_metadata = check!(fs::symlink_metadata(&symlink_name));
+    let mut permission_bits = sym_metadata.permissions();
+    permission_bits.set_readonly(true);
+    let result = fs::set_permissions_nofollow(&symlink_name, permission_bits);
+
+    cfg_select! {
+        any(target_os = "macos", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd", target_os = "dragonfly", target_os = "espidf", target_os = "horizon") => {
+            assert_eq!(result.unwrap(), ());
+            let metadata0 = check!(fs::symlink_metadata(&symlink_name));
+            assert!(metadata0.permissions().readonly());
+        },
+        _ => {
+            let error_kind = result.unwrap_err().kind();
+            assert_eq!(error_kind, crate::io::ErrorKind::Unsupported);
+        }
+    }
+}
+
+#[test]
 #[cfg(windows)]
 fn file_test_io_seek_read_write() {
     use crate::os::windows::fs::FileExt;
@@ -1328,6 +1388,29 @@ fn fchmod_works() {
 
     p.set_readonly(false);
     check!(file.set_permissions(p));
+}
+
+#[test]
+fn fchmodat_works() {
+    let tmpdir = tmpdir();
+    let file = tmpdir.join("in.txt");
+
+    check!(File::create(&file));
+    let attr = check!(fs::metadata(&file));
+    assert!(!attr.permissions().readonly());
+    let mut p = attr.permissions();
+    p.set_readonly(true);
+    check!(fs::set_permissions_nofollow(&file, p.clone()));
+    let attr = check!(fs::metadata(&file));
+    assert!(attr.permissions().readonly());
+
+    match fs::set_permissions_nofollow(&tmpdir.join("foo"), p.clone()) {
+        Ok(..) => panic!("wanted an error"),
+        Err(..) => {}
+    }
+
+    p.set_readonly(false);
+    check!(fs::set_permissions_nofollow(&file, p));
 }
 
 #[test]

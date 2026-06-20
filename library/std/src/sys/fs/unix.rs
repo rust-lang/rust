@@ -1989,6 +1989,43 @@ pub fn set_perm(p: &CStr, perm: FilePermissions) -> io::Result<()> {
     cvt_r(|| unsafe { libc::chmod(p.as_ptr(), perm.mode) }).map(|_| ())
 }
 
+pub fn set_perm_nofollow(p: &CStr, perm: FilePermissions) -> io::Result<()> {
+    // ESP-IDF and Horizon do not support O_NOFOLLOW, so we skip setting it.
+    // Their filesystems do not have symbolic links, so no special handling is required.
+    cfg_select! {
+        // wasm32-wasip1 targets do not support fchmodat, so we fall down to
+        // open + fchmod
+        target_os = "wasi" => {
+            use crate::fs::OpenOptions;
+            use crate::fs::Permissions;
+            use crate::os::wasi::ffi::OsStrExt;
+            let mut options = OpenOptions::new();
+
+            #[cfg(not(any(target_os = "espidf", target_os = "horizon")))]
+            {
+                use crate::os::wasi::fs::OpenOptionsExt;
+                options.custom_flags(libc::O_NOFOLLOW);
+            }
+
+            let bytes = p.to_bytes();
+            let os_str = OsStr::from_bytes(bytes);
+            options.open(Path::new(os_str))?.set_permissions(Permissions::from_inner(perm))
+        }
+        not(any(target_os = "espidf", target_os = "horizon")) => {
+            cvt_r(|| unsafe {
+                libc::fchmodat(libc::AT_FDCWD, p.as_ptr(), perm.mode, libc::AT_SYMLINK_NOFOLLOW)
+            })
+            .map(|_| ())
+        },
+        _ => {
+            cvt_r(|| unsafe {
+                libc::fchmodat(libc::AT_FDCWD, p.as_ptr(), perm.mode, 0)
+            })
+            .map(|_| ())
+        }
+    }
+}
+
 pub fn rmdir(p: &CStr) -> io::Result<()> {
     cvt(unsafe { libc::rmdir(p.as_ptr()) }).map(|_| ())
 }
