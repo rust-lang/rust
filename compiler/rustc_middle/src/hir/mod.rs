@@ -36,8 +36,6 @@ pub struct ModuleItems {
     opaques: Box<[LocalDefId]>,
     body_owners: Box<[LocalDefId]>,
     nested_bodies: Box<[LocalDefId]>,
-    // only filled with hir_crate_items, not with hir_module_items
-    delayed_lint_items: Box<[OwnerId]>,
 
     /// Statics and functions with an `EiiImpls` or `EiiExternTarget` attribute
     eiis: Box<[LocalDefId]>,
@@ -56,10 +54,6 @@ impl ModuleItems {
 
     pub fn trait_items(&self) -> impl Iterator<Item = TraitItemId> {
         self.trait_items.iter().copied()
-    }
-
-    pub fn delayed_lint_items(&self) -> impl Iterator<Item = OwnerId> {
-        self.delayed_lint_items.iter().copied()
     }
 
     pub fn eiis(&self) -> impl Iterator<Item = LocalDefId> {
