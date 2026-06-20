@@ -1,8 +1,7 @@
-use super::sealed::Sealed;
 use crate::simd::{Mask, Simd, cmp::SimdPartialEq, num::SimdUint};
 
 /// Operations on SIMD vectors of constant pointers.
-pub trait SimdConstPtr: Copy + Sealed {
+pub impl(self) trait SimdConstPtr: Copy {
     /// Vector of `usize` with the same number of elements.
     type Usize;
 
@@ -64,8 +63,6 @@ pub trait SimdConstPtr: Copy + Sealed {
     /// Equivalent to calling [`pointer::wrapping_sub`] on each element.
     fn wrapping_sub(self, count: Self::Usize) -> Self;
 }
-
-impl<T, const N: usize> Sealed for Simd<*const T, N> {}
 
 impl<T, const N: usize> SimdConstPtr for Simd<*const T, N> {
     type Usize = Simd<usize, N>;

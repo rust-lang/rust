@@ -29,7 +29,7 @@ macro_rules! impl_fix_endianness {
 
 impl_fix_endianness! { u8, u16, u32, u64 }
 
-mod sealed {
+mod private_methods {
     use super::*;
 
     /// Not only does this seal the `MaskElement` trait, but these functions prevent other traits
@@ -38,7 +38,7 @@ mod sealed {
     /// For example, `eq` could be provided by requiring `MaskElement: PartialEq`, but that would
     /// prevent us from ever removing that bound, or from implementing `MaskElement` on
     /// non-`PartialEq` types in the future.
-    pub trait Sealed {
+    pub impl(super) trait PrivateMethods {
         fn valid<const N: usize>(values: Simd<Self, N>) -> bool
         where
             Self: SimdElement;
@@ -55,17 +55,20 @@ mod sealed {
         const FALSE: Self;
     }
 }
-use sealed::Sealed;
+use private_methods::PrivateMethods;
 
 /// Marker trait for types that may be used as SIMD mask elements.
 ///
 /// # Safety
 /// Type must be a signed integer.
-pub unsafe trait MaskElement: SimdElement<Mask = Self> + SimdCast + Sealed {}
+pub impl(self) unsafe trait MaskElement:
+    SimdElement<Mask = Self> + SimdCast + PrivateMethods
+{
+}
 
 macro_rules! impl_element {
     { $ty:ty, $unsigned:ty } => {
-        impl Sealed for $ty {
+        impl PrivateMethods for $ty {
             #[inline]
             fn valid<const N: usize>(value: Simd<Self, N>) -> bool
             {
@@ -196,7 +199,7 @@ where
     pub unsafe fn from_simd_unchecked(value: Simd<T, N>) -> Self {
         // Safety: the caller must confirm this invariant
         unsafe {
-            core::intrinsics::assume(<T as Sealed>::valid(value));
+            core::intrinsics::assume(<T as PrivateMethods>::valid(value));
         }
         Self(value)
     }
