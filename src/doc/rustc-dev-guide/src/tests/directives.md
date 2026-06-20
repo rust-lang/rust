@@ -165,7 +165,8 @@ The following directives will check rustc build settings and target settings:
   via `--target`, use `needs-llvm-components` instead to ensure the appropriate
   backend is available.
 - `needs-asm-ret` - ignores if the target does not have a `ret` instruction
-  in its assembly syntax. Most target architectures have this instruction,
+  in its assembly syntax.
+  Most target architectures have this instruction,
   making it handy for portable inline-assembly tests, but some architectures
   (e.g. 32-bit ARM) do not have it.
 - `needs-profiler-runtime` — ignores the test if the profiler runtime was not
