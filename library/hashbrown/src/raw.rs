@@ -2,6 +2,7 @@ use crate::TryReserveError;
 use crate::control::{BitMaskIter, Group, Tag, TagSliceExt};
 use crate::scopeguard::{ScopeGuard, guard};
 use crate::util::{invalid_mut, likely, unlikely};
+use core::alloc::Layout;
 use core::array;
 use core::iter::FusedIterator;
 use core::marker::PhantomData;
@@ -9,7 +10,7 @@ use core::mem;
 use core::ptr;
 use core::ptr::NonNull;
 use core::slice;
-use stdalloc::alloc::{Layout, handle_alloc_error};
+use stdalloc::alloc::handle_alloc_error;
 
 #[cfg(test)]
 use crate::alloc::AllocError;
