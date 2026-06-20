@@ -354,7 +354,7 @@ static AARCH64_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // exist together: https://developer.arm.com/documentation/102340/0100/New-features-in-SVE2
     //
     // "For backwards compatibility, Neon and VFP are required in the latest architectures."
-    ("sve", Stable, &["neon"]),
+    ("sve", Stable, &["neon", "fp16"]),
     // FEAT_SVE_B16B16 (SVE or SME Z-targeting instructions)
     ("sve-b16b16", Unstable(sym::aarch64_unstable_target_feature), &["bf16"]),
     // FEAT_SVE2
