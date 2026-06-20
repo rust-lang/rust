@@ -14,19 +14,16 @@ cfg_select! {
         // FIXME: Windows GNU (e.g., MinGW) does not yet support EII
         // FIXME: Apple platforms does not yet support EII
 
-        #[linkage = "weak"]
         #[unsafe(no_mangle)]
         fn __core_io_raw_os_error_decode_error_kind(code: RawOsError) -> ErrorKind {
             sys::io::decode_error_kind(code)
         }
 
-        #[linkage = "weak"]
         #[unsafe(no_mangle)]
         fn __core_io_raw_os_error_fmt(code: RawOsError, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
             fmt.write_str(&sys::io::error_string(code))
         }
 
-        #[linkage = "weak"]
         #[unsafe(no_mangle)]
         fn __core_io_raw_os_error_is_interrupted(code: RawOsError) -> bool {
             sys::io::is_interrupted(code)
