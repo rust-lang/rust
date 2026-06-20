@@ -1,0 +1,149 @@
+error: casting integer literal to `u64` is unnecessary
+  --> tests/ui/unnecessary_cast-11882.rs:6:19
+   |
+LL | const TEST: u64 = (!0 as u64).overflowing_shr(1_u32).0;
+   |                   ^^^^^^^^^^^ help: try: `(!0_u64)`
+   |
+   = note: `-D clippy::unnecessary-cast` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_cast)]`
+
+error: casting to the same type is unnecessary (`u64` -> `u64`)
+  --> tests/ui/unnecessary_cast-11882.rs:8:20
+   |
+LL | const TEST2: u64 = (!0_u64 as u64).overflowing_shr(1_u32).0;
+   |                    ^^^^^^^^^^^^^^^ help: try: `(!0_u64)`
+
+error: casting to the same type is unnecessary (`u64` -> `u64`)
+  --> tests/ui/unnecessary_cast-11882.rs:11:20
+   |
+LL | const TEST4: u64 = (not(0_u64) as u64).overflowing_shr(1_u32).0;
+   |                    ^^^^^^^^^^^^^^^^^^^ help: try: `not(0_u64)`
+
+error: casting to the same type is unnecessary (`u64` -> `u64`)
+  --> tests/ui/unnecessary_cast-11882.rs:13:20
+   |
+LL | const TEST5: u64 = (!not(!0_u64) as u64).overflowing_shr(1_u32).0;
+   |                    ^^^^^^^^^^^^^^^^^^^^^ help: try: `(!not(!0_u64))`
+
+error: casting integer literal to `u64` is unnecessary
+  --> tests/ui/unnecessary_cast-11882.rs:15:20
+   |
+LL | const TEST6: u64 = (0xff_ff_ff_ff_ff_ff_ff_ff as u64).overflowing_shr(1_u32).0;
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `0xff_ff_ff_ff_ff_ff_ff_ff_u64`
+
+error: casting integer literal to `u64` is unnecessary
+  --> tests/ui/unnecessary_cast-11882.rs:17:21
+   |
+LL | const TEST7: u64 = (!0 as u64 + 0).overflowing_shr(1_u32).0;
+   |                     ^^^^^^^^^ help: try: `!0_u64`
+
+error: casting integer literal to `u64` is unnecessary
+  --> tests/ui/unnecessary_cast-11882.rs:19:23
+   |
+LL | const TEST8: u64 = (!(0 as u64 + 0)).overflowing_shr(1_u32).0;
+   |                       ^^^^^^^^ help: try: `0_u64`
+
+error: casting integer literal to `u64` is unnecessary
+  --> tests/ui/unnecessary_cast-11882.rs:23:23
+   |
+LL | const CHK1: u64 = not(!0 as u64).overflowing_shr(1_u32).0;
+   |                       ^^^^^^^^^ help: try: `!0_u64`
+
+error: casting to the same type is unnecessary (`u64` -> `u64`)
+  --> tests/ui/unnecessary_cast-11882.rs:27:19
+   |
+LL | const CHK4: u64 = (!not(0_u64) as u64).overflowing_shr(1_u32).0;
+   |                   ^^^^^^^^^^^^^^^^^^^^ help: try: `(!not(0_u64))`
+
+error: casting to the same type is unnecessary (`u64` -> `u64`)
+  --> tests/ui/unnecessary_cast-11882.rs:29:19
+   |
+LL | const CHK5: u64 = (not(!0_u64) as u64).overflowing_shr(1_u32).0;
+   |                   ^^^^^^^^^^^^^^^^^^^^ help: try: `not(!0_u64)`
+
+error: casting integer literal to `u64` is unnecessary
+  --> tests/ui/unnecessary_cast-11882.rs:32:25
+   |
+LL | const CHK7: u64 = (!not(0 as u64)).overflowing_shr(1_u32).0;
+   |                         ^^^^^^^^ help: try: `0_u64`
+
+error: casting integer literal to `u64` is unnecessary
+  --> tests/ui/unnecessary_cast-11882.rs:34:23
+   |
+LL | const CHK8: u64 = not(!0 as u64 + 0).overflowing_shr(1_u32).0;
+   |                       ^^^^^^^^^ help: try: `!0_u64`
+
+error: casting integer literal to `u64` is unnecessary
+  --> tests/ui/unnecessary_cast-11882.rs:59:21
+   |
+LL |     let test: u64 = (!0 as u64).overflowing_shr(1_u32).0;
+   |                     ^^^^^^^^^^^ help: try: `(!0_u64)`
+
+error: casting to the same type is unnecessary (`u64` -> `u64`)
+  --> tests/ui/unnecessary_cast-11882.rs:61:22
+   |
+LL |     let test2: u64 = (!0_u64 as u64).overflowing_shr(1_u32).0;
+   |                      ^^^^^^^^^^^^^^^ help: try: `(!0_u64)`
+
+error: casting to the same type is unnecessary (`u64` -> `u64`)
+  --> tests/ui/unnecessary_cast-11882.rs:64:22
+   |
+LL |     let test4: u64 = (not(0_u64) as u64).overflowing_shr(1_u32).0;
+   |                      ^^^^^^^^^^^^^^^^^^^ help: try: `not(0_u64)`
+
+error: casting to the same type is unnecessary (`u64` -> `u64`)
+  --> tests/ui/unnecessary_cast-11882.rs:66:22
+   |
+LL |     let test5: u64 = (!not(!0_u64) as u64).overflowing_shr(1_u32).0;
+   |                      ^^^^^^^^^^^^^^^^^^^^^ help: try: `(!not(!0_u64))`
+
+error: casting integer literal to `u64` is unnecessary
+  --> tests/ui/unnecessary_cast-11882.rs:68:22
+   |
+LL |     let test6: u64 = (0xff_ff_ff_ff_ff_ff_ff_ff as u64).overflowing_shr(1_u32).0;
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `0xff_ff_ff_ff_ff_ff_ff_ff_u64`
+
+error: casting integer literal to `u64` is unnecessary
+  --> tests/ui/unnecessary_cast-11882.rs:70:23
+   |
+LL |     let test7: u64 = (!0 as u64 + 0).overflowing_shr(1_u32).0;
+   |                       ^^^^^^^^^ help: try: `!0_u64`
+
+error: casting integer literal to `u64` is unnecessary
+  --> tests/ui/unnecessary_cast-11882.rs:72:25
+   |
+LL |     let test8: u64 = (!(0 as u64 + 0)).overflowing_shr(1_u32).0;
+   |                         ^^^^^^^^ help: try: `0_u64`
+
+error: casting integer literal to `u64` is unnecessary
+  --> tests/ui/unnecessary_cast-11882.rs:76:25
+   |
+LL |     let chk1: u64 = not(!0 as u64).overflowing_shr(1_u32).0;
+   |                         ^^^^^^^^^ help: try: `!0_u64`
+
+error: casting to the same type is unnecessary (`u64` -> `u64`)
+  --> tests/ui/unnecessary_cast-11882.rs:80:21
+   |
+LL |     let chk4: u64 = (!not(0_u64) as u64).overflowing_shr(1_u32).0;
+   |                     ^^^^^^^^^^^^^^^^^^^^ help: try: `(!not(0_u64))`
+
+error: casting to the same type is unnecessary (`u64` -> `u64`)
+  --> tests/ui/unnecessary_cast-11882.rs:82:21
+   |
+LL |     let chk5: u64 = (not(!0_u64) as u64).overflowing_shr(1_u32).0;
+   |                     ^^^^^^^^^^^^^^^^^^^^ help: try: `not(!0_u64)`
+
+error: casting integer literal to `u64` is unnecessary
+  --> tests/ui/unnecessary_cast-11882.rs:85:27
+   |
+LL |     let chk7: u64 = (!not(0 as u64)).overflowing_shr(1_u32).0;
+   |                           ^^^^^^^^ help: try: `0_u64`
+
+error: casting integer literal to `u64` is unnecessary
+  --> tests/ui/unnecessary_cast-11882.rs:87:25
+   |
+LL |     let chk8: u64 = not(!0 as u64 + 0).overflowing_shr(1_u32).0;
+   |                         ^^^^^^^^^ help: try: `!0_u64`
+
+error: aborting due to 24 previous errors
+
