@@ -27,8 +27,8 @@ Differentiable programming is used in various fields like numerical computing, [
 [catalyst]: https://github.com/PennyLaneAI/catalyst
 
 
-`std::autodiff` is currently based on Enzyme, an LLVM based tool for automatic differentation.
-There are three main reasons for relying on compiler based autodiff:
+`std::autodiff` is currently based on Enzyme, an LLVM-based tool for automatic differentation.
+There are three main reasons for relying on compiler-based autodiff:
 
 - **Usability**: Current autodiff crates do not support normal Rust programs. They either enforce a custom DSL, require the usage of library provided types (instead of e.g. slices or arrays), or are limited to scalar functions. Compiler based autodiff allows users to write normal Rust code, including arrays, slices, user-defined structs and enums, control flow, and more.
 - **Performance**: Most existing Rust autodiff approaches have a constant overhead per operation.
