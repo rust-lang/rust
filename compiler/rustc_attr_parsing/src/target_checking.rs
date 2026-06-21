@@ -16,9 +16,9 @@ use crate::target_checking::Policy::Allow;
 use crate::{AttributeParser, ShouldEmit};
 
 #[derive(Debug)]
-pub(crate) enum AllowedTargets {
-    AllowList(&'static [Policy]),
-    AllowListWarnRest(&'static [Policy]),
+pub(crate) enum AllowedTargets<'a> {
+    AllowList(&'a [Policy]),
+    AllowListWarnRest(&'a [Policy]),
     /// This is useful for argument-dependent target checking.
     /// If debug assertions are enabled,
     /// this emits a delayed bug if the `cx.check_target(...)` method is not called during attribute parsing.
@@ -31,7 +31,7 @@ pub(crate) enum AllowedResult {
     Error,
 }
 
-impl AllowedTargets {
+impl AllowedTargets<'_> {
     pub(crate) fn is_allowed(&self, target: Target) -> AllowedResult {
         match self {
             AllowedTargets::AllowList(list) => {
@@ -94,7 +94,7 @@ pub(crate) enum Policy {
 
 impl<'sess> AttributeParser<'sess> {
     pub(crate) fn check_target(
-        allowed_targets: &AllowedTargets,
+        allowed_targets: &AllowedTargets<'_>,
         attribute_args: &'static str,
         cx: &mut AcceptContext<'_, 'sess>,
     ) {
@@ -444,7 +444,7 @@ impl<'f, 'sess> AcceptContext<'f, 'sess> {
     pub(crate) fn check_target(
         &mut self,
         attribute_args: &'static str,
-        allowed_targets: &AllowedTargets,
+        allowed_targets: &AllowedTargets<'_>,
     ) {
         self.ignore_target_checks();
         AttributeParser::check_target(allowed_targets, attribute_args, self);

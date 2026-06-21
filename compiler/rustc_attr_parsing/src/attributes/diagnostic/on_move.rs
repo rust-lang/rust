@@ -43,7 +43,7 @@ impl AttributeParser for OnMoveParser {
         },
     )];
 
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Enum),
         Allow(Target::Struct),
         Allow(Target::Union),

@@ -105,7 +105,7 @@ pub(crate) trait AttributeParser: Default + 'static {
     ///
     /// If an attribute has this symbol, the `accept` function will be called on it.
     const ATTRIBUTES: AcceptMapping<Self>;
-    const ALLOWED_TARGETS: AllowedTargets;
+    const ALLOWED_TARGETS: AllowedTargets<'_>;
     const SAFETY: AttributeSafety = AttributeSafety::Normal;
 
     /// The parser has gotten a chance to accept the attributes on an item,
@@ -140,7 +140,7 @@ pub(crate) trait SingleAttributeParser: 'static {
     const SAFETY: AttributeSafety = AttributeSafety::Normal;
     const STABILITY: AttributeStability;
 
-    const ALLOWED_TARGETS: AllowedTargets;
+    const ALLOWED_TARGETS: AllowedTargets<'_>;
 
     /// The template this attribute parser should implement. Used for diagnostics.
     const TEMPLATE: AttributeTemplate;
@@ -174,7 +174,7 @@ impl<T: SingleAttributeParser> AttributeParser for Single<T> {
             }
         },
     )];
-    const ALLOWED_TARGETS: AllowedTargets = T::ALLOWED_TARGETS;
+    const ALLOWED_TARGETS: AllowedTargets<'_> = T::ALLOWED_TARGETS;
     const SAFETY: AttributeSafety = T::SAFETY;
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
@@ -252,7 +252,7 @@ pub enum AttributeSafety {
 pub(crate) trait NoArgsAttributeParser: 'static {
     const PATH: &[Symbol];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Error;
-    const ALLOWED_TARGETS: AllowedTargets;
+    const ALLOWED_TARGETS: AllowedTargets<'_>;
     const SAFETY: AttributeSafety = AttributeSafety::Normal;
     const STABILITY: AttributeStability;
 
@@ -273,7 +273,7 @@ impl<T: NoArgsAttributeParser> SingleAttributeParser for WithoutArgs<T> {
     const ON_DUPLICATE: OnDuplicate = T::ON_DUPLICATE;
     const SAFETY: AttributeSafety = T::SAFETY;
     const STABILITY: AttributeStability = T::STABILITY;
-    const ALLOWED_TARGETS: AllowedTargets = T::ALLOWED_TARGETS;
+    const ALLOWED_TARGETS: AllowedTargets<'_> = T::ALLOWED_TARGETS;
     const TEMPLATE: AttributeTemplate = template!(Word);
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
@@ -303,7 +303,7 @@ pub(crate) trait CombineAttributeParser: 'static {
     const SAFETY: AttributeSafety = AttributeSafety::Normal;
     const STABILITY: AttributeStability;
 
-    const ALLOWED_TARGETS: AllowedTargets;
+    const ALLOWED_TARGETS: AllowedTargets<'_>;
 
     /// The template this attribute parser should implement. Used for diagnostics.
     const TEMPLATE: AttributeTemplate;
@@ -342,7 +342,7 @@ impl<T: CombineAttributeParser> AttributeParser for Combine<T> {
             group.first_span.get_or_insert(cx.attr_span);
             group.items.extend(T::extend(cx, args))
         })];
-    const ALLOWED_TARGETS: AllowedTargets = T::ALLOWED_TARGETS;
+    const ALLOWED_TARGETS: AllowedTargets<'_> = T::ALLOWED_TARGETS;
     const SAFETY: AttributeSafety = T::SAFETY;
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {

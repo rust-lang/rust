@@ -9,9 +9,7 @@ use rustc_middle::middle::lang_items::required;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
 
-use crate::diagnostics::{
-    MissingLangItem, MissingPanicHandler, PanicUnwindWithoutStd,
-};
+use crate::diagnostics::{MissingLangItem, MissingPanicHandler, PanicUnwindWithoutStd};
 use crate::lang_items::extract_ast;
 
 /// Checks the crate for usage of weak lang items, returning a vector of all the

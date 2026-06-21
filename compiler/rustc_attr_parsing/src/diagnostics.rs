@@ -1,5 +1,4 @@
-use rustc_errors::E0264;
-use rustc_errors::{Applicability, DiagArgValue, E0232, E0718, MultiSpan};
+use rustc_errors::{Applicability, DiagArgValue, E0232, E0264, E0718, MultiSpan};
 use rustc_hir::{AttrPath, Target};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
