@@ -128,12 +128,12 @@ pub mod privacy {
 
 pub mod use_site {
     #[export_stable]
+    //~^ ERROR cannot be used on
     pub trait Trait {}
-    //~^ ERROR trait's are not exportable
 
     #[export_stable]
+    //~^ ERROR cannot be used on
     pub const C: i32 = 0;
-    //~^ ERROR constant's are not exportable
 }
 
 fn main() {}

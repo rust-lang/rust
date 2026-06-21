@@ -535,7 +535,18 @@ impl SingleAttributeParser for LinkSectionParser {
 pub(crate) struct ExportStableParser;
 impl NoArgsAttributeParser for ExportStableParser {
     const PATH: &[Symbol] = &[sym::export_stable];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); //FIXME Still checked fully in `check_attr.rs`
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Struct),
+        Allow(Target::Enum),
+        Allow(Target::Union),
+        Allow(Target::TyAlias),
+        Allow(Target::AssocTy),
+        Allow(Target::Use),
+        Allow(Target::Mod),
+        Allow(Target::Impl { of_trait: false }),
+    ]);
     const STABILITY: AttributeStability = unstable!(export_stable);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ExportStable;
 }
