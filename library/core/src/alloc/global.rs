@@ -1,5 +1,6 @@
 use super::{AllocError, GlobalAllocator};
 use crate::alloc::Layout;
+use crate::hint::assert_unchecked;
 use crate::ptr::NonNull;
 use crate::{cmp, ptr};
 
@@ -311,6 +312,10 @@ where
     A: GlobalAllocator + ?Sized,
 {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        // SAFETY: guaranteed by the caller.
+        // This might lead to the removal of zero-size checks inside the
+        // `Allocator` implementation.
+        unsafe { assert_unchecked(layout.size() != 0) };
         match self.allocate(layout) {
             Ok(ptr) => ptr.cast().as_ptr(),
             Err(AllocError) => ptr::null_mut(),
@@ -318,6 +323,8 @@ where
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        // SAFETY: guaranteed by the caller.
+        unsafe { assert_unchecked(layout.size() != 0) };
         // SAFETY: only non-null pointers can be currently allocated.
         let ptr = unsafe { NonNull::new_unchecked(ptr) };
         // SAFETY: guaranteed by caller.
@@ -325,6 +332,8 @@ where
     }
 
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
+        // SAFETY: guaranteed by the caller.
+        unsafe { assert_unchecked(layout.size() != 0) };
         match self.allocate_zeroed(layout) {
             Ok(ptr) => ptr.cast().as_ptr(),
             Err(AllocError) => ptr::null_mut(),
@@ -332,6 +341,11 @@ where
     }
 
     unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+        // SAFETY: guaranteed by the caller.
+        unsafe { assert_unchecked(layout.size() != 0) };
+        // SAFETY: guaranteed by the caller.
+        unsafe { assert_unchecked(new_size != 0) };
+
         // SAFETY: only non-null pointers can be currently allocated.
         let ptr = unsafe { NonNull::new_unchecked(ptr) };
         let alignment = layout.alignment();
