@@ -234,7 +234,7 @@ The compiler uses the [`tracing`] crate for logging.
 
 [`tracing`]: https://docs.rs/tracing
 
-For details see [the guide section on tracing](./tracing.md)
+For details, see [the chapter on tracing](./tracing.md).
 
 ## Narrowing (Bisecting) Regressions
 
@@ -275,6 +275,7 @@ Here are some notable ones:
 |----------------|-------------|
 | `rustc_dump_def_parents` | Dumps the chain of `DefId` parents of certain definitions. |
 | `rustc_dump_def_path` | Dumps the [`def_path_str`] of an item. |
+| `rustc_dump_generics` | Dumps the generics of an item. |
 | `rustc_dump_hidden_type_of_opaques` | Dumps the [hidden type of each opaque types][opaq] in the crate. |
 | `rustc_dump_inferred_outlives` | Dumps implied bounds of an item. More precisely, the [`inferred_outlives_of`] an item. |
 | `rustc_dump_item_bounds` | Dumps the [`item_bounds`] of an item. |

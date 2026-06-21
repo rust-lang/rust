@@ -3,7 +3,7 @@
 
 use std::ops::FromResidual;
 
-impl<T> const FromResidual for T {
+const impl<T> FromResidual for T {
     //~^ ERROR type parameter `T` must be used as an argument to some local type
     fn from_residual(t: T) -> _ {
         //~^ ERROR the placeholder `_` is not allowed

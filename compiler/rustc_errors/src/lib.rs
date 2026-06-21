@@ -366,7 +366,7 @@ struct DiagCtxtInner {
     /// stored along side the main panic backtrace.
     ice_file: Option<PathBuf>,
 
-    /// Controlled by `-Z lint-rust-version`; this allows avoiding emitting lints which would raise MSRV.
+    /// Controlled by `-Z hint-msrv`; this allows avoiding emitting lints which would raise MSRV.
     msrv: Option<RustcVersion>,
 }
 

@@ -725,13 +725,19 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
             sym::va_copy => {
                 let va_list = self.deref_pointer(&args[0])?;
+
                 let key_mplace = self.va_list_key_field(&va_list)?;
                 let key = self.read_pointer(&key_mplace)?;
 
                 let varargs = self.get_ptr_va_list(key)?;
                 let copy_key = self.va_list_ptr(varargs.clone());
 
-                let copy_key_mplace = self.va_list_key_field(dest)?;
+                // Zero the destination VaList, so it is fully initialized.
+                let dest = self.force_allocation(dest)?;
+                let zeros = std::iter::repeat_n(0u8, dest.layout.size.bytes_usize());
+                self.write_bytes_ptr(dest.ptr(), zeros)?;
+
+                let copy_key_mplace = self.va_list_key_field(&dest)?;
                 self.write_pointer(copy_key, &copy_key_mplace)?;
             }
 

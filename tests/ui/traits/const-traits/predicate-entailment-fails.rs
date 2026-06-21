@@ -2,7 +2,7 @@
 #![feature(const_trait_impl)]
 
 const trait Bar {}
-impl const Bar for () {}
+const impl Bar for () {}
 
 
 const trait TildeConst {
@@ -31,7 +31,7 @@ impl NeverConst for i32 {
     fn foo<T>() where T: const Bar {}
     //~^ ERROR impl has stricter requirements than trait
 }
-impl const NeverConst for u32 {
+const impl NeverConst for u32 {
     type Bar<T> = () where T: [const] Bar;
     //~^ ERROR impl has stricter requirements than trait
 

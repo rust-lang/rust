@@ -1040,7 +1040,7 @@ pub fn build_session(
         dcx = dcx.with_ice_file(ice_file);
     }
 
-    if let Some(msrv) = sopts.unstable_opts.lint_rust_version {
+    if let Some(msrv) = sopts.unstable_opts.hint_msrv {
         dcx = dcx.with_msrv(msrv);
     }
 

@@ -876,6 +876,29 @@ impl TcpListener {
     /// is established. When established, the corresponding [`TcpStream`] and the
     /// remote peer's address will be returned.
     ///
+    /// # Errors
+    ///
+    /// Some errors this function returns do not indicate a problem with the
+    /// listener itself, and a program serving a long-lived listener will
+    /// usually want to handle them and keep accepting connections rather than
+    /// treat them as fatal. These include, but are not limited to:
+    ///
+    /// - An error specific to a single incoming connection that failed before
+    ///   it could be accepted, such as one aborted by the peer
+    ///   ([`ConnectionAborted`]). A later call may succeed immediately.
+    /// - An error from reaching the per-process or system-wide open file
+    ///   descriptor limit. The call can be retried once other file descriptors
+    ///   have been closed, typically after a short delay.
+    /// - An error from failing to allocate memory while accepting a connection
+    ///   ([`OutOfMemory`]).
+    ///
+    /// Which errors can occur is platform-specific. On Unix, [`Interrupted`]
+    /// errors are retried internally rather than being returned.
+    ///
+    /// [`ConnectionAborted`]: io::ErrorKind::ConnectionAborted
+    /// [`OutOfMemory`]: io::ErrorKind::OutOfMemory
+    /// [`Interrupted`]: io::ErrorKind::Interrupted
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -901,6 +924,11 @@ impl TcpListener {
     /// The returned iterator will never return [`None`] and will also not yield
     /// the peer's [`SocketAddr`] structure. Iterating over it is equivalent to
     /// calling [`TcpListener::accept`] in a loop.
+    ///
+    /// # Errors
+    ///
+    /// Each connection yielded by the iterator can fail for the same reasons as
+    /// [`TcpListener::accept`]; see its documentation for details.
     ///
     /// # Examples
     ///
@@ -936,6 +964,11 @@ impl TcpListener {
     /// The returned iterator will never return [`None`] and will also not yield
     /// the peer's [`SocketAddr`] structure. Iterating over it is equivalent to
     /// calling [`TcpListener::accept`] in a loop.
+    ///
+    /// # Errors
+    ///
+    /// Each connection yielded by the iterator can fail for the same reasons as
+    /// [`TcpListener::accept`]; see its documentation for details.
     ///
     /// # Examples
     ///

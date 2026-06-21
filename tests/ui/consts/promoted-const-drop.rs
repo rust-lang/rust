@@ -2,7 +2,7 @@
 
 struct A();
 
-impl const Drop for A {
+const impl Drop for A {
     fn drop(&mut self) {}
 }
 

@@ -129,6 +129,7 @@ impl<'sess> AttributeParser<'sess> {
 
         let allowed_targets = allowed_targets.allowed_targets();
         let (applied, only) = allowed_targets_applied(allowed_targets, cx.target, cx.features);
+
         let diag = InvalidTarget {
             span: cx.attr_span.clone(),
             name: cx.attr_path.clone(),
@@ -138,6 +139,7 @@ impl<'sess> AttributeParser<'sess> {
             attribute_args,
             help: Self::target_checking_help(attribute_args, cx),
             previously_accepted: matches!(result, AllowedResult::Warn),
+            on_macro_call: matches!(cx.target, Target::MacroCall),
         };
 
         match result {
@@ -527,5 +529,6 @@ pub(crate) const ALL_TARGETS: &'static [Policy] = {
         Allow(Target::Loop),
         Allow(Target::ForLoop),
         Allow(Target::While),
+        Allow(Target::Break),
     ]
 };
