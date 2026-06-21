@@ -603,8 +603,12 @@ pub(crate) fn check_intrinsic_type(
         sym::cold_path => (0, 0, vec![], tcx.types.unit),
 
         sym::read_via_copy => (1, 0, vec![Ty::new_imm_ptr(tcx, param(0))], param(0)),
+        sym::read_field_via_copy => (2, 1, vec![Ty::new_imm_ptr(tcx, param(0))], param(1)),
         sym::write_via_move => {
             (1, 0, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], tcx.types.unit)
+        }
+        sym::write_field_via_move => {
+            (2, 1, vec![Ty::new_mut_ptr(tcx, param(0)), param(1)], tcx.types.unit)
         }
         sym::write_box_via_move => {
             let t = param(0);

@@ -1810,17 +1810,12 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 #[track_caller]
 #[rustc_diagnostic_item = "ptr_read_unaligned"]
 pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
-    let mut tmp = MaybeUninit::<T>::uninit();
-    // SAFETY: the caller must guarantee that `src` is valid for reads.
-    // `src` cannot overlap `tmp` because `tmp` was just allocated on
-    // the stack as a separate allocation.
-    //
-    // Also, since we just wrote a valid value into `tmp`, it is guaranteed
-    // to be properly initialized.
-    unsafe {
-        copy_nonoverlapping(src as *const u8, tmp.as_mut_ptr() as *mut u8, size_of::<T>());
-        tmp.assume_init()
-    }
+    let src = src.cast::<Packed<T>>();
+    // Always true because it's `repr(C, packed)`
+    const { assert!(mem::offset_of!(Packed<T>, 0) == 0) };
+    // SAFETY: reading through a packed place reads the same memory because
+    // the field offset is zero, just with a lower alignment.
+    unsafe { crate::intrinsics::read_field_via_copy::<Packed<T>, T, 0>(src) }
 }
 
 /// Overwrites a memory location with the given value without reading or
@@ -2012,14 +2007,12 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 #[rustc_diagnostic_item = "ptr_write_unaligned"]
 #[track_caller]
 pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
-    // SAFETY: the caller must guarantee that `dst` is valid for writes.
-    // `dst` cannot overlap `src` because the caller has mutable access
-    // to `dst` while `src` is owned by this function.
-    unsafe {
-        copy_nonoverlapping((&raw const src) as *const u8, dst as *mut u8, size_of::<T>());
-        // We are calling the intrinsic directly to avoid function calls in the generated code.
-        intrinsics::forget(src);
-    }
+    let dst = dst.cast::<Packed<T>>();
+    // Always true because it's `repr(C, packed)`
+    const { assert!(mem::offset_of!(Packed<T>, 0) == 0) };
+    // SAFETY: writing through a packed place writes the same memory because
+    // the field offset is zero, just with a lower alignment.
+    unsafe { crate::intrinsics::write_field_via_move::<Packed<T>, T, 0>(dst, src) }
 }
 
 /// Performs a volatile read of the value from `src` without moving it.
@@ -2809,3 +2802,6 @@ pub macro addr_of($place:expr) {
 pub macro addr_of_mut($place:expr) {
     &raw mut $place
 }
+
+#[repr(C, packed)]
+struct Packed<T>(T);

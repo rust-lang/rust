@@ -1,5 +1,6 @@
 //! Lowers intrinsic calls
 
+use rustc_abi::FieldIdx;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{bug, span_bug};
@@ -148,7 +149,7 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                         ));
                         terminator.kind = TerminatorKind::Goto { target };
                     }
-                    sym::read_via_copy => {
+                    sym::read_via_copy | sym::read_field_via_copy => {
                         let Ok([arg]) = take_array(args) else {
                             span_bug!(terminator.source_info.span, "Wrong number of arguments");
                         };
@@ -161,6 +162,17 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                                 terminator.source_info.span,
                                 "Only passing a local is supported"
                             );
+                        };
+                        let derefed_place = if intrinsic.name == sym::read_field_via_copy {
+                            let field_ty = generic_args[1].expect_ty();
+                            let field_idx = generic_args[2].expect_const();
+                            let field_idx = field_idx.try_to_leaf().unwrap().to_u32();
+                            derefed_place.project_deeper(
+                                &[PlaceElem::Field(FieldIdx::from_u32(field_idx), field_ty)],
+                                tcx,
+                            )
+                        } else {
+                            derefed_place
                         };
                         // Add new statement at the end of the block that does the read, and patch
                         // up the terminator.

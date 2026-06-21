@@ -2202,7 +2202,7 @@ pub const fn carryless_mul<T: [const] fallback::CarrylessMul>(a: T, b: T) -> T {
     a.carryless_mul(b)
 }
 
-/// This is an implementation detail of [`crate::ptr::read`] and should
+/// This is an implementation detail of [`ptr::read`] and should
 /// not be used anywhere else.  See its comments for why this exists.
 ///
 /// This intrinsic can *only* be called where the pointer is a local without
@@ -2213,7 +2213,7 @@ pub const fn carryless_mul<T: [const] fallback::CarrylessMul>(a: T, b: T) -> T {
 #[rustc_intrinsic]
 pub const unsafe fn read_via_copy<T>(ptr: *const T) -> T;
 
-/// This is an implementation detail of [`crate::ptr::write`] and should
+/// This is an implementation detail of [`ptr::write`] and should
 /// not be used anywhere else.  See its comments for why this exists.
 ///
 /// This intrinsic can *only* be called where the pointer is a local without
@@ -2223,6 +2223,24 @@ pub const unsafe fn read_via_copy<T>(ptr: *const T) -> T;
 #[rustc_nounwind]
 #[rustc_intrinsic]
 pub const unsafe fn write_via_move<T>(ptr: *mut T, value: T);
+
+/// Lowers to `RET = copy (*ptr)._FIELD_IDX` in MIR.
+///
+/// This is currently used only for [`ptr::read_unaligned`] so that it can emit
+/// a `packed` load, and shouldn't be used elsewhere.
+#[rustc_intrinsic_const_stable_indirect]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const unsafe fn read_field_via_copy<T: ?Sized, F, const FIELD_IDX: u32>(ptr: *const T) -> F;
+
+/// Lowers to `(*ptr)._FIELD_IDX = move value` in MIR.
+///
+/// This is currently used only for [`ptr::write_unaligned`] so that it can emit
+/// a `packed` store, and shouldn't be used elsewhere.
+#[rustc_intrinsic_const_stable_indirect]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const unsafe fn write_field_via_move<T: ?Sized, F, const FIELD_IDX: u32>(ptr: *mut T, value: F);
 
 /// Returns the value of the discriminant for the variant in 'v';
 /// if `T` has no discriminant, returns `0`.

@@ -199,6 +199,19 @@ pub fn read_via_copy_uninhabited(r: &Never) -> Never {
 
 pub enum Never {}
 
+// EMIT_MIR lower_intrinsics.read_field_via_copy_droppy.LowerIntrinsics.diff
+pub fn read_field_via_copy_droppy(r: &Composite) -> String {
+    // CHECK-LABEL: fn read_field_via_copy_droppy(
+    // CHECK: [[tmp:_.*]] = &raw const (*_1);
+    // CHECK: _0 = copy ((*[[tmp]]).1: std::string::String);
+    // CHECK-NOT: drop
+    // CHECK: return;
+
+    unsafe { core::intrinsics::read_field_via_copy::<Composite, String, 1>(r) }
+}
+
+pub struct Composite(i32, String, f32);
+
 // EMIT_MIR lower_intrinsics.ptr_offset.LowerIntrinsics.diff
 pub unsafe fn ptr_offset(p: *const i32, d: isize) -> *const i32 {
     // CHECK-LABEL: fn ptr_offset(

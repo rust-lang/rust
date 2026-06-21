@@ -401,14 +401,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Call { ty, fun, ref args, .. }
                 if let ty::FnDef(def_id, generic_args) = *ty.kind()
                     && let Some(intrinsic) = this.tcx.intrinsic(def_id)
-                    && matches!(intrinsic.name, sym::write_via_move | sym::write_box_via_move) =>
+                    && matches!(
+                        intrinsic.name,
+                        sym::write_via_move | sym::write_field_via_move | sym::write_box_via_move
+                    ) =>
             {
                 // We still have to evaluate the callee expression as normal (but we don't care
                 // about its result).
                 let _fun = unpack!(block = this.as_local_operand(block, fun));
 
                 match intrinsic.name {
-                    sym::write_via_move => {
+                    sym::write_via_move | sym::write_field_via_move => {
                         // `write_via_move(ptr, val)` becomes `*ptr = val` but without any dropping.
 
                         // The destination must have unit type (so we don't actually have to store anything
@@ -424,7 +427,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             span_bug!(expr_span, "invalid write_via_move call")
                         };
                         let ptr_deref = ptr.project_deeper(&[ProjectionElem::Deref], this.tcx);
-                        this.expr_into_dest(ptr_deref, block, val)
+                        let dst_place = if intrinsic.name == sym::write_field_via_move {
+                            let field_ty = generic_args[1].expect_ty();
+                            let field_idx = generic_args[2].expect_const();
+                            let field_idx = field_idx.try_to_leaf().unwrap().to_u32();
+                            ptr_deref.project_deeper(
+                                &[PlaceElem::Field(FieldIdx::from_u32(field_idx), field_ty)],
+                                this.tcx,
+                            )
+                        } else {
+                            ptr_deref
+                        };
+                        this.expr_into_dest(dst_place, block, val)
                     }
                     sym::write_box_via_move => {
                         // The signature is:

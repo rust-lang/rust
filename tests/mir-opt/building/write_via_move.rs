@@ -18,6 +18,20 @@ fn box_new<T: Copy>(x: T) -> Box<[T; 1024]> {
     unsafe { b.assume_init() }
 }
 
+struct Foo(i32, String, u32);
+
+// EMIT_MIR write_via_move.my_write_unaligned.CleanupPostBorrowck.after.mir
+// CHECK-LABEL: fn my_write_unaligned
+#[inline(never)]
+unsafe fn my_write_unaligned(dst: *mut Foo, src: String) {
+    // CHECK: [[TEMP:_.+]] = copy _1;
+    // CHECK: ((*[[TEMP]]).1: std::string::String) = move _2;
+    unsafe { std::intrinsics::write_field_via_move::<_, _, 1>(dst, src) }
+}
+
 fn main() {
     box_new(0);
+
+    let mut foo = Foo(0, String::new(), 0);
+    unsafe { my_write_unaligned(&raw mut foo, String::new()) };
 }

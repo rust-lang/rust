@@ -1,0 +1,24 @@
+// MIR for `my_write_unaligned` after CleanupPostBorrowck
+
+fn my_write_unaligned(_1: *mut Foo, _2: String) -> () {
+    debug dst => _1;
+    debug src => _2;
+    let mut _0: ();
+    let mut _3: *mut Foo;
+
+    bb0: {
+        StorageLive(_3);
+        _3 = copy _1;
+        ((*_3).1: std::string::String) = move _2;
+        StorageDead(_3);
+        drop(_2) -> [return: bb1, unwind: bb2];
+    }
+
+    bb1: {
+        return;
+    }
+
+    bb2 (cleanup): {
+        resume;
+    }
+}

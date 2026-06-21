@@ -1,0 +1,39 @@
+// MIR for `unaligned_typed_copy` after runtime-optimized
+
+fn unaligned_typed_copy(_1: *const String, _2: *mut String) -> () {
+    debug src => _1;
+    debug dst => _2;
+    let mut _0: ();
+    let _4: std::string::String;
+    scope 1 {
+        debug val => _4;
+        scope 5 (inlined #[track_caller] write_unaligned::<String>) {
+            let _5: *mut std::ptr::Packed<std::string::String>;
+            scope 6 {
+            }
+            scope 7 (inlined std::ptr::mut_ptr::<impl *mut String>::cast::<std::ptr::Packed<String>>) {
+            }
+        }
+    }
+    scope 2 (inlined #[track_caller] read_unaligned::<String>) {
+        let _3: *const std::ptr::Packed<std::string::String>;
+        scope 3 {
+        }
+        scope 4 (inlined std::ptr::const_ptr::<impl *const String>::cast::<std::ptr::Packed<String>>) {
+        }
+    }
+
+    bb0: {
+        StorageLive(_4);
+        StorageLive(_3);
+        _3 = copy _1 as *const std::ptr::Packed<std::string::String> (PtrToPtr);
+        _4 = copy ((*_3).0: std::string::String);
+        StorageDead(_3);
+        StorageLive(_5);
+        _5 = copy _2 as *mut std::ptr::Packed<std::string::String> (PtrToPtr);
+        ((*_5).0: std::string::String) = copy _4;
+        StorageDead(_5);
+        StorageDead(_4);
+        return;
+    }
+}
