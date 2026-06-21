@@ -3,7 +3,7 @@
 #![no_std]
 #![no_main]
 
-#[panic_handler] //~ ERROR `panic_impl` lang item must be applied to a function
+#[panic_handler] //~ ERROR attribute cannot be used on statics
 static X: u32 = 42;
 
 //~? ERROR `#[panic_handler]` function required, but not found

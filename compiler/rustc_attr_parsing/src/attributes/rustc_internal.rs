@@ -12,6 +12,7 @@ use rustc_span::Symbol;
 use super::prelude::*;
 use super::util::parse_single_integer;
 use crate::diagnostics;
+use crate::diagnostics::{LangItemOnIncorrectTarget, UnknownExternLangItem};
 use crate::session_diagnostics::{
     AttributeRequiresOpt, CguFieldsMissing, RustcScalableVectorCountOutOfRange, UnknownLangItem,
 };
@@ -576,6 +577,28 @@ impl SingleAttributeParser for LangParser {
             cx.emit_err(UnknownLangItem { span: cx.attr_span, name });
             return None;
         };
+
+        // Only weak lang items may be applied to foreign items
+        if [Target::ForeignFn, Target::ForeignStatic, Target::ForeignTy, Target::ForeignMod]
+            .contains(&cx.target)
+            && !lang_item.is_weak()
+        {
+            cx.emit_err(UnknownExternLangItem { span: cx.attr_span, lang_item: lang_item.name() });
+            return None;
+        }
+
+        // Check the target
+        if cx.target != lang_item.target()
+            && !(cx.target == Target::ForeignFn && lang_item == LangItem::PanicImpl)
+        {
+            cx.emit_err(LangItemOnIncorrectTarget {
+                span: cx.attr_span,
+                name,
+                expected_target: lang_item.target(),
+                actual_target: cx.target,
+            });
+            return None;
+        }
         Some(AttributeKind::Lang(lang_item))
     }
 }
@@ -599,7 +622,7 @@ pub(crate) struct PanicHandlerParser;
 
 impl NoArgsAttributeParser for PanicHandlerParser {
     const PATH: &[Symbol] = &[sym::panic_handler];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); // Targets are checked per lang item in `rustc_passes`
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::Lang(LangItem::PanicImpl);
 }
