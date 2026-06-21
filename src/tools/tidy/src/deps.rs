@@ -359,6 +359,8 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "itoa",
     "jiff",
     "jiff-static",
+    "jiff-tzdb",
+    "jiff-tzdb-platform",
     "jobserver",
     "lazy_static",
     "leb128",
