@@ -1488,7 +1488,7 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
             // be sure if it will error or not as user might always specify the other.
             // FIXME(generic_const_exprs): This is incorrect when dealing with unused const params.
             // E.g: `struct Foo<const N: usize, const M: usize = { 1 - 2 }>;`. Here, we should
-            // eagerly error but we don't as we have `ConstKind::Unevaluated(.., [N, M])`.
+            // eagerly error but we don't as we have `ConstKind::Alias(.., [N, M])`.
             if !default.has_param() {
                 wfcx.register_wf_obligation(
                     tcx.def_span(param.def_id),
@@ -1509,7 +1509,7 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
                     | ty::ConstKind::Bound(_, _) => unreachable!(),
                     ty::ConstKind::Error(_) | ty::ConstKind::Expr(_) => continue,
                     ty::ConstKind::Value(cv) => cv.ty,
-                    ty::ConstKind::Unevaluated(_, uv) => uv.type_of(infcx.tcx).skip_norm_wip(),
+                    ty::ConstKind::Alias(_, uv) => uv.type_of(infcx.tcx).skip_norm_wip(),
                     ty::ConstKind::Param(param_ct) => {
                         param_ct.find_const_ty_from_env(wfcx.param_env)
                     }

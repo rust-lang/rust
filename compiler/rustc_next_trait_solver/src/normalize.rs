@@ -231,7 +231,7 @@ where
         // With eager normalization, we should normalize the args of alias before
         // normalizing the alias itself.
         let ct = ct.try_super_fold_with(self)?;
-        let ty::ConstKind::Unevaluated(orig_is_rigid, uv) = ct.kind() else { return Ok(ct) };
+        let ty::ConstKind::Alias(orig_is_rigid, uv) = ct.kind() else { return Ok(ct) };
         // We support ambiguous aliases inside rigid alias. So we still recognize
         // the rigidness of the outer alias.
         if !self.cx().renormalize_rigid_aliases() && orig_is_rigid == ty::IsRigid::Yes {

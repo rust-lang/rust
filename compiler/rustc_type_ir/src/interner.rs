@@ -56,13 +56,13 @@ pub trait Interner:
     type CoroutineId: SpecificDefId<Self>;
     type AdtId: SpecificDefId<Self>;
     type ImplId: SpecificDefId<Self>;
-    type UnevaluatedConstId: SpecificDefId<Self>;
+    type AnonConstId: SpecificDefId<Self>;
     type TraitAssocTyId: SpecificDefId<Self>
         + Into<Self::TraitAssocTermId>
         + TryFrom<Self::TraitAssocTermId>;
     type TraitAssocConstId: SpecificDefId<Self>
         + Into<Self::TraitAssocTermId>
-        + Into<Self::UnevaluatedConstId>
+        + Into<Self::AnonConstId>
         + TryFrom<Self::TraitAssocTermId>;
     type TraitAssocTermId: SpecificDefId<Self>;
     type OpaqueTyId: SpecificDefId<Self, Self::LocalOpaqueTyId>;
@@ -76,17 +76,17 @@ pub trait Interner:
         + TypeFoldable<Self>;
     type FreeTyAliasId: SpecificDefId<Self> + Into<Self::FreeTermAliasId>;
     type FreeConstAliasId: SpecificDefId<Self>
-        + Into<Self::UnevaluatedConstId>
+        + Into<Self::AnonConstId>
         + Into<Self::FreeTermAliasId>;
     type FreeTermAliasId: SpecificDefId<Self>;
     type ImplOrTraitAssocTyId: SpecificDefId<Self> + Into<Self::ImplOrTraitAssocTermId>;
     type ImplOrTraitAssocConstId: SpecificDefId<Self>
-        + Into<Self::UnevaluatedConstId>
+        + Into<Self::AnonConstId>
         + Into<Self::ImplOrTraitAssocTermId>;
     type ImplOrTraitAssocTermId: SpecificDefId<Self>;
     type InherentAssocTyId: SpecificDefId<Self> + Into<Self::InherentAssocTermId>;
     type InherentAssocConstId: SpecificDefId<Self>
-        + Into<Self::UnevaluatedConstId>
+        + Into<Self::AnonConstId>
         + Into<Self::InherentAssocTermId>;
     type InherentAssocTermId: SpecificDefId<Self>;
     type Span: Span<Self>;
@@ -516,7 +516,7 @@ declare_lift_into! {
     TraitId,
     Ty,
     Tys,
-    UnevaluatedConstId,
+    AnonConstId,
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`

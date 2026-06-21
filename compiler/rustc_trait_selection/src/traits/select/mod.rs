@@ -882,7 +882,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         );
 
                         match (c1.kind(), c2.kind()) {
-                            (ty::ConstKind::Unevaluated(_, a), ty::ConstKind::Unevaluated(_, b))
+                            (ty::ConstKind::Alias(_, a), ty::ConstKind::Alias(_, b))
                                 if a.kind == b.kind
                                     && matches!(
                                         a.kind,
@@ -907,8 +907,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     );
                                 }
                             }
-                            (_, ty::ConstKind::Unevaluated(_, _))
-                            | (ty::ConstKind::Unevaluated(_, _), _) => (),
+                            (_, ty::ConstKind::Alias(_, _))
+                            | (ty::ConstKind::Alias(_, _), _) => (),
                             (_, _) => {
                                 if let Ok(InferOk { obligations, value: () }) = self
                                     .infcx
@@ -927,7 +927,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
 
                     let evaluate = |c: ty::Const<'tcx>| {
-                        if let ty::ConstKind::Unevaluated(_, _) = c.kind() {
+                        if let ty::ConstKind::Alias(_, _) = c.kind() {
                             match crate::traits::try_evaluate_const(
                                 self.infcx,
                                 c,
@@ -987,7 +987,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                         ty::ConstKind::Error(_) => return Ok(EvaluatedToOk),
                         ty::ConstKind::Value(cv) => cv.ty,
-                        ty::ConstKind::Unevaluated(_, uv) => uv.type_of(self.tcx()).skip_norm_wip(),
+                        ty::ConstKind::Alias(_, uv) => uv.type_of(self.tcx()).skip_norm_wip(),
                         // FIXME(generic_const_exprs): See comment in `fulfill.rs`
                         ty::ConstKind::Expr(_) => return Ok(EvaluatedToOk),
                         ty::ConstKind::Placeholder(_) => {

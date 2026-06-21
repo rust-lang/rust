@@ -236,8 +236,8 @@ impl<I: Interner> Relate<I> for ty::AliasConst<I> {
         let cx = relation.cx();
         if a.kind != b.kind {
             Err(TypeError::ConstMismatch(ExpectedFound::new(
-                Const::new_unevaluated(cx, ty::IsRigid::yes_if_next_solver(cx), a),
-                Const::new_unevaluated(cx, ty::IsRigid::yes_if_next_solver(cx), b),
+                Const::new_alias(cx, ty::IsRigid::yes_if_next_solver(cx), a),
+                Const::new_alias(cx, ty::IsRigid::yes_if_next_solver(cx), b),
             )))
         } else {
             // FIXME(mgca): remove this
@@ -546,7 +546,7 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
 }
 
 /// Relates `a` and `b` structurally, calling the relation for all nested values.
-/// Any semantic equality, e.g. of unevaluated consts, and inference variables have
+/// Any semantic equality, e.g. of alias consts, and inference variables have
 /// to be handled by the caller.
 ///
 /// FIXME: This is not totally structural, which probably should be fixed.
@@ -615,13 +615,13 @@ pub fn structurally_relate_consts<I: Interner, R: TypeRelation<I>>(
         // and is the better alternative to waiting until `generic_const_exprs` can
         // be stabilized.
         (
-            ty::ConstKind::Unevaluated(is_rigid_a, au),
-            ty::ConstKind::Unevaluated(is_rigid_b, bu),
+            ty::ConstKind::Alias(is_rigid_a, au),
+            ty::ConstKind::Alias(is_rigid_b, bu),
         ) => {
             // Users shouldn't know about this so the mismatch should be caught
             // during development rather than presented as type error.
             debug_assert_eq!(is_rigid_a, is_rigid_b, "{a:?} != {b:?}");
-            return Ok(Const::new_unevaluated(cx, is_rigid_a, relation.relate(au, bu)?));
+            return Ok(Const::new_alias(cx, is_rigid_a, relation.relate(au, bu)?));
         }
         (ty::ConstKind::Expr(ae), ty::ConstKind::Expr(be)) => {
             let expr = relation.relate(ae, be)?;

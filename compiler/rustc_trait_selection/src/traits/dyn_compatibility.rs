@@ -886,7 +886,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalSelfTypeVisitor<'tcx> {
         let ct = self.tcx.expand_abstract_consts(ct);
 
         match ct.kind() {
-            ty::ConstKind::Unevaluated(_, ty::AliasConst {
+            ty::ConstKind::Alias(_, ty::AliasConst {
                 kind: ty::AliasConstKind::Projection { def_id },
                 args,
                 ..

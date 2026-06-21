@@ -146,7 +146,7 @@ impl<'me, 'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceAliasWithInfer<'me, 'tcx> {
         }
 
         let ct = ct.super_fold_with(self);
-        let ty::ConstKind::Unevaluated(orig_is_rigid, uv) = ct.kind() else { return ct };
+        let ty::ConstKind::Alias(orig_is_rigid, uv) = ct.kind() else { return ct };
         if !self.cx().renormalize_rigid_aliases() && orig_is_rigid == ty::IsRigid::Yes {
             return ct;
         }

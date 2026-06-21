@@ -369,7 +369,7 @@ pub fn normalize_param_env_or_error<'tcx>(
                     // should actually be okay since without `feature(generic_const_exprs)` the only
                     // const arguments that have a non-empty param env are array repeat counts. These
                     // do not appear in the type system though.
-                    if let ty::ConstKind::Unevaluated(_, uv) = c.kind()
+                    if let ty::ConstKind::Alias(_, uv) = c.kind()
                         && matches!(uv.kind, ty::AliasConstKind::Anon { .. })
                     {
                         let infcx = self.0.infer_ctxt().build(TypingMode::non_body_analysis());
@@ -401,10 +401,10 @@ pub fn normalize_param_env_or_error<'tcx>(
             // we cannot prove `T: Trait<u8>`.
             //
             // The same thing is true for const generics- attempting to prove
-            // `T: Trait<ConstKind::Unevaluated(...)>` with the same thing as a where clauses
+            // `T: Trait<ConstKind::Alias(...)>` with the same thing as a where clauses
             // will fail. After normalization we may be attempting to prove `T: Trait<4>` with
-            // the unnormalized where clause `T: Trait<ConstKind::Unevaluated(...)>`. In order
-            // for the obligation to hold `4` must be equal to `ConstKind::Unevaluated(...)`
+            // the unnormalized where clause `T: Trait<ConstKind::Alias(...)>`. In order
+            // for the obligation to hold `4` must be equal to `ConstKind::Alias(...)`
             // but as we do not have lazy norm implemented, equating the two consts fails outright.
             //
             // Ideally we would not normalize consts here at all but it is required for backwards
@@ -547,7 +547,7 @@ pub fn deeply_normalize_param_env_ignoring_regions<'tcx>(
 #[derive(Debug)]
 pub enum EvaluateConstErr {
     /// The constant being evaluated was either a generic parameter or inference variable, *or*,
-    /// some unevaluated constant with either generic parameters or inference variables in its
+    /// some alias const with either generic parameters or inference variables in its
     /// generic arguments.
     HasGenericsOrInfers,
     /// The type this constant evaluated to is not valid for use in const generics. This should
@@ -608,7 +608,7 @@ pub fn try_evaluate_const<'tcx>(
         | ty::ConstKind::Bound(_, _)
         | ty::ConstKind::Placeholder(_)
         | ty::ConstKind::Expr(_) => Err(EvaluateConstErr::HasGenericsOrInfers),
-        ty::ConstKind::Unevaluated(_, uv) => {
+        ty::ConstKind::Alias(_, uv) => {
             let opt_anon_const_kind = match uv.kind {
                 ty::AliasConstKind::Anon { def_id } => Some((def_id, tcx.anon_const_kind(def_id))),
                 _ => None,

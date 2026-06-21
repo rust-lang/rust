@@ -696,9 +696,9 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
                 return Ok(());
             }
 
-            // We may still encounter unevaluated consts due to the printing
+            // We may still encounter alias consts due to the printing
             // logic sometimes passing identity-substituted impl headers.
-            ty::ConstKind::Unevaluated(_, ty::AliasConst { kind, args, .. }) => match kind {
+            ty::ConstKind::Alias(_, ty::AliasConst { kind, args, .. }) => match kind {
                 ty::AliasConstKind::Projection { def_id }
                 | ty::AliasConstKind::Inherent { def_id }
                 | ty::AliasConstKind::Free { def_id }

@@ -3769,7 +3769,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         match obligation.predicate.kind().skip_binder() {
             ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(ct)) => match ct.kind() {
-                ty::ConstKind::Unevaluated(_, uv) => {
+                ty::ConstKind::Alias(_, uv) => {
                     let mut err =
                         self.dcx().struct_span_err(span, "unconstrained generic constant");
                     let const_span = uv.kind.def_span(self.tcx);
@@ -3812,7 +3812,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     Ok(err)
                 }
                 _ => {
-                    bug!("const evaluatable failed for non-unevaluated const `{ct:?}`");
+                    bug!("const evaluatable failed for non-alias const `{ct:?}`");
                 }
             },
             _ => {

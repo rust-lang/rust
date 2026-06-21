@@ -240,13 +240,13 @@ where
         }
 
         (
-            ty::ConstKind::Unevaluated(ty::IsRigid::Yes, _),
-            ty::ConstKind::Unevaluated(ty::IsRigid::Yes, _),
+            ty::ConstKind::Alias(ty::IsRigid::Yes, _),
+            ty::ConstKind::Alias(ty::IsRigid::Yes, _),
         ) if (infcx.cx().features().generic_const_exprs() || infcx.next_trait_solver()) => {
             structurally_relate_consts(relation, a, b)
         }
 
-        (ty::ConstKind::Unevaluated(..), _) | (_, ty::ConstKind::Unevaluated(..))
+        (ty::ConstKind::Alias(..), _) | (_, ty::ConstKind::Alias(..))
             if infcx.cx().features().generic_const_exprs() || infcx.next_trait_solver() =>
         {
             match relation.structurally_relate_aliases() {

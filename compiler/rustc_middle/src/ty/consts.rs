@@ -107,12 +107,12 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn new_unevaluated(
+    pub fn new_alias(
         tcx: TyCtxt<'tcx>,
         is_rigid: ty::IsRigid,
         uv: ty::AliasConst<'tcx>,
     ) -> Const<'tcx> {
-        Const::new(tcx, ty::ConstKind::Unevaluated(is_rigid, uv))
+        Const::new(tcx, ty::ConstKind::Alias(is_rigid, uv))
     }
 
     #[inline]
@@ -157,7 +157,7 @@ impl<'tcx> Const<'tcx> {
                 true
             }
             ty::ConstKind::Infer(_)
-            | ty::ConstKind::Unevaluated(..)
+            | ty::ConstKind::Alias(..)
             | ty::ConstKind::Value(_)
             | ty::ConstKind::Error(_)
             | ty::ConstKind::Expr(_) => false,
@@ -194,12 +194,12 @@ impl<'tcx> rustc_type_ir::inherent::Const<TyCtxt<'tcx>> for Const<'tcx> {
         Const::new_placeholder(tcx, placeholder)
     }
 
-    fn new_unevaluated(
+    fn new_alias(
         interner: TyCtxt<'tcx>,
         is_rigid: ty::IsRigid,
         uv: ty::AliasConst<'tcx>,
     ) -> Self {
-        Const::new_unevaluated(interner, is_rigid, uv)
+        Const::new_alias(interner, is_rigid, uv)
     }
 
     fn new_expr(interner: TyCtxt<'tcx>, expr: ty::Expr<'tcx>) -> Self {

@@ -350,7 +350,7 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
 
 pub(crate) fn print_const(tcx: TyCtxt<'_>, n: ty::Const<'_>) -> String {
     match n.kind() {
-        ty::ConstKind::Unevaluated(_, ty::AliasConst { kind, .. }) => match kind {
+        ty::ConstKind::Alias(_, ty::AliasConst { kind, .. }) => match kind {
             ty::AliasConstKind::Projection { def_id } => {
                 if let Some(local_def_id) = def_id.as_local()
                     && let Some(body_id) = tcx.hir_maybe_body_owned_by(local_def_id)

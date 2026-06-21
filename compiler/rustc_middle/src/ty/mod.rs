@@ -692,7 +692,7 @@ impl<'tcx> Term<'tcx> {
                 _ => None,
             },
             TermKind::Const(ct) => match ct.kind() {
-                ConstKind::Unevaluated(_, uv) => Some(uv.into()),
+                ConstKind::Alias(_, uv) => Some(uv.into()),
                 _ => None,
             },
         }

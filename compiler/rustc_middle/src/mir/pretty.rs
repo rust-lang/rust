@@ -1491,14 +1491,14 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
             let val = match const_ {
                 Const::Ty(_, ct) => match ct.kind() {
                     ty::ConstKind::Param(p) => format!("ty::Param({p})"),
-                    ty::ConstKind::Unevaluated(_, uv) => {
+                    ty::ConstKind::Alias(_, uv) => {
                         let kind = match uv.kind {
                             ty::AliasConstKind::Projection { def_id }
                             | ty::AliasConstKind::Inherent { def_id }
                             | ty::AliasConstKind::Free { def_id }
                             | ty::AliasConstKind::Anon { def_id } => self.tcx.def_path_str(def_id),
                         };
-                        format!("ty::Unevaluated({}, {:?})", kind, uv.args)
+                        format!("ty::AliasConst({}, {:?})", kind, uv.args)
                     }
                     ty::ConstKind::Value(cv) => {
                         format!("ty::Valtree({})", fmt_valtree(&cv))

@@ -433,7 +433,7 @@ fn const_evaluatable_predicates_of<'tcx>(
 
     impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ConstCollector<'tcx> {
         fn visit_const(&mut self, c: ty::Const<'tcx>) {
-            if let ty::ConstKind::Unevaluated(_, uv) = c.kind() {
+            if let ty::ConstKind::Alias(_, uv) = c.kind() {
                 if is_const_param_default(self.tcx, uv.kind) {
                     // Do not look into const param defaults,
                     // these get checked when they are actually instantiated.

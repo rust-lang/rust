@@ -34,7 +34,7 @@ pub enum ConstKind<I: Interner> {
     /// An unnormalized const item such as an anon const or assoc const or free const item.
     /// Right now anything other than anon consts does not actually work properly but this
     /// should
-    Unevaluated(ty::IsRigid, ty::AliasConst<I>),
+    Alias(ty::IsRigid, ty::AliasConst<I>),
 
     /// Used to hold computed value.
     Value(I::ValueConst),
@@ -43,7 +43,7 @@ pub enum ConstKind<I: Interner> {
     /// propagated to avoid useless error messages.
     Error(I::ErrorGuaranteed),
 
-    /// Unevaluated non-const-item, used by `feature(generic_const_exprs)` to represent
+    /// A non-const-item expression awaiting evaluation, used by `feature(generic_const_exprs)` to represent
     /// const arguments such as `N + 1` or `foo(N)`
     Expr(I::ExprConst),
 }
@@ -59,7 +59,7 @@ impl<I: Interner> fmt::Debug for ConstKind<I> {
             Infer(var) => write!(f, "{var:?}"),
             Bound(debruijn, var) => crate::debug_bound_var(f, *debruijn, var),
             Placeholder(placeholder) => write!(f, "{placeholder:?}"),
-            Unevaluated(is_rigid, uv) => write!(f, "Unevaluated({is_rigid:?}, {uv:?})"),
+            Alias(is_rigid, uv) => write!(f, "Unevaluated({is_rigid:?}, {uv:?})"),
             Value(val) => write!(f, "{val:?}"),
             Error(_) => write!(f, "{{const error}}"),
             Expr(expr) => write!(f, "{expr:?}"),
@@ -110,7 +110,7 @@ pub enum AliasConstKind<I: Interner> {
     /// A free constant, outside an impl block.
     Free { def_id: I::FreeConstAliasId },
     /// Anonymous constant, e.g. the `1 + 2` in `[u8; 1 + 2]`.
-    Anon { def_id: I::UnevaluatedConstId },
+    Anon { def_id: I::AnonConstId },
 }
 
 impl<I: Interner> AliasConstKind<I> {

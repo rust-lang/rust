@@ -200,10 +200,10 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for LateBoundRegionsCollector<'tcx> {
 
     fn visit_const(&mut self, c: ty::Const<'tcx>) {
         // if we are only looking for "constrained" region, we have to
-        // ignore the inputs of an unevaluated const, as they may not appear
+        // ignore the inputs of an alias const, as they may not appear
         // in the normalized form
         if self.just_constrained {
-            if let ty::ConstKind::Unevaluated(..) = c.kind() {
+            if let ty::ConstKind::Alias(..) = c.kind() {
                 return;
             }
         }

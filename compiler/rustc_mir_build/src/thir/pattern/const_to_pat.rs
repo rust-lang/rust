@@ -49,7 +49,7 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
         let mut convert = ConstToPat::new(self, id, span, c);
 
         match c.kind() {
-            ty::ConstKind::Unevaluated(_, uv) => convert.unevaluated_to_pat(uv, ty),
+            ty::ConstKind::Alias(_, uv) => convert.alias_to_pat(uv, ty),
             ty::ConstKind::Value(value) => convert.valtree_to_pat(value),
             _ => span_bug!(span, "Invalid `ConstKind` for `const_to_pat`: {:?}", c),
         }
@@ -77,7 +77,7 @@ impl<'tcx> ConstToPat<'tcx> {
 
     /// We errored. Signal that in the pattern, so that follow up errors can be silenced.
     fn mk_err(&self, mut err: Diag<'_>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
-        if let ty::ConstKind::Unevaluated(_, uv) = self.c.kind() {
+        if let ty::ConstKind::Alias(_, uv) = self.c.kind() {
             if let ty::AliasConstKind::Projection { def_id }
             | ty::AliasConstKind::Inherent { def_id } = uv.kind
                 && let Some(def_id) = def_id.as_local()
@@ -95,7 +95,7 @@ impl<'tcx> ConstToPat<'tcx> {
         Box::new(Pat { span: self.span, ty, kind: PatKind::Error(err.emit()), extra: None })
     }
 
-    fn unevaluated_to_pat(&mut self, uv: ty::AliasConst<'tcx>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
+    fn alias_to_pat(&mut self, uv: ty::AliasConst<'tcx>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
         // It's not *technically* correct to be revealing opaque types here as borrowcheck has
         // not run yet. However, CTFE itself uses `TypingMode::PostAnalysis` unconditionally even
         // during typeck and not doing so has a lot of (undesirable) fallout (#101478, #119821).
@@ -136,7 +136,7 @@ impl<'tcx> ConstToPat<'tcx> {
                         self.tcx.dcx().create_err(CouldNotEvalConstPattern { span: self.span });
                     // We've emitted an error on the original const, it would be redundant to complain
                     // on its use as well.
-                    if let ty::ConstKind::Unevaluated(_, uv) = self.c.kind()
+                    if let ty::ConstKind::Alias(_, uv) = self.c.kind()
                         && let ty::AliasConstKind::Projection { .. }
                         | ty::AliasConstKind::Inherent { .. }
                         | ty::AliasConstKind::Free { .. } = uv.kind
@@ -249,7 +249,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 // then error about that instead, because `TypeNotStructural` gives advice that is
                 // relevant only when the problem is that `ty` does not derive `PartialEq`.
                 //
-                // Note that this is a duplicate of a check in `unevaluated_to_pat()`,
+                // Note that this is a duplicate of a check in `alias_to_pat()`,
                 // which we would run later if we weren’t emitting an error now.
                 if possibly_inapplicable_derived_partial_eq && !has_impl {
                     let mut err =

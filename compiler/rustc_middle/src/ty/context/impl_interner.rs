@@ -41,7 +41,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type CoroutineId = DefId;
     type AdtId = DefId;
     type ImplId = DefId;
-    type UnevaluatedConstId = DefId;
+    type AnonConstId = DefId;
     type TraitAssocTyId = DefId;
     type TraitAssocConstId = DefId;
     type TraitAssocTermId = DefId;

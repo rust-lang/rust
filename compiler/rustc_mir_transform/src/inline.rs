@@ -1026,7 +1026,7 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
     });
 
     // Copy required constants from the callee_body into the caller_body. Although we are only
-    // pushing unevaluated consts to `required_consts`, here they may have been evaluated
+    // pushing constants that still need evaluation to `required_consts`, here they may have been evaluated
     // because we are calling `instantiate_and_normalize_erasing_regions` -- so we filter again.
     caller_body.required_consts.as_mut().unwrap().extend(
         callee_body.required_consts().into_iter().filter(|ct| ct.const_.is_required_const()),

@@ -196,7 +196,7 @@ where
         Goal { param_env, predicate: ct }: Goal<I, I::Const>,
     ) -> QueryResultOrRerunNonErased<I> {
         match ct.kind() {
-            ty::ConstKind::Unevaluated(ty::IsRigid::Yes, _)
+            ty::ConstKind::Alias(ty::IsRigid::Yes, _)
             | ty::ConstKind::Placeholder(_)
             | ty::ConstKind::Value(_)
             | ty::ConstKind::Error(_) => {
@@ -252,10 +252,10 @@ where
                     .evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                     .map_err(Into::into);
             }
-            ty::ConstKind::Unevaluated(ty::IsRigid::Yes, uv) => {
+            ty::ConstKind::Alias(ty::IsRigid::Yes, uv) => {
                 uv.type_of(self.cx()).skip_norm_wip()
             }
-            ty::ConstKind::Unevaluated(ty::IsRigid::No, _) => unimplemented!(
+            ty::ConstKind::Alias(ty::IsRigid::No, _) => unimplemented!(
                 "non-rigid unevaluated constant for compute_const_arg_has_type_goal: {ct:?}"
             ),
             ty::ConstKind::Expr(_) => unimplemented!(

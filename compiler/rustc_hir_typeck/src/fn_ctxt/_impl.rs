@@ -1453,7 +1453,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ct = self.resolve_vars_with_obligations(ct);
 
         if self.next_trait_solver()
-            && let ty::ConstKind::Unevaluated(..) = ct.kind()
+            && let ty::ConstKind::Alias(..) = ct.kind()
         {
             // We need to use a separate variable here as otherwise the temporary for
             // `self.fulfillment_cx.borrow_mut()` is alive in the `Err` branch, resulting

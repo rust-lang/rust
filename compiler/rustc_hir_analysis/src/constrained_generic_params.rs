@@ -93,7 +93,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ParameterCollector {
 
     fn visit_const(&mut self, c: ty::Const<'tcx>) {
         match c.kind() {
-            ty::ConstKind::Unevaluated(..) if !self.include_nonconstraining => {
+            ty::ConstKind::Alias(..) if !self.include_nonconstraining => {
                 // Constant expressions are not injective in general.
                 return;
             }

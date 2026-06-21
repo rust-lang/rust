@@ -1568,7 +1568,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         }
 
         match ct.kind() {
-            ty::ConstKind::Unevaluated(_, ty::AliasConst { kind, args, .. }) => {
+            ty::ConstKind::Alias(_, ty::AliasConst { kind, args, .. }) => {
                 match kind {
                     ty::AliasConstKind::Projection { def_id }
                     | ty::AliasConstKind::Inherent { def_id }

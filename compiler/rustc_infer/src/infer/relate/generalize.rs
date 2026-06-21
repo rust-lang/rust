@@ -77,7 +77,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// would result in an infinite type as we continuously replace an inference variable
     /// in `ct` with `ct` itself.
     ///
-    /// This is especially important as unevaluated consts use their parents generics.
+    /// This is especially important as alias consts use their parents generics.
     /// They therefore often contain unused args, making these errors far more likely.
     ///
     /// A good example of this is the following:
@@ -95,7 +95,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// }
     /// ```
     ///
-    /// Here `3 + 4` ends up as `ConstKind::Unevaluated` which uses the generics
+    /// Here `3 + 4` ends up as `ConstKind::Alias` which uses the generics
     /// of `fn bind` (meaning that its args contain `N`).
     ///
     /// `bind(arr)` now infers that the type of `arr` must be `[u8; N]`.
@@ -112,8 +112,8 @@ impl<'tcx> InferCtxt<'tcx> {
         target_vid: ty::ConstVid,
         source_ct: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ()> {
-        // FIXME(generic_const_exprs): Occurs check failures for unevaluated
-        // constants and generic expressions are not yet handled correctly.
+        // FIXME(generic_const_exprs): Occurs check failures for alias consts
+        // and generic expressions are not yet handled correctly.
         debug_assert!(
             self.inner.borrow_mut().const_unification_table().probe_value(target_vid).is_unknown()
         );
@@ -752,7 +752,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                     }
                 }
             }
-            // FIXME: Unevaluated constants are also not rigid, so the current
+            // FIXME: Alias consts are also not rigid, so the current
             // approach of always relating them structurally is incomplete.
             //
             // FIXME: replace the StructurallyRelateAliases::Yes branch with
@@ -760,7 +760,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
             //
             // We only need to be careful with potentially normalizeable
             // aliases here. See `generalize_alias_term` for more information.
-            ty::ConstKind::Unevaluated(ty::IsRigid::No, uv) => {
+            ty::ConstKind::Alias(ty::IsRigid::No, uv) => {
                 match self.structurally_relate_aliases {
                     // Hack: Fall back to old behavior if GCE is enabled (it used to just be the Yes
                     // path), as doing this new No path breaks some GCE things. I expect GCE to be
@@ -776,7 +776,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                             args,
                             args,
                         )?;
-                        Ok(ty::Const::new_unevaluated(
+                        Ok(ty::Const::new_alias(
                             tcx,
                             ty::IsRigid::No,
                             ty::AliasConst::new(tcx, kind, args),
