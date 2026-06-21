@@ -10,7 +10,7 @@ use crate::common::{
         run_rustfmt, write_bin_cargo_toml, write_build_rs, write_lib_cargo_toml, write_lib_rs,
     },
     intrinsic::Intrinsic,
-    intrinsic_helpers::IntrinsicTypeDefinition,
+    intrinsic_helpers::TypeDefinition,
 };
 
 pub mod argument;
@@ -29,10 +29,10 @@ pub(crate) const PASSES: u32 = 20;
 
 /// Architectures must support this trait
 /// to be successfully tested.
-pub trait SupportedArchitectureTest {
-    type IntrinsicImpl: IntrinsicTypeDefinition + Sync;
+pub trait SupportedArchitecture: Sized {
+    type Type: TypeDefinition + std::fmt::Debug + PartialEq + Sync;
 
-    fn intrinsics(&self) -> &[Intrinsic<Self::IntrinsicImpl>];
+    fn intrinsics(&self) -> &[Intrinsic<Self>];
 
     fn create(cli_options: &ProcessedCli) -> Self;
 
@@ -81,14 +81,7 @@ pub trait SupportedArchitectureTest {
                 trace!("generating `{rust_filename}`");
                 let mut file = File::create(&rust_filename)?;
 
-                write_lib_rs(
-                    &mut file,
-                    Self::NOTICE,
-                    Self::PLATFORM_RUST_CFGS,
-                    Self::PLATFORM_RUST_DEFINITIONS,
-                    i,
-                    chunk,
-                )?;
+                write_lib_rs(&mut file, i, chunk)?;
                 run_rustfmt(&rust_filename);
 
                 let toml_filename = format!("rust_programs/mod_{i}/Cargo.toml");

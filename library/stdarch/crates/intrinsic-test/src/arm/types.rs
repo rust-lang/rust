@@ -1,9 +1,7 @@
-use super::intrinsic::ArmIntrinsicType;
-use crate::common::intrinsic_helpers::{
-    IntrinsicType, IntrinsicTypeDefinition, Sign, SimdLen, TypeKind,
-};
+use super::intrinsic::ArmType;
+use crate::common::intrinsic_helpers::{IntrinsicType, Sign, SimdLen, TypeDefinition, TypeKind};
 
-impl IntrinsicTypeDefinition for ArmIntrinsicType {
+impl TypeDefinition for ArmType {
     /// Gets a string containing the typename for this type in C format.
     fn c_type(&self) -> String {
         let prefix = self.kind.c_prefix();

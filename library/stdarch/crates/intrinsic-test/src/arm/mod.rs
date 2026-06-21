@@ -3,22 +3,21 @@ mod intrinsic;
 mod json_parser;
 mod types;
 
-use crate::common::SupportedArchitectureTest;
+use crate::common::SupportedArchitecture;
 use crate::common::cli::{CcArgStyle, ProcessedCli};
 use crate::common::intrinsic::Intrinsic;
 use crate::common::intrinsic_helpers::{SimdLen, TypeKind};
-use intrinsic::ArmIntrinsicType;
+use intrinsic::ArmType;
 use json_parser::get_neon_intrinsics;
 
-pub struct ArmArchitectureTest {
-    intrinsics: Vec<Intrinsic<ArmIntrinsicType>>,
-}
+#[derive(PartialEq)]
+pub struct Arm(Vec<Intrinsic<Arm>>);
 
-impl SupportedArchitectureTest for ArmArchitectureTest {
-    type IntrinsicImpl = ArmIntrinsicType;
+impl SupportedArchitecture for Arm {
+    type Type = ArmType;
 
-    fn intrinsics(&self) -> &[Intrinsic<ArmIntrinsicType>] {
-        &self.intrinsics
+    fn intrinsics(&self) -> &[Intrinsic<Self>] {
+        &self.0
     }
 
     const NOTICE: &str = config::NOTICE;
@@ -123,6 +122,6 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
             .take(sample_size)
             .collect::<Vec<_>>();
 
-        Self { intrinsics }
+        Self(intrinsics)
     }
 }
