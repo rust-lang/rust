@@ -465,6 +465,13 @@ impl From<Cargo> for BootstrapCommand {
 
         cargo.command.args(cargo.args);
 
+        // Always unset the plain RUSTFLAGS/RUSTDOCFLAGS so that downstream
+        // tools (e.g. build.rs scripts) see only the encoded form. Any flags
+        // from the caller's environment have already been folded into the
+        // Rustflags struct via `propagate_cargo_env`.
+        cargo.command.env_remove("RUSTFLAGS");
+        cargo.command.env_remove("RUSTDOCFLAGS");
+
         let rustflags = &cargo.rustflags.0;
         if !rustflags.is_empty() {
             cargo.command.env("CARGO_ENCODED_RUSTFLAGS", rustflags);
