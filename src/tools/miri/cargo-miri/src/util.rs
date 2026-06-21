@@ -22,9 +22,9 @@ macro_rules! show_error {
 }
 pub(crate) use show_error;
 
-/// The information to run a crate with the given environment.
-#[derive(Clone, Serialize, Deserialize)]
-pub struct CrateRunEnv {
+/// The information Miri needs to run a crate. Stored as JSON when the crate is "compiled".
+#[derive(Serialize, Deserialize)]
+pub struct CrateRunInfo {
     /// The command-line arguments.
     pub args: Vec<String>,
     /// The environment.
@@ -35,7 +35,7 @@ pub struct CrateRunEnv {
     pub stdin: Vec<u8>,
 }
 
-impl CrateRunEnv {
+impl CrateRunInfo {
     /// Gather all the information we need.
     pub fn collect(args: impl Iterator<Item = String>, capture_stdin: bool) -> Self {
         let args = args.collect();
@@ -47,20 +47,9 @@ impl CrateRunEnv {
             std::io::stdin().lock().read_to_end(&mut stdin).expect("cannot read stdin");
         }
 
-        CrateRunEnv { args, env, current_dir, stdin }
+        CrateRunInfo { args, env, current_dir, stdin }
     }
-}
 
-/// The information Miri needs to run a crate. Stored as JSON when the crate is "compiled".
-#[derive(Serialize, Deserialize)]
-pub enum CrateRunInfo {
-    /// Run it with the given environment.
-    RunWith(CrateRunEnv),
-    /// Skip it as Miri does not support interpreting such kind of crates.
-    SkipProcMacroTest,
-}
-
-impl CrateRunInfo {
     pub fn store(&self, filename: &Path) {
         let file = File::create(filename)
             .unwrap_or_else(|_| show_error!("cannot create `{}`", filename.display()));
