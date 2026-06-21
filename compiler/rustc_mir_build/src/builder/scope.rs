@@ -1014,7 +1014,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .stack_index(self.scopes.const_continuable_scopes[break_index].region_scope, span);
         let scope = &mut self.scopes.const_continuable_scopes[break_index];
         self.cfg.push_assign(block, source_info, discr, rvalue);
-        let drop_and_continue_block = self.cfg.start_new_block();
+        let mut drop_and_continue_block = self.cfg.start_new_block();
         let imaginary_target = self.cfg.start_new_block();
         self.cfg.terminate(
             block,
@@ -1023,36 +1023,54 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
 
         let drops = &mut scope.const_continue_drops;
-
         let drop_idx = self.scopes.scopes[stack_index + 1..]
             .iter()
             .flat_map(|scope| &scope.drops)
             .fold(ROOT_NODE, |drop_idx, &drop| drops.add_drop(drop, drop_idx));
-
         drops.add_entry_point(imaginary_target, drop_idx);
-
-        self.cfg.terminate(imaginary_target, source_info, TerminatorKind::UnwindResume);
-
-        let region_scope = scope.region_scope;
-        let stack_index = self.scopes.stack_index(region_scope, span);
-        let mut drops = DropTree::new();
-
-        let drop_idx = self.scopes.scopes[stack_index + 1..]
-            .iter()
-            .flat_map(|scope| &scope.drops)
-            .fold(ROOT_NODE, |drop_idx, &drop| drops.add_drop(drop, drop_idx));
-
-        drops.add_entry_point(drop_and_continue_block, drop_idx);
-
         // `build_drop_trees` doesn't have access to our source_info, so we
         // create a dummy terminator now. `TerminatorKind::UnwindResume` is used
         // because MIR type checking will panic if it hasn't been overwritten.
         // (See `<ExitScopes as DropTreeBuilder>::link_entry_point`.)
-        self.cfg.terminate(drop_and_continue_block, source_info, TerminatorKind::UnwindResume);
+        self.cfg.terminate(imaginary_target, source_info, TerminatorKind::UnwindResume);
 
-        self.build_exit_tree(drops, region_scope, span, Some(real_target));
+        let region_scope = scope.region_scope;
+        let stack_index = self.scopes.stack_index(region_scope, span);
+        let needs_cleanup =
+            self.scopes.scopes[stack_index..].iter().any(|scope| scope.needs_cleanup());
+        let mut unwind_to = if needs_cleanup { self.diverge_cleanup() } else { DropIdx::MAX };
+        let has_async_drops = self.coroutine.is_some()
+            && self.scopes.scopes[stack_index..]
+                .iter()
+                .flat_map(|s| s.drops.iter())
+                .any(|v| v.kind == DropKind::Value && self.is_async_drop(v.local));
+        let mut dropline_to = if has_async_drops { Some(self.diverge_dropline()) } else { None };
+        let typing_env = self.typing_env();
+        for scope in self.scopes.scopes[stack_index..].iter().rev() {
+            (unwind_to, dropline_to) = unpack!(
+                drop_and_continue_block = build_scope_drops(
+                    &mut self.cfg,
+                    &mut self.scopes.unwind_drops,
+                    &mut self.scopes.coroutine_drops,
+                    scope,
+                    drop_and_continue_block,
+                    unwind_to,
+                    dropline_to,
+                    /* storage_dead_on_unwind */ false,
+                    self.arg_count,
+                    /* is_async_drop */
+                    |v: Local| Self::is_async_drop_impl(self.tcx, &self.local_decls, typing_env, v),
+                    &[],
+                )
+            );
+        }
+        self.cfg.terminate(
+            drop_and_continue_block,
+            source_info,
+            TerminatorKind::Goto { target: real_target },
+        );
 
-        return self.cfg.start_new_block().unit();
+        self.cfg.start_new_block().unit()
     }
 
     /// Sets up the drops for breaking from `block` due to an `if` condition
