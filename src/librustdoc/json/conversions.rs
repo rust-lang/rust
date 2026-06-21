@@ -69,13 +69,37 @@ impl JsonRenderer<'_> {
             }
             _ => from_clean_item(item, self),
         };
+
+        // Rustdoc JSON keeps re-exports as `Use` items, so their stability describes
+        // the local `pub use` declaration. The imported target item's stability
+        // remains available through `inner.use.id`.
+        //
+        // We use raw stability attributes here instead of `clean::Item::stability()`,
+        // which is the effective stability rustdoc uses for rendering paths.
+        // For example, a stable `pub use` inside an unstable module is effectively unstable
+        // through that module path, but the `Use` declaration itself is still stable.
+        // In that example, `clean::Item::stability()` would return "unstable" as
+        // the effective stability, which is appropriate for HTML but makes JSON uses harder.
+        //
+        // JSON consumers already have to do path-based reasoning to reconstruct item reachability,
+        // names, and stability. Keeping component-wise stability allows them to easily reconstruct
+        // stability from the module, use item, and target item records.
+        let stability_def_id = if matches!(&item.kind, clean::ImportItem(_)) {
+            item.inline_stmt_id
+                .map(|def_id| def_id.to_def_id())
+                .or_else(|| item.item_id.as_def_id())
+        } else {
+            item.item_id.as_def_id()
+        };
+        let stability = stability_def_id.and_then(|def_id| self.tcx.lookup_stability(def_id));
+
         Some(Item {
             id,
             crate_id: item_id.krate().as_u32(),
             name: name.map(|sym| sym.to_string()),
             span: span.and_then(|span| span.into_json(self)),
             visibility: visibility.into_json(self),
-            stability: item.stability(self.tcx).into_json(self),
+            stability: stability.map(|s| Box::new(s.into_json(self))),
             docs,
             attrs,
             deprecation: deprecation.into_json(self),
@@ -206,13 +230,19 @@ impl FromClean<attrs::Deprecation> for Deprecation {
 
 impl FromClean<hir::Stability> for Stability {
     fn from_clean(stab: &hir::Stability, _renderer: &JsonRenderer<'_>) -> Self {
-        Stability {
-            feature: stab.feature.to_string(),
-            level: match stab.level {
-                hir::StabilityLevel::Unstable { .. } => StabilityLevel::Unstable,
-                hir::StabilityLevel::Stable { .. } => StabilityLevel::Stable,
+        let feature = stab.feature.to_string();
+        let level = match stab.level {
+            hir::StabilityLevel::Stable { since, .. } => StabilityLevel::Stable {
+                since: match since {
+                    hir::StableSince::Version(since) => Some(since.to_string()),
+                    hir::StableSince::Current => Some(hir::RustcVersion::CURRENT.to_string()),
+                    // Match rustdoc HTML: malformed stable-since values are omitted.
+                    hir::StableSince::Err(_) => None,
+                },
             },
-        }
+            hir::StabilityLevel::Unstable { .. } => StabilityLevel::Unstable,
+        };
+        Stability { feature, level }
     }
 }
 

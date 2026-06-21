@@ -282,7 +282,10 @@ pub struct Item {
     pub links: HashMap<String, Id>,
     /// Attributes on this item.
     ///
-    /// Does not include `#[deprecated]` attributes: see the [`Self::deprecation`] field instead.
+    /// Does not include:
+    /// - `#[doc = "Doc Comment"]` or `/// Doc comment`: see [`Self::docs`] instead.
+    /// - `#[deprecated]` attributes: see the [`Self::deprecation`] field instead.
+    /// - `#[stable]` and `#[unstable]` attributes: see the [`Self::stability`] field instead.
     ///
     /// Attributes appear in pretty-printed Rust form, regardless of their formatting
     /// in the original source code. For example:
@@ -295,26 +298,60 @@ pub struct Item {
     /// Information about the item’s deprecation, if present.
     pub deprecation: Option<Deprecation>,
 
-    pub stability: Option<Stability>,
+    /// Stability information for this item, if any.
+    ///
+    /// This describes whether the item itself is stable or unstable, as noted by a `#[stable]` or
+    /// `#[unstable]` attribute. It does not capture const stability, default-body stability, etc.
+    ///
+    /// Whether a path to an item is stable depends on the stability of containing modules
+    /// or re-exports along that path. For example, a stable item can be reachable through both an
+    /// unstable module and a stable re-export.
+    ///
+    /// For items whose inner kind is [`ItemEnum::Use`], this is the stability of the import itself,
+    /// not the item being imported. This allows users to determine the stability of paths
+    /// that involve re-exports.
+    ///
+    /// Associated items can inherit instability from their enclosing unstable trait or impl.
+    /// Unannotated associated items in stable traits or impls may have no separate stability value.
+    ///
+    /// Currently, Rust's `#[stable]` and `#[unstable]` attributes are themselves not stable.
+    /// As a result, this field is primarily populated for standard-library items;
+    /// most ordinary third-party crates usually have no data here.
+    pub stability: Option<Box<Stability>>,
 
     /// The type-specific fields describing this item.
     pub inner: ItemEnum,
 }
 
+/// Stability information for an item.
+///
+/// This only refers to regular item stability: whether the item is stable or unstable
+/// as represented by the `#[stable]` or `#[unstable]` attributes.
+/// Const stability and default-body stability are different things and not captured here.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "rkyv_0_8", derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize))]
 #[cfg_attr(feature = "rkyv_0_8", rkyv(derive(Debug)))]
 pub struct Stability {
+    /// The stability feature associated with this item.
+    ///
+    /// For unstable items, this is the feature gate associated with the item.
+    /// For stable items, this is the historical label recorded when the item was stabilized.
     pub feature: String,
+
+    #[serde(flatten)]
     pub level: StabilityLevel,
 }
 
+/// Whether an item is stable or unstable as regular public API.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "rkyv_0_8", derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize))]
 #[cfg_attr(feature = "rkyv_0_8", rkyv(derive(Debug)))]
-#[serde(rename_all = "snake_case")]
+#[serde(tag = "level", rename_all = "snake_case")]
 pub enum StabilityLevel {
-    Stable,
+    Stable {
+        /// The Rust version in which this item became stable, if available.
+        since: Option<String>,
+    },
     Unstable,
 }
 
@@ -327,6 +364,7 @@ pub enum StabilityLevel {
 /// This doesn't include:
 /// - `#[doc = "Doc Comment"]` or `/// Doc comment`. These are in [`Item::docs`] instead.
 /// - `#[deprecated]`. These are in [`Item::deprecation`] instead.
+/// - `#[stable]` and `#[unstable]`. These are in [`Item::stability`] instead.
 pub enum Attribute {
     /// `#[non_exhaustive]`
     NonExhaustive,
