@@ -30,7 +30,11 @@ fi
 # For nightly and beta this isn't strictly necessary as just trying both is
 # enough, but stable builds produce artifacts with a version (e.g.,
 # rust-src-1.92.0.tar.xz) which can't be easily guessed otherwise.
-channel=$(releaseChannel)
+#
+# This intentionally does not respect RUST_CI_OVERRIDE_RELEASE_CHANNEL because
+# we want a single channel across all runners; otherwise depending on which
+# finishes first we might have different output artifacts.
+channel=$(cat "${ci_dir}/channel")
 if [[ "$channel" = "stable" ]]; then
     # On stable, artifacts use the version number. See rust_package_vers in
     # src/bootstrap/src/lib.rs.
