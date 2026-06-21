@@ -56,7 +56,6 @@ use rustc_errors::{Applicability, Diag, DiagStyledString, IntoDiagArg, StringPar
 use rustc_hir::attrs::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::lang_items::LangItem;
 use rustc_hir::{self as hir, find_attr};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_macros::extension;
@@ -205,40 +204,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             param_env,
             err,
         )
-    }
-
-    pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
-        let (def_id, args) = match *ty.kind() {
-            ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => (def_id, args),
-            ty::Alias(ty::AliasTy { kind, args, .. })
-                if self.tcx.is_impl_trait_in_trait(kind.def_id()) =>
-            {
-                (kind.def_id(), args)
-            }
-            _ => return None,
-        };
-
-        let future_trait = self.tcx.require_lang_item(LangItem::Future, DUMMY_SP);
-        let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
-
-        self.tcx
-            .explicit_item_self_bounds(def_id)
-            .iter_instantiated_copied(self.tcx, args)
-            .map(Unnormalized::skip_norm_wip)
-            .find_map(|(predicate, _)| {
-                predicate
-                    .kind()
-                    .map_bound(|kind| match kind {
-                        ty::ClauseKind::Projection(projection_predicate)
-                            if projection_predicate.def_id() == item_def_id =>
-                        {
-                            projection_predicate.term.as_type()
-                        }
-                        _ => None,
-                    })
-                    .no_bound_vars()
-                    .flatten()
-            })
     }
 
     /// Adds a note if the types come from similarly named crates

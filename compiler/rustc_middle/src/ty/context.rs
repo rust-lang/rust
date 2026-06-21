@@ -2704,6 +2704,39 @@ impl<'tcx> TyCtxt<'tcx> {
         self.opt_rpitit_info(def_id).is_some()
     }
 
+    pub fn get_impl_future_output_ty(self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+        let (def_id, args) = match *ty.kind() {
+            ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => (def_id, args),
+            ty::Alias(ty::AliasTy { kind: ty::Projection { def_id }, args, .. })
+                if self.is_impl_trait_in_trait(def_id) =>
+            {
+                (def_id, args)
+            }
+            _ => return None,
+        };
+
+        let future_trait = self.require_lang_item(LangItem::Future, DUMMY_SP);
+        let item_def_id = self.associated_item_def_ids(future_trait)[0];
+
+        self.explicit_item_self_bounds(def_id)
+            .iter_instantiated_copied(self, args)
+            .map(ty::Unnormalized::skip_norm_wip)
+            .find_map(|(predicate, _)| {
+                predicate
+                    .kind()
+                    .map_bound(|kind| match kind {
+                        ty::ClauseKind::Projection(projection_predicate)
+                            if projection_predicate.def_id() == item_def_id =>
+                        {
+                            projection_predicate.term.as_type()
+                        }
+                        _ => None,
+                    })
+                    .no_bound_vars()
+                    .flatten()
+            })
+    }
+
     /// Named module children from all kinds of items, including imports.
     /// In addition to regular items this list also includes struct and variant constructors, and
     /// items inside `extern {}` blocks because all of them introduce names into parent module.

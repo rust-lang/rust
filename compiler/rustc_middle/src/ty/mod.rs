@@ -104,11 +104,12 @@ pub use self::region::{
     EarlyParamRegion, LateParamRegion, LateParamRegionKind, Region, RegionKind, RegionVid,
 };
 pub use self::sty::{
-    AliasTy, AliasTyKind, Article, Binder, BoundConst, BoundRegion, BoundRegionKind, BoundTy,
-    BoundTyKind, BoundVariableKind, CanonicalPolyFnSig, CoroutineArgsExt, EarlyBinder, FnSig,
-    FnSigKind, InlineConstArgs, InlineConstArgsParts, ParamConst, ParamTy, PlaceholderConst,
-    PlaceholderRegion, PlaceholderType, PolyFnSig, TyKind, TypeAndMut, TypingMode,
-    TypingModeEqWrapper, Unnormalized, UpvarArgs,
+    Alias, AliasTy, AliasTyKind, Article, Binder, BoundConst, BoundRegion, BoundRegionKind,
+    BoundTy, BoundTyKind, BoundVariableKind, CanonicalPolyFnSig, CoroutineArgsExt, EarlyBinder,
+    FnSig, FnSigKind, FreeAliasTy, InherentAliasTy, InlineConstArgs, InlineConstArgsParts,
+    OpaqueAliasTy, ParamConst, ParamTy, PlaceholderConst, PlaceholderRegion, PlaceholderType,
+    PolyFnSig, ProjectionAliasTy, TyKind, TypeAndMut, TypingMode, TypingModeEqWrapper,
+    Unnormalized, UpvarArgs,
 };
 pub use self::trait_def::TraitDef;
 pub use self::typeck_results::{

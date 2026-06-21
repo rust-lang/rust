@@ -1578,7 +1578,7 @@ where
     pub(crate) fn opaques_with_sub_unified_hidden_type(
         &self,
         self_ty: I::Ty,
-    ) -> Vec<ty::AliasTy<I>> {
+    ) -> Vec<ty::OpaqueAliasTy<I>> {
         if let ty::Infer(ty::TyVar(vid)) = self_ty.kind() {
             self.delegate.opaques_with_sub_unified_hidden_type(vid)
         } else {

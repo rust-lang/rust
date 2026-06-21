@@ -1359,7 +1359,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         )? {
             TypeRelativePath::AssocItem(alias_term) => {
                 let alias_ty = alias_term.expect_ty();
-                let def_id = alias_ty.kind.def_id();
+                let def_id = match alias_ty.kind {
+                    ty::AliasTyKind::Projection { def_id } => def_id,
+                    ty::AliasTyKind::Inherent { def_id } => def_id,
+                    kind => bug!("expected projection or inherent alias, got {kind:?}"),
+                };
                 let ty = alias_ty.to_ty(tcx);
                 let ty = self.check_param_uses_if_mcg(ty, span, false);
                 Ok((ty, tcx.def_kind(def_id), def_id))

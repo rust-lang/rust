@@ -89,7 +89,6 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::print::with_types_for_signature;
 use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, OutlivesPredicate, Region, Ty, TyCtxt, TypingMode,
-    Unnormalized,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::errors::feature_err;
@@ -487,21 +486,12 @@ fn fn_sig_suggestion<'tcx>(
     let mut output = sig.output();
 
     let asyncness = if tcx.asyncness(assoc.def_id).is_async() {
-        output = if let ty::Alias(alias_ty) = *output.kind()
-            && let Some(output) = tcx
-                .explicit_item_self_bounds(alias_ty.kind.def_id())
-                .iter_instantiated_copied(tcx, alias_ty.args)
-                .map(Unnormalized::skip_norm_wip)
-                .find_map(|(bound, _)| {
-                    bound.as_projection_clause()?.no_bound_vars()?.term.as_type()
-                }) {
-            output
-        } else {
+        output = tcx.get_impl_future_output_ty(output).unwrap_or_else(|| {
             span_bug!(
                 ident.span,
                 "expected async fn to have `impl Future` output, but it returns {output}"
             )
-        };
+        });
         "async "
     } else {
         ""

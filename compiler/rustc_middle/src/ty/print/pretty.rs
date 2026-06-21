@@ -1369,10 +1369,14 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 self.tcx().opt_rpitit_info(def_id)
             && let ty::Alias(alias_ty) =
                 self.tcx().fn_sig(fn_def_id).skip_binder().output().skip_binder().kind()
-            && alias_ty.kind.def_id() == def_id
+            && let Some(projection_ty) = alias_ty.try_to_projection()
+            && projection_ty.kind == def_id
             && let generics = self.tcx().generics_of(fn_def_id)
             // FIXME(return_type_notation): We only support lifetime params for now.
-            && generics.own_params.iter().all(|param| matches!(param.kind, ty::GenericParamDefKind::Lifetime))
+            && generics
+                .own_params
+                .iter()
+                .all(|param| matches!(param.kind, ty::GenericParamDefKind::Lifetime))
         {
             let num_args = generics.count();
             Some((fn_def_id, &args[..num_args]))

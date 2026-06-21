@@ -38,6 +38,11 @@ pub type TyKind<'tcx> = ir::TyKind<TyCtxt<'tcx>>;
 pub type TypeAndMut<'tcx> = ir::TypeAndMut<TyCtxt<'tcx>>;
 pub type AliasTy<'tcx> = ir::AliasTy<TyCtxt<'tcx>>;
 pub type AliasTyKind<'tcx> = ir::AliasTyKind<TyCtxt<'tcx>>;
+pub type Alias<'tcx, K> = ir::Alias<TyCtxt<'tcx>, K>;
+pub type ProjectionAliasTy<'tcx> = ir::ProjectionAliasTy<TyCtxt<'tcx>>;
+pub type InherentAliasTy<'tcx> = ir::InherentAliasTy<TyCtxt<'tcx>>;
+pub type OpaqueAliasTy<'tcx> = ir::OpaqueAliasTy<TyCtxt<'tcx>>;
+pub type FreeAliasTy<'tcx> = ir::FreeAliasTy<TyCtxt<'tcx>>;
 pub type FnSig<'tcx> = ir::FnSig<TyCtxt<'tcx>>;
 pub type FnSigKind<'tcx> = ir::FnSigKind<TyCtxt<'tcx>>;
 pub type Binder<'tcx, T> = ir::Binder<TyCtxt<'tcx>, T>;
@@ -477,12 +482,22 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn new_alias(tcx: TyCtxt<'tcx>, alias_ty: ty::AliasTy<'tcx>) -> Ty<'tcx> {
-        debug_assert_matches!(
-            (alias_ty.kind, tcx.def_kind(alias_ty.kind.def_id())),
-            (ty::Opaque { .. }, DefKind::OpaqueTy)
-                | (ty::Projection { .. } | ty::Inherent { .. }, DefKind::AssocTy)
-                | (ty::Free { .. }, DefKind::TyAlias)
-        );
+        if cfg!(debug_assertions) {
+            match alias_ty.kind {
+                ty::AliasTyKind::Projection { def_id } => {
+                    debug_assert_matches!(tcx.def_kind(def_id), DefKind::AssocTy)
+                }
+                ty::AliasTyKind::Inherent { def_id } => {
+                    debug_assert_matches!(tcx.def_kind(def_id), DefKind::AssocTy)
+                }
+                ty::AliasTyKind::Opaque { def_id } => {
+                    debug_assert_matches!(tcx.def_kind(def_id), DefKind::OpaqueTy)
+                }
+                ty::AliasTyKind::Free { def_id } => {
+                    debug_assert_matches!(tcx.def_kind(def_id), DefKind::TyAlias)
+                }
+            }
+        }
         Ty::new(tcx, Alias(alias_ty))
     }
 

@@ -380,7 +380,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
             .map(|(k, h)| (k, h.ty))
             .collect()
     }
-    fn opaques_with_sub_unified_hidden_type(&self, ty: ty::TyVid) -> Vec<ty::AliasTy<'tcx>> {
+    fn opaques_with_sub_unified_hidden_type(&self, ty: ty::TyVid) -> Vec<ty::OpaqueAliasTy<'tcx>> {
         self.opaques_with_sub_unified_hidden_type(ty)
     }
 
