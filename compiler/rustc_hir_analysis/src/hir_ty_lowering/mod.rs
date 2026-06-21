@@ -23,7 +23,7 @@ use std::{assert_matches, slice};
 
 use rustc_abi::FIRST_VARIANT;
 use rustc_ast::LitKind;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError, StashKey,
@@ -329,15 +329,6 @@ pub enum IsMethodCall {
 pub(crate) enum GenericArgPosition {
     Type,
     Value(IsMethodCall),
-}
-
-/// Whether to allow duplicate associated iten constraints in a trait ref, e.g.
-/// `Trait<Assoc = Ty, Assoc = Ty>`. This is forbidden in `dyn Trait<...>`
-/// but allowed everywhere else.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) enum OverlappingAsssocItemConstraints {
-    Allowed,
-    Forbidden,
 }
 
 /// A marker denoting that the generic arguments that were
@@ -956,7 +947,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         self_ty: Ty<'tcx>,
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
         predicate_filter: PredicateFilter,
-        overlapping_assoc_item_constraints: OverlappingAsssocItemConstraints,
     ) -> GenericArgCountResult {
         let tcx = self.tcx();
 
@@ -1135,10 +1125,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
         }
 
-        let mut dup_constraints = (overlapping_assoc_item_constraints
-            == OverlappingAsssocItemConstraints::Forbidden)
-            .then_some(FxIndexMap::default());
-
         for constraint in constraints {
             // Don't register any associated item constraints for negative bounds,
             // since we should have emitted an error for them earlier, and they
@@ -1157,7 +1143,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 poly_trait_ref,
                 constraint,
                 bounds,
-                dup_constraints.as_mut(),
                 constraint.span,
                 predicate_filter,
             );
@@ -3137,7 +3122,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     &mut bounds,
                     ty::List::empty(),
                     PredicateFilter::All,
-                    OverlappingAsssocItemConstraints::Allowed,
                 );
                 self.add_implicit_sizedness_bounds(
                     &mut bounds,

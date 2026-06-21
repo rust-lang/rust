@@ -26,8 +26,7 @@ use tracing::{debug, instrument};
 use super::HirTyLowerer;
 use crate::diagnostics::DynTraitAssocItemBindingMentionsSelf;
 use crate::hir_ty_lowering::{
-    GenericArgCountMismatch, ImpliedBoundsContext, OverlappingAsssocItemConstraints,
-    PredicateFilter, RegionInferReason,
+    GenericArgCountMismatch, ImpliedBoundsContext, PredicateFilter, RegionInferReason,
 };
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
@@ -70,7 +69,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 dummy_self,
                 &mut user_written_bounds,
                 PredicateFilter::SelfOnly,
-                OverlappingAsssocItemConstraints::Allowed,
             );
             if let Err(GenericArgCountMismatch { invalid_args, .. }) = result.correct {
                 potential_assoc_items.extend(invalid_args);

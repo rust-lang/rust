@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
@@ -18,8 +18,8 @@ use tracing::{debug, instrument};
 
 use crate::diagnostics;
 use crate::hir_ty_lowering::{
-    AssocItemQSelf, GenericsArgsErrExtend, HirTyLowerer, ImpliedBoundsContext,
-    OverlappingAsssocItemConstraints, PredicateFilter, RegionInferReason,
+    AssocItemQSelf, GenericsArgsErrExtend, HirTyLowerer, ImpliedBoundsContext, PredicateFilter,
+    RegionInferReason,
 };
 
 #[derive(Debug, Default)]
@@ -315,7 +315,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
         bound_vars: &'tcx ty::List<ty::BoundVariableKind<'tcx>>,
         predicate_filter: PredicateFilter,
-        overlapping_assoc_constraints: OverlappingAsssocItemConstraints,
     ) where
         'tcx: 'hir,
     {
@@ -340,7 +339,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         param_ty,
                         bounds,
                         predicate_filter,
-                        overlapping_assoc_constraints,
                     );
                 }
                 hir::GenericBound::Outlives(lifetime) => {
@@ -374,14 +372,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// the `trait_ref` here will be `for<'a> T: Iterator`.
     /// The `constraint` data however is from *inside* the binder
     /// (e.g., `&'a u32`) and hence may reference bound regions.
-    #[instrument(level = "debug", skip(self, bounds, duplicates, path_span))]
+    #[instrument(level = "debug", skip(self, bounds, path_span))]
     pub(super) fn lower_assoc_item_constraint(
         &self,
         hir_ref_id: hir::HirId,
         trait_ref: ty::PolyTraitRef<'tcx>,
         constraint: &hir::AssocItemConstraint<'tcx>,
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
-        duplicates: Option<&mut FxIndexMap<DefId, Span>>,
         path_span: Span,
         predicate_filter: PredicateFilter,
     ) -> Result<(), ErrorGuaranteed> {
@@ -436,20 +433,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 candidate.def_id(),
             )
             .expect("failed to find associated item");
-
-        if let Some(duplicates) = duplicates {
-            duplicates
-                .entry(assoc_item.def_id)
-                .and_modify(|prev_span| {
-                    self.dcx().emit_err(diagnostics::ValueOfAssociatedStructAlreadySpecified {
-                        span: constraint.span,
-                        prev_span: *prev_span,
-                        item_name: constraint.ident,
-                        def_path: tcx.def_path_str(assoc_item.container_id(tcx)),
-                    });
-                })
-                .or_insert(constraint.span);
-        }
 
         let projection_term = if let ty::AssocTag::Fn = assoc_tag {
             let bound_vars = tcx.late_bound_vars(constraint.hir_id);
@@ -597,7 +580,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             bounds,
                             projection_ty.bound_vars(),
                             predicate_filter,
-                            OverlappingAsssocItemConstraints::Allowed,
                         );
                     }
                     PredicateFilter::SelfOnly
