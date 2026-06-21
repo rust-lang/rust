@@ -280,45 +280,6 @@ pub(crate) struct UnknownCrateTypesSuggestion {
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[diagnostic::on_const]` can only be applied to non-const trait implementations")]
-pub(crate) struct DiagnosticOnConstOnlyForTraitImpls {
-    #[label("not a trait implementation")]
-    pub target_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("`#[diagnostic::on_move]` can only be applied to enums, structs or unions")]
-pub(crate) struct DiagnosticOnMoveOnlyForAdt;
-
-#[derive(Diagnostic)]
-#[diag("`#[diagnostic::on_unimplemented]` can only be applied to trait definitions")]
-pub(crate) struct DiagnosticOnUnimplementedOnlyForTraits;
-
-#[derive(Diagnostic)]
-#[diag(
-    "`#[diagnostic::on_unknown]` can only be applied to `use` statements and module declarations"
-)]
-pub(crate) struct DiagnosticOnUnknownInvalidTarget {
-    #[label("not an import or module")]
-    pub target_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("`#[diagnostic::on_unmatched_args]` can only be applied to macro definitions")]
-pub(crate) struct DiagnosticOnUnmatchedArgsOnlyForMacros;
-
-#[derive(Diagnostic)]
-#[diag("`#[diagnostic::on_type_error]` can only be applied to enums, structs or unions")]
-pub(crate) struct DiagnosticOnTypeErrorOnlyForAdt;
-
-#[derive(Diagnostic)]
-#[diag("`#[diagnostic::do_not_recommend]` can only be placed on trait implementations")]
-pub(crate) struct IncorrectDoNotRecommendLocation {
-    #[label("not a trait implementation")]
-    pub target_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("malformed `doc` attribute input")]
 #[warning(
     "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"

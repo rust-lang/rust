@@ -71,7 +71,7 @@ impl rustc_driver::Callbacks for PrirodaCompilerCalls {
         let ecx = create_ecx(tcx);
 
         let mut session = PrirodaContext::new(ecx);
-        let cli = CLI {};
+        let cli = Cli {};
         let result = cli.run_cli_loop(&mut session);
 
         match result.report_err() {
@@ -133,6 +133,10 @@ struct PrirodaContext<'tcx> {
 enum ResumeMode {
     /// Stop at the next visible MIR instruction.
     MirInstruction,
+    /// Stop at the next source line
+    ///
+    /// Take `Option` because some cases current state has no mapped to source code location
+    SourceLine(Option<(PathBuf, usize)>),
     /// Continue until reaching a breakpoint.
     Continue,
 }
@@ -159,9 +163,30 @@ impl<'tcx> PrirodaContext<'tcx> {
         Self { ecx, breakpoints: HashMap::new(), current_location: None, last_location: None }
     }
 
+    fn local_path(&self, location: &SourceLocation) -> Option<PathBuf> {
+        let source_map = self.ecx.tcx.sess.source_map();
+        location.local_path(source_map)
+    }
+
+    fn current_source_position(&self) -> Option<(PathBuf, usize)> {
+        let location = self.current_location.as_ref()?;
+        Some((self.local_path(location)?, location.line))
+    }
+
+    // Used to treat `continue` like a source-level step for breakpoint checks:
+    // several MIR locations can point at one source line, but they should only
+    // report that source breakpoint once.
+    fn last_source_position(&self) -> Option<(PathBuf, usize)> {
+        let location = self.last_location.as_ref()?;
+        Some((self.local_path(location)?, location.line))
+    }
+
     /// Step to the next visible MIR instruction.
-    fn step(&mut self) -> InterpResult<'tcx, StepResult> {
+    fn stepi(&mut self) -> InterpResult<'tcx, StepResult> {
         self.resume(ResumeMode::MirInstruction)
+    }
+    fn step(&mut self) -> InterpResult<'tcx, StepResult> {
+        self.resume(ResumeMode::SourceLine(self.current_source_position()))
     }
 
     /// Continue execution until reaching a breakpoint or propagating termination.
@@ -202,6 +227,26 @@ impl<'tcx> PrirodaContext<'tcx> {
                 {
                     return interp_ok(StepResult::Step);
                 }
+
+                ResumeMode::SourceLine(ref prev_location) => {
+                    match (prev_location, &self.current_location) {
+                        // We started from an unmapped source location. Stop at the first mapped source location we can show to the user.
+                        (None, Some(_)) => return interp_ok(StepResult::Step),
+
+                        (Some((prev_path, prev_line)), Some(current_location)) => {
+                            if let Some(current_path) = self.local_path(current_location) {
+                                // A source step stops when the visible source position changes to a different file or line.
+                                if *prev_path != current_path || *prev_line != current_location.line
+                                {
+                                    return interp_ok(StepResult::Step);
+                                }
+                            }
+                        }
+
+                        _ => {}
+                    }
+                }
+
                 ResumeMode::MirInstruction | ResumeMode::Continue => {}
             }
         }
@@ -248,21 +293,20 @@ impl<'tcx> PrirodaContext<'tcx> {
     }
 
     fn is_at_breakpoint(&self) -> bool {
-        // FIXME: avoid repeated stops when one source line maps to multiple MIR statements.
-        let Some(location) = &self.current_location else {
+        let Some(bp) = self.current_breakpoint() else {
             return false;
         };
 
-        let source_map = self.ecx.tcx.sess.source_map();
-        let Some(path) = &location.local_path(source_map) else {
-            return false;
-        };
+        // If the previous interpreter step had the same source position, this
+        // is another MIR location for the breakpoint we just reported.
+        self.last_source_position().as_ref() != Some(&bp)
+    }
 
-        let lines = match self.breakpoints.get(path) {
-            Some(lines) => lines,
-            None => return false,
-        };
-        lines.contains(&location.line)
+    fn current_breakpoint(&self) -> Option<(PathBuf, usize)> {
+        let (path, line) = self.current_source_position()?;
+        let lines = self.breakpoints.get(&path)?;
+
+        if lines.contains(&line) { Some((path, line)) } else { None }
     }
 
     fn resolve_current_location(&self) -> Option<SourceLocation> {
@@ -276,26 +320,41 @@ impl<'tcx> PrirodaContext<'tcx> {
         let source_map = self.ecx.tcx.sess.source_map();
         let loc = source_map.lookup_char_pos(span.lo());
 
-        Some(SourceLocation { span: span, line: loc.line })
+        Some(SourceLocation { span, line: loc.line })
     }
 
     fn run_command(&mut self, command: DebuggerCommand) -> InterpResult<'tcx, CommandResult> {
         match command {
+            DebuggerCommand::StepI => self.stepi().map(CommandResult::ExecutionStopped),
             DebuggerCommand::Step => self.step().map(CommandResult::ExecutionStopped),
             DebuggerCommand::Continue =>
                 self.continue_execution().map(CommandResult::ExecutionStopped),
             DebuggerCommand::Breakpoint(path, line) =>
                 interp_ok(CommandResult::BreakpointResult(self.set_breakpoint(path, line))),
+            DebuggerCommand::ListLocals => interp_ok(CommandResult::Locals(self.list_locals())),
             DebuggerCommand::TerminateSession => interp_ok(CommandResult::TerminateSession),
         }
+    }
+
+    /// Returns the names of all user-visible locals in the innermost stack frame.
+    ///
+    /// Uses `var_debug_info` from the MIR body, which is the same source that
+    /// DWARF debug info is built from, so the names match what the user wrote.
+    fn list_locals(&self) -> Vec<String> {
+        let Some(frame) = self.ecx.active_thread_stack().last() else {
+            return Vec::new();
+        };
+        frame.body().var_debug_info.iter().map(|info| info.name.to_string()).collect()
     }
 }
 
 enum DebuggerCommand {
+    StepI,
     Step,
     TerminateSession,
     Continue,
     Breakpoint(PathBuf, usize),
+    ListLocals,
 }
 
 enum BreakpointSetResult {
@@ -307,14 +366,15 @@ enum BreakpointSetResult {
 enum CommandResult {
     ExecutionStopped(StepResult),
     BreakpointResult(BreakpointSetResult),
+    Locals(Vec<String>),
     // FIXME: distinguish terminating the debugger session from disconnecting a
     // frontend and terminating the interpreted program once multiple frontends exist.
     TerminateSession,
 }
 
-struct CLI;
+struct Cli;
 
-impl CLI {
+impl Cli {
     pub fn run_cli_loop<'tcx>(&self, session: &mut PrirodaContext<'tcx>) -> InterpResult<'tcx> {
         loop {
             print!("(priroda) ");
@@ -334,7 +394,7 @@ impl CLI {
                         if matches!(result, StepResult::Breakpoint) {
                             println!("Hit breakpoint");
                         }
-                        self.print_location(&session);
+                        self.print_location(session);
                     }
                     CommandResult::BreakpointResult(res) =>
                         match res {
@@ -342,6 +402,14 @@ impl CLI {
                                 println!("breakpoint added: {}:{}", path.display(), line),
 
                             BreakpointSetResult::Duplicate => println!("Duplicate breakpoint"),
+                        },
+                    CommandResult::Locals(names) =>
+                        if names.is_empty() {
+                            println!("no locals");
+                        } else {
+                            for name in &names {
+                                println!("{name}");
+                            }
                         },
                     CommandResult::TerminateSession => {
                         println!("quitting");
@@ -367,21 +435,24 @@ impl CLI {
         let args = parts.next().unwrap_or("").trim();
 
         match command {
-            "" | "s" | "step" => Some(DebuggerCommand::Step),
+            // FIXME: empty line should repats last command user typed not exeute specific command.
+            "" | "si" | "stepi" => Some(DebuggerCommand::StepI),
+            "s" | "step" => Some(DebuggerCommand::Step),
             "q" | "quit" => Some(DebuggerCommand::TerminateSession),
             "c" | "continue" => Some(DebuggerCommand::Continue),
             "b" | "break" => self.parse_breakpoint(args),
+            "l" | "locals" => Some(DebuggerCommand::ListLocals),
             _ => None,
         }
     }
 
     fn print_location(&self, session: &PrirodaContext) {
-        let source_map = session.ecx.tcx.sess.source_map();
         match &session.current_location {
             Some(location) =>
-                if let Some(path) = location.local_path(source_map) {
+                if let Some(path) = session.local_path(location) {
                     println!("{}:{}", path.display(), location.line);
                 } else {
+                    let source_map = session.ecx.tcx.sess.source_map();
                     println!("{}", source_map.span_to_diagnostic_string(location.span));
                 },
             None => println!("no-location"),
