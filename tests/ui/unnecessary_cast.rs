@@ -1,7 +1,9 @@
 //@aux-build:extern_fake_libc.rs
+#![feature(const_trait_impl, const_ops)]
 #![warn(clippy::unnecessary_cast)]
 #![allow(
     clippy::borrow_as_ptr,
+    clippy::identity_op,
     clippy::multiple_bound_locations,
     clippy::no_effect,
     clippy::nonstandard_macro_braces,
@@ -655,4 +657,67 @@ fn issue16475() -> *const u8 {
         *(&NONE as *const _ as *const _ as *const *const u8 as *const *const u8)
         //~^ unnecessary_cast
     }
+}
+
+const ISSUE_11882_TEST: u64 = (!0 as u64).overflowing_shr(1_u32).0;
+//~^ unnecessary_cast
+const ISSUE_11882_TEST2: u64 = (!0_u64 as u64).overflowing_shr(1_u32).0;
+//~^ unnecessary_cast
+const ISSUE_11882_TEST3: u64 = (!not(!0_u64) as u64).overflowing_shr(1_u32).0;
+//~^ unnecessary_cast
+const ISSUE_11882_TEST4: u64 = (!0 as u64 + 0).overflowing_shr(1_u32).0;
+//~^ unnecessary_cast
+const ISSUE_11882_TEST5: u64 = (!(0 as u64 + 0)).overflowing_shr(1_u32).0;
+//~^ unnecessary_cast
+const ISSUE_11882_TEST6: u64 = (!((0 + 0) as u64)).overflowing_shr(1_u32).0;
+
+const ISSUE_11882_CHK1: u64 = not(!0 as u64).overflowing_shr(1_u32).0;
+//~^ unnecessary_cast
+const ISSUE_11882_CHK2: u64 = (!not(0_u64) as u64).overflowing_shr(1_u32).0;
+//~^ unnecessary_cast
+const ISSUE_11882_CHK3: u64 = (!not(0 as u64)).overflowing_shr(1_u32).0;
+//~^ unnecessary_cast
+const ISSUE_11882_CHK4: u64 = not(!0 as u64 + 0).overflowing_shr(1_u32).0;
+//~^ unnecessary_cast
+
+// Make sure that the calculated values aren't changed by the fixes.
+const _: () = {
+    assert!(0x7f_ff_ff_ff_ff_ff_ff_ffu64 == ISSUE_11882_TEST);
+    assert!(0x7f_ff_ff_ff_ff_ff_ff_ffu64 == ISSUE_11882_TEST2);
+    assert!(0x7f_ff_ff_ff_ff_ff_ff_ffu64 == ISSUE_11882_TEST3);
+    assert!(0x7f_ff_ff_ff_ff_ff_ff_ffu64 == ISSUE_11882_TEST4);
+    assert!(0x7f_ff_ff_ff_ff_ff_ff_ffu64 == ISSUE_11882_TEST5);
+    assert!(0x7f_ff_ff_ff_ff_ff_ff_ffu64 == ISSUE_11882_TEST6);
+    assert!(0 == ISSUE_11882_CHK1);
+    assert!(0 == ISSUE_11882_CHK2);
+    assert!(0 == ISSUE_11882_CHK3);
+    assert!(0 == ISSUE_11882_CHK4);
+};
+
+fn issue_11882() {
+    // the non-const version of the tests
+    let issue_11882_test: u64 = (!0 as u64).overflowing_shr(1_u32).0;
+    //~^ unnecessary_cast
+    let issue_11882_test2: u64 = (!0_u64 as u64).overflowing_shr(1_u32).0;
+    //~^ unnecessary_cast
+    let issue_11882_test3: u64 = (!not(!0_u64) as u64).overflowing_shr(1_u32).0;
+    //~^ unnecessary_cast
+    let issue_11882_test4: u64 = (!0 as u64 + 0).overflowing_shr(1_u32).0;
+    //~^ unnecessary_cast
+    let issue_11882_test5: u64 = (!(0 as u64 + 0)).overflowing_shr(1_u32).0;
+    //~^ unnecessary_cast
+    let issue_11882_test6: u64 = (!((0 + 0) as u64)).overflowing_shr(1_u32).0;
+
+    let issue_11882_chk1: u64 = not(!0 as u64).overflowing_shr(1_u32).0;
+    //~^ unnecessary_cast
+    let issue_11882_chk2: u64 = (!not(0_u64) as u64).overflowing_shr(1_u32).0;
+    //~^ unnecessary_cast
+    let issue_11882_chk3: u64 = (!not(0 as u64)).overflowing_shr(1_u32).0;
+    //~^ unnecessary_cast
+    let issue_11882_chk4: u64 = not(!0 as u64 + 0).overflowing_shr(1_u32).0;
+    //~^ unnecessary_cast
+}
+
+const fn not<T: const std::ops::Not<Output = T>>(x: T) -> T {
+    !x
 }
