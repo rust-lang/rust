@@ -8,6 +8,7 @@ use tracing::debug;
 use super::debugger::DebuggerCommands;
 use super::{Debugger, Emit, ProcRes, TestCx, Truncated, WillExecute};
 use crate::debuggers::extract_gdb_version;
+use crate::util::ArgFileCommand;
 
 impl TestCx<'_> {
     pub(super) fn run_debuginfo_test(&self) {
@@ -468,7 +469,7 @@ impl TestCx<'_> {
         // make sure `PATH` points to all the dlls necessary to run the debugee
         let path = prepend_to_path(&self.config.target_run_lib_path);
 
-        let mut cmd = Command::new(lldb);
+        let mut cmd = ArgFileCommand::new(lldb);
         cmd.arg("--one-line")
             .arg("script --language python -- import lldb_batchmode; lldb_batchmode.main()")
             .env("LLDB_BATCHMODE_TARGET_PATH", test_executable)
@@ -477,7 +478,7 @@ impl TestCx<'_> {
             .env("PYTHONPATH", pythonpath)
             .env("PATH", path);
 
-        self.run_command_to_procres(&mut cmd)
+        self.run_command_to_procres(cmd)
     }
 }
 
