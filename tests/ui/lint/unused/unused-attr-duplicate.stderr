@@ -265,19 +265,6 @@ LL | #[track_caller]
    | ^^^^^^^^^^^^^^^
 
 error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:93:5
-   |
-LL |     #[link_name = "rust_dbg_extern_identity_u32"]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:92:5
-   |
-LL |     #[link_name = "this_does_not_exist"]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
-error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:99:1
    |
 LL | #[export_name = "exported_symbol_name2"]
@@ -328,13 +315,13 @@ LL | #[link_section = "__TEXT,__text"]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:94:5
+  --> $DIR/unused-attr-duplicate.rs:93:5
    |
 LL |     #[link_name = "rust_dbg_extern_identity_u32"]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:93:5
+  --> $DIR/unused-attr-duplicate.rs:92:5
    |
 LL |     #[link_name = "this_does_not_exist"]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
