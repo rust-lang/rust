@@ -91,7 +91,7 @@ fn stmt_needs_ordered_drop(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
     };
     !local.pat.walk_short(|pat| {
         if let PatKind::Binding(.., None) = pat.kind {
-            !needs_ordered_drop(cx, cx.typeck_results().pat_ty(pat))
+            !needs_ordered_drop(cx, cx.typeck_results.pat_ty(pat))
         } else {
             true
         }
@@ -164,7 +164,7 @@ fn assignment_suggestions<'tcx>(
     let mut assignments = Vec::new();
 
     for expr in exprs {
-        let ty = cx.typeck_results().expr_ty(expr);
+        let ty = cx.typeck_results.expr_ty(expr);
 
         if ty.is_never() {
             continue;
@@ -215,7 +215,7 @@ fn first_usage<'tcx>(
     local_stmt_id: HirId,
     block: &'tcx Block<'tcx>,
 ) -> Option<Usage<'tcx>> {
-    let significant_drop = needs_ordered_drop(cx, cx.typeck_results().node_type(binding_id));
+    let significant_drop = needs_ordered_drop(cx, cx.typeck_results.node_type(binding_id));
 
     block
         .stmts

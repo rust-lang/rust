@@ -507,7 +507,7 @@ pub fn eval_int(cx: &LateContext<'_>, e: &Expr<'_>) -> Option<FullInt> {
         {
             Some(FullInt::S(val.0.cast_signed().wrapping_neg()))
         },
-        _ if let ty = cx.typeck_results().expr_ty(e)
+        _ if let ty = cx.typeck_results.expr_ty(e)
             && let ty::Int(_) | ty::Uint(_) = *ty.kind() =>
         {
             ConstEvalCtxt::new(cx).eval(e).and_then(|x| x.int_value(cx.tcx, ty))
@@ -536,7 +536,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
         Self {
             tcx: cx.tcx,
             typing_env: cx.typing_env(),
-            typeck: cx.typeck_results(),
+            typeck: cx.typeck_results,
             source: Cell::new(ConstantSource::Local),
             ctxt: Cell::new(SyntaxContext::root()),
         }

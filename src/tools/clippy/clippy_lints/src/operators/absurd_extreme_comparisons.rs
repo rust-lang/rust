@@ -64,8 +64,8 @@ enum AbsurdComparisonResult {
 
 fn is_cast_between_fixed_and_target<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
     if let ExprKind::Cast(cast_exp, _) = expr.kind {
-        let precast_ty = cx.typeck_results().expr_ty(cast_exp);
-        let cast_ty = cx.typeck_results().expr_ty(expr);
+        let precast_ty = cx.typeck_results.expr_ty(cast_exp);
+        let cast_ty = cx.typeck_results.expr_ty(expr);
 
         return is_isize_or_usize(precast_ty) != is_isize_or_usize(cast_ty);
     }
@@ -83,7 +83,7 @@ fn detect_absurd_comparison<'tcx>(
     use ExtremeType::{Maximum, Minimum};
     // absurd comparison only makes sense on primitive types
     // primitive types don't implement comparison operators with each other
-    if cx.typeck_results().expr_ty(lhs) != cx.typeck_results().expr_ty(rhs) {
+    if cx.typeck_results.expr_ty(lhs) != cx.typeck_results.expr_ty(rhs) {
         return None;
     }
 
@@ -119,7 +119,7 @@ fn detect_absurd_comparison<'tcx>(
 }
 
 fn detect_extreme_expr<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<ExtremeExpr<'tcx>> {
-    let ty = cx.typeck_results().expr_ty(expr);
+    let ty = cx.typeck_results.expr_ty(expr);
 
     let cv = ConstEvalCtxt::new(cx).eval(expr)?;
 

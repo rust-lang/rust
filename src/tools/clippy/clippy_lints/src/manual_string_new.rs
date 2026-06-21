@@ -43,7 +43,7 @@ impl LateLintPass<'_> for ManualStringNew {
             return;
         }
 
-        let ty = cx.typeck_results().expr_ty(expr);
+        let ty = cx.typeck_results.expr_ty(expr);
         match ty.kind() {
             ty::Adt(adt_def, _) if adt_def.is_struct() => {
                 if cx.tcx.lang_items().string() != Some(adt_def.did()) {

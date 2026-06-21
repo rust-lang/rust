@@ -22,7 +22,7 @@ pub(super) fn check(
         && Some(id) == cx.tcx.lang_items().option_some_variant()
     {
         let mut applicability = Applicability::MachineApplicable;
-        let self_ty = cx.typeck_results().expr_ty_adjusted(args[0].0).peel_refs();
+        let self_ty = cx.typeck_results.expr_ty_adjusted(args[0].0).peel_refs();
 
         if *self_ty.kind() != ty::Str {
             return false;

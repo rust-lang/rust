@@ -155,7 +155,7 @@ pub(super) fn check<'tcx>(
         fn is_borrow_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
             matches!(expr.kind, ExprKind::AddrOf(..))
                 || cx
-                    .typeck_results()
+                    .typeck_results
                     .expr_adjustments(expr)
                     .first()
                     .is_some_and(|adj| matches!(adj.kind, Adjust::Borrow(_)))
@@ -371,7 +371,7 @@ fn contains_unsuffixed_numeric_literal<'e>(expr: &'e Expr<'e>) -> bool {
 fn is_inference_sensitive_inner_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     match expr.kind {
         ExprKind::MethodCall(..) | ExprKind::Binary(..) | ExprKind::Unary(..) | ExprKind::Index(..) => cx
-            .typeck_results()
+            .typeck_results
             .type_dependent_def_id(expr.hir_id)
             .and_then(|def_id| cx.tcx.opt_associated_item(def_id))
             .is_some_and(|assoc| assoc.trait_container(cx.tcx).is_some()),
@@ -469,7 +469,7 @@ fn walk_receiver_path_method_call(
 
     let passthrough = !has_explicit_type_or_const_args(segment.args)
         && cx
-            .typeck_results()
+            .typeck_results
             .type_dependent_def_id(parent.hir_id)
             .is_some_and(|def_id| output_depends_on_input_param(cx, def_id, arg_index + 1));
 
@@ -478,7 +478,7 @@ fn walk_receiver_path_method_call(
             || args.iter().any(|arg| {
                 arg.hir_id != current_hir_id
                     && get_numeric_literal(arg).is_none()
-                    && !cx.typeck_results().expr_ty(arg).is_primitive()
+                    && !cx.typeck_results.expr_ty(arg).is_primitive()
             })
         {
             ReceiverPathResult::Stop(true)
@@ -552,7 +552,7 @@ fn walk_receiver_path_step(cx: &LateContext<'_>, current_hir_id: HirId, mode: Re
             {
                 if matches!(mode, ReceiverPathMode::FindLintBlockingContext) {
                     let sibling = if left.hir_id == current_hir_id { right } else { left };
-                    if get_numeric_literal(sibling).is_none() && !cx.typeck_results().expr_ty(sibling).is_primitive() {
+                    if get_numeric_literal(sibling).is_none() && !cx.typeck_results.expr_ty(sibling).is_primitive() {
                         ReceiverPathResult::Stop(true)
                     } else {
                         ReceiverPathResult::Continue(parent.hir_id)

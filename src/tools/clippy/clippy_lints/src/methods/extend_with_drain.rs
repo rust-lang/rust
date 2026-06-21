@@ -9,18 +9,18 @@ use rustc_lint::LateContext;
 use super::EXTEND_WITH_DRAIN;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg: &Expr<'_>) {
-    let ty = cx.typeck_results().expr_ty(recv).peel_refs();
+    let ty = cx.typeck_results.expr_ty(recv).peel_refs();
     if ty.is_diag_item(cx, sym::Vec)
         //check source object
         && let ExprKind::MethodCall(src_method, drain_vec, [drain_arg], _) = &arg.kind
         && src_method.ident.name == sym::drain
-        && let src_ty = cx.typeck_results().expr_ty(drain_vec)
+        && let src_ty = cx.typeck_results.expr_ty(drain_vec)
         //check if actual src type is mutable for code suggestion
         && let immutable = src_ty.is_mutable_ptr()
         && let src_ty = src_ty.peel_refs()
         && src_ty.is_diag_item(cx, sym::Vec)
         //check drain range
-        && let src_ty_range = cx.typeck_results().expr_ty(drain_arg).peel_refs()
+        && let src_ty_range = cx.typeck_results.expr_ty(drain_arg).peel_refs()
         && src_ty_range.is_lang_item(cx, LangItem::RangeFull)
     {
         let mut applicability = Applicability::MachineApplicable;

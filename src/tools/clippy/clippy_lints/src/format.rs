@@ -81,7 +81,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessFormat {
                         && let FormatArgsPiece::Placeholder(placeholder) = piece
                         && placeholder.format_trait == FormatTrait::Display
                         && placeholder.format_options == FormatOptions::default()
-                        && match cx.typeck_results().expr_ty(value).peel_refs().kind() {
+                        && match cx.typeck_results.expr_ty(value).peel_refs().kind() {
                             ty::Adt(adt, _) => Some(adt.did()) == cx.tcx.lang_items().string(),
                             ty::Str => true,
                             _ => false,

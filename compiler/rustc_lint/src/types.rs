@@ -225,7 +225,7 @@ fn lint_nan<'tcx>(
         let expr = expr.peel_blocks().peel_borrows();
         match expr.kind {
             ExprKind::Path(qpath) => {
-                let Some(def_id) = cx.typeck_results().qpath_res(&qpath, expr.hir_id).opt_def_id()
+                let Some(def_id) = cx.typeck_results.qpath_res(&qpath, expr.hir_id).opt_def_id()
                 else {
                     return false;
                 };
@@ -327,10 +327,10 @@ fn lint_wide_pointer<'tcx>(
     let l = l.peel_borrows();
     let r = r.peel_borrows();
 
-    let Some(l_ty) = cx.typeck_results().expr_ty_opt(l) else {
+    let Some(l_ty) = cx.typeck_results.expr_ty_opt(l) else {
         return;
     };
-    let Some(r_ty) = cx.typeck_results().expr_ty_opt(r) else {
+    let Some(r_ty) = cx.typeck_results.expr_ty_opt(r) else {
         return;
     };
 
@@ -441,8 +441,8 @@ fn lint_fn_pointer<'tcx>(
     let l = l.peel_borrows();
     let r = r.peel_borrows();
 
-    let Some(l_ty) = cx.typeck_results().expr_ty_opt(l) else { return };
-    let Some(r_ty) = cx.typeck_results().expr_ty_opt(r) else { return };
+    let Some(l_ty) = cx.typeck_results.expr_ty_opt(l) else { return };
+    let Some(r_ty) = cx.typeck_results.expr_ty_opt(r) else { return };
 
     // Remove any references as `==` will deref through them (and count the
     // number of references removed, for latter).
@@ -578,7 +578,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                 lint_fn_pointer(cx, e, cmpop, l, r);
             }
             hir::ExprKind::MethodCall(_, l, [r], _)
-                if let Some(def_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
+                if let Some(def_id) = cx.typeck_results.type_dependent_def_id(e.hir_id)
                     && let Some(diag_item) = cx.tcx.get_diagnostic_name(def_id)
                     && let Some(cmpop) = diag_item_cmpop(diag_item) =>
             {
@@ -623,7 +623,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
             // Normalize the binop so that the literal is always on the RHS in
             // the comparison
             let norm_binop = if swap { rev_binop(binop) } else { binop };
-            match *cx.typeck_results().node_type(expr.hir_id).kind() {
+            match *cx.typeck_results.node_type(expr.hir_id).kind() {
                 ty::Int(int_ty) => {
                     let (min, max) = int_ty_range(int_ty);
                     let lit_val: i128 = match lit.kind {
@@ -1040,7 +1040,7 @@ impl InvalidAtomicOrdering {
     ) -> Option<(Symbol, &'hir [Expr<'hir>])> {
         if let ExprKind::MethodCall(method_path, _, args, _) = &expr.kind
             && recognized_names.contains(&method_path.ident.name)
-            && let Some(m_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+            && let Some(m_def_id) = cx.typeck_results.type_dependent_def_id(expr.hir_id)
             // skip extension traits, only lint functions from the standard library
             && let Some(impl_did) = cx.tcx.inherent_impl_of_assoc(m_def_id)
             && let Some(adt) = cx.tcx.type_of(impl_did).instantiate_identity().skip_norm_wip().ty_adt_def()

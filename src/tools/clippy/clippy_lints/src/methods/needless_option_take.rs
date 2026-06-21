@@ -34,7 +34,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, recv: &'
 }
 
 fn is_expr_option(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    let expr_type = cx.typeck_results().expr_ty(expr);
+    let expr_type = cx.typeck_results.expr_ty(expr);
     expr_type.is_diag_item(cx, sym::Option)
 }
 

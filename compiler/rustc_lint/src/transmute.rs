@@ -124,7 +124,7 @@ impl<'tcx> LateLintPass<'tcx> for CheckTransmutes {
         };
         let body_owner_def_id = cx.tcx.hir_enclosing_body_owner(expr.hir_id);
         let const_context = cx.tcx.hir_body_const_context(body_owner_def_id);
-        let args = cx.typeck_results().node_args(callee.hir_id);
+        let args = cx.typeck_results.node_args(callee.hir_id);
 
         let src = args.type_at(0);
         let dst = args.type_at(1);

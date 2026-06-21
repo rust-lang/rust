@@ -18,7 +18,7 @@ pub fn check<'tcx>(
     if let Some(range) = higher::Range::hir(cx, arg)
         && let Some(range_start) = range.start
         && let None = range.end
-        && let ty = cx.typeck_results().expr_ty_adjusted(range_start)
+        && let ty = cx.typeck_results.expr_ty_adjusted(range_start)
         && (ty.is_integral() || ty.is_char())
     {
         let mut loop_visitor = LoopVisitor::new(cx, label);

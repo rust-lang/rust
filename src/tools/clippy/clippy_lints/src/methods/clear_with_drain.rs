@@ -27,14 +27,14 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, span
 }
 
 fn match_acceptable_type(cx: &LateContext<'_>, expr: &Expr<'_>, types: &[rustc_span::Symbol]) -> bool {
-    let expr_ty = cx.typeck_results().expr_ty(expr).peel_refs();
+    let expr_ty = cx.typeck_results.expr_ty(expr).peel_refs();
     types.iter().any(|&ty| expr_ty.is_diag_item(cx, ty))
     // String type is a lang item but not a diagnostic item for now so we need a separate check
         || expr_ty.is_lang_item(cx, LangItem::String)
 }
 
 fn suggest(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, span: Span) {
-    if let Some(adt) = cx.typeck_results().expr_ty(recv).ty_adt_def()
+    if let Some(adt) = cx.typeck_results.expr_ty(recv).ty_adt_def()
     // Use `opt_item_name` while `String` is not a diagnostic item
         && let Some(ty_name) = cx.tcx.opt_item_name(adt.did())
     {

@@ -40,7 +40,7 @@ fn check_op(cx: &LateContext<'_>, outer: &Expr<'_>, expr: &Expr<'_>, other: &Exp
         return;
     }
 
-    let typeck = cx.typeck_results();
+    let typeck = cx.typeck_results;
     let (arg, arg_span) = match expr.kind {
         ExprKind::MethodCall(_, arg, [], _)
             if typeck

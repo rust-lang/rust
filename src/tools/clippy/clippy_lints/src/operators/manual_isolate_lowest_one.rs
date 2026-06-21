@@ -137,17 +137,17 @@ fn is_local_path(expr: &Expr<'_>) -> bool {
 
 fn is_primitive_int(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     matches!(
-        cx.typeck_results().expr_ty_adjusted(expr).kind(),
+        cx.typeck_results.expr_ty_adjusted(expr).kind(),
         ty::Int(_) | ty::Uint(_)
     )
 }
 
 fn is_signed_int(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    matches!(cx.typeck_results().expr_ty_adjusted(expr).kind(), ty::Int(_))
+    matches!(cx.typeck_results.expr_ty_adjusted(expr).kind(), ty::Int(_))
 }
 
 fn is_nonzero_int(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    if let ty::Adt(adt, args) = cx.typeck_results().expr_ty_adjusted(expr).kind()
+    if let ty::Adt(adt, args) = cx.typeck_results.expr_ty_adjusted(expr).kind()
         && cx.tcx.is_diagnostic_item(sym::NonZero, adt.did())
     {
         matches!(args.type_at(0).kind(), ty::Int(_) | ty::Uint(_))
@@ -157,7 +157,7 @@ fn is_nonzero_int(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 }
 
 fn is_nonzero_signed_int(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    if let ty::Adt(adt, args) = cx.typeck_results().expr_ty_adjusted(expr).kind()
+    if let ty::Adt(adt, args) = cx.typeck_results.expr_ty_adjusted(expr).kind()
         && cx.tcx.is_diagnostic_item(sym::NonZero, adt.did())
     {
         matches!(args.type_at(0).kind(), ty::Int(_))

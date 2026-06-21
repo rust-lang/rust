@@ -48,7 +48,7 @@ fn expr_or_init<'a, 'b, 'tcx: 'b>(cx: &LateContext<'tcx>, mut expr: &'a Expr<'b>
     while let Some(init) = expr
         .res_local_id()
         .and_then(|id| find_binding_init(cx, id))
-        .filter(|init| cx.typeck_results().expr_adjustments(init).is_empty())
+        .filter(|init| cx.typeck_results.expr_adjustments(init).is_empty())
         .filter(|init| !is_under_cfg(cx, init.hir_id))
     {
         expr = init;

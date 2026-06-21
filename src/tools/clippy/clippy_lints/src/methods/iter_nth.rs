@@ -16,10 +16,10 @@ pub(super) fn check<'tcx>(
     iter_span: Span,
     nth_span: Span,
 ) -> bool {
-    let caller_type = match cx.typeck_results().expr_ty(iter_recv).peel_refs().opt_diag_name(cx) {
+    let caller_type = match cx.typeck_results.expr_ty(iter_recv).peel_refs().opt_diag_name(cx) {
         Some(sym::Vec) => "`Vec`",
         Some(sym::VecDeque) => "`VecDeque`",
-        _ if cx.typeck_results().expr_ty_adjusted(iter_recv).peel_refs().is_slice() => "slice",
+        _ if cx.typeck_results.expr_ty_adjusted(iter_recv).peel_refs().is_slice() => "slice",
         // caller is not a type that we want to lint
         _ => return false,
     };

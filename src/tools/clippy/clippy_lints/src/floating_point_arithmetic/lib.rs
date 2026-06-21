@@ -17,7 +17,7 @@ pub(super) fn prepare_receiver_sugg<'a>(
         expr = inner_expr;
     }
 
-    if let ty::Float(float_ty) = cx.typeck_results().expr_ty(expr).kind()
+    if let ty::Float(float_ty) = cx.typeck_results.expr_ty(expr).kind()
         // if the expression is a float literal and it is unsuffixed then
         // add a suffix so the suggestion is valid and unambiguous
         && let ExprKind::Lit(lit) = expr.kind

@@ -17,8 +17,8 @@ fn is_float_mul_expr<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(&'
         lhs,
         rhs,
     ) = expr.kind
-        && cx.typeck_results().expr_ty(lhs).is_floating_point()
-        && cx.typeck_results().expr_ty(rhs).is_floating_point()
+        && cx.typeck_results.expr_ty(lhs).is_floating_point()
+        && cx.typeck_results.expr_ty(rhs).is_floating_point()
     {
         return Some((lhs, rhs));
     }
@@ -73,13 +73,13 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
     };
 
     let (recv, arg1, arg2, is_from_rhs) = if let Some((inner_lhs, inner_rhs)) = is_float_mul_expr(cx, rhs)
-        && cx.typeck_results().expr_ty(lhs).is_floating_point()
+        && cx.typeck_results.expr_ty(lhs).is_floating_point()
         && !has_ambiguous_type(inner_lhs)
     {
         (inner_lhs, inner_rhs, lhs, true)
     } else if !is_assign
         && let Some((inner_lhs, inner_rhs)) = is_float_mul_expr(cx, lhs)
-        && cx.typeck_results().expr_ty(rhs).is_floating_point()
+        && cx.typeck_results.expr_ty(rhs).is_floating_point()
         && !has_ambiguous_type(inner_lhs)
     {
         (inner_lhs, inner_rhs, rhs, false)

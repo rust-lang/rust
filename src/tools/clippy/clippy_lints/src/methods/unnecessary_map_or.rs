@@ -52,7 +52,7 @@ pub(super) fn check<'a>(
         return;
     };
 
-    let typeck = cx.typeck_results();
+    let typeck = cx.typeck_results;
 
     let recv_ty = typeck.expr_ty_adjusted(recv);
 

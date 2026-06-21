@@ -59,7 +59,7 @@ pub enum PathCheck {
 pub struct SpanlessEq<'a, 'tcx> {
     /// Context used to evaluate constant expressions.
     cx: &'a LateContext<'tcx>,
-    maybe_typeck_results: Option<(&'tcx TypeckResults<'tcx>, &'tcx TypeckResults<'tcx>)>,
+    typeck_results: (&'tcx TypeckResults<'tcx>, &'tcx TypeckResults<'tcx>),
     allow_side_effects: bool,
     expr_fallback: Option<Box<SpanlessEqCallback<'a, 'tcx>>>,
     path_check: PathCheck,
@@ -69,7 +69,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
     pub fn new(cx: &'a LateContext<'tcx>) -> Self {
         Self {
             cx,
-            maybe_typeck_results: cx.maybe_typeck_results().map(|x| (x, x)),
+            typeck_results: (cx.typeck_results, cx.typeck_results),
             allow_side_effects: true,
             expr_fallback: None,
             path_check: PathCheck::default(),
@@ -183,12 +183,10 @@ impl HirEqInterExpr<'_, '_, '_> {
             (StmtKind::Let(l), StmtKind::Let(r)) => {
                 // This additional check ensures that the type of the locals are equivalent even if the init
                 // expression or type have some inferred parts.
-                if let Some((typeck_lhs, typeck_rhs)) = self.inner.maybe_typeck_results {
-                    let l_ty = typeck_lhs.pat_ty(l.pat);
-                    let r_ty = typeck_rhs.pat_ty(r.pat);
-                    if l_ty != r_ty {
-                        return false;
-                    }
+                let l_ty = self.inner.typeck_results.0.pat_ty(l.pat);
+                let r_ty = self.inner.typeck_results.1.pat_ty(r.pat);
+                if l_ty != r_ty {
+                    return false;
                 }
 
                 // eq_pat adds the HirIds to the locals map. We therefore call it last to make sure that
@@ -481,15 +479,18 @@ impl HirEqInterExpr<'_, '_, '_> {
 
     pub fn eq_body(&mut self, left: BodyId, right: BodyId) -> bool {
         // swap out TypeckResults when hashing a body
-        let old_maybe_typeck_results = self.inner.maybe_typeck_results.replace((
-            self.inner.cx.tcx.typeck_body(left),
-            self.inner.cx.tcx.typeck_body(right),
-        ));
+        let old_typeck_results = mem::replace(
+            &mut self.inner.typeck_results,
+            (
+                self.inner.cx.tcx.typeck_body(left),
+                self.inner.cx.tcx.typeck_body(right),
+            ),
+        );
         let res = self.eq_expr(
             self.inner.cx.tcx.hir_body(left).value,
             self.inner.cx.tcx.hir_body(right).value,
         );
-        self.inner.maybe_typeck_results = old_maybe_typeck_results;
+        self.inner.typeck_results = old_typeck_results;
         res
     }
 
@@ -497,12 +498,11 @@ impl HirEqInterExpr<'_, '_, '_> {
     pub fn eq_expr(&mut self, left: &Expr<'_>, right: &Expr<'_>) -> bool {
         match self.check_ctxt(left.span.ctxt(), right.span.ctxt()) {
             None => {
-                if let Some((typeck_lhs, typeck_rhs)) = self.inner.maybe_typeck_results
-                    && typeck_lhs.expr_ty(left) == typeck_rhs.expr_ty(right)
+                if self.inner.typeck_results.0.expr_ty(left) == self.inner.typeck_results.1.expr_ty(right)
                     && let (Some(l), Some(r)) = (
-                        ConstEvalCtxt::with_env(self.inner.cx.tcx, self.inner.cx.typing_env(), typeck_lhs)
+                        ConstEvalCtxt::with_env(self.inner.cx.tcx, self.inner.cx.typing_env(), self.inner.typeck_results.0)
                             .eval_local(left, self.eval_ctxt),
-                        ConstEvalCtxt::with_env(self.inner.cx.tcx, self.inner.cx.typing_env(), typeck_rhs)
+                        ConstEvalCtxt::with_env(self.inner.cx.tcx, self.inner.cx.typing_env(), self.inner.typeck_results.1)
                             .eval_local(right, self.eval_ctxt),
                     )
                     && l == r
@@ -670,15 +670,12 @@ impl HirEqInterExpr<'_, '_, '_> {
             ) => false,
         };
         (is_eq && (!self.should_ignore(left) || !self.should_ignore(right)))
-            || self
-                .inner
-                .maybe_typeck_results
-                .is_some_and(|(left_typeck_results, right_typeck_results)| {
-                    self.inner
-                        .expr_fallback
-                        .as_mut()
-                        .is_some_and(|f| f(left_typeck_results, left, right_typeck_results, right))
-                })
+            || self.inner
+                .expr_fallback
+                .as_mut()
+                .is_some_and(|f| f(
+                    self.inner.typeck_results.0, left,
+                    self.inner.typeck_results.1, right))
     }
 
     fn eq_exprs(&mut self, left: &[Expr<'_>], right: &[Expr<'_>]) -> bool {
@@ -1011,13 +1008,9 @@ impl HirEqInterExpr<'_, '_, '_> {
             | BinOpKind::Or
             | BinOpKind::BitAnd
             | BinOpKind::BitXor
-            | BinOpKind::BitOr => self.inner.maybe_typeck_results.and_then(|(typeck_lhs, _)| {
-                typeck_lhs
-                    .expr_ty_adjusted(lhs)
-                    .peel_refs()
-                    .is_primitive()
-                    .then_some((binop, rhs, lhs))
-            }),
+            | BinOpKind::BitOr => self.inner.typeck_results.0.expr_ty_adjusted(lhs).peel_refs()
+                .is_primitive()
+                .then_some((binop, rhs, lhs)),
         }
     }
 }
@@ -1131,7 +1124,7 @@ fn generic_path_segments<'tcx>(segments: &'tcx [PathSegment<'tcx>]) -> Option<&'
 pub struct SpanlessHash<'a, 'tcx> {
     /// Context used to evaluate constant expressions.
     cx: &'a LateContext<'tcx>,
-    maybe_typeck_results: Option<&'tcx TypeckResults<'tcx>>,
+    typeck_results: &'tcx TypeckResults<'tcx>,
     s: FxHasher,
     path_check: PathCheck,
 }
@@ -1140,7 +1133,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     pub fn new(cx: &'a LateContext<'tcx>) -> Self {
         Self {
             cx,
-            maybe_typeck_results: cx.maybe_typeck_results(),
+            typeck_results: cx.typeck_results,
             s: FxHasher::default(),
             path_check: PathCheck::default(),
         }
@@ -1174,9 +1167,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
 
     #[expect(clippy::too_many_lines)]
     pub fn hash_expr(&mut self, e: &Expr<'_>) {
-        let simple_const = self.maybe_typeck_results.and_then(|typeck_results| {
-            ConstEvalCtxt::with_env(self.cx.tcx, self.cx.typing_env(), typeck_results).eval_local(e, e.span.ctxt())
-        });
+        let simple_const = ConstEvalCtxt::with_env(self.cx.tcx, self.cx.typing_env(), self.typeck_results).eval_local(e, e.span.ctxt());
 
         // const hashing may result in the same hash as some unrelated node, so add a sort of
         // discriminant depending on which path we're choosing next
@@ -1661,9 +1652,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
 
     pub fn hash_body(&mut self, body_id: BodyId) {
         // swap out TypeckResults when hashing a body
-        let old_maybe_typeck_results = self.maybe_typeck_results.replace(self.cx.tcx.typeck_body(body_id));
+        let old_typeck_results = mem::replace(&mut self.typeck_results, self.cx.tcx.typeck_body(body_id));
         self.hash_expr(self.cx.tcx.hir_body(body_id).value);
-        self.maybe_typeck_results = old_maybe_typeck_results;
+        self.typeck_results = old_typeck_results;
     }
 
     fn hash_const_arg(&mut self, const_arg: &ConstArg<'_>) {

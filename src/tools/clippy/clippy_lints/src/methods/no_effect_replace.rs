@@ -13,7 +13,7 @@ pub(super) fn check<'tcx>(
     arg1: &'tcx rustc_hir::Expr<'_>,
     arg2: &'tcx rustc_hir::Expr<'_>,
 ) {
-    let ty = cx.typeck_results().expr_ty(expr).peel_refs();
+    let ty = cx.typeck_results.expr_ty(expr).peel_refs();
     if !(ty.is_str() || ty.is_lang_item(cx, LangItem::String)) {
         return;
     }

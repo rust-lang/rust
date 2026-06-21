@@ -49,8 +49,8 @@ fn check_collections(cx: &LateContext<'_>, expr: Ty<'_>, recv: Ty<'_>) -> Option
 }
 
 pub(super) fn check(cx: &LateContext<'_>, args: &[Expr<'_>], expr: &Expr<'_>, recv: &Expr<'_>) {
-    let expr_ty = cx.typeck_results().expr_ty(expr);
-    let recv_ty = cx.typeck_results().expr_ty(recv);
+    let expr_ty = cx.typeck_results.expr_ty(expr);
+    let recv_ty = cx.typeck_results.expr_ty(recv);
     let recv_ty_no_refs = recv_ty.peel_refs();
 
     if let ExprKind::Path(QPath::Resolved(_, recv_path)) = recv.kind

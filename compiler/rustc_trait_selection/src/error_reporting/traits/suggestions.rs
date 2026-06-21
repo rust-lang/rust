@@ -337,7 +337,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return;
         }
 
-        let fn_body_hir_id = self.tcx.local_def_id_to_hir_id(typeck_results.hir_owner.def_id);
+        let fn_body_hir_id = self.tcx.local_def_id_to_hir_id(hir_id.owner.def_id);
         let mut private_candidate: Option<(Ty<'tcx>, Ty<'tcx>, Span)> = None;
 
         for (deref_base_ty, _) in (self.autoderef_steps)(base_ty) {
@@ -3136,17 +3136,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // type-checking; otherwise, get them by performing a query. This is needed to avoid
         // cycles. If we can't use resolved types because the coroutine comes from another crate,
         // we still provide a targeted error but without all the relevant spans.
-        let coroutine_data = match &self.typeck_results {
-            Some(t) if t.hir_owner.to_def_id() == coroutine_did_root => CoroutineData(t),
+        let (coroutine_data, coroutine_within_in_progress_typeck) = match &self.typeck_results {
+            Some(t) if t.hir_owner.map(|x| x.to_def_id()) == Some(coroutine_did_root) => {
+                (CoroutineData(t), true)
+            }
             _ if coroutine_did.is_local() => {
-                CoroutineData(self.tcx.typeck(coroutine_did.expect_local()))
+                (CoroutineData(self.tcx.typeck(coroutine_did.expect_local())), false)
             }
             _ => return false,
-        };
-
-        let coroutine_within_in_progress_typeck = match &self.typeck_results {
-            Some(t) => t.hir_owner.to_def_id() == coroutine_did_root,
-            _ => false,
         };
 
         let mut interior_or_upvar_span = None;

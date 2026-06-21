@@ -76,10 +76,10 @@ impl LateLintPass<'_> for DurationSuboptimalUnits {
             && let ExprKind::Call(func, [arg]) = expr.kind
             && let ExprKind::Path(QPath::TypeRelative(func_ty, func_name)) = func.kind
             && cx
-                .typeck_results()
+                .typeck_results
                 .node_type(func_ty.hir_id)
                 .is_diag_item(cx, sym::Duration)
-            && matches!(cx.typeck_results().expr_ty_adjusted(arg).kind(), ty::Uint(UintTy::U64))
+            && matches!(cx.typeck_results.expr_ty_adjusted(arg).kind(), ty::Uint(UintTy::U64))
             // We intentionally don't want to evaluate referenced constants, as we don't want to
             // recommend a literal value over using constants:
             //

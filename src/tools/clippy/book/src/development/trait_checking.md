@@ -25,7 +25,7 @@ use rustc_lint::{LateContext, LateLintPass};
 impl LateLintPass<'_> for CheckIteratorTraitLint {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         let implements_iterator = (cx.tcx.get_diagnostic_item(sym::Iterator))
-            .is_some_and(|id| implements_trait(cx, cx.typeck_results().expr_ty(expr), id, &[]));
+            .is_some_and(|id| implements_trait(cx, cx.typeck_results.expr_ty(expr), id, &[]));
         if implements_iterator {
             // [...]
         }
@@ -59,7 +59,7 @@ use rustc_lint::{LateContext, LateLintPass};
 
 impl LateLintPass<'_> for CheckDropTraitLint {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        let ty = cx.typeck_results().expr_ty(expr);
+        let ty = cx.typeck_results.expr_ty(expr);
         if cx.tcx.lang_items()
             .drop_trait()
             .map_or(false, |id| implements_trait(cx, ty, id, &[])) {
@@ -86,7 +86,7 @@ use rustc_lint::{LateContext, LateLintPass};
 
 impl LateLintPass<'_> for CheckIterStep {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        let ty = cx.typeck_results().expr_ty(expr);
+        let ty = cx.typeck_results.expr_ty(expr);
         if let Some(trait_def_id) = paths::ITER_STEP.first(cx)
             && implements_trait(cx, ty, trait_def_id, &[])
         {

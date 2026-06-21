@@ -127,7 +127,7 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
         return;
     }
 
-    let typeck = cx.typeck_results();
+    let typeck = cx.typeck_results;
     let closure = if let ty::Closure(_, closure_subs) = typeck.expr_ty(expr).kind() {
         closure_subs.as_closure()
     } else {

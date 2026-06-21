@@ -42,7 +42,7 @@ fn check_compare<'a>(cx: &LateContext<'a>, bit_op: &Expr<'a>, cmp_op: BinOpKind,
             return;
         }
         if let Some(mask) = fetch_int_literal(cx, right).or_else(|| fetch_int_literal(cx, left)) {
-            let ty = cx.typeck_results().expr_ty(bit_op);
+            let ty = cx.typeck_results.expr_ty(bit_op);
             if ty.is_primitive()
                 && !ty.is_ptr_sized_integral()
                 && let bits = ty.primitive_size(cx.tcx)

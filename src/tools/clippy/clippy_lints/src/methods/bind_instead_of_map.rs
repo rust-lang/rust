@@ -154,7 +154,7 @@ impl BindInsteadOfMap {
 
     /// Lint use of `_.and_then(|x| Some(y))` for `Option`s
     fn check(&self, cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>, arg: &hir::Expr<'_>) -> bool {
-        if let Some(adt) = cx.typeck_results().expr_ty(recv).ty_adt_def()
+        if let Some(adt) = cx.typeck_results.expr_ty(recv).ty_adt_def()
             && let Some(vid) = cx.tcx.lang_items().get(self.variant_lang_item)
             && adt.did() == cx.tcx.parent(vid)
         {
