@@ -5,7 +5,7 @@ use std::{debug_assert_matches, fmt};
 
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
-use rustc_hir::def::{CtorKind, CtorOf, DefKind};
+use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_span::{DUMMY_SP, Span, Symbol};
@@ -437,7 +437,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn fn_is_const(self, def_id: DefId) -> bool {
         debug_assert_matches!(
             self.def_kind(def_id),
-            DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(CtorOf::Struct, CtorKind::Fn)
+            DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn)
         );
         self.is_conditionally_const(def_id)
     }
