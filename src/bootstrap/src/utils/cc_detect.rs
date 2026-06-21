@@ -25,7 +25,7 @@ use std::collections::HashSet;
 use std::iter;
 use std::path::{Path, PathBuf};
 
-use crate::core::config::TargetSelection;
+use crate::core::config::{CompressDebuginfo, TargetSelection};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::{Build, CLang, GitRepo};
 
@@ -38,10 +38,16 @@ fn new_cc_build(build: &Build, target: TargetSelection) -> cc::Build {
         .debug(false)
         // We have to configure out_dir, otherwise flag_if_supported will not work
         .out_dir(build.tempdir().join("cc-rs-out-dir"))
-        // Compress debuginfo
-        .flag_if_supported("-gz")
         .target(&target.triple)
         .host(&build.host_target.triple);
+
+    match build.config.compress_debuginfo(target) {
+        CompressDebuginfo::Zlib => {
+            cfg.flag_if_supported("-gz");
+        }
+        CompressDebuginfo::Off => {}
+    }
+
     match build.crt_static(target) {
         Some(a) => {
             cfg.static_crt(a);
