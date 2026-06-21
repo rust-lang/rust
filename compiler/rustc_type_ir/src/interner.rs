@@ -62,7 +62,6 @@ pub trait Interner:
         + TryFrom<Self::TraitAssocTermId>;
     type TraitAssocConstId: SpecificDefId<Self>
         + Into<Self::TraitAssocTermId>
-        + Into<Self::AnonConstId>
         + TryFrom<Self::TraitAssocTermId>;
     type TraitAssocTermId: SpecificDefId<Self>;
     type OpaqueTyId: SpecificDefId<Self, Self::LocalOpaqueTyId>;
@@ -75,19 +74,13 @@ pub trait Interner:
         + Into<Self::DefId>
         + TypeFoldable<Self>;
     type FreeTyAliasId: SpecificDefId<Self> + Into<Self::FreeTermAliasId>;
-    type FreeConstAliasId: SpecificDefId<Self>
-        + Into<Self::AnonConstId>
-        + Into<Self::FreeTermAliasId>;
+    type FreeConstAliasId: SpecificDefId<Self> + Into<Self::FreeTermAliasId>;
     type FreeTermAliasId: SpecificDefId<Self>;
     type ImplOrTraitAssocTyId: SpecificDefId<Self> + Into<Self::ImplOrTraitAssocTermId>;
-    type ImplOrTraitAssocConstId: SpecificDefId<Self>
-        + Into<Self::AnonConstId>
-        + Into<Self::ImplOrTraitAssocTermId>;
+    type ImplOrTraitAssocConstId: SpecificDefId<Self> + Into<Self::ImplOrTraitAssocTermId>;
     type ImplOrTraitAssocTermId: SpecificDefId<Self>;
     type InherentAssocTyId: SpecificDefId<Self> + Into<Self::InherentAssocTermId>;
-    type InherentAssocConstId: SpecificDefId<Self>
-        + Into<Self::AnonConstId>
-        + Into<Self::InherentAssocTermId>;
+    type InherentAssocConstId: SpecificDefId<Self> + Into<Self::InherentAssocTermId>;
     type InherentAssocTermId: SpecificDefId<Self>;
     type Span: Span<Self>;
 
