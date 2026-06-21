@@ -1,4 +1,3 @@
-mod config;
 mod intrinsic;
 mod json_parser;
 mod types;
@@ -20,14 +19,20 @@ impl SupportedArchitecture for Arm {
         &self.0
     }
 
-    const NOTICE: &str = config::NOTICE;
+    const NOTICE: &str = r#"
+// This is a transient test file, not intended for distribution. Some aspects of the
+// test are derived from a JSON specification, published under the same license as the
+// `intrinsic-test` crate.
+"#;
 
-    const PLATFORM_C_HEADERS: &[&str] = &["arm_neon.h", "arm_acle.h", "arm_fp16.h"];
+    const C_PRELUDE: &str = r#"
+#include <arm_acle.h>
+#include <arm_fp16.h>
+#include <arm_neon.h>
+"#;
+    const RUST_PRELUDE: &str = RUST_PRELUDE;
 
-    const PLATFORM_RUST_DEFINITIONS: &str = config::PLATFORM_RUST_DEFINITIONS;
-    const PLATFORM_RUST_CFGS: &str = config::PLATFORM_RUST_CFGS;
-
-    fn arch_flags(&self, cli_options: &ProcessedCli) -> Vec<&str> {
+    fn c_compiler_flags(&self, cli_options: &ProcessedCli) -> Vec<&str> {
         // GCC uses an extra `-` in the arch name
         match cli_options.cc_arg_style {
             CcArgStyle::Clang => vec!["-march=armv8.6a+crypto+crc+dotprod+fp16"],
@@ -125,3 +130,22 @@ impl SupportedArchitecture for Arm {
         Self(intrinsics)
     }
 }
+
+const RUST_PRELUDE: &str = r#"
+#![cfg_attr(target_arch = "arm", feature(stdarch_arm_neon_intrinsics))]
+#![cfg_attr(target_arch = "arm", feature(stdarch_aarch32_crc32))]
+#![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_fcma))]
+#![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_i8mm))]
+#![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_sm4))]
+#![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_ftts))]
+#![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_feat_lut))]
+#![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_fp8))]
+#![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(faminmax))]
+#![feature(stdarch_neon_f16)]
+
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
+use core_arch::arch::aarch64::*;
+
+#[cfg(target_arch = "arm")]
+use core_arch::arch::arm::*;
+"#;

@@ -38,12 +38,10 @@ pub trait SupportedArchitecture: Sized {
 
     const NOTICE: &str;
 
-    const PLATFORM_C_HEADERS: &[&str];
+    const C_PRELUDE: &str;
+    const RUST_PRELUDE: &str;
 
-    const PLATFORM_RUST_CFGS: &str;
-    const PLATFORM_RUST_DEFINITIONS: &str;
-
-    fn arch_flags(&self, cli_options: &ProcessedCli) -> Vec<&str>;
+    fn c_compiler_flags(&self, cli_options: &ProcessedCli) -> Vec<&str>;
 
     fn generate_c_file(&self) {
         let (max_chunk_size, _chunk_count) = manual_chunk(self.intrinsics().len());
@@ -55,14 +53,14 @@ pub trait SupportedArchitecture: Sized {
             .map(|(i, chunk)| {
                 let c_filename = format!("c_programs/wrapper_{i}.c");
                 let mut file = File::create(&c_filename).unwrap();
-                write_wrapper_c(&mut file, Self::NOTICE, Self::PLATFORM_C_HEADERS, chunk)
+                write_wrapper_c(&mut file, chunk)
             })
             .collect::<io::Result<()>>()
             .unwrap();
     }
 
     fn generate_rust_file(&self, cli_options: &ProcessedCli) {
-        let arch_flags = self.arch_flags(cli_options);
+        let arch_flags = self.c_compiler_flags(cli_options);
 
         std::fs::create_dir_all("rust_programs").unwrap();
 
