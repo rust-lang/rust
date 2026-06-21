@@ -4,8 +4,8 @@ error: conflicting associated type bindings for `Assoc`
 LL | impl<A, B> Trait for dyn Dyn<A, B> {
    |                      ^^^^^^^^^^^^^
    |
-   = note: `Assoc` is specified to be `B`
-   = note: `Assoc` is also specified to be `A`
+   = note: `Assoc` (in `Sup<B>`) is specified to be `B`
+   = note: `Assoc` (in `Sup<A>`) is also specified to be `A`
 
 error: conflicting associated type bindings for `Assoc`
   --> $DIR/incomplete-multiple-super-projection.rs:25:29
@@ -13,8 +13,8 @@ error: conflicting associated type bindings for `Assoc`
 LL | fn call<A, B>(x: usize) -> <dyn Dyn<A, B> as Trait>::Assoc {
    |                             ^^^^^^^^^^^^^
    |
-   = note: `Assoc` is specified to be `B`
-   = note: `Assoc` is also specified to be `A`
+   = note: `Assoc` (in `Sup<B>`) is specified to be `B`
+   = note: `Assoc` (in `Sup<A>`) is also specified to be `A`
 
 error: conflicting associated type bindings for `Assoc`
   --> $DIR/incomplete-multiple-super-projection.rs:25:29
@@ -22,8 +22,8 @@ error: conflicting associated type bindings for `Assoc`
 LL | fn call<A, B>(x: usize) -> <dyn Dyn<A, B> as Trait>::Assoc {
    |                             ^^^^^^^^^^^^^
    |
-   = note: `Assoc` is specified to be `B`
-   = note: `Assoc` is also specified to be `A`
+   = note: `Assoc` (in `Sup<B>`) is specified to be `B`
+   = note: `Assoc` (in `Sup<A>`) is also specified to be `A`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: conflicting associated type bindings for `Assoc`
@@ -32,8 +32,8 @@ error: conflicting associated type bindings for `Assoc`
 LL | fn call<A, B>(x: usize) -> <dyn Dyn<A, B> as Trait>::Assoc {
    |                             ^^^^^^^^^^^^^
    |
-   = note: `Assoc` is specified to be `B`
-   = note: `Assoc` is also specified to be `A`
+   = note: `Assoc` (in `Sup<B>`) is specified to be `B`
+   = note: `Assoc` (in `Sup<A>`) is also specified to be `A`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: the trait bound `(dyn Dyn<A, B> + 'static): Trait` is not satisfied

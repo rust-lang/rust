@@ -4,8 +4,8 @@ error: conflicting associated type bindings for `Assoc`
 LL |     let x: &dyn Foo<_, _, Other = ()> = todo!();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `Assoc` is specified to be `_`
-   = note: `Assoc` is also specified to be `_`
+   = note: `Assoc` (in `Sup<_>`) is specified to be `_`
+   = note: `Assoc` (in `Sup<_>`) is also specified to be `_`
 
 error: conflicting associated type bindings for `Assoc`
   --> $DIR/supertrait-alias-4.rs:25:13
@@ -13,8 +13,8 @@ error: conflicting associated type bindings for `Assoc`
 LL |     let y: &dyn Foo<i32, u32, Other = ()> = x;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `Assoc` is specified to be `u32`
-   = note: `Assoc` is also specified to be `i32`
+   = note: `Assoc` (in `Sup<u32>`) is specified to be `u32`
+   = note: `Assoc` (in `Sup<i32>`) is also specified to be `i32`
 
 error: aborting due to 2 previous errors
 

@@ -10,6 +10,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId, LangItem};
 use rustc_lint_defs::builtin::{BARE_TRAIT_OBJECTS, UNUSED_ASSOCIATED_TYPE_BOUNDS};
 use rustc_middle::ty::elaborate::ClauseWithSupertraitSpan;
+use rustc_middle::ty::print::{PrintPolyTraitRefExt as _, PrintTraitRefExt as _};
 use rustc_middle::ty::{
     self, AliasTermKind, BottomUpFolder, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt,
     TypeFoldable, TypeVisitableExt, Upcast,
@@ -183,15 +184,27 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             {
                 let kind = tcx.def_descr(item_def_id);
                 let name = tcx.item_name(item_def_id);
+
                 self.dcx()
                     .struct_span_err(span, format!("conflicting {kind} bindings for `{name}`"))
                     .with_span_label(
                         old_proj_span,
-                        format!("`{name}` is specified to be `{}` here", old_proj.term()),
+                        format!(
+                            "`{name}` (in `{}`) is specified to be `{}` here",
+                            old_proj
+                                .map_bound(|proj| proj.projection_term.trait_ref(tcx))
+                                .print_only_trait_path(),
+                            old_proj.term()
+                        ),
                     )
                     .with_span_label(
                         proj_span,
-                        format!("`{name}` is specified to be `{}` here", proj.term()),
+                        format!(
+                            "`{name}` (in `{}`) is specified to be `{}` here",
+                            proj.map_bound(|proj| proj.projection_term.trait_ref(tcx))
+                                .print_only_trait_path(),
+                            proj.term()
+                        ),
                     )
                     .emit();
             }
@@ -266,8 +279,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         let term = pred.term;
                         // This clause specifies that the `kind` is equal to `term`.
                         // We record this, and check for duplicates.
-                        if let Some(old_term) =
-                            seen_projection_bounds_ignoring_generics.insert(kind, term)
+                        if let Some((old_term, old_pred)) =
+                            seen_projection_bounds_ignoring_generics.insert(kind, (term, pred))
                             && old_term != term
                         {
                             let name = tcx.item_name(def_id);
@@ -282,8 +295,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 )
                                 // FIXME: Improve diagnostics by pointing to
                                 // where the bound is specified.
-                                .with_note(format!("`{name}` is specified to be `{old_term}`"))
-                                .with_note(format!("`{name}` is also specified to be `{term}`"))
+                                .with_note(format!("`{name}` (in `{}`) is specified to be `{old_term}`",
+                                old_pred.projection_term.trait_ref(tcx).print_only_trait_path()
+                            ))
+                                .with_note(format!("`{name}` (in `{}`) is also specified to be `{term}`", pred.projection_term.trait_ref(tcx).print_only_trait_path()))
                                 .emit();
                         }
 

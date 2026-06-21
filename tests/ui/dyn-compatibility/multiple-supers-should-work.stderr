@@ -4,8 +4,8 @@ error: conflicting associated type bindings for `Assoc`
 LL |     let x: &dyn Trait<(), _> = &();
    |             ^^^^^^^^^^^^^^^^
    |
-   = note: `Assoc` is specified to be `_`
-   = note: `Assoc` is also specified to be `()`
+   = note: `Assoc` (in `Sup<_>`) is specified to be `_`
+   = note: `Assoc` (in `Sup<()>`) is also specified to be `()`
 
 error: conflicting associated type bindings for `Assoc`
   --> $DIR/multiple-supers-should-work.rs:21:13
@@ -13,8 +13,8 @@ error: conflicting associated type bindings for `Assoc`
 LL |     let y: &dyn Trait<_, ()> = x;
    |             ^^^^^^^^^^^^^^^^
    |
-   = note: `Assoc` is specified to be `()`
-   = note: `Assoc` is also specified to be `_`
+   = note: `Assoc` (in `Sup<()>`) is specified to be `()`
+   = note: `Assoc` (in `Sup<_>`) is also specified to be `_`
 
 error: aborting due to 2 previous errors
 

@@ -126,8 +126,8 @@ error: conflicting associated type bindings for `Item`
 LL | type MustFail = dyn Iterator<Item = i32, Item = u32>;
    |                 ^^^^^^^^^^^^^----------^^----------^
    |                              |           |
-   |                              |           `Item` is specified to be `u32` here
-   |                              `Item` is specified to be `i32` here
+   |                              |           `Item` (in `Iterator`) is specified to be `u32` here
+   |                              `Item` (in `Iterator`) is specified to be `i32` here
 
 error: conflicting associated constant bindings for `ASSOC`
   --> $DIR/duplicate-bound-err.rs:85:18
@@ -135,8 +135,8 @@ error: conflicting associated constant bindings for `ASSOC`
 LL | type MustFail2 = dyn Trait2<ASSOC = 3u32, ASSOC = 4u32>;
    |                  ^^^^^^^^^^^------------^^------------^
    |                             |             |
-   |                             |             `ASSOC` is specified to be `4` here
-   |                             `ASSOC` is specified to be `3` here
+   |                             |             `ASSOC` (in `Trait2`) is specified to be `4` here
+   |                             `ASSOC` (in `Trait2`) is specified to be `3` here
 
 error[E0271]: expected `Empty<u32>` to be an iterator that yields `i32`, but it yields `u32`
   --> $DIR/duplicate-bound-err.rs:105:16

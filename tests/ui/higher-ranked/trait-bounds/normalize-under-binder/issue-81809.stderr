@@ -4,8 +4,8 @@ error: conflicting associated type bindings for `Output`
 LL | fn foo(st: &impl StoreIndex) -> &dyn StoreIndex {
    |                                  ^^^^^^^^^^^^^^
    |
-   = note: `Output` is specified to be `u16`
-   = note: `Output` is also specified to be `u8`
+   = note: `Output` (in `Index<<u16 as Indexable>::Idx>`) is specified to be `u16`
+   = note: `Output` (in `Index<<u8 as Indexable>::Idx>`) is also specified to be `u8`
 
 error: conflicting associated type bindings for `Output`
   --> $DIR/issue-81809.rs:19:12
@@ -13,8 +13,8 @@ error: conflicting associated type bindings for `Output`
 LL |     st as &dyn StoreIndex
    |            ^^^^^^^^^^^^^^
    |
-   = note: `Output` is specified to be `u16`
-   = note: `Output` is also specified to be `u8`
+   = note: `Output` (in `Index<<u16 as Indexable>::Idx>`) is specified to be `u16`
+   = note: `Output` (in `Index<<u8 as Indexable>::Idx>`) is also specified to be `u8`
 
 error: aborting due to 2 previous errors
 

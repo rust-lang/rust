@@ -4,8 +4,8 @@ error: conflicting associated type bindings for `Assoc`
 LL |     require_trait::<D, dyn Sub<D>>();
    |                        ^^^^^^^^^^
    |
-   = note: `Assoc` is specified to be `i64`
-   = note: `Assoc` is also specified to be `i32`
+   = note: `Assoc` (in `Super<<D as Dummy>::DummyAssoc2>`) is specified to be `i64`
+   = note: `Assoc` (in `Super<<D as Dummy>::DummyAssoc1>`) is also specified to be `i32`
 
 error: aborting due to 1 previous error
 

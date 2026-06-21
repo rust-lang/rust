@@ -4,8 +4,8 @@ error: conflicting associated type bindings for `Output`
 LL |     let _x: Box<dyn NormalizingHelper<Target=i32>> = Box::new(2u32);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `Output` is specified to be `i32`
-   = note: `Output` is also specified to be `<FreshTy(0) as ConstI32>::Out`
+   = note: `Output` (in `Base`) is specified to be `i32`
+   = note: `Output` (in `Base`) is also specified to be `<FreshTy(0) as ConstI32>::Out`
 
 error: conflicting associated type bindings for `Output`
   --> $DIR/with-self-in-projection-output-repeated-supertrait.rs:51:17
@@ -13,8 +13,8 @@ error: conflicting associated type bindings for `Output`
 LL |     let _y: Box<dyn NormalizingHelper<Target=i32, Output=i32>> = Box::new(2u32);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `Output` is specified to be `i32`
-   = note: `Output` is also specified to be `<FreshTy(0) as ConstI32>::Out`
+   = note: `Output` (in `Base`) is specified to be `i32`
+   = note: `Output` (in `Base`) is also specified to be `<FreshTy(0) as ConstI32>::Out`
 
 error: aborting due to 2 previous errors
 

@@ -4,8 +4,8 @@ error: conflicting associated type bindings for `Assoc`
 LL | fn foo(_: &dyn Sub) {}
    |            ^^^^^^^
    |
-   = note: `Assoc` is specified to be `u64`
-   = note: `Assoc` is also specified to be `u32`
+   = note: `Assoc` (in `Super<i64>`) is specified to be `u64`
+   = note: `Assoc` (in `Super<i32>`) is also specified to be `u32`
 
 error: aborting due to 1 previous error
 
