@@ -2,12 +2,10 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeDef;
 use rustc_errors::Diag;
 use rustc_hir as hir;
-use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::def_id::DefIdSet;
 use rustc_span::{Span, sym};
-use rustc_trait_selection::error_reporting::InferCtxtErrorExt as _;
 
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_then};
 use clippy_utils::ty::{AdtVariantInfo, approx_ty_size};
@@ -32,12 +30,7 @@ fn result_err_ty<'tcx>(
 
         // for async functions, peel through `impl Future<Output = T>` to get `T`
         if cx.tcx.ty_is_opaque_future(ty)
-            && let Some(future_output_ty) = cx
-                .tcx
-                .infer_ctxt()
-                .build(cx.typing_mode())
-                .err_ctxt()
-                .get_impl_future_output_ty(ty)
+            && let Some(future_output_ty) = cx.tcx.get_impl_future_output_ty(ty)
         {
             ty = future_output_ty;
         }
