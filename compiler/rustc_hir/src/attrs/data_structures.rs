@@ -1165,9 +1165,6 @@ pub enum AttributeKind {
     /// Represents `#[no_implicit_prelude]`
     NoImplicitPrelude,
 
-    /// Represents `#[no_link]`
-    NoLink,
-
     /// Represents `#[no_main]`
     NoMain,
 
