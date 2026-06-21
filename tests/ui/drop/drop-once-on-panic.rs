@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/25089>.
+//! Ensure we are not double-freeing memory during panic unwind.
 //@ run-pass
 //@ needs-unwind
 //@ needs-threads

@@ -1,4 +1,8 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/24308>.
+//! Ensure we're not ICE'ing on calls to trait method through Self in method body.
+//! (while implementing for struct with explicit lifetimes)
 //@ run-pass
+
 pub trait Foo {
     fn method1() {}
     fn method2();

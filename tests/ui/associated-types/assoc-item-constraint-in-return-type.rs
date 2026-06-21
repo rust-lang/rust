@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/24682>.
+
 trait A: Sized {
     type N;
     fn x() ->

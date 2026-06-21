@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/25076>.
+
 struct S;
 
 trait InOut<T> { type Out; }

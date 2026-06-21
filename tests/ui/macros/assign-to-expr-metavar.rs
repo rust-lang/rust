@@ -1,3 +1,4 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/24954>.
 //@ run-pass
 macro_rules! foo {
     ($y:expr) => ({

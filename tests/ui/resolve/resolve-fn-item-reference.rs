@@ -1,3 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/24322>.
+//! Referenced fn items ICE'd on path resolution.
+
 struct B;
 
 impl B {
