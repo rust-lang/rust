@@ -1,16 +1,14 @@
 use rustc_feature::AttributeStability;
 use rustc_hir::Target;
 use rustc_hir::attrs::AttributeKind;
-use rustc_session::lint::builtin::{
-    MALFORMED_DIAGNOSTIC_ATTRIBUTES, MISPLACED_DIAGNOSTIC_ATTRIBUTES,
-};
+use rustc_session::lint::builtin::MALFORMED_DIAGNOSTIC_ATTRIBUTES;
 use rustc_span::{Symbol, sym};
 
+use crate::attributes::prelude::Allow;
 use crate::attributes::{OnDuplicate, SingleAttributeParser};
 use crate::context::AcceptContext;
-use crate::diagnostics::IncorrectDoNotRecommendLocation;
 use crate::parser::ArgParser;
-use crate::target_checking::{ALL_TARGETS, AllowedTargets};
+use crate::target_checking::AllowedTargets;
 use crate::{AttributeTemplate, template};
 
 pub(crate) struct DoNotRecommendParser;
@@ -18,7 +16,8 @@ impl SingleAttributeParser for DoNotRecommendParser {
     const PATH: &[Symbol] = &[sym::diagnostic, sym::do_not_recommend];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
     // "Allowed" on any target, noop on all but trait impls
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::Impl { of_trait: true })]);
     const TEMPLATE: AttributeTemplate = template!(Word /*doesn't matter */);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
@@ -30,16 +29,6 @@ impl SingleAttributeParser for DoNotRecommendParser {
                 crate::diagnostics::DoNotRecommendDoesNotExpectArgs,
                 attr_span,
             );
-        }
-
-        if !matches!(cx.target, Target::Impl { of_trait: true }) {
-            let target_span = cx.target_span;
-            cx.emit_lint(
-                MISPLACED_DIAGNOSTIC_ATTRIBUTES,
-                IncorrectDoNotRecommendLocation { target_span },
-                attr_span,
-            );
-            return None;
         }
 
         Some(AttributeKind::DoNotRecommend)
