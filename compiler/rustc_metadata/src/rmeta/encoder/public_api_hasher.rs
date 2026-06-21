@@ -465,6 +465,8 @@ pub(super) fn crate_hashes<'tcx, 'h>(
 
     let mut hasher = StableHasher::default();
     let public_global_hash = stable_hash(hcx.hcx_mut(), root);
+    debug!("crate_hashes: public_global_hash = {public_global_hash:?}");
+    debug!("crate_hashes: public_hashes roots hash = {:?}", public_hashes.hash);
     public_global_hash.stable_hash(hcx.hcx_mut(), &mut hasher);
     public_hashes.stable_hash(hcx.hcx_mut(), &mut hasher);
     let rdr_hashes = public_hashes.value.encode(ecx, public_global_hash);
