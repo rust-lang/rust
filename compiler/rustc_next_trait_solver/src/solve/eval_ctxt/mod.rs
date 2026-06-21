@@ -1306,12 +1306,19 @@ where
         lhs: T,
         rhs: T,
     ) -> Result<(), NoSolutionOrRerunNonErased> {
-        let result = self.delegate.eq_structurally_relating_aliases(
-            param_env,
-            lhs,
-            rhs,
-            self.origin_span,
-        )?;
+        let result = if self.cx().assumptions_on_binders() {
+            let (goals, region_constraints) =
+                self.delegate.eq_structurally_relating_aliases_with_region_constraints(
+                    param_env,
+                    lhs,
+                    rhs,
+                    self.origin_span,
+                )?;
+            self.register_solver_region_constraint(region_constraints);
+            goals
+        } else {
+            self.delegate.eq_structurally_relating_aliases(param_env, lhs, rhs, self.origin_span)?
+        };
         assert_eq!(result, vec![]);
         Ok(())
     }
@@ -1334,7 +1341,19 @@ where
         variance: ty::Variance,
         rhs: T,
     ) -> Result<(), NoSolutionOrRerunNonErased> {
-        let goals = self.delegate.relate(param_env, lhs, variance, rhs, self.origin_span)?;
+        let goals = if self.cx().assumptions_on_binders() {
+            let (goals, region_constraints) = self.delegate.relate_with_region_constraints(
+                param_env,
+                lhs,
+                variance,
+                rhs,
+                self.origin_span,
+            )?;
+            self.register_solver_region_constraint(region_constraints);
+            goals
+        } else {
+            self.delegate.relate(param_env, lhs, variance, rhs, self.origin_span)?
+        };
         for &goal in goals.iter() {
             let source = match goal.predicate.kind().skip_binder() {
                 ty::PredicateKind::Subtype { .. } | ty::PredicateKind::AliasRelate(..) => {
@@ -1356,12 +1375,30 @@ where
     /// goals correctly.
     #[instrument(level = "trace", skip(self, param_env), ret)]
     pub(super) fn eq_and_get_goals<T: Relate<I>>(
-        &self,
+        &mut self,
         param_env: I::ParamEnv,
         lhs: T,
         rhs: T,
     ) -> Result<Vec<Goal<I, I::Predicate>>, NoSolution> {
-        Ok(self.delegate.relate(param_env, lhs, ty::Variance::Invariant, rhs, self.origin_span)?)
+        if self.cx().assumptions_on_binders() {
+            let (goals, region_constraints) = self.delegate.relate_with_region_constraints(
+                param_env,
+                lhs,
+                ty::Variance::Invariant,
+                rhs,
+                self.origin_span,
+            )?;
+            self.register_solver_region_constraint(region_constraints);
+            Ok(goals)
+        } else {
+            Ok(self.delegate.relate(
+                param_env,
+                lhs,
+                ty::Variance::Invariant,
+                rhs,
+                self.origin_span,
+            )?)
+        }
     }
 
     pub(super) fn instantiate_binder_with_infer<T: TypeFoldable<I> + Copy>(
