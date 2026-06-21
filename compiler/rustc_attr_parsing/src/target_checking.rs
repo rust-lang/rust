@@ -95,7 +95,7 @@ pub(crate) enum Policy {
 impl<'sess> AttributeParser<'sess> {
     pub(crate) fn check_target(
         allowed_targets: &AllowedTargets<'_>,
-        attribute_args: &'static str,
+        attribute_args: &str,
         cx: &mut AcceptContext<'_, 'sess>,
     ) {
         if matches!(cx.should_emit, ShouldEmit::Nothing) {
@@ -137,7 +137,7 @@ impl<'sess> AttributeParser<'sess> {
             target: cx.target.plural_name(),
             only: if only { "only " } else { "" },
             applied: DiagArgValue::StrListSepByAnd(applied.into_iter().map(Cow::Owned).collect()),
-            attribute_args,
+            attribute_args: attribute_args.to_string(),
             help: Self::target_checking_help(attribute_args, cx),
             previously_accepted: matches!(result, AllowedResult::Warn) && !is_diagnostic_attr,
             on_macro_call: matches!(cx.target, Target::MacroCall),
@@ -173,7 +173,7 @@ impl<'sess> AttributeParser<'sess> {
     }
 
     fn target_checking_help(
-        attribute_args: &'static str,
+        attribute_args: &str,
         cx: &AcceptContext<'_, '_>,
     ) -> Option<InvalidTargetHelp> {
         match &*cx.attr_path.segments {
@@ -443,7 +443,7 @@ fn filter_targets(
 impl<'f, 'sess> AcceptContext<'f, 'sess> {
     pub(crate) fn check_target(
         &mut self,
-        attribute_args: &'static str,
+        attribute_args: &str,
         allowed_targets: &AllowedTargets<'_>,
     ) {
         self.ignore_target_checks();

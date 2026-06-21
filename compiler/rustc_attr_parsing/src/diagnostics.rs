@@ -1,5 +1,5 @@
-use rustc_errors::{Applicability, DiagArgValue, E0232, E0264, E0718, MultiSpan};
-use rustc_hir::{AttrPath, Target};
+use rustc_errors::{Applicability, DiagArgValue, E0232, E0264, MultiSpan};
+use rustc_hir::AttrPath;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
@@ -800,17 +800,6 @@ pub(crate) struct DupesNotAllowed;
 pub(crate) struct UnsafeAttribute {
     pub attr_path: AttrPath,
     pub note: &'static str,
-}
-
-#[derive(Diagnostic)]
-#[diag("`{$name}` lang item must be applied to a {$expected_target}", code = E0718)]
-pub(crate) struct LangItemOnIncorrectTarget {
-    #[primary_span]
-    #[label("attribute should be applied to a {$expected_target}, not a {$actual_target}")]
-    pub span: Span,
-    pub name: Symbol,
-    pub expected_target: Target,
-    pub actual_target: Target,
 }
 
 #[derive(Diagnostic)]

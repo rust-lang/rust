@@ -12,7 +12,7 @@ use rustc_span::Symbol;
 use super::prelude::*;
 use super::util::parse_single_integer;
 use crate::diagnostics;
-use crate::diagnostics::{LangItemOnIncorrectTarget, UnknownExternLangItem};
+use crate::diagnostics::UnknownExternLangItem;
 use crate::session_diagnostics::{
     AttributeRequiresOpt, CguFieldsMissing, RustcScalableVectorCountOutOfRange, UnknownLangItem,
 };
@@ -589,17 +589,13 @@ impl SingleAttributeParser for LangParser {
         }
 
         // Check the target
-        if cx.target != lang_item.target()
-            && !(cx.target == Target::ForeignFn && lang_item == LangItem::PanicImpl)
-        {
-            cx.emit_err(LangItemOnIncorrectTarget {
-                span: cx.attr_span,
-                name,
-                expected_target: lang_item.target(),
-                actual_target: cx.target,
-            });
-            return None;
-        }
+        let allowed_targets: &[_] = if lang_item == LangItem::PanicImpl {
+            &[Allow(Target::Fn), Allow(Target::ForeignFn)]
+        } else {
+            &[Allow(lang_item.target())]
+        };
+        cx.check_target(&format!(" = \"{name}\""), &AllowedTargets::AllowList(allowed_targets));
+
         Some(AttributeKind::Lang(lang_item))
     }
 }
