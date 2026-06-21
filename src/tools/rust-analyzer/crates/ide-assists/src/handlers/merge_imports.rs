@@ -536,6 +536,62 @@ use foo::{bar, baz};
     }
 
     #[test]
+    fn mod_indent_whitespace() {
+        check_assist(
+            merge_imports,
+            r"
+mod tests {
+    use foo$0::bar;
+    use foo::baz;
+    fn feature() {}
+}
+",
+            r"
+mod tests {
+    use foo::{bar, baz};
+    fn feature() {}
+}
+",
+        );
+        check_assist(
+            merge_imports,
+            r"
+mod tests {
+    use foo$0::bar;
+    use foo::baz;
+
+    fn feature() {}
+}
+",
+            r"
+mod tests {
+    use foo::{bar, baz};
+
+    fn feature() {}
+}
+",
+        );
+        check_assist(
+            merge_imports,
+            r"
+mod tests {
+    use foo::bar;
+    use foo$0::baz;
+
+    fn feature() {}
+}
+",
+            r"
+mod tests {
+    use foo::{bar, baz};
+
+    fn feature() {}
+}
+",
+        );
+    }
+
+    #[test]
     fn works_with_trailing_comma() {
         check_assist(
             merge_imports,
