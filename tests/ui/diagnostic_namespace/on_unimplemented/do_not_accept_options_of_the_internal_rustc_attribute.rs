@@ -20,7 +20,7 @@ trait Foo<T> {}
 trait Bar {}
 
 #[diagnostic::on_unimplemented(message = "Not allowed to apply it on a impl")]
-//~^WARN #[diagnostic::on_unimplemented]` can only be applied to trait definitions
+//~^WARN cannot be used on
 impl Bar for i32 {}
 
 // cannot use special rustc_on_unimplement symbols
