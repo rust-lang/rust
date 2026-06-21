@@ -12,3 +12,4 @@ LL | pub fn main() { println!("🦀%%%{}", 0) }
    |                                ++
 
 error: aborting due to 1 previous error
+
