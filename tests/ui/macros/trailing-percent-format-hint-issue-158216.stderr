@@ -12,3 +12,4 @@ LL |     println!("{x:>8.2}%{}", "foo");
    |                        ++
 
 error: aborting due to 1 previous error
+

@@ -1,14 +1,15 @@
 error: argument never used
   --> $DIR/issue-92267.rs:3:34
    |
-LL | pub fn main() { println!("🦀%%%", 0) }
+LL | pub fn main() { println!("🦀%%%", 0) } //~ ERROR argument never used
    |                          -------  ^ argument never used
    |                          |
    |                          formatting specifier missing
    |
 help: format specifiers use curly braces, consider adding a format specifier
    |
-LL | pub fn main() { println!("🦀%%%{}", 0) }
+LL | pub fn main() { println!("🦀%%%{}", 0) } //~ ERROR argument never used
    |                                ++
 
 error: aborting due to 1 previous error
+
