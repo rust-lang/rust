@@ -1135,7 +1135,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> MonoItemPartitio
         MonoItemCollectionStrategy::Lazy
     };
 
-    let (items, usage_map) = collector::collect_crate_mono_items(tcx, collection_strategy);
+    let (mut items, usage_map) = collector::collect_crate_mono_items(tcx, collection_strategy);
     // Perform checks that need to operate on the entire mono item graph
     target_specific_checks(tcx, &items, &usage_map);
 
@@ -1143,6 +1143,20 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> MonoItemPartitio
     // then we stop here. This way codegen does not have to worry about failing constants.
     // (codegen relies on this and ICEs will happen if this is violated.)
     tcx.dcx().abort_if_errors();
+
+    // Dead function elimination: drop local functions that are unreachable from the
+    // entry point before they reach codegen. The analysis uses the just-collected
+    // `items` as ground truth, so it does not re-enter this query.
+    if tcx.sess.opts.unstable_opts.dead_fn_elimination {
+        crate::dead_fn_elim::run_analysis(tcx, &items);
+        items.retain(|item| match item {
+            MonoItem::Fn(instance) => {
+                let did = instance.def_id();
+                !(did.is_local() && crate::dead_fn_elim::is_eliminable(did.index.as_u32() as u64))
+            }
+            _ => true,
+        });
+    }
 
     let (codegen_units, _) = tcx.sess.time("partition_and_assert_distinct_symbols", || {
         par_join(

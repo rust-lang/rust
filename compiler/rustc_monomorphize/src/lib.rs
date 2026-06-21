@@ -1,4 +1,5 @@
 // tidy-alphabetical-start
+#![feature(box_patterns)]
 #![feature(file_buffered)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(once_cell_get_mut)]
@@ -13,6 +14,7 @@ use rustc_middle::{bug, traits};
 use rustc_span::ErrorGuaranteed;
 
 mod collector;
+mod dead_fn_elim;
 mod diagnostics;
 mod graph_checks;
 mod mono_checks;
