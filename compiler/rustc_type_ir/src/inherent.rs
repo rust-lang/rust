@@ -280,7 +280,7 @@ pub trait Const<I: Interner<Const = Self>>:
 
     fn new_placeholder(interner: I, param: ty::PlaceholderConst<I>) -> Self;
 
-    fn new_alias(interner: I, is_rigid: ty::IsRigid, uv: ty::AliasConst<I>) -> Self;
+    fn new_alias(interner: I, is_rigid: ty::IsRigid, alias_const: ty::AliasConst<I>) -> Self;
 
     fn new_expr(interner: I, expr: I::ExprConst) -> Self;
 
@@ -411,7 +411,7 @@ pub trait Term<I: Interner<Term = Self>>:
                 _ => None,
             },
             ty::TermKind::Const(ct) => match ct.kind() {
-                ty::ConstKind::Alias(_, uv) => Some(uv.into()),
+                ty::ConstKind::Alias(_, alias_const) => Some(alias_const.into()),
                 _ => None,
             },
         }

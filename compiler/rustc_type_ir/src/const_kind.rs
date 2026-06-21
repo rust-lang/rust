@@ -59,7 +59,7 @@ impl<I: Interner> fmt::Debug for ConstKind<I> {
             Infer(var) => write!(f, "{var:?}"),
             Bound(debruijn, var) => crate::debug_bound_var(f, *debruijn, var),
             Placeholder(placeholder) => write!(f, "{placeholder:?}"),
-            Alias(is_rigid, uv) => write!(f, "Unevaluated({is_rigid:?}, {uv:?})"),
+            Alias(is_rigid, alias_const) => write!(f, "Unevaluated({is_rigid:?}, {ualias_const:?})"),
             Value(val) => write!(f, "{val:?}"),
             Error(_) => write!(f, "{{const error}}"),
             Expr(expr) => write!(f, "{expr:?}"),

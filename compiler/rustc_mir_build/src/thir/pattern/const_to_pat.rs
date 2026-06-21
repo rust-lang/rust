@@ -49,7 +49,7 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
         let mut convert = ConstToPat::new(self, id, span, c);
 
         match c.kind() {
-            ty::ConstKind::Alias(_, uv) => convert.alias_to_pat(uv, ty),
+            ty::ConstKind::Alias(_, alias_const) => convert.alias_to_pat(alias_const, ty),
             ty::ConstKind::Value(value) => convert.valtree_to_pat(value),
             _ => span_bug!(span, "Invalid `ConstKind` for `const_to_pat`: {:?}", c),
         }
@@ -77,9 +77,9 @@ impl<'tcx> ConstToPat<'tcx> {
 
     /// We errored. Signal that in the pattern, so that follow up errors can be silenced.
     fn mk_err(&self, mut err: Diag<'_>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
-        if let ty::ConstKind::Alias(_, uv) = self.c.kind() {
+        if let ty::ConstKind::Alias(_, alias_const) = self.c.kind() {
             if let ty::AliasConstKind::Projection { def_id }
-            | ty::AliasConstKind::Inherent { def_id } = uv.kind
+            | ty::AliasConstKind::Inherent { def_id } = alias_const.kind
                 && let Some(def_id) = def_id.as_local()
             {
                 // Include the container item in the output.
@@ -87,7 +87,7 @@ impl<'tcx> ConstToPat<'tcx> {
             }
             if let ty::AliasConstKind::Projection { def_id }
             | ty::AliasConstKind::Inherent { def_id }
-            | ty::AliasConstKind::Free { def_id } = uv.kind
+            | ty::AliasConstKind::Free { def_id } = alias_const.kind
             {
                 err.span_label(self.tcx.def_span(def_id), msg!("constant defined here"));
             }
@@ -95,7 +95,7 @@ impl<'tcx> ConstToPat<'tcx> {
         Box::new(Pat { span: self.span, ty, kind: PatKind::Error(err.emit()), extra: None })
     }
 
-    fn alias_to_pat(&mut self, uv: ty::AliasConst<'tcx>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
+    fn alias_to_pat(&mut self, alias_const: ty::AliasConst<'tcx>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
         // It's not *technically* correct to be revealing opaque types here as borrowcheck has
         // not run yet. However, CTFE itself uses `TypingMode::PostAnalysis` unconditionally even
         // during typeck and not doing so has a lot of (undesirable) fallout (#101478, #119821).
@@ -105,13 +105,13 @@ impl<'tcx> ConstToPat<'tcx> {
         // instead of having this logic here
         let typing_env =
             self.tcx.erase_and_anonymize_regions(self.typing_env).with_codegen_normalized(self.tcx);
-        let uv = self.tcx.erase_and_anonymize_regions(uv);
+        let alias_const = self.tcx.erase_and_anonymize_regions(alias_const);
 
         // FIXME(gca): This will become insufficient once associated constants can be
         // implemented as `type` consts (project-const-generics#76). At that point it'll
         // become necessary to just use type system normalization for all const patterns
         // but that's not yet possible.
-        let mut thir_pat = if uv.kind.is_type_const(self.tcx) {
+        let mut thir_pat = if alias_const.kind.is_type_const(self.tcx) {
             let Ok(normalize) = self
                 .tcx
                 .try_normalize_erasing_regions(self.typing_env, Unnormalized::new_wip(self.c))
@@ -128,7 +128,7 @@ impl<'tcx> ConstToPat<'tcx> {
         } else {
             // try to resolve e.g. associated constants to their definition on an impl, and then
             // evaluate the const.
-            let valtree = match self.tcx.const_eval_resolve_for_typeck(typing_env, uv, self.span) {
+            let valtree = match self.tcx.const_eval_resolve_for_typeck(typing_env, alias_const, self.span) {
                 Ok(Ok(c)) => c,
                 Err(ErrorHandled::Reported(_, _)) => {
                     // Let's tell the use where this failing const occurs.
@@ -136,10 +136,10 @@ impl<'tcx> ConstToPat<'tcx> {
                         self.tcx.dcx().create_err(CouldNotEvalConstPattern { span: self.span });
                     // We've emitted an error on the original const, it would be redundant to complain
                     // on its use as well.
-                    if let ty::ConstKind::Alias(_, uv) = self.c.kind()
+                    if let ty::ConstKind::Alias(_, alias_const) = self.c.kind()
                         && let ty::AliasConstKind::Projection { .. }
                         | ty::AliasConstKind::Inherent { .. }
-                        | ty::AliasConstKind::Free { .. } = uv.kind
+                        | ty::AliasConstKind::Free { .. } = alias_const.kind
                     {
                         err.downgrade_to_delayed_bug();
                     }
@@ -150,45 +150,58 @@ impl<'tcx> ConstToPat<'tcx> {
                         .tcx
                         .dcx()
                         .create_err(ConstPatternDependsOnGenericParameter { span: self.span });
-                    for arg in uv.args {
+                    for arg in alias_const.args {
                         if let ty::GenericArgKind::Type(ty) = arg.kind()
                             && let ty::Param(param_ty) = ty.kind()
                         {
-                            let def_id = self.tcx.hir_enclosing_body_owner(self.id);
-                            let generics = self.tcx.generics_of(def_id);
-                            let param = generics.type_param(*param_ty, self.tcx);
-                            let span = self.tcx.def_span(param.def_id);
-                            e.span_label(span, "constant depends on this generic parameter");
-                            if let Some(ident) = self.tcx.def_ident_span(def_id)
-                                && self.tcx.sess.source_map().is_multiline(ident.between(span))
+                            err.downgrade_to_delayed_bug();
+                        }
+                        return self.mk_err(err, ty);
+                    }
+                    Err(ErrorHandled::TooGeneric(_)) => {
+                        let mut e = self
+                            .tcx
+                            .dcx()
+                            .create_err(ConstPatternDependsOnGenericParameter { span: self.span });
+                        for arg in alias_const.args {
+                            if let ty::GenericArgKind::Type(ty) = arg.kind()
+                                && let ty::Param(param_ty) = ty.kind()
                             {
-                                // Display the `fn` name as well in the diagnostic, as the generic isn't
-                                // in the same line and it could be confusing otherwise.
-                                e.span_label(ident, "");
+                                let def_id = self.tcx.hir_enclosing_body_owner(self.id);
+                                let generics = self.tcx.generics_of(def_id);
+                                let param = generics.type_param(*param_ty, self.tcx);
+                                let span = self.tcx.def_span(param.def_id);
+                                e.span_label(span, "constant depends on this generic parameter");
+                                if let Some(ident) = self.tcx.def_ident_span(def_id)
+                                    && self.tcx.sess.source_map().is_multiline(ident.between(span))
+                                {
+                                    // Display the `fn` name as well in the diagnostic, as the generic isn't
+                                    // in the same line and it could be confusing otherwise.
+                                    e.span_label(ident, "");
+                                }
                             }
                         }
+                        return self.mk_err(e, ty);
                     }
-                    return self.mk_err(e, ty);
-                }
-                Ok(Err(bad_ty)) => {
-                    // The pattern cannot be turned into a valtree.
-                    let e = match bad_ty.kind() {
-                        ty::Adt(def, ..) => {
-                            assert!(def.is_union());
-                            self.tcx.dcx().create_err(UnionPattern { span: self.span })
-                        }
-                        ty::FnPtr(..) | ty::RawPtr(..) => {
-                            self.tcx.dcx().create_err(PointerPattern { span: self.span })
-                        }
-                        _ => self.tcx.dcx().create_err(InvalidPattern {
-                            span: self.span,
-                            non_sm_ty: bad_ty,
-                            prefix: bad_ty.prefix_string(self.tcx).to_string(),
-                        }),
-                    };
-                    return self.mk_err(e, ty);
-                }
-            };
+                    Ok(Err(bad_ty)) => {
+                        // The pattern cannot be turned into a valtree.
+                        let e = match bad_ty.kind() {
+                            ty::Adt(def, ..) => {
+                                assert!(def.is_union());
+                                self.tcx.dcx().create_err(UnionPattern { span: self.span })
+                            }
+                            ty::FnPtr(..) | ty::RawPtr(..) => {
+                                self.tcx.dcx().create_err(PointerPattern { span: self.span })
+                            }
+                            _ => self.tcx.dcx().create_err(InvalidPattern {
+                                span: self.span,
+                                non_sm_ty: bad_ty,
+                                prefix: bad_ty.prefix_string(self.tcx).to_string(),
+                            }),
+                        };
+                        return self.mk_err(e, ty);
+                    }
+                };
 
             // Lower the valtree to a THIR pattern.
             self.valtree_to_pat(ty::Value { ty, valtree })
@@ -205,7 +218,7 @@ impl<'tcx> ConstToPat<'tcx> {
 
         // Mark the pattern to indicate that it is the result of lowering a named
         // constant. This is used for diagnostics.
-        thir_pat.extra.get_or_insert_default().expanded_const = uv.kind.opt_def_id();
+        thir_pat.extra.get_or_insert_default().expanded_const = alias_const.kind.opt_def_id();
         thir_pat
     }
 

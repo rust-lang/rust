@@ -760,16 +760,16 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
             //
             // We only need to be careful with potentially normalizeable
             // aliases here. See `generalize_alias_term` for more information.
-            ty::ConstKind::Alias(ty::IsRigid::No, uv) => {
+            ty::ConstKind::Alias(ty::IsRigid::No, alias_const) => {
                 match self.structurally_relate_aliases {
                     // Hack: Fall back to old behavior if GCE is enabled (it used to just be the Yes
                     // path), as doing this new No path breaks some GCE things. I expect GCE to be
                     // ripped out soon so this shouldn't matter soon.
                     StructurallyRelateAliases::No if !tcx.features().generic_const_exprs() => {
-                        self.generalize_alias_term(uv.into()).map(|v| v.expect_const())
+                        self.generalize_alias_term(alias_const.into()).map(|v| v.expect_const())
                     }
                     _ => {
-                        let ty::AliasConst { kind, args, .. } = uv;
+                        let ty::AliasConst { kind, args, .. } = alias_const;
                         let args = self.relate_with_variance(
                             ty::Invariant,
                             ty::VarianceDiagInfo::default(),

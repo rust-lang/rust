@@ -272,19 +272,19 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
             return Ok(constant);
         }
 
-        let uv = match constant.kind() {
-            ty::ConstKind::Alias(_, uv) => uv,
+        let alias_const = match constant.kind() {
+            ty::ConstKind::Alias(_, alias_const) => alias_const,
             _ => return constant.try_super_fold_with(self),
         };
 
-        let constant = match uv.kind {
+        let constant = match alias_const.kind {
             ty::AliasConstKind::Anon { .. } => crate::traits::with_replaced_escaping_bound_vars(
                 self.infcx,
                 &mut self.universes,
                 constant,
                 |constant| crate::traits::evaluate_const(&self.infcx, constant, self.param_env),
             ),
-            _ => self.try_fold_free_or_assoc(uv.into())?.expect_const(),
+            _ => self.try_fold_free_or_assoc(alias_const.into())?.expect_const(),
         };
         debug!(?constant, ?self.param_env);
         constant.try_super_fold_with(self)

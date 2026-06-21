@@ -852,10 +852,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
-                ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(uv)) => {
+                ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(alias_const)) => {
                     match const_evaluatable::is_const_evaluatable(
                         self.infcx,
-                        uv,
+                        alias_const,
                         obligation.param_env,
                         obligation.cause.span,
                     ) {
@@ -987,7 +987,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                         ty::ConstKind::Error(_) => return Ok(EvaluatedToOk),
                         ty::ConstKind::Value(cv) => cv.ty,
-                        ty::ConstKind::Alias(_, uv) => uv.type_of(self.tcx()).skip_norm_wip(),
+                        ty::ConstKind::Alias(_, alias_const) => alias_const.type_of(self.tcx()).skip_norm_wip(),
                         // FIXME(generic_const_exprs): See comment in `fulfill.rs`
                         ty::ConstKind::Expr(_) => return Ok(EvaluatedToOk),
                         ty::ConstKind::Placeholder(_) => {

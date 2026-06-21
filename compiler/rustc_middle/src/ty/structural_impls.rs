@@ -634,8 +634,8 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Const<'tcx> {
         folder: &mut F,
     ) -> Result<Self, F::Error> {
         let kind = match self.kind() {
-            ConstKind::Alias(is_rigid, uv) => {
-                ConstKind::Alias(is_rigid, uv.try_fold_with(folder)?)
+            ConstKind::Alias(is_rigid, alias_const) => {
+                ConstKind::Alias(is_rigid, alias_const.try_fold_with(folder)?)
             }
             ConstKind::Value(v) => ConstKind::Value(v.try_fold_with(folder)?),
             ConstKind::Expr(e) => ConstKind::Expr(e.try_fold_with(folder)?),
@@ -651,8 +651,8 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Const<'tcx> {
 
     fn super_fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
         let kind = match self.kind() {
-            ConstKind::Alias(is_rigid, uv) => {
-                ConstKind::Alias(is_rigid, uv.fold_with(folder))
+            ConstKind::Alias(is_rigid, alias_const) => {
+                ConstKind::Alias(is_rigid, alias_const.fold_with(folder))
             }
             ConstKind::Value(v) => ConstKind::Value(v.fold_with(folder)),
             ConstKind::Expr(e) => ConstKind::Expr(e.fold_with(folder)),
@@ -670,7 +670,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Const<'tcx> {
 impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Const<'tcx> {
     fn super_visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         match self.kind() {
-            ConstKind::Alias(_, uv) => uv.visit_with(visitor),
+            ConstKind::Alias(_, alias_const) => alias_const.visit_with(visitor),
             ConstKind::Value(v) => v.visit_with(visitor),
             ConstKind::Expr(e) => e.visit_with(visitor),
             ConstKind::Error(e) => e.visit_with(visitor),

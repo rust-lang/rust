@@ -432,8 +432,8 @@ impl<I: Interner> FlagComputation<I> {
                 self.add_term(term);
             }
             ty::PredicateKind::DynCompatible(_def_id) => {}
-            ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(uv)) => {
-                self.add_const(uv);
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(alias_const)) => {
+                self.add_const(alias_const);
             }
             ty::PredicateKind::ConstEquate(expected, found) => {
                 self.add_const(expected);
@@ -477,9 +477,9 @@ impl<I: Interner> FlagComputation<I> {
 
     fn add_const_kind(&mut self, c: &ty::ConstKind<I>) {
         match *c {
-            ty::ConstKind::Alias(is_rigid, uv) => {
+            ty::ConstKind::Alias(is_rigid, alias_const) => {
                 self.add_is_rigid(is_rigid);
-                self.add_args(uv.args.as_slice());
+                self.add_args(alias_const.args.as_slice());
                 self.add_flags(TypeFlags::HAS_CT_PROJECTION);
             }
             ty::ConstKind::Infer(infer) => match infer {

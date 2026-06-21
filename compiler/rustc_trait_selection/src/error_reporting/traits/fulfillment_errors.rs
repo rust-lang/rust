@@ -3769,12 +3769,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         match obligation.predicate.kind().skip_binder() {
             ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(ct)) => match ct.kind() {
-                ty::ConstKind::Alias(_, uv) => {
+                ty::ConstKind::Alias(_, alias_const) => {
                     let mut err =
                         self.dcx().struct_span_err(span, "unconstrained generic constant");
-                    let const_span = uv.kind.def_span(self.tcx);
+                    let const_span = alias_const.kind.def_span(self.tcx);
 
-                    let const_ty = uv.type_of(self.tcx).skip_norm_wip();
+                    let const_ty = alias_const.type_of(self.tcx).skip_norm_wip();
                     let cast = if const_ty != self.tcx.types.usize { " as usize" } else { "" };
                     let msg = "try adding a `where` bound";
                     if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(const_span) {

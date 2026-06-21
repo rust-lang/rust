@@ -408,8 +408,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         debug!("add_constraints_from_const(c={:?}, variance={:?})", c, variance);
 
         match &c.kind() {
-            ty::ConstKind::Alias(_, uv) => {
-                self.add_constraints_from_invariant_args(current, uv.args, variance);
+            ty::ConstKind::Alias(_, alias_const) => {
+                self.add_constraints_from_invariant_args(current, alias_const.args, variance);
             }
             _ => {}
         }

@@ -1865,12 +1865,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ty::AssocTag::Const,
         )?;
         self.require_type_const_attribute(item_def_id, span)?;
-        let uv = ty::AliasConst::new(
+        let alias_const = ty::AliasConst::new(
             tcx,
             ty::AliasConstKind::new_from_def_id(tcx, item_def_id),
             item_args,
         );
-        Ok(Const::new_alias(tcx, ty::IsRigid::No, uv))
+        Ok(Const::new_alias(tcx, ty::IsRigid::No, alias_const))
     }
 
     /// Lower a [resolved][hir::QPath::Resolved] (type-level) associated item path.

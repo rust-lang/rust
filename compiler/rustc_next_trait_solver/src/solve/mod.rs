@@ -207,7 +207,7 @@ where
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
             }
 
-            ty::ConstKind::Unevaluated(ty::IsRigid::No, uv) => {
+            ty::ConstKind::Unevaluated(ty::IsRigid::No, alias_const) => {
                 // We never return `NoSolution` here as `evaluate_const` emits an
                 // error itself when failing to evaluate, so emitting an additional fulfillment
                 // error in that case is unnecessary noise. This may change in the future once
@@ -216,7 +216,7 @@ where
 
                 // FIXME(generic_const_exprs): Implement handling for generic
                 // const expressions here.
-                if let Some(_normalized) = self.evaluate_const(param_env, uv)? {
+                if let Some(_normalized) = self.evaluate_const(param_env, alias_const)? {
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 } else {
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
@@ -252,8 +252,8 @@ where
                     .evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                     .map_err(Into::into);
             }
-            ty::ConstKind::Alias(ty::IsRigid::Yes, uv) => {
-                uv.type_of(self.cx()).skip_norm_wip()
+            ty::ConstKind::Alias(ty::IsRigid::Yes, alias_const) => {
+                alias_const.type_of(self.cx()).skip_norm_wip()
             }
             ty::ConstKind::Alias(ty::IsRigid::No, _) => unimplemented!(
                 "non-rigid unevaluated constant for compute_const_arg_has_type_goal: {ct:?}"
