@@ -14,7 +14,7 @@ const fn get_value<T: [const] Value>() -> u32 {
     T::value()
 }
 
-impl<T> const Value for T {
+const impl<T> Value for T {
     default fn value() -> u32 {
         0
     }
@@ -22,7 +22,7 @@ impl<T> const Value for T {
 
 struct FortyTwo;
 
-impl const Value for FortyTwo {
+const impl Value for FortyTwo {
     fn value() -> u32 {
         42
     }

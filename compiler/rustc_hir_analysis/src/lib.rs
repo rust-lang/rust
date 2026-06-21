@@ -202,6 +202,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         tcx.sess.time("dumping_rustc_attr_data", || {
             outlives::dump::inferred_outlives(tcx);
             variance::dump::variances(tcx);
+            collect::dump::generics(tcx);
             collect::dump::opaque_hidden_types(tcx);
             collect::dump::predicates_and_item_bounds(tcx);
             collect::dump::def_parents(tcx);

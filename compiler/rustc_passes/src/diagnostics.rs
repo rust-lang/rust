@@ -14,24 +14,6 @@ use crate::check_attr::ProcMacroKind;
 use crate::lang_items::Duplicate;
 
 #[derive(Diagnostic)]
-#[diag("`#[loop_match]` should be applied to a loop")]
-pub(crate) struct LoopMatchAttr {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label("not a loop")]
-    pub node_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("`#[const_continue]` should be applied to a break expression")]
-pub(crate) struct ConstContinueAttr {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label("not a break expression")]
-    pub node_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("`{$no_mangle_attr}` attribute may not be used in combination with `{$export_name_attr}`")]
 pub(crate) struct MixedExportNameAndNoMangle {
     #[label("`{$no_mangle_attr}` is ignored")]

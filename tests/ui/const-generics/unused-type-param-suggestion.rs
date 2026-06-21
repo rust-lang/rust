@@ -1,4 +1,4 @@
-#![crate_type = "lib"]
+#![crate_type="lib"]
 
 struct S<N>;
 //~^ ERROR type parameter `N` is never used
@@ -25,3 +25,4 @@ type C<N: Sized> = ();
 type D<N: ?Sized> = ();
 //~^ ERROR type parameter `N` is never used
 //~| HELP consider removing `N`
+//~| HELP if you intended `N` to be a const parameter

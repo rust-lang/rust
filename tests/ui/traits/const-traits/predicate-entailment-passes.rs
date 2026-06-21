@@ -4,7 +4,7 @@
 #![feature(const_trait_impl)]
 
 const trait Bar {}
-impl const Bar for () {}
+const impl Bar for () {}
 
 const trait TildeConst {
     fn foo<T>() where T: [const] Bar;
@@ -20,7 +20,7 @@ const trait AlwaysConst {
 impl AlwaysConst for i32 {
     fn foo<T>() where T: Bar {}
 }
-impl const AlwaysConst for u32 {
+const impl AlwaysConst for u32 {
     fn foo<T>() where T: [const] Bar {}
 }
 

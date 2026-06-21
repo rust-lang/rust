@@ -70,6 +70,7 @@ pub enum Target {
     ForLoop,
     While,
     Loop,
+    Break,
 }
 
 impl Display for Target {
@@ -119,7 +120,8 @@ impl Target {
             | Target::Delegation { .. }
             | Target::Loop
             | Target::While
-            | Target::ForLoop => false,
+            | Target::ForLoop
+            | Target::Break => false,
         }
     }
 
@@ -265,6 +267,7 @@ impl Target {
             ast::ExprKind::ForLoop { .. } => Self::ForLoop,
             ast::ExprKind::Loop(..) => Self::Loop,
             ast::ExprKind::While(..) => Self::While,
+            ast::ExprKind::Break(..) => Self::Break,
             _ => Self::Expression,
         }
     }
@@ -319,6 +322,7 @@ impl Target {
             Target::Loop => "loop",
             Target::ForLoop => "for loop",
             Target::While => "while loop",
+            Target::Break => "break expression",
         }
     }
 
@@ -373,6 +377,7 @@ impl Target {
             Target::ForLoop => "for loops",
             Target::Loop => "loops",
             Target::While => "while loops",
+            Target::Break => "break expressions",
         }
     }
 }

@@ -172,7 +172,7 @@ def test_cargo_miri_test():
     )
     test("`cargo miri test` (proc-macro crate)",
         cargo_miri("test") + ["-p", "proc_macro_crate"],
-        "test.empty.ref", "test.proc-macro.stderr.ref",
+        "test.proc-macro.stdout.ref", "test.proc-macro.stderr.ref",
     )
     test("`cargo miri test` (custom target dir)",
         cargo_miri("test") + ["--target-dir=custom-test"],

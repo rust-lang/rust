@@ -1274,6 +1274,10 @@ impl CrateMetadata {
     /// including both proper items and reexports.
     /// Module here is understood in name resolution sense - it can be a `mod` item,
     /// or a crate root, or an enum, or a trait.
+    ///
+    /// # Panics
+    ///
+    /// May panic if the provided `id` does not refer to a module.
     fn get_module_children(&self, tcx: TyCtxt<'_>, id: DefIndex) -> impl Iterator<Item = ModChild> {
         gen move {
             if let Some(data) = &self.root.proc_macro_data {
@@ -1287,7 +1291,9 @@ impl CrateMetadata {
             } else {
                 // Iterate over all children.
                 let non_reexports = self.root.tables.module_children_non_reexports.get(self, id);
-                for child_index in non_reexports.unwrap().decode((self, tcx)) {
+                let non_reexports =
+                    non_reexports.expect("provided `DefIndex` must refer to a module-like item");
+                for child_index in non_reexports.decode((self, tcx)) {
                     yield self.get_mod_child(tcx, child_index);
                 }
 

@@ -3641,6 +3641,10 @@ pub const unsafe fn va_arg<T: VaArgSafe>(ap: &mut VaList<'_>) -> T;
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const fn va_copy<'f>(src: &VaList<'f>) -> VaList<'f> {
+    // This fallback body exploits the fact that our codegen backends all just use
+    // a plain memcpy to duplicate VaList. This assumption is wrong for Miri.
+    assert!(!cfg!(miri), "fallback body is incorrect under Miri");
+
     src.duplicate()
 }
 

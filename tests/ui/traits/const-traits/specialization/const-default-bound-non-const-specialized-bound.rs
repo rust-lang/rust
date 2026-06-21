@@ -14,7 +14,7 @@ const trait Bar {
     fn bar();
 }
 
-impl<T> const Bar for T
+const impl<T> Bar for T
 where
     T: [const] Foo,
 {
@@ -33,14 +33,14 @@ const trait Baz {
     fn baz();
 }
 
-impl<T> const Baz for T
+const impl<T> Baz for T
 where
     T: [const] Foo,
 {
     default fn baz() {}
 }
 
-impl<T> const Baz for T //~ ERROR conflicting implementations of trait `Baz`
+const impl<T> Baz for T //~ ERROR conflicting implementations of trait `Baz`
 where
     T: Foo,
     T: Specialize,

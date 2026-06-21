@@ -251,6 +251,10 @@ pub struct InferCtxt<'tcx> {
     /// Whether this inference context should care about region obligations in
     /// the root universe. Most notably, this is used during HIR typeck as region
     /// solving is left to borrowck instead.
+    ///
+    /// This is used in the old solver to enable the generation of regions constraints.
+    /// In the new solver its only used inside the InferCtxt's `Drop` implementation:
+    /// if we're considering regions, and new opaques are registered, we panic.
     pub considering_regions: bool,
     /// `-Znext-solver`: Whether this inference context is used by HIR typeck. If so, we
     /// need to make sure we don't rely on region identity in the trait solver or when

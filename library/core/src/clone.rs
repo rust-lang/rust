@@ -710,7 +710,7 @@ mod impls {
             $(
                 #[stable(feature = "rust1", since = "1.0.0")]
                 #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-                impl const Clone for $t {
+                const impl Clone for $t {
                     #[inline(always)]
                     fn clone(&self) -> Self {
                         *self
@@ -720,7 +720,7 @@ mod impls {
                 #[doc(hidden)]
                 #[unstable(feature = "trivial_clone", issue = "none")]
                 #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-                unsafe impl const TrivialClone for $t {}
+                const unsafe impl TrivialClone for $t {}
             )*
         }
     }

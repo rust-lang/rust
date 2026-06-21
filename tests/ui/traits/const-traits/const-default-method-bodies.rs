@@ -16,7 +16,7 @@ impl ConstDefaultFn for NonConstImpl {
     fn b(self) {}
 }
 
-impl const ConstDefaultFn for ConstImpl {
+const impl ConstDefaultFn for ConstImpl {
     fn b(self) {}
 }
 

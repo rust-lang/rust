@@ -9,7 +9,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::{BasicBlock, Location};
 use rustc_middle::ty::{self, RegionVid};
 use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
-use tracing::debug;
+use tracing::{debug, instrument};
 
 use crate::BorrowIndex;
 use crate::polonius::LiveLoans;
@@ -116,37 +116,43 @@ impl LivenessValues {
     /// Records `region` as being live at the given `location`.
     pub(crate) fn add_location(&mut self, region: RegionVid, location: Location) {
         let point = self.location_map.point_from_location(location);
+        // This is a debug assert despite being cheap because it drops
+        // the current `point_in_range()` uses to 0 when debugging is off.
+        debug_assert!(
+            self.location_map.point_in_range(point),
+            "Tried inserting region {region:?} whose location {location:?} does not belong to this body!"
+        );
         debug!("LivenessValues::add_location(region={:?}, location={:?})", region, location);
         match &mut self.live_regions {
             LiveRegions::AtPoints(points) => {
                 points.insert(region, point);
             }
 
-            LiveRegions::InBody(live_regions) if self.location_map.point_in_range(point) => {
+            LiveRegions::InBody(live_regions) => {
                 live_regions.insert(region);
             }
-
-            LiveRegions::InBody(_) => (),
         };
     }
 
     /// Records `region` as being live at all the given `points`.
     pub(crate) fn add_points(&mut self, region: RegionVid, points: &IntervalSet<PointIndex>) {
+        debug_assert!(
+            points.iter().all(|point| self.location_map.point_in_range(point)),
+            "Tried inserting region {region:?} with some points not belonging to this body!"
+        );
         debug!("LivenessValues::add_points(region={:?}, points={:?})", region, points);
         match &mut self.live_regions {
             LiveRegions::AtPoints(these_points) => {
                 these_points.union_row(region, points);
             }
-            LiveRegions::InBody(live_regions)
-                if points.iter().any(|point| self.location_map.point_in_range(point)) =>
-            {
+            LiveRegions::InBody(live_regions) => {
                 live_regions.insert(region);
             }
-            LiveRegions::InBody(_) => (),
         };
     }
 
     /// Records `region` as being live at all the control-flow points.
+    #[instrument(skip(self))]
     pub(crate) fn add_all_points(&mut self, region: RegionVid) {
         match &mut self.live_regions {
             LiveRegions::AtPoints(points) => points.insert_all_into_row(region),
@@ -172,10 +178,7 @@ impl LivenessValues {
 
     /// Returns an iterator of all the points where `region` is live.
     fn live_points(&self, region: RegionVid) -> impl Iterator<Item = PointIndex> {
-        self.point_liveness(region)
-            .into_iter()
-            .flat_map(|set| set.iter())
-            .take_while(|&p| self.location_map.point_in_range(p))
+        self.point_liveness(region).into_iter().flat_map(|set| set.iter())
     }
 
     /// For debugging purposes, returns a pretty-printed string of the points where the `region` is
@@ -343,11 +346,10 @@ impl<'tcx, N: Idx> RegionValues<'tcx, N> {
 
     /// Returns the locations contained within a given region `r`.
     pub(crate) fn locations_outlived_by(&self, r: N) -> impl Iterator<Item = Location> {
-        self.points.row(r).into_iter().flat_map(move |set| {
-            set.iter()
-                .take_while(move |&p| self.location_map.point_in_range(p))
-                .map(move |p| self.location_map.to_location(p))
-        })
+        self.points
+            .row(r)
+            .into_iter()
+            .flat_map(move |set| set.iter().map(move |p| self.location_map.to_location(p)))
     }
 
     /// Returns just the universal regions that are contained in a given region's value.
@@ -413,11 +415,7 @@ pub(crate) fn pretty_print_points(
     points: impl IntoIterator<Item = PointIndex>,
 ) -> String {
     pretty_print_region_elements(
-        points
-            .into_iter()
-            .take_while(|&p| location_map.point_in_range(p))
-            .map(|p| location_map.to_location(p))
-            .map(RegionElement::Location),
+        points.into_iter().map(|p| location_map.to_location(p)).map(RegionElement::Location),
     )
 }
 
