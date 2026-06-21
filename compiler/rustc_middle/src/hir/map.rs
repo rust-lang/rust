@@ -1287,7 +1287,6 @@ pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModDefId) -> Mod
         body_owners: body_owners.into_boxed_slice(),
         opaques: opaques.into_boxed_slice(),
         nested_bodies: nested_bodies.into_boxed_slice(),
-        delayed_lint_items: Box::new([]),
         eiis: eiis.into_boxed_slice(),
     }
 }
@@ -1310,18 +1309,9 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
         body_owners,
         opaques,
         nested_bodies,
-        mut delayed_lint_items,
         eiis,
         ..
     } = collector;
-
-    // The crate could have delayed lints too, but would not be picked up by the visitor.
-    // The `delayed_lint_items` list is smart - it only contains items which we know from
-    // earlier passes is guaranteed to contain lints. It's a little harder to determine that
-    // for sure here, so we simply always add the crate to the list. If it has no lints,
-    // we'll discover that later. The cost of this should be low, there's only one crate
-    // after all compared to the many items we have we wouldn't want to iterate over later.
-    delayed_lint_items.push(CRATE_OWNER_ID);
 
     ModuleItems {
         add_root: true,
@@ -1333,7 +1323,6 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
         body_owners: body_owners.into_boxed_slice(),
         opaques: opaques.into_boxed_slice(),
         nested_bodies: nested_bodies.into_boxed_slice(),
-        delayed_lint_items: delayed_lint_items.into_boxed_slice(),
         eiis: eiis.into_boxed_slice(),
     }
 }
@@ -1351,7 +1340,6 @@ struct ItemCollector<'tcx> {
     body_owners: Vec<LocalDefId>,
     opaques: Vec<LocalDefId>,
     nested_bodies: Vec<LocalDefId>,
-    delayed_lint_items: Vec<OwnerId>,
     eiis: Vec<LocalDefId>,
 }
 
@@ -1368,7 +1356,6 @@ impl<'tcx> ItemCollector<'tcx> {
             body_owners: Vec::default(),
             opaques: Vec::default(),
             nested_bodies: Vec::default(),
-            delayed_lint_items: Vec::default(),
             eiis: Vec::default(),
         }
     }
@@ -1387,9 +1374,6 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
         }
 
         self.items.push(item.item_id());
-        if self.crate_collector && item.has_delayed_lints {
-            self.delayed_lint_items.push(item.item_id().owner_id);
-        }
 
         if let ItemKind::Static(..) | ItemKind::Fn { .. } | ItemKind::Macro(..) = &item.kind
             && item.eii
@@ -1411,9 +1395,6 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
 
     fn visit_foreign_item(&mut self, item: &'hir ForeignItem<'hir>) {
         self.foreign_items.push(item.foreign_item_id());
-        if self.crate_collector && item.has_delayed_lints {
-            self.delayed_lint_items.push(item.foreign_item_id().owner_id);
-        }
         intravisit::walk_foreign_item(self, item)
     }
 
@@ -1447,9 +1428,6 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
         }
 
         self.trait_items.push(item.trait_item_id());
-        if self.crate_collector && item.has_delayed_lints {
-            self.delayed_lint_items.push(item.trait_item_id().owner_id);
-        }
 
         intravisit::walk_trait_item(self, item)
     }
@@ -1460,9 +1438,6 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
         }
 
         self.impl_items.push(item.impl_item_id());
-        if self.crate_collector && item.has_delayed_lints {
-            self.delayed_lint_items.push(item.impl_item_id().owner_id);
-        }
 
         intravisit::walk_impl_item(self, item)
     }

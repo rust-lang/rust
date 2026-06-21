@@ -1,8 +1,8 @@
 error: didn't expect any arguments here
-  --> $DIR/invalid-doc-attr-3.rs:10:14
+  --> $DIR/invalid-doc-attr-3.rs:3:29
    |
-LL | #[doc(hidden = true)]
-   |              ^^^^^^
+LL | #![doc(test(no_crate_inject = 1))]
+   |                             ^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 note: the lint level is defined here
@@ -10,6 +10,22 @@ note: the lint level is defined here
    |
 LL | #![deny(invalid_doc_attributes)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error: malformed `doc` attribute input
+  --> $DIR/invalid-doc-attr-3.rs:6:1
+   |
+LL | #![doc(test(attr = 1))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+error: didn't expect any arguments here
+  --> $DIR/invalid-doc-attr-3.rs:10:14
+   |
+LL | #[doc(hidden = true)]
+   |              ^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: didn't expect any arguments here
   --> $DIR/invalid-doc-attr-3.rs:13:13
@@ -32,22 +48,6 @@ error: malformed `doc` attribute input
    |
 LL | #[doc = 1]
    |         ^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
-error: didn't expect any arguments here
-  --> $DIR/invalid-doc-attr-3.rs:3:29
-   |
-LL | #![doc(test(no_crate_inject = 1))]
-   |                             ^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
-error: malformed `doc` attribute input
-  --> $DIR/invalid-doc-attr-3.rs:6:1
-   |
-LL | #![doc(test(attr = 1))]
-   | ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
