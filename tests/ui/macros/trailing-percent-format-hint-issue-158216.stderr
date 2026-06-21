@@ -1,0 +1,14 @@
+error: argument never used
+  --> $DIR/trailing-percent-format-hint-issue-158216.rs:5:27
+   |
+LL |     println!("{x:>8.2}%", "foo");
+   |              -----------  ^^^^^ argument never used
+   |              |
+   |              formatting specifier missing
+   |
+help: format specifiers use curly braces, consider adding a format specifier
+   |
+LL |     println!("{x:>8.2}%{}", "foo");
+   |                        ++
+
+error: aborting due to 1 previous error

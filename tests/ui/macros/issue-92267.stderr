@@ -2,15 +2,13 @@ error: argument never used
   --> $DIR/issue-92267.rs:3:34
    |
 LL | pub fn main() { println!("🦀%%%", 0) }
-   |                                   ^ argument never used
+   |                          -------  ^ argument never used
+   |                          |
+   |                          formatting specifier missing
    |
-note: format specifiers use curly braces, and the conversion specifier `
-      ` is unknown or unsupported
-  --> $DIR/issue-92267.rs:3:30
+help: format specifiers use curly braces, consider adding a format specifier
    |
-LL | pub fn main() { println!("🦀%%%", 0) }
-   |                               ^^
-   = note: printf formatting is not supported; see the documentation for `std::fmt`
+LL | pub fn main() { println!("🦀%%%{}", 0) }
+   |                                ++
 
 error: aborting due to 1 previous error
-
