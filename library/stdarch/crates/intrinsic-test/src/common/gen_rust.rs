@@ -5,7 +5,6 @@ use itertools::Itertools;
 use super::intrinsic_helpers::TypeDefinition;
 use crate::common::cli::{CcArgStyle, ProcessedCli};
 use crate::common::intrinsic::Intrinsic;
-use crate::common::intrinsic_helpers::TypeKind;
 use crate::common::values::{test_values_array_name, test_values_array_static};
 use crate::common::{PASSES, SupportedArchitecture};
 
@@ -195,29 +194,6 @@ fn generate_rust_test_loop<A: SupportedArchitecture>(
         writeln!(w, "    ];")?;
     }
 
-    let (cast_prefix, cast_suffix) = if intrinsic.results.is_simd() {
-        (
-            format!(
-                "std::mem::transmute::<_, [{}; {}]>(",
-                intrinsic.results.rust_scalar_type().replace("f", "NanEqF"),
-                intrinsic.results.num_lanes() * intrinsic.results.num_vectors()
-            ),
-            ")",
-        )
-    } else if intrinsic.results.kind == TypeKind::Float {
-        (
-            match intrinsic.results.inner_size() {
-                16 => format!("NanEqF16("),
-                32 => format!("NanEqF32("),
-                64 => format!("NanEqF64("),
-                _ => unimplemented!(),
-            },
-            ")",
-        )
-    } else {
-        ("".to_string(), "")
-    };
-
     write!(
         w,
         r#"
@@ -231,7 +207,7 @@ for (id, rust, c) in specializations {{
             c(__c_return_value.as_mut_ptr(){c_args});
             let __c_return_value = __c_return_value.assume_init();
 
-            assert_eq!({cast_prefix}__rust_return_value{cast_suffix}, {cast_prefix}__c_return_value{cast_suffix}, "{{id}}");
+            {comparison}
         }}
     }}
 }}
@@ -239,6 +215,7 @@ for (id, rust, c) in specializations {{
         loaded_args = intrinsic.arguments.load_values_rust(),
         rust_args = intrinsic.arguments.as_call_param_rust(),
         c_args = intrinsic.arguments.as_c_call_param_rust(),
+        comparison = intrinsic.results.comparison_function(),
     )
 }
 

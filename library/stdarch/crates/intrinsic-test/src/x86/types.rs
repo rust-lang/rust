@@ -48,7 +48,7 @@ impl TypeDefinition for X86IntrinsicType {
     }
 
     /// Determines the load function for this type.
-    fn get_load_function(&self) -> String {
+    fn load_function(&self) -> String {
         let type_value = self.param.type_data.clone();
         if type_value.len() == 0 {
             unimplemented!("the value for key 'type' is not present!");
