@@ -103,6 +103,33 @@ fn dont_remove_comparison(a: i8) -> i32 {
     }
 }
 
+// EMIT_MIR if_condition_int.dont_remove_moved_comparison.SimplifyComparisonIntegral.diff
+#[custom_mir(dialect = "runtime")]
+fn dont_remove_moved_comparison(a: i8) -> i32 {
+    mir! {
+        let b: bool;
+        let c: i32;
+        let d: i32;
+        {
+            b = a == 17;
+            c = b as i32;
+            match Move(b) {
+                true => bb1,
+                _ => bb2,
+            }
+
+        }
+        bb1 = {
+            RET = c;
+            Return()
+        }
+        bb2 = {
+            RET = c + 1;
+            Return()
+        }
+    }
+}
+
 // EMIT_MIR if_condition_int.dont_opt_floats.SimplifyComparisonIntegral.diff
 // test that we do not optimize on floats
 fn dont_opt_floats(a: f32) -> i32 {
