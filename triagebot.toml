@@ -1531,6 +1531,7 @@ libs = [
     "@clarfonthey",
     "@aapoalas",
     "@Darksonn",
+    "@JohnTitor",
 ]
 infra-ci = [
     "@Mark-Simulacrum",
@@ -1560,7 +1561,8 @@ diagnostics = [
     "@davidtwco",
     "@oli-obk",
     "@chenyukang",
-    "@TaKO8Ki"
+    "@TaKO8Ki",
+    "@JohnTitor",
 ]
 parser = [
     "@davidtwco",
