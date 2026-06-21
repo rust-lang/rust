@@ -392,112 +392,46 @@ LL |         *(&NONE as *const _ as *const _ as *const *const u8 as *const *cons
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(&NONE as *const _ as *const _ as *const *const u8)`
 
 error: casting integer literal to `u64` is unnecessary
-  --> tests/ui/unnecessary_cast.rs:662:31
+  --> tests/ui/unnecessary_cast.rs:665:45
    |
-LL | const ISSUE_11882_TEST: u64 = (!0 as u64).overflowing_shr(1_u32).0;
-   |                               ^^^^^^^^^^^ help: try: `(!0_u64)`
+LL |     assert!(0x7f_ff_ff_ff_ff_ff_ff_ffu64 == (!0 as u64).overflowing_shr(1_u32).0);
+   |                                             ^^^^^^^^^^^ help: try: `(!0_u64)`
 
 error: casting to the same type is unnecessary (`u64` -> `u64`)
-  --> tests/ui/unnecessary_cast.rs:664:32
+  --> tests/ui/unnecessary_cast.rs:667:45
    |
-LL | const ISSUE_11882_TEST2: u64 = (!0_u64 as u64).overflowing_shr(1_u32).0;
-   |                                ^^^^^^^^^^^^^^^ help: try: `(!0_u64)`
-
-error: casting to the same type is unnecessary (`u64` -> `u64`)
-  --> tests/ui/unnecessary_cast.rs:666:32
-   |
-LL | const ISSUE_11882_TEST3: u64 = (!not(!0_u64) as u64).overflowing_shr(1_u32).0;
-   |                                ^^^^^^^^^^^^^^^^^^^^^ help: try: `(!not(!0_u64))`
+LL |     assert!(0x7f_ff_ff_ff_ff_ff_ff_ffu64 == (!0_u64 as u64).overflowing_shr(1_u32).0);
+   |                                             ^^^^^^^^^^^^^^^ help: try: `(!0_u64)`
 
 error: casting integer literal to `u64` is unnecessary
-  --> tests/ui/unnecessary_cast.rs:668:33
+  --> tests/ui/unnecessary_cast.rs:670:46
    |
-LL | const ISSUE_11882_TEST4: u64 = (!0 as u64 + 0).overflowing_shr(1_u32).0;
-   |                                 ^^^^^^^^^ help: try: `!0_u64`
+LL |     assert!(0x7f_ff_ff_ff_ff_ff_ff_ffu64 == (!0 as u64 + 0).overflowing_shr(1_u32).0);
+   |                                              ^^^^^^^^^ help: try: `!0_u64`
 
 error: casting integer literal to `u64` is unnecessary
-  --> tests/ui/unnecessary_cast.rs:670:35
+  --> tests/ui/unnecessary_cast.rs:672:48
    |
-LL | const ISSUE_11882_TEST5: u64 = (!(0 as u64 + 0)).overflowing_shr(1_u32).0;
-   |                                   ^^^^^^^^ help: try: `0_u64`
+LL |     assert!(0x7f_ff_ff_ff_ff_ff_ff_ffu64 == (!(0 as u64 + 0)).overflowing_shr(1_u32).0);
+   |                                                ^^^^^^^^ help: try: `0_u64`
 
 error: casting integer literal to `u64` is unnecessary
-  --> tests/ui/unnecessary_cast.rs:674:35
+  --> tests/ui/unnecessary_cast.rs:675:54
    |
-LL | const ISSUE_11882_CHK1: u64 = not(!0 as u64).overflowing_shr(1_u32).0;
-   |                                   ^^^^^^^^^ help: try: `!0_u64`
-
-error: casting to the same type is unnecessary (`u64` -> `u64`)
-  --> tests/ui/unnecessary_cast.rs:676:31
-   |
-LL | const ISSUE_11882_CHK2: u64 = (!not(0_u64) as u64).overflowing_shr(1_u32).0;
-   |                               ^^^^^^^^^^^^^^^^^^^^ help: try: `(!not(0_u64))`
+LL |     assert!(0x7f_ff_ff_ff_ff_ff_ff_ffu64 == identity(!0 as u64).overflowing_shr(1_u32).0);
+   |                                                      ^^^^^^^^^ help: try: `!0_u64`
 
 error: casting integer literal to `u64` is unnecessary
-  --> tests/ui/unnecessary_cast.rs:678:37
+  --> tests/ui/unnecessary_cast.rs:678:56
    |
-LL | const ISSUE_11882_CHK3: u64 = (!not(0 as u64)).overflowing_shr(1_u32).0;
-   |                                     ^^^^^^^^ help: try: `0_u64`
+LL |     assert!(0x7f_ff_ff_ff_ff_ff_ff_ffu64 == (!identity(0 as u64)).overflowing_shr(1_u32).0);
+   |                                                        ^^^^^^^^ help: try: `0_u64`
 
 error: casting integer literal to `u64` is unnecessary
-  --> tests/ui/unnecessary_cast.rs:680:35
+  --> tests/ui/unnecessary_cast.rs:680:54
    |
-LL | const ISSUE_11882_CHK4: u64 = not(!0 as u64 + 0).overflowing_shr(1_u32).0;
-   |                                   ^^^^^^^^^ help: try: `!0_u64`
+LL |     assert!(0x7f_ff_ff_ff_ff_ff_ff_ffu64 == identity(!0 as u64 + 0).overflowing_shr(1_u32).0);
+   |                                                      ^^^^^^^^^ help: try: `!0_u64`
 
-error: casting integer literal to `u64` is unnecessary
-  --> tests/ui/unnecessary_cast.rs:699:33
-   |
-LL |     let issue_11882_test: u64 = (!0 as u64).overflowing_shr(1_u32).0;
-   |                                 ^^^^^^^^^^^ help: try: `(!0_u64)`
-
-error: casting to the same type is unnecessary (`u64` -> `u64`)
-  --> tests/ui/unnecessary_cast.rs:701:34
-   |
-LL |     let issue_11882_test2: u64 = (!0_u64 as u64).overflowing_shr(1_u32).0;
-   |                                  ^^^^^^^^^^^^^^^ help: try: `(!0_u64)`
-
-error: casting to the same type is unnecessary (`u64` -> `u64`)
-  --> tests/ui/unnecessary_cast.rs:703:34
-   |
-LL |     let issue_11882_test3: u64 = (!not(!0_u64) as u64).overflowing_shr(1_u32).0;
-   |                                  ^^^^^^^^^^^^^^^^^^^^^ help: try: `(!not(!0_u64))`
-
-error: casting integer literal to `u64` is unnecessary
-  --> tests/ui/unnecessary_cast.rs:705:35
-   |
-LL |     let issue_11882_test4: u64 = (!0 as u64 + 0).overflowing_shr(1_u32).0;
-   |                                   ^^^^^^^^^ help: try: `!0_u64`
-
-error: casting integer literal to `u64` is unnecessary
-  --> tests/ui/unnecessary_cast.rs:707:37
-   |
-LL |     let issue_11882_test5: u64 = (!(0 as u64 + 0)).overflowing_shr(1_u32).0;
-   |                                     ^^^^^^^^ help: try: `0_u64`
-
-error: casting integer literal to `u64` is unnecessary
-  --> tests/ui/unnecessary_cast.rs:711:37
-   |
-LL |     let issue_11882_chk1: u64 = not(!0 as u64).overflowing_shr(1_u32).0;
-   |                                     ^^^^^^^^^ help: try: `!0_u64`
-
-error: casting to the same type is unnecessary (`u64` -> `u64`)
-  --> tests/ui/unnecessary_cast.rs:713:33
-   |
-LL |     let issue_11882_chk2: u64 = (!not(0_u64) as u64).overflowing_shr(1_u32).0;
-   |                                 ^^^^^^^^^^^^^^^^^^^^ help: try: `(!not(0_u64))`
-
-error: casting integer literal to `u64` is unnecessary
-  --> tests/ui/unnecessary_cast.rs:715:39
-   |
-LL |     let issue_11882_chk3: u64 = (!not(0 as u64)).overflowing_shr(1_u32).0;
-   |                                       ^^^^^^^^ help: try: `0_u64`
-
-error: casting integer literal to `u64` is unnecessary
-  --> tests/ui/unnecessary_cast.rs:717:37
-   |
-LL |     let issue_11882_chk4: u64 = not(!0 as u64 + 0).overflowing_shr(1_u32).0;
-   |                                     ^^^^^^^^^ help: try: `!0_u64`
-
-error: aborting due to 83 previous errors
+error: aborting due to 72 previous errors
 
