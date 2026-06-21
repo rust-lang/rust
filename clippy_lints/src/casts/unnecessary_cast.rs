@@ -232,7 +232,7 @@ fn lint_unnecessary_cast(
     // (-1).foo() instead of -1.foo())
     let sugg = if let Some(parent_expr) = get_parent_expr(cx, expr)
         && let ExprKind::MethodCall(..) = parent_expr.kind
-        && literal_str.starts_with('-')
+        && literal_str.starts_with(['-', '!'])
     {
         format!("({literal_str}_{cast_to})")
     } else {
@@ -253,7 +253,7 @@ fn lint_unnecessary_cast(
 fn get_numeric_literal<'e>(expr: &'e Expr<'e>) -> Option<Lit> {
     match expr.kind {
         ExprKind::Lit(lit) => Some(lit),
-        ExprKind::Unary(UnOp::Neg, e) => {
+        ExprKind::Unary(UnOp::Neg | UnOp::Not, e) => {
             if let ExprKind::Lit(lit) = e.kind {
                 Some(lit)
             } else {
