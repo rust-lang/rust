@@ -12,7 +12,7 @@ use rustc_type_ir::search_graph::{CandidateHeadUsages, PathKind};
 use rustc_type_ir::solve::{
     AccessedOpaques, ExternalRegionConstraints, FetchEligibleAssocItemResponse, MaybeInfo,
     NoSolutionOrRerunNonErased, OpaqueTypesJank, QueryResultOrRerunNonErased, RerunCondition,
-    RerunNonErased, RerunReason, RerunResultExt, SmallCopyList,
+    RerunNonErased, RerunReason, RerunResultExt, SmallCopyList, TyOrConstInferVar,
 };
 use rustc_type_ir::{
     self as ty, CanonicalVarValues, ClauseKind, InferCtxtLike, Interner, MayBeErased,
@@ -739,29 +739,35 @@ where
         &self,
         canonical_goal: CanonicalInput<I>,
         certainty: Certainty,
-        mut stalled_vars: Vec<I::GenericArg>,
+        orig_values: Vec<I::GenericArg>,
         previously_succeeded_in_erased: SucceededInErased<I>,
     ) -> GoalStalledOn<I> {
         // Remove the canonicalized universal vars, since we only care about stalled existentials.
         let mut sub_roots = Vec::new();
-        stalled_vars.retain(|arg| match arg.kind() {
-            // Lifetimes can never stall goals.
-            ty::GenericArgKind::Lifetime(_) => false,
-            ty::GenericArgKind::Type(ty) => match ty.kind() {
-                ty::Infer(ty::TyVar(vid)) => {
-                    sub_roots.push(self.delegate.sub_unification_table_root_var(vid));
-                    true
-                }
-                ty::Infer(_) => true,
-                ty::Param(_) | ty::Placeholder(_) => false,
-                _ => unreachable!("unexpected orig_value: {ty:?}"),
-            },
-            ty::GenericArgKind::Const(ct) => match ct.kind() {
-                ty::ConstKind::Infer(_) => true,
-                ty::ConstKind::Param(_) | ty::ConstKind::Placeholder(_) => false,
-                _ => unreachable!("unexpected orig_value: {ct:?}"),
-            },
-        });
+        let stalled_vars = orig_values
+            .into_iter()
+            .filter_map(|arg| match arg.kind() {
+                // Lifetimes can never stall goals.
+                ty::GenericArgKind::Lifetime(_) => None,
+                ty::GenericArgKind::Type(ty) => match ty.kind() {
+                    ty::Infer(ty::TyVar(vid)) => {
+                        sub_roots.push(self.delegate.sub_unification_table_root_var(vid));
+                        Some(TyOrConstInferVar::Ty(vid))
+                    }
+                    ty::Infer(ty::IntVar(vid)) => Some(TyOrConstInferVar::TyInt(vid)),
+                    ty::Infer(ty::FloatVar(vid)) => Some(TyOrConstInferVar::TyFloat(vid)),
+                    ty::Param(_) | ty::Placeholder(_) => None,
+                    _ => unreachable!("unexpected orig_value: {ty:?}"),
+                },
+                ty::GenericArgKind::Const(ct) => match ct.kind() {
+                    ty::ConstKind::Infer(ty::InferConst::Var(v)) => {
+                        Some(TyOrConstInferVar::Const(v))
+                    }
+                    ty::ConstKind::Param(_) | ty::ConstKind::Placeholder(_) => None,
+                    _ => unreachable!("unexpected orig_value: {ct:?}"),
+                },
+            })
+            .collect();
 
         GoalStalledOn {
             stalled_vars,

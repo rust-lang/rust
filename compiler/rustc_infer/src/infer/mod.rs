@@ -29,14 +29,15 @@ use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
     self, BoundVarReplacerDelegate, ConstVid, FloatVid, GenericArg, GenericArgKind, GenericArgs,
-    GenericArgsRef, GenericParamDefKind, InferConst, IntVid, OpaqueTypeKey, ProvisionalHiddenType,
-    PseudoCanonicalInput, Term, TermKind, Ty, TyCtxt, TyVid, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypingEnv, TypingMode, fold_regions,
+    GenericArgsRef, GenericParamDefKind, InferConst, OpaqueTypeKey, ProvisionalHiddenType,
+    PseudoCanonicalInput, Term, Ty, TyCtxt, TyVid, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitable, TypeVisitableExt, TypingEnv, TypingMode, fold_regions,
 };
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_type_ir::MayBeErased;
 use snapshot::undo_log::InferCtxtUndoLogs;
 use tracing::{debug, instrument};
+use ty::solve::TyOrConstInferVar;
 use type_variable::TypeVariableOrigin;
 
 use crate::infer::snapshot::undo_log::UndoLog;
@@ -1607,64 +1608,6 @@ impl<'tcx> InferCtxt<'tcx> {
             "shouldn't override a set obligation inspector"
         );
         self.obligation_inspector.set(Some(inspector));
-    }
-}
-
-/// Helper for [InferCtxt::ty_or_const_infer_var_changed] (see comment on that), currently
-/// used only for `traits::fulfill`'s list of `stalled_on` inference variables.
-#[derive(Copy, Clone, Debug)]
-pub enum TyOrConstInferVar {
-    /// Equivalent to `ty::Infer(ty::TyVar(_))`.
-    Ty(TyVid),
-    /// Equivalent to `ty::Infer(ty::IntVar(_))`.
-    TyInt(IntVid),
-    /// Equivalent to `ty::Infer(ty::FloatVar(_))`.
-    TyFloat(FloatVid),
-
-    /// Equivalent to `ty::ConstKind::Infer(ty::InferConst::Var(_))`.
-    Const(ConstVid),
-}
-
-impl<'tcx> TyOrConstInferVar {
-    /// Tries to extract an inference variable from a type or a constant, returns `None`
-    /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`) and
-    /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
-    pub fn maybe_from_generic_arg(arg: GenericArg<'tcx>) -> Option<Self> {
-        match arg.kind() {
-            GenericArgKind::Type(ty) => Self::maybe_from_ty(ty),
-            GenericArgKind::Const(ct) => Self::maybe_from_const(ct),
-            GenericArgKind::Lifetime(_) => None,
-        }
-    }
-
-    /// Tries to extract an inference variable from a type or a constant, returns `None`
-    /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`) and
-    /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
-    pub fn maybe_from_term(term: Term<'tcx>) -> Option<Self> {
-        match term.kind() {
-            TermKind::Ty(ty) => Self::maybe_from_ty(ty),
-            TermKind::Const(ct) => Self::maybe_from_const(ct),
-        }
-    }
-
-    /// Tries to extract an inference variable from a type, returns `None`
-    /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`).
-    fn maybe_from_ty(ty: Ty<'tcx>) -> Option<Self> {
-        match *ty.kind() {
-            ty::Infer(ty::TyVar(v)) => Some(TyOrConstInferVar::Ty(v)),
-            ty::Infer(ty::IntVar(v)) => Some(TyOrConstInferVar::TyInt(v)),
-            ty::Infer(ty::FloatVar(v)) => Some(TyOrConstInferVar::TyFloat(v)),
-            _ => None,
-        }
-    }
-
-    /// Tries to extract an inference variable from a constant, returns `None`
-    /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
-    fn maybe_from_const(ct: ty::Const<'tcx>) -> Option<Self> {
-        match ct.kind() {
-            ty::ConstKind::Infer(InferConst::Var(v)) => Some(TyOrConstInferVar::Const(v)),
-            _ => None,
-        }
     }
 }
 
