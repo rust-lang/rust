@@ -1011,8 +1011,8 @@ enum CheckMessage {
 
 struct CheckParser;
 
-impl JsonLinesParser<CheckMessage> for CheckParser {
-    fn from_line(&self, line: &str, error: &mut String) -> Option<CheckMessage> {
+impl CheckParser {
+    fn parse_line(&self, line: &str, error: &mut String) -> Option<CheckMessage> {
         let mut deserializer = serde_json::Deserializer::from_str(line);
         deserializer.disable_recursion_limit();
         if let Ok(message) = JsonMessage::deserialize(&mut deserializer) {
@@ -1041,6 +1041,16 @@ impl JsonLinesParser<CheckMessage> for CheckParser {
         error.push_str(line);
         error.push('\n');
         None
+    }
+}
+
+impl JsonLinesParser<CheckMessage> for CheckParser {
+    fn from_line(&self, line: &str, error: &mut String) -> Option<CheckMessage> {
+        self.parse_line(line, error)
+    }
+
+    fn from_stderr_line(&self, line: &str, error: &mut String) -> Option<CheckMessage> {
+        self.parse_line(line, error)
     }
 
     fn from_eof(&self) -> Option<CheckMessage> {

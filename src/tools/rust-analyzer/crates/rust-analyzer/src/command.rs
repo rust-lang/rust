@@ -23,6 +23,7 @@ use stdx::process::streaming_output;
 /// well as custom discover commands.
 pub(crate) trait JsonLinesParser<T>: Send + 'static {
     fn from_line(&self, line: &str, error: &mut String) -> Option<T>;
+    fn from_stderr_line(&self, line: &str, error: &mut String) -> Option<T>;
     fn from_eof(&self) -> Option<T>;
 }
 
@@ -95,7 +96,8 @@ impl<T: Sized + Send + 'static> CommandActor<T> {
                     _ = stderr.write_all(line.as_bytes());
                     _ = stderr.write_all(b"\n");
                 }
-                if process_line(line, &mut stderr_errors) {
+                if let Some(t) = self.parser.from_stderr_line(line, &mut stderr_errors) {
+                    self.sender.send(t).unwrap();
                     read_at_least_one_stderr_message = true;
                 }
             },

@@ -72,6 +72,10 @@ impl JsonLinesParser<CargoTestMessage> for CargoTestOutputParser {
         })
     }
 
+    fn from_stderr_line(&self, line: &str, error: &mut String) -> Option<CargoTestMessage> {
+        self.from_line(line, error)
+    }
+
     fn from_eof(&self) -> Option<CargoTestMessage> {
         Some(CargoTestMessage { target: self.target.clone(), output: CargoTestOutput::Finished })
     }
