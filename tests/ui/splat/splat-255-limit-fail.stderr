@@ -1,0 +1,34 @@
+error: `#[splat]` is not supported on argument index 255
+  --> $DIR/splat-255-limit-fail.rs:30:5
+   |
+LL |     #[splat] (_a, _b): (u32, i8),
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `#[splat]` is not supported here
+   |
+   = help: remove `#[splat]`, or use it on an argument closer to the start of the argument list
+
+error: `#[splat]` is not supported on argument index 256
+  --> $DIR/splat-255-limit-fail.rs:51:5
+   |
+LL |     #[splat] (_a, _b): (u32, i8),
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `#[splat]` is not supported here
+   |
+   = help: remove `#[splat]`, or use it on an argument closer to the start of the argument list
+
+error: `#[splat]` is not supported on argument index 255
+  --> $DIR/splat-255-limit-fail.rs:71:5
+   |
+LL |     #[splat] (_a, _b): (u32, i8),
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `#[splat]` is not supported here
+   |
+   = help: remove `#[splat]`, or use it on an argument closer to the start of the argument list
+
+error: `#[splat]` is not supported on argument index 256
+  --> $DIR/splat-255-limit-fail.rs:93:5
+   |
+LL |     #[splat] (_a, _b): (u32, i8),
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `#[splat]` is not supported here
+   |
+   = help: remove `#[splat]`, or use it on an argument closer to the start of the argument list
+
+error: aborting due to 4 previous errors
+
