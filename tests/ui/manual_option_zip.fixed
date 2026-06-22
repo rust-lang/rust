@@ -21,11 +21,6 @@ fn should_lint() {
     let _ = None::<i32>.zip(b);
     //~^ manual_option_zip
 
-    // with function call as map receiver
-    let a: Option<i32> = Some(1);
-    let _ = a.zip(get_option());
-    //~^ manual_option_zip
-
     // tuple order reversed: (inner, outer) instead of (outer, inner)
     let a: Option<i32> = Some(1);
     let b: Option<i32> = Some(2);
@@ -122,4 +117,27 @@ fn issue16968() {
 
     let opts = [1, 2];
     let _ = a.and_then(|a| opts.into_iter().find(|b| *b == a).map(|b| (a, b)));
+}
+
+fn issue17253() {
+    // don't trigger the lint if map receiver is a lazy evaluated expression
+    // because `a.zip(b_func())` requires eager evaluation of the argument,
+    // preventing the otherwise conditional execution of `b_func()`
+
+    use std::hint::black_box;
+    let a: Option<i32> = Some(1);
+
+    // conditional function call
+    let _ = a.and_then(|a| black_box(get_option()).map(|b| (a, b)));
+
+    let mut b = 2;
+
+    // conditional side effects
+    let _ = a.and_then(|a| {
+        {
+            b /= 2;
+            Some(b)
+        }
+        .map(|b| (a, b))
+    });
 }
