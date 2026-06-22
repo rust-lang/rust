@@ -1817,7 +1817,13 @@ pub(crate) fn exported_symbols(
         exported_symbols_for_non_proc_macro(tcx, crate_type)
     };
 
-    if crate_type == CrateType::Dylib || crate_type == CrateType::ProcMacro {
+    // Preserve the metadata symbol to ensure the metadata section doesn't get removed by the
+    // linker. On wasm however the metadata is put in a custom section, to which symbols can't
+    // refer, so there is no metadata symbol there. Luckily custom sections are always preserved by
+    // the linker.
+    if (crate_type == CrateType::Dylib || crate_type == CrateType::ProcMacro)
+        && !tcx.sess.target.is_like_wasm
+    {
         let metadata_symbol_name = exported_symbols::metadata_symbol_name(tcx);
         symbols.push((metadata_symbol_name, SymbolExportKind::Data));
     }
