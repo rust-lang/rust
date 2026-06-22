@@ -22,7 +22,7 @@ use rustc_middle::ty::{
     UpvarArgs,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::Span;
+use rustc_span::{DesugaringKind, Span};
 use tracing::{debug, info, instrument, trace};
 
 use crate::diagnostics::*;
@@ -72,18 +72,24 @@ impl<'tcx> ThirBuildCx<'tcx> {
 
         let mut attrs = ThinVec::new();
 
-        if let ExprKind::Loop { .. } = expr.kind {
-            // For loops defined with loop and while, the expr already has the attrs
-            if let hir::Node::Block(_) = self.tcx.parent_hir_node(hir_expr.hir_id) {
-                attrs = parsed_attrs(hir_expr.hir_id, self.tcx);
-            }
-
-            // For loop desugaring puts us pretty deep down the HIR tree
-            if let hir::Node::Arm(arm) = self.tcx.parent_hir_node(hir_expr.hir_id)
-                && let hir::Node::Expr(expr) = self.tcx.parent_hir_node(arm.hir_id)
-                && let hir::Node::Expr(expr) = self.tcx.parent_hir_node(expr.hir_id)
-            {
-                attrs = parsed_attrs(expr.hir_id, self.tcx);
+        if let hir::ExprKind::Loop(_, _, _, span) = hir_expr.kind {
+            match span.desugaring_kind() {
+                // `for` loop desugaring puts us pretty deep down the HIR tree
+                Some(DesugaringKind::ForLoop) => {
+                    let arm = self.tcx.parent_hir_node(hir_expr.hir_id).expect_arm();
+                    let expr = self.tcx.parent_hir_node(arm.hir_id).expect_expr();
+                    std::assert_matches!(expr.kind, hir::ExprKind::Match(..));
+                    // ignore async for loops
+                    if let hir::Node::Expr(expr) = self.tcx.parent_hir_node(expr.hir_id) {
+                        std::assert_matches!(expr.kind, hir::ExprKind::DropTemps(..));
+                        attrs = parsed_attrs(expr.hir_id, self.tcx)
+                    }
+                }
+                // For loops defined with `loop` and `while`, the expr already has the attrs
+                Some(DesugaringKind::WhileLoop) | None => {
+                    attrs = parsed_attrs(hir_expr.hir_id, self.tcx);
+                }
+                _ => (),
             }
         }
 
