@@ -93,7 +93,7 @@ struct ParamInfo {
     pub c_variadic: bool,
 
     /// The index of the splatted parameter, if any.
-    pub splatted: Option<u16>,
+    pub splatted: Option<u8>,
 }
 
 const PARENT_ID: hir::ItemLocalId = hir::ItemLocalId::ZERO;
