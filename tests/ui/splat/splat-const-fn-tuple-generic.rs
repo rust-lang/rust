@@ -1,7 +1,4 @@
 //@ run-pass
-//! Test using `#[splat]` on tuple arguments of const functions with generics.
-//! This fills the FIXME in splat-generics-everywhere.rs:
-//! "add const fn generics tests"
 
 #![allow(incomplete_features)]
 #![feature(splat)]
