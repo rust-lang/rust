@@ -1,11 +1,10 @@
-use rustc_ast::node_id::NodeMap;
 use rustc_ast::*;
 use rustc_hir as hir;
 use rustc_hir::{HirId, Target, find_attr};
 use rustc_middle::span_bug;
 use rustc_span::Span;
 
-use super::{LoweringContext, MoveExprInitializerFinder, MoveExprState};
+use super::{LoweringContext, MoveExprState};
 use crate::FnDeclKind;
 use crate::diagnostics::{ClosureCannotBeStatic, CoroutineTooManyParameters};
 
@@ -121,59 +120,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         self.lower_expr_with_move_exprs(closure_expr, move_expr_state, body, whole_span)
-    }
-
-    fn lower_expr_with_move_exprs(
-        &mut self,
-        expr: hir::Expr<'hir>,
-        move_expr_state: MoveExprState<'hir>,
-        body: &Expr,
-        whole_span: Span,
-    ) -> hir::Expr<'hir> {
-        if move_expr_state.occurrences.is_empty() {
-            return expr;
-        }
-
-        let initializers = MoveExprInitializerFinder::collect(body)
-            .into_iter()
-            .map(|initializer| (initializer.id, initializer.expr))
-            .collect::<NodeMap<_>>();
-        let mut stmts = Vec::with_capacity(move_expr_state.occurrences.len());
-        let mut initializer_bindings = NodeMap::default();
-        for occurrence in &move_expr_state.occurrences {
-            // Evaluate the expression inside `move(...)` before creating the
-            // closure and store it in a synthetic local:
-            // `|| move(foo).bar` becomes roughly
-            // `let __move_expr_0 = foo; || __move_expr_0.bar`.
-            let expr = initializers[&occurrence.id];
-            let init = if initializer_bindings.is_empty() {
-                self.lower_expr(expr)
-            } else {
-                // Earlier entries cover nested `move(...)` expressions that
-                // appear inside this initializer, as in
-                // `move(move(foo.clone()))`.
-                let (init, _) = self.with_move_expr_bindings(
-                    Some(MoveExprState {
-                        bindings: initializer_bindings.clone(),
-                        occurrences: Vec::new(),
-                    }),
-                    |this| this.lower_expr(expr),
-                );
-                init
-            };
-            stmts.push(self.stmt_let_pat(
-                None,
-                expr.span,
-                Some(init),
-                occurrence.pat,
-                hir::LocalSource::Normal,
-            ));
-            initializer_bindings.insert(occurrence.id, (occurrence.ident, occurrence.binding));
-        }
-
-        let stmts = self.arena.alloc_from_iter(stmts);
-        let block = self.block_all(whole_span, stmts, Some(self.arena.alloc(expr)));
-        self.expr(whole_span, hir::ExprKind::Block(block, None))
     }
 
     // Lowers the actual plain closure node and body. The body is lowered while a
