@@ -246,7 +246,7 @@ impl LintLevelsProvider for TopDown {
     }
 
     fn get_lint_level_spec(&self, lint: &'static Lint, sess: &Session) -> UnstableLevelSpec {
-        self.sets.get_lint_level_spec(lint, self.cur, Some(self.current_specs()), sess)
+        self.sets.get_lint_level_spec(lint, self.cur, Some(dbg!(self.current_specs())), sess)
     }
 
     fn push_expectation(&mut self, _: Self::LintExpectationId, _: LintExpectation) {}
