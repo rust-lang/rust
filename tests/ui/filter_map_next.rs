@@ -21,6 +21,16 @@ fn main() {
             }
         })
         .next();
+
+    let element: Option<i32> = a
+        // very important comment -- don't delete!
+        .iter()
+        .filter_map(|s| {
+            // another extremely important comment
+            s.parse().ok()
+        })
+        .next();
+    //~^^^^^^^^ filter_map_next
 }
 
 #[clippy::msrv = "1.29"]

@@ -19,6 +19,14 @@ fn main() {
                 None
             }
         });
+
+    let element: Option<i32> = a
+        // very important comment -- don't delete!
+        .iter().find_map(|s| {
+            // another extremely important comment
+            s.parse().ok()
+        });
+    //~^^^^^^^^ filter_map_next
 }
 
 #[clippy::msrv = "1.29"]

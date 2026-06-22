@@ -38,7 +38,30 @@ LL ~         });
    |
 
 error: called `filter_map(..).next()` on an `Iterator`
-  --> tests/ui/filter_map_next.rs:35:26
+  --> tests/ui/filter_map_next.rs:25:32
+   |
+LL |       let element: Option<i32> = a
+   |  ________________________________^
+LL | |         // very important comment -- don't delete!
+LL | |         .iter()
+LL | |         .filter_map(|s| {
+...  |
+LL | |         })
+LL | |         .next();
+   | |_______________^
+   |
+help: use `.find_map(..)` instead
+   |
+LL ~     let element: Option<i32> = a
+LL +         // very important comment -- don't delete!
+LL +         .iter().find_map(|s| {
+LL +             // another extremely important comment
+LL +             s.parse().ok()
+LL ~         });
+   |
+
+error: called `filter_map(..).next()` on an `Iterator`
+  --> tests/ui/filter_map_next.rs:45:26
    |
 LL |     let _: Option<i32> = a.iter().filter_map(|s| s.parse().ok()).next();
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -49,5 +72,5 @@ LL -     let _: Option<i32> = a.iter().filter_map(|s| s.parse().ok()).next();
 LL +     let _: Option<i32> = a.iter().find_map(|s| s.parse().ok());
    |
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
