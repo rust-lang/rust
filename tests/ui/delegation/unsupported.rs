@@ -52,7 +52,6 @@ mod effects {
     }
 
     reuse Trait::foo;
-    //~^ ERROR: delegation self type is not specified
 }
 
 fn main() {}
