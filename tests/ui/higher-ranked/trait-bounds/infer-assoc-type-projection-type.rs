@@ -1,4 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/25810>.
 //@ run-pass
+
 fn main() {
     let x = X(15);
     let y = x.foo();

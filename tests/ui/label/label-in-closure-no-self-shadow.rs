@@ -1,12 +1,14 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/25343>.
+//! Ensure we're not wrongly producing shadowing label warning.
+//! More cases added from issue <https://github.com/rust-lang/rust/issues/31754>.
 //@ run-pass
+
 #[allow(unused)]
 fn main() {
     || {
         'label: loop {
         }
     };
-
-    // More cases added from issue 31754
 
     'label2: loop {
         break;

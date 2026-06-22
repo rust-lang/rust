@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/26217>.
+
 fn foo<T>() where for<'a> T: 'a {}
 
 fn bar<'a>() {

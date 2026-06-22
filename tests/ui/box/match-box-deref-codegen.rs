@@ -1,4 +1,8 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/25497>.
+//! Test box deref in match arm doesn't generate invalid LLVM IR.
+//! Related <https://github.com/rust-lang/rust/issues/18845>.
 //@ run-pass
+
 #[derive(Clone, Debug, PartialEq)]
 enum Expression {
     Dummy,

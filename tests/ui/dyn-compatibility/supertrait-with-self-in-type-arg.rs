@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/26056>.
+
 trait MapLookup<Q> {
     type MapValue;
 }
