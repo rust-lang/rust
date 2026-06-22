@@ -110,6 +110,26 @@ fn needs_parens_in_call(make: &SyntaxFactory, param: &ast::Expr) -> bool {
     param.needs_parens_in_place_of(call.syntax(), callable.syntax())
 }
 
+pub(crate) fn wrap_paren_in_guard_chain(guard: ast::Expr, make: &SyntaxFactory) -> ast::Expr {
+    if needs_parens_in_guard_chain(make, &guard) { make.expr_paren(guard).into() } else { guard }
+}
+
+fn needs_parens_in_guard_chain(make: &SyntaxFactory, guard: &ast::Expr) -> bool {
+    let ast::Expr::BinExpr(if_let_and_guard) = make.expr_bin_op(
+        make.expr_unit(),
+        ast::BinaryOp::LogicOp(ast::LogicOp::And),
+        make.expr_unit(),
+    ) else {
+        stdx::never!("`SyntaxFactory::expr_bin_op` returns a `BinExpr`");
+        return false;
+    };
+    let Some(fake_guard) = if_let_and_guard.rhs() else {
+        stdx::never!("invalid make call");
+        return false;
+    };
+    guard.needs_parens_in_place_of(if_let_and_guard.syntax(), fake_guard.syntax())
+}
+
 /// This is a method with a heuristics to support test methods annotated with custom test annotations, such as
 /// `#[test_case(...)]`, `#[tokio::test]` and similar.
 /// Also a regular `#[test]` annotation is supported.
