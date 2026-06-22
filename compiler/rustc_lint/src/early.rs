@@ -195,9 +195,9 @@ impl<'ast, 'ecx, T: EarlyLintPass> ast_visit::Visitor<'ast> for EarlyContextAndP
     }
 
     fn visit_where_predicate(&mut self, p: &'ast ast::WherePredicate) {
-        lint_callback!(self, enter_where_predicate, p);
+        lint_callback!(self, check_where_predicate, p);
         ast_visit::walk_where_predicate(self, p);
-        lint_callback!(self, exit_where_predicate, p);
+        lint_callback!(self, check_where_predicate_post, p);
     }
 
     fn visit_poly_trait_ref(&mut self, t: &'ast ast::PolyTraitRef) {
@@ -246,12 +246,12 @@ impl<'ast, 'ecx, T: EarlyLintPass> ast_visit::Visitor<'ast> for EarlyContextAndP
 // `check_foo` method in `$methods` within this pass simply calls `check_foo`
 // once per `$pass`. Compare with `declare_combined_early_lint_pass`, which is
 // similar, but combines lint passes at compile time.
-struct RuntimeCombinedEarlyLintPass<'a> {
-    passes: &'a mut [EarlyLintPassObject],
+struct RuntimeCombinedEarlyLintPass {
+    passes: Vec<EarlyLintPassObject>,
 }
 
 #[allow(rustc::lint_pass_impl_without_macro)]
-impl LintPass for RuntimeCombinedEarlyLintPass<'_> {
+impl LintPass for RuntimeCombinedEarlyLintPass {
     fn name(&self) -> &'static str {
         panic!()
     }
@@ -262,7 +262,7 @@ impl LintPass for RuntimeCombinedEarlyLintPass<'_> {
 
 macro_rules! impl_early_lint_pass {
     ([], [$($(#[$attr:meta])* fn $f:ident($($param:ident: $arg:ty),*);)*]) => (
-        impl EarlyLintPass for RuntimeCombinedEarlyLintPass<'_> {
+        impl EarlyLintPass for RuntimeCombinedEarlyLintPass {
             $(fn $f(&mut self, context: &EarlyContext<'_>, $($param: $arg),*) {
                 for pass in self.passes.iter_mut() {
                     pass.$f(context, $($param),*);
@@ -338,7 +338,7 @@ pub fn check_ast_node<'a>(
     } else {
         let mut passes: Vec<_> = passes.iter().map(|mk_pass| (mk_pass)()).collect();
         passes.push(Box::new(builtin_lints));
-        let pass = RuntimeCombinedEarlyLintPass { passes: &mut passes[..] };
+        let pass = RuntimeCombinedEarlyLintPass { passes };
         check_ast_node_inner(sess, check_node, context, pass);
     }
 }
