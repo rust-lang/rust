@@ -1,8 +1,14 @@
 //! Client-side types.
 
 use std::cell::RefCell;
+use std::ops::{Bound, Range};
+use std::sync::Once;
+use std::{fmt, mem, panic};
 
-use super::*;
+use crate::bridge::{
+    ApiTags, BridgeConfig, Buffer, Decode, Diagnostic, Encode, ExpnGlobals, Literal, PanicMessage,
+    TokenTree, closure, handle,
+};
 
 pub(crate) struct TokenStream {
     handle: handle::Handle,

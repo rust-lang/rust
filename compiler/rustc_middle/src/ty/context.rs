@@ -35,7 +35,7 @@ use rustc_hir::definitions::{DefPathData, Definitions, PerParentDisambiguatorSta
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::limit::Limit;
-use rustc_hir::{self as hir, CRATE_HIR_ID, HirId, MaybeOwner, Node, TraitCandidate, find_attr};
+use rustc_hir::{self as hir, CRATE_HIR_ID, HirId, Node, TraitCandidate, find_attr};
 use rustc_index::IndexVec;
 use rustc_macros::Diagnostic;
 use rustc_session::Session;
@@ -603,12 +603,6 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn feed_anon_const_type(self, key: LocalDefId, value: ty::EarlyBinder<'tcx, Ty<'tcx>>) {
         debug_assert_eq!(self.def_kind(key), DefKind::AnonConst);
         TyCtxtFeed { tcx: self, key }.type_of(value)
-    }
-
-    /// Feeds the HIR delayed owner during AST -> HIR delayed lowering.
-    pub fn feed_delayed_owner(self, key: LocalDefId, owner: MaybeOwner<'tcx>) {
-        self.dep_graph.assert_ignored();
-        TyCtxtFeed { tcx: self, key }.hir_delayed_owner(owner);
     }
 
     // Trait impl item visibility is inherited from its trait when not specified
@@ -2697,8 +2691,9 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[allow(rustc::bad_opt_access)]
-    pub fn use_typing_mode_borrowck(self) -> bool {
-        self.next_trait_solver_globally() || self.sess.opts.unstable_opts.typing_mode_borrowck
+    pub fn use_typing_mode_post_typeck_until_borrowck(self) -> bool {
+        self.next_trait_solver_globally()
+            || self.sess.opts.unstable_opts.typing_mode_post_typeck_until_borrowck
     }
 
     pub fn assumptions_on_binders(self) -> bool {
@@ -2729,8 +2724,9 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn resolver_for_lowering(
         self,
-    ) -> &'tcx Steal<(ty::ResolverAstLowering<'tcx>, Arc<ast::Crate>)> {
-        self.resolver_for_lowering_raw(()).0
+    ) -> (&'tcx Steal<ty::ResolverAstLowering<'tcx>>, &'tcx Steal<ast::Crate>) {
+        let (resolver, krate, _) = self.resolver_for_lowering_raw(());
+        (resolver, krate)
     }
 
     pub fn metadata_dep_node(self) -> crate::dep_graph::DepNode {

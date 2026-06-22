@@ -16,7 +16,7 @@ use rustc_span::{ErrorGuaranteed, Ident, Span, kw};
 use rustc_trait_selection::traits;
 use tracing::{debug, instrument};
 
-use crate::errors;
+use crate::diagnostics;
 use crate::hir_ty_lowering::{
     AssocItemQSelf, GenericsArgsErrExtend, HirTyLowerer, ImpliedBoundsContext,
     OverlappingAsssocItemConstraints, PredicateFilter, RegionInferReason,
@@ -441,7 +441,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             duplicates
                 .entry(assoc_item.def_id)
                 .and_modify(|prev_span| {
-                    self.dcx().emit_err(errors::ValueOfAssociatedStructAlreadySpecified {
+                    self.dcx().emit_err(diagnostics::ValueOfAssociatedStructAlreadySpecified {
                         span: constraint.span,
                         prev_span: *prev_span,
                         item_name: constraint.ident,
@@ -484,9 +484,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         match constraint.kind {
             hir::AssocItemConstraintKind::Equality { .. } if let ty::AssocTag::Fn = assoc_tag => {
-                return Err(self.dcx().emit_err(crate::errors::ReturnTypeNotationEqualityBound {
-                    span: constraint.span,
-                }));
+                return Err(self.dcx().emit_err(
+                    crate::diagnostics::ReturnTypeNotationEqualityBound { span: constraint.span },
+                ));
             }
             // Lower an equality constraint like `Item = u32` as found in HIR bound `T: Iterator<Item = u32>`
             // to a projection predicate: `<T as Iterator>::Item = u32`.
@@ -494,9 +494,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let term = match term {
                     hir::Term::Ty(ty) => self.lower_ty(ty).into(),
                     hir::Term::Const(ct) => {
-                        let ty = projection_term.map_bound(|alias| {
-                            tcx.type_of(alias.def_id()).instantiate(tcx, alias.args).skip_norm_wip()
-                        });
+                        let ty = projection_term
+                            .map_bound(|alias| alias.expect_ct().type_of(tcx).skip_norm_wip());
                         let ty = check_assoc_const_binding_type(
                             self,
                             constraint.ident,
@@ -713,13 +712,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 if bound.has_bound_vars() {
                     return Ty::new_error(
                         tcx,
-                        self.dcx().emit_err(errors::AssociatedItemTraitUninferredGenericParams {
-                            span: hir_ty.span,
-                            inferred_sugg: Some(hir_ty.span.with_hi(segment.ident.span.lo())),
-                            bound: format!("{}::", tcx.anonymize_bound_vars(bound).skip_binder()),
-                            mpart_sugg: None,
-                            what: tcx.def_descr(item_def_id),
-                        }),
+                        self.dcx().emit_err(
+                            diagnostics::AssociatedItemTraitUninferredGenericParams {
+                                span: hir_ty.span,
+                                inferred_sugg: Some(hir_ty.span.with_hi(segment.ident.span.lo())),
+                                bound: format!(
+                                    "{}::",
+                                    tcx.anonymize_bound_vars(bound).skip_binder()
+                                ),
+                                mpart_sugg: None,
+                                what: tcx.def_descr(item_def_id),
+                            },
+                        ),
                     );
                 }
 
@@ -760,19 +764,23 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .into(),
                 ty::GenericParamDefKind::Type { .. } => {
                     let guar = *emitted_bad_param_err.get_or_insert_with(|| {
-                        self.dcx().emit_err(crate::errors::ReturnTypeNotationIllegalParam::Type {
-                            span: path_span,
-                            param_span: tcx.def_span(param.def_id),
-                        })
+                        self.dcx().emit_err(
+                            crate::diagnostics::ReturnTypeNotationIllegalParam::Type {
+                                span: path_span,
+                                param_span: tcx.def_span(param.def_id),
+                            },
+                        )
                     });
                     Ty::new_error(tcx, guar).into()
                 }
                 ty::GenericParamDefKind::Const { .. } => {
                     let guar = *emitted_bad_param_err.get_or_insert_with(|| {
-                        self.dcx().emit_err(crate::errors::ReturnTypeNotationIllegalParam::Const {
-                            span: path_span,
-                            param_span: tcx.def_span(param.def_id),
-                        })
+                        self.dcx().emit_err(
+                            crate::diagnostics::ReturnTypeNotationIllegalParam::Const {
+                                span: path_span,
+                                param_span: tcx.def_span(param.def_id),
+                            },
+                        )
                     });
                     ty::Const::new_error(tcx, guar).into()
                 }
@@ -790,7 +798,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         {
             alias_ty
         } else {
-            return Err(self.dcx().emit_err(crate::errors::ReturnTypeNotationOnNonRpitit {
+            return Err(self.dcx().emit_err(crate::diagnostics::ReturnTypeNotationOnNonRpitit {
                 span: path_span,
                 ty: tcx.liberate_late_bound_regions(item_def_id, output),
                 fn_span: tcx.hir_span_if_local(item_def_id),
@@ -846,7 +854,7 @@ pub(crate) fn check_assoc_const_binding_type<'tcx>(
     let tcx = cx.tcx();
     let ty_note = ty
         .make_suggestable(tcx, false, None)
-        .map(|ty| crate::errors::TyOfAssocConstBindingNote { assoc_const, ty });
+        .map(|ty| crate::diagnostics::TyOfAssocConstBindingNote { assoc_const, ty });
 
     let enclosing_item_owner_id = tcx
         .hir_parent_owner_iter(hir_id)
@@ -856,7 +864,7 @@ pub(crate) fn check_assoc_const_binding_type<'tcx>(
     for index in collector.params {
         let param = generics.param_at(index as _, tcx);
         let is_self_param = param.name == kw::SelfUpper;
-        guar.get_or_insert(cx.dcx().emit_err(crate::errors::ParamInTyOfAssocConstBinding {
+        guar.get_or_insert(cx.dcx().emit_err(crate::diagnostics::ParamInTyOfAssocConstBinding {
             span: assoc_const.span,
             assoc_const,
             param_name: param.name,
@@ -875,7 +883,7 @@ pub(crate) fn check_assoc_const_binding_type<'tcx>(
     }
     for var_def_id in collector.vars {
         guar.get_or_insert(cx.dcx().emit_err(
-            crate::errors::EscapingBoundVarInTyOfAssocConstBinding {
+            crate::diagnostics::EscapingBoundVarInTyOfAssocConstBinding {
                 span: assoc_const.span,
                 assoc_const,
                 var_name: cx.tcx().item_name(var_def_id),

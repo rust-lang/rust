@@ -139,7 +139,7 @@ note: trait defined here, with 0 generic parameters
    |
 LL | pub trait T {
    |           ^
-help: replace the generic bounds with the associated types
+help: turn the generic arguments into associated item bindings
    |
 LL | fn trait_bound_generic<I: T<A = u8, B = u16>>(_i: I) {
    |                             +++     +++

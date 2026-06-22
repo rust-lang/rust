@@ -1,12 +1,10 @@
-#![allow(
-    clippy::non_canonical_clone_impl,
-    clippy::non_canonical_partial_ord_impl,
-    clippy::needless_lifetimes,
-    clippy::repr_packed_without_abi,
-    dead_code
-)]
 #![warn(clippy::expl_impl_clone_on_copy)]
-#![expect(incomplete_features)] // `unsafe_fields` is incomplete for the time being
+#![expect(
+    // `unsafe_fields` is incomplete for the time being
+    incomplete_features,
+    clippy::non_canonical_clone_impl,
+    clippy::repr_packed_without_abi
+)]
 #![feature(unsafe_fields)] // `clone()` cannot be derived automatically on unsafe fields
 
 #[derive(Copy)]

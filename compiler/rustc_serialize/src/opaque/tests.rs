@@ -3,7 +3,7 @@ use std::fs;
 
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
 
-use crate::opaque::{FileEncoder, MemDecoder};
+use crate::opaque::{FileEncoder, MAGIC_END_BYTES, MemDecoder};
 use crate::{Decodable, Encodable};
 
 #[derive(PartialEq, Clone, Debug, Encodable_NoContext, Decodable_NoContext)]
@@ -28,7 +28,7 @@ struct Struct {
 }
 
 fn check_round_trip<
-    T: Encodable<FileEncoder> + for<'a> Decodable<MemDecoder<'a>> + PartialEq + Debug,
+    T: for<'a> Encodable<FileEncoder<'a>> + for<'a> Decodable<MemDecoder<'a>> + PartialEq + Debug,
 >(
     values: Vec<T>,
 ) {
@@ -292,4 +292,36 @@ fn test_cell() {
 
     let obj = B { foo: Cell::new(true), bar: RefCell::new(A { baz: 2 }) };
     check_round_trip(vec![obj]);
+}
+
+#[test]
+fn test_flush_strategy() {
+    let tmpfile = tempfile::NamedTempFile::new().unwrap();
+    let tmpfile = tmpfile.path();
+
+    // Small write that is explicitly flushed, and then a chunk larger than BUF_SIZE (64 KiB).
+    // to hit `write_all_cold_path`.
+    let small: Vec<u8> = (0..100u32).map(|i| i as u8).collect();
+    let big: Vec<u8> = (0..100_000u32).map(|i| i as u8).collect();
+
+    let mut expected: Vec<u8> = Vec::new();
+    expected.extend(&small);
+    expected.extend(&big);
+    expected.extend(MAGIC_END_BYTES);
+
+    let mut flushed: Vec<u8> = Vec::new();
+    let mut strategy = |buf: &[u8]| {
+        flushed.extend(buf);
+    };
+    let mut encoder = FileEncoder::with_flush_strategy(&tmpfile, &mut strategy).unwrap();
+
+    encoder.write_all(&small);
+    encoder.flush();
+    encoder.write_all(&big);
+    encoder.finish().unwrap();
+
+    drop(encoder);
+
+    assert_eq!(flushed, expected);
+    assert_eq!(flushed, fs::read(&tmpfile).unwrap());
 }

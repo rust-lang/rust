@@ -1,5 +1,7 @@
 use rustc_feature::AttributeStability;
-use rustc_hir::attrs::{CoverageAttrKind, OptimizeAttr, RtsanSetting, SanitizerSet, UsedBy};
+use rustc_hir::attrs::{
+    CoverageAttrKind, InstrumentFnAttr, OptimizeAttr, RtsanSetting, SanitizerSet, UsedBy,
+};
 use rustc_session::errors::feature_err;
 use rustc_span::edition::Edition::Edition2024;
 
@@ -108,7 +110,10 @@ pub(crate) struct ExportNameParser;
 impl SingleAttributeParser for ExportNameParser {
     const PATH: &[rustc_span::Symbol] = &[sym::export_name];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
-    const SAFETY: AttributeSafety = AttributeSafety::Unsafe { unsafe_since: Some(Edition2024) };
+    const SAFETY: AttributeSafety = AttributeSafety::Unsafe {
+        note: "the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them",
+        unsafe_since: Some(Edition2024),
+    };
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Static),
         Allow(Target::Fn),
@@ -217,7 +222,10 @@ impl AttributeParser for NakedParser {
                 this.span = Some(cx.attr_span);
             }
         })];
-    const SAFETY: AttributeSafety = AttributeSafety::Unsafe { unsafe_since: None };
+    const SAFETY: AttributeSafety = AttributeSafety::Unsafe {
+        note: "the `#[naked]` attribute adds the safety obligation that the function's body must respect the function’s calling convention, uphold its signature, and either return or diverge (i.e., not fall through past the end of the assembly code).",
+        unsafe_since: None,
+    };
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -347,7 +355,10 @@ pub(crate) struct NoMangleParser;
 impl NoArgsAttributeParser for NoMangleParser {
     const PATH: &[Symbol] = &[sym::no_mangle];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
-    const SAFETY: AttributeSafety = AttributeSafety::Unsafe { unsafe_since: Some(Edition2024) };
+    const SAFETY: AttributeSafety = AttributeSafety::Unsafe {
+        note: "the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them",
+        unsafe_since: Some(Edition2024),
+    };
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Fn),
         Allow(Target::Static),
@@ -540,7 +551,10 @@ pub(crate) struct ForceTargetFeatureParser;
 impl CombineAttributeParser for ForceTargetFeatureParser {
     type Item = (Symbol, Span);
     const PATH: &[Symbol] = &[sym::force_target_feature];
-    const SAFETY: AttributeSafety = AttributeSafety::Unsafe { unsafe_since: None };
+    const SAFETY: AttributeSafety = AttributeSafety::Unsafe {
+        note: "a function with the signature of the function the attribute is applied to must only be callable if the force-enabled features are guaranteed to be present",
+        unsafe_since: None,
+    };
     const CONVERT: ConvertFn<Self::Item> = |items, span| AttributeKind::TargetFeature {
         features: items,
         attr_span: span,
@@ -560,6 +574,44 @@ impl CombineAttributeParser for ForceTargetFeatureParser {
         args: &ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> {
         parse_tf_attribute(cx, args)
+    }
+}
+
+pub(crate) struct InstrumentFnParser;
+
+impl SingleAttributeParser for InstrumentFnParser {
+    const PATH: &[Symbol] = &[sym::instrument_fn];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+    ]);
+    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "on|off");
+    const STABILITY: AttributeStability = unstable!(instrument_fn);
+
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
+        let instrument = match args {
+            ArgParser::NameValue(nv) => match nv.value_as_str() {
+                Some(sym::on) => Some(AttributeKind::InstrumentFn(InstrumentFnAttr::On)),
+                Some(sym::off) => Some(AttributeKind::InstrumentFn(InstrumentFnAttr::Off)),
+                _ => {
+                    cx.adcx()
+                        .expected_specific_argument_strings(nv.value_span, &[sym::on, sym::off]);
+                    None
+                }
+            },
+            ArgParser::List(l) => {
+                cx.adcx().expected_single_argument(l.span, l.len());
+                None
+            }
+            ArgParser::NoArgs => {
+                let span = cx.attr_span;
+                cx.adcx().expected_specific_argument_strings(span, &[sym::on, sym::off]);
+                None
+            }
+        };
+        instrument
     }
 }
 

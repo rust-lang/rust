@@ -38,7 +38,7 @@ use rustc_session::lint::builtin::{
 use rustc_span::{DUMMY_SP, Ident, Span, kw};
 
 use crate::imports::{Import, ImportKind};
-use crate::{DeclKind, IdentKey, LateDecl, Resolver, errors, module_to_string};
+use crate::{DeclKind, IdentKey, LateDecl, Resolver, diagnostics, module_to_string};
 
 struct UnusedImport {
     use_tree: ast::UseTree,
@@ -105,6 +105,7 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
         let def_id = self.r.owner_def_id(id);
         if self.r.effective_visibilities.is_exported(def_id) {
             self.check_import_as_underscore(use_tree, id);
+            self.r.maybe_unused_trait_imports.swap_remove(&def_id);
             return;
         }
 
@@ -169,7 +170,7 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
                         UNUSED_EXTERN_CRATES,
                         extern_crate.id,
                         span,
-                        crate::errors::UnusedExternCrate {
+                        crate::diagnostics::UnusedExternCrate {
                             span: extern_crate.span,
                             removal_span: extern_crate.span_with_attributes,
                         },
@@ -233,7 +234,7 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
                 UNUSED_EXTERN_CRATES,
                 extern_crate.id,
                 extern_crate.span,
-                crate::errors::ExternCrateNotIdiomatic {
+                crate::diagnostics::ExternCrateNotIdiomatic {
                     span: vis_span.between(ident_span),
                     code: if vis_span.is_empty() { "use " } else { " use " },
                 },
@@ -425,7 +426,7 @@ impl Resolver<'_, '_> {
                                 MACRO_USE_EXTERN_CRATE,
                                 import.root_id,
                                 import.span,
-                                crate::errors::MacroUseDeprecated,
+                                crate::diagnostics::MacroUseDeprecated,
                             );
                         }
                     }
@@ -449,7 +450,7 @@ impl Resolver<'_, '_> {
                         UNUSED_IMPORTS,
                         import.root_id,
                         import.span,
-                        crate::errors::UnusedMacroUse,
+                        crate::diagnostics::UnusedMacroUse,
                     );
                 }
                 _ => {}
@@ -523,9 +524,12 @@ impl Resolver<'_, '_> {
                 move |dcx, level, sess| {
                     let sugg = can_suggest_removal.then(|| {
                         if remove_whole_use {
-                            errors::UnusedImportsSugg::RemoveWholeUse { span: remove_spans[0] }
+                            diagnostics::UnusedImportsSugg::RemoveWholeUse { span: remove_spans[0] }
                         } else {
-                            errors::UnusedImportsSugg::RemoveImports { remove_spans, num_to_remove }
+                            diagnostics::UnusedImportsSugg::RemoveImports {
+                                remove_spans,
+                                num_to_remove,
+                            }
                         }
                     });
                     let test_module_span = test_module_span.map(|span| {
@@ -535,7 +539,7 @@ impl Resolver<'_, '_> {
                             .guess_head_span(span)
                     });
 
-                    errors::UnusedImports {
+                    diagnostics::UnusedImports {
                         sugg,
                         test_module_span,
                         num_snippets: span_snippets.len(),
@@ -592,7 +596,7 @@ impl Resolver<'_, '_> {
                 UNUSED_QUALIFICATIONS,
                 unn_qua.node_id,
                 unn_qua.path_span,
-                errors::UnusedQualifications { removal_span: unn_qua.removal_span },
+                diagnostics::UnusedQualifications { removal_span: unn_qua.removal_span },
             );
         }
 

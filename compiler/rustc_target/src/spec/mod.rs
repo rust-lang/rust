@@ -1462,6 +1462,7 @@ supported_targets! {
     ("powerpc-unknown-linux-muslspe", powerpc_unknown_linux_muslspe),
     ("powerpc64-ibm-aix", powerpc64_ibm_aix),
     ("powerpc64-unknown-linux-gnu", powerpc64_unknown_linux_gnu),
+    ("powerpc64-unknown-linux-gnuelfv2", powerpc64_unknown_linux_gnuelfv2),
     ("powerpc64-unknown-linux-musl", powerpc64_unknown_linux_musl),
     ("powerpc64le-unknown-linux-gnu", powerpc64le_unknown_linux_gnu),
     ("powerpc64le-unknown-linux-musl", powerpc64le_unknown_linux_musl),
@@ -2226,6 +2227,8 @@ impl Target {
             // `clang`, or we should understand and document why it deviates.
             // - Ensure that `va_arg` is implemented in rustc. For stable targets we don't rely on
             // the LLVM implementation, it has historically caused miscompilations.
+            // - Ensure that LLVM's `va_end` for this target is a NOP.
+            // - Ensure that LLVM's `va_copy` for this target is equivalent to `memcpy`.
             // - The `tests/ui/c-variadic/roundtrip.rs` test must pass for the target. It may
             // need slight modifications for embedded targets, that's fine.
             // - Check that calling c-variadic functions defined in Rust can be called from C.

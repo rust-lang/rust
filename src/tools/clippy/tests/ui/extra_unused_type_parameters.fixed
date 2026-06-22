@@ -1,6 +1,6 @@
 //@aux-build:proc_macros.rs
 
-#![allow(unused, clippy::needless_lifetimes)]
+#![expect(clippy::needless_lifetimes)]
 #![warn(clippy::extra_unused_type_parameters)]
 
 extern crate proc_macros;

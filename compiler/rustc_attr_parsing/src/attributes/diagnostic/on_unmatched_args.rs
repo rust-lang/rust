@@ -1,0 +1,48 @@
+use rustc_feature::AttributeStability;
+use rustc_hir::attrs::diagnostic::Directive;
+
+use crate::attributes::diagnostic::*;
+use crate::attributes::prelude::*;
+
+#[derive(Default)]
+pub(crate) struct OnUnmatchedArgsParser {
+    span: Option<Span>,
+    directive: Option<(Span, Directive)>,
+}
+
+impl AttributeParser for OnUnmatchedArgsParser {
+    const ATTRIBUTES: AcceptMapping<Self> = &[(
+        &[sym::diagnostic, sym::on_unmatched_args],
+        template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
+        AttributeStability::Stable, // Unstable, stability checked manually in the parser
+        |this, cx, args| {
+            if !cx.features().diagnostic_on_unmatched_args() {
+                return;
+            }
+
+            let span = cx.attr_span;
+            this.span = Some(span);
+
+            let mode = Mode::DiagnosticOnUnmatchedArgs;
+            let Some(items) = parse_list(cx, args, mode) else { return };
+
+            let Some(directive) = parse_directive_items(cx, mode, items.mixed(), true) else {
+                return;
+            };
+            merge_directives(cx, &mut this.directive, (span, directive));
+        },
+    )];
+
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::MacroDef)]);
+
+    fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
+        if let Some(_span) = self.span {
+            Some(AttributeKind::OnUnmatchedArgs {
+                directive: self.directive.map(|d| Box::new(d.1)),
+            })
+        } else {
+            None
+        }
+    }
+}

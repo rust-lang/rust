@@ -1,9 +1,4 @@
-#![allow(
-    clippy::no_effect,
-    clippy::uninlined_format_args,
-    clippy::unit_arg,
-    clippy::unnecessary_operation
-)]
+#![allow(clippy::no_effect, clippy::unit_arg, clippy::unnecessary_operation)]
 #![warn(clippy::dbg_macro)]
 
 fn foo(n: u32) -> u32 {

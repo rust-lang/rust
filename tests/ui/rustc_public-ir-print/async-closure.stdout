@@ -1,5 +1,5 @@
 // WARNING: This is highly experimental output it's intended for rustc_public developers only.
-// If you find a bug or want to improve the output open a issue at https://github.com/rust-lang/project-stable-mir.
+// If you find a bug or want to improve the output open a issue at https://github.com/rust-lang/rustc_public.
 fn foo() -> () {
     let mut _0: ();
     let  _1: i32;

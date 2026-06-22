@@ -4,6 +4,7 @@ use rustc_abi::{Align, BackendRepr, ExternAbi, HasDataLayout, Reg, Size, Wrappin
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::packed::Pu128;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lang_items::LangItem;
 use rustc_lint_defs::builtin::TAIL_CALL_TRACK_CALLER;
 use rustc_middle::mir::{self, AssertKind, InlineAsmMacro, SwitchTargets, UnwindTerminateReason};
@@ -135,6 +136,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         bx: &mut Bx,
         target: mir::BasicBlock,
         mergeable_succ: bool,
+        attributes: &[AttributeKind],
     ) -> MergingSucc {
         let (needs_landing_pad, is_cleanupret) = self.llbb_characteristics(fx, target);
         if mergeable_succ && !needs_landing_pad && !is_cleanupret {
@@ -150,7 +152,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 // to a trampoline.
                 bx.cleanup_ret(self.funclet(fx).unwrap(), Some(lltarget));
             } else {
-                bx.br(lltarget);
+                bx.br_with_attrs(lltarget, attributes);
             }
             MergingSucc::False
         }
@@ -291,7 +293,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                     bx.lifetime_end(tmp, size);
                 }
                 fx.store_return(bx, ret_dest, &fn_abi.ret, llret);
-                self.funclet_br(fx, bx, target, mergeable_succ)
+                self.funclet_br(fx, bx, target, mergeable_succ, &[])
             } else {
                 bx.unreachable();
                 MergingSucc::False
@@ -359,7 +361,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             bx.codegen_inline_asm(template, operands, options, line_spans, instance, None, None);
 
             if let Some(target) = destination {
-                self.funclet_br(fx, bx, target, mergeable_succ)
+                self.funclet_br(fx, bx, target, mergeable_succ, &[])
             } else {
                 bx.unreachable();
                 MergingSucc::False
@@ -525,13 +527,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 
     fn codegen_return_terminator(&mut self, bx: &mut Bx) {
-        // Call `va_end` if this is the definition of a C-variadic function.
+        // Explicitly end the lifetime of the VaList if this function is c-variadic. We explicitly
+        // start the lifetime when desugaring `...`. Ending the lifetime meaningfully improves
+        // codegen.
         if self.fn_abi.c_variadic {
             // The `VaList` "spoofed" argument is just after all the real arguments.
             let va_list_arg_idx = self.fn_abi.args.len();
             match self.locals[mir::Local::arg(va_list_arg_idx)] {
                 LocalRef::Place(va_list) => {
-                    bx.va_end(va_list.val.llval);
+                    // NOTE: we don't actually call LLVM's va_end here. We know it's a no-op for
+                    // all current targets and hence don't bother
+                    // (as permitted by https://llvm.org/docs/LangRef.html#llvm-va-end-intrinsic).
 
                     // Explicitly end the lifetime of the `va_list`, improves LLVM codegen.
                     bx.lifetime_end(va_list.val.llval, va_list.layout.size);
@@ -614,7 +620,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         if let ty::InstanceKind::DropGlue(_, None) = drop_fn.def {
             // we don't actually need to drop anything.
-            return helper.funclet_br(self, bx, target, mergeable_succ);
+            return helper.funclet_br(self, bx, target, mergeable_succ, &[]);
         }
 
         let place = self.codegen_place(bx, location.as_ref());
@@ -723,7 +729,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Don't codegen the panic block if success if known.
         if const_cond == Some(expected) {
-            return helper.funclet_br(self, bx, target, mergeable_succ);
+            return helper.funclet_br(self, bx, target, mergeable_succ, &[]);
         }
 
         // Because we're branching to a panic block (either a `#[cold]` one
@@ -857,7 +863,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if is_valid {
             // a NOP
             let target = target.unwrap();
-            return Some(helper.funclet_br(self, bx, target, mergeable_succ));
+            return Some(helper.funclet_br(self, bx, target, mergeable_succ, &[]));
         }
 
         let layout = bx.layout_of(ty);
@@ -931,7 +937,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     ty::InstanceKind::DropGlue(_, None) => {
                         // Empty drop glue; a no-op.
                         let target = target.unwrap();
-                        return helper.funclet_br(self, bx, target, mergeable_succ);
+                        return helper.funclet_br(self, bx, target, mergeable_succ, &[]);
                     }
                     ty::InstanceKind::Intrinsic(def_id) => {
                         let intrinsic = bx.tcx().intrinsic(def_id).unwrap();
@@ -1019,7 +1025,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         match intrinsic_result {
                             IntrinsicResult::Operand(_) | IntrinsicResult::WroteIntoPlace => {
                                 return if let Some(target) = target {
-                                    helper.funclet_br(self, bx, target, mergeable_succ)
+                                    helper.funclet_br(self, bx, target, mergeable_succ, &[])
                                 } else {
                                     bx.unreachable();
                                     MergingSucc::False
@@ -1129,7 +1135,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     &ArgAbi { layout: result_layout, mode: PassMode::Direct(ArgAttributes::new()) },
                     llret,
                 );
-                return helper.funclet_br(self, bx, target, mergeable_succ);
+                return helper.funclet_br(self, bx, target, mergeable_succ, &[]);
             } else {
                 bx.unreachable();
                 return MergingSucc::False;
@@ -1573,7 +1579,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::TerminatorKind::Goto { target } => {
-                helper.funclet_br(self, bx, target, mergeable_succ())
+                helper.funclet_br(self, bx, target, mergeable_succ(), &terminator.attributes)
             }
 
             mir::TerminatorKind::SwitchInt { ref discr, ref targets } => {

@@ -88,7 +88,7 @@ impl<T: SimdElement, const N: usize> Clone for Simd<T, N> {
 
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 #[rustfmt::skip] // FIXME: https://github.com/rust-lang/stdarch/pull/2133#issuecomment-4524350350
-impl<T: SimdElement, const N: usize> const crate::cmp::PartialEq for Simd<T, N> {
+const impl<T: SimdElement, const N: usize> crate::cmp::PartialEq for Simd<T, N> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.as_array() == other.as_array()
@@ -301,7 +301,7 @@ impl<T: SimdElement, const N: usize> Clone for SimdM<T, N> {
 
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 #[rustfmt::skip] // FIXME: https://github.com/rust-lang/stdarch/pull/2133#issuecomment-4524350350
-impl<T: SimdElement, const N: usize> const crate::cmp::PartialEq for SimdM<T, N> {
+const impl<T: SimdElement, const N: usize> crate::cmp::PartialEq for SimdM<T, N> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.as_array() == other.as_array()

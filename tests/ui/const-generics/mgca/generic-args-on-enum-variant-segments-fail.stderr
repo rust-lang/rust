@@ -1,0 +1,41 @@
+error[E0109]: type arguments are not allowed on unit variant `Unit`
+  --> $DIR/generic-args-on-enum-variant-segments-fail.rs:13:49
+   |
+LL |     type const _: Enum<()> = Enum::<()>::Unit::<()>;
+   |                                          ----   ^^ type argument not allowed
+   |                                          |
+   |                                          not allowed on unit variant `Unit`
+   |
+   = note: generic arguments are not allowed on both an enum and its variant's path segments simultaneously; they are only valid in one place or the other
+help: remove the generics arguments from one of the path segments
+   |
+LL -     type const _: Enum<()> = Enum::<()>::Unit::<()>;
+LL +     type const _: Enum<()> = Enum::<()>::Unit;
+   |
+
+error[E0109]: type arguments are not allowed on tuple variant `Tuple`
+  --> $DIR/generic-args-on-enum-variant-segments-fail.rs:15:50
+   |
+LL |     type const _: Enum<()> = Enum::<()>::Tuple::<()>();
+   |                                          -----   ^^ type argument not allowed
+   |                                          |
+   |                                          not allowed on tuple variant `Tuple`
+   |
+   = note: generic arguments are not allowed on both an enum and its variant's path segments simultaneously; they are only valid in one place or the other
+help: remove the generics arguments from one of the path segments
+   |
+LL -     type const _: Enum<()> = Enum::<()>::Tuple::<()>();
+LL +     type const _: Enum<()> = Enum::<()>::Tuple();
+   |
+
+error[E0109]: type arguments are not allowed on module `generic_args_on_enum_variant_segments_fail`
+  --> $DIR/generic-args-on-enum-variant-segments-fail.rs:17:37
+   |
+LL |     type const _: Enum<()> = self::<i32>::Enum::<()>::Store;
+   |                              ----   ^^^ type argument not allowed
+   |                              |
+   |                              not allowed on module `generic_args_on_enum_variant_segments_fail`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0109`.

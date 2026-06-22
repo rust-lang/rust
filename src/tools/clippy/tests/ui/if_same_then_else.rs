@@ -1,14 +1,10 @@
 #![warn(clippy::if_same_then_else)]
-#![allow(
-    clippy::disallowed_names,
+#![expect(
     clippy::eq_op,
     clippy::never_loop,
     clippy::no_effect,
     clippy::unused_unit,
-    clippy::zero_divided_by_zero,
-    clippy::branches_sharing_code,
-    dead_code,
-    unreachable_code
+    clippy::zero_divided_by_zero
 )]
 
 use std::ops::*;

@@ -50,7 +50,7 @@ use rustc_trait_selection::traits::{self, FulfillmentError};
 use tracing::{debug, instrument};
 
 use crate::check::check_abi;
-use crate::errors::{BadReturnTypeNotation, NoFieldOnType};
+use crate::diagnostics::{BadReturnTypeNotation, NoFieldOnType};
 use crate::hir_ty_lowering::errors::{GenericsArgsErrExtend, prohibit_assoc_item_constraint};
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
 use crate::middle::resolve_bound_vars as rbv;
@@ -297,7 +297,7 @@ pub enum PermitVariants {
 
 #[derive(Debug, Clone, Copy)]
 enum TypeRelativePath<'tcx> {
-    AssocItem(DefId, GenericArgsRef<'tcx>),
+    AssocItem(ty::AliasTerm<'tcx>),
     Variant { adt: Ty<'tcx>, variant_did: DefId },
     Ctor { ctor_def_id: DefId, args: GenericArgsRef<'tcx> },
 }
@@ -409,7 +409,7 @@ impl<'tcx> ForbidParamUsesFolder<'tcx> {
             }
             ForbidParamContext::ConstArgument => {
                 if self.tcx.features().generic_const_args() {
-                    "generic parameters in const blocks are only allowed as the direct value of a `type const`"
+                    "generic parameters in const blocks are not allowed; use a named `const` item instead"
                 } else {
                     "generic parameters may not be used in const operations"
                 }
@@ -535,9 +535,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     None
                 }
             }
-            ty::AnonConstKind::GCE
-            | ty::AnonConstKind::GCA
-            | ty::AnonConstKind::RepeatExprCount => None,
+            ty::AnonConstKind::GCE | ty::AnonConstKind::RepeatExprCount => None,
         }
     }
 
@@ -1080,7 +1078,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     }
                     (None, _) | (_, false) => (Some(tcx.def_span(trait_def_id)), None, ""),
                 };
-            self.dcx().emit_err(crate::errors::ConstBoundForNonConstTrait {
+            self.dcx().emit_err(crate::diagnostics::ConstBoundForNonConstTrait {
                 span,
                 modifier: constness.as_str(),
                 def_span,
@@ -1356,13 +1354,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             span,
             LowerTypeRelativePathMode::Type(permit_variants),
         )? {
-            TypeRelativePath::AssocItem(def_id, args) => {
-                let alias_ty = ty::AliasTy::new_from_args(
-                    tcx,
-                    ty::AliasTyKind::new_from_def_id(tcx, def_id),
-                    args,
-                );
-                let ty = Ty::new_alias(tcx, alias_ty);
+            TypeRelativePath::AssocItem(alias_term) => {
+                let alias_ty = alias_term.expect_ty();
+                let def_id = alias_ty.kind.def_id();
+                let ty = alias_ty.to_ty(tcx);
                 let ty = self.check_param_uses_if_mcg(ty, span, false);
                 Ok((ty, tcx.def_kind(def_id), def_id))
             }
@@ -1396,16 +1391,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             span,
             LowerTypeRelativePathMode::Const,
         )? {
-            TypeRelativePath::AssocItem(def_id, args) => {
-                self.require_type_const_attribute(def_id, span)?;
-                let ct = Const::new_unevaluated(
-                    tcx,
-                    ty::UnevaluatedConst::new(
-                        tcx,
-                        ty::UnevaluatedConstKind::new_from_def_id(tcx, def_id),
-                        args,
-                    ),
-                );
+            TypeRelativePath::AssocItem(alias_term) => {
+                let alias_ct = alias_term.expect_ct();
+                if let Some(def_id) = alias_ct.kind.opt_def_id() {
+                    self.require_type_const_attribute(def_id, span)?;
+                }
+                let ct = Const::new_unevaluated(tcx, alias_ct);
                 let ct = self.check_param_uses_if_mcg(ct, span, false);
                 Ok(ct)
             }
@@ -1487,7 +1478,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
 
             // FIXME(inherent_associated_types, #106719): Support self types other than ADTs.
-            if let Some((did, args)) = self.probe_inherent_assoc_item(
+            if let Some(alias_term) = self.probe_inherent_assoc_item(
                 segment,
                 adt_def.did(),
                 self_ty,
@@ -1495,7 +1486,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 span,
                 mode.assoc_tag(),
             )? {
-                return Ok(TypeRelativePath::AssocItem(did, args));
+                return Ok(TypeRelativePath::AssocItem(alias_term));
             }
         }
 
@@ -1529,7 +1520,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             );
         }
 
-        Ok(TypeRelativePath::AssocItem(item_def_id, args))
+        Ok(TypeRelativePath::AssocItem(ty::AliasTerm::new_from_def_id(tcx, item_def_id, args)))
     }
 
     /// Resolve a [type-relative](hir::QPath::TypeRelative) (and type-level) path.
@@ -1609,7 +1600,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         block: HirId,
         span: Span,
         assoc_tag: ty::AssocTag,
-    ) -> Result<Option<(DefId, GenericArgsRef<'tcx>)>, ErrorGuaranteed> {
+    ) -> Result<Option<ty::AliasTerm<'tcx>>, ErrorGuaranteed> {
         let tcx = self.tcx();
 
         if !tcx.features().inherent_associated_types() {
@@ -1692,7 +1683,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .chain(args.into_iter().skip(parent_args.len())),
         );
 
-        Ok(Some((assoc_item, args)))
+        let kind = match assoc_tag {
+            ty::AssocTag::Type => ty::AliasTermKind::InherentTy { def_id: assoc_item },
+            ty::AssocTag::Const => {
+                // FIXME(mgca): drop once `InherentConst` accepts IAC-shaped args (issue #156181)
+                // without this, `new_from_args` errors (#155341).
+                self.require_type_const_attribute(assoc_item, span)?;
+                ty::AliasTermKind::InherentConst { def_id: assoc_item }
+            }
+            ty::AssocTag::Fn => unreachable!(),
+        };
+
+        Ok(Some(ty::AliasTerm::new_from_args(tcx, kind, args)))
     }
 
     /// Given name and kind search for the assoc item in the provided scope and check if it's accessible[^1].
@@ -1748,7 +1750,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let tcx = self.tcx();
 
         if !tcx.visibility(item_def_id).is_accessible_from(scope, tcx) {
-            self.dcx().emit_err(crate::errors::AssocItemIsPrivate {
+            self.dcx().emit_err(crate::diagnostics::AssocItemIsPrivate {
                 span,
                 kind: tcx.def_descr(item_def_id),
                 name: ident,
@@ -2589,6 +2591,43 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let variant_def = adt_def.variant_with_id(variant_did);
         let variant_idx = adt_def.variant_index_with_id(variant_did).as_u32();
 
+        for init in inits {
+            if !variant_def.fields.iter().any(|field_def| field_def.name == init.field.name) {
+                let mut err = if adt_def.is_enum() {
+                    struct_span_code_err!(
+                        tcx.dcx(),
+                        init.field.span,
+                        E0559,
+                        "variant `{}::{}` has no field named `{}`",
+                        ty,
+                        variant_def.name,
+                        init.field
+                    )
+                } else {
+                    struct_span_code_err!(
+                        tcx.dcx(),
+                        init.field.span,
+                        E0560,
+                        "struct `{}` has no field named `{}`",
+                        variant_def.name,
+                        init.field
+                    )
+                };
+                if adt_def.is_enum() {
+                    err.span_label(
+                        init.field.span,
+                        format!("`{}::{}` does not have this field", ty, variant_def.name),
+                    );
+                } else {
+                    err.span_label(
+                        init.field.span,
+                        format!("`{}` does not have this field", variant_def.name),
+                    );
+                }
+                return ty::Const::new_error(tcx, err.emit());
+            }
+        }
+
         let fields = variant_def
             .fields
             .iter()
@@ -2713,33 +2752,61 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     ),
                 )
             }
-            Res::Def(DefKind::Ctor(ctor_of, CtorKind::Const), did) => {
+            Res::Def(kind @ DefKind::Ctor(ctor_of, CtorKind::Const), did) => {
                 assert_eq!(opt_self_ty, None);
-                let [leading_segments @ .., segment] = path.segments else { bug!() };
-                let _ = self
-                    .prohibit_generic_args(leading_segments.iter(), GenericsArgsErrExtend::None);
+                let generic_segments =
+                    self.probe_generic_path_segments(path.segments, opt_self_ty, kind, did, span);
+                let indices: FxHashSet<_> =
+                    generic_segments.iter().map(|GenericPathSegment(_, index)| index).collect();
+                let _ = self.prohibit_generic_args(
+                    path.segments.iter().enumerate().filter_map(|(index, seg)| {
+                        if !indices.contains(&index) { Some(seg) } else { None }
+                    }),
+                    GenericsArgsErrExtend::DefVariant(&path.segments),
+                );
 
                 let parent_did = tcx.parent(did);
                 let generics_did = match ctor_of {
                     CtorOf::Variant => tcx.parent(parent_did),
                     CtorOf::Struct => parent_did,
                 };
-                let args = self.lower_generic_args_of_path_segment(span, generics_did, segment);
-
+                let args = self.lower_generic_args_of_path_segment(
+                    span,
+                    generics_did,
+                    &path.segments[generic_segments[0].1],
+                );
                 self.construct_const_ctor_value(did, ctor_of, args)
             }
-            Res::Def(DefKind::Ctor(_, CtorKind::Fn), did) => {
+            Res::Def(DefKind::Ctor(ctor_of, CtorKind::Fn), did) => {
                 assert_eq!(opt_self_ty, None);
-                let [leading_segments @ .., segment] = path.segments else { bug!() };
-                let _ = self
-                    .prohibit_generic_args(leading_segments.iter(), GenericsArgsErrExtend::None);
+                let generic_segments = self.probe_generic_path_segments(
+                    path.segments,
+                    opt_self_ty,
+                    DefKind::Ctor(ctor_of, CtorKind::Const),
+                    did,
+                    span,
+                );
+                let indices: FxHashSet<_> =
+                    generic_segments.iter().map(|GenericPathSegment(_, index)| index).collect();
+                let _ = self.prohibit_generic_args(
+                    path.segments.iter().enumerate().filter_map(|(index, seg)| {
+                        if !indices.contains(&index) { Some(seg) } else { None }
+                    }),
+                    GenericsArgsErrExtend::DefVariant(&path.segments),
+                );
+
                 let parent_did = tcx.parent(did);
                 let generics_did = if let DefKind::Ctor(CtorOf::Variant, _) = tcx.def_kind(did) {
                     tcx.parent(parent_did)
                 } else {
                     parent_did
                 };
-                let args = self.lower_generic_args_of_path_segment(span, generics_did, segment);
+                let args = self.lower_generic_args_of_path_segment(
+                    span,
+                    generics_did,
+                    &path.segments[generic_segments[0].1],
+                );
+
                 ty::Const::zero_sized(tcx, Ty::new_fn_def(tcx, did, args))
             }
             Res::Def(DefKind::AssocConst { .. }, did) => {
@@ -2930,12 +2997,25 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 span,
                 "use of `const` in the type system not defined as `type const`",
             );
-            if def_id.is_local() {
+            if let Some(local_def_id) = def_id.as_local() {
                 let name = tcx.def_path_str(def_id);
+                let (insertion_span, sugg) = match tcx.hir_node_by_def_id(local_def_id) {
+                    hir::Node::Item(item) if !item.vis_span.is_empty() => {
+                        (item.vis_span.shrink_to_hi(), " type")
+                    }
+                    hir::Node::ImplItem(impl_item)
+                        if let Some(vis_span) =
+                            impl_item.vis_span().filter(|span| !span.is_empty()) =>
+                    {
+                        (vis_span.shrink_to_hi(), " type")
+                    }
+                    _ => (tcx.def_span(def_id).shrink_to_lo(), "type "),
+                };
+
                 err.span_suggestion_verbose(
-                    tcx.def_span(def_id).shrink_to_lo(),
+                    insertion_span,
                     format!("add `type` before `const` for `{name}`"),
-                    format!("type "),
+                    sugg,
                     Applicability::MaybeIncorrect,
                 );
             } else {
@@ -3470,6 +3550,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         debug!(?output_ty);
 
+        debug!(?abi, ?safety, ?decl.fn_decl_kind, input_tys_len = ?input_tys.len());
+        // FIXME(splat): use `set_splatted()` once FnSig has it
         let fn_sig_kind = FnSigKind::default()
             .set_abi(abi)
             .set_safety(safety)
@@ -3477,9 +3559,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let fn_ty = tcx.mk_fn_sig(input_tys, output_ty, fn_sig_kind);
         let fn_ptr_ty = ty::Binder::bind_with_vars(fn_ty, bound_vars);
 
-        if let hir::Node::Ty(hir::Ty { kind: hir::TyKind::FnPtr(fn_ptr_ty), span, .. }) =
-            tcx.hir_node(hir_id)
-        {
+        if let Some(hir::Ty { kind: hir::TyKind::FnPtr(fn_ptr_ty), span, .. }) = hir_ty {
             check_abi(tcx, hir_id, *span, fn_ptr_ty.abi);
         }
 

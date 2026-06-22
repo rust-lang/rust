@@ -431,7 +431,6 @@ macro_rules! common_visitor_and_walkers {
             Delegation,
             DelegationMac,
             DelegationSuffixes,
-            DelegationSource,
             DelimArgs,
             DelimSpan,
             EnumDef,

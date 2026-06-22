@@ -1,6 +1,6 @@
 use rustc_abi::Endian;
 
-use crate::spec::{Arch, LlvmAbi, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{Arch, LlvmAbi, Target, TargetMetadata, TargetOptions, base, cvs};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -19,6 +19,7 @@ pub(crate) fn target() -> Target {
             cpu: "mips32r6".into(),
             features: "+mips32r6".into(),
             llvm_abiname: LlvmAbi::O32,
+            llvm_args: cvs!["-mno-check-zero-division"],
             max_atomic_width: Some(32),
             mcount: "_mcount".into(),
 

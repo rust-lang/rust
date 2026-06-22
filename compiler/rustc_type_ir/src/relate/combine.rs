@@ -115,9 +115,31 @@ where
             panic!("We do not expect to encounter `Fresh` variables in the new solver")
         }
 
-        (_, ty::Alias(..)) | (ty::Alias(..), _) if infcx.next_trait_solver() => {
+        (other, ty::Alias(..)) | (ty::Alias(..), other) if infcx.next_trait_solver() => {
             match relation.structurally_relate_aliases() {
-                StructurallyRelateAliases::Yes => structurally_relate_tys(relation, a, b),
+                StructurallyRelateAliases::Yes => match other {
+                    ty::Infer(infer_ty) => match infer_ty {
+                        // Normally, we shouldn't be combining an infer ty with an alias here. But
+                        // when we evaluate a `Projection(assoc_ty, expected)` goal, we normalize
+                        // the projection term and structurally equate it with the expected term. If
+                        // the normalized term is an alias type and the expected term is a ty var,
+                        // the ty var just instantiated with the alias type without combining them.
+                        // However, if the expected term is either an int var or a float var, e.g.,
+                        // when the expected term is an int literal that only can be fully inferred
+                        // after the fallback, they are passed to this function because int/float
+                        // vars can't be instantiated. As we can't structurally relate infer ty with
+                        // another type, we just error them out here instead.
+                        ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(_) => {
+                            Err(TypeError::Sorts(ExpectedFound::new(a, b)))
+                        }
+
+                        ty::InferTy::TyVar(_)
+                        | ty::InferTy::FreshTy(_)
+                        | ty::InferTy::FreshIntTy(_)
+                        | ty::InferTy::FreshFloatTy(_) => unreachable!(),
+                    },
+                    _ => structurally_relate_tys(relation, a, b),
+                },
                 StructurallyRelateAliases::No => {
                     relation.register_alias_relate_predicate(a, b);
                     Ok(a)
@@ -140,9 +162,9 @@ where
                     relation.register_predicates([ty::Binder::dummy(ty::PredicateKind::Ambiguous)]);
                     Ok(a)
                 }
-                TypingMode::Analysis { .. }
-                | TypingMode::Borrowck { .. }
-                | TypingMode::PostBorrowckAnalysis { .. }
+                TypingMode::Typeck { .. }
+                | TypingMode::PostTypeckUntilBorrowck { .. }
+                | TypingMode::PostBorrowck { .. }
                 | TypingMode::PostAnalysis
                 | TypingMode::Codegen => structurally_relate_tys(relation, a, b),
             }

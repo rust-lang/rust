@@ -1,7 +1,7 @@
 error: const `impl` for trait `A` which is not `const`
   --> $DIR/const-impl-requires-const-trait.rs:6:12
    |
-LL | impl const A for () {}
+LL | const impl A for () {}
    |            ^ this trait is not `const`
    |
    = note: marking a trait with `const` ensures all default method bodies are `const`

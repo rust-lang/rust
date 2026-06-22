@@ -14,11 +14,14 @@ help: consider giving this pattern a type, where the value of const parameter `N
 LL |     let (mut arr, mut arr_with_weird_len): ([_; N], _) = free();
    |                                          +++++++++++++
 
-error[E0271]: type mismatch resolving `10 == 2`
+error[E0271]: type mismatch resolving `FREE<10> == 2`
   --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:35:45
    |
 LL |     let (mut arr, mut arr_with_weird_len) = free();
-   |                                             ^^^^^^ types differ
+   |                                             ^^^^^^ expected `2`, found `10`
+   |
+   = note: expected constant `2`
+              found constant `10`
 
 error[E0284]: type annotations needed for `([(); _], [(); 10])`
   --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:46:9
@@ -36,11 +39,14 @@ help: consider giving this pattern a type, where the value of const parameter `N
 LL |     let (mut arr, mut arr_with_weird_len): ([_; N], _) = proj();
    |                                          +++++++++++++
 
-error[E0271]: type mismatch resolving `10 == 2`
+error[E0271]: type mismatch resolving `<S as Trait>::PROJ<10> == 2`
   --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:52:45
    |
 LL |     let (mut arr, mut arr_with_weird_len) = proj();
-   |                                             ^^^^^^ types differ
+   |                                             ^^^^^^ expected `2`, found `10`
+   |
+   = note: expected constant `2`
+              found constant `10`
 
 error: aborting due to 4 previous errors
 

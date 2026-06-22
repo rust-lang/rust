@@ -9,9 +9,8 @@
 #![deny(unsafe_code)]
 
 use std::hash::Hash;
+use std::marker;
 use std::ops::{Bound, Range};
-use std::sync::Once;
-use std::{fmt, marker, mem, panic, thread};
 
 use crate::{Delimiter, Level};
 
@@ -100,6 +99,8 @@ mod handle;
 #[macro_use]
 #[forbid(unsafe_code)]
 mod rpc;
+#[forbid(unsafe_code)]
+mod panic_message;
 #[allow(unsafe_code)]
 mod selfless_reify;
 #[forbid(unsafe_code)]
@@ -108,7 +109,7 @@ pub mod server;
 mod symbol;
 
 use buffer::Buffer;
-pub use rpc::PanicMessage;
+pub use panic_message::PanicMessage;
 use rpc::{Decode, Encode};
 
 /// Configuration for establishing an active connection between a server and a

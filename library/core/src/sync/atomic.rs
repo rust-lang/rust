@@ -2593,7 +2593,7 @@ macro_rules! atomic_int {
 
         #[$stable_from]
         #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-        impl const From<$int_type> for $atomic_type {
+        const impl From<$int_type> for $atomic_type {
             #[doc = concat!("Converts an `", stringify!($int_type), "` into an `", stringify!($atomic_type), "`.")]
             #[inline]
             fn from(v: $int_type) -> Self { Self::new(v) }

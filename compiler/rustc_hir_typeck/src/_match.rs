@@ -254,7 +254,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let semi = expr.span.shrink_to_hi().with_hi(semi_span.hi());
-        let sugg = crate::errors::RemoveSemiForCoerce { expr: expr.span, ret, semi };
+        let sugg = crate::diagnostics::RemoveSemiForCoerce { expr: expr.span, ret, semi };
         diag.subdiagnostic(sugg);
     }
 

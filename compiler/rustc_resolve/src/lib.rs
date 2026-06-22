@@ -26,15 +26,16 @@ use std::ops::ControlFlow;
 use std::sync::Arc;
 use std::{fmt, mem};
 
-use diagnostics::{ImportSuggestion, LabelSuggestion, StructCtor, Suggestion};
+use diagnostics::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
 use effective_visibilities::EffectiveVisibilitiesVisitor;
-use errors::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
+use error_helper::{ImportSuggestion, LabelSuggestion, StructCtor, Suggestion};
 use hygiene::Macros20NormalizedSyntaxContext;
 use imports::{Import, ImportData, ImportKind, NameResolution, PendingDecl};
 use late::{
     ForwardGenericParamBanReason, HasGenericParams, PathSource, PatternSource,
     UnnecessaryQualification,
 };
+pub use macros::registered_tools_ast;
 use macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::node_id::NodeMap;
@@ -75,23 +76,22 @@ use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
-type Res = def::Res<NodeId>;
+use crate::error_helper::OnUnknownData;
+use crate::ref_mut::{CmCell, CmRefCell};
 
 mod build_reduced_graph;
 mod check_unused;
 mod def_collector;
 mod diagnostics;
 mod effective_visibilities;
-mod errors;
+mod error_helper;
 mod ident;
 mod imports;
 mod late;
 mod macros;
 pub mod rustdoc;
 
-pub use macros::registered_tools_ast;
-
-use crate::ref_mut::{CmCell, CmRefCell};
+type Res = def::Res<NodeId>;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 enum Determinacy {
@@ -1506,7 +1506,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// Generic args to suggest for required params (e.g. `<'_>`, `<_, _>`), if any.
     item_required_generic_args_suggestions: FxHashMap<LocalDefId, String> = default::fx_hash_map(),
     delegation_fn_sigs: LocalDefIdMap<DelegationFnSig> = Default::default(),
-    delegation_infos: LocalDefIdMap<DelegationInfo> = Default::default(),
+    delegation_infos: FxIndexMap<LocalDefId, DelegationInfo>,
 
     main_def: Option<MainDefinition> = None,
     trait_impls: FxIndexMap<DefId, Vec<LocalDefId>>,
@@ -1548,6 +1548,9 @@ pub struct Resolver<'ra, 'tcx> {
     // that were encountered during resolution. These names are used to generate item names
     // for APITs, so we don't want to leak details of resolution into these names.
     impl_trait_names: FxHashMap<NodeId, Symbol> = default::fx_hash_map(),
+
+    /// Stores `#[diagnostic::on_unknown]` attributes placed on module declarations.
+    on_unknown_data: FxHashMap<LocalDefId, OnUnknownData>,
 }
 
 /// This provides memory for the rest of the crate. The `'ra` lifetime that is
@@ -1805,6 +1808,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let registered_tools = tcx.registered_tools(());
         let edition = tcx.sess.edition();
 
+        let mut on_unknown_data = default::fx_hash_map();
+        if let Some(directive) = OnUnknownData::from_attrs(tcx, attrs) {
+            on_unknown_data.insert(CRATE_DEF_ID, directive);
+        }
+
         let mut resolver = Resolver {
             tcx,
 
@@ -1871,6 +1879,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             doc_link_traits_in_scope: Default::default(),
             current_crate_outer_attr_insert_span,
             disambiguators: Default::default(),
+            delegation_infos: Default::default(),
+            on_unknown_data,
             ..
         };
 
@@ -1991,6 +2001,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             doc_link_traits_in_scope: self.doc_link_traits_in_scope,
             all_macro_rules: self.all_macro_rules,
             stripped_cfg_items,
+            delegation_infos: self.delegation_infos,
         };
         let ast_lowering = ty::ResolverAstLowering {
             partial_res_map: self.partial_res_map,
@@ -1998,7 +2009,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             next_node_id: self.next_node_id,
             owners: self.owners,
             lint_buffer: Steal::new(self.lint_buffer),
-            delegation_infos: self.delegation_infos,
             disambiguators,
         };
         ResolverOutputs { global_ctxt, ast_lowering }
@@ -2272,7 +2282,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         PRIVATE_MACRO_USE,
                         import.root_id,
                         ident.span,
-                        errors::MacroIsPrivate { ident },
+                        diagnostics::MacroIsPrivate { ident },
                     );
                 }
             }

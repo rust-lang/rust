@@ -125,7 +125,6 @@ where
 }
 
 // Zip specialization trait
-#[doc(hidden)]
 trait ZipImpl<A, B> {
     type Item;
     fn new(a: A, b: B) -> Self;
@@ -204,7 +203,6 @@ macro_rules! zip_impl_general_defaults {
 }
 
 // General Zip impl
-#[doc(hidden)]
 impl<A, B> ZipImpl<A, B> for Zip<A, B>
 where
     A: Iterator,
@@ -247,7 +245,6 @@ where
     }
 }
 
-#[doc(hidden)]
 impl<A, B> ZipImpl<A, B> for Zip<A, B>
 where
     A: TrustedRandomAccessNoCoerce + Iterator,
@@ -288,7 +285,6 @@ where
     }
 }
 
-#[doc(hidden)]
 impl<A, B> ZipImpl<A, B> for Zip<A, B>
 where
     A: TrustedRandomAccess + Iterator,

@@ -50,6 +50,7 @@ impl AttributeKind {
             Ignore { .. } => No,
             Inline(..) => No,
             InstructionSet(..) => No,
+            InstrumentFn(..) => No,
             Lang(..) => Yes,
             Link(..) => No,
             LinkName { .. } => Yes, // Needed for rustdoc
@@ -78,9 +79,10 @@ impl AttributeKind {
             NonExhaustive(..) => Yes, // Needed for rustdoc
             OnConst { .. } => Yes,
             OnMove { .. } => Yes,
+            OnTypeError { .. } => Yes,
             OnUnimplemented { .. } => Yes,
             OnUnknown { .. } => Yes,
-            OnUnmatchArgs { .. } => Yes,
+            OnUnmatchedArgs { .. } => Yes,
             Optimize(..) => No,
             PanicRuntime => No,
             PatchableFunctionEntry { .. } => Yes,
@@ -200,6 +202,7 @@ impl AttributeKind {
             ThreadLocal => No,
             TrackCaller(..) => Yes,
             TypeLengthLimit { .. } => No,
+            Unroll(..) => No,
             UnstableFeatureBound(..) => No,
             UnstableRemoved(..) => Yes,
             Used { .. } => No,

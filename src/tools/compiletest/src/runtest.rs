@@ -23,7 +23,7 @@ use crate::errors::{Error, ErrorKind, load_errors};
 use crate::output_capture::ConsoleOut;
 use crate::read2::{Truncated, read2_abbreviated};
 use crate::runtest::compute_diff::{DiffLine, diff_by_lines, make_diff, write_diff};
-use crate::util::{Utf8PathBufExt, add_dylib_path, static_regex};
+use crate::util::{ArgFileCommand, Utf8PathBufExt, add_dylib_path, static_regex};
 use crate::{json, stamp_file_path};
 
 // Helper modules that implement test running logic for each test suite.
@@ -383,7 +383,7 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    /// Runs a [`Command`] and waits for it to finish, then converts its exit
+    /// Runs a [`ArgFileCommand`] and waits for it to finish, then converts its exit
     /// status and output streams into a [`ProcRes`].
     ///
     /// The command might have succeeded or failed; it is the caller's
@@ -393,7 +393,8 @@ impl<'test> TestCx<'test> {
     /// Panics if the command couldn't be executed at all
     /// (e.g. because the executable could not be found).
     #[must_use = "caller should check whether the command succeeded"]
-    fn run_command_to_procres(&self, cmd: &mut Command) -> ProcRes {
+    fn run_command_to_procres(&self, cmd: ArgFileCommand) -> ProcRes {
+        let (mut cmd, _arg_file) = cmd.build().unwrap();
         let output = cmd
             .output()
             .unwrap_or_else(|e| self.fatal(&format!("failed to exec `{cmd:?}` because: {e}")));
@@ -2304,6 +2305,23 @@ impl<'test> TestCx<'test> {
         self.props.compile_flags.iter().any(|s| s.contains("--color=always"))
     }
 
+    /// Returns the lines for the by-lines comparison, normalized for the
+    /// parallel front-end: for SVG output, strip the header line and `y`
+    /// offsets; otherwise, filter out padded empty code lines (a single `|`).
+    fn lines_for_comparison(&self, output: &str) -> Vec<String> {
+        if self.force_color_svg() {
+            let strip_y = static_regex!(r#"y="\d+px""#);
+            output
+                .lines()
+                // anstyle_svg causes environment-dependent width parameter
+                .skip(1)
+                .map(|line| strip_y.replace_all(line, r#"y="0px""#).into_owned())
+                .collect()
+        } else {
+            output.lines().filter(|l| l.trim() != "|").map(str::to_owned).collect()
+        }
+    }
+
     fn load_compare_outputs(
         &self,
         proc_res: &ProcRes,
@@ -2719,10 +2737,8 @@ impl<'test> TestCx<'test> {
                 (&tmp.0, &tmp.1)
             }
         } else if compare_output_by_lines {
-            // Filter out padded empty code lines
-            let mut actual_lines: Vec<&str> = actual.lines().filter(|l| l.trim() != "|").collect();
-            let mut expected_lines: Vec<&str> =
-                expected.lines().filter(|l| l.trim() != "|").collect();
+            let mut actual_lines = self.lines_for_comparison(actual);
+            let mut expected_lines = self.lines_for_comparison(expected);
             actual_lines.sort_unstable();
             expected_lines.sort_unstable();
             if actual_lines == expected_lines {
@@ -2866,7 +2882,9 @@ impl<'test> TestCx<'test> {
         }
 
         if show_diff_by_lines {
-            write!(self.stderr, "{}", diff_by_lines(expected, actual));
+            let expected_lines = self.lines_for_comparison(expected);
+            let actual_lines = self.lines_for_comparison(actual);
+            write!(self.stderr, "{}", diff_by_lines(&expected_lines, &actual_lines));
         }
     }
 

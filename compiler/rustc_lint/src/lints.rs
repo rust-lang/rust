@@ -160,46 +160,6 @@ pub(crate) enum BuiltinUnsafe {
     UnsafeTrait,
     #[diag("implementation of an `unsafe` trait")]
     UnsafeImpl,
-    #[diag("declaration of a `no_mangle` function")]
-    #[note(
-        "the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them"
-    )]
-    NoMangleFn,
-    #[diag("declaration of a function with `export_name`")]
-    #[note(
-        "the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them"
-    )]
-    ExportNameFn,
-    #[diag("declaration of a function with `link_section`")]
-    #[note(
-        "the program's behavior with overridden link sections on items is unpredictable and Rust cannot provide guarantees when you manually override them"
-    )]
-    LinkSectionFn,
-    #[diag("declaration of a `no_mangle` static")]
-    #[note(
-        "the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them"
-    )]
-    NoMangleStatic,
-    #[diag("declaration of a static with `export_name`")]
-    #[note(
-        "the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them"
-    )]
-    ExportNameStatic,
-    #[diag("declaration of a static with `link_section`")]
-    #[note(
-        "the program's behavior with overridden link sections on items is unpredictable and Rust cannot provide guarantees when you manually override them"
-    )]
-    LinkSectionStatic,
-    #[diag("declaration of a `no_mangle` method")]
-    #[note(
-        "the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them"
-    )]
-    NoMangleMethod,
-    #[diag("declaration of a method with `export_name`")]
-    #[note(
-        "the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them"
-    )]
-    ExportNameMethod,
     #[diag("declaration of an `unsafe` function")]
     DeclUnsafeFn,
     #[diag("declaration of an `unsafe` method")]

@@ -14,7 +14,7 @@ use rustc_span::{Ident, Span, kw, sym};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
-use crate::errors::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
+use crate::diagnostics::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
 use crate::hygiene::Macros20NormalizedSyntaxContext;
 use crate::imports::{Import, NameResolution};
 use crate::late::{
@@ -25,7 +25,7 @@ use crate::{
     AmbiguityError, AmbiguityKind, AmbiguityWarning, BindingKey, CmResolver, Decl, DeclKind,
     Determinacy, Finalize, IdentKey, ImportKind, ImportSummary, LateDecl, LocalModule, Module,
     ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, PrivacyError, Res, ResolutionError,
-    Resolver, Scope, ScopeSet, Segment, Stage, Symbol, Used, errors,
+    Resolver, Scope, ScopeSet, Segment, Stage, Symbol, Used, diagnostics,
 };
 
 #[derive(Copy, Clone)]
@@ -630,7 +630,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
                                 lint_id,
                                 orig_ident_span,
-                                errors::ProcMacroDeriveResolutionFallback {
+                                diagnostics::ProcMacroDeriveResolutionFallback {
                                     span: orig_ident_span,
                                     ns_descr: ns.descr(),
                                     ident: ident.name,
@@ -681,7 +681,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
                                 lint_id,
                                 orig_ident_span,
-                                errors::ProcMacroDeriveResolutionFallback {
+                                diagnostics::ProcMacroDeriveResolutionFallback {
                                     span: orig_ident_span,
                                     ns_descr: ns.descr(),
                                     ident: ident.name,
@@ -1988,7 +1988,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         record_segment_res(self.reborrow(), finalize, res, id);
                     } else if res == Res::ToolMod && !is_last && opt_ns.is_some() {
                         if binding.is_import() {
-                            self.dcx().emit_err(errors::ToolModuleImported {
+                            self.dcx().emit_err(diagnostics::ToolModuleImported {
                                 span: ident.span,
                                 import: binding.span,
                             });

@@ -145,7 +145,7 @@ fn check_replace_option_with_none(cx: &LateContext<'_>, src: &Expr<'_>, dest: &E
             MEM_REPLACE_OPTION_WITH_NONE,
             expr_span,
             "replacing an `Option` with `None`",
-            "consider `Option::take()` instead",
+            "consider using `Option::take()` instead",
             format!(
                 "{}.take()",
                 Sugg::hir_with_context(cx, sugg_expr, expr_span.ctxt(), "", &mut applicability).maybe_paren()
@@ -177,7 +177,7 @@ fn check_replace_option_with_some(
             MEM_REPLACE_OPTION_WITH_SOME,
             expr_span,
             "replacing an `Option` with `Some(..)`",
-            "consider `Option::replace()` instead",
+            "consider using `Option::replace()` instead",
             format!(
                 "{}.replace({})",
                 Sugg::hir_with_context(cx, sugg_expr, expr_span.ctxt(), "_", &mut applicability).maybe_paren(),
@@ -203,7 +203,7 @@ fn check_replace_with_uninit(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'
             MEM_REPLACE_WITH_UNINIT,
             expr_span,
             "replacing with `mem::MaybeUninit::uninit().assume_init()`",
-            "consider using",
+            format!("consider using `{top_crate}::ptr::read` instead"),
             format!(
                 "{top_crate}::ptr::read({})",
                 snippet_with_applicability(cx, dest.span, "", &mut applicability)
@@ -226,7 +226,7 @@ fn check_replace_with_uninit(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'
                 MEM_REPLACE_WITH_UNINIT,
                 expr_span,
                 "replacing with `mem::uninitialized()`",
-                "consider using",
+                format!("consider using `{top_crate}::ptr::read` instead"),
                 format!(
                     "{top_crate}::ptr::read({})",
                     snippet_with_applicability(cx, dest.span, "", &mut applicability)
@@ -266,17 +266,18 @@ fn check_replace_with_default(
             cx,
             MEM_REPLACE_WITH_DEFAULT,
             expr.span,
-            format!(
-                "replacing a value of type `T` with `T::default()` is better expressed using `{top_crate}::mem::take`"
-            ),
+            "replacing a value of type `T` with `T::default()`",
             |diag| {
-                if !expr.span.from_expansion() {
-                    let mut applicability = Applicability::MachineApplicable;
-                    let (dest_snip, _) = snippet_with_context(cx, dest.span, expr.span.ctxt(), "", &mut applicability);
-                    let suggestion = format!("{top_crate}::mem::take({dest_snip})");
+                let mut applicability = Applicability::MachineApplicable;
+                let (dest_snip, _) = snippet_with_context(cx, dest.span, expr.span.ctxt(), "", &mut applicability);
+                let suggestion = format!("{top_crate}::mem::take({dest_snip})");
 
-                    diag.span_suggestion(expr.span, "consider using", suggestion, applicability);
-                }
+                diag.span_suggestion(
+                    expr.span,
+                    format!("consider using `{top_crate}::mem::take` instead"),
+                    suggestion,
+                    applicability,
+                );
             },
         );
         true

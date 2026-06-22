@@ -48,8 +48,8 @@ use super::{
     DefIdOrName, FindExprBySpan, ImplCandidate, Obligation, ObligationCause, ObligationCauseCode,
     PredicateObligation,
 };
+use crate::diagnostics;
 use crate::error_reporting::TypeErrCtxt;
-use crate::errors;
 use crate::infer::InferCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::{ImplDerivedCause, NormalizeExt, ObligationCtxt, SelectionContext};
@@ -1493,7 +1493,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             if let ty::ClauseKind::Projection(proj) = pred.kind().skip_binder()
                             && self
                                 .tcx
-                                .is_lang_item(proj.projection_term.def_id(), LangItem::FnOnceOutput)
+                                .is_lang_item(proj.def_id(), LangItem::FnOnceOutput)
                             // args tuple will always be args[1]
                             && let ty::Tuple(args) = proj.projection_term.args.type_at(1).kind()
                             {
@@ -1537,7 +1537,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         if let ty::ClauseKind::Projection(proj) = pred.kind().skip_binder()
                             && self
                                 .tcx
-                                .is_lang_item(proj.projection_term.def_id(), LangItem::FnOnceOutput)
+                                .is_lang_item(proj.def_id(), LangItem::FnOnceOutput)
                             && proj.projection_term.self_ty() == found
                             // args tuple will always be args[1]
                             && let ty::Tuple(args) = proj.projection_term.args.type_at(1).kind()
@@ -6119,11 +6119,11 @@ fn hint_missing_borrow<'tcx>(
     }
 
     if !to_borrow.is_empty() {
-        err.subdiagnostic(errors::AdjustSignatureBorrow::Borrow { to_borrow });
+        err.subdiagnostic(diagnostics::AdjustSignatureBorrow::Borrow { to_borrow });
     }
 
     if !remove_borrow.is_empty() {
-        err.subdiagnostic(errors::AdjustSignatureBorrow::RemoveBorrow { remove_borrow });
+        err.subdiagnostic(diagnostics::AdjustSignatureBorrow::RemoveBorrow { remove_borrow });
     }
 }
 
@@ -6425,12 +6425,12 @@ fn point_at_assoc_type_restriction<G: EmissionGuarantee>(
         return;
     };
     let Some(name) = tcx
-        .opt_rpitit_info(proj.projection_term.def_id())
+        .opt_rpitit_info(proj.def_id())
         .and_then(|data| match data {
             ty::ImplTraitInTraitData::Trait { fn_def_id, .. } => Some(tcx.item_name(fn_def_id)),
             ty::ImplTraitInTraitData::Impl { .. } => None,
         })
-        .or_else(|| tcx.opt_item_name(proj.projection_term.def_id()))
+        .or_else(|| tcx.opt_item_name(proj.def_id()))
     else {
         return;
     };

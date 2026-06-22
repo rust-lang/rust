@@ -1374,8 +1374,6 @@ macro_rules! nonzero_integer {
             /// # Examples
             ///
             /// ```
-            /// #![feature(nonzero_from_str_radix)]
-            ///
             /// # use std::num::NonZero;
             /// #
             /// # fn main() { test().unwrap(); }
@@ -1388,13 +1386,12 @@ macro_rules! nonzero_integer {
             /// Trailing space returns error:
             ///
             /// ```
-            /// #![feature(nonzero_from_str_radix)]
-            ///
             /// # use std::num::NonZero;
             /// #
             #[doc = concat!("assert!(NonZero::<", stringify!($Int), ">::from_str_radix(\"1 \", 10).is_err());")]
             /// ```
-            #[unstable(feature = "nonzero_from_str_radix", issue = "152193")]
+            #[stable(feature = "nonzero_from_str_radix", since = "CURRENT_RUSTC_VERSION")]
+            #[rustc_const_stable(feature = "nonzero_from_str_radix", since = "CURRENT_RUSTC_VERSION")]
             #[inline]
             pub const fn from_str_radix(src: &str, radix: u32) -> Result<Self, ParseIntError> {
                 Self::from_ascii_radix(src.as_bytes(), radix)

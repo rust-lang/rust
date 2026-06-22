@@ -725,7 +725,7 @@ pub(crate) fn to_llvm_calling_convention(sess: &Session, abi: CanonAbi) -> llvm:
         },
         CanonAbi::RustTail => match &sess.target.arch {
             Arch::X86 | Arch::X86_64 | Arch::AArch64 => llvm::Tail,
-            _ => sess.dcx().fatal("extern \"tail\" is only supported on x86_64 and aarch64"),
+            _ => sess.dcx().fatal("extern \"tail\" is only supported on x86, x86_64 and aarch64"),
         },
         // Functions with this calling convention can only be called from assembly, but it is
         // possible to declare an `extern "custom"` block, so the backend still needs a calling

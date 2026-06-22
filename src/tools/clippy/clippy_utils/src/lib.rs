@@ -46,6 +46,7 @@ mod check_proc_macro;
 pub mod comparisons;
 pub mod consts;
 pub mod diagnostics;
+pub mod disallowed_profiles;
 pub mod eager_or_lazy;
 pub mod higher;
 mod hir_utils;
@@ -119,7 +120,7 @@ use source::{SpanRangeExt, walk_span_to_context};
 use visitors::{Visitable, for_each_unconsumed_temporary};
 
 use crate::ast_utils::unordered_over;
-use crate::consts::{ConstEvalCtxt, Constant};
+use crate::consts::ConstEvalCtxt;
 use crate::higher::Range;
 use crate::msrvs::Msrv;
 use crate::res::{MaybeDef, MaybeQPath, MaybeResPath};
@@ -242,7 +243,10 @@ pub fn is_inside_always_const_context(tcx: TyCtxt<'_>, hir_id: HirId) -> bool {
     };
     match ctx {
         ConstFn => false,
-        Static(_) | Const { allow_const_fn_promotion: _ } => true,
+        Static(_)
+        | Const {
+            allow_const_fn_promotion: _,
+        } => true,
     }
 }
 
@@ -1380,24 +1384,8 @@ pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Opti
     false
 }
 
-/// Checks whether the given expression is a constant integer of the given value.
-/// unlike `is_integer_literal`, this version does const folding
-pub fn is_integer_const(cx: &LateContext<'_>, e: &Expr<'_>, value: u128) -> bool {
-    if is_integer_literal(e, value) {
-        return true;
-    }
-    let enclosing_body = cx.tcx.hir_enclosing_body_owner(e.hir_id);
-    if let Some(Constant::Int(v)) =
-        ConstEvalCtxt::with_env(cx.tcx, cx.typing_env(), cx.tcx.typeck(enclosing_body)).eval(e)
-    {
-        return value == v;
-    }
-    false
-}
-
 /// Checks whether the given expression is a constant literal of the given value.
 pub fn is_integer_literal(expr: &Expr<'_>, value: u128) -> bool {
-    // FIXME: use constant folding
     if let ExprKind::Lit(spanned) = expr.kind
         && let LitKind::Int(v, _) = spanned.node
     {

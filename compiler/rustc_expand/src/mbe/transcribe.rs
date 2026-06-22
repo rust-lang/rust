@@ -17,7 +17,7 @@ use rustc_span::{
 };
 use smallvec::{SmallVec, smallvec};
 
-use crate::errors::{
+use crate::diagnostics::{
     ConcatInvalidIdent, CountRepetitionMisplaced, InvalidIdentReason, MacroVarStillRepeating,
     MetaVarsDifSeqMatchers, MustRepeatOnce, MveUnrecognizedVar, NoRepeatableVar,
     NoSyntaxVarsExprRepeat, VarNoTypo, VarTypoSuggestionRepeatable, VarTypoSuggestionUnrepeatable,

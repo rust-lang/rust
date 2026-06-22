@@ -245,6 +245,7 @@ TrivialTypeTraversalImpls! {
     rustc_hir::HirId,
     rustc_hir::MatchSource,
     rustc_hir::RangeEnd,
+    rustc_hir::attrs::AttributeKind,
     rustc_hir::def_id::LocalDefId,
     rustc_span::Ident,
     rustc_span::Span,

@@ -1125,7 +1125,7 @@ fn field_borrow(a: &FieldBorrow<'_>) {
     // CHECK: debug b => [[b:_.*]];
     // CHECK: debug c => [[c:_.*]];
     // CHECK: [[b]] = copy ((*_1).0: &u8);
-    // CHECK: [[c]] = copy [[b]];
+    // CHECK: [[c]] = copy ((*_1).0: &u8);
     let b = a.0;
     let c = a.0;
 }
@@ -1142,7 +1142,7 @@ fn field_borrow_2(a: &&FieldBorrow<'_>) {
     // CHECK: [[c]] = copy ((*[[b]]).0: &u8);
     // CHECK: [[d]] = copy (*_1);
     // CHECK: [[e]] = copy ((*[[d]]).0: &u8);
-    // CHECK: [[f]] = copy [[e]];
+    // CHECK: [[f]] = copy ((*[[d]]).0: &u8);
     let b = *a;
     let c = b.0;
     let d = *a;

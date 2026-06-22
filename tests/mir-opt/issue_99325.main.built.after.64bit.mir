@@ -2,7 +2,7 @@
 
 | User Type Annotations
 | 0: user_ty: Canonical { value: TypeOf(DefId(0:3 ~ issue_99325[d56d]::function_with_bytes), UserArgs { args: [&*b"AAAA"], user_self_ty: None }), max_universe: U0, var_kinds: [] }, span: $DIR/issue_99325.rs:13:16: 13:46, inferred_ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}
-| 1: user_ty: Canonical { value: TypeOf(DefId(0:3 ~ issue_99325[d56d]::function_with_bytes), UserArgs { args: [UnevaluatedConst { kind: Anon { def_id: DefId(0:8 ~ issue_99325[d56d]::main::{constant#1}) }, args: [], .. }], user_self_ty: None }), max_universe: U0, var_kinds: [] }, span: $DIR/issue_99325.rs:14:16: 14:68, inferred_ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}
+| 1: user_ty: Canonical { value: TypeOf(DefId(0:3 ~ issue_99325[d56d]::function_with_bytes), UserArgs { args: [Alias { kind: Anon { def_id: DefId(0:8 ~ issue_99325[d56d]::main::{constant#1}) }, args: [], .. }], user_self_ty: None }), max_universe: U0, var_kinds: [] }, span: $DIR/issue_99325.rs:14:16: 14:68, inferred_ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}
 |
 fn main() -> () {
     let mut _0: ();
@@ -132,7 +132,7 @@ fn main() -> () {
         _19 = &(*_20);
         StorageLive(_21);
         _21 = Option::<Arguments<'_>>::None;
-        _15 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _16, move _17, move _19, move _21) -> bb23;
+        _15 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _16, move _17, move _19, move _21) -> [return: bb7, unwind: bb23];
     }
 
     bb7: {
@@ -236,7 +236,7 @@ fn main() -> () {
         _39 = &(*_40);
         StorageLive(_41);
         _41 = Option::<Arguments<'_>>::None;
-        _35 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _36, move _37, move _39, move _41) -> bb23;
+        _35 = core::panicking::assert_failed::<&[u8], &[u8; 4]>(move _36, move _37, move _39, move _41) -> [return: bb18, unwind: bb23];
     }
 
     bb18: {

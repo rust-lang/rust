@@ -144,6 +144,10 @@ impl<'tcx> SpanMapVisitor<'tcx> {
                 let span = path.segments.last().map_or(path.span, |seg| seg.ident.span);
                 // In case the path ends with generics, we remove them from the span.
                 let span = if only_use_last_segment {
+                    if path.span.from_expansion() {
+                        // For now we don't handle span from macro expansions so nothing to do here.
+                        return;
+                    }
                     span
                 } else {
                     // In `use` statements, the included item is not in the path segments. However,

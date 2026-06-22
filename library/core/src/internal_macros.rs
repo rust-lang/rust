@@ -3,7 +3,7 @@
 macro_rules! forward_ref_unop {
     (impl $imp:ident, $method:ident for $t:ty, $(#[$attr:meta])+) => {
         $(#[$attr])+
-        impl const $imp for &$t {
+        const impl $imp for &$t {
             type Output = <$t as $imp>::Output;
 
             #[inline]
@@ -19,7 +19,7 @@ macro_rules! forward_ref_unop {
 macro_rules! forward_ref_binop {
     (impl $imp:ident, $method:ident for $t:ty, $u:ty, $(#[$attr:meta])+) => {
         $(#[$attr])+
-        impl const $imp<$u> for &$t {
+        const impl $imp<$u> for &$t {
             type Output = <$t as $imp<$u>>::Output;
 
             #[inline]
@@ -30,7 +30,7 @@ macro_rules! forward_ref_binop {
         }
 
         $(#[$attr])+
-        impl const $imp<&$u> for $t {
+        const impl $imp<&$u> for $t {
             type Output = <$t as $imp<$u>>::Output;
 
             #[inline]
@@ -41,7 +41,7 @@ macro_rules! forward_ref_binop {
         }
 
         $(#[$attr])+
-        impl const $imp<&$u> for &$t {
+        const impl $imp<&$u> for &$t {
             type Output = <$t as $imp<$u>>::Output;
 
             #[inline]
@@ -58,7 +58,7 @@ macro_rules! forward_ref_binop {
 macro_rules! forward_ref_op_assign {
     (impl $imp:ident, $method:ident for $t:ty, $u:ty, $(#[$attr:meta])+) => {
         $(#[$attr])+
-        impl const $imp<&$u> for $t {
+        const impl $imp<&$u> for $t {
             #[inline]
             #[track_caller]
             fn $method(&mut self, other: &$u) {

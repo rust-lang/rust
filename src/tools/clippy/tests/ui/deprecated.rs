@@ -4,6 +4,7 @@
 
 #![warn(clippy::assign_ops)] //~ ERROR: lint `clippy::assign_ops`
 #![warn(clippy::extend_from_slice)] //~ ERROR: lint `clippy::extend_from_slice`
+#![warn(clippy::from_iter_instead_of_collect)] //~ ERROR: lint `clippy::from_iter_instead_of_collect`
 #![warn(clippy::match_on_vec_items)] //~ ERROR: lint `clippy::match_on_vec_items`
 #![warn(clippy::misaligned_transmute)] //~ ERROR: lint `clippy::misaligned_transmute`
 #![warn(clippy::option_map_or_err_ok)] //~ ERROR: lint `clippy::option_map_or_err_ok`

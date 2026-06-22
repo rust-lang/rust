@@ -1,5 +1,4 @@
 #![warn(clippy::equatable_if_let)]
-#![allow(clippy::eq_op)]
 #![feature(const_trait_impl, const_cmp)]
 
 fn issue15376() {

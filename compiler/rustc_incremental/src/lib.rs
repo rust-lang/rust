@@ -6,7 +6,7 @@
 // tidy-alphabetical-end
 
 mod assert_dep_graph;
-mod errors;
+mod diagnostics;
 mod persist;
 
 pub use persist::{

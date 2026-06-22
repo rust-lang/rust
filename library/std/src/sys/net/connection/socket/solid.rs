@@ -142,8 +142,13 @@ impl Socket {
             return Err(io::Error::ZERO_TIMEOUT);
         }
 
-        let mut timeout =
-            netc::timeval { tv_sec: timeout.as_secs() as _, tv_usec: timeout.subsec_micros() as _ };
+        let secs = if timeout.as_secs() > netc::c_long::MAX as u64 {
+            netc::c_long::MAX
+        } else {
+            timeout.as_secs() as netc::c_long
+        };
+
+        let mut timeout = netc::timeval { tv_sec: secs, tv_usec: timeout.subsec_micros() as _ };
         if timeout.tv_sec == 0 && timeout.tv_usec == 0 {
             timeout.tv_usec = 1;
         }
@@ -186,7 +191,7 @@ impl Socket {
         Ok(Self(self.0.try_clone()?))
     }
 
-    fn recv_with_flags(&self, mut buf: BorrowedCursor<'_>, flags: c_int) -> io::Result<()> {
+    fn recv_with_flags(&self, mut buf: BorrowedCursor<'_, u8>, flags: c_int) -> io::Result<()> {
         let ret = cvt(unsafe {
             netc::recv(self.as_raw_fd(), buf.as_mut().as_mut_ptr().cast(), buf.capacity(), flags)
         })?;
@@ -208,7 +213,7 @@ impl Socket {
         Ok(buf.len())
     }
 
-    pub fn read_buf(&self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.recv_with_flags(buf, 0)
     }
 

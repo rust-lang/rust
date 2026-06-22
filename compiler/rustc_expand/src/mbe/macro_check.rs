@@ -114,7 +114,7 @@ use rustc_session::parse::ParseSess;
 use rustc_span::{ErrorGuaranteed, MacroRulesNormalizedIdent, Span, kw};
 use smallvec::SmallVec;
 
-use crate::errors;
+use crate::diagnostics;
 use crate::mbe::{KleeneToken, TokenTree};
 
 /// Stack represented as linked list.
@@ -247,7 +247,7 @@ fn check_binders(
                     psess,
                     span,
                     node_id,
-                    errors::DuplicateMatcherBindingLint { span, prev: prev_info.span },
+                    diagnostics::DuplicateMatcherBindingLint { span, prev: prev_info.span },
                 );
             } else if get_binder_info(macros, binders, name).is_none() {
                 // 2. The meta-variable is free: This is a binder.
@@ -266,11 +266,11 @@ fn check_binders(
             if let Some(prev_info) = get_binder_info(macros, binders, name) {
                 // Duplicate binders at the top-level macro definition are errors. The lint is only
                 // for nested macro definitions.
-                *guar = Some(
-                    psess
-                        .dcx()
-                        .emit_err(errors::DuplicateMatcherBinding { span, prev: prev_info.span }),
-                );
+                *guar =
+                    Some(psess.dcx().emit_err(diagnostics::DuplicateMatcherBinding {
+                        span,
+                        prev: prev_info.span,
+                    }));
             } else {
                 binders.insert(name, BinderInfo { span, ops: ops.into() });
             }
@@ -578,7 +578,7 @@ fn check_ops_is_prefix(
             return;
         }
     }
-    buffer_lint(psess, span, node_id, errors::UnknownMacroVariable { name });
+    buffer_lint(psess, span, node_id, diagnostics::UnknownMacroVariable { name });
 }
 
 /// Returns whether `binder_ops` is a prefix of `occurrence_ops`.
@@ -613,7 +613,7 @@ fn ops_is_prefix(
                 psess,
                 span,
                 node_id,
-                errors::MetaVarStillRepeatingLint { label: binder.span, ident },
+                diagnostics::MetaVarStillRepeatingLint { label: binder.span, ident },
             );
             return;
         }
@@ -623,7 +623,7 @@ fn ops_is_prefix(
                 psess,
                 span,
                 node_id,
-                errors::MetaVariableWrongOperator {
+                diagnostics::MetaVariableWrongOperator {
                     binder: binder.span,
                     occurrence: occurrence.span,
                 },

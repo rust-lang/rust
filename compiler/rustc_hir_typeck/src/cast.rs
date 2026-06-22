@@ -49,7 +49,7 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, instrument};
 
 use super::FnCtxt;
-use crate::{errors, type_error_struct};
+use crate::{diagnostics, type_error_struct};
 
 /// Reifies a cast check to be checked once we have full type information for
 /// a function context.
@@ -389,13 +389,17 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             CastError::CastToBool => {
                 let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
                 let help = if self.expr_ty.is_numeric() {
-                    errors::CannotCastToBoolHelp::Numeric(
+                    diagnostics::CannotCastToBoolHelp::Numeric(
                         self.expr_span.shrink_to_hi().with_hi(self.span.hi()),
                     )
                 } else {
-                    errors::CannotCastToBoolHelp::Unsupported(self.span)
+                    diagnostics::CannotCastToBoolHelp::Unsupported(self.span)
                 };
-                fcx.dcx().emit_err(errors::CannotCastToBool { span: self.span, expr_ty, help });
+                fcx.dcx().emit_err(diagnostics::CannotCastToBool {
+                    span: self.span,
+                    expr_ty,
+                    help,
+                });
             }
             CastError::CastToChar => {
                 let mut err = type_error_struct!(
@@ -588,7 +592,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             CastError::SizedUnsizedCast => {
                 let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
                 let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
-                fcx.dcx().emit_err(errors::CastThinPointerToWidePointer {
+                fcx.dcx().emit_err(diagnostics::CastThinPointerToWidePointer {
                     span: self.span,
                     expr_ty,
                     cast_ty,
@@ -606,14 +610,14 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     .then(|| match cast_ty.kind() {
                         ty::RawPtr(pointee, _) => match pointee.kind() {
                             ty::Param(param) => {
-                                Some(errors::IntToWideParamNote { param: param.name })
+                                Some(diagnostics::IntToWideParamNote { param: param.name })
                             }
                             _ => None,
                         },
                         _ => None,
                     })
                     .flatten();
-                fcx.dcx().emit_err(errors::IntToWide {
+                fcx.dcx().emit_err(diagnostics::IntToWide {
                     span,
                     metadata,
                     expr_ty,
@@ -630,17 +634,21 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     e => unreachable!("control flow means we should never encounter a {e:?}"),
                 };
                 let (span, sub) = if unknown_cast_to {
-                    (self.cast_span, errors::CastUnknownPointerSub::To(self.cast_span))
+                    (self.cast_span, diagnostics::CastUnknownPointerSub::To(self.cast_span))
                 } else {
-                    (self.cast_span, errors::CastUnknownPointerSub::From(self.span))
+                    (self.cast_span, diagnostics::CastUnknownPointerSub::From(self.span))
                 };
-                fcx.dcx().emit_err(errors::CastUnknownPointer { span, to: unknown_cast_to, sub });
+                fcx.dcx().emit_err(diagnostics::CastUnknownPointer {
+                    span,
+                    to: unknown_cast_to,
+                    sub,
+                });
             }
             CastError::CastEnumDrop => {
                 let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
                 let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
 
-                fcx.dcx().emit_err(errors::CastEnumDrop { span: self.span, expr_ty, cast_ty });
+                fcx.dcx().emit_err(diagnostics::CastEnumDrop { span: self.span, expr_ty, cast_ty });
             }
             CastError::ForeignNonExhaustiveAdt => {
                 make_invalid_casting_error(
@@ -653,7 +661,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 .emit();
             }
             CastError::PtrPtrAddingAutoTrait(added) => {
-                fcx.dcx().emit_err(errors::PtrCastAddAutoToObject {
+                fcx.dcx().emit_err(diagnostics::PtrCastAddAutoToObject {
                     span: self.span,
                     traits_len: added.len(),
                     traits: {
@@ -727,7 +735,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             lint,
             self.expr.hir_id,
             self.span,
-            errors::TrivialCast { numeric, expr_ty, cast_ty },
+            diagnostics::TrivialCast { numeric, expr_ty, cast_ty },
         );
     }
 
@@ -1144,12 +1152,15 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             if let Some((deref_ty, _)) = derefed {
                 // Give a note about what the expr derefs to.
                 if deref_ty != self.expr_ty.peel_refs() {
-                    err.subdiagnostic(errors::DerefImplsIsEmpty { span: self.expr_span, deref_ty });
+                    err.subdiagnostic(diagnostics::DerefImplsIsEmpty {
+                        span: self.expr_span,
+                        deref_ty,
+                    });
                 }
 
                 // Create a multipart suggestion: add `!` and `.is_empty()` in
                 // place of the cast.
-                err.subdiagnostic(errors::UseIsEmpty {
+                err.subdiagnostic(diagnostics::UseIsEmpty {
                     lo: self.expr_span.shrink_to_lo(),
                     hi: self.span.with_lo(self.expr_span.hi()),
                     expr_ty: self.expr_ty,

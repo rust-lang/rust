@@ -1,5 +1,5 @@
 #![warn(clippy::implicit_saturating_sub, clippy::inverted_saturating_sub)]
-#![allow(clippy::if_same_then_else)]
+#![expect(clippy::if_same_then_else)]
 
 fn main() {
     let a = 12u32;

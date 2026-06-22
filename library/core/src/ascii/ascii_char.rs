@@ -1165,7 +1165,7 @@ macro_rules! into_int_impl {
         $(
             #[unstable(feature = "ascii_char", issue = "110998")]
             #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-            impl const From<AsciiChar> for $ty {
+            const impl From<AsciiChar> for $ty {
                 #[inline]
                 fn from(chr: AsciiChar) -> $ty {
                     chr as u8 as $ty

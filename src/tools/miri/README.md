@@ -1,5 +1,9 @@
 # Miri
 
+<img src="miri-sticker.png" align="right" width="200px"
+ alt="Corro, the Unsafe Rusturchin, drinking from a juice bottle labeled 'Miri - 100% safe'"
+ title="Art by Paige Losare-Lusby, Creative Commons Attribute-ShareAlike">
+
 Miri is an [Undefined Behavior][reference-ub] detection tool for Rust. It can run binaries and test
 suites of cargo projects and detect unsafe code that fails to uphold its safety requirements. For
 instance:

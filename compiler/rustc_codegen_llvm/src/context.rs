@@ -201,6 +201,14 @@ pub(crate) unsafe fn create_module<'ll>(
         if sess.target.arch == Arch::PowerPC64 {
             // LLVM 22 updated the ABI alignment for double on AIX: https://github.com/llvm/llvm-project/pull/144673
             target_data_layout = target_data_layout.replace("-f64:32:64", "");
+
+            // LLVM 22 fixed the data layout calculation for targets that default to ELFv1
+            // when the ABI is set to ELFv2. With LLVM 21, the ELFv1 datalayout must be used,
+            // which will overalign function entries.
+            // https://github.com/llvm/llvm-project/pull/149725
+            if sess.target.llvm_target == "powerpc64-unknown-linux-gnu" {
+                target_data_layout = target_data_layout.replace("-Fn32", "-Fi64");
+            }
         }
         if sess.target.arch == Arch::AmdGpu {
             // LLVM 22 specified ELF mangling in the amdgpu data layout:
@@ -1083,9 +1091,10 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         instruction: &'ll Value,
         kind_id: MetadataKindId,
         md_list: &[&'ll Metadata],
-    ) {
+    ) -> &'ll Metadata {
         let md = self.md_node_in_context(md_list);
         self.set_metadata(instruction, kind_id, md);
+        md
     }
 
     /// Helper method for the sequence of calls:

@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::fmt::{self, Display, Write as _};
 use std::iter;
@@ -395,25 +396,26 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                         let (stab_tags, deprecation) = match import.source.did {
                             Some(import_def_id) => {
                                 let stab_tags =
-                                    print_extra_info_tags(tcx, myitem, item, Some(import_def_id))
-                                        .to_string();
+                                    print_extra_info_tags(tcx, myitem, item, Some(import_def_id));
                                 let deprecation = tcx
                                     .lookup_deprecation(import_def_id)
                                     .is_some_and(|deprecation| deprecation.is_in_effect());
-                                (stab_tags, deprecation)
+                                (Some(stab_tags), deprecation)
                             }
-                            None => (String::new(), item.is_deprecated(tcx)),
+                            None => (None, item.is_deprecated(tcx)),
                         };
                         let visibility_and_hidden = visibility_and_hidden(myitem);
                         let id = match import.kind {
-                            clean::ImportKind::Simple(s) => {
-                                format!(" id=\"{}\"", cx.derive_id(format!("reexport.{s}")))
-                            }
-                            clean::ImportKind::Glob => String::new(),
+                            clean::ImportKind::Simple(s) => Some(format_args!(
+                                " id=\"{}\"",
+                                cx.derive_id(format!("reexport.{s}"))
+                            )),
+                            clean::ImportKind::Glob => None,
                         };
                         write!(
                             w,
                             "<dt{id}{deprecation_attr}><code>",
+                            id = id.maybe_display(),
                             deprecation_attr = deprecation_class_attr(deprecation)
                         )?;
                         write!(
@@ -423,6 +425,7 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                             vis = visibility_print_with_space(myitem, cx),
                             imp = print_import(import, cx),
                             visibility_and_hidden = visibility_and_hidden,
+                            stab_tags = stab_tags.maybe_display(),
                         )?;
                     }
                     _ => {
@@ -512,18 +515,14 @@ fn print_extra_info_tags(
             write!(f, "{}", tag_html("unstable", "", "Experimental"))?;
         }
 
+        debug!(name = ?item.name, cfg = ?item.cfg, parent_cfg = ?parent.cfg, "Portability");
+
         let cfg = match (&item.cfg, parent.cfg.as_ref()) {
-            (Some(cfg), Some(parent_cfg)) => cfg.simplify_with(parent_cfg),
-            (cfg, _) => cfg.as_deref().cloned(),
+            (Some(cfg), Some(parent_cfg)) => cfg.simplify_with(parent_cfg).map(Cow::Owned),
+            (cfg, _) => cfg.as_deref().map(Cow::Borrowed),
         };
 
-        debug!(
-            "Portability name={name:?} {cfg:?} - {parent_cfg:?} = {cfg:?}",
-            name = item.name,
-            cfg = item.cfg,
-            parent_cfg = parent.cfg
-        );
-        if let Some(ref cfg) = cfg {
+        if let Some(cfg) = cfg {
             write!(
                 f,
                 "{}",
@@ -976,7 +975,7 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
                 "Dyn Compatibility",
                 "dyn-compatibility",
                 None,
-                format!(
+                format_args!(
                     "<div class=\"dyn-compatibility-info\"><p>This trait {} \
                     <a href=\"{base}/reference/items/traits.html#dyn-compatibility\">dyn compatible</a>.</p>\
                     <p><i>In older versions of Rust, dyn compatibility was called \"object safety\".</i></p></div>",
@@ -1775,10 +1774,10 @@ fn item_variants(
             w,
             "{}",
             write_section_heading(
-                &format!("Variants{}", document_non_exhaustive_header(it)),
+                format_args!("Variants{}", document_non_exhaustive_header(it)),
                 "variants",
                 Some("variants"),
-                format!("{}<div class=\"variants\">", document_non_exhaustive(it)),
+                format_args!("{}<div class=\"variants\">", document_non_exhaustive(it)),
             ),
         )?;
 
@@ -2105,7 +2104,7 @@ fn item_fields(
         if let None | Some(CtorKind::Fn) = ctor_kind
             && fields.peek().is_some()
         {
-            let title = format!(
+            let title = format_args!(
                 "{}{}",
                 if ctor_kind.is_none() { "Fields" } else { "Tuple Fields" },
                 document_non_exhaustive_header(it),
@@ -2113,12 +2112,7 @@ fn item_fields(
             write!(
                 w,
                 "{}",
-                write_section_heading(
-                    &title,
-                    "fields",
-                    Some("fields"),
-                    document_non_exhaustive(it)
-                )
+                write_section_heading(title, "fields", Some("fields"), document_non_exhaustive(it))
             )?;
             for (index, (field, ty)) in fields.enumerate() {
                 let field_name =
@@ -2554,7 +2548,7 @@ fn render_struct_fields(
                 }
                 for field in fields {
                     if let clean::StructFieldItem(ref ty) = field.kind {
-                        render_attributes_in_code(w, field, &format!("{tab}    "), cx)?;
+                        render_attributes_in_code(w, field, format_args!("{tab}    "), cx)?;
                         writeln!(
                             w,
                             "{tab}    {vis}{name}: {ty},",

@@ -24,9 +24,10 @@ use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItem
 pub(crate) mod do_not_recommend;
 pub(crate) mod on_const;
 pub(crate) mod on_move;
+pub(crate) mod on_type_error;
 pub(crate) mod on_unimplemented;
 pub(crate) mod on_unknown;
-pub(crate) mod on_unmatch_args;
+pub(crate) mod on_unmatched_args;
 
 #[derive(Copy, Clone)]
 pub(crate) enum Mode {
@@ -40,8 +41,10 @@ pub(crate) enum Mode {
     DiagnosticOnMove,
     /// `#[diagnostic::on_unknown]`
     DiagnosticOnUnknown,
-    /// `#[diagnostic::on_unmatch_args]`
-    DiagnosticOnUnmatchArgs,
+    /// `#[diagnostic::on_unmatched_args]`
+    DiagnosticOnUnmatchedArgs,
+    /// `#[diagnostic::on_type_error]`
+    DiagnosticOnTypeError,
 }
 
 impl Mode {
@@ -52,13 +55,16 @@ impl Mode {
             Self::DiagnosticOnConst => "diagnostic::on_const",
             Self::DiagnosticOnMove => "diagnostic::on_move",
             Self::DiagnosticOnUnknown => "diagnostic::on_unknown",
-            Self::DiagnosticOnUnmatchArgs => "diagnostic::on_unmatch_args",
+            Self::DiagnosticOnUnmatchedArgs => "diagnostic::on_unmatched_args",
+            Self::DiagnosticOnTypeError => "diagnostic::on_type_error",
         }
     }
 
     fn expected_options(&self) -> &'static str {
         const DEFAULT: &str =
             "at least one of the `message`, `note` and `label` options are expected";
+        const DIAGNOSTIC_ON_TYPE_ERROR_EXPECTED_OPTIONS: &str =
+            "at least a single `note` option is expected";
         match self {
             Self::RustcOnUnimplemented => {
                 "see <https://rustc-dev-guide.rust-lang.org/diagnostics.html#rustc_on_unimplemented>"
@@ -67,12 +73,15 @@ impl Mode {
             Self::DiagnosticOnConst => DEFAULT,
             Self::DiagnosticOnMove => DEFAULT,
             Self::DiagnosticOnUnknown => DEFAULT,
-            Self::DiagnosticOnUnmatchArgs => DEFAULT,
+            Self::DiagnosticOnUnmatchedArgs => DEFAULT,
+            Self::DiagnosticOnTypeError => DIAGNOSTIC_ON_TYPE_ERROR_EXPECTED_OPTIONS,
         }
     }
 
     fn allowed_options(&self) -> &'static str {
         const DEFAULT: &str = "only `message`, `note` and `label` are allowed as options";
+        const DIAGNOSTIC_ON_TYPE_ERROR_ALLOWED_OPTIONS: &str =
+            "only `note` is allowed as option for `diagnostic::on_type_error`";
         match self {
             Self::RustcOnUnimplemented => {
                 "see <https://rustc-dev-guide.rust-lang.org/diagnostics.html#rustc_on_unimplemented>"
@@ -81,7 +90,8 @@ impl Mode {
             Self::DiagnosticOnConst => DEFAULT,
             Self::DiagnosticOnMove => DEFAULT,
             Self::DiagnosticOnUnknown => DEFAULT,
-            Self::DiagnosticOnUnmatchArgs => DEFAULT,
+            Self::DiagnosticOnUnmatchedArgs => DEFAULT,
+            Self::DiagnosticOnTypeError => DIAGNOSTIC_ON_TYPE_ERROR_ALLOWED_OPTIONS,
         }
     }
 
@@ -102,8 +112,11 @@ impl Mode {
             Self::DiagnosticOnUnknown => {
                 "only `This` is allowed as a format argument, referring to the failed import"
             }
-            Self::DiagnosticOnUnmatchArgs => {
+            Self::DiagnosticOnUnmatchedArgs => {
                 "only `This` is allowed as a format argument, referring to the macro's name"
+            }
+            Self::DiagnosticOnTypeError => {
+                "only `note` is allowed as option for `diagnostic::on_type_error`"
             }
         }
     }
@@ -294,7 +307,15 @@ fn parse_directive_items<'p>(
             }
         };
         match (mode, name) {
-            (_, sym::message) => {
+            (
+                Mode::RustcOnUnimplemented
+                | Mode::DiagnosticOnUnimplemented
+                | Mode::DiagnosticOnConst
+                | Mode::DiagnosticOnMove
+                | Mode::DiagnosticOnUnknown
+                | Mode::DiagnosticOnUnmatchedArgs,
+                sym::message,
+            ) => {
                 let value = or_malformed!(value?);
                 if let Some(message) = &message {
                     duplicate!(name, message.0)
@@ -302,7 +323,15 @@ fn parse_directive_items<'p>(
                     message = Some((item.span(), parse_format(value)));
                 }
             }
-            (_, sym::label) => {
+            (
+                Mode::RustcOnUnimplemented
+                | Mode::DiagnosticOnUnimplemented
+                | Mode::DiagnosticOnConst
+                | Mode::DiagnosticOnMove
+                | Mode::DiagnosticOnUnknown
+                | Mode::DiagnosticOnUnmatchedArgs,
+                sym::label,
+            ) => {
                 let value = or_malformed!(value?);
                 if let Some(label) = &label {
                     duplicate!(name, label.0)
@@ -356,7 +385,6 @@ fn parse_directive_items<'p>(
                     malformed!();
                 }
             }
-
             _other => {
                 malformed!();
             }
@@ -430,13 +458,20 @@ fn parse_arg(
                 _ => FormatArg::This,
             },
 
+            (Mode::DiagnosticOnTypeError, sym::Found) => FormatArg::Found,
+            (Mode::DiagnosticOnTypeError, sym::Expected) => FormatArg::Expected,
+            (Mode::DiagnosticOnUnknown, sym::Unresolved) => FormatArg::Unresolved,
+
             // Some diagnostic attributes can use `{This}` to refer to the annotated item.
             // For those that don't, we continue and maybe use it as a generic parameter.
             //
             // FIXME(mejrs) `DiagnosticOnUnimplemented` is intentionally not here;
             // that requires lang approval which is best kept for a standalone PR.
             (
-                Mode::DiagnosticOnUnknown | Mode::DiagnosticOnMove | Mode::DiagnosticOnUnmatchArgs,
+                Mode::DiagnosticOnUnknown
+                | Mode::DiagnosticOnMove
+                | Mode::DiagnosticOnUnmatchedArgs
+                | Mode::DiagnosticOnTypeError,
                 sym::This,
             ) => FormatArg::This,
 
@@ -462,12 +497,13 @@ fn parse_arg(
                 Mode::RustcOnUnimplemented
                 | Mode::DiagnosticOnUnimplemented
                 | Mode::DiagnosticOnMove
-                | Mode::DiagnosticOnConst,
+                | Mode::DiagnosticOnConst
+                | Mode::DiagnosticOnTypeError,
                 generic_param,
             ) => FormatArg::GenericParam { generic_param, span },
 
             // Generics are explicitly not allowed, we print those back as is.
-            (Mode::DiagnosticOnUnknown | Mode::DiagnosticOnUnmatchArgs, as_is) => {
+            (Mode::DiagnosticOnUnknown | Mode::DiagnosticOnUnmatchedArgs, as_is) => {
                 warnings.push(FormatWarning::DisallowedPlaceholder {
                     span,
                     attr: mode.as_str(),

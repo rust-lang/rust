@@ -1,5 +1,4 @@
 #![warn(clippy::explicit_write)]
-#![allow(unused_imports)]
 
 fn stdout() -> String {
     String::new()

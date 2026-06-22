@@ -2510,15 +2510,13 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(strip_circumfix)]
-    ///
     /// assert_eq!("bar:hello:foo".strip_circumfix("bar:", ":foo"), Some("hello"));
     /// assert_eq!("bar:foo".strip_circumfix("foo", "foo"), None);
     /// assert_eq!("foo:bar;".strip_circumfix("foo:", ';'), Some("bar"));
     /// ```
     #[must_use = "this returns the remaining substring as a new slice, \
                   without modifying the original"]
-    #[unstable(feature = "strip_circumfix", issue = "147946")]
+    #[stable(feature = "strip_circumfix", since = "CURRENT_RUSTC_VERSION")]
     pub fn strip_circumfix<P: Pattern, S: Pattern>(&self, prefix: P, suffix: S) -> Option<&str>
     where
         for<'a> S::Searcher<'a>: ReverseSearcher<'a>,
@@ -3195,7 +3193,6 @@ impl str {
     ///
     /// # Examples
     /// ```
-    /// #![feature(substr_range)]
     /// use core::range::Range;
     ///
     /// let data = "a, b, b, a";
@@ -3207,7 +3204,7 @@ impl str {
     /// assert_eq!(iter.next(), Some(Range { start: 9, end: 10 }));
     /// ```
     #[must_use]
-    #[unstable(feature = "substr_range", issue = "126769")]
+    #[stable(feature = "substr_range", since = "CURRENT_RUSTC_VERSION")]
     pub fn substr_range(&self, substr: &str) -> Option<Range<usize>> {
         self.as_bytes().subslice_range(substr.as_bytes())
     }
@@ -3266,7 +3263,7 @@ impl_fn_for_zst! {
     #[derive(Clone)]
     struct CharEscapeDebugContinue impl Fn = |c: char| -> char::EscapeDebug {
         c.escape_debug_ext(EscapeDebugExtArgs {
-            escape_grapheme_extended: false,
+            escape_grapheme_extender: false,
             escape_single_quote: true,
             escape_double_quote: true
         })

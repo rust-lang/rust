@@ -1,7 +1,7 @@
 //@ check-pass
 
 #![feature(inherent_associated_types)]
-#![allow(incomplete_features)]
+#![expect(incomplete_features)]
 
 // Check that rustc doesn't crash on the trait bound `Self::Ty: std::marker::Freeze`.
 

@@ -1481,9 +1481,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let obligation = &stack.obligation;
         match self.typing_mode() {
             TypingMode::Coherence => {}
-            TypingMode::Analysis { .. }
-            | TypingMode::Borrowck { .. }
-            | TypingMode::PostBorrowckAnalysis { .. }
+            TypingMode::Typeck { .. }
+            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis
             | TypingMode::Codegen => return Ok(()),
         }
@@ -1529,16 +1529,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // However, if we disqualify *all* goals from being cached, perf suffers.
             // This is likely fixed by better caching in general in the new solver.
             // See: <https://github.com/rust-lang/rust/issues/132064>.
-            TypingMode::Analysis {
-                defining_opaque_types_and_generators: defining_opaque_types,
-            }
-            | TypingMode::Borrowck { defining_opaque_types } => {
+            TypingMode::Typeck { defining_opaque_types_and_generators: defining_opaque_types }
+            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types } => {
                 defining_opaque_types.is_empty()
                     || (!pred.has_opaque_types() && !pred.has_coroutines())
             }
             // The hidden types of `defined_opaque_types` is not local to the current
             // inference context, so we can freely move this to the global cache.
-            TypingMode::PostBorrowckAnalysis { .. } => true,
+            TypingMode::PostBorrowck { .. } => true,
             // The global cache is only used if there are no opaque types in
             // the defining scope or we're outside of analysis.
             //
@@ -1772,7 +1770,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         env_predicate: PolyProjectionPredicate<'tcx>,
         potentially_unnormalized_candidates: bool,
     ) -> ProjectionMatchesProjection {
-        debug_assert_eq!(obligation.predicate.def_id(), env_predicate.item_def_id());
+        let def_id = obligation.predicate.expect_projection_def_id();
+        debug_assert_eq!(def_id, env_predicate.item_def_id());
 
         let mut nested_obligations = PredicateObligations::new();
         let infer_predicate = self.infcx.instantiate_binder_with_fresh_vars(
@@ -1808,7 +1807,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             });
 
         if is_match {
-            let generics = self.tcx().generics_of(obligation.predicate.def_id());
+            let generics = self.tcx().generics_of(def_id);
             // FIXME(generic_associated_types): Addresses aggressive inference in #92917.
             // If this type is a GAT, and of the GAT args resolve to something new,
             // that means that we must have newly inferred something about the GAT.
@@ -2906,14 +2905,14 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
     pub(super) fn should_stall_coroutine(&self, def_id: DefId) -> bool {
         match self.typing_mode() {
-            TypingMode::Analysis { defining_opaque_types_and_generators: stalled_generators } => {
+            TypingMode::Typeck { defining_opaque_types_and_generators: stalled_generators } => {
                 def_id.as_local().is_some_and(|def_id| stalled_generators.contains(&def_id))
             }
             TypingMode::Coherence
             | TypingMode::PostAnalysis
             | TypingMode::Codegen
-            | TypingMode::Borrowck { defining_opaque_types: _ }
-            | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ } => false,
+            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _ }
+            | TypingMode::PostBorrowck { defined_opaque_types: _ } => false,
         }
     }
 }

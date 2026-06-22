@@ -6,83 +6,20 @@ pub mod map;
 pub mod nested_filter;
 pub mod place;
 
-use std::sync::Arc;
-
-use rustc_ast::{self as ast};
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{DynSend, DynSync, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap, LocalModDefId};
 use rustc_hir::lints::DelayedLints;
 use rustc_hir::*;
-use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::{ErrorGuaranteed, ExpnId, Span};
 
 use crate::query::Providers;
-use crate::ty::{ResolverAstLowering, TyCtxt};
-
-/// The top-level data structure that stores the entire contents of
-/// the crate currently being compiled.
-///
-/// For more details, see the [rustc dev guide].
-///
-/// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
-#[derive(Debug)]
-pub struct Crate<'hir> {
-    // This field is private by intention, access it through `owner` method.
-    owners: IndexVec<LocalDefId, MaybeOwner<'hir>>,
-    // Ids of delayed AST owners which are lowered through `lower_delayed_owner` query.
-    pub delayed_ids: FxIndexSet<LocalDefId>,
-    // The resolver and AST crate which are set in the end of the `hir_crate` query
-    // and then stolen and dropped in `force_delayed_owners_lowering`.
-    pub delayed_resolver: Steal<(ResolverAstLowering<'hir>, Arc<ast::Crate>)>,
-    // Only present when incr. comp. is enabled.
-    pub opt_hir_hash: Option<Fingerprint>,
-}
-
-impl<'hir> Crate<'hir> {
-    pub fn new(
-        owners: IndexVec<LocalDefId, MaybeOwner<'hir>>,
-        delayed_ids: FxIndexSet<LocalDefId>,
-        delayed_resolver: Steal<(ResolverAstLowering<'hir>, Arc<ast::Crate>)>,
-        opt_hir_hash: Option<Fingerprint>,
-    ) -> Crate<'hir> {
-        Crate { owners, delayed_ids, delayed_resolver, opt_hir_hash }
-    }
-
-    /// Serves as an entry point for getting `MaybeOwner`. As owner can either be in
-    /// `owners` of `hir_crate` or it can be delayed AST owner (i.e., delegations)
-    /// we need to firstly check in `hir_crate` and then delayed AST owners.
-    /// This method can be invoked when not all delayed AST owners are lowered.
-    pub fn owner(&self, tcx: TyCtxt<'hir>, def_id: LocalDefId) -> MaybeOwner<'hir> {
-        // Delayed LocalDefId can be in `self.owners` if there exists non-delayed LocalDefId
-        // which is greater than delayed LocalDefId, we use IndexVec for owners,
-        // so we will call ensure_contains_elem which will grow it.
-        if let Some(owner) = self.owners.get(def_id)
-            && (self.delayed_ids.is_empty() || !matches!(owner, MaybeOwner::Phantom))
-        {
-            return *owner;
-        }
-
-        if self.delayed_ids.contains(&def_id) {
-            tcx.ensure_done().lower_delayed_owner(def_id);
-        }
-
-        tcx.hir_delayed_owner(def_id)
-    }
-}
-
-impl StableHash for Crate<'_> {
-    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        let Crate { opt_hir_hash, .. } = self;
-        opt_hir_hash.unwrap().stable_hash(hcx, hasher)
-    }
-}
+use crate::ty::TyCtxt;
 
 /// Gather the LocalDefId for each item-like within a module, including items contained within
 /// bodies. The Ids are in visitor order. This is used to partition a pass between modules.
@@ -99,8 +36,6 @@ pub struct ModuleItems {
     opaques: Box<[LocalDefId]>,
     body_owners: Box<[LocalDefId]>,
     nested_bodies: Box<[LocalDefId]>,
-    // only filled with hir_crate_items, not with hir_module_items
-    delayed_lint_items: Box<[OwnerId]>,
 
     /// Statics and functions with an `EiiImpls` or `EiiExternTarget` attribute
     eiis: Box<[LocalDefId]>,
@@ -119,10 +54,6 @@ impl ModuleItems {
 
     pub fn trait_items(&self) -> impl Iterator<Item = TraitItemId> {
         self.trait_items.iter().copied()
-    }
-
-    pub fn delayed_lint_items(&self) -> impl Iterator<Item = OwnerId> {
-        self.delayed_lint_items.iter().copied()
     }
 
     pub fn eiis(&self) -> impl Iterator<Item = LocalDefId> {
@@ -239,7 +170,7 @@ impl<'tcx> TyCtxt<'tcx> {
         define_opaque: Option<&[(Span, LocalDefId)]>,
     ) -> Hashes {
         if !self.needs_hir_hash() {
-            return Hashes { opt_hash_including_bodies: None, attrs_hash: None };
+            return Hashes { bodies_hash: None, attrs_hash: None };
         }
 
         self.with_stable_hashing_context(|mut hcx| {
@@ -257,7 +188,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
             let h2 = stable_hasher.finish();
 
-            Hashes { opt_hash_including_bodies: Some(h1), attrs_hash: Some(h2) }
+            Hashes { bodies_hash: Some(h1), attrs_hash: Some(h2) }
         })
     }
 
@@ -448,7 +379,7 @@ impl<'tcx> TyCtxt<'tcx> {
 /// Hashes computed by [`TyCtxt::hash_owner_nodes`] if necessary.
 #[derive(Clone, Copy, Debug)]
 pub struct Hashes {
-    pub opt_hash_including_bodies: Option<Fingerprint>,
+    pub bodies_hash: Option<Fingerprint>,
     pub attrs_hash: Option<Fingerprint>,
 }
 
@@ -486,7 +417,7 @@ pub enum ProjectedMaybeOwner<'tcx> {
 }
 
 impl<'tcx> ProjectedMaybeOwner<'tcx> {
-    pub fn new(value: MaybeOwner<'tcx>, def_id: LocalDefId) -> Self {
+    pub fn new(value: MaybeOwner<'tcx>) -> Self {
         match value {
             MaybeOwner::Owner(o) => ProjectedMaybeOwner::Owner(ProjectedOwnerInfo {
                 nodes: &o.nodes,
@@ -495,8 +426,6 @@ impl<'tcx> ProjectedMaybeOwner<'tcx> {
                 delayed_lints: &o.delayed_lints,
             }),
             MaybeOwner::NonOwner(hir_id) => ProjectedMaybeOwner::NonOwner(hir_id),
-            // Can't debug fmt `def_id` since it doesn't exist.
-            MaybeOwner::Phantom => bug!("No HirId for {:?}", def_id.local_def_index),
         }
     }
 
@@ -516,11 +445,9 @@ pub fn provide(providers: &mut Providers) {
     providers.hir_crate_items = map::hir_crate_items;
     providers.crate_hash = map::crate_hash;
     providers.hir_module_items = map::hir_module_items;
-    providers.hir_attr_map = |tcx, id| {
-        tcx.hir_crate(()).owner(tcx, id.def_id).as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs)
-    };
-    providers.hir_owner =
-        |tcx, def_id| ProjectedMaybeOwner::new(tcx.hir_crate(()).owner(tcx, def_id), def_id);
+    providers.hir_attr_map =
+        |tcx, id| tcx.lower_to_hir(id).as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs);
+    providers.hir_owner = |tcx, def_id| ProjectedMaybeOwner::new(tcx.lower_to_hir(def_id));
     providers.hir_owner_parent_q = |tcx, owner_id| tcx.hir_owner_parent_impl(owner_id);
     providers.def_span = |tcx, def_id| tcx.hir_span(tcx.local_def_id_to_hir_id(def_id));
     providers.def_ident_span = |tcx, def_id| {

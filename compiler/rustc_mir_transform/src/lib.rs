@@ -40,8 +40,8 @@ mod check_pointers;
 mod cost_checker;
 mod cross_crate_inline;
 mod deduce_param_attrs;
+mod diagnostics;
 mod elaborate_drop;
-mod errors;
 mod ffi_unwind_calls;
 mod lint;
 mod lint_tail_expr_drop_order;
@@ -158,6 +158,7 @@ declare_passes! {
     mod jump_threading : JumpThreading;
     mod known_panics_lint : KnownPanicsLint;
     mod large_enums : EnumSizeOpt;
+    mod lint_and_remove_uninhabited : LintAndRemoveUninhabited;
     mod lower_intrinsics : LowerIntrinsics;
     mod lower_slice_len : LowerSliceLenCalls;
     mod match_branches : MatchBranchSimplification;
@@ -406,6 +407,9 @@ fn mir_built(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
         tcx,
         &mut body,
         &[
+            // This used to be part of MIR building,
+            // now done separately to separate concerns.
+            &lint_and_remove_uninhabited::LintAndRemoveUninhabited,
             // MIR-level lints.
             &Lint(check_inline::CheckForceInline),
             &Lint(check_call_recursion::CheckCallRecursion),
@@ -511,7 +515,18 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
     };
 
     let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::Const { always });
-    pm::run_passes(tcx, &mut body, &[&ctfe_limit::CtfeLimit], None, pm::Optimizations::Allowed);
+    // FIXME(reflection): probably need to look at this for comptime closures
+    let passes: &[&dyn MirPass<'_>] = if matches!(tcx.def_kind(def), DefKind::Fn | DefKind::AssocFn)
+        && matches!(tcx.constness(def), hir::Constness::Const { always: true })
+    {
+        // Need to generate mentioned items, as all functions are expected to have them, but for const
+        // fns we just look at the optimized MIR, which generates it. For comptime fns, there is no
+        // optimized MIR.
+        &[&ctfe_limit::CtfeLimit, &mentioned_items::MentionedItems]
+    } else {
+        &[&ctfe_limit::CtfeLimit]
+    };
+    pm::run_passes(tcx, &mut body, passes, None, pm::Optimizations::Allowed);
 
     body
 }

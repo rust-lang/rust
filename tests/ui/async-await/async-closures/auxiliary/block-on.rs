@@ -1,5 +1,3 @@
-//@ edition: 2021
-
 use std::future::Future;
 use std::pin::pin;
 use std::task::*;

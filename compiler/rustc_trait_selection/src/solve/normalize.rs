@@ -46,12 +46,10 @@ where
     let mut folder =
         NormalizationFolder::new(infcx, universes.clone(), Default::default(), |alias_term| {
             let delegate = <&SolverDelegate<'tcx>>::from(infcx);
-            let infer_term = delegate.next_term_var_of_kind(alias_term, at.cause.span);
-            let predicate = ty::PredicateKind::AliasRelate(
-                alias_term,
-                infer_term,
-                ty::AliasRelationDirection::Equate,
-            );
+            let infer_term =
+                delegate.next_term_var_of_kind(alias_term.to_term(infcx.tcx), at.cause.span);
+            let predicate =
+                ty::ProjectionPredicate { projection_term: alias_term, term: infer_term };
             let goal = Goal::new(infcx.tcx, at.param_env, predicate);
             let result = delegate.evaluate_root_goal(goal, at.cause.span, None)?;
             let normalized = infcx.resolve_vars_if_possible(infer_term);
@@ -84,18 +82,15 @@ struct ReplaceAliasWithInfer<'me, 'tcx> {
 }
 
 impl<'me, 'tcx> ReplaceAliasWithInfer<'me, 'tcx> {
-    fn term_to_infer(&mut self, alias_term: ty::Term<'tcx>) -> ty::Term<'tcx> {
+    fn term_to_infer(&mut self, alias_term: ty::AliasTerm<'tcx>) -> ty::Term<'tcx> {
         let infcx = self.at.infcx;
-        let infer_term = infcx.next_term_var_of_kind(alias_term, self.at.cause.span);
+        let infer_term =
+            infcx.next_term_var_of_kind(alias_term.to_term(infcx.tcx), self.at.cause.span);
         let obligation = Obligation::new(
             infcx.tcx,
             self.at.cause.clone(),
             self.at.param_env,
-            ty::PredicateKind::AliasRelate(
-                alias_term,
-                infer_term,
-                ty::AliasRelationDirection::Equate,
-            ),
+            ty::ProjectionPredicate { projection_term: alias_term, term: infer_term },
         );
         self.obligations.push(obligation);
         infer_term
@@ -123,15 +118,15 @@ impl<'me, 'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceAliasWithInfer<'me, 'tcx> {
         }
 
         let ty = ty.super_fold_with(self);
-        let ty::Alias(..) = *ty.kind() else { return ty };
+        let ty::Alias(alias) = *ty.kind() else { return ty };
 
         if ty.has_escaping_bound_vars() {
             let (replaced, ..) =
-                BoundVarReplacer::replace_bound_vars(self.at.infcx, &mut self.universes, ty);
+                BoundVarReplacer::replace_bound_vars(self.at.infcx, &mut self.universes, alias);
             let _ = self.term_to_infer(replaced.into());
             ty
         } else {
-            self.term_to_infer(ty.into()).expect_type()
+            self.term_to_infer(alias.into()).expect_type()
         }
     }
 
@@ -141,15 +136,15 @@ impl<'me, 'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceAliasWithInfer<'me, 'tcx> {
         }
 
         let ct = ct.super_fold_with(self);
-        let ty::ConstKind::Unevaluated(..) = ct.kind() else { return ct };
+        let ty::ConstKind::Unevaluated(uv) = ct.kind() else { return ct };
 
         if ct.has_escaping_bound_vars() {
             let (replaced, ..) =
-                BoundVarReplacer::replace_bound_vars(self.at.infcx, &mut self.universes, ct);
+                BoundVarReplacer::replace_bound_vars(self.at.infcx, &mut self.universes, uv);
             let _ = self.term_to_infer(replaced.into());
             ct
         } else {
-            self.term_to_infer(ct.into()).expect_const()
+            self.term_to_infer(uv.into()).expect_const()
         }
     }
 }

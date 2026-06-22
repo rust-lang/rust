@@ -1023,6 +1023,7 @@ pub auto trait Unpin {}
 // will likely eventually be deprecated, and all new code should be using `UnsafePinned` instead.
 #[stable(feature = "pin", since = "1.33.0")]
 #[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[rustc_diagnostic_item = "PhantomPinned"]
 pub struct PhantomPinned;
 
 #[stable(feature = "pin", since = "1.33.0")]

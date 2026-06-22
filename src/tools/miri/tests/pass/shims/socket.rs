@@ -1,5 +1,6 @@
 //@ignore-target: windows # No socket support on Windows
 //@compile-flags: -Zmiri-disable-isolation
+//@run-native
 
 use std::io::{ErrorKind, Read, Write};
 use std::net::{Shutdown, TcpListener, TcpStream};
@@ -184,7 +185,7 @@ fn test_sockopt_read_timeout() {
     // By default, reads on blocking sockets should block indefinitely.
     assert_eq!(stream.read_timeout().unwrap(), None);
 
-    let short_read_timeout = Some(Duration::from_millis(10));
+    let short_read_timeout = Some(Duration::from_millis(40));
     stream.set_read_timeout(short_read_timeout).unwrap();
     assert_eq!(stream.read_timeout().unwrap(), short_read_timeout);
 
@@ -207,7 +208,7 @@ fn test_sockopt_write_timeout() {
     // By default, writes on blocking sockets should block indefinitely.
     assert_eq!(stream.write_timeout().unwrap(), None);
 
-    let short_write_timeout = Some(Duration::from_millis(10));
+    let short_write_timeout = Some(Duration::from_millis(40));
     stream.set_write_timeout(short_write_timeout).unwrap();
     assert_eq!(stream.write_timeout().unwrap(), short_write_timeout);
 

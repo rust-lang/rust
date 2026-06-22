@@ -1,0 +1,11 @@
+warning: `#[diagnostic::on_unknown]` attribute cannot be used on expressions
+  --> $DIR/incorrect_unstable_positions.rs:8:5
+   |
+LL |     #[diagnostic::on_unknown(message = "anonymous block")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[diagnostic::on_unknown]` can be applied to crates, modules, and use statements
+   = note: `#[warn(misplaced_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
+
+warning: 1 warning emitted
+

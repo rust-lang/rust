@@ -7,7 +7,7 @@ use rustc_middle::ty::{self, DefiningScopeKind, EarlyBinder, Ty, TyCtxt, TypeVis
 use rustc_trait_selection::opaque_types::report_item_does_not_constrain_error;
 use tracing::{debug, instrument, trace};
 
-use crate::errors::UnconstrainedOpaqueType;
+use crate::diagnostics::UnconstrainedOpaqueType;
 
 /// Checks "defining uses" of opaque `impl Trait` in associated types.
 /// These can only be defined by associated items of the same trait.
