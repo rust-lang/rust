@@ -37,6 +37,7 @@ use crate::builder::autodiff::{adjust_activity_to_abi, generate_enzyme_call};
 use crate::builder::gpu_offload::{
     OffloadKernelDims, gen_call_handling, gen_define_handling, register_offload,
 };
+use crate::intrinsic::ty::typetree::fnc_typetrees;
 use crate::context::CodegenCx;
 use crate::declare::declare_raw_fn;
 use crate::errors::{
@@ -1791,7 +1792,7 @@ fn codegen_autodiff<'ll, 'tcx>(
         &mut diff_attrs.input_activity,
     );
 
-    let fnc_tree = rustc_middle::ty::fnc_typetrees(tcx, source_fn_ptr_ty);
+    let fnc_tree = fnc_typetrees(tcx, source_fn_ptr_ty);
 
     // Build body
     generate_enzyme_call(
