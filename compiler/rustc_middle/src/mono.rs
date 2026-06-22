@@ -22,7 +22,7 @@ use tracing::debug;
 use crate::dep_graph::dep_node::{make_compile_codegen_unit, make_compile_mono_item};
 use crate::dep_graph::{DepNode, WorkProduct, WorkProductId};
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use crate::ty::{self, GenericArgs, Instance, InstanceKind, SymbolName, Ty, TyCtxt};
+use crate::ty::{self, GenericArgs, Instance, InstanceKind, ShimKind, SymbolName, Ty, TyCtxt};
 
 /// Describes how a monomorphization will be instantiated in object files.
 #[derive(PartialEq)]
@@ -173,7 +173,7 @@ impl<'tcx> MonoItem<'tcx> {
         // incrementality (which wants small CGUs with as many things GloballyShared as possible).
         // The heuristics implemented here do better than a completely naive approach in the
         // compiler benchmark suite, but there is no reason to believe they are optimal.
-        if let InstanceKind::DropGlue(_, Some(ty)) = instance.def {
+        if let InstanceKind::Shim(ShimKind::DropGlue(_, Some(ty))) = instance.def {
             if tcx.sess.opts.optimize == OptLevel::No {
                 return InstantiationMode::GloballyShared { may_conflict: false };
             }
@@ -523,20 +523,20 @@ impl<'tcx> CodegenUnit<'tcx> {
             match item {
                 MonoItem::Fn(ref instance) => match instance.def {
                     InstanceKind::Item(def) => def.as_local().map(|_| def),
-                    InstanceKind::VTableShim(..)
-                    | InstanceKind::ReifyShim(..)
-                    | InstanceKind::Intrinsic(..)
-                    | InstanceKind::FnPtrShim(..)
+                    InstanceKind::Intrinsic(..)
                     | InstanceKind::Virtual(..)
-                    | InstanceKind::ClosureOnceShim { .. }
-                    | InstanceKind::ConstructCoroutineInClosureShim { .. }
-                    | InstanceKind::DropGlue(..)
-                    | InstanceKind::CloneShim(..)
-                    | InstanceKind::ThreadLocalShim(..)
-                    | InstanceKind::FnPtrAddrShim(..)
-                    | InstanceKind::AsyncDropGlue(..)
-                    | InstanceKind::FutureDropPollShim(..)
-                    | InstanceKind::AsyncDropGlueCtorShim(..) => None,
+                    | InstanceKind::Shim(ShimKind::VTable(..))
+                    | InstanceKind::Shim(ShimKind::Reify(..))
+                    | InstanceKind::Shim(ShimKind::FnPtr(..))
+                    | InstanceKind::Shim(ShimKind::ClosureOnce { .. })
+                    | InstanceKind::Shim(ShimKind::ConstructCoroutineInClosure { .. })
+                    | InstanceKind::Shim(ShimKind::DropGlue(..))
+                    | InstanceKind::Shim(ShimKind::Clone(..))
+                    | InstanceKind::Shim(ShimKind::ThreadLocal(..))
+                    | InstanceKind::Shim(ShimKind::FnPtrAddr(..))
+                    | InstanceKind::Shim(ShimKind::AsyncDropGlue(..))
+                    | InstanceKind::Shim(ShimKind::FutureDropPoll(..))
+                    | InstanceKind::Shim(ShimKind::AsyncDropGlueCtor(..)) => None,
                 },
                 MonoItem::Static(def_id) => def_id.as_local().map(|_| def_id),
                 MonoItem::GlobalAsm(item_id) => Some(item_id.owner_id.def_id.to_def_id()),
