@@ -1,0 +1,21 @@
+error: conflicting associated type bindings for `Assoc`
+  --> $DIR/duplicate-bound-in-dyn-higher-ranked.rs:12:24
+   |
+LL | trait Alias = Trait<Assoc = for<'a> fn(&'a ())>;
+   |                     -------------------------- `Assoc` (in `Trait`) is specified to be `for<'a> fn(&'a ())` here
+LL | fn via_trait_alias(_: &dyn Alias<Assoc = for<'b> fn(&'b ())>) {}
+   |                        ^^^^^^^^^^--------------------------^
+   |                                  |
+   |                                  `Assoc` (in `Trait`) is specified to be `for<'b> fn(&'b ())` here
+
+error: conflicting associated type bindings for `Assoc`
+  --> $DIR/duplicate-bound-in-dyn-higher-ranked.rs:19:23
+   |
+LL | fn via_supertrait(_: &dyn Sub) {}
+   |                       ^^^^^^^
+   |
+   = note: `Assoc` (in `Super<i64>`) is specified to be `for<'b> fn(&'b ())`
+   = note: `Assoc` (in `Super<i32>`) is also specified to be `for<'a> fn(&'a ())`
+
+error: aborting due to 2 previous errors
+
