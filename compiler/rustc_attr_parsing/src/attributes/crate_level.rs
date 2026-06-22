@@ -2,7 +2,7 @@ use rustc_feature::AttributeStability;
 use rustc_hir::attrs::{CrateType, WindowsSubsystemKind};
 use rustc_session::lint::builtin::UNKNOWN_CRATE_TYPES;
 use rustc_span::Symbol;
-use rustc_span::edit_distance::find_best_match_for_name;
+use rustc_span::edit_distance::find_best_match_for_name_with_substrings;
 
 use super::prelude::*;
 use crate::diagnostics::{UnknownCrateTypes, UnknownCrateTypesSuggestion};
@@ -49,10 +49,10 @@ impl CombineAttributeParser for CrateTypeParser {
         let Ok(crate_type) = crate_type.try_into() else {
             // We don't error on invalid `#![crate_type]` when not applied to a crate
             if cx.shared.target == Target::Crate {
-                let candidate = find_best_match_for_name(
+                let candidate = find_best_match_for_name_with_substrings(
                     &CrateType::all_stable().iter().map(|(name, _)| *name).collect::<Vec<_>>(),
                     crate_type,
-                    None,
+                    Some(5),
                 );
                 let span = n.value_span;
                 cx.emit_lint(
