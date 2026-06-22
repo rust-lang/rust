@@ -614,6 +614,15 @@ macro_rules! int_module {
                 assert_eq_const_safe!($T: (-A).div_floor(-B), 2);
             }
 
+            fn test_rem_floor() {
+                const A: $T = 8;
+                const B: $T = 3;
+                assert_eq_const_safe!($T: A.rem_floor(B), 2);
+                assert_eq_const_safe!($T: A.rem_floor(-B), -1);
+                assert_eq_const_safe!($T: (-A).rem_floor(B), 1);
+                assert_eq_const_safe!($T: (-A).rem_floor(-B), -2);
+            }
+
             fn test_div_ceil() {
                 const A: $T = 8;
                 const B: $T = 3;
@@ -621,6 +630,15 @@ macro_rules! int_module {
                 assert_eq_const_safe!($T: A.div_ceil(-B), -2);
                 assert_eq_const_safe!($T: (-A).div_ceil(B), -2);
                 assert_eq_const_safe!($T: (-A).div_ceil(-B), 3);
+            }
+
+            fn test_rem_ceil() {
+                const A: $T = 8;
+                const B: $T = 3;
+                assert_eq_const_safe!($T: A.rem_ceil(B), -1);
+                assert_eq_const_safe!($T: A.rem_ceil(-B), 2);
+                assert_eq_const_safe!($T: (-A).rem_ceil(B), -2);
+                assert_eq_const_safe!($T: (-A).rem_ceil(-B), 1);
             }
 
             fn test_next_multiple_of() {
