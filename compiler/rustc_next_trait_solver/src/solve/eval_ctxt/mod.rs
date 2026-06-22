@@ -633,10 +633,6 @@ where
             ));
         }
 
-        if let Some(res) = self.compute_goal_fast_path(goal) {
-            return Ok(res);
-        }
-
         self.evaluate_goal_cold(source, goal, increase_depth_for_nested)
     }
 
@@ -648,6 +644,10 @@ where
         goal: Goal<I, I::Predicate>,
         increase_depth_for_nested: LowerAvailableDepth,
     ) -> Result<(NestedNormalizationGoals<I>, GoalEvaluation<I>), NoSolutionOrRerunNonErased> {
+        if let Some(res) = self.compute_goal_fast_path(goal) {
+            return Ok(res);
+        }
+
         // We only care about one entry per `OpaqueTypeKey` here,
         // so we only canonicalize the lookup table and ignore
         // duplicate entries.
