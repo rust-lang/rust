@@ -121,24 +121,21 @@ where
         alias_term: AliasTerm<I>,
         has_escaping: HasEscapingBoundVars,
     ) -> Result<Option<I::Term>, NoSolution> {
-        let current_universe = self.infcx.universe();
-        self.infcx.create_next_universe();
-
         let (normalized, ambig_goal) = (self.normalize)(alias_term)?;
 
         // Return ambiguous higher ranked alias as is, if
         //   - it contains escaping vars, and
-        //   - the normalized term contains infer vars newly created
-        //     in the normalization above.
-        // The problem is that they may be resolved to types
-        // referencing the temporary placeholders.
+        //   - the normalized term contains infer vars which may mention
+        //     temporary placeholders after we've already mapped them back
+        //     to bound vars.
         //
-        // We can normalize the ambiguous alias again after the binder is instantiated.
+        // We can normalize the ambiguous alias again after the binder is instantiated
+        // or once we've made further inference progress.
         if ambig_goal.is_some() && has_escaping == HasEscapingBoundVars::Yes {
             let mut visitor = MaxUniverse::new(self.infcx);
             normalized.visit_with(&mut visitor);
             let max_universe = visitor.max_universe();
-            if current_universe.cannot_name(max_universe) {
+            if max_universe.can_name(self.universes.first().unwrap().unwrap()) {
                 return Ok(None);
             }
         }
