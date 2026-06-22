@@ -68,13 +68,13 @@ fn f() {
 
         // vreg
         asm!("", out("v0") _); // always ok
-        asm!("", in("v0") v); // requires vector & asm_experimental_reg
+        asm!("", in("v0") v);
         //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
-        asm!("", out("v0") v); // requires vector & asm_experimental_reg
+        asm!("", out("v0") v);
         //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
-        asm!("", in("v0") x); // requires vector & asm_experimental_reg
+        asm!("", in("v0") x);
         //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
-        asm!("", out("v0") x); // requires vector & asm_experimental_reg
+        asm!("", out("v0") x);
         //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
         asm!("", in("v0") b);
         //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
@@ -82,14 +82,14 @@ fn f() {
         asm!("", out("v0") b);
         //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
         //[s390x_vector]~^^ ERROR type `u8` cannot be used with this register class
-        asm!("/* {} */", in(vreg) v); // requires vector & asm_experimental_reg
+        asm!("/* {} */", in(vreg) v);
         //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
-        asm!("/* {} */", in(vreg) x); // requires vector & asm_experimental_reg
+        asm!("/* {} */", in(vreg) x);
         //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
         asm!("/* {} */", in(vreg) b);
         //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
         //[s390x_vector]~^^ ERROR type `u8` cannot be used with this register class
-        asm!("/* {} */", out(vreg) _); // requires vector & asm_experimental_reg
+        asm!("/* {} */", out(vreg) _);
         //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
 
         // Clobber-only registers
