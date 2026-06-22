@@ -3413,6 +3413,15 @@ impl<'tcx> LateLintPass<'tcx> for SelfTypeConversion<'tcx> {
             // S { field: 0u32.into() };
             return;
         }
+        if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = rcvr.kind
+            && let Res::Def(DefKind::Const { is_type_const: _ }, def_id) = path.res
+            && (find_attr!(cx.tcx, def_id, CfgTrace(..))
+                || find_attr!(cx.tcx, cx.tcx.parent(def_id), CfgTrace(..)))
+        {
+            // We're accessing and converting a const that is either itself annotated with `cfg` or
+            // its parent `mod`. Common for things like `libc::TIOCGWINSZ`.
+            return;
+        }
         if let Some(expn) = expr.span.macro_backtrace().next() {
             if expn.macro_def_id.map_or(false, |did| did.is_local()) {
                 cx.emit_span_lint(
