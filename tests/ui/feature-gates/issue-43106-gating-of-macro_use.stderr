@@ -34,6 +34,16 @@ LL -     #[macro_use = "2700"] struct S;
 LL +     #[macro_use] struct S;
    |
 
+warning: `#[macro_use]` attribute cannot be used on crates
+  --> $DIR/issue-43106-gating-of-macro_use.rs:6:1
+   |
+LL | #![macro_use(my_macro)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[macro_use]` can be applied to extern crates and modules
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: requested on the command line with `-W unused-attributes`
+
 warning: `#[macro_use]` attribute cannot be used on structs
   --> $DIR/issue-43106-gating-of-macro_use.rs:17:5
    |
@@ -42,7 +52,6 @@ LL |     #[macro_use = "2700"] struct S;
    |
    = help: `#[macro_use]` can be applied to extern crates and modules
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: requested on the command line with `-W unused-attributes`
 
 warning: `#[macro_use]` attribute cannot be used on functions
   --> $DIR/issue-43106-gating-of-macro_use.rs:22:5
@@ -67,15 +76,6 @@ warning: `#[macro_use]` attribute cannot be used on inherent impl blocks
    |
 LL |     #[macro_use] impl S { }
    |     ^^^^^^^^^^^^
-   |
-   = help: `#[macro_use]` can be applied to extern crates and modules
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
-warning: `#[macro_use]` attribute cannot be used on crates
-  --> $DIR/issue-43106-gating-of-macro_use.rs:6:1
-   |
-LL | #![macro_use(my_macro)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: `#[macro_use]` can be applied to extern crates and modules
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

@@ -1226,6 +1226,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
+    fn vscale(&mut self, ty: &'ll Type) -> &'ll Value {
+        unsafe { llvm::LLVMRustBuildVScale(self.llbuilder, ty) }
+    }
+
     fn select(
         &mut self,
         cond: &'ll Value,

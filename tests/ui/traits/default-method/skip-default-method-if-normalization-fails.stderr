@@ -1,5 +1,5 @@
 warning: method `clone_first` is never used
-  --> $DIR/issue-23485.rs:20:8
+  --> $DIR/skip-default-method-if-normalization-fails.rs:22:8
    |
 LL | trait Iterator {
    |       -------- method in this trait

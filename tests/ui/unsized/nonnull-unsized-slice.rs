@@ -1,5 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/23433>.
+//! Don't fail if we encounter a NonNull<T> where T is an unsized type
 //@ run-pass
-// Don't fail if we encounter a NonNull<T> where T is an unsized type
 
 use std::ptr::NonNull;
 

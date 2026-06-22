@@ -1,5 +1,5 @@
 error[E0229]: associated item constraints are not allowed here
-  --> $DIR/issue-23544.rs:5:17
+  --> $DIR/bogus-constraint-on-bogus-type-param-in-where-clause.rs:7:17
    |
 LL |         where T<Bogus = Self::AlsoBogus>: A;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^ associated item constraint not allowed here

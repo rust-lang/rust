@@ -768,6 +768,9 @@ pub(crate) struct DiagMetadata<'ast> {
     /// Given `where <T as Bar>::Baz: String`, suggest `where T: Bar<Baz = String>`.
     current_where_predicate: Option<&'ast WherePredicate>,
 
+    /// Whether we are visiting an associated type equality binding like `Trait<Assoc = &T>`.
+    in_assoc_ty_binding: bool,
+
     current_type_path: Option<&'ast Ty>,
 
     /// The current impl items (used to suggest).
@@ -1327,7 +1330,11 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
         }
         match constraint.kind {
             AssocItemConstraintKind::Equality { ref term } => match term {
-                Term::Ty(ty) => self.visit_ty(ty),
+                Term::Ty(ty) => {
+                    let prev = replace(&mut self.diag_metadata.in_assoc_ty_binding, true);
+                    self.visit_ty(ty);
+                    self.diag_metadata.in_assoc_ty_binding = prev;
+                }
                 Term::Const(c) => {
                     self.resolve_anon_const(c, AnonConstKind::ConstArg(IsRepeatExpr::No))
                 }
@@ -1927,21 +1934,35 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 }
                 LifetimeRibKind::AnonymousReportError => {
                     let guar = if elided {
-                        let suggestion = self.lifetime_ribs[i..].iter().rev().find_map(|rib| {
-                            if let LifetimeRibKind::Generics {
-                                span,
-                                kind: LifetimeBinderKind::PolyTrait | LifetimeBinderKind::WhereBound,
-                                ..
-                            } = rib.kind
-                            {
-                                Some(crate::diagnostics::ElidedAnonymousLifetimeReportErrorSuggestion {
-                                    lo: span.shrink_to_lo(),
-                                    hi: lifetime.ident.span.shrink_to_hi(),
-                                })
-                            } else {
-                                None
-                            }
-                        });
+                        let suggestion = if self.diag_metadata.in_assoc_ty_binding {
+                            // In an associated type binding like `I: IntoIterator<Item = &T>`,
+                            // introducing the lifetime on the trait ref would produce
+                            // `I: for<'a> IntoIterator<Item = &'a T>`. Prefer a named lifetime
+                            // from an enclosing item instead, so the assoc-ty-binding-specific path
+                            // below builds that suggestion.
+                            None
+                        } else {
+                            self.lifetime_ribs[i..].iter().rev().find_map(|rib| {
+                                // Look for a `Generics` rib that represents a trait or where-bound
+                                // binder (`T: Trait<&U>` or `where T: Trait<&U>`), since that is
+                                // where the generic E0637 diagnostic can insert `for<'a>`.
+                                if let LifetimeRibKind::Generics {
+                                    span,
+                                    kind:
+                                        LifetimeBinderKind::PolyTrait
+                                        | LifetimeBinderKind::WhereBound,
+                                    ..
+                                } = rib.kind
+                                {
+                                    Some(crate::diagnostics::ElidedAnonymousLifetimeReportErrorSuggestion {
+                                        lo: span.shrink_to_lo(),
+                                        hi: lifetime.ident.span.shrink_to_hi(),
+                                    })
+                                } else {
+                                    None
+                                }
+                            })
+                        };
                         // are we trying to use an anonymous lifetime
                         // on a non GAT associated trait type?
                         if !self.in_func_body
@@ -1993,6 +2014,22 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                 self.point_at_impl_lifetimes(&mut err, i, lifetime.ident.span);
                                 err.emit()
                             }
+                        } else if self.diag_metadata.in_assoc_ty_binding {
+                            // For associated type bindings, e.g.
+                            // `fn f<I: IntoIterator<Item = &T>>()`, introduce a named lifetime
+                            // on an enclosing generics binder instead:
+                            // `fn f<'a, I: IntoIterator<Item = &'a T>>()`.
+                            let mut err = self.r.dcx().create_err(
+                                crate::diagnostics::ElidedAnonymousLifetimeReportError {
+                                    span: lifetime.ident.span,
+                                    suggestion,
+                                },
+                            );
+                            self.suggest_introducing_lifetime_for_assoc_ty_binding(
+                                &mut err,
+                                lifetime.ident.span,
+                            );
+                            err.emit()
                         } else {
                             self.r.dcx().emit_err(
                                 crate::diagnostics::ElidedAnonymousLifetimeReportError {

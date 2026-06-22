@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/23543>.
+
 pub trait A: Copy {}
 
 struct Foo;

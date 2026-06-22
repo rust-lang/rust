@@ -40,9 +40,9 @@ use self::TargetLint::*;
 use crate::levels::LintLevelsBuilder;
 use crate::passes::{EarlyLintPassObject, LateLintPassObject};
 
-type EarlyLintPassFactory = dyn Fn() -> EarlyLintPassObject + sync::DynSend + sync::DynSync;
+type EarlyLintPassFactory = Box<dyn Fn() -> EarlyLintPassObject + sync::DynSend + sync::DynSync>;
 type LateLintPassFactory =
-    dyn for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx> + sync::DynSend + sync::DynSync;
+    Box<dyn for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx> + sync::DynSend + sync::DynSync>;
 
 /// Information about the registered lints.
 pub struct LintStore {
@@ -55,11 +55,11 @@ pub struct LintStore {
     /// interior mutability, we don't enforce this (and lints should, in theory,
     /// be compatible with being constructed more than once, though not
     /// necessarily in a sane manner. This is safe though.)
-    pub pre_expansion_passes: Vec<Box<EarlyLintPassFactory>>,
-    pub early_passes: Vec<Box<EarlyLintPassFactory>>,
-    pub late_passes: Vec<Box<LateLintPassFactory>>,
+    pub pre_expansion_passes: Vec<EarlyLintPassFactory>,
+    pub early_passes: Vec<EarlyLintPassFactory>,
+    pub late_passes: Vec<LateLintPassFactory>,
     /// This is unique in that we construct them per-module, so not once.
-    pub late_module_passes: Vec<Box<LateLintPassFactory>>,
+    pub late_module_passes: Vec<LateLintPassFactory>,
 
     /// Lints indexed by name.
     by_name: UnordMap<String, TargetLint>,
@@ -165,11 +165,8 @@ impl LintStore {
         self.lint_groups.keys().copied()
     }
 
-    pub fn register_early_pass(
-        &mut self,
-        pass: impl Fn() -> EarlyLintPassObject + 'static + sync::DynSend + sync::DynSync,
-    ) {
-        self.early_passes.push(Box::new(pass));
+    pub fn register_early_pass(&mut self, pass: EarlyLintPassFactory) {
+        self.early_passes.push(pass);
     }
 
     /// This lint pass is softly deprecated. It misses expanded code and has caused a few
@@ -178,31 +175,16 @@ impl LintStore {
     ///
     /// * See [rust#69838](https://github.com/rust-lang/rust/pull/69838)
     /// * See [rust-clippy#5518](https://github.com/rust-lang/rust-clippy/pull/5518)
-    pub fn register_pre_expansion_pass(
-        &mut self,
-        pass: impl Fn() -> EarlyLintPassObject + 'static + sync::DynSend + sync::DynSync,
-    ) {
-        self.pre_expansion_passes.push(Box::new(pass));
+    pub fn register_pre_expansion_pass(&mut self, pass: EarlyLintPassFactory) {
+        self.pre_expansion_passes.push(pass);
     }
 
-    pub fn register_late_pass(
-        &mut self,
-        pass: impl for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx>
-        + 'static
-        + sync::DynSend
-        + sync::DynSync,
-    ) {
-        self.late_passes.push(Box::new(pass));
+    pub fn register_late_pass(&mut self, pass: LateLintPassFactory) {
+        self.late_passes.push(pass);
     }
 
-    pub fn register_late_mod_pass(
-        &mut self,
-        pass: impl for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx>
-        + 'static
-        + sync::DynSend
-        + sync::DynSync,
-    ) {
-        self.late_module_passes.push(Box::new(pass));
+    pub fn register_late_mod_pass(&mut self, pass: LateLintPassFactory) {
+        self.late_module_passes.push(pass);
     }
 
     /// Helper method for register_early/late_pass
