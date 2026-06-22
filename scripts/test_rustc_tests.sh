@@ -177,12 +177,14 @@ rm tests/codegen-units/item-collection/opaque-return-impls.rs # extra mono item.
 rm -r tests/run-make/extern-fn-explicit-align # argument alignment not yet supported
 rm -r tests/run-make/panic-abort-eh_frame # .eh_frame emitted with panic=abort
 rm -r tests/run-make/staticlib-hide-internal-symbols # -Zstaticlib-hide-internal-symbols seems to be broken
+rm -r tests/run-make/staticlib-rename-internal-symbols # needs files from staticlib-hide-internal-symbols
 
 # bugs in the test suite
 # ======================
 rm tests/ui/process/nofile-limit.rs # FIXME some AArch64 linking issue
 rm -r tests/ui/codegen/equal-pointers-unequal # make incorrect assumptions about the location of stack variables
 rm -r tests/incremental/extern_static/issue-49153.rs # assumes reference to undefined static gets optimized away
+rm tests/ui/std/linux-getrandom-fallback.rs # missing needs-unwind
 
 rm tests/ui/intrinsics/panic-uninitialized-zeroed.rs # really slow with unoptimized libstd
 rm tests/ui/process/process-panic-after-fork.rs # same
