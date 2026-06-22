@@ -88,7 +88,11 @@ mod e {
     pub(crate) struct F {
         pub(crate) foo: (),
     }
+    pub(crate) const G: () = ();
 }
+#[cfg(true)]
+const H: () = ();
+
 
 fn main() {
     a::bar();
@@ -99,4 +103,6 @@ fn main() {
     let () = d.foo.into(); // Ok, `D` is behind a `cfg` attr
     let f = e::F { foo: ().into() }; // Ok, `e` is behind a `cfg` attr
     let () = f.foo.into(); // Ok, `e` is behind a `cfg` attr
+    let () = e::G.into(); // Ok, `e` is behind a `cfg` attr
+    let () = H.into(); // Ok, `H` is behind a `cfg` attr
 }
