@@ -1,3 +1,131 @@
+//! Computation of a crate's *public API hash*
+//!
+//! Public api hashing only runs when the unstable `-Zpublic-api-hash` option is enabled. The
+//! crate root records whether it was (see `public_api_hash_opt_enabled` / the
+//! `public_api_hash_opt_enabled` field on `CrateRoot`), so the decoder can fall back to the old
+//! behaviour for rmetas produced without the option.
+//!
+//! # Public API hash
+//! The goal of public API hashing is to allow skipping recompiles of downstream dependencies when only
+//! private items change. It is a hash over everything in a crate that is observable by downstream
+//! crates during a successful compilation through its rmeta. It is designed to have three properties:
+//!  1. The public hash does not change when modifying private items. (With the caveat that changing
+//!     the span of a public item by inserting a private item before it will change the public
+//!     hash. Nevertheless, if private code is kept in separate files from public ones, or just
+//!     added at the end of a file, it works.)
+//!  2. Changing a public item in a dependency does not change the public hash of the local crate,
+//!     unless that public item is reexported here. This allows recompilation to be cut off two
+//!     crates downstream when the public hash of a crate changes, instead of propagating that all
+//!     the way and requiring recompiles everywhere.
+//!  3. It is future proof: new data added to the rmeta is included in the hash by default rather
+//!     than silently left out.
+//!
+//! NOTE: *private* here means not usable by downstream deps. Some "private" data can leak through
+//! inlinable functions, const evaluatable functions and many more things. The next section has a
+//! more in-depth explanation about how the public API hash is calculated.
+//!
+//! # How this is achieved reliably
+//!
+//! _For simplicity, this explanation mostly uses [`DefId`]s as ids. There are a few other kinds of
+//! ids, like [`ExpnId`], but the mechanism is the same.
+//!
+//! Let's start with a simple observation: rmeta does not provide queries like `all_def_ids`
+//! that iterate over every def id in the crate. It stores most data in tables that can only be
+//! accessed by calling queries which require a `DefId` as input and then return some output. So
+//! most information is only accessible through maps that map a `DefId` to some data — with a few
+//! exceptions.
+//! This allows us to think of the metadata as a graph where we can start from a `DefId` use all
+//! available queries to get all data associated with it, then collect all other `DefId`-s in the
+//! associated data. Those `DefId`-s are immediately reachable from our starting id. Repeat it for
+//! all newly found `DefId`-s and we have a graph of what is reachable from which `DefId`. This
+//! is what we will call the reachability graph. Start from the crate root and the "few exceptions"
+//! mentioned above and we get all publicly reachable items.
+//!
+//! The reachability graph is constructed during encoding: whenever an `id -> data` mapping is
+//! encoded into rmeta, every id encoded together with `data` is recorded as an edge from `id`. For
+//! example, if `id` is a public function we always add edges to its span and to the types in its
+//! signature; if it also has `mir` encoded, we add all the types/functions/spans occurring inside.
+//! For any associated data stored in tables, encoder callbacks make sure those edges automatically
+//! appear in the graph. This is how we ensure property 3: new data added to the rmeta is included
+//! in the hash by default.
+//!
+//! Once the graph is constructed, each node has a local hash: the combined hash of all the data
+//! saved for it in these tables. The strongly connected components are then computed and each scc
+//! is assigned a public hash: the local hash of everything inside the connected component plus the
+//! public hash from each of its dependencies.
+//!
+//! Finally, each reachable [`LocalDefId`] has its public hash (the public hash of its scc) saved
+//! into rmeta, which enables property 2. The public hash of a crate does not depend on the full
+//! public hash of its dependencies, only on their global part (like lang items and externally
+//! implementable items) plus the hash of the items that are reachable through this rmeta.
+//!
+//! # Modifications to hwo some data is stored in the rmeta
+//! The storage of some data is not compatible with public api hashing. The following changes are
+//! made when the option is enabled:
+//!
+//! ## Encoding the `DefIndex` of a `DefId` as a stable `DefPathHash`
+//!
+//! A `DefId` is normally encoded as a `(CrateNum, DefIndex)` pair, where `DefIndex` is just an
+//! allocation-order index into the crate. That index shifts whenever definitions are added or
+//! reordered — including private ones — so hashing it directly would break property 1. When
+//! public-api hashing is enabled, the `DefIndex` part is instead encoded as the definition's stable
+//! `DefPathHash`, which only depends on the def path and not on allocation order. This is what makes
+//! it possible to keep `def_path_hash_map` out of the public hash, and is also why trait impls are
+//! stored keyed by `DefPathHash` (see `EncodedTraitImpls`) rather than by `DefIndex`.
+//!
+//! ## Converting per-`DefId` tables instead of whole-crate queries
+//!
+//! To ensure properties 1 and 2, some information that used to be exposed as a single whole-crate
+//! query — returning a set or map over every `DefId` in the crate — breaks this in two ways: such
+//! an aggregate is not keyed by `DefId`, so it cannot be placed in the reachability graph at all,
+//! and it changes whenever *any* item (including a private one) is added to or removed from the
+//! set.
+//!
+//! So when public-api hashing is enabled, these aggregates are replaced by per-`DefId`
+//! tables, and the original whole-crate queries are asserted to be unused (see the asserts in the
+//! decoder's `reachable_non_generics` / `exportable_items` providers):
+//!  - `exportable_items` (a set) becomes the `is_exportable` query, backed by the `is_exportable`
+//!    table.
+//!  - `reachable_non_generics` (a map) becomes the `is_reachable_non_generic` query, backed by the
+//!    `is_reachable_non_generic` table, plus the `is_reachable_non_generic_with_export_level_c`
+//!    query/table for the export-level information that map also carried.
+//!
+//! Because they are now `DefId -> bool` tables they participate in the reachability graph like any
+//! other encoded data, so only the entries of reachable items contribute to the hash.
+//!
+//! # What is moved out of the public hash
+//!
+//! Some rmeta contents are deliberately not part of the public hash, because they are only needed
+//! at link time or only for diagnostics, and including them would couple the public hash to private
+//! implementation details.
+//!  - `exported_generic_symbols` / `exported_non_generic_symbols` are only used during linking, so
+//!    they live behind the private hash ([`Unhashed`]). Keeping them out of the public hash is also
+//!    why `upstream_monomorphizations` is disabled under this option: otherwise adding or removing
+//!    private code could change the set of available monomorphizations and recompile all dependents.
+//!  - `def_path_hash_map` is unhashed (see above).
+//!  - `traits` and `stripped_cfg_items` are only read when a compilation session ends in an error,
+//!    so they are currently dropped from the rmeta when the option is enabled.
+//!  - Proc-macro crates are not graph-hashed at all; their full crate hash is used as the public
+//!    hash.
+//!
+//! # Tooling and testing
+//!
+//! - `-Zls=public_hash` prints the public hash of a metadata file.
+//! - The `rustc_public_hash_changed` / `rustc_public_hash_unchanged` test attributes let
+//!   incremental tests assert whether a change moved a dependency's public hash.
+//!
+//! # Improving it safely
+//!
+//! The graph constructed from the rmeta has redundant edges. A `DefId` occurring in the result of
+//! a query does not mean it is actually used to access all data reachable through that `DefId`.
+//!
+//! An example of this is how `ExpnData` was changed: its `parent_module` field is only used to
+//! check visibilities, never as an input to a query, and its `macro_def_id` field is set to
+//! `LOCAL_CRATE` for the root expansion, but that is only used in queries when the returned
+//! `DefId` is that of a macro. Changing their types to typed `DefId`s (the `VisibilityDefId`
+//! newtype) — which can be constructed from a `DefId` but cannot be used to recover the `DefId`
+//! needed for query calls — ensures those edges can be removed from the rmeta reachability graph.
+
 use core::iter::Iterator;
 use std::cell::RefCell;
 use std::fmt;
@@ -283,8 +411,7 @@ pub(crate) struct HashableCrateHeader {
 /// Stable hashable version of [`CrateRoot`] we use to calculate the public api hash. When adding
 /// new fields to `CrateRoot`, it is important to include it in the public api hash. Not doing so
 /// can cause silent miscompiles. This struct helps make sure the compiler does not allow forgetting
-/// the hashing of new items added to rmeta and makes hashing them a local problem with a
-/// straightforward solution.
+/// the hashing of new items added to rmeta.
 ///
 /// When adding a new field to `CrateRoot` we have 3 cases: it is encoded directly, bools for
 /// example, it is added as a `LazyValue` or `LazyArray`, or it is added as a new table to
@@ -295,17 +422,14 @@ pub(crate) struct HashableCrateHeader {
 /// 2. When encoded as some kind of lazy value, if one tries to do the same as in 1, the compiler
 ///    will complain that it does not implement `StableHash`, so it cannot derive
 ///    `StableHash` for `HashableCrateRoot`. In this case one should wrap it in [`Hashed`] and hash
-///    it where it was encoded. the `hash_lazy_array` macro can help with this for simple arrays.
+///    it where it was encoded. the `hash_lazy_array!` macro can help with this for simple arrays.
 /// 3. When added to `LazyTables` in the `define_tables!` macro, simply defining its type as
 ///    `Table<RDRHashAll, Idx, Value>` will take care of hashing it.
 ///
-/// In all 3 cases a `// FIXME do we need to hash this?` comment should be included with the new
-/// field to note that it wasn't reviewed from the public api hash point of view. It might need
-/// stable sorting, or removing parts or all of it from the hash. However, removing anything from
-/// the public api hash should be done with extreme scrutiny. In most cases one can likely improve
-/// it by stable sorting before encoding, or removing unneeded items before encoding. If it does
-/// not need to be in the public api, it likely does not need to be in the rmeta at all. This also
-/// improves rmeta sizes.
+/// In some special cases, the hash if the field might not be needed at all in the public API
+/// hash. If it is only used for better error reporting, or only during link time, this is likely
+/// the case. Use the [`Unhashed`] wrapper to skip a field from the public hash, or the
+/// [`GraphHashed`] to indicate that it was hashed with the reachability graph.
 #[derive(StableHash, Debug)]
 pub(crate) struct HashableCrateRoot {
     // =========== not reviewed ============
