@@ -412,11 +412,11 @@ impl<'a> AstValidator<'a> {
             })
             .unzip();
 
-        // A splatted argument at the "no splatted" marker index is not supported (this is an
-        // unlikely edge case).
+        // A splatted argument greater than or equal to the "no splatted" marker index is not
+        // supported.
         if let (Some(&splatted_arg_index), Some(&splatted_span)) =
             (splatted_arg_indexes.last(), splatted_spans.last())
-            && splatted_arg_index == FnDecl::NO_SPLATTED_ARG_INDEX
+            && splatted_arg_index >= u16::from(FnDecl::NO_SPLATTED_ARG_INDEX)
         {
             self.dcx().emit_err(diagnostics::InvalidSplattedArg {
                 splatted_arg_index,
