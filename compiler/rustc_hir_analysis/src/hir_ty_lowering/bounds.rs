@@ -25,17 +25,17 @@ use crate::hir_ty_lowering::{
 #[derive(Debug, Default)]
 struct CollectedBound {
     /// `Trait`
-    positive: bool,
+    positive: Option<Span>,
     /// `?Trait`
-    maybe: bool,
+    maybe: Option<Span>,
     /// `!Trait`
-    negative: bool,
+    negative: Option<Span>,
 }
 
 impl CollectedBound {
     /// Returns `true` if any of `Trait`, `?Trait` or `!Trait` were encountered.
     fn any(&self) -> bool {
-        self.positive || self.maybe || self.negative
+        self.positive.is_some() || self.maybe.is_some() || self.negative.is_some()
     }
 }
 
@@ -96,9 +96,9 @@ fn collect_bounds<'a, 'tcx>(
         }
 
         match ptr.modifiers.polarity {
-            hir::BoundPolarity::Maybe(_) => collect_into.maybe = true,
-            hir::BoundPolarity::Negative(_) => collect_into.negative = true,
-            hir::BoundPolarity::Positive => collect_into.positive = true,
+            hir::BoundPolarity::Maybe(_) => collect_into.maybe = Some(ptr.span),
+            hir::BoundPolarity::Negative(_) => collect_into.negative = Some(ptr.span),
+            hir::BoundPolarity::Positive => collect_into.positive = Some(ptr.span),
         }
     });
     collect_into
@@ -180,10 +180,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ImpliedBoundsContext::TyParam(..) | ImpliedBoundsContext::AssociatedTypeOrImplTrait => {
             }
         }
-
         let collected = collect_sizedness_bounds(tcx, hir_bounds, context, span);
-        if (collected.sized.maybe || collected.sized.negative)
-            && !collected.sized.positive
+        if let Some(span) = collected.sized.maybe.or(collected.sized.negative)
+            && collected.sized.positive.is_none()
             && !collected.meta_sized.any()
             && !collected.pointee_sized.any()
         {
