@@ -6,121 +6,82 @@
 
 pub mod raw;
 
-// The code below could be written clearer using `cfg_if!`. However, the items below are
-// publicly exported by `std` and external tools can have trouble analysing them because of the use
-// of a macro that is not vendored by Rust and included in the toolchain.
-// See https://github.com/rust-analyzer/rust-analyzer/issues/6038.
+// # Important platforms
 
-// On certain platforms right now the "main modules" modules that are
-// documented don't compile (missing things in `libc` which is empty),
-// so just omit them with an empty module and add the "unstable" attribute.
-
-// darwin, unix, linux, wasi and windows are handled a bit differently.
-#[cfg(all(
-    doc,
+// We always want to show documentation for the most important platforms,
+// so these are handled specially here.
+//
+// FIXME: On certain platforms compilation errors (due to empty `libc`),
+// prevent this, so we substitute an unstable empty module.
+#[cfg(doc)]
+cfg_select! {
     any(
         all(target_arch = "wasm32", not(target_os = "wasi")),
         all(target_vendor = "fortanix", target_env = "sgx")
-    )
+    ) => {
+        #[unstable(issue = "none", feature = "std_internals")]
+        pub mod darwin {}
+
+        #[unstable(issue = "none", feature = "std_internals")]
+        pub mod unix {}
+
+        #[unstable(issue = "none", feature = "std_internals")]
+        pub mod linux {}
+
+        #[unstable(issue = "none", feature = "std_internals")]
+        pub mod wasi {}
+
+        #[unstable(issue = "none", feature = "std_internals")]
+        pub mod windows {}
+    }
+    _ => {
+        // important platforms
+        pub mod darwin;
+        pub mod linux;
+        pub mod unix;
+        pub mod wasi;
+        pub mod wasip2;
+        pub mod windows;
+    }
+}
+#[cfg(not(doc))] // to prevent double module declarations
+cfg_select! {
+    target_family = "unix" => {
+        pub mod unix;
+        #[cfg(target_vendor = "apple")]
+        pub mod darwin;
+        #[cfg(target_os = "linux")]
+        pub mod linux;
+    }
+    target_family = "wasm" => {
+        #[cfg(any(target_env = "p1", target_env = "p2"))]
+        pub mod wasi;
+        #[cfg(target_env = "p2")]
+        pub mod wasip2;
+    }
+    target_family = "windows" => {
+        pub mod windows;
+    }
+}
+
+// # Special modules
+
+#[cfg(any(
+    unix,
+    target_os = "hermit",
+    target_os = "trusty",
+    target_os = "wasi",
+    target_os = "motor",
+    doc
 ))]
-#[unstable(issue = "none", feature = "std_internals")]
-pub mod darwin {}
-#[cfg(all(
-    doc,
-    any(
-        all(target_arch = "wasm32", not(target_os = "wasi")),
-        all(target_vendor = "fortanix", target_env = "sgx")
-    )
-))]
-#[unstable(issue = "none", feature = "std_internals")]
-pub mod unix {}
-#[cfg(all(
-    doc,
-    any(
-        all(target_arch = "wasm32", not(target_os = "wasi")),
-        all(target_vendor = "fortanix", target_env = "sgx")
-    )
-))]
-#[unstable(issue = "none", feature = "std_internals")]
-pub mod linux {}
-#[cfg(all(
-    doc,
-    any(
-        all(target_arch = "wasm32", not(target_os = "wasi")),
-        all(target_vendor = "fortanix", target_env = "sgx")
-    )
-))]
-#[unstable(issue = "none", feature = "std_internals")]
-pub mod wasi {}
-#[cfg(all(
-    doc,
-    any(
-        all(target_arch = "wasm32", not(target_os = "wasi")),
-        all(target_vendor = "fortanix", target_env = "sgx")
-    )
-))]
-#[unstable(issue = "none", feature = "std_internals")]
-pub mod windows {}
+pub mod fd;
 
-// darwin
-#[cfg(not(all(
-    doc,
-    any(
-        all(target_arch = "wasm32", not(target_os = "wasi")),
-        all(target_vendor = "fortanix", target_env = "sgx")
-    )
-)))]
-#[cfg(any(target_vendor = "apple", doc))]
-pub mod darwin;
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "cygwin", doc))]
+mod net;
 
-// unix
-#[cfg(not(all(
-    doc,
-    any(
-        all(target_arch = "wasm32", not(target_os = "wasi")),
-        all(target_vendor = "fortanix", target_env = "sgx")
-    )
-)))]
-#[cfg(all(not(target_os = "hermit"), any(unix, doc)))]
-pub mod unix;
+// # Ordinary platforms
+// `cfg(doc)` not handled specially
 
-// linux
-#[cfg(not(all(
-    doc,
-    any(
-        all(target_arch = "wasm32", not(target_os = "wasi")),
-        all(target_vendor = "fortanix", target_env = "sgx")
-    )
-)))]
-#[cfg(any(target_os = "linux", doc))]
-pub mod linux;
-
-// wasi
-#[cfg(not(all(
-    doc,
-    any(
-        all(target_arch = "wasm32", not(target_os = "wasi")),
-        all(target_vendor = "fortanix", target_env = "sgx")
-    )
-)))]
-#[cfg(any(target_os = "wasi", any(target_env = "p1", target_env = "p2"), doc))]
-pub mod wasi;
-
-#[cfg(any(all(target_os = "wasi", target_env = "p2"), doc))]
-pub mod wasip2;
-
-// windows
-#[cfg(not(all(
-    doc,
-    any(
-        all(target_arch = "wasm32", not(target_os = "wasi")),
-        all(target_vendor = "fortanix", target_env = "sgx")
-    )
-)))]
-#[cfg(any(windows, doc))]
-pub mod windows;
-
-// Others.
 #[cfg(target_os = "aix")]
 pub mod aix;
 #[cfg(target_os = "android")]
@@ -183,16 +144,3 @@ pub mod vita;
 pub mod vxworks;
 #[cfg(target_os = "xous")]
 pub mod xous;
-
-#[cfg(any(
-    unix,
-    target_os = "hermit",
-    target_os = "trusty",
-    target_os = "wasi",
-    target_os = "motor",
-    doc
-))]
-pub mod fd;
-
-#[cfg(any(target_os = "linux", target_os = "android", target_os = "cygwin", doc))]
-mod net;
