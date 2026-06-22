@@ -49,7 +49,7 @@ use rustc_trait_selection::{solve, traits};
 use tracing::{info, instrument};
 
 use crate::interface::Compiler;
-use crate::{diagnostics, limits, proc_macro_decls, util};
+use crate::{diagnostics, limits, util};
 
 pub fn parse<'a>(sess: &'a Session) -> ast::Crate {
     let mut krate = sess
@@ -897,9 +897,9 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     providers.queries.resolutions = |tcx, ()| tcx.resolver_for_lowering_raw(()).2;
     providers.queries.early_lint_checks = early_lint_checks;
     providers.queries.env_var_os = env_var_os;
+    providers.queries.proc_macro_decls_static = |tcx, _| tcx.hir_crate_items(()).proc_macro_decls();
     rustc_ast_lowering::provide(&mut providers.queries);
     limits::provide(&mut providers.queries);
-    proc_macro_decls::provide(&mut providers.queries);
     rustc_expand::provide(&mut providers.queries);
     rustc_const_eval::provide(providers);
     rustc_middle::hir::provide(&mut providers.queries);
