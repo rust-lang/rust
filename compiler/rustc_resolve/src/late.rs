@@ -1664,7 +1664,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         };
         // We'll ban these with a `ConstParamTy` rib, so just clear these ribs for better
         // diagnostics, so we don't mention anything about const param tys having generics at all.
-        if !self.r.tcx.features().generic_const_parameter_types() {
+        if !self.r.features.generic_const_parameter_types() {
             forward_ty_ban_rib_const_param_ty.bindings.clear();
             forward_const_ban_rib_const_param_ty.bindings.clear();
         }
@@ -1701,7 +1701,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
                         this.ribs[TypeNS].push(forward_ty_ban_rib_const_param_ty);
                         this.ribs[ValueNS].push(forward_const_ban_rib_const_param_ty);
-                        if this.r.tcx.features().generic_const_parameter_types() {
+                        if this.r.features.generic_const_parameter_types() {
                             this.visit_ty(ty)
                         } else {
                             this.ribs[TypeNS].push(Rib::new(RibKind::ConstParamTy));
@@ -1812,8 +1812,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                     }
 
                                     LifetimeRibKind::ImplTrait => {
-                                        if self.r.tcx.features().anonymous_lifetime_in_impl_trait()
-                                        {
+                                        if self.r.features.anonymous_lifetime_in_impl_trait() {
                                             None
                                         } else {
                                             Some(LifetimeUseSet::Many)
@@ -2991,7 +2990,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 self.with_generic_param_rib(
                     &generics.params,
                     RibKind::Item(
-                        if self.r.tcx.features().generic_const_items() {
+                        if self.r.features.generic_const_items() {
                             HasGenericParams::Yes(generics.span)
                         } else {
                             HasGenericParams::No
@@ -3008,7 +3007,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                             LifetimeRibKind::Elided(LifetimeRes::Static),
                             |this| {
                                 if rhs_kind.is_type_const()
-                                    && !this.r.tcx.features().generic_const_parameter_types()
+                                    && !this.r.features.generic_const_parameter_types()
                                 {
                                     this.with_rib(TypeNS, RibKind::ConstParamTy, |this| {
                                         this.with_rib(ValueNS, RibKind::ConstParamTy, |this| {
@@ -3255,7 +3254,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     RibKind::Normal => {
                         // FIXME(non_lifetime_binders): Stop special-casing
                         // const params to error out here.
-                        if self.r.tcx.features().non_lifetime_binders()
+                        if self.r.features.non_lifetime_binders()
                             && matches!(param.kind, GenericParamKind::Type { .. })
                         {
                             Res::Def(def_kind, def_id.to_def_id())
@@ -3409,7 +3408,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                             |this| {
                                 this.visit_generics(generics);
                                 if rhs_kind.is_type_const()
-                                    && !this.r.tcx.features().generic_const_parameter_types()
+                                    && !this.r.features.generic_const_parameter_types()
                                 {
                                     this.with_rib(TypeNS, RibKind::ConstParamTy, |this| {
                                         this.with_rib(ValueNS, RibKind::ConstParamTy, |this| {
@@ -5038,10 +5037,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 let tcx = self.r.tcx();
 
                 let gate_err_sym_msg = match prim {
-                    PrimTy::Float(FloatTy::F16) if !tcx.features().f16() => {
+                    PrimTy::Float(FloatTy::F16) if !self.r.features.f16() => {
                         Some((sym::f16, "the type `f16` is unstable"))
                     }
-                    PrimTy::Float(FloatTy::F128) if !tcx.features().f128() => {
+                    PrimTy::Float(FloatTy::F128) if !self.r.features.f128() => {
                         Some((sym::f128, "the type `f128` is unstable"))
                     }
                     _ => None,
@@ -5196,8 +5195,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             AnonConstKind::FieldDefaultValue => ConstantHasGenerics::Yes,
             AnonConstKind::InlineConst => ConstantHasGenerics::Yes,
             AnonConstKind::ConstArg(_) => {
-                if self.r.tcx.features().generic_const_exprs()
-                    || self.r.tcx.features().min_generic_const_args()
+                if self.r.features.generic_const_exprs()
+                    || self.r.features.min_generic_const_args()
                     || is_trivial_const_arg
                 {
                     ConstantHasGenerics::Yes
