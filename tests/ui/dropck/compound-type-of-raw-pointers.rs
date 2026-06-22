@@ -1,4 +1,7 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/27240>.
+//! Test dropck doesn't complain about same type raw pointers in compound types.
 //@ run-pass
+
 #![allow(unused_assignments)]
 #![allow(unused_variables)]
 use std::fmt;

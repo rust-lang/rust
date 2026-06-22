@@ -1,4 +1,7 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/24086>.
+//! Test dropck correctly checks parameters, and doesn't ICE.
 //@ run-pass
+
 #![allow(dead_code)]
 #![allow(unused_mut)]
 #![allow(unused_variables)]

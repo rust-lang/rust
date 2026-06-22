@@ -10,7 +10,7 @@
 //! return `ToolBuildResult` and should never prepare `cargo` invocations manually.
 
 use std::ffi::OsStr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::{env, fs};
 
 use crate::core::build_steps::compile::is_lto_stage;
@@ -508,6 +508,7 @@ bootstrap_tool!(
     FeaturesStatusDump, "src/tools/features-status-dump", "features-status-dump";
     OptimizedDist, "src/tools/opt-dist", "opt-dist", submodules = &["src/tools/rustc-perf"];
     RunMakeSupport, "src/tools/run-make-support", "run_make_support", artifact_kind = ToolArtifactKind::Library;
+    IntrinsicTest, "library/stdarch/crates/intrinsic-test", "intrinsic-test";
 );
 
 /// These are the submodules that are required for rustbook to work due to
@@ -1628,8 +1629,9 @@ impl Builder<'_> {
         //
         // Notably this munges the dynamic library lookup path to point to the
         // right location to run `compiler`.
-        let mut lib_paths: Vec<PathBuf> =
-            vec![self.cargo_out(compiler, Mode::ToolBootstrap, *host).join("deps")];
+        let mut lib_paths: Vec<PathBuf> = discover_out_dirs_with_dylibs(
+            self.cargo_out(compiler, Mode::ToolBootstrap, *host).join("build"),
+        );
 
         // On MSVC a tool may invoke a C compiler (e.g., compiletest in run-make
         // mode) and that C compiler may need some extra PATH modification. Do
@@ -1656,4 +1658,24 @@ impl Builder<'_> {
 
         cmd
     }
+}
+
+/// Gets all of the `out` dirs in a given Cargo `build-dir/<profile>/build` dir.
+fn discover_out_dirs_with_dylibs(dir: PathBuf) -> Vec<PathBuf> {
+    if !dir.exists() {
+        return Vec::new();
+    }
+    let read_dir = |path: &Path| path.read_dir().ok().into_iter().flatten().filter_map(Result::ok);
+    let has_dylib = |path: &Path| {
+        read_dir(path)
+            .any(|e| e.path().extension().is_some_and(|ext| ext == std::env::consts::DLL_EXTENSION))
+    };
+    dir.read_dir()
+        .unwrap_or_else(|e| panic!("Couldn't read {}: {}", dir.display(), e))
+        .map(|e| e.unwrap())
+        .flat_map(|e| read_dir(&e.path()))
+        .flat_map(|e| read_dir(&e.path()))
+        .map(|e| e.path())
+        .filter(|path| path.ends_with("out") && has_dylib(path))
+        .collect::<Vec<_>>()
 }

@@ -181,7 +181,7 @@ fn configure_and_expand(
         if cfg!(windows) {
             old_path = env::var_os("PATH").unwrap_or(old_path);
             let mut new_path = Vec::from_iter(
-                sess.host_filesearch().search_paths(PathKind::All).map(|p| p.dir.clone()),
+                sess.host_filesearch().search_paths(PathKind::Native).map(|p| p.dir.clone()),
             );
             for path in env::split_paths(&old_path) {
                 if !new_path.contains(&path) {
@@ -1065,7 +1065,7 @@ impl<'a, 'tcx> Diagnostic<'a, ()> for DiagCallback<'tcx> {
 }
 
 pub fn emit_delayed_lints(tcx: TyCtxt<'_>) {
-    for owner_id in tcx.hir_crate_items(()).delayed_lint_items() {
+    for owner_id in tcx.hir_crate_items(()).owners() {
         if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(owner_id) {
             for lint in delayed_lints.steal() {
                 tcx.emit_node_span_lint(
@@ -1131,28 +1131,6 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     });
 
     sess.time("emit_ast_lowering_delayed_lints", || {
-        // Sanity check in debug mode that all lints are really noticed and we really will emit
-        // them all in the loop right below.
-        //
-        // During ast lowering, when creating items, foreign items, trait items and impl items,
-        // we store in them whether they have any lints in their owner node that should be
-        // picked up by `hir_crate_items`. However, theoretically code can run between that
-        // boolean being inserted into the item and the owner node being created. We don't want
-        // any new lints to be emitted there (you have to really try to manage that but still),
-        // but this check is there to catch that.
-        #[cfg(debug_assertions)]
-        {
-            let hir_items = tcx.hir_crate_items(());
-            for owner_id in hir_items.owners() {
-                if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(owner_id)
-                    && !delayed_lints.borrow().is_empty()
-                {
-                    // Assert that delayed_lint_items also picked up this item to have lints.
-                    assert!(hir_items.delayed_lint_items().any(|i| i == owner_id));
-                }
-            }
-        }
-
         emit_delayed_lints(tcx);
     });
 

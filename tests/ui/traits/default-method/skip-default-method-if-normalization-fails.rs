@@ -1,9 +1,11 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/23485>.
+//!
+//! Test for an ICE that occurred when a default method implementation
+//! was applied to a type that did not meet the prerequisites. The
+//! problem occurred specifically because normalizing
+//! `Self::Item::Target` was impossible in this case.
 //@ run-pass
 #![allow(unused_imports)]
-// Test for an ICE that occurred when a default method implementation
-// was applied to a type that did not meet the prerequisites. The
-// problem occurred specifically because normalizing
-// `Self::Item::Target` was impossible in this case.
 
 use std::boxed::Box;
 use std::marker::Sized;

@@ -5,6 +5,7 @@ use crate::context::{EarlyContext, LateContext};
 #[macro_export]
 macro_rules! late_lint_methods {
     ($macro:path, $args:tt) => (
+        // `_post` methods are called *after* recursing into the node.
         $macro!($args, [
             fn check_body(a: &rustc_hir::Body<'tcx>);
             fn check_body_post(a: &rustc_hir::Body<'tcx>);
@@ -13,8 +14,6 @@ macro_rules! late_lint_methods {
             fn check_mod(a: &'tcx rustc_hir::Mod<'tcx>, b: rustc_hir::HirId);
             fn check_foreign_item(a: &'tcx rustc_hir::ForeignItem<'tcx>);
             fn check_item(a: &'tcx rustc_hir::Item<'tcx>);
-            /// This is called *after* recursing into the item
-            /// (in contrast to `check_item`, which is checked before).
             fn check_item_post(a: &'tcx rustc_hir::Item<'tcx>);
             fn check_local(a: &'tcx rustc_hir::LetStmt<'tcx>);
             fn check_block(a: &'tcx rustc_hir::Block<'tcx>);
@@ -59,7 +58,7 @@ macro_rules! late_lint_methods {
 // contains a few lint-specific methods with no equivalent in `Visitor`.
 //
 macro_rules! declare_late_lint_pass {
-    ([], [$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
+    ([], [$(fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
         pub trait LateLintPass<'tcx>: LintPass {
             $(#[inline(always)] fn $name(&mut self, _: &LateContext<'tcx>, $(_: $arg),*) {})*
         }
@@ -79,7 +78,7 @@ macro_rules! expand_combined_late_lint_pass_method {
 
 #[macro_export]
 macro_rules! expand_combined_late_lint_pass_methods {
-    ($passes:tt, [$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
+    ($passes:tt, [$(fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
         $(fn $name(&mut self, context: &$crate::LateContext<'tcx>, $($param: $arg),*) {
             $crate::expand_combined_late_lint_pass_method!($passes, self, $name, (context, $($param),*));
         })*
@@ -132,14 +131,13 @@ macro_rules! declare_combined_late_lint_pass {
 #[macro_export]
 macro_rules! early_lint_methods {
     ($macro:path, $args:tt) => (
+        // `_post` methods are called *after* recursing into the node.
         $macro!($args, [
             fn check_param(a: &rustc_ast::Param);
             fn check_ident(a: &rustc_span::Ident);
             fn check_crate(a: &rustc_ast::Crate);
             fn check_crate_post(a: &rustc_ast::Crate);
             fn check_item(a: &rustc_ast::Item);
-            /// This is called *after* recursing into the item
-            /// (in contrast to `check_item`, which is checked before).
             fn check_item_post(a: &rustc_ast::Item);
             fn check_local(a: &rustc_ast::Local);
             fn check_block(a: &rustc_ast::Block);
@@ -168,15 +166,14 @@ macro_rules! early_lint_methods {
             fn check_attributes_post(a: &[rustc_ast::Attribute]);
             fn check_mac_def(a: &rustc_ast::MacroDef);
             fn check_mac(a: &rustc_ast::MacCall);
-
-            fn enter_where_predicate(a: &rustc_ast::WherePredicate);
-            fn exit_where_predicate(a: &rustc_ast::WherePredicate);
+            fn check_where_predicate(a: &rustc_ast::WherePredicate);
+            fn check_where_predicate_post(a: &rustc_ast::WherePredicate);
         ]);
     )
 }
 
 macro_rules! declare_early_lint_pass {
-    ([], [$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
+    ([], [$(fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
         pub trait EarlyLintPass: LintPass {
             $(#[inline(always)] fn $name(&mut self, _: &EarlyContext<'_>, $(_: $arg),*) {})*
         }
@@ -196,7 +193,7 @@ macro_rules! expand_combined_early_lint_pass_method {
 
 #[macro_export]
 macro_rules! expand_combined_early_lint_pass_methods {
-    ($passes:tt, [$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
+    ($passes:tt, [$(fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
         $(fn $name(&mut self, context: &$crate::EarlyContext<'_>, $($param: $arg),*) {
             $crate::expand_combined_early_lint_pass_method!($passes, self, $name, (context, $($param),*));
         })*
@@ -247,5 +244,5 @@ macro_rules! declare_combined_early_lint_pass {
 }
 
 /// A lint pass boxed up as a trait object.
-pub(crate) type EarlyLintPassObject = Box<dyn EarlyLintPass + 'static>;
+pub(crate) type EarlyLintPassObject = Box<dyn EarlyLintPass>;
 pub(crate) type LateLintPassObject<'tcx> = Box<dyn LateLintPass<'tcx> + 'tcx>;

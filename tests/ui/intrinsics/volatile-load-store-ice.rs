@@ -1,3 +1,4 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/23550>.
 //@ build-pass
 #![feature(core_intrinsics)]
 #![allow(warnings)]

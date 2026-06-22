@@ -1,0 +1,73 @@
+- // MIR for `indirect_adt` before GVN
++ // MIR for `indirect_adt` after GVN
+  
+  fn indirect_adt(_1: &Adt<'_>, _2: for<'a> fn(Adt<'a>), _3: fn()) -> () {
+      debug x => _1;
+      debug out => _2;
+      debug clobber => _3;
+      let mut _0: ();
+      let _4: Adt<'_>;
+      let _5: ();
+      let mut _6: for<'a> fn(Adt<'a>);
+      let mut _7: Adt<'_>;
+      let _8: ();
+      let mut _9: fn();
+      let _11: ();
+      let mut _12: for<'a> fn(Adt<'a>);
+      let mut _13: Adt<'_>;
+      scope 1 {
+          debug y1 => _4;
+          let _10: Adt<'_>;
+          scope 2 {
+              debug y2 => _10;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_4);
+          _4 = copy (*_1);
+          StorageLive(_5);
+          StorageLive(_6);
+          _6 = copy _2;
+          StorageLive(_7);
+          _7 = copy _4;
+-         _5 = move _6(move _7) -> [return: bb1, unwind unreachable];
++         _5 = copy _2(copy _4) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_7);
+          StorageDead(_6);
+          StorageDead(_5);
+          StorageLive(_8);
+          StorageLive(_9);
+          _9 = copy _3;
+-         _8 = move _9() -> [return: bb2, unwind unreachable];
++         _8 = copy _3() -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          StorageDead(_9);
+          StorageDead(_8);
+          StorageLive(_10);
+          _10 = copy (*_1);
+          StorageLive(_11);
+          StorageLive(_12);
+          _12 = copy _2;
+          StorageLive(_13);
+          _13 = copy _10;
+-         _11 = move _12(move _13) -> [return: bb3, unwind unreachable];
++         _11 = copy _2(copy _10) -> [return: bb3, unwind unreachable];
+      }
+  
+      bb3: {
+          StorageDead(_13);
+          StorageDead(_12);
+          StorageDead(_11);
+          _0 = const ();
+          StorageDead(_10);
+          StorageDead(_4);
+          return;
+      }
+  }
+  
