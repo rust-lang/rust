@@ -6,9 +6,13 @@
 #![allow(deprecated)]
 #![allow(dead_code)]
 #![feature(staged_api)]
-
+#![feature(extern_types)]
 #![stable(feature = "rust1", since = "1.0.0")]
 
+extern "C" {
+    #[unstable(feature = "fn_static", issue = "none")]
+    type Ty;
+}
 #[macro_use]
 extern crate lint_stability;
 
