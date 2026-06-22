@@ -1,4 +1,4 @@
-error: generic parameters in const blocks are only allowed as the direct value of a `type const`
+error: generic parameters in const blocks are not allowed; use a named `const` item instead
   --> $DIR/generic-param-rhs.rs:7:19
    |
 LL |     foo::<const { N + 1 }>();

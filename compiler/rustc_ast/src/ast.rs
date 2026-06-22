@@ -30,8 +30,10 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::tagged_ptr::Tag;
 use rustc_macros::{Decodable, Encodable, StableHash, Walkable};
 pub use rustc_span::AttrId;
+use rustc_span::def_id::LocalDefId;
 use rustc_span::{
-    ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, Span, Spanned, Symbol, kw, respan, sym,
+    ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, LocalExpnId, Span, Spanned, Symbol, kw, respan,
+    sym,
 };
 use thin_vec::{ThinVec, thin_vec};
 
@@ -3051,8 +3053,29 @@ impl FnDecl {
     pub fn has_self(&self) -> bool {
         self.inputs.get(0).is_some_and(Param::is_self)
     }
+
     pub fn c_variadic(&self) -> bool {
         self.inputs.last().is_some_and(|arg| matches!(arg.ty.kind, TyKind::CVarArgs))
+    }
+
+    /// The marker index for "no splatted arguments".
+    /// Must have the same value as `FnSigKind::NO_SPLATTED_ARG_INDEX` and `FnDeclFlags::NO_SPLATTED_ARG_INDEX`.
+    pub const NO_SPLATTED_ARG_INDEX: u16 = u16::MAX;
+
+    /// Returns a splatted argument index, if any are present.
+    pub fn splatted(&self) -> Option<u16> {
+        self.inputs.iter().enumerate().find_map(|(index, arg)| {
+            if index == Self::NO_SPLATTED_ARG_INDEX as usize {
+                // AST validation has already checked the splatted argument index is valid, so just
+                // ignore invalid indexes here.
+                None
+            } else {
+                arg.attrs
+                    .iter()
+                    .any(|attr| attr.has_name(sym::splat))
+                    .then_some(u16::try_from(index).unwrap())
+            }
+        })
     }
 }
 
@@ -3906,10 +3929,10 @@ pub struct EiiImpl {
     pub is_default: bool,
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, Walkable, PartialEq, Eq)]
+#[derive(Clone, Copy, Encodable, Decodable, Debug, PartialEq, Eq)]
 pub enum DelegationSource {
     Single,
-    List,
+    List(LocalExpnId),
     Glob,
 }
 
@@ -3923,6 +3946,7 @@ pub struct Delegation {
     pub rename: Option<Ident>,
     pub body: Option<Box<Block>>,
     /// The item was expanded from a glob delegation item.
+    #[visitable(ignore)]
     pub source: DelegationSource,
 }
 
@@ -4338,6 +4362,23 @@ impl TryFrom<ItemKind> for ForeignItemKind {
 }
 
 pub type ForeignItem = Item<ForeignItemKind>;
+
+/// Fragment of the AST according to "HIR owner" semantics.
+///
+/// This is used to map each `LocalDefId` to its content's AST.
+#[derive(Debug)]
+pub enum AstOwner {
+    /// This definition does not correspond to a HIR owner.
+    NonOwner,
+    /// This definition corresponds to a nested `use` tree.
+    /// The `LocalDefId` points to its HIR owner.
+    NestedUseTree(LocalDefId),
+    Crate(Box<Crate>),
+    Item(Box<Item>),
+    TraitItem(Box<AssocItem>),
+    ImplItem(Box<AssocItem>),
+    ForeignItem(Box<ForeignItem>),
+}
 
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]

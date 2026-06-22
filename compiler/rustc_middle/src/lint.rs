@@ -514,7 +514,7 @@ pub fn emit_lint_base<'a, D: Diagnostic<'a, ()> + 'a>(
             err.disable_suggestions();
         }
 
-        err.is_lint(lint.name_lower(), has_future_breakage);
+        err.is_lint(lint.name_lower(), has_future_breakage, lint.rust_version);
         // Lint diagnostics that are covered by the expect level will not be emitted outside
         // the compiler. It is therefore not necessary to add any information for the user.
         // This will therefore directly call the decorate function which will in turn emit

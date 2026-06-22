@@ -9,152 +9,153 @@
 
 use crate::{declare_lint, declare_lint_pass, fcw};
 
-declare_lint_pass! {
-    /// Does nothing as a lint pass, but registers some `Lint`s
-    /// that are used by other parts of the compiler.
-    HardwiredLints => [
-        // tidy-alphabetical-start
-        AARCH64_SOFTFLOAT_NEON,
-        ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
-        AMBIGUOUS_ASSOCIATED_ITEMS,
-        AMBIGUOUS_DERIVE_HELPERS,
-        AMBIGUOUS_GLOB_IMPORTED_TRAITS,
-        AMBIGUOUS_GLOB_IMPORTS,
-        AMBIGUOUS_GLOB_REEXPORTS,
-        AMBIGUOUS_IMPORT_VISIBILITIES,
-        AMBIGUOUS_PANIC_IMPORTS,
-        ARITHMETIC_OVERFLOW,
-        ASM_SUB_REGISTER,
-        BAD_ASM_STYLE,
-        BARE_TRAIT_OBJECTS,
-        BINDINGS_WITH_VARIANT_NAME,
-        BREAK_WITH_LABEL_AND_LOOP,
-        COHERENCE_LEAK_CHECK,
-        CONFLICTING_REPR_HINTS,
-        CONST_EVALUATABLE_UNCHECKED,
-        CONST_ITEM_MUTATION,
-        DEAD_CODE,
-        DEAD_CODE_PUB_IN_BINARY,
-        DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK,
-        DEPRECATED,
-        DEPRECATED_IN_FUTURE,
-        DEPRECATED_LLVM_INTRINSIC,
-        DEPRECATED_SAFE_2024,
-        DEPRECATED_WHERE_CLAUSE_LOCATION,
-        DUPLICATE_FEATURES,
-        DUPLICATE_MACRO_ATTRIBUTES,
-        ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
-        ELIDED_LIFETIMES_IN_PATHS,
-        EXPLICIT_BUILTIN_CFGS_IN_FLAGS,
-        EXPORTED_PRIVATE_DEPENDENCIES,
-        FFI_UNWIND_CALLS,
-        FLOAT_LITERAL_F32_FALLBACK,
-        FORBIDDEN_LINT_GROUPS,
-        FUNCTION_ITEM_REFERENCES,
-        HIDDEN_GLOB_REEXPORTS,
-        ILL_FORMED_ATTRIBUTE_INPUT,
-        INCOMPLETE_INCLUDE,
-        INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
-        INLINE_NO_SANITIZE,
-        INVALID_DOC_ATTRIBUTES,
-        INVALID_MACRO_EXPORT_ARGUMENTS,
-        INVALID_TYPE_PARAM_DEFAULT,
-        IRREFUTABLE_LET_PATTERNS,
-        LARGE_ASSIGNMENTS,
-        LATE_BOUND_LIFETIME_ARGUMENTS,
-        LEGACY_DERIVE_HELPERS,
-        LINKER_INFO,
-        LINKER_MESSAGES,
-        LONG_RUNNING_CONST_EVAL,
-        MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
-        MACRO_USE_EXTERN_CRATE,
-        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-        MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
-        META_VARIABLE_MISUSE,
-        MISPLACED_DIAGNOSTIC_ATTRIBUTES,
-        MISSING_ABI,
-        MISSING_UNSAFE_ON_EXTERN,
-        MUST_NOT_SUSPEND,
-        NAMED_ARGUMENTS_USED_POSITIONALLY,
-        NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
-        NON_CONTIGUOUS_RANGE_ENDPOINTS,
-        NON_EXHAUSTIVE_OMITTED_PATTERNS,
-        OUT_OF_SCOPE_MACRO_CALLS,
-        OVERLAPPING_RANGE_ENDPOINTS,
-        PATTERNS_IN_FNS_WITHOUT_BODY,
-        PRIVATE_BOUNDS,
-        PRIVATE_INTERFACES,
-        PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
-        PUB_USE_OF_PRIVATE_EXTERN_CRATE,
-        REDUNDANT_IMPORTS,
-        REDUNDANT_LIFETIMES,
-        REFINING_IMPL_TRAIT_INTERNAL,
-        REFINING_IMPL_TRAIT_REACHABLE,
-        RENAMED_AND_REMOVED_LINTS,
-        REPR_C_ENUMS_LARGER_THAN_INT,
-        REPR_TRANSPARENT_NON_ZST_FIELDS,
-        RESOLVING_TO_ITEMS_SHADOWING_SUPERTRAIT_ITEMS,
-        RTSAN_NONBLOCKING_ASYNC,
-        RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
-        RUST_2021_INCOMPATIBLE_OR_PATTERNS,
-        RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
-        RUST_2021_PRELUDE_COLLISIONS,
-        RUST_2024_GUARDED_STRING_INCOMPATIBLE_SYNTAX,
-        RUST_2024_INCOMPATIBLE_PAT,
-        RUST_2024_PRELUDE_COLLISIONS,
-        SELF_CONSTRUCTOR_FROM_OUTER_ITEM,
-        SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
-        SHADOWING_SUPERTRAIT_ITEMS,
-        SINGLE_USE_LIFETIMES,
-        STABLE_FEATURES,
-        TAIL_CALL_TRACK_CALLER,
-        TAIL_EXPR_DROP_ORDER,
-        TEST_UNSTABLE_LINT,
-        TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
-        TEXT_DIRECTION_CODEPOINT_IN_LITERAL,
-        TRIVIAL_CASTS,
-        TRIVIAL_NUMERIC_CASTS,
-        TYVAR_BEHIND_RAW_POINTER,
-        UNCONDITIONAL_PANIC,
-        UNCONDITIONAL_RECURSION,
-        UNCOVERED_PARAM_IN_PROJECTION,
-        UNEXPECTED_CFGS,
-        UNFULFILLED_LINT_EXPECTATIONS,
-        UNINHABITED_STATIC,
-        UNKNOWN_CRATE_TYPES,
-        UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
-        UNKNOWN_LINTS,
-        UNNAMEABLE_TEST_ITEMS,
-        UNNAMEABLE_TYPES,
-        UNREACHABLE_CFG_SELECT_PREDICATES,
-        UNREACHABLE_CODE,
-        UNREACHABLE_PATTERNS,
-        UNSAFE_ATTR_OUTSIDE_UNSAFE,
-        UNSAFE_OP_IN_UNSAFE_FN,
-        UNSTABLE_NAME_COLLISIONS,
-        UNSTABLE_SYNTAX_PRE_EXPANSION,
-        UNSUPPORTED_CALLING_CONVENTIONS,
-        UNUSED_ASSIGNMENTS,
-        UNUSED_ASSOCIATED_TYPE_BOUNDS,
-        UNUSED_ATTRIBUTES,
-        UNUSED_CRATE_DEPENDENCIES,
-        UNUSED_EXTERN_CRATES,
-        UNUSED_FEATURES,
-        UNUSED_IMPORTS,
-        UNUSED_LABELS,
-        UNUSED_LIFETIMES,
-        UNUSED_MACROS,
-        UNUSED_MACRO_RULES,
-        UNUSED_MUT,
-        UNUSED_QUALIFICATIONS,
-        UNUSED_UNSAFE,
-        UNUSED_VARIABLES,
-        UNUSED_VISIBILITIES,
-        USELESS_DEPRECATED,
-        VARARGS_WITHOUT_PATTERN,
-        WARNINGS,
-        // tidy-alphabetical-end
-    ]
+pub mod hardwired {
+    use super::*;
+
+    pub fn lint_vec() -> crate::LintVec {
+        vec![
+            // tidy-alphabetical-start
+            AARCH64_SOFTFLOAT_NEON,
+            ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
+            AMBIGUOUS_ASSOCIATED_ITEMS,
+            AMBIGUOUS_DERIVE_HELPERS,
+            AMBIGUOUS_GLOB_IMPORTED_TRAITS,
+            AMBIGUOUS_GLOB_IMPORTS,
+            AMBIGUOUS_GLOB_REEXPORTS,
+            AMBIGUOUS_IMPORT_VISIBILITIES,
+            AMBIGUOUS_PANIC_IMPORTS,
+            ARITHMETIC_OVERFLOW,
+            ASM_SUB_REGISTER,
+            BAD_ASM_STYLE,
+            BARE_TRAIT_OBJECTS,
+            BINDINGS_WITH_VARIANT_NAME,
+            BREAK_WITH_LABEL_AND_LOOP,
+            COHERENCE_LEAK_CHECK,
+            CONFLICTING_REPR_HINTS,
+            CONST_EVALUATABLE_UNCHECKED,
+            CONST_ITEM_MUTATION,
+            DEAD_CODE,
+            DEAD_CODE_PUB_IN_BINARY,
+            DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK,
+            DEPRECATED,
+            DEPRECATED_IN_FUTURE,
+            DEPRECATED_LLVM_INTRINSIC,
+            DEPRECATED_SAFE_2024,
+            DEPRECATED_WHERE_CLAUSE_LOCATION,
+            DUPLICATE_FEATURES,
+            DUPLICATE_MACRO_ATTRIBUTES,
+            ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
+            ELIDED_LIFETIMES_IN_PATHS,
+            EXPLICIT_BUILTIN_CFGS_IN_FLAGS,
+            EXPORTED_PRIVATE_DEPENDENCIES,
+            FFI_UNWIND_CALLS,
+            FLOAT_LITERAL_F32_FALLBACK,
+            FORBIDDEN_LINT_GROUPS,
+            FUNCTION_ITEM_REFERENCES,
+            HIDDEN_GLOB_REEXPORTS,
+            ILL_FORMED_ATTRIBUTE_INPUT,
+            INCOMPLETE_INCLUDE,
+            INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
+            INLINE_NO_SANITIZE,
+            INVALID_DOC_ATTRIBUTES,
+            INVALID_MACRO_EXPORT_ARGUMENTS,
+            INVALID_TYPE_PARAM_DEFAULT,
+            IRREFUTABLE_LET_PATTERNS,
+            LARGE_ASSIGNMENTS,
+            LATE_BOUND_LIFETIME_ARGUMENTS,
+            LEGACY_DERIVE_HELPERS,
+            LINKER_INFO,
+            LINKER_MESSAGES,
+            LONG_RUNNING_CONST_EVAL,
+            MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
+            MACRO_USE_EXTERN_CRATE,
+            MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+            MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
+            META_VARIABLE_MISUSE,
+            MISPLACED_DIAGNOSTIC_ATTRIBUTES,
+            MISSING_ABI,
+            MISSING_UNSAFE_ON_EXTERN,
+            MUST_NOT_SUSPEND,
+            NAMED_ARGUMENTS_USED_POSITIONALLY,
+            NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
+            NON_CONTIGUOUS_RANGE_ENDPOINTS,
+            NON_EXHAUSTIVE_OMITTED_PATTERNS,
+            OUT_OF_SCOPE_MACRO_CALLS,
+            OVERLAPPING_RANGE_ENDPOINTS,
+            PATTERNS_IN_FNS_WITHOUT_BODY,
+            PRIVATE_BOUNDS,
+            PRIVATE_INTERFACES,
+            PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
+            PUB_USE_OF_PRIVATE_EXTERN_CRATE,
+            REDUNDANT_IMPORTS,
+            REDUNDANT_LIFETIMES,
+            REFINING_IMPL_TRAIT_INTERNAL,
+            REFINING_IMPL_TRAIT_REACHABLE,
+            RENAMED_AND_REMOVED_LINTS,
+            REPR_C_ENUMS_LARGER_THAN_INT,
+            RESOLVING_TO_ITEMS_SHADOWING_SUPERTRAIT_ITEMS,
+            RTSAN_NONBLOCKING_ASYNC,
+            RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
+            RUST_2021_INCOMPATIBLE_OR_PATTERNS,
+            RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
+            RUST_2021_PRELUDE_COLLISIONS,
+            RUST_2024_GUARDED_STRING_INCOMPATIBLE_SYNTAX,
+            RUST_2024_INCOMPATIBLE_PAT,
+            RUST_2024_PRELUDE_COLLISIONS,
+            SELF_CONSTRUCTOR_FROM_OUTER_ITEM,
+            SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
+            SHADOWING_SUPERTRAIT_ITEMS,
+            SINGLE_USE_LIFETIMES,
+            STABLE_FEATURES,
+            TAIL_CALL_TRACK_CALLER,
+            TAIL_EXPR_DROP_ORDER,
+            TEST_UNSTABLE_LINT,
+            TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
+            TEXT_DIRECTION_CODEPOINT_IN_LITERAL,
+            TRIVIAL_CASTS,
+            TRIVIAL_NUMERIC_CASTS,
+            TYVAR_BEHIND_RAW_POINTER,
+            UNCONDITIONAL_PANIC,
+            UNCONDITIONAL_RECURSION,
+            UNCOVERED_PARAM_IN_PROJECTION,
+            UNEXPECTED_CFGS,
+            UNFULFILLED_LINT_EXPECTATIONS,
+            UNINHABITED_STATIC,
+            UNKNOWN_CRATE_TYPES,
+            UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
+            UNKNOWN_LINTS,
+            UNNAMEABLE_TEST_ITEMS,
+            UNNAMEABLE_TYPES,
+            UNREACHABLE_CFG_SELECT_PREDICATES,
+            UNREACHABLE_CODE,
+            UNREACHABLE_PATTERNS,
+            UNSAFE_ATTR_OUTSIDE_UNSAFE,
+            UNSAFE_OP_IN_UNSAFE_FN,
+            UNSTABLE_NAME_COLLISIONS,
+            UNSTABLE_SYNTAX_PRE_EXPANSION,
+            UNSUPPORTED_CALLING_CONVENTIONS,
+            UNUSED_ASSIGNMENTS,
+            UNUSED_ASSOCIATED_TYPE_BOUNDS,
+            UNUSED_ATTRIBUTES,
+            UNUSED_CRATE_DEPENDENCIES,
+            UNUSED_EXTERN_CRATES,
+            UNUSED_FEATURES,
+            UNUSED_IMPORTS,
+            UNUSED_LABELS,
+            UNUSED_LIFETIMES,
+            UNUSED_MACROS,
+            UNUSED_MACRO_RULES,
+            UNUSED_MUT,
+            UNUSED_QUALIFICATIONS,
+            UNUSED_UNSAFE,
+            UNUSED_VARIABLES,
+            UNUSED_VISIBILITIES,
+            USELESS_DEPRECATED,
+            VARARGS_WITHOUT_PATTERN,
+            WARNINGS,
+            // tidy-alphabetical-end
+        ]
+    }
 }
 
 declare_lint! {
@@ -2285,23 +2286,45 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// If a `struct` contains a reference, such as `&'a T`, the compiler
-    /// requires that `T` outlives the lifetime `'a`. This historically
-    /// required writing an explicit lifetime bound to indicate this
-    /// requirement. However, this can be overly explicit, causing clutter and
-    /// unnecessary complexity. The language was changed to automatically
-    /// infer the bound if it is not specified. Specifically, if the struct
-    /// contains a reference, directly or indirectly, to `T` with lifetime
-    /// `'x`, then it will infer that `T: 'x` is a requirement.
-    ///
-    /// This lint is "allow" by default because it can be noisy for existing
-    /// code that already had these requirements. This is a stylistic choice,
-    /// as it is still valid to explicitly state the bound. It also has some
-    /// false positives that can cause confusion.
+    /// If a struct, enum or union contains a reference, such as `&'a T`,
+    /// the compiler requires that `T` outlives the lifetime `'a`.
+    /// This historically required writing an explicit lifetime bound to indicate this requirement.
+    /// However, this can be overly explicit, causing clutter and unnecessary complexity.
+    /// The language was changed to automatically infer some classes of lifetime bounds
+    /// if they are not specified.
+    /// Specifically, if a struct, enum or union contains a reference, directly or indirectly,
+    /// to `T` with lifetime `'x` and `'x` refers to a lifetime parameter,
+    /// then it will infer that `T: 'x` is a requirement.
     ///
     /// See [RFC 2093] for more details.
     ///
+    /// > [!WARNING]
+    /// > Implicit lifetime bounds are not semantically equivalent to explicit ones since the latter
+    /// > may affect the implicit lifetime bound of trait object types that are passed as arguments
+    /// > to the overarching struct, enum or union.
+    /// > Rephrased, they participate in [trait object lifetime defaulting][TOLD].
+    /// >
+    /// > Consider the following piece of code where removing bound `T: 'a` would lead to a lifetime
+    /// > error in function `scope`:
+    /// >
+    /// > ```rust,no_run
+    /// > struct Ref<'a, T: ?Sized + 'a>(&'a T);
+    /// >
+    /// > fn scope() {
+    /// >     let buf = String::new();
+    /// >     let str = buf.as_str();
+    /// >     render(Ref(&str));
+    /// > }
+    /// >
+    /// > fn render(_: Ref<dyn std::fmt::Display>) {}
+    /// > ```
+    /// >
+    /// > Consequently, removing explicit outlives-bounds on type parameters of publicly reachable types
+    /// > constitutes a **breaking change** if the lifetime refers to a lifetime parameter and
+    /// > the type parameter is not bounded by `Sized` (thereby admitting trait object types).
+    ///
     /// [RFC 2093]: https://github.com/rust-lang/rfcs/blob/master/text/2093-infer-outlives.md
+    /// [TOLD]: https://doc.rust-lang.org/reference/lifetime-elision.html#default-trait-object-lifetimes
     pub EXPLICIT_OUTLIVES_REQUIREMENTS,
     Allow,
     "outlives requirements can be inferred"
@@ -3024,77 +3047,6 @@ declare_lint! {
     pub EXPLICIT_BUILTIN_CFGS_IN_FLAGS,
     Deny,
     "detects builtin cfgs set via the `--cfg`"
-}
-
-declare_lint! {
-    /// The `repr_transparent_non_zst_fields` lint
-    /// detects types marked `#[repr(transparent)]` that (transitively)
-    /// contain a type that is not guaranteed to remain a ZST type under all configurations.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,ignore (needs external crate)
-    /// #![deny(repr_transparent_external_private_fields)]
-    /// use foo::NonExhaustiveZst;
-    ///
-    /// #[repr(C)]
-    /// struct CZst([u8; 0]);
-    ///
-    /// #[repr(transparent)]
-    /// struct Bar(u32, ([u32; 0], NonExhaustiveZst));
-    /// #[repr(transparent)]
-    /// struct Baz(u32, CZst);
-    /// ```
-    ///
-    /// This will produce:
-    ///
-    /// ```text
-    /// error: zero-sized fields in repr(transparent) cannot contain external non-exhaustive types
-    ///  --> src/main.rs:5:28
-    ///   |
-    /// 5 | struct Bar(u32, ([u32; 0], NonExhaustiveZst));
-    ///   |                            ^^^^^^^^^^^^^^^^
-    ///   |
-    /// note: the lint level is defined here
-    ///  --> src/main.rs:1:9
-    ///   |
-    /// 1 | #![deny(repr_transparent_external_private_fields)]
-    ///   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    ///   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    ///   = note: for more information, see issue #78586 <https://github.com/rust-lang/rust/issues/78586>
-    ///   = note: this field contains `NonExhaustiveZst`, which is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future.
-    ///
-    /// error: zero-sized fields in repr(transparent) cannot contain `#[repr(C)]` types
-    ///  --> src/main.rs:5:28
-    ///   |
-    /// 5 | struct Baz(u32, CZst);
-    ///   |                 ^^^^
-    ///   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    ///   = note: for more information, see issue #78586 <https://github.com/rust-lang/rust/issues/78586>
-    ///   = note: this field contains `CZst`, which is a `#[repr(C)]` type, so it is not guaranteed to be zero-sized on all targets.
-    /// ```
-    ///
-    /// ### Explanation
-    ///
-    /// Previous, Rust accepted fields that contain external private zero-sized types, even though
-    /// those types could gain a non-zero-sized field in a future, semver-compatible update.
-    ///
-    /// Rust also accepted fields that contain `repr(C)` zero-sized types, even though those types
-    /// are not guaranteed to be zero-sized on all targets, and even though those types can
-    /// make a difference for the ABI (and therefore cannot be ignored by `repr(transparent)`).
-    ///
-    /// This is a [future-incompatible] lint to transition this
-    /// to a hard error in the future. See [issue #78586] for more details.
-    ///
-    /// [issue #78586]: https://github.com/rust-lang/rust/issues/78586
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub REPR_TRANSPARENT_NON_ZST_FIELDS,
-    Deny,
-    "transparent type contains an external ZST that is marked #[non_exhaustive] or contains private fields",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #78586),
-        report_in_deps: true,
-    };
 }
 
 declare_lint! {
@@ -4523,6 +4475,7 @@ declare_lint! {
     Warn,
     "detects diagnostic attribute with malformed diagnostic format literals",
 }
+
 declare_lint! {
     /// The `ambiguous_glob_imports` lint detects glob imports that should report ambiguity
     /// errors, but previously didn't do that due to rustc bugs.
@@ -5584,4 +5537,44 @@ declare_lint! {
         reason: fcw!(FutureReleaseError #154024),
         report_in_deps: false,
     };
+}
+
+declare_lint! {
+    /// The `unsafe_code` lint catches usage of `unsafe` code and other
+    /// potentially unsound constructs like `no_mangle`, `export_name`,
+    /// and `link_section`.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(unsafe_code)]
+    /// fn main() {
+    ///     unsafe {
+    ///
+    ///     }
+    /// }
+    ///
+    /// #[no_mangle]
+    /// fn func_0() { }
+    ///
+    /// #[export_name = "exported_symbol_name"]
+    /// pub fn name_in_rust() { }
+    ///
+    /// #[no_mangle]
+    /// #[link_section = ".example_section"]
+    /// pub static VAR1: u32 = 1;
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// This lint is intended to restrict the usage of `unsafe` blocks and other
+    /// constructs (including, but not limited to `no_mangle`, `link_section`
+    /// and `export_name` attributes) wrong usage of which causes undefined
+    /// behavior.
+    pub UNSAFE_CODE,
+    Allow,
+    "usage of `unsafe` code and other potentially unsound constructs",
+    @eval_always = true
 }

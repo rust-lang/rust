@@ -18,7 +18,7 @@ use crate::builder::expr::category::{Category, RvalueFunc};
 use crate::builder::matches::{DeclareLetBindings, Exhaustive, HasMatchGuard};
 use crate::builder::scope::LintLevel;
 use crate::builder::{BlockAnd, BlockAndExtension, BlockFrame, Builder, NeedsTemporary};
-use crate::errors::{LoopMatchArmWithGuard, LoopMatchUnsupportedType};
+use crate::diagnostics::{LoopMatchArmWithGuard, LoopMatchUnsupportedType};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which
@@ -238,7 +238,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let tmp = this.get_unit_temp();
                     // Execute the body, branching back to the test.
                     let body_block_end = this.expr_into_dest(tmp, body_block, body).into_block();
-                    this.cfg.goto(body_block_end, source_info, loop_block);
+
+                    let goto = this.cfg.goto(body_block_end, source_info, loop_block);
+                    if let Some(attrs) = this.thir.attributes.get(&expr_id) {
+                        goto.attributes = attrs.clone();
+                    }
 
                     // Loops are only exited by `break` expressions.
                     None

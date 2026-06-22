@@ -9,7 +9,7 @@ use rustc_session::lint::builtin::FFI_UNWIND_CALLS;
 use rustc_target::spec::PanicStrategy;
 use tracing::debug;
 
-use crate::errors;
+use crate::diagnostics;
 
 // Check if the body of this def_id can possibly leak a foreign unwind into Rust code.
 fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
@@ -67,7 +67,7 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
                     FFI_UNWIND_CALLS,
                     lint_root,
                     span,
-                    errors::AsmUnwindCall { span },
+                    diagnostics::AsmUnwindCall { span },
                 );
 
                 tainted = true;
@@ -119,7 +119,7 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
                 FFI_UNWIND_CALLS,
                 lint_root,
                 span,
-                errors::FfiUnwindCall { span, foreign },
+                diagnostics::FfiUnwindCall { span, foreign },
             );
 
             tainted = true;

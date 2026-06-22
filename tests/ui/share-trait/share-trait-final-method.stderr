@@ -1,0 +1,11 @@
+error: cannot override `share` because it already has a `final` definition in the trait
+  --> $DIR/share-trait-final-method.rs:15:5
+   |
+LL |     fn share(&self) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `share` is marked final here
+  --> $SRC_DIR/core/src/clone.rs:LL:COL
+
+error: aborting due to 1 previous error
+

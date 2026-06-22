@@ -12,7 +12,7 @@ LL |     type I: Tr;
    = note: ...which again requires computing layout of `S<S<()>>`, completing the cycle
 note: cycle used when const-evaluating + checking `core::mem::SizedTypeProperties::SIZE`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 
 error: aborting due to 1 previous error
 

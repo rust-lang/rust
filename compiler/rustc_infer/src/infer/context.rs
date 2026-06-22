@@ -209,12 +209,26 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         )
     }
 
-    fn enter_forall<T: TypeFoldable<TyCtxt<'tcx>>, U>(
+    fn enter_forall_without_assumptions<T: TypeFoldable<TyCtxt<'tcx>>, U>(
         &self,
         value: ty::Binder<'tcx, T>,
         f: impl FnOnce(T) -> U,
     ) -> U {
         self.enter_forall(value, f)
+    }
+
+    fn enter_forall_with_empty_assumptions<T: TypeFoldable<TyCtxt<'tcx>>, U>(
+        &self,
+        value: ty::Binder<'tcx, T>,
+        f: impl FnOnce(T) -> U,
+    ) -> U {
+        self.enter_forall(value, |value| {
+            let u = self.universe();
+            self.placeholder_assumptions_for_next_solver
+                .borrow_mut()
+                .insert(u, Some(rustc_type_ir::region_constraint::Assumptions::empty()));
+            f(value)
+        })
     }
 
     fn equate_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid) {

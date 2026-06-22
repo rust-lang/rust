@@ -20,8 +20,10 @@ use crate::hash::Hash;
 
 mod iter;
 
-#[unstable(feature = "new_range_api_legacy", issue = "125687")]
+#[stable(feature = "new_range_api_legacy", since = "CURRENT_RUSTC_VERSION")]
 pub mod legacy;
+
+use core::ops::Bound::{self, Excluded, Included, Unbounded};
 
 #[doc(inline)]
 #[stable(feature = "new_range_from_api", since = "1.96.0")]
@@ -33,19 +35,13 @@ pub use iter::RangeInclusiveIter;
 #[stable(feature = "new_range_api", since = "1.96.0")]
 pub use iter::RangeIter;
 
-// FIXME(#125687): re-exports temporarily removed
-// Because re-exports of stable items (Bound, RangeBounds, RangeFull, RangeTo)
-// can't be made unstable.
-//
-// #[doc(inline)]
-// #[unstable(feature = "new_range_api", issue = "125687")]
-// pub use crate::iter::Step;
-// #[doc(inline)]
-// #[unstable(feature = "new_range_api", issue = "125687")]
-// pub use crate::ops::{Bound, IntoBounds, OneSidedRange, RangeBounds, RangeFull, RangeTo};
 use crate::iter::Step;
-use crate::ops::Bound::{self, Excluded, Included, Unbounded};
+// FIXME(one_sided_range): These types should move into this module.
+// FIXME(range_into_bounds): Ditto. Also consider re-exporting `RangeBounds` and related.
 use crate::ops::{IntoBounds, OneSidedRange, OneSidedRangeBound, RangeBounds};
+#[doc(inline)]
+#[stable(feature = "new_range_api_exports", since = "CURRENT_RUSTC_VERSION")]
+pub use crate::ops::{RangeFull, RangeTo};
 
 /// A (half-open) range bounded inclusively below and exclusively above.
 ///
@@ -402,11 +398,46 @@ const impl<T> From<RangeInclusive<T>> for legacy::RangeInclusive<T> {
 #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 const impl<T> From<legacy::RangeInclusive<T>> for RangeInclusive<T> {
+    /// Converts from a legacy range to a non-legacy range, potentially panicking.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the legacy range iterator has been exhausted.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use core::range::legacy;
+    /// use core::range::RangeInclusive;
+    ///
+    /// let single: legacy::RangeInclusive<i32> = 0..=1;
+    /// let single = RangeInclusive::from(single);
+    /// assert_eq!((single.start, single.last), (0, 1));
+    ///
+    /// let empty: legacy::RangeInclusive<i32> = 0..=0;
+    /// let empty = RangeInclusive::from(empty);
+    /// assert_eq!((empty.start, empty.last), (0, 0));
+    /// ```
+    ///
+    /// ```should_panic
+    /// use core::range::legacy;
+    /// use core::range::RangeInclusive;
+    ///
+    /// let mut exhausted: legacy::RangeInclusive<i32> = 0..=0;
+    /// exhausted.next();
+    /// # if exhausted.is_empty() {
+    /// # // assert!s don't work correctly in `should_panic` doctests since you
+    /// # // can't assert the panic message. Skip the rest of the test instead,
+    /// # // so that the expected panic doesn't happen and the test fails.
+    /// assert!(exhausted.is_empty());
+    /// let _ = RangeInclusive::from(exhausted); // this panics
+    /// # }
+    /// ```
     #[inline]
     fn from(value: legacy::RangeInclusive<T>) -> Self {
         assert!(
             !value.exhausted,
-            "attempted to convert from an exhausted `legacy::RangeInclusive` (unspecified behavior)"
+            "attempted to convert from an exhausted `legacy::RangeInclusive`"
         );
 
         let (start, last) = value.into_inner();

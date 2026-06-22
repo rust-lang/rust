@@ -18,7 +18,7 @@ pub(super) const trait SimdExt: Sized {
 macro_rules! impl_simd_ext {
     ($v:ident, $e:ty) => {
         #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-        impl const SimdExt for crate::core_arch::simd::$v {
+        const impl SimdExt for crate::core_arch::simd::$v {
             type Elem = $e;
 
             #[inline(always)]

@@ -172,7 +172,7 @@ def test_cargo_miri_test():
     )
     test("`cargo miri test` (proc-macro crate)",
         cargo_miri("test") + ["-p", "proc_macro_crate"],
-        "test.empty.ref", "test.proc-macro.stderr.ref",
+        "test.proc-macro.stdout.ref", "test.proc-macro.stderr.ref",
     )
     test("`cargo miri test` (custom target dir)",
         cargo_miri("test") + ["--target-dir=custom-test"],
@@ -215,7 +215,7 @@ for target_dir in ["target", "custom-run", "custom-test", "config-cli"]:
     if os.listdir(target_dir) != ["miri"]:
         fail(f"`{target_dir}` contains unexpected files")
     # Ensure something exists inside that target dir.
-    os.access(os.path.join(target_dir, "miri", "debug", "deps"), os.F_OK)
+    os.access(os.path.join(target_dir, "miri", "debug"), os.F_OK)
 
 print("\nTEST SUCCESSFUL!")
 sys.exit(0)

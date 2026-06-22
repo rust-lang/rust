@@ -1,18 +1,17 @@
+use std::borrow::Cow;
+use std::env;
 use std::error::Error;
 use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
-use std::{env, mem};
 
 use ar_archive_writer::{
     ArchiveKind, COFFShortExport, MachineTypes, NewArchiveMember, write_archive_to_stream,
 };
 pub use ar_archive_writer::{DEFAULT_OBJECT_READER, ObjectReader};
 use object::read::archive::{ArchiveFile, ArchiveKind as ObjectArchiveKind};
-use object::read::elf::Sym as _;
-use object::read::macho::{FatArch, Nlist};
-use object::{Endianness, elf, macho};
+use object::read::macho::FatArch;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_fs_util::TempDirBuilder;
@@ -24,6 +23,7 @@ use tracing::trace;
 
 use super::metadata::{create_compressed_metadata_file, search_for_section};
 use super::rmeta_link;
+use super::symbol_edit::{apply_edits, collect_internal_names};
 use crate::common;
 // Public for ArchiveBuilderBuilder::extract_bundled_libs
 pub use crate::errors::ExtractBundledLibsError;
@@ -315,12 +315,18 @@ pub enum AddArchiveKind<'a> {
     Other,
 }
 
+pub struct ArchiveSymbols {
+    pub exported: FxHashSet<String>,
+    pub rename_suffix: Option<String>,
+    pub hide: bool,
+}
+
 pub trait ArchiveBuilder {
     fn add_file(&mut self, path: &Path, kind: ArchiveEntryKind);
 
     fn add_archive(&mut self, archive: &Path, kind: AddArchiveKind<'_>) -> io::Result<()>;
 
-    fn build(self: Box<Self>, output: &Path, exported_symbols: Option<FxHashSet<String>>) -> bool;
+    fn build(self: Box<Self>, output: &Path, symbols: Option<ArchiveSymbols>) -> bool;
 }
 
 fn target_archive_format_to_object_kind(format: &str) -> Option<ObjectArchiveKind> {
@@ -535,9 +541,9 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
 
     /// Combine the provided files, rlibs, and native libraries into a single
     /// `Archive`.
-    fn build(self: Box<Self>, output: &Path, exported_symbols: Option<FxHashSet<String>>) -> bool {
+    fn build(self: Box<Self>, output: &Path, symbols: Option<ArchiveSymbols>) -> bool {
         let sess = self.sess;
-        match self.build_inner(output, exported_symbols) {
+        match self.build_inner(output, symbols) {
             Ok(any_members) => any_members,
             Err(error) => {
                 sess.dcx().emit_fatal(ArchiveBuildFailure { path: output.to_owned(), error })
@@ -547,11 +553,7 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
 }
 
 impl<'a> ArArchiveBuilder<'a> {
-    fn build_inner(
-        self,
-        output: &Path,
-        exported_symbols: Option<FxHashSet<String>>,
-    ) -> io::Result<bool> {
+    fn build_inner(self, output: &Path, symbols: Option<ArchiveSymbols>) -> io::Result<bool> {
         let archive_kind = match &*self.sess.target.archive_format {
             "gnu" => ArchiveKind::Gnu,
             "bsd" => ArchiveKind::Bsd,
@@ -561,6 +563,39 @@ impl<'a> ArArchiveBuilder<'a> {
             kind => {
                 self.sess.dcx().emit_fatal(UnknownArchiveKind { kind });
             }
+        };
+
+        // Collect all internally-defined symbol names across every Rust object file.
+        // This set is needed because rename must also apply to *undefined* references
+        // (cross-object calls within the staticlib), but we cannot use `!exported.contains(name)`
+        // alone — that would also match external C symbols like `malloc` which must not be renamed.
+        let rename = if let Some(sym) = &symbols
+            && let Some(rename_suffix) = sym.rename_suffix.as_deref()
+        {
+            let mut names = FxHashSet::default();
+            for (_, entry) in &self.entries {
+                if entry.kind != ArchiveEntryKind::RustObj {
+                    continue;
+                }
+                match &entry.source {
+                    ArchiveEntrySource::Archive { archive_index, file_range } => {
+                        let src_archive = &self.src_archives[*archive_index];
+                        let start = file_range.0 as usize;
+                        let end = start + file_range.1 as usize;
+                        if let Some(data) = src_archive.1.get(start..end) {
+                            collect_internal_names(data, &sym.exported, &mut names);
+                        }
+                    }
+                    ArchiveEntrySource::File(file) => {
+                        if let Ok(data) = fs::read(file) {
+                            collect_internal_names(&data, &sym.exported, &mut names);
+                        }
+                    }
+                }
+            }
+            Some((names, rename_suffix))
+        } else {
+            None
         };
 
         let mut entries = Vec::new();
@@ -589,9 +624,9 @@ impl<'a> ArArchiveBuilder<'a> {
                     };
 
                     if entry.kind == ArchiveEntryKind::RustObj
-                        && let Some(exported) = &exported_symbols
+                        && let Some(sym) = &symbols
                     {
-                        Box::new(apply_hide(data, exported))
+                        Box::new(apply_edits(data, &sym.exported, sym.hide, rename.as_ref()))
                     } else {
                         Box::new(data)
                     }
@@ -603,9 +638,13 @@ impl<'a> ArArchiveBuilder<'a> {
                     )
                     .map_err(|err| io_error_context("failed to map object file", err))?;
                     if entry.kind == ArchiveEntryKind::RustObj
-                        && let Some(exported) = &exported_symbols
+                        && let Some(sym) = &symbols
                     {
-                        Box::new(apply_hide(&mmap, exported))
+                        let edited = apply_edits(&mmap, &sym.exported, sym.hide, rename.as_ref());
+                        match edited {
+                            Cow::Borrowed(_) => Box::new(mmap) as Box<dyn AsRef<[u8]>>,
+                            Cow::Owned(v) => Box::new(v),
+                        }
                     } else {
                         Box::new(mmap) as Box<dyn AsRef<[u8]>>
                     }
@@ -670,154 +709,4 @@ impl<'a> ArArchiveBuilder<'a> {
 
 fn io_error_context(context: &str, err: io::Error) -> io::Error {
     io::Error::new(io::ErrorKind::Other, format!("{context}: {err}"))
-}
-
-// We use the `object` crate for the read-only pass over ELF/Mach-O object files
-// because its `Sym`/`Nlist` traits provide clean access to symbol properties without
-// manual byte parsing. However, `object` does not expose mutable views into the data,
-// so we cannot use it to modify symbol fields in place. Instead, the read-only pass
-// collects byte-level patches (offset + new value), and the write pass
-// (`apply_patches`) applies them to a copy of the byte buffer without any ELF/Mach-O
-// parsing — similar to how linker relocations work.
-
-/// A byte-level patch collected in the read-only pass and applied in the write pass.
-struct Patch {
-    offset: usize,
-    value: u8,
-}
-
-/// Apply a list of byte patches to `data`, returning the (possibly modified) bytes.
-fn apply_patches(data: &[u8], patches: &[Patch]) -> Vec<u8> {
-    let mut buf = data.to_vec();
-    for p in patches {
-        buf[p.offset] = p.value;
-    }
-    buf
-}
-
-// ---------------------------------------------------------------------------
-// ELF hide – read-only pass uses `object` crate, write pass uses `Patch` list
-// ---------------------------------------------------------------------------
-
-fn elf_hide_patches_impl<'data, Elf: object::read::elf::FileHeader<Endian = Endianness>>(
-    data: &'data [u8],
-    st_other_offset: usize,
-    exported: &FxHashSet<String>,
-) -> Option<Vec<Patch>>
-where
-    u64: From<Elf::Word>,
-{
-    let header = Elf::parse(data).ok()?;
-    let endian = header.endian().ok()?;
-    let sections = header.sections(endian, data).ok()?;
-    let symtab = sections.symbols(endian, data, elf::SHT_SYMTAB).ok()?;
-
-    let data_ptr = data.as_ptr() as usize;
-    let strings = symtab.strings();
-    let mut patches = Vec::new();
-
-    for sym in symtab.iter() {
-        let binding = sym.st_bind();
-        if binding != elf::STB_GLOBAL && binding != elf::STB_WEAK {
-            continue;
-        }
-        if sym.is_undefined(endian) {
-            continue;
-        }
-        let Ok(name_bytes) = sym.name(endian, strings) else { continue };
-        let Ok(name) = str::from_utf8(name_bytes) else { continue };
-        if !exported.contains(name) {
-            let sym_addr = sym as *const Elf::Sym as usize;
-            let offset = sym_addr - data_ptr + st_other_offset;
-            let new_vis = (sym.st_other() & !0x03) | elf::STV_HIDDEN;
-            patches.push(Patch { offset, value: new_vis });
-        }
-    }
-
-    Some(patches)
-}
-
-// ---------------------------------------------------------------------------
-// Mach-O hide – same architecture: read-only pass via `object`, write via patches
-// ---------------------------------------------------------------------------
-
-fn macho_hide_patches_impl<'data, Mach: object::read::macho::MachHeader<Endian = Endianness>>(
-    data: &'data [u8],
-    n_type_offset: usize,
-    exported: &FxHashSet<String>,
-) -> Option<Vec<Patch>> {
-    let header = Mach::parse(data, 0).ok()?;
-    let endian = header.endian().ok()?;
-    let mut commands = header.load_commands(endian, data, 0).ok()?;
-
-    let symtab_cmd = loop {
-        let cmd = commands.next().ok()??;
-        if let Some(st) = cmd.symtab().ok().flatten() {
-            break st;
-        }
-    };
-    let symtab: object::read::macho::SymbolTable<'_, Mach, &_> =
-        symtab_cmd.symbols(endian, data).ok()?;
-
-    let data_ptr = data.as_ptr() as usize;
-    let strings = symtab.strings();
-    let mut patches = Vec::new();
-
-    for nlist in symtab.iter() {
-        if nlist.is_stab() {
-            continue;
-        }
-        if nlist.is_undefined() {
-            continue;
-        }
-        if nlist.n_type() & macho::N_EXT == 0 {
-            continue;
-        }
-        let Ok(name_bytes) = nlist.name(endian, strings) else { continue };
-        let Ok(name) = str::from_utf8(name_bytes) else { continue };
-        let name = name.strip_prefix('_').unwrap_or(name);
-        if !exported.contains(name) {
-            let nlist_addr = nlist as *const Mach::Nlist as usize;
-            let offset = nlist_addr - data_ptr + n_type_offset;
-            patches.push(Patch { offset, value: nlist.n_type() | macho::N_PEXT });
-        }
-    }
-
-    Some(patches)
-}
-
-// ---------------------------------------------------------------------------
-// Unified dispatch: top-level detection via `object::File::parse`
-// ---------------------------------------------------------------------------
-
-fn hide_patches(data: &[u8], exported: &FxHashSet<String>) -> Option<Vec<Patch>> {
-    let file = object::File::parse(data).ok()?;
-    match file {
-        object::File::Elf64(_) => elf_hide_patches_impl::<elf::FileHeader64<Endianness>>(
-            data,
-            mem::offset_of!(elf::Sym64<Endianness>, st_other),
-            exported,
-        ),
-        object::File::Elf32(_) => elf_hide_patches_impl::<elf::FileHeader32<Endianness>>(
-            data,
-            mem::offset_of!(elf::Sym32<Endianness>, st_other),
-            exported,
-        ),
-        object::File::MachO64(_) => macho_hide_patches_impl::<macho::MachHeader64<Endianness>>(
-            data,
-            mem::offset_of!(macho::Nlist64<Endianness>, n_type),
-            exported,
-        ),
-        object::File::MachO32(_) => macho_hide_patches_impl::<macho::MachHeader32<Endianness>>(
-            data,
-            mem::offset_of!(macho::Nlist32<Endianness>, n_type),
-            exported,
-        ),
-        _ => None,
-    }
-}
-
-fn apply_hide(data: &[u8], exported: &FxHashSet<String>) -> Vec<u8> {
-    let patches = hide_patches(data, exported).unwrap_or_default();
-    apply_patches(data, &patches)
 }

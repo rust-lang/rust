@@ -1,3 +1,4 @@
+//@ compile-flags: -Zinternal-testing-features
 //@ reference: attributes.diagnostic.on_unimplemented.intro
 
 #![feature(negative_bounds)]

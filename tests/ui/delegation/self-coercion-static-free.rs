@@ -23,6 +23,7 @@ impl Trait for S {
         //~^ ERROR: mismatched types
         //~| ERROR: mismatched types
         //~| ERROR: mismatched types
+        //~| ERROR: unused target expression is specified for glob or list delegation
         let _ = self;
         S::static_self()
     }
@@ -35,6 +36,7 @@ impl Trait for S1 {
         //~^ ERROR: mismatched types
         //~| ERROR: mismatched types
         //~| ERROR: mismatched types
+        //~| ERROR: unused target expression is specified for glob or list delegation
         let _ = self;
         S1::static_self()
     }

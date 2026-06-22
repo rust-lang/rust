@@ -7,7 +7,7 @@ LL | struct ConstDrop(NotConstDrop);
 note: required for this `Drop` impl
   --> $DIR/drop-impl-nonconst-drop-field.rs:15:1
    |
-LL | impl const Drop for ConstDrop {
+LL | const impl Drop for ConstDrop {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0367]: `T` does not implement `[const] Destruct`
@@ -19,12 +19,12 @@ LL | struct ConstDrop2<T>(T);
 note: required for this `Drop` impl
   --> $DIR/drop-impl-nonconst-drop-field.rs:22:1
    |
-LL | impl<T> const Drop for ConstDrop2<T> {
+LL | const impl<T> Drop for ConstDrop2<T> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider restricting type parameter `T` with unstable trait `Destruct`
    |
-LL | impl<T: [const] Destruct> const Drop for ConstDrop2<T> {
-   |       ++++++++++++++++++
+LL | const impl<T: [const] Destruct> Drop for ConstDrop2<T> {
+   |             ++++++++++++++++++
 
 error: aborting due to 2 previous errors
 

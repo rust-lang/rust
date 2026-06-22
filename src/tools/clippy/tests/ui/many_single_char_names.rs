@@ -1,5 +1,5 @@
-#![allow(clippy::too_many_arguments, clippy::diverging_sub_expression)]
 #![warn(clippy::many_single_char_names)]
+#![expect(clippy::diverging_sub_expression, clippy::too_many_arguments)]
 
 fn bla() {
     let a: i32;

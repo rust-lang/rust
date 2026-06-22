@@ -9,11 +9,11 @@ use rustc_middle::bug;
 use rustc_middle::ty::TypeVisitor;
 use tracing::debug;
 
-use crate::error_reporting::infer::nice_region_error::NiceRegionError;
-use crate::errors::{
+use crate::diagnostics::{
     DoesNotOutliveStaticFromImpl, ImplicitStaticLifetimeSubdiag,
     IntroducesStaticBecauseUnmetLifetimeReq, MismatchedStaticLifetime, note_and_explain,
 };
+use crate::error_reporting::infer::nice_region_error::NiceRegionError;
 use crate::infer::{RegionResolutionError, SubregionOrigin, TypeTrace};
 use crate::traits::ObligationCauseCode;
 

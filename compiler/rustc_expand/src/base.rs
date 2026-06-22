@@ -32,7 +32,7 @@ use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 
-use crate::errors;
+use crate::diagnostics;
 use crate::expand::{self, AstFragment, Invocation};
 use crate::mbe::macro_rules::ParserAnyMacro;
 use crate::module::DirOwnership;
@@ -954,7 +954,7 @@ impl SyntaxExtension {
         let stability = find_attr!(attrs, Stability { stability, .. } => *stability);
 
         if let Some(sp) = find_attr!(attrs, RustcBodyStability{ span, .. } => *span) {
-            sess.dcx().emit_err(errors::MacroBodyStability {
+            sess.dcx().emit_err(diagnostics::MacroBodyStability {
                 span: sp,
                 head_span: sess.source_map().guess_head_span(span),
             });
@@ -1358,7 +1358,7 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn trace_macros_diag(&mut self) {
         for (span, notes) in self.expansions.iter() {
-            let mut db = self.dcx().create_note(errors::TraceMacro { span: *span });
+            let mut db = self.dcx().create_note(diagnostics::TraceMacro { span: *span });
             for note in notes {
                 db.note(note.clone());
             }
@@ -1376,7 +1376,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn std_path(&self, components: &[Symbol]) -> Vec<Ident> {
         let def_site = self.with_def_site_ctxt(DUMMY_SP);
         iter::once(Ident::new(kw::DollarCrate, def_site))
-            .chain(components.iter().map(|&s| Ident::with_dummy_span(s)))
+            .chain(components.iter().map(|&s| Ident::new(s, def_site)))
             .collect()
     }
     pub fn def_site_path(&self, components: &[Symbol]) -> Vec<Ident> {
@@ -1401,7 +1401,7 @@ pub fn resolve_path(sess: &Session, path: impl Into<PathBuf>, span: Span) -> PRe
         let callsite = span.source_callsite();
         let source_map = sess.source_map();
         let Some(mut base_path) = source_map.span_to_filename(callsite).into_local_path() else {
-            return Err(sess.dcx().create_err(errors::ResolveRelativePath {
+            return Err(sess.dcx().create_err(diagnostics::ResolveRelativePath {
                 span,
                 path: source_map
                     .filename_for_diagnostics(&source_map.span_to_filename(callsite))

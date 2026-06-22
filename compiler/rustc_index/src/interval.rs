@@ -370,6 +370,10 @@ impl<R: Idx, C: Step + Idx> SparseIntervalMatrix<R, C> {
         self.rows.get(row)
     }
 
+    pub fn iter_enumerated(&self) -> impl Iterator<Item = (R, &IntervalSet<C>)> {
+        self.rows.iter_enumerated()
+    }
+
     fn ensure_row(&mut self, row: R) -> &mut IntervalSet<C> {
         self.rows.ensure_contains_elem(row, || IntervalSet::new(self.column_size))
     }

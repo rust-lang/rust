@@ -156,6 +156,9 @@ pub struct Config {
     pub backtrace_on_ice: bool,
 
     // llvm codegen options
+    /// Key used to decide when to rebuild LLVM.
+    pub llvm_cache_key: String,
+
     pub llvm_assertions: bool,
     pub llvm_tests: bool,
     pub llvm_enzyme: bool,
@@ -595,6 +598,8 @@ impl Config {
             rustflags: rust_rustflags,
         } = toml.rust.unwrap_or_default();
 
+        let llvm = toml.llvm.unwrap_or_default();
+        let llvm_cache_key = llvm.cache_key();
         let Llvm {
             optimize: llvm_optimize,
             thin_lto: llvm_thin_lto,
@@ -625,7 +630,7 @@ impl Config {
             enable_warnings: llvm_enable_warnings,
             download_ci_llvm: llvm_download_ci_llvm,
             build_config: llvm_build_config,
-        } = toml.llvm.unwrap_or_default();
+        } = llvm;
 
         let Dist {
             sign_folder: dist_sign_folder,
@@ -1401,6 +1406,7 @@ impl Config {
             llvm_assertions,
             llvm_bitcode_linker_enabled: rust_llvm_bitcode_linker.unwrap_or(false),
             llvm_build_config: llvm_build_config.clone().unwrap_or(Default::default()),
+            llvm_cache_key,
             llvm_cflags,
             llvm_clang: llvm_clang.unwrap_or(false),
             llvm_clang_cl,

@@ -17,7 +17,7 @@ impl Read for Empty {
     }
 
     #[inline]
-    fn read_buf(&mut self, _cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, _cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         Ok(())
     }
 
@@ -39,7 +39,7 @@ impl Read for Empty {
     }
 
     #[inline]
-    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         if cursor.capacity() != 0 { Err(io::Error::READ_EXACT_EOF) } else { Ok(()) }
     }
 
@@ -202,7 +202,7 @@ impl Read for Repeat {
     }
 
     #[inline]
-    fn read_buf(&mut self, mut buf: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, mut buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         // SAFETY: No uninit bytes are being written.
         unsafe { buf.as_mut() }.write_filled(self.byte);
         // SAFETY: the entire unfilled portion of buf has been initialized.
@@ -211,7 +211,7 @@ impl Read for Repeat {
     }
 
     #[inline]
-    fn read_buf_exact(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf_exact(&mut self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.read_buf(buf)
     }
 

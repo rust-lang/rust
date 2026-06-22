@@ -14,7 +14,7 @@ use rustc_span::{Ident, Span, sym};
 use thin_vec::ThinVec;
 
 use crate::base::ModuleData;
-use crate::errors::{
+use crate::diagnostics::{
     ModuleCircular, ModuleFileNotFound, ModuleInBlock, ModuleInBlockName, ModuleMultipleCandidates,
 };
 

@@ -39,8 +39,8 @@ use rustc_session::config::CrateType;
 use rustc_session::errors::feature_err;
 use rustc_session::lint;
 use rustc_session::lint::builtin::{
-    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
-    MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
+    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+    MALFORMED_DIAGNOSTIC_FORMAT_LITERALS, MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
 };
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
@@ -48,7 +48,7 @@ use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
 use rustc_trait_selection::traits::ObligationCtxt;
 
-use crate::errors;
+use crate::diagnostics;
 
 #[derive(Diagnostic)]
 #[diag("`#[diagnostic::on_const]` can only be applied to non-const trait implementations")]
@@ -193,12 +193,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::Inline(kind, attr_span) => {
                 self.check_inline(hir_id, *attr_span, kind, target)
             }
-            AttributeKind::LoopMatch(attr_span) => {
-                self.check_loop_match(hir_id, *attr_span, target)
-            }
-            AttributeKind::ConstContinue(attr_span) => {
-                self.check_const_continue(hir_id, *attr_span, target)
-            }
             AttributeKind::AllowInternalUnsafe(attr_span)
             | AttributeKind::AllowInternalUnstable(.., attr_span) => {
                 self.check_macro_only_attr(*attr_span, span, target, attrs)
@@ -218,7 +212,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             &AttributeKind::RustcPubTransparent(attr_span) => {
                 self.check_rustc_pub_transparent(attr_span, span, attrs)
             }
-            AttributeKind::RustcAlign { .. } => {}
             AttributeKind::Naked(..) => self.check_naked(hir_id, target),
             AttributeKind::TrackCaller(attr_span) => {
                 self.check_track_caller(hir_id, *attr_span, attrs, target)
@@ -249,6 +242,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::OnMove { directive } => {
                 self.check_diagnostic_on_move(hir_id, directive.as_deref())
             }
+            AttributeKind::OnTypeError { directive, .. } => {
+                self.check_diagnostic_on_type_error(hir_id, directive.as_deref())
+            }
 
             // All of the following attributes have no specific checks.
             // tidy-alphabetical-start
@@ -259,6 +255,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::Cold => (),
             AttributeKind::CollapseDebugInfo(..) => (),
             AttributeKind::CompilerBuiltins => (),
+            AttributeKind::ConstContinue(..) => {}
             AttributeKind::Coroutine => (),
             AttributeKind::Coverage(..) => (),
             AttributeKind::CrateName { .. } => (),
@@ -277,11 +274,13 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::Fundamental => (),
             AttributeKind::Ignore { .. } => (),
             AttributeKind::InstructionSet(..) => (),
+            AttributeKind::InstrumentFn(..) => (),
             AttributeKind::Lang(..) => (),
             AttributeKind::LinkName { .. } => (),
             AttributeKind::LinkOrdinal { .. } => (),
             AttributeKind::LinkSection { .. } => (),
             AttributeKind::Linkage(..) => (),
+            AttributeKind::LoopMatch(..) => {}
             AttributeKind::MacroEscape => (),
             AttributeKind::MacroUse { .. } => (),
             AttributeKind::Marker => (),
@@ -298,7 +297,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::NoMangle(..) => (),
             AttributeKind::NoStd { .. } => (),
             AttributeKind::OnUnknown { .. } => (),
-            AttributeKind::OnUnmatchArgs { .. } => (),
+            AttributeKind::OnUnmatchedArgs { .. } => (),
             AttributeKind::Optimize(..) => (),
             AttributeKind::PanicRuntime => (),
             AttributeKind::PatchableFunctionEntry { .. } => (),
@@ -313,6 +312,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // handled below this loop and elsewhere
             AttributeKind::Repr { .. } => (),
             AttributeKind::RustcAbi { .. } => (),
+            AttributeKind::RustcAlign { .. } => {}
             AttributeKind::RustcAllocator => (),
             AttributeKind::RustcAllocatorZeroed => (),
             AttributeKind::RustcAllocatorZeroedVariant { .. } => (),
@@ -408,6 +408,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::TestRunner(..) => (),
             AttributeKind::ThreadLocal => (),
             AttributeKind::TypeLengthLimit { .. } => (),
+            AttributeKind::Unroll(..) => (),
             AttributeKind::UnstableFeatureBound(..) => (),
             AttributeKind::UnstableRemoved(..) => (),
             AttributeKind::Used { .. } => (),
@@ -442,21 +443,25 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             match item {
                 Some(item) if matches!(item.kind, ty::AssocKind::Fn { .. }) => {
                     if !item.defaultness(self.tcx).has_value() {
-                        self.tcx.dcx().emit_err(errors::FunctionNotHaveDefaultImplementation {
-                            span: self.tcx.def_span(item.def_id),
-                            note_span: attr_span,
-                        });
+                        self.tcx.dcx().emit_err(
+                            diagnostics::FunctionNotHaveDefaultImplementation {
+                                span: self.tcx.def_span(item.def_id),
+                                note_span: attr_span,
+                            },
+                        );
                     }
                 }
                 Some(item) => {
-                    self.dcx().emit_err(errors::MustImplementNotFunction {
+                    self.dcx().emit_err(diagnostics::MustImplementNotFunction {
                         span: self.tcx.def_span(item.def_id),
-                        span_note: errors::MustImplementNotFunctionSpanNote { span: attr_span },
-                        note: errors::MustImplementNotFunctionNote {},
+                        span_note: diagnostics::MustImplementNotFunctionSpanNote {
+                            span: attr_span,
+                        },
+                        note: diagnostics::MustImplementNotFunctionNote {},
                     });
                 }
                 None => {
-                    self.dcx().emit_err(errors::FunctionNotFoundInTrait { span: ident.span });
+                    self.dcx().emit_err(diagnostics::FunctionNotFoundInTrait { span: ident.span });
                 }
             }
         }
@@ -466,9 +471,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
         for ident in &*list {
             if let Some(dup) = set.insert(ident.name, ident.span) {
-                self.tcx
-                    .dcx()
-                    .emit_err(errors::FunctionNamesDuplicated { spans: vec![dup, ident.span] });
+                self.tcx.dcx().emit_err(diagnostics::FunctionNamesDuplicated {
+                    spans: vec![dup, ident.span],
+                });
             }
         }
     }
@@ -478,7 +483,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             match target {
                 Target::Fn | Target::Static => {}
                 _ => {
-                    self.dcx().emit_err(errors::EiiImplTarget { span: *span });
+                    self.dcx().emit_err(diagnostics::EiiImplTarget { span: *span });
                 }
             }
 
@@ -486,10 +491,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 && find_attr!(self.tcx, *eii_macro, EiiDeclaration(EiiDecl { impl_unsafe, .. }) if *impl_unsafe)
                 && !impl_marked_unsafe
             {
-                self.dcx().emit_err(errors::EiiImplRequiresUnsafe {
+                self.dcx().emit_err(diagnostics::EiiImplRequiresUnsafe {
                     span: *span,
                     name: self.tcx.item_name(*eii_macro),
-                    suggestion: errors::EiiImplRequiresUnsafeSuggestion {
+                    suggestion: diagnostics::EiiImplRequiresUnsafeSuggestion {
                         left: inner_span.shrink_to_lo(),
                         right: inner_span.shrink_to_hi(),
                     },
@@ -522,7 +527,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
                             hir_id,
                             span,
-                            errors::UnknownFormatParameterForOnUnimplementedAttr {
+                            diagnostics::UnknownFormatParameterForOnUnimplementedAttr {
                                 argument_name,
                                 trait_name: *trait_name,
                                 help: !directive.is_rustc_attr,
@@ -594,7 +599,59 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
                             hir_id,
                             span,
-                            errors::OnMoveMalformedFormatLiterals { name: argument_name },
+                            diagnostics::OnMoveMalformedFormatLiterals { name: argument_name },
+                        )
+                    }
+                });
+            }
+        }
+    }
+
+    fn check_diagnostic_on_type_error(&self, hir_id: HirId, directive: Option<&Directive>) {
+        if let Some(directive) = directive {
+            if let Node::Item(Item {
+                kind:
+                    ItemKind::Struct(_, generics, _)
+                    | ItemKind::Enum(_, generics, _)
+                    | ItemKind::Union(_, generics, _),
+                ..
+            }) = self.tcx.hir_node(hir_id)
+            {
+                let generic_count = generics
+                    .params
+                    .iter()
+                    .filter(|p| !matches!(p.kind, GenericParamKind::Lifetime { .. }))
+                    .count();
+
+                // Enforce: at most one generic
+                if generic_count != 1 {
+                    self.tcx.emit_node_span_lint(
+                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                        hir_id,
+                        generics.span,
+                        diagnostics::OnTypeErrorNotExactlyOneGeneric { count: generic_count },
+                    );
+                }
+
+                directive.visit_params(&mut |argument_name, span| {
+                    let has_generic = generics.params.iter().any(|p| {
+                        if !matches!(p.kind, GenericParamKind::Lifetime { .. })
+                            && let ParamName::Plain(name) = p.name
+                            && name.name == argument_name
+                        {
+                            true
+                        } else {
+                            false
+                        }
+                    });
+
+                    let is_allowed = argument_name == sym::Expected || argument_name == sym::Found;
+                    if !(has_generic | is_allowed) {
+                        self.tcx.emit_node_span_lint(
+                            MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
+                            hir_id,
+                            span,
+                            diagnostics::OnTypeErrorMalformedFormatLiterals { name: argument_name },
                         )
                     }
                 });
@@ -620,7 +677,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             UNUSED_ATTRIBUTES,
                             hir_id,
                             attr_span,
-                            errors::InlineIgnoredForExported,
+                            diagnostics::InlineIgnoredForExported,
                         );
                     }
                 }
@@ -687,7 +744,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 {
                     let sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
 
-                    self.dcx().emit_err(errors::LangItemWithTrackCaller {
+                    self.dcx().emit_err(diagnostics::LangItemWithTrackCaller {
                         attr_span,
                         name: item.name(),
                         sig_span: sig.span,
@@ -702,7 +759,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             EiiImplResolution::Known(decl) => decl.name.name,
                             EiiImplResolution::Error(_eg) => continue,
                         };
-                        self.dcx().emit_err(errors::EiiWithTrackCaller {
+                        self.dcx().emit_err(diagnostics::EiiWithTrackCaller {
                             attr_span,
                             name,
                             sig_span: sig.span,
@@ -731,7 +788,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     && !fields.is_empty()
                     && fields.iter().any(|f| f.default.is_some())
                 {
-                    self.dcx().emit_err(errors::NonExhaustiveWithDefaultFieldValues {
+                    self.dcx().emit_err(diagnostics::NonExhaustiveWithDefaultFieldValues {
                         attr_span,
                         defn_span: span,
                     });
@@ -761,7 +818,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 {
                     let sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
 
-                    self.dcx().emit_err(errors::LangItemWithTargetFeature {
+                    self.dcx().emit_err(diagnostics::LangItemWithTargetFeature {
                         attr_span,
                         name: lang_item.name(),
                         sig_span: sig.span,
@@ -827,13 +884,17 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             | Target::ExprField
             | Target::Crate
             | Target::MacroCall
-            | Target::Delegation { .. } => None,
+            | Target::Delegation { .. }
+            | Target::Loop
+            | Target::ForLoop
+            | Target::While
+            | Target::Break => None,
         } {
-            self.tcx.dcx().emit_err(errors::DocAliasBadLocation { span, location });
+            self.tcx.dcx().emit_err(diagnostics::DocAliasBadLocation { span, location });
             return;
         }
         if self.tcx.hir_opt_name(hir_id) == Some(alias) {
-            self.tcx.dcx().emit_err(errors::DocAliasNotAnAlias { span, attr_str: alias });
+            self.tcx.dcx().emit_err(diagnostics::DocAliasNotAnAlias { span, attr_str: alias });
             return;
         }
     }
@@ -856,18 +917,18 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         false
                     };
                 if !is_valid {
-                    self.dcx().emit_err(errors::DocFakeVariadicNotValid { span });
+                    self.dcx().emit_err(diagnostics::DocFakeVariadicNotValid { span });
                 }
             }
             _ => {
-                self.dcx().emit_err(errors::DocKeywordOnlyImpl { span });
+                self.dcx().emit_err(diagnostics::DocKeywordOnlyImpl { span });
             }
         }
     }
 
     fn check_doc_search_unbox(&self, span: Span, hir_id: HirId) {
         let hir::Node::Item(item) = self.tcx.hir_node(hir_id) else {
-            self.dcx().emit_err(errors::DocSearchUnboxInvalid { span });
+            self.dcx().emit_err(diagnostics::DocSearchUnboxInvalid { span });
             return;
         };
         match item.kind {
@@ -880,7 +941,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     }) => {}
             ItemKind::TyAlias(_, generics, _) if generics.params.len() != 0 => {}
             _ => {
-                self.dcx().emit_err(errors::DocSearchUnboxInvalid { span });
+                self.dcx().emit_err(diagnostics::DocSearchUnboxInvalid { span });
             }
         }
     }
@@ -907,7 +968,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             *span2,
                             msg!("{\".\"}..conflicts with this attribute"),
                         );
-                        self.dcx().emit_err(errors::DocInlineConflict { spans });
+                        self.dcx().emit_err(diagnostics::DocInlineConflict { spans });
                         return;
                     }
                 }
@@ -922,7 +983,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     INVALID_DOC_ATTRIBUTES,
                     hir_id,
                     span,
-                    errors::DocInlineOnlyUse {
+                    diagnostics::DocInlineOnlyUse {
                         attr_span: span,
                         item_span: self.tcx.hir_span(hir_id),
                     },
@@ -937,7 +998,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 INVALID_DOC_ATTRIBUTES,
                 hir_id,
                 span,
-                errors::DocMaskedOnlyExternCrate {
+                diagnostics::DocMaskedOnlyExternCrate {
                     attr_span: span,
                     item_span: self.tcx.hir_span(hir_id),
                 },
@@ -950,7 +1011,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 INVALID_DOC_ATTRIBUTES,
                 hir_id,
                 span,
-                errors::DocMaskedNotExternCrateSelf {
+                diagnostics::DocMaskedNotExternCrateSelf {
                     attr_span: span,
                     item_span: self.tcx.hir_span(hir_id),
                 },
@@ -966,12 +1027,13 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         match item_kind {
             Some(ItemKind::Mod(_, module)) => {
                 if !module.item_ids.is_empty() {
-                    self.dcx().emit_err(errors::DocKeywordAttributeEmptyMod { span, attr_name });
+                    self.dcx()
+                        .emit_err(diagnostics::DocKeywordAttributeEmptyMod { span, attr_name });
                     return;
                 }
             }
             _ => {
-                self.dcx().emit_err(errors::DocKeywordAttributeNotMod { span, attr_name });
+                self.dcx().emit_err(diagnostics::DocKeywordAttributeNotMod { span, attr_name });
                 return;
             }
         }
@@ -1053,7 +1115,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_ffi_pure(&self, attr_span: Span, attrs: &[Attribute]) {
         if find_attr!(attrs, FfiConst) {
             // `#[ffi_const]` functions cannot be `#[ffi_pure]`
-            self.dcx().emit_err(errors::BothFfiConstAndPure { attr_span });
+            self.dcx().emit_err(diagnostics::BothFfiConstAndPure { attr_span });
         }
     }
 
@@ -1075,7 +1137,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             return;
         }
 
-        self.dcx().emit_err(errors::InvalidMayDangle { attr_span });
+        self.dcx().emit_err(diagnostics::InvalidMayDangle { attr_span });
     }
 
     /// Checks if `#[link]` is applied to an item other than a foreign module.
@@ -1091,7 +1153,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             return;
         }
 
-        self.tcx.emit_node_span_lint(UNUSED_ATTRIBUTES, hir_id, attr_span, errors::Link);
+        self.tcx.emit_node_span_lint(UNUSED_ATTRIBUTES, hir_id, attr_span, diagnostics::Link);
     }
 
     /// Checks if `#[rustc_legacy_const_generics]` is applied to a function and has a valid argument.
@@ -1114,7 +1176,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             match param.kind {
                 hir::GenericParamKind::Const { .. } => {}
                 _ => {
-                    self.dcx().emit_err(errors::RustcLegacyConstGenericsOnly {
+                    self.dcx().emit_err(diagnostics::RustcLegacyConstGenericsOnly {
                         attr_span,
                         param_span: param.span,
                     });
@@ -1124,7 +1186,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
 
         if index_list.len() != generics.params.len() {
-            self.dcx().emit_err(errors::RustcLegacyConstGenericsIndex {
+            self.dcx().emit_err(diagnostics::RustcLegacyConstGenericsIndex {
                 attr_span,
                 generics_span: generics.span,
             });
@@ -1134,7 +1196,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         let arg_count = decl.inputs.len() + generics.params.len();
         for (index, span) in index_list {
             if *index >= arg_count {
-                self.dcx().emit_err(errors::RustcLegacyConstGenericsIndexExceed {
+                self.dcx().emit_err(diagnostics::RustcLegacyConstGenericsIndexExceed {
                     span: *span,
                     arg_count,
                 });
@@ -1195,7 +1257,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         // Error on repr(transparent, <anything else>).
         if is_transparent && reprs.len() > 1 {
             let hint_spans = hint_spans.clone().collect();
-            self.dcx().emit_err(errors::TransparentIncompatible {
+            self.dcx().emit_err(diagnostics::TransparentIncompatible {
                 hint_spans,
                 target: target.to_string(),
             });
@@ -1206,14 +1268,14 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             && let Some(&pass_indirectly_span) =
                 find_attr!(attrs, RustcPassIndirectlyInNonRusticAbis(span) => span)
         {
-            self.dcx().emit_err(errors::TransparentIncompatible {
+            self.dcx().emit_err(diagnostics::TransparentIncompatible {
                 hint_spans: vec![span, pass_indirectly_span],
                 target: target.to_string(),
             });
         }
         if is_explicit_rust && (int_reprs > 0 || is_c || is_simd) {
             let hint_spans = hint_spans.clone().collect();
-            self.dcx().emit_err(errors::ReprConflicting { hint_spans });
+            self.dcx().emit_err(diagnostics::ReprConflicting { hint_spans });
         }
         // Warn on repr(u8, u16), repr(C, simd), and c-like-enum-repr(C, u8)
         if (int_reprs > 1)
@@ -1228,7 +1290,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 CONFLICTING_REPR_HINTS,
                 hir_id,
                 hint_spans.collect::<Vec<Span>>(),
-                errors::ReprConflictingLint,
+                diagnostics::ReprConflictingLint,
             );
         }
     }
@@ -1252,7 +1314,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         return;
                     }
                 }
-                self.tcx.dcx().emit_err(errors::MacroOnlyAttribute { attr_span, span });
+                self.tcx.dcx().emit_err(diagnostics::MacroOnlyAttribute { attr_span, span });
             }
             _ => {}
         }
@@ -1270,7 +1332,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         match target {
             Target::Fn | Target::Method(_) => {
                 if !self.tcx.is_const_fn(hir_id.expect_owner().to_def_id()) {
-                    self.tcx.dcx().emit_err(errors::RustcAllowConstFnUnstable { attr_span, span });
+                    self.tcx
+                        .dcx()
+                        .emit_err(diagnostics::RustcAllowConstFnUnstable { attr_span, span });
                 }
             }
             _ => {}
@@ -1287,7 +1351,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     UNUSED_ATTRIBUTES,
                     hir_id,
                     attr_span,
-                    errors::DeprecatedAnnotationHasNoEffect { span: attr_span },
+                    diagnostics::DeprecatedAnnotationHasNoEffect { span: attr_span },
                 );
             }
             _ => {}
@@ -1308,7 +1372,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 UNUSED_ATTRIBUTES,
                 hir_id,
                 attr_span,
-                errors::MacroExport::OnDeclMacro,
+                diagnostics::MacroExport::OnDeclMacro,
             );
         }
     }
@@ -1320,7 +1384,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             if attr.has_any_name(&[sym::allow, sym::expect, sym::warn, sym::deny, sym::forbid])
                 && attr.meta_item_list().is_some_and(|list| list.is_empty())
             {
-                errors::UnusedNote::EmptyList { name: attr.name().unwrap() }
+                diagnostics::UnusedNote::EmptyList { name: attr.name().unwrap() }
             } else if attr.has_any_name(&[
                 sym::allow,
                 sym::warn,
@@ -1333,7 +1397,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 && let MetaItemKind::NameValue(_) = &item.kind
                 && item.path == sym::reason
             {
-                errors::UnusedNote::NoLints { name: attr.name().unwrap() }
+                diagnostics::UnusedNote::NoLints { name: attr.name().unwrap() }
             } else if attr.has_any_name(&[
                 sym::allow,
                 sym::warn,
@@ -1362,8 +1426,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                                 UNUSED_ATTRIBUTES,
                                 hir_id,
                                 attr_span,
-                                errors::OuterCrateLevelAttr {
-                                    suggestion: errors::OuterCrateLevelAttrSuggestion {
+                                diagnostics::OuterCrateLevelAttr {
+                                    suggestion: diagnostics::OuterCrateLevelAttrSuggestion {
                                         bang_position,
                                     },
                                 },
@@ -1373,7 +1437,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             UNUSED_ATTRIBUTES,
                             hir_id,
                             attr.span(),
-                            errors::InnerCrateLevelAttr,
+                            diagnostics::InnerCrateLevelAttr,
                         ),
                     };
                     return;
@@ -1384,7 +1448,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         .iter()
                         .all(|kind| matches!(kind, CrateType::Rlib | CrateType::StaticLib));
                     if never_needs_link {
-                        errors::UnusedNote::LinkerMessagesBinaryCrateOnly
+                        diagnostics::UnusedNote::LinkerMessagesBinaryCrateOnly
                     } else {
                         return;
                     }
@@ -1397,9 +1461,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 })
                 && !self.tcx.crate_types().contains(&CrateType::Executable)
             {
-                errors::UnusedNote::NoEffectDeadCodePubInBinary
+                diagnostics::UnusedNote::NoEffectDeadCodePubInBinary
             } else if attr.has_name(sym::default_method_body_is_const) {
-                errors::UnusedNote::DefaultMethodBodyConst
+                diagnostics::UnusedNote::DefaultMethodBodyConst
             } else {
                 return;
             };
@@ -1408,7 +1472,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             UNUSED_ATTRIBUTES,
             hir_id,
             attr.span(),
-            errors::Unused { attr_span: attr.span(), note },
+            diagnostics::Unused { attr_span: attr.span(), note },
         );
     }
 
@@ -1462,7 +1526,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         );
 
         if let Err(terr) = ocx.eq(&cause, param_env, expected_sig, sig) {
-            let mut diag = tcx.dcx().create_err(errors::ProcMacroBadSig { span, kind });
+            let mut diag = tcx.dcx().create_err(diagnostics::ProcMacroBadSig { span, kind });
 
             let hir_sig = tcx.hir_fn_sig_by_hir_id(hir_id);
             if let Some(hir_sig) = hir_sig {
@@ -1523,7 +1587,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if !find_attr!(attrs, Repr { reprs, .. } => reprs.iter().any(|(r, _)| r == &ReprAttr::ReprTransparent))
             .unwrap_or(false)
         {
-            self.dcx().emit_err(errors::RustcPubTransparent { span, attr_span });
+            self.dcx().emit_err(diagnostics::RustcPubTransparent { span, attr_span });
         }
     }
 
@@ -1547,7 +1611,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Inline(InlineAttr::Force { attr_span, .. }, _) => *attr_span
             ) && is_coro
             {
-                self.dcx().emit_err(errors::RustcForceInlineCoro { attr_span, span: parent_span });
+                self.dcx()
+                    .emit_err(diagnostics::RustcForceInlineCoro { attr_span, span: parent_span });
             }
         }
     }
@@ -1573,7 +1638,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 lint::builtin::UNUSED_ATTRIBUTES,
                 hir_id,
                 no_mangle_span,
-                errors::MixedExportNameAndNoMangle {
+                diagnostics::MixedExportNameAndNoMangle {
                     no_mangle_span,
                     export_name_span,
                     no_mangle_attr,
@@ -1590,32 +1655,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 find_attr!(attrs, Inline(inline_attr, span) => (inline_attr, *span))
             && inline_attr != &InlineAttr::Never
         {
-            self.dcx().emit_err(errors::BothOptimizeNoneAndInline { optimize_span, inline_span });
+            self.dcx()
+                .emit_err(diagnostics::BothOptimizeNoneAndInline { optimize_span, inline_span });
         }
-    }
-
-    fn check_loop_match(&self, hir_id: HirId, attr_span: Span, target: Target) {
-        let node_span = self.tcx.hir_span(hir_id);
-
-        if !matches!(target, Target::Expression) {
-            return; // Handled in target checking during attr parse
-        }
-
-        if !matches!(self.tcx.hir_expect_expr(hir_id).kind, hir::ExprKind::Loop(..)) {
-            self.dcx().emit_err(errors::LoopMatchAttr { attr_span, node_span });
-        };
-    }
-
-    fn check_const_continue(&self, hir_id: HirId, attr_span: Span, target: Target) {
-        let node_span = self.tcx.hir_span(hir_id);
-
-        if !matches!(target, Target::Expression) {
-            return; // Handled in target checking during attr parse
-        }
-
-        if !matches!(self.tcx.hir_expect_expr(hir_id).kind, hir::ExprKind::Break(..)) {
-            self.dcx().emit_err(errors::ConstContinueAttr { attr_span, node_span });
-        };
     }
 }
 
@@ -1746,7 +1788,7 @@ fn check_non_exported_macro_for_invalid_attrs(tcx: TyCtxt<'_>, item: &Item<'_>) 
     if let Some(attr_span) =
         find_attr!(attrs, Inline(i, span) if !matches!(i, InlineAttr::Force{..}) => *span)
     {
-        tcx.dcx().emit_err(errors::NonExportedMacroInvalidAttrs { attr_span });
+        tcx.dcx().emit_err(diagnostics::NonExportedMacroInvalidAttrs { attr_span });
     }
 }
 

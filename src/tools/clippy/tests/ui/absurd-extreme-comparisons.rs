@@ -1,11 +1,5 @@
 #![warn(clippy::absurd_extreme_comparisons)]
-#![allow(
-    unused,
-    clippy::eq_op,
-    clippy::no_effect,
-    clippy::unnecessary_operation,
-    clippy::needless_pass_by_value
-)]
+#![expect(clippy::eq_op, clippy::no_effect)]
 
 #[rustfmt::skip]
 fn main() {

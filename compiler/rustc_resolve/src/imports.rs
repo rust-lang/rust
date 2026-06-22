@@ -3,24 +3,16 @@
 use std::cmp::Ordering;
 use std::mem;
 
-use itertools::Itertools;
-use rustc_ast::{Item, NodeId};
-use rustc_attr_parsing::AttributeParser;
+use rustc_ast::NodeId;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::intern::Interned;
-use rustc_errors::codes::*;
-use rustc_errors::{
-    Applicability, BufferedEarlyLint, Diagnostic, MultiSpan, pluralize, struct_span_code_err,
-};
+use rustc_errors::{Applicability, BufferedEarlyLint, Diagnostic};
 use rustc_expand::base::SyntaxExtensionKind;
-use rustc_hir::Attribute;
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::attrs::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
 use rustc_hir::def::{self, DefKind, PartialRes};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
 use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
 use rustc_middle::span_bug;
-use rustc_middle::ty::{TyCtxt, Visibility};
+use rustc_middle::ty::Visibility;
 use rustc_session::errors::feature_err;
 use rustc_session::lint::LintId;
 use rustc_session::lint::builtin::{
@@ -33,13 +25,13 @@ use rustc_span::{Ident, Span, Symbol, kw, sym};
 use tracing::debug;
 
 use crate::Namespace::{self, *};
-use crate::diagnostics::{DiagMode, Suggestion, import_candidates};
-use crate::errors::{
+use crate::diagnostics::{
     self, CannotBeReexportedCratePublic, CannotBeReexportedCratePublicNS,
     CannotBeReexportedPrivate, CannotBeReexportedPrivateNS, CannotDetermineImportResolution,
     CannotGlobImportAllCrates, ConsiderAddingMacroExport, ConsiderMarkingAsPub,
     ConsiderMarkingAsPubCrate,
 };
+use crate::error_helper::{OnUnknownData, Suggestion};
 use crate::ref_mut::CmCell;
 use crate::{
     AmbiguityError, BindingKey, CmResolver, Decl, DeclData, DeclKind, Determinacy, Finalize,
@@ -160,28 +152,6 @@ impl<'ra> std::fmt::Debug for ImportKind<'ra> {
                 f.debug_struct("MacroUse").field("warn_private", warn_private).finish()
             }
             MacroExport => f.debug_struct("MacroExport").finish(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-pub(crate) struct OnUnknownData {
-    directive: Box<Directive>,
-}
-
-impl OnUnknownData {
-    pub(crate) fn from_attrs<'tcx>(tcx: TyCtxt<'tcx>, item: &Item) -> Option<OnUnknownData> {
-        if tcx.features().diagnostic_on_unknown()
-            && let Some(Attribute::Parsed(AttributeKind::OnUnknown { directive, .. })) =
-                AttributeParser::parse_limited(
-                    tcx.sess,
-                    &item.attrs,
-                    &[sym::diagnostic, sym::on_unknown],
-                )
-        {
-            Some(Self { directive: directive? })
-        } else {
-            None
         }
     }
 }
@@ -353,16 +323,16 @@ impl<'ra> NameResolution<'ra> {
 /// An error that may be transformed into a diagnostic later. Used to combine multiple unresolved
 /// import errors within the same use tree into a single diagnostic.
 #[derive(Debug, Clone)]
-struct UnresolvedImportError {
-    span: Span,
-    label: Option<String>,
-    note: Option<String>,
-    suggestion: Option<Suggestion>,
-    candidates: Option<Vec<ImportSuggestion>>,
-    segment: Option<Ident>,
+pub(crate) struct UnresolvedImportError {
+    pub(crate) span: Span,
+    pub(crate) label: Option<String>,
+    pub(crate) note: Option<String>,
+    pub(crate) suggestion: Option<Suggestion>,
+    pub(crate) candidates: Option<Vec<ImportSuggestion>>,
+    pub(crate) segment: Option<Ident>,
     /// comes from `PathRes::Failed { module }`
-    module: Option<DefId>,
-    on_unknown_attr: Option<OnUnknownData>,
+    pub(crate) module: Option<DefId>,
+    pub(crate) on_unknown_attr: Option<OnUnknownData>,
 }
 
 // Reexports of the form `pub use foo as bar;` where `foo` is `extern crate foo;`
@@ -628,6 +598,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             module.underscore_disambiguator.get()
         });
         self.update_local_resolution(module, key, orig_ident_span, |this, resolution| {
+            if res == Res::Err
+                && let Some(old_decl) = resolution.best_decl()
+                && old_decl.res() != Res::Err
+            {
+                // Do not override real declarations with `Res::Err`s from error recovery.
+                // FIXME: this special case shouldn't be necessary, but removing it triggers an ICE
+                // due to some other issues (#157406, tests/ui/imports/dummy-import-ice.rs).
+                return Ok(());
+            }
             if decl.is_glob_import() {
                 resolution.glob_decl = Some(match resolution.glob_decl {
                     Some(old_decl) => this.select_glob_decl(old_decl, decl),
@@ -1005,7 +984,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         AMBIGUOUS_GLOB_REEXPORTS,
                         import.root_id,
                         import.root_span,
-                        errors::AmbiguousGlobReexports {
+                        diagnostics::AmbiguousGlobReexports {
                             name: key.ident.name.to_string(),
                             namespace: key.ns.descr().to_string(),
                             first_reexport: import.root_span,
@@ -1036,7 +1015,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 HIDDEN_GLOB_REEXPORTS,
                                 binding_id,
                                 binding.span,
-                                errors::HiddenGlobReexports {
+                                diagnostics::HiddenGlobReexports {
                                     name: key.ident.name.to_string(),
                                     namespace: key.ns.descr().to_owned(),
                                     glob_reexport: glob_decl.span,
@@ -1060,7 +1039,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         EXPORTED_PRIVATE_DEPENDENCIES,
                         binding_id,
                         binding.span,
-                        crate::errors::ReexportPrivateDependency {
+                        crate::diagnostics::ReexportPrivateDependency {
                             name: key.ident.name,
                             kind: binding.res().descr(),
                             krate: self.tcx.crate_name(reexported_def_id.krate),
@@ -1068,141 +1047,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     );
                 }
             }
-        }
-    }
-
-    fn throw_unresolved_import_error(
-        &mut self,
-        mut errors: Vec<(Import<'_>, UnresolvedImportError)>,
-        glob_error: bool,
-    ) {
-        errors.retain(|(_import, err)| match err.module {
-            // Skip `use` errors for `use foo::Bar;` if `foo.rs` has unrecovered parse errors.
-            Some(def_id) if self.mods_with_parse_errors.contains(&def_id) => false,
-            // If we've encountered something like `use _;`, we've already emitted an error stating
-            // that `_` is not a valid identifier, so we ignore that resolve error.
-            _ => err.segment.map(|s| s.name) != Some(kw::Underscore),
-        });
-        if errors.is_empty() {
-            self.tcx.dcx().delayed_bug("expected a parse or \"`_` can't be an identifier\" error");
-            return;
-        }
-
-        let span = MultiSpan::from_spans(errors.iter().map(|(_, err)| err.span).collect());
-
-        let paths = errors
-            .iter()
-            .map(|(import, err)| {
-                let path = import_path_to_string(
-                    &import.module_path.iter().map(|seg| seg.ident).collect::<Vec<_>>(),
-                    &import.kind,
-                    err.span,
-                );
-                format!("`{path}`")
-            })
-            .collect::<Vec<_>>();
-        let default_message =
-            format!("unresolved import{} {}", pluralize!(paths.len()), paths.join(", "),);
-        let (message, label, notes) =
-            // Feature gating for `on_unknown_attr` happens initialization of the field
-            if let Some(directive) = errors[0].1.on_unknown_attr.as_ref().map(|a| &a.directive) {
-                let this = errors.iter().map(|(_import, err)| {
-
-                    // Is this unwrap_or reachable?
-                    err.segment.map(|s|s.name).unwrap_or(kw::Underscore)
-                }).join(", ");
-
-                let args = FormatArgs {
-                    this,
-                    ..
-                };
-                let CustomDiagnostic { message, label, notes, .. } = directive.eval(None, &args);
-
-                (message, label, notes)
-            } else {
-                (None, None, Vec::new())
-            };
-        let has_custom_message = message.is_some();
-        let message = message.as_deref().unwrap_or(default_message.as_str());
-
-        let mut diag = struct_span_code_err!(self.dcx(), span, E0432, "{message}");
-        if has_custom_message {
-            diag.note(default_message);
-        }
-
-        if !notes.is_empty() {
-            for note in notes {
-                diag.note(note);
-            }
-        } else if let Some((_, UnresolvedImportError { note: Some(note), .. })) =
-            errors.iter().last()
-        {
-            diag.note(note.clone());
-        }
-
-        /// Upper limit on the number of `span_label` messages.
-        const MAX_LABEL_COUNT: usize = 10;
-
-        for (import, err) in errors.into_iter().take(MAX_LABEL_COUNT) {
-            let label_span = match err.segment {
-                Some(segment) => segment.span,
-                None => err.span,
-            };
-            if let Some(label) = &label {
-                diag.span_label(label_span, label.clone());
-            } else if let Some(label) = &err.label {
-                diag.span_label(label_span, label.clone());
-            }
-
-            if let Some((suggestions, msg, applicability)) = err.suggestion {
-                if suggestions.is_empty() {
-                    diag.help(msg);
-                    continue;
-                }
-                diag.multipart_suggestion(msg, suggestions, applicability);
-            }
-
-            if let Some(candidates) = &err.candidates {
-                match &import.kind {
-                    ImportKind::Single { nested: false, source, target, .. } => import_candidates(
-                        self.tcx,
-                        &mut diag,
-                        Some(err.span),
-                        candidates,
-                        DiagMode::Import { append: false, unresolved_import: true },
-                        (source != target)
-                            .then(|| format!(" as {target}"))
-                            .as_deref()
-                            .unwrap_or(""),
-                    ),
-                    ImportKind::Single { nested: true, source, target, .. } => {
-                        import_candidates(
-                            self.tcx,
-                            &mut diag,
-                            None,
-                            candidates,
-                            DiagMode::Normal,
-                            (source != target)
-                                .then(|| format!(" as {target}"))
-                                .as_deref()
-                                .unwrap_or(""),
-                        );
-                    }
-                    _ => {}
-                }
-            }
-
-            if matches!(import.kind, ImportKind::Single { .. })
-                && let Some(segment) = err.segment
-                && let Some(module) = err.module
-            {
-                self.find_cfg_stripped(&mut diag, &segment.name, module)
-            }
-        }
-
-        let guar = diag.emit();
-        if glob_error {
-            self.glob_error = Some(guar);
         }
     }
 
@@ -1453,7 +1297,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         UNUSED_IMPORTS,
                         id,
                         import.span,
-                        crate::errors::RedundantImportVisibility {
+                        crate::diagnostics::RedundantImportVisibility {
                             span: import.span,
                             help: (),
                             max_vis: max_vis.to_string(def_id, self.tcx),
@@ -1769,7 +1613,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         {
             let ImportKind::Single { id, .. } = import.kind else { unreachable!() };
             let sugg = self.tcx.source_span(extern_crate_id).shrink_to_lo();
-            let diagnostic = crate::errors::PrivateExternCrateReexport { ident, sugg };
+            let diagnostic = crate::diagnostics::PrivateExternCrateReexport { ident, sugg };
             return Some(BufferedEarlyLint {
                 lint_id: LintId::of(PUB_USE_OF_PRIVATE_EXTERN_CRATE),
                 node_id: id,
@@ -1880,20 +1724,20 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         .into_iter()
                         .map(|(span, is_imported)| match (span.is_dummy(), is_imported) {
                             (false, true) => {
-                                errors::RedundantImportSub::ImportedHere { span, ident }
+                                diagnostics::RedundantImportSub::ImportedHere { span, ident }
                             }
                             (false, false) => {
-                                errors::RedundantImportSub::DefinedHere { span, ident }
+                                diagnostics::RedundantImportSub::DefinedHere { span, ident }
                             }
                             (true, true) => {
-                                errors::RedundantImportSub::ImportedPrelude { span, ident }
+                                diagnostics::RedundantImportSub::ImportedPrelude { span, ident }
                             }
                             (true, false) => {
-                                errors::RedundantImportSub::DefinedPrelude { span, ident }
+                                diagnostics::RedundantImportSub::DefinedPrelude { span, ident }
                             }
                         })
                         .collect();
-                    errors::RedundantImport { subs, ident }.into_diag(dcx, level)
+                    diagnostics::RedundantImport { subs, ident }.into_diag(dcx, level)
                 },
             );
             return true;
@@ -2020,7 +1864,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 }
 
-fn import_path_to_string(names: &[Ident], import_kind: &ImportKind<'_>, span: Span) -> String {
+pub(crate) fn import_path_to_string(
+    names: &[Ident],
+    import_kind: &ImportKind<'_>,
+    span: Span,
+) -> String {
     let pos = names.iter().position(|p| span == p.span && p.name != kw::PathRoot);
     let global = !names.is_empty() && names[0].name == kw::PathRoot;
     if let Some(pos) = pos {

@@ -51,12 +51,13 @@ use std::path::PathBuf;
 use std::{cmp, fmt, iter};
 
 use rustc_abi::ExternAbi;
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::{Applicability, Diag, DiagStyledString, IntoDiagArg, StringPart, pluralize};
-use rustc_hir as hir;
+use rustc_hir::attrs::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::{self as hir, find_attr};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_macros::extension;
 use rustc_middle::bug;
@@ -68,19 +69,21 @@ use rustc_middle::ty::{
     TypeVisitableExt, Unnormalized,
 };
 use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Pos, Span, sym};
+use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 
+use crate::diagnostics::{ObligationCauseFailureCode, TypeErrorAdditionalDiags};
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::traits::ambiguity::{
     CandidateSource, compute_applicable_impls_for_diagnostics,
 };
-use crate::errors::{ObligationCauseFailureCode, TypeErrorAdditionalDiags};
 use crate::infer;
 use crate::infer::relate::{self, RelateResult, TypeRelation};
 use crate::infer::{InferCtxt, InferCtxtExt as _, TypeTrace, ValuePairs};
 use crate::solve::deeply_normalize_for_diagnostics;
 use crate::traits::{
-    MatchExpressionArmCause, Obligation, ObligationCause, ObligationCauseCode, specialization_graph,
+    MatchExpressionArmCause, Obligation, ObligationCause, ObligationCauseCode, ObligationCtxt,
+    specialization_graph,
 };
 
 mod note_and_explain;
@@ -113,6 +116,31 @@ fn escape_literal(s: &str) -> String {
 }
 
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
+    fn normalize_fn_sig(
+        &self,
+        fn_sig: Unnormalized<'tcx, ty::PolyFnSig<'tcx>>,
+    ) -> ty::PolyFnSig<'tcx> {
+        let Some(param_env) = self.param_env else {
+            return fn_sig.skip_normalization();
+        };
+
+        if fn_sig.skip_normalization().has_escaping_bound_vars() {
+            return fn_sig.skip_normalization();
+        }
+
+        self.probe(|_| {
+            let ocx = ObligationCtxt::new(self);
+            let normalized_fn_sig = ocx.normalize(&ObligationCause::dummy(), param_env, fn_sig);
+            if ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
+                let normalized_fn_sig = self.resolve_vars_if_possible(normalized_fn_sig);
+                if !normalized_fn_sig.has_infer() {
+                    return normalized_fn_sig;
+                }
+            }
+            fn_sig.skip_normalization()
+        })
+    }
+
     // [Note-Type-error-reporting]
     // An invariant is that anytime the expected or actual type is Error (the special
     // error type, meaning that an error occurred when typechecking this expression),
@@ -202,7 +230,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     .kind()
                     .map_bound(|kind| match kind {
                         ty::ClauseKind::Projection(projection_predicate)
-                            if projection_predicate.projection_term.def_id() == item_def_id =>
+                            if projection_predicate.def_id() == item_def_id =>
                         {
                             projection_predicate.term.as_type()
                         }
@@ -268,7 +296,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let obligation =
             Obligation::new(tcx, ObligationCause::dummy(), param_env, ty::Binder::dummy(trait_ref));
 
-        let applicable_impls = compute_applicable_impls_for_diagnostics(self.infcx, &obligation);
+        let applicable_impls =
+            compute_applicable_impls_for_diagnostics(self.infcx, &obligation, false);
 
         for candidate in applicable_impls {
             let impl_def_id = match candidate {
@@ -758,18 +787,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     /// Given two `fn` signatures highlight only sub-parts that are different.
     fn cmp_fn_sig(
         &self,
-        sig1: &ty::PolyFnSig<'tcx>,
+        sig1: ty::PolyFnSig<'tcx>,
         fn_def1: Option<(DefId, Option<&'tcx [ty::GenericArg<'tcx>]>)>,
-        sig2: &ty::PolyFnSig<'tcx>,
+        sig2: ty::PolyFnSig<'tcx>,
         fn_def2: Option<(DefId, Option<&'tcx [ty::GenericArg<'tcx>]>)>,
     ) -> (DiagStyledString, DiagStyledString) {
-        let sig1 = &(self.normalize_fn_sig)(Unnormalized::new_wip(*sig1));
-        let sig2 = &(self.normalize_fn_sig)(Unnormalized::new_wip(*sig2));
+        let sig1 = self.normalize_fn_sig(Unnormalized::new_wip(sig1));
+        let sig2 = self.normalize_fn_sig(Unnormalized::new_wip(sig2));
 
         let get_lifetimes = |sig| {
             use rustc_hir::def::Namespace;
             let (sig, reg) = ty::print::FmtPrinter::new(self.tcx, Namespace::TypeNS)
-                .name_all_regions(sig, WrapBinderMode::ForAll)
+                .name_all_regions(&sig, WrapBinderMode::ForAll)
                 .unwrap();
             let lts: Vec<String> =
                 reg.into_items().map(|(_, kind)| kind.to_string()).into_sorted_stable_ord();
@@ -1282,26 +1311,21 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             (ty::FnDef(did1, args1), ty::FnDef(did2, args2)) => {
                 let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1).skip_norm_wip();
                 let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2).skip_norm_wip();
-                self.cmp_fn_sig(
-                    &sig1,
-                    Some((*did1, Some(args1))),
-                    &sig2,
-                    Some((*did2, Some(args2))),
-                )
+                self.cmp_fn_sig(sig1, Some((*did1, Some(args1))), sig2, Some((*did2, Some(args2))))
             }
 
             (ty::FnDef(did1, args1), ty::FnPtr(sig_tys2, hdr2)) => {
                 let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1).skip_norm_wip();
-                self.cmp_fn_sig(&sig1, Some((*did1, Some(args1))), &sig_tys2.with(*hdr2), None)
+                self.cmp_fn_sig(sig1, Some((*did1, Some(args1))), sig_tys2.with(*hdr2), None)
             }
 
             (ty::FnPtr(sig_tys1, hdr1), ty::FnDef(did2, args2)) => {
                 let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2).skip_norm_wip();
-                self.cmp_fn_sig(&sig_tys1.with(*hdr1), None, &sig2, Some((*did2, Some(args2))))
+                self.cmp_fn_sig(sig_tys1.with(*hdr1), None, sig2, Some((*did2, Some(args2))))
             }
 
             (ty::FnPtr(sig_tys1, hdr1), ty::FnPtr(sig_tys2, hdr2)) => {
-                self.cmp_fn_sig(&sig_tys1.with(*hdr1), None, &sig_tys2.with(*hdr2), None)
+                self.cmp_fn_sig(sig_tys1.with(*hdr1), None, sig_tys2.with(*hdr2), None)
             }
 
             _ => {
@@ -1473,7 +1497,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                     ValuePairs::TraitRefs(_) => (false, Mismatch::Fixed("trait")),
                     ValuePairs::Aliases(ExpectedFound { expected, .. }) => {
-                        (false, Mismatch::Fixed(self.tcx.def_descr(expected.def_id())))
+                        let def_id = match expected.kind {
+                            ty::AliasTermKind::ProjectionTy { def_id } => def_id.into(),
+                            ty::AliasTermKind::InherentTy { def_id } => def_id.into(),
+                            ty::AliasTermKind::OpaqueTy { def_id } => def_id.into(),
+                            ty::AliasTermKind::FreeTy { def_id } => def_id.into(),
+                            ty::AliasTermKind::AnonConst { def_id } => def_id.into(),
+                            ty::AliasTermKind::ProjectionConst { def_id } => def_id.into(),
+                            ty::AliasTermKind::FreeConst { def_id } => def_id.into(),
+                            ty::AliasTermKind::InherentConst { def_id } => def_id.into(),
+                        };
+                        (false, Mismatch::Fixed(self.tcx.def_descr(def_id)))
                     }
                     ValuePairs::Regions(_) => (false, Mismatch::Fixed("lifetime")),
                     ValuePairs::ExistentialTraitRef(_) => {
@@ -1985,6 +2019,88 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
+    fn check_on_type_error_attribute(
+        &self,
+        expected_ty: Ty<'tcx>,
+        found_ty: Ty<'tcx>,
+    ) -> ThinVec<String> {
+        let mut seen = FxHashSet::default();
+        let mut unique_notes: ThinVec<String> = ThinVec::new();
+
+        // Check found type for attribute
+        if let ty::Adt(item_def, args) = found_ty.kind() {
+            if let Some(Some(directive)) =
+                find_attr!(self.tcx, item_def.did(), OnTypeError { directive, .. } => directive)
+            {
+                let notes = self.format_on_type_error_notes(
+                    directive,
+                    args,
+                    item_def.clone(),
+                    expected_ty,
+                    found_ty,
+                );
+
+                for note in notes {
+                    if seen.insert(note.clone()) {
+                        unique_notes.push(note);
+                    }
+                }
+            }
+        }
+
+        // Check expected type for attribute
+        if let ty::Adt(item_def, args) = expected_ty.kind() {
+            if let Some(Some(directive)) =
+                find_attr!(self.tcx, item_def.did(), OnTypeError { directive, .. } => directive)
+            {
+                let notes = self.format_on_type_error_notes(
+                    directive,
+                    args,
+                    item_def.clone(),
+                    expected_ty,
+                    found_ty,
+                );
+
+                for note in notes {
+                    if seen.insert(note.clone()) {
+                        unique_notes.push(note);
+                    }
+                }
+            }
+        }
+
+        unique_notes
+    }
+
+    fn format_on_type_error_notes(
+        &self,
+        directive: &Directive,
+        args: &ty::GenericArgsRef<'tcx>,
+        item_def: ty::AdtDef<'tcx>,
+        expected_ty: Ty<'tcx>,
+        found_ty: Ty<'tcx>,
+    ) -> ThinVec<String> {
+        let item_name = self.tcx.item_name(item_def.did()).to_string();
+        let generic_args: Vec<_> = self
+            .tcx
+            .generics_of(item_def.did())
+            .own_params
+            .iter()
+            .filter_map(|param| Some((param.name, args[param.index as usize].to_string())))
+            .collect();
+
+        let format_args = FormatArgs {
+            this: item_name,
+            generic_args,
+            found: found_ty.to_string(),
+            expected: expected_ty.to_string(),
+            ..
+        };
+        let CustomDiagnostic { notes, .. } = directive.eval(None, &format_args);
+
+        notes.into()
+    }
+
     pub fn report_and_explain_type_error(
         &self,
         trace: TypeTrace<'tcx>,
@@ -1995,6 +2111,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let span = trace.cause.span;
         let mut path = None;
+
+        // Check for on_type_error attribute
+        let on_type_error_notes = if let Some((expected_ty, found_ty)) = trace.values.ty() {
+            self.check_on_type_error_attribute(expected_ty, found_ty)
+        } else {
+            ThinVec::new()
+        };
+
         let failure_code = trace.cause.as_failure_code_diag(
             terr,
             span,
@@ -2002,6 +2126,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         );
         let mut diag = self.dcx().create_err(failure_code);
         *diag.long_ty_path() = path;
+
+        // Add custom notes
+        for note in on_type_error_notes {
+            diag.note(note);
+        }
+
         self.note_type_err(
             &mut diag,
             &trace.cause,
@@ -2082,7 +2212,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     (None, None)
                 };
 
-                Some(self.cmp_fn_sig(&exp_found.expected, fn_def1, &exp_found.found, fn_def2))
+                Some(self.cmp_fn_sig(exp_found.expected, fn_def1, exp_found.found, fn_def2))
             }
         }
     }

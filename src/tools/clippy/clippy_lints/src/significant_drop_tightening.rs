@@ -8,7 +8,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{self as hir, HirId};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{GenericArgKind, Ty, Unnormalized};
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::Ident;
@@ -170,7 +170,6 @@ impl<'cx, 'others, 'tcx> AttrChecker<'cx, 'others, 'tcx> {
     fn has_sig_drop_attr_uncached(&mut self, ty: Ty<'tcx>, depth: usize) -> bool {
         if let Some(adt) = ty.ty_adt_def() {
             let mut iter = get_builtin_attr(
-                self.cx.sess(),
                 #[allow(deprecated)]
                 self.cx.tcx.get_all_attrs(adt.did()),
                 sym::has_significant_drop,

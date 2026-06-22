@@ -88,6 +88,9 @@ mod libloading {
 type ExternFn = unsafe extern "C" fn(u32, u32) -> u32;
 
 fn main() {
+    let args: Vec<String> = std::env::args().collect();
+    assert_eq!(args.len(), 2, "This program should be run with one argument");
+
     let foo = libloading::load("foo").expect("Failed to load library");
     println!("loaded library");
 
@@ -110,6 +113,13 @@ fn main() {
     .expect("Thread panicked");
     println!("thread joined");
 
-    libloading::unload(foo);
-    println!("unloaded library");
+    match args[1].as_str() {
+        "unload" => {
+            println!("unloading library");
+            libloading::unload(foo);
+            println!("unloaded library");
+        }
+        "load_only" => println!("dropping library handle without unloading"),
+        arg => panic!("unexpected argument: {}", arg),
+    }
 }

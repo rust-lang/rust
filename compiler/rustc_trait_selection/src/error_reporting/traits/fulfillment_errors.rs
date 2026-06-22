@@ -39,10 +39,12 @@ use tracing::{debug, instrument};
 
 use super::suggestions::get_explanation_based_on_obligation;
 use super::{ArgKind, CandidateSimilarity, GetSafeTransmuteErrorAndReason, ImplCandidate};
+use crate::diagnostics::{
+    ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch, CoroClosureNotFn,
+};
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::infer::TyCategory;
 use crate::error_reporting::traits::report_dyn_incompatibility;
-use crate::errors::{ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch, CoroClosureNotFn};
 use crate::infer::{self, InferCtxt, InferCtxtExt as _};
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::{
@@ -733,7 +735,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     | ty::PredicateKind::Ambiguous
                     | ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature { .. })
                     | ty::PredicateKind::NormalizesTo { .. }
-                    | ty::PredicateKind::AliasRelate { .. }
+                    | ty::PredicateKind::AliasRelate(..)
                     | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType { .. }) => {
                         span_bug!(
                             span,
@@ -1745,6 +1747,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 else {
                     return None;
                 };
+                if !proj.projection_term.kind.is_trait_projection() {
+                    return None;
+                }
 
                 let trait_ref = self.enter_forall_and_leak_universe(
                     predicate.kind().rebind(proj.projection_term.trait_ref(self.tcx)),
@@ -1817,11 +1822,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         expected_ty: ty::Term<'tcx>,
         long_ty_path: &mut Option<PathBuf>,
     ) -> Option<(String, Span, Option<Span>)> {
+        if !projection_term.kind.is_trait_projection() {
+            return None;
+        }
+
+        let projection_def_id = projection_term.expect_projection_def_id();
         let trait_def_id = projection_term.trait_def_id(self.tcx);
         let self_ty = projection_term.self_ty();
 
         with_forced_trimmed_paths! {
-            if self.tcx.is_lang_item(projection_term.def_id(), LangItem::FnOnceOutput) {
+            if self.tcx.is_lang_item(projection_def_id, LangItem::FnOnceOutput) {
                 let (span, closure_span) = if let ty::Closure(def_id, _) = *self_ty.kind() {
                     let def_span = self.tcx.def_span(def_id);
                     if let Some(local_def_id) = def_id.as_local()
@@ -3745,14 +3755,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ty::ConstKind::Unevaluated(uv) => {
                     let mut err =
                         self.dcx().struct_span_err(span, "unconstrained generic constant");
+                    let const_span = uv.kind.def_span(self.tcx);
 
                     let const_ty = uv.type_of(self.tcx).skip_norm_wip();
                     let cast = if const_ty != self.tcx.types.usize { " as usize" } else { "" };
                     let msg = "try adding a `where` bound";
-                    if let Some(def_id) = uv.kind.opt_def_id()
-                        && let const_span = self.tcx.def_span(def_id)
-                        && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(const_span)
-                    {
+                    if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(const_span) {
                         let code = format!("[(); {snippet}{cast}]:");
                         let suggestion_def_id = if let ObligationCauseCode::CompareImplItem {
                             trait_item_def_id,

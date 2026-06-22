@@ -1,4 +1,4 @@
-#![allow(clippy::useless_vec)]
+#![expect(clippy::useless_vec)]
 #![warn(clippy::assign_op_pattern)]
 #![feature(const_ops)]
 #![feature(const_trait_impl)]

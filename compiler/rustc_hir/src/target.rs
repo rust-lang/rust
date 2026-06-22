@@ -67,6 +67,10 @@ pub enum Target {
     MacroCall,
     Crate,
     Delegation { mac: bool },
+    ForLoop,
+    While,
+    Loop,
+    Break,
 }
 
 impl Display for Target {
@@ -113,7 +117,11 @@ impl Target {
             | Target::MacroCall
             | Target::Crate
             | Target::WherePredicate
-            | Target::Delegation { .. } => false,
+            | Target::Delegation { .. }
+            | Target::Loop
+            | Target::While
+            | Target::ForLoop
+            | Target::Break => false,
         }
     }
 
@@ -256,6 +264,10 @@ impl Target {
         match &expr.kind {
             ast::ExprKind::Closure(..) | ast::ExprKind::Gen(..) => Self::Closure,
             ast::ExprKind::Paren(e) => Self::from_expr(&e),
+            ast::ExprKind::ForLoop { .. } => Self::ForLoop,
+            ast::ExprKind::Loop(..) => Self::Loop,
+            ast::ExprKind::While(..) => Self::While,
+            ast::ExprKind::Break(..) => Self::Break,
             _ => Self::Expression,
         }
     }
@@ -307,6 +319,10 @@ impl Target {
             Target::MacroCall => "macro call",
             Target::Crate => "crate",
             Target::Delegation { .. } => "delegation",
+            Target::Loop => "loop",
+            Target::ForLoop => "for loop",
+            Target::While => "while loop",
+            Target::Break => "break expression",
         }
     }
 
@@ -358,6 +374,10 @@ impl Target {
             Target::MacroCall => "macro calls",
             Target::Crate => "crates",
             Target::Delegation { .. } => "delegations",
+            Target::ForLoop => "for loops",
+            Target::Loop => "loops",
+            Target::While => "while loops",
+            Target::Break => "break expressions",
         }
     }
 }

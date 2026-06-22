@@ -1,10 +1,11 @@
 //@only-target: linux android illumos
 // test_epoll_block_then_unblock and test_epoll_race depend on a deterministic schedule.
-//@compile-flags: -Zmiri-deterministic-concurrency
 //@revisions: edge_triggered level_triggered
+//@run-native
 
 use std::convert::TryInto;
 use std::thread;
+use std::time::Duration;
 
 #[path = "../../utils/libc.rs"]
 mod libc_utils;
@@ -71,8 +72,8 @@ fn test_epoll_block_then_unblock() {
     check_epoll_wait(epfd, &[Ev { events: EPOLLOUT, data: fds[0] }], -1);
 
     let thread1 = thread::spawn(move || {
-        thread::yield_now();
-        // Due to deterministic concurrency, we'll only get here when the other thread blocks.
+        thread::sleep(Duration::from_millis(10));
+        // Since we slept, we should only get here after the other thread blocks.
         write_all(fds[1], b"abcde").unwrap();
     });
 
@@ -80,7 +81,7 @@ fn test_epoll_block_then_unblock() {
         // Edge-triggered epoll will block until the write succeeds and the buffer
         // becomes readable. This is because we already read the writable edge
         // before so at the time of calling `epoll_wait` there is no active readiness.
-        check_epoll_wait(epfd, &[Ev { events: EPOLLIN | EPOLLOUT, data: fds[0] }], 10);
+        check_epoll_wait(epfd, &[Ev { events: EPOLLIN | EPOLLOUT, data: fds[0] }], 100);
     } else {
         // Level-triggered epoll won't wait for the write to succeed because
         // _some_ readiness is already set (in this case the EPOLLOUT).
@@ -142,7 +143,7 @@ fn test_epoll_race() {
         // Write to the eventfd instance.
         write_all(fd, &1_u64.to_ne_bytes()).unwrap();
     });
-    thread::yield_now();
+    thread::sleep(Duration::from_millis(10));
     // epoll_wait for EPOLLIN.
     check_epoll_wait(epfd, &[Ev { events: EPOLLIN, data: fd }], -1);
     // Read from the static mut variable.
@@ -168,7 +169,7 @@ fn wakeup_on_new_interest() {
         check_epoll_wait(epfd, &[Ev { events: EPOLLIN | EPOLLOUT, data: fds[1] }], -1);
     });
     // Ensure the thread is blocked.
-    std::thread::yield_now();
+    thread::sleep(Duration::from_millis(10));
 
     // Register fd[1] with EPOLLIN|EPOLLOUT|EPOLLRDHUP (and EPOLLET if we're in the
     // `edge_triggered` revision).
@@ -212,7 +213,7 @@ fn multiple_events_wake_multiple_threads() {
         Ev { events: e.events.cast_signed(), data: e.u64.try_into().unwrap() }
     });
     // Yield so both threads are waiting now.
-    thread::yield_now();
+    thread::sleep(Duration::from_millis(10));
 
     // Trigger the eventfd. This triggers two events at once!
     write_all(fd1, &0_u64.to_ne_bytes()).unwrap();

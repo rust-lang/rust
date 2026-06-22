@@ -25,7 +25,7 @@ use rustc_session::utils::{CanonicalizedPath, NativeLib};
 use rustc_session::{CompilerIO, EarlyDiagCtxt, Session, build_session, getopts};
 use rustc_span::edition::{DEFAULT_EDITION, Edition};
 use rustc_span::source_map::{RealFileLoader, SourceMapInputs};
-use rustc_span::{FileName, SourceFileHashAlgorithm, sym};
+use rustc_span::{FileName, RealFileName, RemapPathScopeComponents, SourceFileHashAlgorithm, sym};
 use rustc_target::spec::{
     CodeModel, FramePointer, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy,
     RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TlsModel,
@@ -173,6 +173,33 @@ fn test_can_print_warnings() {
     sess_and_cfg(&["-Adead_code"], |sess, _cfg| {
         assert!(sess.dcx().can_emit_warnings());
     });
+}
+
+// `-Zremap-cwd-prefix` must not be merged into the tracked `remap_path_prefix` option:
+// storing the absolute cwd there invalidates the incremental cache across build
+// directories (see #132132). It must instead be applied via `file_path_mapping`.
+#[test]
+fn test_remap_cwd_prefix_not_in_remap_path_prefix() {
+    sess_and_cfg(
+        &["--remap-path-prefix=/explicit=mapped", "-Zremap-cwd-prefix=cwd-mapped"],
+        |sess, _cfg| {
+            // The tracked option holds only the explicit `--remap-path-prefix` entry.
+            assert_eq!(
+                sess.opts.remap_path_prefix,
+                vec![(PathBuf::from("/explicit"), PathBuf::from("mapped"))],
+            );
+
+            // ... but the cwd remapping is still applied via `file_path_mapping`.
+            let cwd = std::env::current_dir().unwrap();
+            let remapped = sess
+                .opts
+                .file_path_mapping()
+                .to_real_filename(&RealFileName::empty(), cwd.join("foo.rs"))
+                .path(RemapPathScopeComponents::DEBUGINFO)
+                .to_path_buf();
+            assert_eq!(remapped, PathBuf::from("cwd-mapped/foo.rs"));
+        },
+    );
 }
 
 #[test]
@@ -867,6 +894,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(src_hash_algorithm, Some(SourceFileHashAlgorithm::Sha1));
     tracked!(stack_protector, StackProtector::All);
     tracked!(staticlib_hide_internal_symbols, true);
+    tracked!(staticlib_rename_internal_symbols, true);
     tracked!(teach, true);
     tracked!(thinlto, Some(true));
     tracked!(tiny_const_eval_limit, true);

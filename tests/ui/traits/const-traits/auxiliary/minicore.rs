@@ -12,7 +12,7 @@
     fundamental,
     marker_trait_attr,
     const_trait_impl,
-    const_destruct,
+    const_destruct
 )]
 #![allow(internal_features, incomplete_features)]
 #![no_std]
@@ -41,7 +41,7 @@ pub const trait Add<Rhs = Self> {
     fn add(self, rhs: Rhs) -> Self::Output;
 }
 
-impl const Add for i32 {
+const impl Add for i32 {
     type Output = i32;
     fn add(self, rhs: i32) -> i32 {
         loop {}
@@ -170,7 +170,7 @@ pub const unsafe trait SliceIndex<T: PointeeSized> {
     fn index(self, slice: &T) -> &Self::Output;
 }
 
-impl<T, I> const Index<I> for [T]
+const impl<T, I> Index<I> for [T]
 where
     I: [const] SliceIndex<[T]>,
 {
@@ -182,7 +182,7 @@ where
     }
 }
 
-impl<T, I, const N: usize> const Index<I> for [T; N]
+const impl<T, I, const N: usize> Index<I> for [T; N]
 where
     [T]: [const] Index<I>,
 {
@@ -210,7 +210,7 @@ pub const trait Deref {
     fn deref(&self) -> &Self::Target;
 }
 
-impl<T: MetaSized> const Deref for &T {
+const impl<T: MetaSized> Deref for &T {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -218,7 +218,7 @@ impl<T: MetaSized> const Deref for &T {
     }
 }
 
-impl<T: MetaSized> const Deref for &mut T {
+const impl<T: MetaSized> Deref for &mut T {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -269,7 +269,7 @@ pub const trait From<T>: Sized {
     fn from(value: T) -> Self;
 }
 
-impl<T, U> const Into<U> for T
+const impl<T, U> Into<U> for T
 where
     U: [const] From<T>,
 {
@@ -278,7 +278,7 @@ where
     }
 }
 
-impl<T> const From<T> for T {
+const impl<T> From<T> for T {
     fn from(t: T) -> T {
         t
     }
@@ -306,7 +306,7 @@ pub const trait PartialEq<Rhs: PointeeSized = Self>: PointeeSized {
     }
 }
 
-impl<A: PointeeSized, B: PointeeSized> const PartialEq<&B> for &A
+const impl<A: PointeeSized, B: PointeeSized> PartialEq<&B> for &A
 where
     A: [const] PartialEq<B>,
 {
@@ -327,7 +327,7 @@ pub const trait Not {
     fn not(self) -> Self::Output;
 }
 
-impl const Not for bool {
+const impl Not for bool {
     type Output = bool;
     fn not(self) -> bool {
         !self
@@ -387,14 +387,14 @@ impl<T> Option<T> {
     }
 }
 
-impl<P: [const] Deref> const Deref for Pin<P> {
+const impl<P: [const] Deref> Deref for Pin<P> {
     type Target = P::Target;
     fn deref(&self) -> &P::Target {
         Pin::get_ref(Pin::as_ref(self))
     }
 }
 
-impl<T> const Deref for Option<T> {
+const impl<T> Deref for Option<T> {
     type Target = T;
     fn deref(&self) -> &T {
         loop {}

@@ -937,21 +937,28 @@ impl EarlyLintPass for UnusedParens {
                             && !dyn2015_exception
                         {
                             let s = poly_trait_ref.span;
-                            let spans = (!s.from_expansion()).then(|| {
-                                (
+                            // Check that the span really is wrapped in single-byte ASCII parens
+                            // before trimming a byte off each end, in case a macro does weird
+                            // things with spans or parser recovery produced multibyte parens.
+                            if !s.from_expansion()
+                                && let Ok(snippet) = cx.sess().source_map().span_to_snippet(s)
+                                && snippet.starts_with('(')
+                                && snippet.ends_with(')')
+                            {
+                                let spans = Some((
                                     s.with_hi(s.lo() + rustc_span::BytePos(1)),
                                     s.with_lo(s.hi() - rustc_span::BytePos(1)),
-                                )
-                            });
+                                ));
 
-                            self.emit_unused_delims(
-                                cx,
-                                poly_trait_ref.span,
-                                spans,
-                                "type",
-                                (false, false),
-                                false,
-                            );
+                                self.emit_unused_delims(
+                                    cx,
+                                    poly_trait_ref.span,
+                                    spans,
+                                    "type",
+                                    (false, false),
+                                    false,
+                                );
+                            }
                         }
                     }
                 }
@@ -968,7 +975,7 @@ impl EarlyLintPass for UnusedParens {
         self.in_no_bounds_pos.clear();
     }
 
-    fn enter_where_predicate(&mut self, _: &EarlyContext<'_>, pred: &ast::WherePredicate) {
+    fn check_where_predicate(&mut self, _: &EarlyContext<'_>, pred: &ast::WherePredicate) {
         use rustc_ast::{WhereBoundPredicate, WherePredicateKind};
         if let WherePredicateKind::BoundPredicate(WhereBoundPredicate {
             bounded_ty,
@@ -982,7 +989,7 @@ impl EarlyLintPass for UnusedParens {
         }
     }
 
-    fn exit_where_predicate(&mut self, _: &EarlyContext<'_>, _: &ast::WherePredicate) {
+    fn check_where_predicate_post(&mut self, _: &EarlyContext<'_>, _: &ast::WherePredicate) {
         assert!(!self.with_self_ty_parens);
     }
 }

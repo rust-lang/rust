@@ -1,5 +1,6 @@
 #![allow(clippy::similar_names)] // `expr` and `expn`
 
+use std::cell::Cell;
 use std::sync::{Arc, OnceLock};
 
 use crate::visitors::{Descend, for_each_expr_without_closures};
@@ -179,6 +180,33 @@ pub fn first_node_macro_backtrace(cx: &LateContext<'_>, node: &impl HirNode) -> 
 /// A node may be the "first node" of multiple macro calls in a macro backtrace.
 /// The expansion of the outermost macro call site is returned in such cases.
 pub fn first_node_in_macro(cx: &LateContext<'_>, node: &impl HirNode) -> Option<ExpnId> {
+    // A node that is not from an expansion can never be the first node in a macro. This is the
+    // common case, so return before touching the cache.
+    if !node.span().from_expansion() {
+        return None;
+    }
+
+    // The macro lints each query this for the node currently being visited, and the combined late
+    // pass runs all their `check_*` callbacks on that node back to back, so the redundant queries
+    // are consecutive. A single-slot memo of the last node collapses them to one backtrace walk in
+    // O(1) memory. The result is a pure function of the `HirId` (the HIR is frozen during lint
+    // passes), so returning the stored value on a key match is always correct.
+    let hir_id = node.hir_id();
+    if let Some((cached_id, cached)) = LAST_FIRST_NODE_IN_MACRO.get()
+        && cached_id == hir_id
+    {
+        return cached;
+    }
+    let result = first_node_in_macro_uncached(cx, node);
+    LAST_FIRST_NODE_IN_MACRO.set(Some((hir_id, result)));
+    result
+}
+
+thread_local! {
+    static LAST_FIRST_NODE_IN_MACRO: Cell<Option<(HirId, Option<ExpnId>)>> = const { Cell::new(None) };
+}
+
+fn first_node_in_macro_uncached(cx: &LateContext<'_>, node: &impl HirNode) -> Option<ExpnId> {
     // get the macro expansion or return `None` if not found
     // `macro_backtrace` importantly ignores desugaring expansions
     let expn = macro_backtrace(node.span()).next()?.expn;

@@ -46,7 +46,7 @@ use rustc_trait_selection::infer::TyCtxtInferExt as _;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
 use tracing::{debug, instrument, trace};
 
-use crate::errors::{MustNotSupend, MustNotSuspendReason};
+use crate::diagnostics::{MustNotSupend, MustNotSuspendReason};
 
 const SELF_ARG: Local = Local::arg(0);
 

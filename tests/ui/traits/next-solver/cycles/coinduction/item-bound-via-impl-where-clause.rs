@@ -31,6 +31,5 @@ fn main() {
     let s: String = transmute::<_, String>(vec![65_u8, 66, 67]);
     //~^ ERROR overflow evaluating the requirement `Vec<u8>: Trait<String>`
     //[next]~| ERROR: overflow evaluating the requirement `<Vec<u8> as Trait<String>>::Proof == _`
-    //[next]~| ERROR: overflow evaluating the requirement `<Vec<u8> as Trait<String>>::Proof == _`
     println!("{}", s); // ABC
 }

@@ -129,6 +129,8 @@ impl<'sess> AttributeParser<'sess> {
 
         let allowed_targets = allowed_targets.allowed_targets();
         let (applied, only) = allowed_targets_applied(allowed_targets, cx.target, cx.features);
+        let is_diagnostic_attr = cx.attr_path.segments[0] == sym::diagnostic;
+
         let diag = InvalidTarget {
             span: cx.attr_span.clone(),
             name: cx.attr_path.clone(),
@@ -137,7 +139,8 @@ impl<'sess> AttributeParser<'sess> {
             applied: DiagArgValue::StrListSepByAnd(applied.into_iter().map(Cow::Owned).collect()),
             attribute_args,
             help: Self::target_checking_help(attribute_args, cx),
-            previously_accepted: matches!(result, AllowedResult::Warn),
+            previously_accepted: matches!(result, AllowedResult::Warn) && !is_diagnostic_attr,
+            on_macro_call: matches!(cx.target, Target::MacroCall),
         };
 
         match result {
@@ -154,6 +157,8 @@ impl<'sess> AttributeParser<'sess> {
                     .contains(&cx.target)
                 {
                     rustc_session::lint::builtin::USELESS_DEPRECATED
+                } else if is_diagnostic_attr {
+                    rustc_session::lint::builtin::MISPLACED_DIAGNOSTIC_ATTRIBUTES
                 } else {
                     rustc_session::lint::builtin::UNUSED_ATTRIBUTES
                 };
@@ -524,5 +529,9 @@ pub(crate) const ALL_TARGETS: &'static [Policy] = {
             kind: rustc_hir::target::GenericParamKind::Type,
             has_default: true,
         }),
+        Allow(Target::Loop),
+        Allow(Target::ForLoop),
+        Allow(Target::While),
+        Allow(Target::Break),
     ]
 };

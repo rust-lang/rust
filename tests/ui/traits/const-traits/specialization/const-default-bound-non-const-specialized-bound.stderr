@@ -1,7 +1,7 @@
 error[E0119]: conflicting implementations of trait `Bar`
   --> $DIR/const-default-bound-non-const-specialized-bound.rs:24:1
    |
-LL | / impl<T> const Bar for T
+LL | / const impl<T> Bar for T
 LL | | where
 LL | |     T: [const] Foo,
    | |___________________- first implementation here
@@ -15,12 +15,12 @@ LL | |     T: Specialize,
 error[E0119]: conflicting implementations of trait `Baz`
   --> $DIR/const-default-bound-non-const-specialized-bound.rs:43:1
    |
-LL | / impl<T> const Baz for T
+LL | / const impl<T> Baz for T
 LL | | where
 LL | |     T: [const] Foo,
    | |___________________- first implementation here
 ...
-LL | / impl<T> const Baz for T
+LL | / const impl<T> Baz for T
 LL | | where
 LL | |     T: Foo,
 LL | |     T: Specialize,

@@ -7,7 +7,9 @@
 //@ ignore-apple
 // Reason: the compiled binary is executed
 
-use run_make_support::{build_native_static_lib, cc, dynamic_lib_name, is_darwin, llvm_nm, rustc};
+use run_make_support::{
+    build_native_static_lib, cc, dynamic_lib_name, is_aix, is_darwin, llvm_nm, rustc,
+};
 
 fn main() {
     cc().input("foo.c").arg("-c").out_exe("foo.o").run();
@@ -27,6 +29,11 @@ fn main() {
             .input(dynamic_lib_name("foo_export"))
             .run()
             .assert_stdout_contains("T _my_function");
+    } else if is_aix() {
+        let out = llvm_nm()
+            .input(dynamic_lib_name("foo_export"))
+            .run()
+            .assert_stdout_contains("T .my_function");
     } else {
         let out = llvm_nm()
             .input(dynamic_lib_name("foo_export"))

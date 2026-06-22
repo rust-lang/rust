@@ -1,6 +1,6 @@
 //@aux-build:proc_macros.rs
-#![allow(clippy::unnecessary_fold, unused)]
 #![warn(clippy::manual_try_fold)]
+#![expect(clippy::unnecessary_fold)]
 #![feature(try_trait_v2)]
 #![feature(try_trait_v2_residual)]
 //@no-rustfix
@@ -132,7 +132,6 @@ mod issue11876 {
         }
     }
 
-    #[allow(dead_code)]
     struct Fold<S, A, F> {
         this: S,
         init: A,

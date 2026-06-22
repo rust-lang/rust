@@ -315,3 +315,10 @@ html comment closing
 ";
     assert_eq!(expected, lengthen_lines(original, 50));
 }
+
+#[test]
+#[ignore]
+fn should_pass() {
+    let original = "if you see `input isn't interesting! verify interesting-ness test`.";
+    assert_eq!(original, comply(original));
+}

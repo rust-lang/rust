@@ -2,12 +2,10 @@
 //@ assembly-output: emit-asm
 //
 //@ revisions: MIPS MIPS64 MIPS64EL
+//@ needs-llvm-components: mips
 //@ [MIPS] compile-flags: -Copt-level=3 --target mips-unknown-linux-gnu
-//@ [MIPS] needs-llvm-components: mips
 //@ [MIPS64] compile-flags: -Copt-level=3 --target mipsisa64r6-unknown-linux-gnuabi64
-//@ [MIPS64] needs-llvm-components: mips
 //@ [MIPS64EL] compile-flags: -Copt-level=3 --target mips64el-unknown-linux-gnuabi64
-//@ [MIPS64EL] needs-llvm-components: mips
 #![feature(c_variadic, no_core, lang_items, intrinsics, rustc_attrs, asm_experimental_arch)]
 #![no_core]
 #![crate_type = "lib"]

@@ -3,7 +3,7 @@
 
 pub trait A {}
 
-impl const A for () {}
+const impl A for () {}
 //~^ ERROR: const `impl` for trait `A` which is not `const`
 
 fn main() {}

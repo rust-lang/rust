@@ -10,7 +10,7 @@ const trait Func {
 
 struct Cls;
 
-impl const Func for Cls {
+const impl Func for Cls {
     fn trigger(&self, a: usize) -> usize {
         //~^ ERROR method `trigger` has 2 parameters but the declaration in trait `Func::trigger` has 1
         0

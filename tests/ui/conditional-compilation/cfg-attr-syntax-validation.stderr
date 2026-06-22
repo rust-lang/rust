@@ -89,14 +89,23 @@ LL - #[cfg(a::b)]
 LL + #[cfg(predicate)]
    |
 
-error[E0537]: invalid predicate `a`
-  --> $DIR/cfg-attr-syntax-validation.rs:37:7
+error[E0539]: malformed `cfg` attribute input
+  --> $DIR/cfg-attr-syntax-validation.rs:37:1
    |
 LL | #[cfg(a())]
-   |       ^^^
+   | ^^^^^^---^^
+   |       |
+   |       valid arguments are `any`, `all`, `not` or `target`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+help: must be of the form
+   |
+LL - #[cfg(a())]
+LL + #[cfg(predicate)]
+   |
 
 error[E0539]: malformed `cfg` attribute input
-  --> $DIR/cfg-attr-syntax-validation.rs:40:1
+  --> $DIR/cfg-attr-syntax-validation.rs:42:1
    |
 LL | #[cfg(a = 10)]
    | ^^^^^^^^^^--^^
@@ -111,7 +120,7 @@ LL + #[cfg(predicate)]
    |
 
 error[E0539]: malformed `cfg` attribute input
-  --> $DIR/cfg-attr-syntax-validation.rs:45:1
+  --> $DIR/cfg-attr-syntax-validation.rs:47:1
    |
 LL | #[cfg(a = b"hi")]
    | ^^^^^^^^^^-^^^^^^
@@ -121,7 +130,7 @@ LL | #[cfg(a = b"hi")]
    = note: expected a normal string literal, not a byte string literal
 
 error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `expr` metavariable
-  --> $DIR/cfg-attr-syntax-validation.rs:51:25
+  --> $DIR/cfg-attr-syntax-validation.rs:53:25
    |
 LL |         #[cfg(feature = $expr)]
    |                         ^^^^^
@@ -133,5 +142,5 @@ LL | generate_s10!(concat!("nonexistent"));
 
 error: aborting due to 10 previous errors
 
-Some errors have detailed explanations: E0537, E0539, E0565, E0805.
-For more information about an error, try `rustc --explain E0537`.
+Some errors have detailed explanations: E0539, E0565, E0805.
+For more information about an error, try `rustc --explain E0539`.

@@ -6,7 +6,9 @@ use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::{SpanRangeExt, snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{fn_def_id, get_expr_use_site, get_parent_expr, higher, is_in_const_context, is_integer_const, sym};
+use clippy_utils::{
+    fn_def_id, get_expr_use_site, get_parent_expr, higher, is_in_const_context, is_integer_literal, sym,
+};
 use rustc_ast::Mutability;
 use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
@@ -510,7 +512,7 @@ fn check_range_switch<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'_>,
     kind: RangeLimits,
-    predicate: impl for<'hir> FnOnce(&LateContext<'_>, &Expr<'hir>) -> Option<&'hir Expr<'hir>>,
+    predicate: impl for<'hir> FnOnce(&Expr<'hir>) -> Option<&'hir Expr<'hir>>,
     lint: &'static Lint,
     msg: &'static str,
     operator: &str,
@@ -524,7 +526,7 @@ fn check_range_switch<'tcx>(
         } = range
         && span.can_be_used_for_suggestions()
         && limits == kind
-        && let Some(y) = predicate(cx, end)
+        && let Some(y) = predicate(end)
         && can_switch_ranges(cx, span.ctxt(), expr, kind, cx.typeck_results().expr_ty(y))
     {
         span_lint_and_then(cx, lint, span, msg, |diag| {
@@ -632,7 +634,7 @@ fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>) {
     }
 }
 
-fn y_plus_one<'tcx>(cx: &LateContext<'_>, expr: &Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
+fn y_plus_one<'tcx>(expr: &Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
     match expr.kind {
         ExprKind::Binary(
             Spanned {
@@ -641,9 +643,9 @@ fn y_plus_one<'tcx>(cx: &LateContext<'_>, expr: &Expr<'tcx>) -> Option<&'tcx Exp
             lhs,
             rhs,
         ) => {
-            if is_integer_const(cx, lhs, 1) {
+            if is_integer_literal(lhs, 1) {
                 Some(rhs)
-            } else if is_integer_const(cx, rhs, 1) {
+            } else if is_integer_literal(rhs, 1) {
                 Some(lhs)
             } else {
                 None
@@ -653,7 +655,7 @@ fn y_plus_one<'tcx>(cx: &LateContext<'_>, expr: &Expr<'tcx>) -> Option<&'tcx Exp
     }
 }
 
-fn y_minus_one<'tcx>(cx: &LateContext<'_>, expr: &Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
+fn y_minus_one<'tcx>(expr: &Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
     match expr.kind {
         ExprKind::Binary(
             Spanned {
@@ -661,7 +663,7 @@ fn y_minus_one<'tcx>(cx: &LateContext<'_>, expr: &Expr<'tcx>) -> Option<&'tcx Ex
             },
             lhs,
             rhs,
-        ) if is_integer_const(cx, rhs, 1) => Some(lhs),
+        ) if is_integer_literal(rhs, 1) => Some(lhs),
         _ => None,
     }
 }

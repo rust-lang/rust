@@ -124,6 +124,17 @@ pub(crate) struct FnParamCVarArgsNotLast {
 }
 
 #[derive(Diagnostic)]
+#[diag("`#[splat]` is not supported on argument index {$splatted_arg_index}")]
+#[help("remove `#[splat]`, or use it on an argument closer to the start of the argument list")]
+pub(crate) struct InvalidSplattedArg {
+    pub splatted_arg_index: u16,
+
+    #[primary_span]
+    #[label("`#[splat]` is not supported here")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("multiple `#[splat]`s are not allowed in the same function")]
 #[help("remove `#[splat]` from all but one argument")]
 pub(crate) struct DuplicateSplattedArgs {

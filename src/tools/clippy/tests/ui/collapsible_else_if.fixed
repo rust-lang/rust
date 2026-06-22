@@ -1,4 +1,3 @@
-#![allow(clippy::assertions_on_constants, clippy::equatable_if_let, clippy::needless_ifs)]
 #![warn(clippy::collapsible_else_if)]
 
 #[rustfmt::skip]

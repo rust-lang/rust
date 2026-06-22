@@ -1352,7 +1352,7 @@ impl Read for &File {
     }
 
     #[inline]
-    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.inner.read_buf(cursor)
     }
 
@@ -1497,7 +1497,7 @@ impl Read for File {
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         (&*self).read_vectored(bufs)
     }
-    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         (&*self).read_buf(cursor)
     }
     #[inline]
@@ -2751,19 +2751,21 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 ///
 /// # Platform-specific behavior
 ///
-/// This function currently corresponds to the `rename` function on Unix
-/// and the `MoveFileExW` or `SetFileInformationByHandle` function on Windows.
+/// This function currently corresponds to the [rename] function on Unix, and
+/// `MoveFileExW` with a fallback to `SetFileInformationByHandle` on Windows.
+/// The exact behavior differs:
 ///
-/// Because of this, the behavior when both `from` and `to` exist differs. On
-/// Unix, if `from` is a directory, `to` must also be an (empty) directory. If
-/// `from` is not a directory, `to` must also be not a directory. The behavior
-/// on Windows is the same on Windows 10 1607 and higher if `FileRenameInfoEx`
-/// is supported by the filesystem; otherwise, `from` can be anything, but
-/// `to` must *not* be a directory.
+/// - If `to` does not exist, `from` can be anything.
+/// - On Unix, when `from` is a directory and `to` exists, `to` must be an empty directory.
+/// - On Unix, when `from` is not a directory and `to` exists, `to` may not be a directory.
+/// - On Windows 10 version 1607 and above, the behavior is the same as Unix if the
+///   filesystem supports  `FileRenameInfoEx`.
+/// - Otherwise on Windows, `from` can be anything but `to` must not be a directory.
 ///
 /// Note that, this [may change in the future][changes].
 ///
 /// [changes]: io#platform-specific-behavior
+/// [rename]: https://pubs.opengroup.org/onlinepubs/9799919799/functions/rename.html
 ///
 /// # Errors
 ///

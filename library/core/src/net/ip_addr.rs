@@ -2468,7 +2468,7 @@ macro_rules! bitop_impls {
     )*) => {
         $(
             $(#[$attr])*
-            impl const $BitOpAssign for $ty {
+            const impl $BitOpAssign for $ty {
                 fn $bitop_assign(&mut self, rhs: $ty) {
                     let mut idx = 0;
                     while idx < self.octets.len() {
@@ -2479,14 +2479,14 @@ macro_rules! bitop_impls {
             }
 
             $(#[$attr])*
-            impl const $BitOpAssign<&'_ $ty> for $ty {
+            const impl $BitOpAssign<&'_ $ty> for $ty {
                 fn $bitop_assign(&mut self, rhs: &'_ $ty) {
                     self.$bitop_assign(*rhs);
                 }
             }
 
             $(#[$attr])*
-            impl const $BitOp for $ty {
+            const impl $BitOp for $ty {
                 type Output = $ty;
 
                 #[inline]
@@ -2497,7 +2497,7 @@ macro_rules! bitop_impls {
             }
 
             $(#[$attr])*
-            impl const $BitOp<&'_ $ty> for $ty {
+            const impl $BitOp<&'_ $ty> for $ty {
                 type Output = $ty;
 
                 #[inline]
@@ -2508,7 +2508,7 @@ macro_rules! bitop_impls {
             }
 
             $(#[$attr])*
-            impl const $BitOp<$ty> for &'_ $ty {
+            const impl $BitOp<$ty> for &'_ $ty {
                 type Output = $ty;
 
                 #[inline]
@@ -2520,7 +2520,7 @@ macro_rules! bitop_impls {
             }
 
             $(#[$attr])*
-            impl const $BitOp<&'_ $ty> for &'_ $ty {
+            const impl $BitOp<&'_ $ty> for &'_ $ty {
                 type Output = $ty;
 
                 #[inline]

@@ -146,7 +146,7 @@ trait T: [   const ] Super {}
 
 const fn not_quite_const<S: [  const  ]  T>() -> i32 { <S as T>::CONST }
 
-impl     const T for U {}
+const         impl      T for U {}
 
 fn apit(_: impl [   const ] T) {}
 

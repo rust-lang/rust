@@ -28,7 +28,7 @@ use rustc_session::lint::builtin::{DEPRECATED, INEFFECTIVE_UNSTABLE_TRAIT_IMPL};
 use rustc_span::{Span, Symbol, sym};
 use tracing::instrument;
 
-use crate::errors;
+use crate::diagnostics;
 
 #[derive(PartialEq)]
 enum AnnotationKind {
@@ -337,7 +337,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
             && depr.map_or(false, |d| d.attr.is_since_rustc_version())
             && let Some(span) = find_attr_span!(Deprecated)
         {
-            self.tcx.dcx().emit_err(errors::DeprecatedAttribute { span });
+            self.tcx.dcx().emit_err(diagnostics::DeprecatedAttribute { span });
         }
 
         if let Some(stab) = stab {
@@ -348,7 +348,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
             {
                 if let Some(span) = find_attr_span!(Stability) {
                     let item_sp = self.tcx.def_span(def_id);
-                    self.tcx.dcx().emit_err(errors::UselessStability { span, item_sp });
+                    self.tcx.dcx().emit_err(diagnostics::UselessStability { span, item_sp });
                 }
             }
 
@@ -364,13 +364,13 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
                     StableSince::Current => {
                         self.tcx
                             .dcx()
-                            .emit_err(errors::CannotStabilizeDeprecated { span, item_sp });
+                            .emit_err(diagnostics::CannotStabilizeDeprecated { span, item_sp });
                     }
                     StableSince::Version(stab_since) => {
                         if dep_since < stab_since {
                             self.tcx
                                 .dcx()
-                                .emit_err(errors::CannotStabilizeDeprecated { span, item_sp });
+                                .emit_err(diagnostics::CannotStabilizeDeprecated { span, item_sp });
                         }
                     }
                     StableSince::Err(_) => {
@@ -389,7 +389,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
             && const_stab.is_some()
             && find_attr_span!(RustcConstStability).is_some()
         {
-            self.tcx.dcx().emit_err(errors::MissingConstErr { fn_sig_span: fn_sig.span });
+            self.tcx.dcx().emit_err(diagnostics::MissingConstErr { fn_sig_span: fn_sig.span });
         }
 
         // If this is marked const *stable*, it must also be regular-stable.
@@ -399,9 +399,10 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
             && !stab.is_some_and(|s| s.is_stable())
             && let Some(const_span) = find_attr_span!(RustcConstStability)
         {
-            self.tcx
-                .dcx()
-                .emit_err(errors::ConstStableNotStable { fn_sig_span: fn_sig.span, const_span });
+            self.tcx.dcx().emit_err(diagnostics::ConstStableNotStable {
+                fn_sig_span: fn_sig.span,
+                const_span,
+            });
         }
 
         if let Some(stab) = &const_stab
@@ -409,7 +410,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
             && stab.const_stable_indirect
             && let Some(span) = find_attr_span!(RustcConstStability)
         {
-            self.tcx.dcx().emit_err(errors::RustcConstStableIndirectPairing { span });
+            self.tcx.dcx().emit_err(diagnostics::RustcConstStableIndirectPairing { span });
         }
     }
 
@@ -423,7 +424,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
         {
             let descr = self.tcx.def_descr(def_id.to_def_id());
             let span = self.tcx.def_span(def_id);
-            self.tcx.dcx().emit_err(errors::MissingStabilityAttr { span, descr });
+            self.tcx.dcx().emit_err(diagnostics::MissingStabilityAttr { span, descr });
         }
     }
 
@@ -439,7 +440,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
         {
             let span = self.tcx.def_span(def_id);
             let descr = self.tcx.def_descr(def_id.to_def_id());
-            self.tcx.dcx().emit_err(errors::MissingConstStabAttr { span, descr });
+            self.tcx.dcx().emit_err(diagnostics::MissingConstStabAttr { span, descr });
         }
     }
 }
@@ -646,7 +647,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                                 INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
                                 item.hir_id(),
                                 span,
-                                errors::IneffectiveUnstableImpl,
+                                diagnostics::IneffectiveUnstableImpl,
                             );
                         }
                     }
@@ -660,9 +661,9 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                                 // `#![feature(const_trait_impl)]` is unstable, so any impl declared stable
                                 // needs to have an error emitted.
                                 // Note: Remove this error once `const_trait_impl` is stabilized
-                                self.tcx
-                                    .dcx()
-                                    .emit_err(errors::TraitImplConstStable { span: item.span });
+                                self.tcx.dcx().emit_err(diagnostics::TraitImplConstStable {
+                                    span: item.span,
+                                });
                                 true
                             }
                             Some(_) => false,
@@ -676,21 +677,23 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                                 let trait_span = self.tcx.def_ident_span(trait_id).unwrap();
 
                                 let impl_stability = if stable_or_implied_stable {
-                                    errors::ImplConstStability::Stable { span: item.span }
+                                    diagnostics::ImplConstStability::Stable { span: item.span }
                                 } else {
-                                    errors::ImplConstStability::Unstable { span: item.span }
+                                    diagnostics::ImplConstStability::Unstable { span: item.span }
                                 };
                                 let trait_stability = if const_stab.is_const_stable() {
-                                    errors::TraitConstStability::Stable { span: trait_span }
+                                    diagnostics::TraitConstStability::Stable { span: trait_span }
                                 } else {
-                                    errors::TraitConstStability::Unstable { span: trait_span }
+                                    diagnostics::TraitConstStability::Unstable { span: trait_span }
                                 };
 
-                                self.tcx.dcx().emit_err(errors::TraitImplConstStabilityMismatch {
-                                    span: item.span,
-                                    impl_stability,
-                                    trait_stability,
-                                });
+                                self.tcx.dcx().emit_err(
+                                    diagnostics::TraitImplConstStabilityMismatch {
+                                        span: item.span,
+                                        impl_stability,
+                                        trait_stability,
+                                    },
+                                );
                             }
                         }
                     }
@@ -815,7 +818,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                                 self.tcx.check_stability_allow_unstable(
                                     def_id,
                                     None,
-                                    path.span,
+                                    path_segment.ident.span,
                                     None,
                                     if is_unstable_reexport(self.tcx, id) {
                                         AllowUnstable::Yes
@@ -1044,7 +1047,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
             if let FeatureStability::Unstable { old_name: Some(alias) } = stability
                 && let Some(span) = remaining_lib_features.swap_remove(&alias)
             {
-                tcx.dcx().emit_err(errors::RenamedFeature { span, feature, alias });
+                tcx.dcx().emit_err(diagnostics::RenamedFeature { span, feature, alias });
             }
 
             if remaining_lib_features.is_empty() && remaining_implications.is_empty() {
@@ -1118,7 +1121,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
                 if let Some(removed) =
                     unstable_removed_features.iter().find(|removed| removed.feature == feature)
                 {
-                    tcx.dcx().emit_err(errors::FeatureRemoved {
+                    tcx.dcx().emit_err(diagnostics::FeatureRemoved {
                         span,
                         feature,
                         reason: removed.reason,
@@ -1126,10 +1129,11 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
                         since: removed.since.to_string(),
                     });
                 } else {
-                    let suggestion = feature
-                        .find_similar(&valid_feature_names)
-                        .map(|(actual_name, _)| errors::MisspelledFeature { span, actual_name });
-                    tcx.dcx().emit_err(errors::UnknownFeature { span, feature, suggestion });
+                    let suggestion =
+                        feature.find_similar(&valid_feature_names).map(|(actual_name, _)| {
+                            diagnostics::MisspelledFeature { span, actual_name }
+                        });
+                    tcx.dcx().emit_err(diagnostics::UnknownFeature { span, feature, suggestion });
                 }
             }
         }
@@ -1142,7 +1146,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
             .get(&feature)
             .expect("feature that implied another does not exist")
             .1;
-        tcx.dcx().emit_err(errors::ImpliedFeatureNotExist { span, feature, implied_by });
+        tcx.dcx().emit_err(diagnostics::ImpliedFeatureNotExist { span, feature, implied_by });
     }
 
     // FIXME(#44232): the `used_features` table no longer exists, so we
@@ -1160,7 +1164,7 @@ fn unnecessary_partially_stable_feature_lint(
         lint::builtin::STABLE_FEATURES,
         hir::CRATE_HIR_ID,
         span,
-        errors::UnnecessaryPartialStableFeature {
+        diagnostics::UnnecessaryPartialStableFeature {
             span,
             line: tcx.sess.source_map().span_extend_to_line(span),
             feature,
@@ -1183,7 +1187,7 @@ fn unnecessary_stable_feature_lint(
         lint::builtin::STABLE_FEATURES,
         hir::CRATE_HIR_ID,
         span,
-        errors::UnnecessaryStableFeature { feature, since },
+        diagnostics::UnnecessaryStableFeature { feature, since },
     );
 }
 
@@ -1192,6 +1196,6 @@ fn duplicate_feature_lint(tcx: TyCtxt<'_>, span: Span, feature: Symbol) {
         lint::builtin::DUPLICATE_FEATURES,
         hir::CRATE_HIR_ID,
         span,
-        errors::DuplicateFeature { feature },
+        diagnostics::DuplicateFeature { feature },
     );
 }
