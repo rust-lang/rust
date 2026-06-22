@@ -1517,7 +1517,7 @@ branch = "stable"
 [assign.adhoc_groups]
 compiler_leads = [
     "@davidtwco",
-    "@wesleywiser",
+    "@boxyuwu",
 ]
 libs = [
     "@Mark-Simulacrum",
