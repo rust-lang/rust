@@ -4570,6 +4570,7 @@ impl<'hir> Item<'hir> {
         HirId::make_owner(self.owner_id.def_id)
     }
 
+    #[inline]
     pub fn item_id(&self) -> ItemId {
         ItemId { owner_id: self.owner_id }
     }
