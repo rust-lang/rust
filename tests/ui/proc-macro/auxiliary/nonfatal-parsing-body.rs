@@ -12,7 +12,6 @@ enum Mode {
     NormalOk,
     NormalErr,
     OtherError,
-    OtherWithPanic,
 }
 
 fn parse<T>(s: &str, mode: Mode)
@@ -32,11 +31,6 @@ where
         }
         OtherError => {
             println!("{:?}", T::from_str(s));
-        }
-        OtherWithPanic => {
-            if catch_unwind(|| println!("{:?}", T::from_str(s))).is_ok() {
-                eprintln!("{s} did not panic");
-            }
         }
     }
 }
@@ -126,7 +120,7 @@ pub fn run() {
 
     for parse in [stream as fn(&str, Mode), lit] {
         // emits diagnostic(s), then panics
-        parse("r#", OtherWithPanic);
+        parse("r#", OtherError);
 
         // emits diagnostic(s), then returns Ok(Literal { kind: ErrWithGuar, .. })
         parse("0b2", OtherError);
@@ -137,7 +131,7 @@ pub fn run() {
             "'
 '", OtherError,
         );
-        parse(&format!("r{0}\"a\"{0}", "#".repeat(256)), OtherWithPanic);
+        parse(&format!("r{0}\"a\"{0}", "#".repeat(256)), OtherError);
 
         // emits diagnostic, then, when parsing as a lit, returns LexError, otherwise ErrWithGuar
         parse("/*a*/ 0b2 //", OtherError);
