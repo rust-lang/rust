@@ -87,4 +87,4 @@ case "${TARGET}" in
 esac
 
 cargo test --manifest-path=rust_programs/Cargo.toml --target "${TARGET}" --profile "${PROFILE}" \
-    --tests "$@"
+    --tests --no-fail-fast "$@"
