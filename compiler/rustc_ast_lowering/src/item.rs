@@ -141,13 +141,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }: &EiiImpl,
     ) -> hir::attrs::EiiImpl {
         let resolution = if let Some(target) = known_eii_macro_resolution
-            && let Some(decl) = self.lower_eii_decl(
-                *node_id,
-                // the expect is ok here since we always generate this path in the eii macro.
-                eii_macro_path.segments.last().expect("at least one segment").ident,
-                target,
-            ) {
-            EiiImplResolution::Known(decl)
+            && let Some(foreign_item_did) =
+                self.lower_path_simple_eii(*node_id, &target.foreign_item)
+        {
+            EiiImplResolution::Known(foreign_item_did)
         } else if let Some(macro_did) = self.lower_path_simple_eii(*node_id, eii_macro_path) {
             EiiImplResolution::Macro(macro_did)
         } else {
