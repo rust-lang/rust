@@ -75,7 +75,28 @@ mod b {
     }
 }
 
+struct C {
+    #[cfg(true)]
+    foo: (),
+}
+#[cfg(true)]
+struct D {
+    foo: (),
+}
+#[cfg(true)]
+mod e {
+    pub(crate) struct F {
+        pub(crate) foo: (),
+    }
+}
+
 fn main() {
     a::bar();
     b::baz();
+    let c = C { foo: ().into() }; // Ok, field `C.foo` is behind a `cfg` attr
+    let () = c.foo.into(); // Ok, field `C.foo` is behind a `cfg` attr
+    let d = D { foo: ().into() }; // Ok, `D` is behind a `cfg` attr
+    let () = d.foo.into(); // Ok, `D` is behind a `cfg` attr
+    let f = e::F { foo: ().into() }; // Ok, `e` is behind a `cfg` attr
+    let () = f.foo.into(); // Ok, `e` is behind a `cfg` attr
 }

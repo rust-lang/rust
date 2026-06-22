@@ -3375,6 +3375,44 @@ impl<'tcx> LateLintPass<'tcx> for SelfTypeConversion<'tcx> {
             return;
         }
 
+        if let hir::ExprKind::Field(base, field) = rcvr.kind {
+            // Look at the original type. If the field being accessed or its type is behind a `cfg`
+            // attribute, we don't trigger the lint, as it's likely that field has different types
+            // in different configurations.
+            //
+            // #[cfg(true)]
+            // struct S {
+            //     #[cfg(..)] field: u32,
+            //     #[cfg(not(..))] field: u64,
+            // }
+            //
+            // let s = S { field: 0 };
+            // let x: u32 = s.field.into();
+            let ty = cx.typeck_results().expr_ty(base);
+            if let ty::Adt(def, _args) = ty.peel_refs().kind()
+                && struct_field_has_cfg(cx.tcx, def.did(), field.name)
+            {
+                return;
+            }
+        }
+        if let hir::Node::ExprField(field) = cx.tcx.parent_hir_node(expr.hir_id)
+            && let hir::Node::Expr(parent) = cx.tcx.parent_hir_node(field.hir_id)
+            && let hir::ExprKind::Struct(hir::QPath::Resolved(_, path), _, _) = parent.kind
+            && let Res::Def(DefKind::Struct, def_id) = path.res
+            && struct_field_has_cfg(cx.tcx, def_id, field.ident.name)
+        {
+            // The target of the value being converted corresponds to a struct that is behind a
+            // `cfg`:
+            //
+            // #[cfg(true)]
+            // struct S {
+            //     #[cfg(..)] field: u32,
+            //     #[cfg(not(..))] field: u64,
+            // }
+            //
+            // S { field: 0u32.into() };
+            return;
+        }
         if let Some(expn) = expr.span.macro_backtrace().next() {
             if expn.macro_def_id.map_or(false, |did| did.is_local()) {
                 cx.emit_span_lint(
@@ -3390,4 +3428,24 @@ impl<'tcx> LateLintPass<'tcx> for SelfTypeConversion<'tcx> {
 
         cx.emit_span_lint(SELF_TYPE_CONVERSION, expr.span, SelfTypeConversionDiag { ty });
     }
+}
+
+fn struct_field_has_cfg(tcx: TyCtxt<'_>, def_id: DefId, field_name: Symbol) -> bool {
+    if find_attr!(tcx, def_id, CfgTrace(..)) {
+        // The item is `cfg`d.
+        return true;
+    }
+    if find_attr!(tcx, tcx.parent(def_id), CfgTrace(..)) {
+        // The `mod` enclosing the item is `cfg`d.
+        return true;
+    }
+    let def = tcx.adt_def(def_id);
+    for variant in def.variants().iter() {
+        for f in &variant.fields {
+            if f.name == field_name && find_attr!(tcx, f.did, CfgTrace(..)) {
+                return true;
+            }
+        }
+    }
+    false
 }
