@@ -49,25 +49,31 @@ pub(super) fn mangle<'tcx>(
 
     // Append `::{shim:...#0}` to shims that can coexist with a non-shim instance.
     let shim_kind = match instance.def {
-        ty::InstanceKind::ThreadLocalShim(_) => Some("tls"),
-        ty::InstanceKind::VTableShim(_) => Some("vtable"),
-        ty::InstanceKind::ReifyShim(_, None) => Some("reify"),
-        ty::InstanceKind::ReifyShim(_, Some(ReifyReason::FnPtr)) => Some("reify_fnptr"),
-        ty::InstanceKind::ReifyShim(_, Some(ReifyReason::Vtable)) => Some("reify_vtable"),
+        ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(_)) => Some("tls"),
+        ty::InstanceKind::Shim(ty::ShimKind::VTable(_)) => Some("vtable"),
+        ty::InstanceKind::Shim(ty::ShimKind::Reify(_, None)) => Some("reify"),
+        ty::InstanceKind::Shim(ty::ShimKind::Reify(_, Some(ReifyReason::FnPtr))) => {
+            Some("reify_fnptr")
+        }
+        ty::InstanceKind::Shim(ty::ShimKind::Reify(_, Some(ReifyReason::Vtable))) => {
+            Some("reify_vtable")
+        }
 
         // FIXME(async_closures): This shouldn't be needed when we fix
         // `Instance::ty`/`Instance::def_id`.
-        ty::InstanceKind::ConstructCoroutineInClosureShim { receiver_by_ref: true, .. } => {
-            Some("by_move")
-        }
-        ty::InstanceKind::ConstructCoroutineInClosureShim { receiver_by_ref: false, .. } => {
-            Some("by_ref")
-        }
-        ty::InstanceKind::FutureDropPollShim(_, _, _) => Some("drop"),
+        ty::InstanceKind::Shim(ty::ShimKind::ConstructCoroutineInClosure {
+            receiver_by_ref: true,
+            ..
+        }) => Some("by_move"),
+        ty::InstanceKind::Shim(ty::ShimKind::ConstructCoroutineInClosure {
+            receiver_by_ref: false,
+            ..
+        }) => Some("by_ref"),
+        ty::InstanceKind::Shim(ty::ShimKind::FutureDropPoll(_, _, _)) => Some("drop"),
         _ => None,
     };
 
-    if let ty::InstanceKind::AsyncDropGlue(_, ty) = instance.def {
+    if let ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(_, ty)) = instance.def {
         let ty::Coroutine(_, cor_args) = ty.kind() else {
             bug!();
         };

@@ -645,7 +645,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
 
     /// Check if this is an empty DropGlue shim.
     pub fn is_empty_drop_shim(&self, instance: ty::Instance<'tcx>) -> bool {
-        matches!(instance.def, ty::InstanceKind::DropGlue(_, None))
+        matches!(instance.def, ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, None)))
     }
 
     /// Convert a non-generic crate item into an instance.
