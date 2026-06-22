@@ -257,6 +257,7 @@ pub(crate) fn print_generic_bound(
                 hir::BoundPolarity::Positive => "",
                 hir::BoundPolarity::Maybe(_) => "?",
                 hir::BoundPolarity::Negative(_) => "!",
+                hir::BoundPolarity::Only(_) => "only",
             })?;
             print_poly_trait(ty, cx).fmt(f)
         }

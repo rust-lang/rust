@@ -1478,7 +1478,9 @@ impl<'a> State<'a> {
         }
         match polarity {
             ast::BoundPolarity::Positive => {}
-            ast::BoundPolarity::Negative(_) | ast::BoundPolarity::Maybe(_) => {
+            ast::BoundPolarity::Negative(_)
+            | ast::BoundPolarity::Maybe(_)
+            | ast::BoundPolarity::Only(_) => {
                 self.word(polarity.as_str());
             }
         }
