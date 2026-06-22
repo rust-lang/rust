@@ -6,6 +6,7 @@ extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_hir;
 extern crate rustc_hir_analysis;
+extern crate rustc_index;
 extern crate rustc_interface;
 extern crate rustc_log;
 extern crate rustc_middle;
@@ -19,13 +20,15 @@ use std::path::PathBuf;
 use miri::*;
 use rustc_driver::Compilation;
 use rustc_hir::attrs::CrateType;
+use rustc_index::IndexVec;
 use rustc_interface::interface;
 use rustc_middle::mir;
+use rustc_middle::mir::{Local, VarDebugInfoContents};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::EarlyDiagCtxt;
 use rustc_session::config::ErrorOutputType;
-use rustc_span::Span;
 use rustc_span::source_map::SourceMap;
+use rustc_span::{Span, Symbol};
 
 fn find_sysroot() -> String {
     std::env::var("MIRI_SYSROOT")
@@ -129,6 +132,11 @@ struct PrirodaContext<'tcx> {
     last_location: Option<SourceLocation>,
 }
 
+struct LocalDesc {
+    name: Option<Symbol>,
+    local: Local,
+    ty: String,
+}
 /// Controls when execution returns to the frontend.
 enum ResumeMode {
     /// Stop at the next visible MIR instruction.
@@ -336,15 +344,49 @@ impl<'tcx> PrirodaContext<'tcx> {
         }
     }
 
-    /// Returns the names of all user-visible locals in the innermost stack frame.
+    /// Returns structured descriptions for locals in the innermost stack frame.
     ///
-    /// Uses `var_debug_info` from the MIR body, which is the same source that
-    /// DWARF debug info is built from, so the names match what the user wrote.
-    fn list_locals(&self) -> Vec<String> {
+    /// Starts from all MIR locals, then enriches them with source names from
+    /// `var_debug_info` when a debug entry maps directly to a whole local.
+    fn list_locals(&self) -> Vec<LocalDesc> {
         let Some(frame) = self.ecx.active_thread_stack().last() else {
             return Vec::new();
         };
-        frame.body().var_debug_info.iter().map(|info| info.name.to_string()).collect()
+
+        self.local_desc_map(frame).into_iter().collect()
+    }
+
+    fn local_desc_map(
+        &self,
+        frame: &Frame<'tcx, Provenance, FrameExtra<'tcx>>,
+    ) -> IndexVec<Local, LocalDesc> {
+        // Initialize one description per MIR local so the table can be indexed by Local.
+        let mut locals: IndexVec<Local, LocalDesc> = frame
+            .body()
+            .local_decls
+            .iter_enumerated()
+            .map(|(id, local_decl)| {
+                LocalDesc { name: None, local: id, ty: local_decl.ty.to_string() }
+            })
+            .collect();
+
+        // FIXME: Some debug-info entries do not have a backing MIR local, for example
+        // because the source variable was optimized out or is represented as a
+        // projection. This local-indexed table cannot represent those entries yet;
+        // the final locals list should become a `Vec<LocalDesc>` with `id : Option<Local>`, `id`
+        // could be renamed to `local`.
+
+        // Attach source names from debug info when the debug entry maps directly to a whole MIR local.
+        for var_debug_info in &frame.body().var_debug_info {
+            if let VarDebugInfoContents::Place(place) = var_debug_info.value
+                && let Some(local) = place.as_local()
+                && locals[local].name.is_none()
+            {
+                locals[local].name = Some(var_debug_info.name);
+            }
+        }
+
+        locals
     }
 }
 
@@ -366,7 +408,7 @@ enum BreakpointSetResult {
 enum CommandResult {
     ExecutionStopped(StepResult),
     BreakpointResult(BreakpointSetResult),
-    Locals(Vec<String>),
+    Locals(Vec<LocalDesc>),
     // FIXME: distinguish terminating the debugger session from disconnecting a
     // frontend and terminating the interpreted program once multiple frontends exist.
     TerminateSession,
@@ -403,12 +445,21 @@ impl Cli {
 
                             BreakpointSetResult::Duplicate => println!("Duplicate breakpoint"),
                         },
-                    CommandResult::Locals(names) =>
-                        if names.is_empty() {
+                    CommandResult::Locals(locals_desc) =>
+                        if locals_desc.is_empty() {
                             println!("no locals");
                         } else {
-                            for name in &names {
-                                println!("{name}");
+                            for local_desc in &locals_desc {
+                                let mut name_str = "None".to_string();
+                                if let Some(name) = local_desc.name {
+                                    name_str = name.to_string();
+                                }
+                                println!(
+                                    "Name: {}, Id: _{}, Ty: {}",
+                                    name_str,
+                                    local_desc.local.index(),
+                                    local_desc.ty,
+                                );
                             }
                         },
                     CommandResult::TerminateSession => {
