@@ -10,8 +10,7 @@ use rustc_middle::ty::adjustment::Adjust;
 use super::NEEDLESS_RETURN_WITH_QUESTION_MARK;
 
 pub(super) fn check_stmt<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
-    if !stmt.span.in_external_macro(cx.sess().source_map())
-        && let StmtKind::Semi(expr) = stmt.kind
+    if let StmtKind::Semi(expr) = stmt.kind
         && let ExprKind::Ret(Some(ret)) = expr.kind
         // return Err(...)? desugars to a match
         // over a Err(...).branch()
@@ -28,6 +27,7 @@ pub(super) fn check_stmt<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         && !is_inside_let_else(cx.tcx, expr)
         && let [.., final_stmt] = block.stmts
         && (block.expr.is_some() || final_stmt.hir_id != stmt.hir_id)
+        && !stmt.span.in_external_macro(cx.sess().source_map())
         && !is_from_proc_macro(cx, expr)
         && !stmt_needs_never_type(cx, stmt.hir_id)
     {

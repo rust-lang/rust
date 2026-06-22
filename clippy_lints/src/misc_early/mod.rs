@@ -322,10 +322,6 @@ impl EarlyLintPass for MiscEarlyLints {
     }
 
     fn check_pat(&mut self, cx: &EarlyContext<'_>, pat: &Pat) {
-        if pat.span.in_external_macro(cx.sess().source_map()) {
-            return;
-        }
-
         unneeded_field_pattern::check(cx, pat);
         redundant_pattern::check(cx, pat);
         redundant_at_rest_pattern::check(cx, pat);

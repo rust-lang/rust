@@ -18,7 +18,7 @@ pub(super) fn check_fn(
 ) {
     // Closures must be contained in a parent body, which will be checked for `too_many_lines`.
     // Don't check closures for `too_many_lines` to avoid duplicated lints.
-    if matches!(kind, FnKind::Closure) || span.in_external_macro(cx.sess().source_map()) {
+    if matches!(kind, FnKind::Closure) || (span.from_expansion() && span.in_external_macro(cx.sess().source_map())) {
         return;
     }
 

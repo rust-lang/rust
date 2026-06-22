@@ -205,13 +205,12 @@ impl {self_ty_without_ref} {{
             _ => return,
         };
 
-        if !item.span.in_external_macro(cx.sess().source_map())
-            && let ImplItemKind::Fn(sig, _) = item.kind
+        if let ImplItemKind::Fn(sig, _) = item.kind
             && let FnRetTy::Return(ret) = sig.decl.output
+            && sig.decl.inputs.len() == 1
+            && sig.decl.implicit_self() == expected_implicit_self
             && is_nameable_in_impl_trait(ret)
             && cx.tcx.generics_of(item_did).is_own_empty()
-            && sig.decl.implicit_self() == expected_implicit_self
-            && sig.decl.inputs.len() == 1
             && let Some(imp) = get_parent_as_impl(cx.tcx, item.hir_id())
             && imp.of_trait.is_none()
             && let sig = cx.tcx.liberate_late_bound_regions(
@@ -235,6 +234,7 @@ impl {self_ty_without_ref} {{
             // Only lint if the `IntoIterator` impl doesn't actually exist
             && !implements_trait(cx, ref_ty, into_iter_did, &[])
             && is_ty_exported(cx, ref_ty.peel_refs())
+            && !item.span.in_external_macro(cx.sess().source_map())
         {
             let self_ty_snippet = format!("{borrow_prefix}{}", snippet(cx, imp.self_ty.span, ".."));
 

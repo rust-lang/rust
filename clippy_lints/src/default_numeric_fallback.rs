@@ -88,12 +88,12 @@ impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
 
     /// Check whether a passed literal has potential to cause fallback or not.
     fn check_lit(&self, lit: Lit, lit_ty: Ty<'tcx>, emit_hir_id: HirId) {
-        if !lit.span.in_external_macro(self.cx.sess().source_map())
-            && matches!(self.ty_bounds.last(), Some(ExplicitTyBound(false)))
+        if matches!(self.ty_bounds.last(), Some(ExplicitTyBound(false)))
             && matches!(
                 lit.node,
                 LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed)
             )
+            && !lit.span.in_external_macro(self.cx.sess().source_map())
         {
             let (suffix, is_float) = match lit_ty.kind() {
                 ty::Int(IntTy::I32) => ("i32", false),

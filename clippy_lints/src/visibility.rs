@@ -85,8 +85,8 @@ declare_lint_pass!(Visibility => [
 
 impl EarlyLintPass for Visibility {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        if !item.span.in_external_macro(cx.sess().source_map())
-            && let VisibilityKind::Restricted { path, shorthand, .. } = &item.vis.kind
+        if let VisibilityKind::Restricted { path, shorthand, .. } = &item.vis.kind
+            && !item.span.in_external_macro(cx.sess().source_map())
         {
             if **path == kw::SelfLower && !is_from_proc_macro(cx, item.vis.span) {
                 span_lint_and_then(

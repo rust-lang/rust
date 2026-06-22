@@ -5230,11 +5230,9 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
-        if item.span.in_external_macro(cx.tcx.sess.source_map()) {
-            return;
-        }
-
-        if let TraitItemKind::Fn(ref sig, _) = item.kind {
+        if let TraitItemKind::Fn(ref sig, _) = item.kind
+            && !item.span.in_external_macro(cx.tcx.sess.source_map())
+        {
             if sig.decl.implicit_self().has_implicit_self()
                 && let Some(first_arg_hir_ty) = sig.decl.inputs.first()
                 && let Some(&first_arg_ty) = cx

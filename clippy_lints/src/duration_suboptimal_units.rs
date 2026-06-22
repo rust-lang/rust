@@ -71,9 +71,7 @@ impl DurationSuboptimalUnits {
 
 impl LateLintPass<'_> for DurationSuboptimalUnits {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {
-        if !expr.span.in_external_macro(cx.sess().source_map())
-            // Check if a function on std::time::Duration is called
-            && let ExprKind::Call(func, [arg]) = expr.kind
+        if let ExprKind::Call(func, [arg]) = expr.kind
             && let ExprKind::Path(QPath::TypeRelative(func_ty, func_name)) = func.kind
             && cx
                 .typeck_results()
@@ -97,6 +95,7 @@ impl LateLintPass<'_> for DurationSuboptimalUnits {
             // For expressions (e.g. `10 * 60`), always lint since the expression already
             // signals intent to compute a converted value.
             && (!matches!(arg.kind, ExprKind::Lit(_)) || promoted_value > 10)
+            && !expr.span.in_external_macro(cx.sess().source_map())
         {
             span_lint_and_then(
                 cx,

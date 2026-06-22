@@ -428,11 +428,6 @@ impl<'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        // Shouldn't lint when `expr` is in macro.
-        if expr.span.in_external_macro(self.cx.tcx.sess.source_map()) {
-            walk_expr(self, expr);
-            return;
-        }
         // Skip checking inside closures since they are visited through `Unwrap::check_fn()` already.
         if matches!(expr.kind, ExprKind::Closure(_)) {
             return;
@@ -455,6 +450,7 @@ impl<'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'_, 'tcx> {
                 && let span_ctxt = expr.span.ctxt()
                 && unwrappable.branch.span.ctxt() == span_ctxt
                 && unwrappable.check.span.ctxt() == span_ctxt
+                && !expr.span.in_external_macro(self.cx.tcx.sess.source_map())
             {
                 if call_to_unwrap == unwrappable.safe_to_unwrap {
                     let unwrappable_variable_str = unwrappable.local.snippet(self.cx);

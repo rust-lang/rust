@@ -3,7 +3,7 @@ use clippy_utils::source::snippet_block_with_applicability;
 use clippy_utils::{contains_return, higher, is_from_proc_macro, leaks_droppable_temporary};
 use rustc_errors::Applicability;
 use rustc_hir::{BlockCheckMode, Expr, ExprKind, MatchSource};
-use rustc_lint::{LateContext, LateLintPass, LintContext as _};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -53,7 +53,7 @@ const BRACED_EXPR_MESSAGE: &str = "omit braces around single expression conditio
 
 impl<'tcx> LateLintPass<'tcx> for BlocksInConditions {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if expr.span.in_external_macro(cx.sess().source_map()) {
+        if expr.span.from_expansion() {
             return;
         }
 
@@ -83,7 +83,7 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInConditions {
                     if let Some(ex) = &block.expr {
                         // don't dig into the expression here, just suggest that they remove
                         // the block
-                        if expr.span.from_expansion() || ex.span.from_expansion() {
+                        if ex.span.from_expansion() {
                             return;
                         }
 
@@ -114,7 +114,7 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInConditions {
                     }
                 } else {
                     let span = block.expr.as_ref().map_or_else(|| block.stmts[0].span, |e| e.span);
-                    if span.from_expansion() || expr.span.from_expansion() || is_from_proc_macro(cx, cond) {
+                    if span.from_expansion() || is_from_proc_macro(cx, cond) {
                         return;
                     }
                     // move block higher

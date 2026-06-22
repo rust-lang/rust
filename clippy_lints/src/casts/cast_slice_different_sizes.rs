@@ -25,7 +25,12 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, msrv: Msrv)
     {
         let from_size = from_layout.size.bytes();
         let to_size = to_layout.size.bytes();
-        if from_size != to_size && from_size != 0 && to_size != 0 && msrv.meets(cx, msrvs::PTR_SLICE_RAW_PARTS) {
+        if from_size != to_size
+            && from_size != 0
+            && to_size != 0
+            && msrv.meets(cx, msrvs::PTR_SLICE_RAW_PARTS)
+            && !expr.span.in_external_macro(cx.tcx.sess.source_map())
+        {
             span_lint_and_then(
                 cx,
                 CAST_SLICE_DIFFERENT_SIZES,

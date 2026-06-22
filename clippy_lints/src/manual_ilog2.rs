@@ -51,10 +51,6 @@ impl ManualIlog2 {
 
 impl LateLintPass<'_> for ManualIlog2 {
     fn check_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
-        if expr.span.in_external_macro(cx.sess().source_map()) {
-            return;
-        }
-
         match expr.kind {
             // `BIT_WIDTH - 1 - n.leading_zeros()`
             ExprKind::Binary(op, left, right)
@@ -77,6 +73,7 @@ impl LateLintPass<'_> for ManualIlog2 {
                     }
                     && val == u128::from(bit_width) - 1
                     && self.msrv.meets(cx, msrvs::ILOG2)
+                    && !expr.span.in_external_macro(cx.sess().source_map())
                     && !is_from_proc_macro(cx, expr) =>
             {
                 emit(cx, recv, expr);
@@ -90,6 +87,7 @@ impl LateLintPass<'_> for ManualIlog2 {
                     && let LitKind::Int(Pu128(2), _) = lit.node
                     && cx.typeck_results().expr_ty_adjusted(recv).is_integral()
                     /* no need to check MSRV here, as `ilog` and `ilog2` were introduced simultaneously */
+                    && !expr.span.in_external_macro(cx.sess().source_map())
                     && !is_from_proc_macro(cx, expr) =>
             {
                 emit(cx, recv, expr);

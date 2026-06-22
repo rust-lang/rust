@@ -12,8 +12,7 @@ use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 
 fn check_ty<'a>(cx: &LateContext<'a>, param: &hir::Ty<'a>, param_ty: Ty<'a>, fixes: &mut Vec<(Span, String)>) {
-    if !param.span.in_external_macro(cx.sess().source_map())
-        && let ty::Ref(_, opt_ty, Mutability::Not) = param_ty.kind()
+    if let ty::Ref(_, opt_ty, Mutability::Not) = param_ty.kind()
         && let Some(gen_ty) = option_arg_ty(cx, *opt_ty)
         && !gen_ty.is_ref()
         // Need to gen the original spans, so first parsing mid, and hir parsing afterward
@@ -24,6 +23,7 @@ fn check_ty<'a>(cx: &LateContext<'a>, param: &hir::Ty<'a>, param_ty: Ty<'a>, fix
             args: [hir::GenericArg::Type(opt_ty)],
             ..
         }) = last.args
+        && !param.span.in_external_macro(cx.sess().source_map())
         && !is_from_proc_macro(cx, param)
     {
         let lifetime = snippet(cx, lifetime.ident.span, "..");

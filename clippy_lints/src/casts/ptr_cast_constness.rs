@@ -90,6 +90,7 @@ pub(super) fn check_null_ptr_cast_method(cx: &LateContext<'_>, expr: &Expr<'_>) 
         && let mut app = Applicability::MachineApplicable
         && let sugg = snippet_with_applicability(cx, cast_from_expr.span, "_", &mut app)
         && let Some((_, after_lt)) = sugg.split_once("::<")
+        && !expr.span.in_external_macro(cx.tcx.sess.source_map())
     {
         span_lint_and_sugg(
             cx,
