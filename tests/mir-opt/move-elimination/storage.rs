@@ -10,40 +10,42 @@ fn opaque<T>(x: T) -> T {
 }
 
 // EMIT_MIR storage.shorten_non_borrowed.MoveElimination.diff
-pub fn shorten_non_borrowed(x: u32) -> u32 {
+pub fn shorten_non_borrowed(x: u32) {
     // This checks that reconstruction can shorten a non-borrowed local's
     // storage to its last use instead of keeping lexical storage markers.
     // CHECK-LABEL: fn shorten_non_borrowed(
     // CHECK: debug a => [[short:_.*]];
     // CHECK: debug b => [[short]];
     // CHECK: StorageLive([[short]]);
-    // CHECK: [[short]] = opaque::<u32>(move _1)
+    // CHECK: [[short]] = opaque::<u32>(
     // CHECK: opaque::<u32>(move [[short]]) -> [return: [[short_ret:bb.*]],
     // CHECK: [[short_ret]]: {
-    // CHECK-NEXT: StorageDead([[short]]);
+    // CHECK: StorageDead([[short]]);
+    // CHECK: opaque::<u32>(
     let a = opaque(x);
     let b = a;
-    opaque(b)
+    opaque(b);
+    opaque(x);
 }
 
 // EMIT_MIR storage.borrowed_not_shortened_to_last_direct_use.MoveElimination.diff
-pub fn borrowed_not_shortened_to_last_direct_use(x: u32) -> u32 {
+pub fn borrowed_not_shortened_to_last_direct_use(x: u32) {
     // This checks that a borrowed local is not shortened merely to its last
     // direct use; the borrow keeps its storage live while the reference exists.
     // CHECK-LABEL: fn borrowed_not_shortened_to_last_direct_use(
-    // CHECK: debug a => _1;
+    // CHECK: debug a => [[borrowed:_.*]];
     // CHECK: debug r => [[borrow_ref:_.*]];
-    // CHECK: debug out => [[borrow_out:_.*]];
-    // CHECK: StorageLive([[borrow_ref]]);
-    // CHECK-NEXT: [[borrow_ref]] = &_1;
-    // CHECK: StorageLive([[borrow_out]]);
-    // CHECK-NEXT: [[borrow_out]] = copy _1;
+    // CHECK: debug out => [[out:_.*]];
+    // CHECK: StorageLive([[borrowed]]);
+    // CHECK: [[borrowed]] = opaque::<u32>(move _1)
+    // CHECK: [[borrow_ref]] = &[[borrowed]];
+    // CHECK: [[out]] = copy [[borrowed]];
     // CHECK: copy (*[[borrow_ref]]);
-    // CHECK-NEXT: StorageDead([[borrow_ref]]);
-    let a = x;
+    // CHECK: StorageDead([[borrowed]]);
+    let a = opaque(x);
     let r = &a;
     let out = a;
-    opaque(*r + out)
+    opaque(*r + out);
 }
 
 // EMIT_MIR storage.storage_live_moved_to_branch.MoveElimination.diff

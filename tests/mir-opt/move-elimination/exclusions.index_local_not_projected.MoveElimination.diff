@@ -1,49 +1,19 @@
 - // MIR for `index_local_not_projected` before MoveElimination
 + // MIR for `index_local_not_projected` after MoveElimination
   
-  fn index_local_not_projected(_1: [usize; 4], _2: usize) -> [usize; 1] {
-      debug a => _1;
-      debug i => _2;
+  fn index_local_not_projected(_1: [usize; 4]) -> [usize; 1] {
       let mut _0: [usize; 1];
-      let _3: usize;
-      let _4: usize;
-      let mut _5: bool;
-      let mut _6: usize;
-      scope 1 {
--         debug idx => _3;
-+         debug idx => _2;
-          scope 2 {
-          }
-      }
+      let mut _2: usize;
+      let mut _3: usize;
   
       bb0: {
--         StorageLive(_3);
--         _3 = copy _2;
-+         nop;
-+         nop;
-+         nop;
-          StorageLive(_4);
--         _4 = copy _3;
-+         _4 = copy _2;
-+         StorageLive(_5);
-          _5 = Lt(copy _4, const 4_usize);
-          assert(move _5, "index out of bounds: the length is {} but the index is {}", const 4_usize, copy _4) -> [success: bb1, unwind unreachable];
-      }
-  
-      bb1: {
-          StorageDead(_4);
--         StorageLive(_6);
--         _6 = copy _3;
--         _0 = [move _6];
--         StorageDead(_6);
--         StorageDead(_3);
-+         StorageDead(_5);
-+         nop;
-+         nop;
-+         nop;
-+         _0 = [move _2];
-+         nop;
-+         nop;
++         StorageLive(_2);
+          _2 = const 2_usize;
++         StorageLive(_3);
+          _3 = copy _1[_2];
++         StorageDead(_3);
+          _0 = [copy _2];
++         StorageDead(_2);
           return;
       }
   }
