@@ -1030,12 +1030,12 @@ macro_rules! int_module {
         }
 
         test_panic! {
-            test_div_euclid_zero: ($T::MIN).div_euclid(0),
-            test_rem_euclid_zero: ($T::MIN).rem_euclid(0),
-            test_div_floor_zero: ($T::MIN).div_floor(0),
-            test_rem_floor_zero: ($T::MIN).rem_floor(0),
-            test_div_ceil_zero: ($T::MIN).div_ceil(0),
-            test_rem_ceil_zero: ($T::MIN).rem_ceil(0),
+            test_div_euclid_panic_zero: ($T::MIN).div_euclid(0),
+            test_rem_euclid_panic_zero: ($T::MIN).rem_euclid(0),
+            test_div_floor_panic_zero: ($T::MIN).div_floor(0),
+            test_rem_floor_panic_zero: ($T::MIN).rem_floor(0),
+            test_div_ceil_panic_zero: ($T::MIN).div_ceil(0),
+            test_rem_ceil_panic_zero: ($T::MIN).rem_ceil(0),
 
             test_div_euclid_panic_overflow: ($T::MIN).div_euclid(-1),
             test_rem_euclid_panic_overflow: ($T::MIN).rem_euclid(-1),
