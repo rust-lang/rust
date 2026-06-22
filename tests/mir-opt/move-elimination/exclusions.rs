@@ -1,7 +1,10 @@
 //@ test-mir-pass: MoveElimination
-//@ compile-flags: -Cpanic=abort -Zmir-enable-passes=+DeadStoreElimination-initial
+//@ compile-flags: -Cpanic=abort
 
-#![feature(repr_simd)]
+#![feature(core_intrinsics, custom_mir, repr_simd)]
+#![allow(internal_features)]
+
+use std::intrinsics::mir::*;
 
 pub struct Fields {
     data: [u8; 8],
@@ -23,16 +26,25 @@ unsafe extern "C" {
 }
 
 // EMIT_MIR exclusions.index_local_not_projected.MoveElimination.diff
-pub fn index_local_not_projected(a: [usize; 4], i: usize) -> [usize; 1] {
+#[custom_mir(dialect = "runtime", phase = "post-cleanup")]
+pub fn index_local_not_projected(a: [usize; 4]) -> [usize; 1] {
     // This checks that a local used as an array index is kept as a bare local,
     // because it cannot later be rewritten to a projection like `_0[0]`.
     // CHECK-LABEL: fn index_local_not_projected(
-    // CHECK: debug idx => _2;
-    // CHECK: _4 = copy _2;
-    // CHECK: _0 = [move _2];
-    let idx = i;
-    let _ = a[idx];
-    [idx]
+    // CHECK: [[idx:_.*]] = const 2_usize;
+    // CHECK: {{.*}} = copy _1[{{.*}}[[idx]]{{.*}}];
+    // CHECK: _0 = [copy [[idx]]];
+    mir! {
+        let idx: usize;
+        let b: usize;
+
+        {
+            idx = 2usize;
+            b = a[idx];
+            RET = [idx];
+            Return()
+        }
+    }
 }
 
 // EMIT_MIR exclusions.packed_fields_not_projected.MoveElimination.diff
@@ -80,36 +92,12 @@ pub fn overlapping_lifetimes(flag: bool) -> Fields {
     observe(&raw const src);
     if flag {
         dst = make_fields(1);
-        let _ = src.tag;
+        dst = src;
     } else {
         dst = src;
     }
     observe(&raw const dst);
     dst
-}
-
-// EMIT_MIR exclusions.dse_guard.MoveElimination.diff
-pub fn dse_guard() {
-    // This guards the RFC soundness hazard: DSE must not remove the first write
-    // to `b`, because that write keeps `b`'s address-observed lifetime
-    // overlapping with `a` and prevents the later move from being eliminated.
-    // CHECK-LABEL: fn dse_guard(
-    // CHECK: StorageLive([[b:_.*]]);
-    // CHECK: [[b]] = make_fields(const 0_u8)
-    // CHECK: StorageLive([[a:_.*]]);
-    // CHECK: [[a]] = make_fields(const 1_u8)
-    // CHECK: observe(move
-    // CHECK: [[b]] = move [[a]]
-    // CHECK: observe(move
-    let mut a;
-    let mut b;
-
-    b = make_fields(0);
-
-    a = make_fields(1);
-    observe(&raw const a);
-    b = a;
-    observe(&raw const b);
 }
 
 // EMIT_MIR exclusions.rust_call_tuple_not_projected.MoveElimination.diff

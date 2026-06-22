@@ -8,9 +8,9 @@
 //!
 //! A local live range starts at the late point of any statement or terminator
 //! that writes to it without a `Deref` projection. It ends at the early point
-//! of a `StorageDead`, a whole-local `Drop`, a whole-local move operand, or the
-//! last use of that local on a control-flow path (only for locals whose address
-//! is never observed).
+//! of a `StorageDead`, a whole-local move operand, or the last use of that
+//! local on a control-flow path (only for locals whose address is never
+//! observed).
 //!
 //! `Call` terminators are handled specially: move operands are kept live
 //! through the late point of the terminator so they conflict with each other
@@ -46,39 +46,50 @@ use crate::{Analysis, GenKill, ResultsVisitor, visit_reachable_results};
 // locations of locals and a per-block bitset indicating which locals are live
 // on entry to that block.
 
-fn compute_kill_points<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    body: &mir::Body<'tcx>,
-    pass_name: Option<&'static str>,
-) -> (Vec<(Local, Location)>, IndexVec<BasicBlock, DenseBitSet<Local>>) {
-    let maybe_live_locals = MaybeLiveLocals.iterate_to_fixpoint(tcx, body, pass_name);
-    let borrowed_locals = borrowed_locals(body);
-    let mut kill_points = vec![];
-    // Initialize all borrowed locals as live on entry.
-    let mut live_on_entry = IndexVec::from_elem_n(borrowed_locals.clone(), body.basic_blocks.len());
-    let mut visitor = KillPointsVisitor {
-        kill_points: &mut kill_points,
-        live_on_entry: &mut live_on_entry,
-        borrowed_locals: &borrowed_locals,
-    };
-    visit_reachable_results(body, &maybe_live_locals, &mut visitor);
-    trace!(?kill_points);
-    trace!(?live_on_entry);
-    (kill_points, live_on_entry)
+struct KillPoints<'a> {
+    live_on_entry: IndexVec<BasicBlock, DenseBitSet<Local>>,
+    kill_points_map: IndexVec<PointIndex, &'a [(Local, Location)]>,
 }
 
-/// Creates a mapping of `PointIndex` to the set of killed locals at that location.
-fn kill_point_map<'a>(
-    kill_points: &'a [(Local, Location)],
-    points: &DenseLocationMap,
-) -> IndexVec<PointIndex, &'a [(Local, Location)]> {
-    let mut out = IndexVec::from_elem_n(&[][..], points.num_points());
-    for chunk in kill_points.chunk_by(|a, b| a.1 == b.1) {
-        let point = points.point_from_location(chunk[0].1);
-        trace!("Kill points at {:?}: {:?}", chunk[0].1, chunk);
-        out[point] = chunk;
+impl<'a> KillPoints<'a> {
+    fn compute<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        body: &mir::Body<'tcx>,
+        pass_name: Option<&'static str>,
+        points: &DenseLocationMap,
+        kill_points: &'a mut Vec<(Local, Location)>,
+    ) -> Self {
+        let maybe_live_locals = MaybeLiveLocals.iterate_to_fixpoint(tcx, body, pass_name);
+        let borrowed_locals = borrowed_locals(body);
+
+        // Initialize all borrowed locals as live on entry. We never try to kill
+        // those.
+        let mut live_on_entry =
+            IndexVec::from_elem_n(borrowed_locals.clone(), body.basic_blocks.len());
+
+        // Collect kill points and live-on-entry states from the results of
+        // MaybeLiveLocals.
+        kill_points.clear();
+        let mut visitor = KillPointsVisitor {
+            kill_points,
+            live_on_entry: &mut live_on_entry,
+            borrowed_locals: &borrowed_locals,
+        };
+        visit_reachable_results(body, &maybe_live_locals, &mut visitor);
+        trace!(?kill_points);
+        trace!(?live_on_entry);
+
+        // Create a mapping of `PointIndex` to the set of killed locals at that
+        // location.
+        let mut kill_points_map = IndexVec::from_elem_n(&[][..], points.num_points());
+        for chunk in kill_points.chunk_by(|a, b| a.1 == b.1) {
+            let point = points.point_from_location(chunk[0].1);
+            trace!("Kill points at {:?}: {:?}", chunk[0].1, chunk);
+            kill_points_map[point] = chunk;
+        }
+
+        Self { live_on_entry, kill_points_map }
     }
-    out
 }
 
 struct KillPointsVisitor<'a> {
@@ -127,9 +138,9 @@ impl<'tcx> ResultsVisitor<'tcx, MaybeLiveLocals> for KillPointsVisitor<'_> {
         location: Location,
     ) {
         VisitPlacesWith(|place: Place<'tcx>, ctxt| {
-            // Ignore non-uses (they don't do anything) and edge uses (implicitly
-            // killed though live_on_entry at the start of the corresponding
-            // successor).
+            // Ignore non-uses (they don't do anything) and edge uses
+            // (implicitly killed though live_on_entry at the start of the
+            // corresponding successor).
             match ctxt {
                 PlaceContext::MutatingUse(
                     MutatingUseContext::AsmOutput
@@ -155,15 +166,15 @@ impl<'tcx> ResultsVisitor<'tcx, MaybeLiveLocals> for KillPointsVisitor<'_> {
 // Forward dataflow pass
 
 struct PreciseLiveness<'a> {
-    kill_point_map: &'a IndexVec<PointIndex, &'a [(Local, Location)]>,
-    live_on_entry: &'a IndexVec<BasicBlock, DenseBitSet<Local>>,
+    kill_points: &'a KillPoints<'a>,
     points: &'a DenseLocationMap,
 }
 
 impl PreciseLiveness<'_> {
     fn apply_block_start_effect(&self, state: &mut DenseBitSet<Local>, block: BasicBlock) {
-        // Notably this kills any dead results produced by a predecessor's terminator.
-        state.intersect(&self.live_on_entry[block]);
+        // Notably this kills any dead results produced by a predecessor's
+        // terminator.
+        state.intersect(&self.kill_points.live_on_entry[block]);
     }
 }
 
@@ -216,10 +227,10 @@ impl<'tcx> Analysis<'tcx> for PreciseLiveness<'_> {
         })
         .visit_statement(statement, location);
 
-        // Apply kill points at this statement: if a variable is dead
-        // then it doesn't need storage.
+        // Apply kill points at this statement: if a variable is dead then it
+        // doesn't need storage.
         let point = self.points.point_from_location(location);
-        for &(local, _) in self.kill_point_map[point] {
+        for &(local, _) in self.kill_points.kill_points_map[point] {
             state.kill(local);
         }
     }
@@ -234,12 +245,9 @@ impl<'tcx> Analysis<'tcx> for PreciseLiveness<'_> {
             self.apply_block_start_effect(state, location.block);
         }
 
-        // Kill moved operands if the whole local was moved. Also kill dropped
-        // places if the entire local was dropped.
+        // Kill moved operands if the whole local was moved.
         VisitPlacesWith(|place: Place<'tcx>, ctxt| {
-            if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Move)
-            | PlaceContext::MutatingUse(MutatingUseContext::Drop) = ctxt
-            {
+            if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) = ctxt {
                 if let Some(local) = place.as_local() {
                     state.kill(local);
                 }
@@ -287,14 +295,15 @@ impl<'tcx> Analysis<'tcx> for PreciseLiveness<'_> {
 ///
 /// As a general rule, source operands are read in the `Early` phase and
 /// destination places are written in the `Late` phase.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum SplitPointEffect {
     Early = 0,
     Late = 1,
 }
 
 rustc_index::newtype_index! {
-    /// A `PointIndex` with the lower bit encoding early/late inside a statement.
+    /// A `PointIndex` with the lower bit encoding early/late inside a
+    /// statement.
     ///
     /// This is used to model overlap constraints within a MIR statement: if a
     /// source/destination are allowed to overlap then the source is read in
@@ -369,9 +378,9 @@ pub fn liveness_matrix<'tcx>(
     points: &DenseLocationMap,
     pass_name: Option<&'static str>,
 ) -> SparseIntervalMatrix<Local, SplitPointIndex> {
-    let (kill_points, live_on_entry) = compute_kill_points(tcx, body, pass_name);
-    let kill_point_map = &kill_point_map(&kill_points, points);
-    let mut results = PreciseLiveness { kill_point_map, live_on_entry: &live_on_entry, points }
+    let mut kill_points_vec = vec![];
+    let kill_points = KillPoints::compute(tcx, body, pass_name, points, &mut kill_points_vec);
+    let mut results = PreciseLiveness { kill_points: &kill_points, points }
         .iterate_to_fixpoint(tcx, body, pass_name);
 
     let mut builder = MatrixBuilder {
@@ -384,8 +393,9 @@ pub fn liveness_matrix<'tcx>(
         // after this point.
         let state = &mut results.entry_states[block];
 
-        // Notably this kills any dead results produced by a predecessor's terminator.
-        state.intersect(&live_on_entry[block]);
+        // Notably this kills any dead results produced by a predecessor's
+        // terminator.
+        state.intersect(&kill_points.live_on_entry[block]);
 
         for local in state.iter() {
             builder.gen_(local, points.entry_point(block), SplitPointEffect::Early);
@@ -412,7 +422,7 @@ pub fn liveness_matrix<'tcx>(
             .visit_statement(statement, location);
 
             // Kill any locals which are no longer used after this statement.
-            for &(local, _) in kill_point_map[point] {
+            for &(local, _) in kill_points.kill_points_map[point] {
                 builder.kill(local, point, SplitPointEffect::Early);
             }
 
@@ -425,10 +435,10 @@ pub fn liveness_matrix<'tcx>(
             })
             .visit_statement(statement, location);
 
-            // Kill any dead destination places: they will only appear at
-            // the late point of the statement they are generated in, which is
+            // Kill any dead destination places: they will only appear at the
+            // late point of the statement they are generated in, which is
             // sufficient for determining overlap.
-            for &(local, _) in kill_point_map[point] {
+            for &(local, _) in kill_points.kill_points_map[point] {
                 builder.kill(local, point, SplitPointEffect::Late);
             }
         }
@@ -437,12 +447,9 @@ pub fn liveness_matrix<'tcx>(
         let point = points.point_from_location(location);
         let terminator = block_data.terminator();
 
-        // Kill moved operands if the whole local was moved. Also kill dropped
-        // places if the entire local was dropped.
+        // Kill moved operands if the whole local was moved.
         VisitPlacesWith(|place: Place<'tcx>, ctxt| {
-            if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Move)
-            | PlaceContext::MutatingUse(MutatingUseContext::Drop) = ctxt
-            {
+            if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) = ctxt {
                 if let Some(local) = place.as_local() {
                     builder.kill(local, point, SplitPointEffect::Early);
                 }
@@ -451,7 +458,7 @@ pub fn liveness_matrix<'tcx>(
         .visit_terminator(terminator, location);
 
         // Kill any locals which are no longer used after this terminator.
-        for &(local, _) in kill_point_map[point] {
+        for &(local, _) in kill_points.kill_points_map[point] {
             builder.kill(local, point, SplitPointEffect::Early);
         }
 

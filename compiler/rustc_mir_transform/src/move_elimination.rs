@@ -662,10 +662,9 @@ fn reconstruct_storage<'tcx>(
                 for &pred in &body.basic_blocks.predecessors()[block].clone() {
                     // If the local is live at any point in the predecessor's
                     // terminator then no StorageLive is needed.
-                    let term_early =
-                        SplitPointIndex::new(points.terminator(pred), SplitPointEffect::Early);
-                    let term_late =
-                        SplitPointIndex::new(points.terminator(pred), SplitPointEffect::Late);
+                    let term = points.terminator(pred);
+                    let term_early = SplitPointIndex::new(term, SplitPointEffect::Early);
+                    let term_late = SplitPointIndex::new(term, SplitPointEffect::Late);
                     if !row.intersects_range(term_early..=term_late) {
                         // The local must be live on at least one predecessor,
                         // so if this is the only one then there is nothing to
@@ -718,29 +717,21 @@ fn reconstruct_storage<'tcx>(
         //
         // Note that the range here is an *inclusive range*.
         for range in row.iter_intervals() {
-            let start_block = points.to_location(range.start.point()).block;
-            let end_block = points.to_location(range.last.point()).block;
+            let start = points.to_location(range.start.point());
+            let end = points.to_location(range.last.point());
 
             // If the live range starts at the `Early` point then it means that
             // the value came from a predecessor block. A write from the first
             // statement would happen at the `Late` point instead.
-            if should_insert_storage(&body.basic_blocks[start_block]) {
-                if range.start
-                    == SplitPointIndex::new(
-                        points.entry_point(start_block),
-                        SplitPointEffect::Early,
-                    )
-                {
+            if should_insert_storage(&body.basic_blocks[start.block]) {
+                if range.start.effect() == SplitPointEffect::Early && start.statement_index == 0 {
                     // If the local is dead at the end of any predecessor block then
                     // emit a `StorageLive` before the terminator.
-                    emit_storage_live_in_preds(body, &mut patcher, local, start_block);
+                    emit_storage_live_in_preds(body, &mut patcher, local, start.block);
                 } else {
                     // Otherwise just add `StorageLive` before the statement that
                     // starts the live range.
-                    patcher.add_statement(
-                        points.to_location(range.start.point()),
-                        StatementKind::StorageLive(local),
-                    );
+                    patcher.add_statement(start, StatementKind::StorageLive(local));
                 }
             }
 
@@ -748,9 +739,9 @@ fn reconstruct_storage<'tcx>(
             // `SparseIntervalMatrix` will coalesce adjacent ranges. If this
             // happens then we need to repeat the start of block logic (see
             // above) and end of block logic (see below) at each block boundary.
-            let mut current_block = start_block;
-            debug_assert!(start_block <= end_block);
-            while current_block != end_block {
+            let mut current_block = start.block;
+            debug_assert!(start.block <= end.block);
+            while current_block != end.block {
                 if should_insert_storage(&body.basic_blocks[current_block]) {
                     emit_storage_dead_in_succs(body, &mut patcher, local, current_block);
                 }
@@ -764,17 +755,14 @@ fn reconstruct_storage<'tcx>(
             // uses a local. If this is a terminator then we need to instead
             // insert it at the start of every successor block where the local
             // is dead on entry.
-            if should_insert_storage(&body.basic_blocks[end_block]) {
-                if range.last.point() == points.terminator(end_block) {
+            if should_insert_storage(&body.basic_blocks[end.block]) {
+                if range.last.point() == points.terminator(end.block) {
                     emit_storage_dead_in_succs(body, &mut patcher, local, current_block);
                 } else {
-                    // Don't emit StorageDead in cleanup blocks.
-                    if !body.basic_blocks[end_block].is_cleanup {
-                        patcher.add_statement(
-                            points.to_location(range.last.point()).successor_within_block(),
-                            StatementKind::StorageDead(local),
-                        );
-                    }
+                    patcher.add_statement(
+                        end.successor_within_block(),
+                        StatementKind::StorageDead(local),
+                    );
                 }
             }
         }
