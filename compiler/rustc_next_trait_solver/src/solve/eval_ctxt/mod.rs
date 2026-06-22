@@ -1001,7 +1001,8 @@ where
     ) -> Result<Option<Certainty>, NoSolutionOrRerunNonErased> {
         // If this loop did not result in any progress, what's our final certainty.
         let mut unchanged_certainty = Some(Certainty::Yes);
-        for (source, goal, stalled_on) in mem::take(&mut self.nested_goals) {
+        let new_nested_goals = Vec::with_capacity(self.nested_goals.len());
+        for (source, goal, stalled_on) in mem::replace(&mut self.nested_goals, new_nested_goals) {
             // We never handle `NormalizesTo` as a nested goal
             debug_assert!(!matches!(
                 goal.predicate.kind().skip_binder(),
