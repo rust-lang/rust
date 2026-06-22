@@ -5609,12 +5609,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             // See docs on the `known_eii_macro_resolution` field:
             // if we already know the resolution statically, don't bother resolving it.
             if let Some(target) = known_eii_macro_resolution {
-                self.smart_resolve_path(
-                    *node_id,
-                    &None,
-                    &target.foreign_item,
-                    PathSource::ExternItemImpl,
-                );
+                self.smart_resolve_path(*node_id, &None, target, PathSource::ExternItemImpl);
             } else {
                 self.smart_resolve_path(*node_id, &None, &eii_macro_path, PathSource::Macro);
             }

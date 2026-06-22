@@ -3924,7 +3924,7 @@ pub struct EiiImpl {
     ///
     /// This field is that shortcut: we prefill the extern target to skip a name resolution step,
     /// making sure it never fails. It'd be awful UX if we fail name resolution in code invisible to the user.
-    pub known_eii_macro_resolution: Option<EiiDecl>,
+    pub known_eii_macro_resolution: Option<Path>,
     pub impl_safety: Safety,
     pub span: Span,
     pub inner_span: Span,
