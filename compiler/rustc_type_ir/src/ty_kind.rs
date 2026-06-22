@@ -918,7 +918,7 @@ impl<I: Interner> FnSigKind<I> {
         args_len: usize,
     ) -> Result<Self, SplattedArgIndexError> {
         if let Some(splatted_arg_index) = splatted {
-            if splatted_arg_index >= Self::NO_SPLATTED_ARG_INDEX {
+            if splatted_arg_index == Self::NO_SPLATTED_ARG_INDEX {
                 // This index value is used as a marker for "no splatting", so it is unsupported.
                 // Higher values are also not supported, for performance reasons.
                 return Err(SplattedArgIndexError::InvalidIndex { splatted_arg_index });
