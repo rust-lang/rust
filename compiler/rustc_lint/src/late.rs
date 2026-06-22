@@ -18,7 +18,7 @@ use rustc_span::Span;
 use tracing::debug;
 
 use crate::passes::LateLintPassObject;
-use crate::{LateContext, LateLintPass, LintStore, pass_must_run};
+use crate::{LateContext, LateLintPass, LintStore, is_lint_pass_required};
 
 /// Extract the [`LintStore`] from [`Session`].
 ///
@@ -358,9 +358,9 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
         .late_module_passes
         .iter()
         .map(|mk_pass| mk_pass(tcx))
-        .filter(|pass| pass_must_run(skippable_lints, &pass.get_lints()))
+        .filter(|pass| is_lint_pass_required(skippable_lints, &pass.get_lints()))
         .collect();
-    let builtin_lints_must_run = pass_must_run(skippable_lints, &builtin_lints.get_lints());
+    let builtin_lints_must_run = is_lint_pass_required(skippable_lints, &builtin_lints.get_lints());
     if passes.is_empty() {
         if builtin_lints_must_run {
             late_lint_mod_inner(tcx, module_def_id, context, builtin_lints);
@@ -406,7 +406,7 @@ fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
         .late_passes
         .iter()
         .map(|mk_pass| mk_pass(tcx))
-        .filter(|pass| pass_must_run(skippable_lints, &pass.get_lints()))
+        .filter(|pass| is_lint_pass_required(skippable_lints, &pass.get_lints()))
         .collect();
     if passes.is_empty() {
         return;

@@ -743,12 +743,12 @@ fn register_internals(store: &mut LintStore) {
     );
 }
 
-/// Must a pass (which contains `lints`) run? Maybe not, e.g. for dependencies built with
+/// Is a pass (which contains `lints`) required to run? Maybe not, e.g. for dependencies built with
 /// `--cap-lints=allow`.
 ///
 /// Note: this is a conservative estimate intended for optimization purposes. It might return
 /// `true` for a pass that need not run, but it will never return `false` for a pass that must run.
-pub fn pass_must_run(skippable: &UnordSet<LintId>, lints: &LintVec) -> bool {
+pub fn is_lint_pass_required(skippable: &UnordSet<LintId>, lints: &LintVec) -> bool {
     // A pass without any lints? Clippy sometimes does this, to collect things while traversing.
     // Such a pass must always run.
     if lints.is_empty() {
