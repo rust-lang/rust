@@ -236,7 +236,7 @@ The compiler uses the [`tracing`] crate for logging.
 
 For details, see [the chapter on tracing](./tracing.md).
 
-## Narrowing (Bisecting) Regressions
+## Narrowing (bisecting) regressions
 
 The [cargo-bisect-rustc][bisect] tool can be used as a quick and easy way to
 find exactly which PR caused a change in `rustc` behavior.
