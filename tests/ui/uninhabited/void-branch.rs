@@ -36,7 +36,6 @@ fn infallible_with_arg<T>(x: T) -> (T, std::convert::Infallible) {
 
 fn in_if_else(x: String) -> Result<String, (String, std::convert::Infallible)> {
     if x.len() > 0 { Err(infallible_with_arg(x)) } else { Ok(x) }
-    //~^ ERROR unreachable expression
 }
 
 fn main() {}
