@@ -15,23 +15,24 @@ fn test_signed_div_rem_exhaustive() {
                 assert!(std::panic::catch_unwind(|| a.div_ceil(b)).is_err());
                 assert!(std::panic::catch_unwind(|| a.rem_ceil(b)).is_err());
             } else {
+                let valid_q_r = |a, b, q, r| q as i32 * b as i32 + r as i32 == a as i32;
                 let r_euclid = a.rem_euclid(b);
                 assert!(r_euclid.unsigned_abs() < b.unsigned_abs() && r_euclid >= 0);
-                assert_eq!(a.div_euclid(b) * b + r_euclid, a);
+                assert!(valid_q_r(a, b, a.div_euclid(b), r_euclid));
 
                 let r_floor = a.rem_floor(b);
                 assert!(
                     r_floor.unsigned_abs() < b.unsigned_abs()
                         && (r_floor == 0 || (r_floor < 0) == (b < 0))
                 );
-                assert_eq!(a.div_floor(b) * b + r_floor, a);
+                assert!(valid_q_r(a, b, a.div_floor(b), r_floor));
 
                 let r_ceil = a.rem_ceil(b);
                 assert!(
                     r_ceil.unsigned_abs() < b.unsigned_abs()
-                        && (r_floor == 0 || (r_ceil < 0) != (b < 0))
+                        && (r_ceil == 0 || (r_ceil < 0) != (b < 0))
                 );
-                assert_eq!(a.div_ceil(b) * b + r_ceil, a);
+                assert!(valid_q_r(a, b, a.div_ceil(b), r_ceil));
             }
         }
     }
