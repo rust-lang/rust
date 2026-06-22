@@ -10,9 +10,10 @@ use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::search_graph::{CandidateHeadUsages, LowerAvailableDepth, PathKind};
 use rustc_type_ir::solve::{
-    AccessedOpaques, ExternalRegionConstraints, FetchEligibleAssocItemResponse, MaybeInfo,
-    NoSolutionOrRerunNonErased, OpaqueTypesJank, QueryResultOrRerunNonErased, RerunCondition,
-    RerunNonErased, RerunReason, RerunResultExt, SmallCopyList,
+    AccessedOpaques, ComputeGoalFastPathOutcome, ExternalRegionConstraints,
+    FetchEligibleAssocItemResponse, MaybeInfo, NoSolutionOrRerunNonErased, OpaqueTypesJank,
+    QueryResultOrRerunNonErased, RerunCondition, RerunNonErased, RerunReason, RerunResultExt,
+    SmallCopyList,
 };
 use rustc_type_ir::{
     self as ty, CanonicalVarValues, ClauseKind, InferCtxtLike, Interner, MayBeErased,
@@ -35,7 +36,7 @@ use crate::solve::search_graph::SearchGraph;
 use crate::solve::ty::may_use_unstable_feature;
 use crate::solve::{
     CanonicalInput, CanonicalResponse, Certainty, ExternalConstraintsData, FIXPOINT_STEP_LIMIT,
-    Goal, GoalEvaluation, GoalSource, GoalStalledOn, HasChanged, MaybeCause,
+    Goal, GoalEvaluation, GoalSource, GoalStalledOn, GoalStalledOnReason, HasChanged, MaybeCause,
     NestedNormalizationGoals, NoSolution, QueryInput, QueryResult, Response, SucceededInErased,
     VisibleForLeakCheck, inspect,
 };
@@ -506,13 +507,8 @@ where
         }
 
         // If the goal isn't stalled, we should definitely run it.
-        let Some(&GoalStalledOn {
-            num_opaques,
-            ref stalled_vars,
-            ref sub_roots,
-            stalled_certainty,
-            ref previously_succeeded_in_erased,
-        }) = stalled_on
+        let Some(&GoalStalledOn { ref reason, ref stalled_vars, ref sub_roots, stalled_certainty }) =
+            stalled_on
         else {
             return MayMakeProgress;
         };
@@ -529,39 +525,84 @@ where
             return MayMakeProgress;
         }
 
-        // If any opaques changed in the opaque type storage,
-        // rerunning might make progress so we should rerun.
-        if self.delegate.opaque_types_storage_num_entries().needs_reevaluation(num_opaques) {
-            // Unless this goal previously succeeded in erased mode.
-            // If the stalled goal successfully evaluated while erasing opaque types,
-            // and the current state of the opaque type storage is not different in a way that is
-            // relevant, this stalled goal cannot make any progress and we set this variable to true.
-            let mut previous_erased_run_is_still_valid = false;
+        match reason {
+            GoalStalledOnReason::FastPath => {
+                // fastpath is never because of opaques, we can skip this check
+            }
+            &GoalStalledOnReason::Other { num_opaques, ref previously_succeeded_in_erased } => {
+                // If any opaques changed in the opaque type storage,
+                // rerunning might make progress so we should rerun.
+                if self.delegate.opaque_types_storage_num_entries().needs_reevaluation(num_opaques)
+                {
+                    // Unless this goal previously succeeded in erased mode.
+                    // If the stalled goal successfully evaluated while erasing opaque types,
+                    // and the current state of the opaque type storage is not different in a way that is
+                    // relevant, this stalled goal cannot make any progress and we set this variable to true.
+                    let mut previous_erased_run_is_still_valid = false;
 
-            if let &SucceededInErased::Yes { accessed_opaques } = previously_succeeded_in_erased {
-                match self.should_rerun_after_erased_canonicalization(
-                    accessed_opaques,
-                    self.typing_mode(),
-                    &self.delegate.clone_opaque_types_lookup_table(),
-                ) {
-                    RerunDecision::Yes => {}
-                    RerunDecision::EagerlyPropagateToParent => {
-                        unreachable!("we never retry stalled queries if the parent was erased")
+                    if let &SucceededInErased::Yes { accessed_opaques } =
+                        previously_succeeded_in_erased
+                    {
+                        match self.should_rerun_after_erased_canonicalization(
+                            accessed_opaques,
+                            self.typing_mode(),
+                            &self.delegate.clone_opaque_types_lookup_table(),
+                        ) {
+                            RerunDecision::Yes => {}
+                            RerunDecision::EagerlyPropagateToParent => {
+                                unreachable!(
+                                    "we never retry stalled queries if the parent was erased"
+                                )
+                            }
+                            RerunDecision::No => {
+                                previous_erased_run_is_still_valid = true;
+                            }
+                        }
                     }
-                    RerunDecision::No => {
-                        previous_erased_run_is_still_valid = true;
+
+                    if !previous_erased_run_is_still_valid {
+                        return MayMakeProgress;
                     }
                 }
-            }
-
-            if !previous_erased_run_is_still_valid {
-                return MayMakeProgress;
             }
         }
 
         // Otherwise, we can be sure that this stalled goal cannot make any progress
         // and we can exit early.
         WontMakeProgress(stalled_certainty)
+    }
+
+    /// This is a fast path optimization:
+    /// See the docs on [`ComputeGoalFastPathOutcome`]
+    pub fn compute_goal_fast_path(
+        &self,
+        goal: Goal<I, I::Predicate>,
+    ) -> Option<(NestedNormalizationGoals<I>, GoalEvaluation<I>)> {
+        if self.delegate.disable_trait_solver_fast_paths() {
+            return None;
+        }
+
+        match self.delegate.compute_goal_fast_path(goal, self.origin_span) {
+            ComputeGoalFastPathOutcome::NoFastPath => None,
+            ComputeGoalFastPathOutcome::TriviallyHolds => Some((
+                NestedNormalizationGoals::empty(),
+                GoalEvaluation {
+                    goal,
+                    certainty: Certainty::Yes,
+                    has_changed: HasChanged::No,
+                    stalled_on: None,
+                },
+            )),
+            ComputeGoalFastPathOutcome::TriviallyStalled { stalled_on } => Some((
+                NestedNormalizationGoals::empty(),
+                GoalEvaluation {
+                    goal,
+                    certainty: Certainty::AMBIGUOUS,
+                    has_changed: HasChanged::No,
+                    stalled_on: Some(stalled_on),
+                },
+            )),
+        }
     }
 
     /// Recursively evaluates `goal`, returning the nested goals in case
@@ -592,13 +633,8 @@ where
             ));
         }
 
-        if !self.delegate.disable_trait_solver_fast_paths()
-            && let Some(certainty) = self.delegate.compute_goal_fast_path(goal, self.origin_span)
-        {
-            return Ok((
-                NestedNormalizationGoals::empty(),
-                GoalEvaluation { goal, certainty, has_changed: HasChanged::No, stalled_on: None },
-            ));
+        if let Some(res) = self.compute_goal_fast_path(goal) {
+            return Ok(res);
         }
 
         self.evaluate_goal_cold(source, goal, increase_depth_for_nested)
@@ -768,41 +804,12 @@ where
                 // that is not resolved. Only when *these* have changed is it meaningful
                 // to recompute this goal.
                 HasChanged::Yes => None,
-                HasChanged::No => {
-                    // Remove the canonicalized universal vars, since we only care about stalled existentials.
-                    let mut sub_roots = Vec::new();
-                    let mut stalled_vars = orig_values;
-                    stalled_vars.retain(|arg| match arg.kind() {
-                        // Lifetimes can never stall goals.
-                        ty::GenericArgKind::Lifetime(_) => false,
-                        ty::GenericArgKind::Type(ty) => match ty.kind() {
-                            ty::Infer(ty::TyVar(vid)) => {
-                                sub_roots.push(self.delegate.sub_unification_table_root_var(vid));
-                                true
-                            }
-                            ty::Infer(_) => true,
-                            ty::Param(_) | ty::Placeholder(_) => false,
-                            _ => unreachable!("unexpected orig_value: {ty:?}"),
-                        },
-                        ty::GenericArgKind::Const(ct) => match ct.kind() {
-                            ty::ConstKind::Infer(_) => true,
-                            ty::ConstKind::Param(_) | ty::ConstKind::Placeholder(_) => false,
-                            _ => unreachable!("unexpected orig_value: {ct:?}"),
-                        },
-                    });
-
-                    Some(GoalStalledOn {
-                        num_opaques: canonical_goal
-                            .canonical
-                            .value
-                            .predefined_opaques_in_body
-                            .len(),
-                        stalled_vars,
-                        sub_roots,
-                        stalled_certainty: certainty,
-                        previously_succeeded_in_erased: succeeded_in_erased,
-                    })
-                }
+                HasChanged::No => Some(self.build_stalled_on(
+                    canonical_goal,
+                    certainty,
+                    orig_values,
+                    succeeded_in_erased,
+                )),
             },
         };
 
@@ -810,6 +817,45 @@ where
             normalization_nested_goals,
             GoalEvaluation { goal, certainty, has_changed, stalled_on },
         ))
+    }
+
+    fn build_stalled_on(
+        &self,
+        canonical_goal: CanonicalInput<I>,
+        certainty: Certainty,
+        mut stalled_vars: Vec<I::GenericArg>,
+        previously_succeeded_in_erased: SucceededInErased<I>,
+    ) -> GoalStalledOn<I> {
+        // Remove the canonicalized universal vars, since we only care about stalled existentials.
+        let mut sub_roots = Vec::new();
+        stalled_vars.retain(|arg| match arg.kind() {
+            // Lifetimes can never stall goals.
+            ty::GenericArgKind::Lifetime(_) => false,
+            ty::GenericArgKind::Type(ty) => match ty.kind() {
+                ty::Infer(ty::TyVar(vid)) => {
+                    sub_roots.push(self.delegate.sub_unification_table_root_var(vid));
+                    true
+                }
+                ty::Infer(_) => true,
+                ty::Param(_) | ty::Placeholder(_) => false,
+                _ => unreachable!("unexpected orig_value: {ty:?}"),
+            },
+            ty::GenericArgKind::Const(ct) => match ct.kind() {
+                ty::ConstKind::Infer(_) => true,
+                ty::ConstKind::Param(_) | ty::ConstKind::Placeholder(_) => false,
+                _ => unreachable!("unexpected orig_value: {ct:?}"),
+            },
+        });
+
+        GoalStalledOn {
+            stalled_vars,
+            sub_roots,
+            stalled_certainty: certainty,
+            reason: GoalStalledOnReason::Other {
+                num_opaques: canonical_goal.canonical.value.predefined_opaques_in_body.len(),
+                previously_succeeded_in_erased,
+            },
+        }
     }
 
     fn should_rerun_after_erased_canonicalization(
