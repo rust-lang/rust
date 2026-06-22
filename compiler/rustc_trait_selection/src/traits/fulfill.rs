@@ -17,6 +17,7 @@ use rustc_middle::ty::{
     self, Binder, Const, DelayedSet, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor, TypingMode, may_use_unstable_feature,
 };
+use rustc_next_trait_solver::solve::TyOrConstInferVar;
 use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, debug_span, instrument};
 
@@ -28,7 +29,7 @@ use super::{
     ScrubbedTraitError, const_evaluatable, wf,
 };
 use crate::error_reporting::InferCtxtErrorExt;
-use crate::infer::{InferCtxt, TyOrConstInferVar};
+use crate::infer::InferCtxt;
 use crate::traits::normalize::normalize_with_depth_to;
 use crate::traits::project::{PolyProjectionObligation, ProjectionCacheKeyExt as _};
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
@@ -617,8 +618,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         obligation.cause.span,
                     ) {
                         None => {
-                            pending_obligation.stalled_on =
-                                vec![TyOrConstInferVar::maybe_from_term(term).unwrap()];
+                            pending_obligation.stalled_on = vec![
+                                TyOrConstInferVar::maybe_from_term::<TyCtxt<'tcx>>(term).unwrap(),
+                            ];
                             ProcessResult::Unchanged
                         }
                         Some(os) => ProcessResult::Changed(mk_pending(obligation, os)),
@@ -683,11 +685,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         Ok(()) => ProcessResult::Changed(Default::default()),
                         Err(NotConstEvaluatable::MentionsInfer) => {
                             pending_obligation.stalled_on.clear();
-                            pending_obligation.stalled_on.extend(
-                                alias_const
-                                    .walk()
-                                    .filter_map(TyOrConstInferVar::maybe_from_generic_arg),
-                            );
+                            pending_obligation.stalled_on.extend(alias_const.walk().filter_map(
+                                TyOrConstInferVar::maybe_from_generic_arg::<TyCtxt<'tcx>>,
+                            ));
                             ProcessResult::Unchanged
                         }
                         Err(
@@ -767,12 +767,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                             ) {
                                 Ok(val) => Ok(val),
                                 e @ Err(EvaluateConstErr::HasGenericsOrInfers) => {
-                                    stalled_on.extend(
-                                        alias_const
-                                            .args
-                                            .iter()
-                                            .filter_map(TyOrConstInferVar::maybe_from_generic_arg),
-                                    );
+                                    stalled_on.extend(alias_const.args.iter().filter_map(
+                                        TyOrConstInferVar::maybe_from_generic_arg::<TyCtxt<'tcx>>,
+                                    ));
                                     e
                                 }
                                 e @ Err(
@@ -1016,7 +1013,7 @@ fn args_infer_vars<'tcx>(
             }
             walker.visited.into_iter()
         })
-        .filter_map(TyOrConstInferVar::maybe_from_generic_arg)
+        .filter_map(TyOrConstInferVar::maybe_from_generic_arg::<TyCtxt<'tcx>>)
 }
 
 #[derive(Debug)]

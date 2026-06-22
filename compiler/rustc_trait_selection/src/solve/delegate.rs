@@ -18,7 +18,7 @@ use rustc_middle::traits::solve::Certainty;
 use rustc_middle::ty::{
     self, MayBeErased, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeVisitableExt, TypingMode,
 };
-use rustc_next_trait_solver::solve::{GoalStalledOn, GoalStalledOnReason};
+use rustc_next_trait_solver::solve::{GoalStalledOn, GoalStalledOnReason, TyOrConstInferVar};
 use rustc_span::{DUMMY_SP, Span};
 
 use crate::traits::{EvaluateConstErr, ObligationCause, sizedness_fast_path, specialization_graph};
@@ -80,7 +80,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         use ComputeGoalFastPathOutcome as Outcome;
 
         fn stalled_with_args<'tcx>(
-            stalled_vars: Vec<ty::GenericArg<'tcx>>,
+            stalled_vars: Vec<TyOrConstInferVar>,
         ) -> ComputeGoalFastPathOutcome<'tcx> {
             Outcome::TriviallyStalled {
                 stalled_on: GoalStalledOn {
@@ -103,14 +103,14 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 let trait_pred = pred.rebind(trait_pred);
 
                 let self_ty = self.shallow_resolve(trait_pred.self_ty().skip_binder());
-                if self_ty.is_ty_var()
+                if let Some(vid) = self_ty.ty_vid()
                 // We don't do this fast path when opaques are defined since we may
                 // eventually use opaques to incompletely guide inference via ty var
                 // self types.
                 // FIXME: Properly consider opaques here.
                 && self.known_no_opaque_types_in_storage()
                 {
-                    stalled_with_args(vec![self_ty.into()])
+                    stalled_with_args(vec![TyOrConstInferVar::Ty(vid)])
                 } else if trait_pred.polarity() == ty::PredicatePolarity::Positive {
                     match self.0.tcx.as_lang_item(trait_pred.def_id()) {
                         Some(LangItem::Sized) | Some(LangItem::MetaSized) => {
@@ -182,7 +182,10 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 match (self.shallow_resolve(a).kind(), self.shallow_resolve(b).kind()) {
                     (&ty::Infer(ty::TyVar(a_vid)), &ty::Infer(ty::TyVar(b_vid))) => {
                         self.sub_unify_ty_vids_raw(a_vid, b_vid);
-                        stalled_with_args(vec![a.into(), b.into()])
+                        stalled_with_args(vec![
+                            TyOrConstInferVar::Ty(a_vid),
+                            TyOrConstInferVar::Ty(b_vid),
+                        ])
                     }
                     _ => Outcome::NoFastPath,
                 }
@@ -193,8 +196,8 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 }
 
                 let arg = self.shallow_resolve_const(ct);
-                if arg.is_ct_infer() {
-                    stalled_with_args(vec![arg.into()])
+                if let Some(vid) = arg.ct_vid() {
+                    stalled_with_args(vec![TyOrConstInferVar::Const(vid)])
                 } else {
                     Outcome::NoFastPath
                 }
@@ -208,7 +211,10 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 if arg.is_trivially_wf(self.tcx) {
                     Outcome::TriviallyHolds
                 } else if arg.is_infer() {
-                    stalled_with_args(vec![arg.into_arg()])
+                    stalled_with_args(vec![
+                        TyOrConstInferVar::maybe_from_term::<TyCtxt<'tcx>>(arg)
+                            .expect("its an infer var"),
+                    ])
                 } else {
                     Outcome::NoFastPath
                 }
