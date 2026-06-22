@@ -3855,13 +3855,33 @@ pub enum OpaqueTyOrigin<D> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, StableHash)]
+pub enum DelegationSelfTyPropagationKind {
+    /// Used when self type is explicitly specified in free-to-trait reuse
+    /// `reuse <() as Trait>::foo;`.
+    SelfTy(HirId /* Self ty id */),
+    /// Used when infer instead of a self type is specified or self type
+    /// is not specified at all: `reuse Trait::foo; reuse <_ as Trait>::foo;`.
+    SelfParam,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, StableHash)]
 pub struct DelegationInfo {
     pub call_expr_id: HirId,
     pub call_path_res: Option<DefId>,
-    pub parent_args_segment_id: Option<HirId>,
-    pub child_args_segment_id: Option<HirId>,
-    pub self_ty_id: Option<HirId>,
-    pub propagate_self_ty: bool,
+
+    /// Id of the child segment in delegation: `reuse Trait::foo`,
+    /// `child_seg_id` points to `foo`.
+    pub child_seg_id: HirId,
+
+    /// Ids of parent and child segments, `Some` when we need to take
+    /// generic args of those segments for signature/predicates inheritance.
+    /// `None` in trait impl case or when error delegation is generated, meaning
+    /// we should not access those segments for generic args lowering.
+    /// When `child_seg_id_for_sig` is Some it always equals `child_seg_id`.
+    pub parent_seg_id_for_sig: Option<HirId>,
+    pub child_seg_id_for_sig: Option<HirId>,
+
+    pub self_ty_propagation_kind: Option<DelegationSelfTyPropagationKind>,
     pub group_id: Option<(LocalExpnId, bool /* unused_target_expr */)>,
 }
 

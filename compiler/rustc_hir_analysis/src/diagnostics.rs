@@ -1583,14 +1583,6 @@ pub(crate) struct UnsupportedDelegation<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("delegation self type is not specified")]
-#[help("consider explicitly specifying self type: `reuse </* Type */ as Trait>::function`")]
-pub(crate) struct DelegationSelfTypeNotSpecified {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("inferred lifetimes are not allowed in delegations as we need to inherit signature")]
 pub(crate) struct ElidedLifetimesAreNotAllowedInDelegations {
     #[primary_span]
