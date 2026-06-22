@@ -318,7 +318,9 @@ fn register_builtins(store: &mut LintStore) {
     store.register_lints(&hardwired::lint_vec());
 
     store.register_lints(&SelfTypeConversion::lint_vec());
-    store.register_late_pass(|_| Box::new(SelfTypeConversion::new()));
+    store.register_late_pass(Box::new(|_| {
+        Box::new(SelfTypeConversion::new()) as Box<dyn LateLintPass<'_>>
+    }));
 
     add_lint_group!(
         "nonstandard_style",
