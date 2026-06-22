@@ -8,12 +8,7 @@ fn test_signed_div_rem_exhaustive() {
     for a in i8::MIN..=i8::MAX {
         for b in i8::MIN..=i8::MAX {
             if b == 0 || a == i8::MIN && b == -1 {
-                assert!(std::panic::catch_unwind(|| a.div_euclid(b)).is_err());
-                assert!(std::panic::catch_unwind(|| a.rem_euclid(b)).is_err());
-                assert!(std::panic::catch_unwind(|| a.div_floor(b)).is_err());
-                assert!(std::panic::catch_unwind(|| a.rem_floor(b)).is_err());
-                assert!(std::panic::catch_unwind(|| a.div_ceil(b)).is_err());
-                assert!(std::panic::catch_unwind(|| a.rem_ceil(b)).is_err());
+                continue; // Tested in int_macros.rs.
             } else {
                 let valid_q_r = |a, b, q, r| q as i32 * b as i32 + r as i32 == a as i32;
                 let r_euclid = a.rem_euclid(b);

@@ -1,3 +1,15 @@
+macro_rules! test_panic {
+    ($($test_name:ident: $expr:expr),* $(,)?) => {
+        $(
+            #[test]
+            #[should_panic]
+            fn $test_name() {
+                let _unused = $expr;
+            }
+        )*
+    }
+}
+
 macro_rules! int_module {
     ($T:ident, $U:ident) => {
         use core::num::ParseIntError;
@@ -1015,6 +1027,22 @@ macro_rules! int_module {
                 assert_eq_const_safe!(Option<$T>: <$T>::checked_div_exact(<$T>::MIN, -1), None);
                 assert_eq_const_safe!(Option<$T>: <$T>::checked_div_exact(0, 0), None);
             }
+        }
+
+        test_panic! {
+            test_div_euclid_zero: ($T::MIN).div_euclid(0),
+            test_rem_euclid_zero: ($T::MIN).rem_euclid(0),
+            test_div_floor_zero: ($T::MIN).div_floor(0),
+            test_rem_floor_zero: ($T::MIN).rem_floor(0),
+            test_div_ceil_zero: ($T::MIN).div_ceil(0),
+            test_rem_ceil_zero: ($T::MIN).rem_ceil(0),
+
+            test_div_euclid_panic_overflow: ($T::MIN).div_euclid(-1),
+            test_rem_euclid_panic_overflow: ($T::MIN).rem_euclid(-1),
+            test_div_floor_panic_overflow: ($T::MIN).div_floor(-1),
+            test_rem_floor_panic_overflow: ($T::MIN).rem_floor(-1),
+            test_div_ceil_panic_overflow: ($T::MIN).div_ceil(-1),
+            test_rem_ceil_panic_overflow: ($T::MIN).rem_ceil(-1),
         }
     };
 }
