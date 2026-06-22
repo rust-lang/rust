@@ -248,7 +248,7 @@ You can then look at the PR to get more context on *why* it was changed.
 [bisect]: https://github.com/rust-lang/cargo-bisect-rustc
 [bisect-tutorial]: https://rust-lang.github.io/cargo-bisect-rustc/tutorial.html
 
-## Downloading Artifacts from Rust's CI
+## Downloading artifacts from Rust's CI
 
 The [rustup-toolchain-install-master][rtim] tool by kennytm can be used to
 download the artifacts produced by Rust's CI for a specific SHA1 -- this
