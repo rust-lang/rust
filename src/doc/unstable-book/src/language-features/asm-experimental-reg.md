@@ -1,4 +1,4 @@
-# `asm_experimental_arch`
+# `asm_experimental_reg`
 
 The tracking issue for this feature is: [#133416]
 
