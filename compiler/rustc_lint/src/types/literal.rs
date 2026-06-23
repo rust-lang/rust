@@ -404,7 +404,7 @@ pub(crate) fn lint_literal<'tcx>(
     hir_id: HirId,
     span: Span,
     lit: &hir::Lit,
-    negated: bool,
+    is_negated_pat: bool,
 ) {
     match *cx.typeck_results().node_type(hir_id).kind() {
         ty::Int(t) => {
@@ -416,7 +416,7 @@ pub(crate) fn lint_literal<'tcx>(
             };
         }
         ty::Uint(t) => {
-            assert!(!negated);
+            assert!(!is_negated_pat);
             lint_uint_literal(cx, hir_id, span, lit, t)
         }
         ty::Float(t) => {

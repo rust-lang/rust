@@ -342,7 +342,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_pat_expr(&mut self, expr: &'v PatExpr<'v>) -> Self::Result {
         walk_pat_expr(self, expr)
     }
-    fn visit_lit(&mut self, _hir_id: HirId, _lit: Lit, _negated: bool) -> Self::Result {
+    fn visit_lit(&mut self, _hir_id: HirId, _lit: Lit, _is_negated_pat: bool) -> Self::Result {
         Self::Result::output()
     }
     fn visit_anon_const(&mut self, c: &'v AnonConst) -> Self::Result {

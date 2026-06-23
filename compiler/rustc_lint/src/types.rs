@@ -539,12 +539,18 @@ fn lint_fn_pointer<'tcx>(
 }
 
 impl<'tcx> LateLintPass<'tcx> for TypeLimits {
-    fn check_lit(&mut self, cx: &LateContext<'tcx>, hir_id: HirId, lit: hir::Lit, negated: bool) {
-        if negated {
+    fn check_lit(
+        &mut self,
+        cx: &LateContext<'tcx>,
+        hir_id: HirId,
+        lit: hir::Lit,
+        is_negated_pat: bool,
+    ) {
+        if is_negated_pat {
             self.negated_expr_id = Some(hir_id);
             self.negated_expr_span = Some(lit.span);
         }
-        lint_literal(cx, self, hir_id, lit.span, &lit, negated);
+        lint_literal(cx, self, hir_id, lit.span, &lit, is_negated_pat);
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx hir::Expr<'tcx>) {
