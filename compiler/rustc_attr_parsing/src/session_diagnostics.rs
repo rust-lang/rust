@@ -337,7 +337,7 @@ pub(crate) struct InvalidTarget {
     pub target: &'static str,
     pub applied: DiagArgValue,
     pub only: &'static str,
-    pub attribute_args: &'static str,
+    pub attribute_args: String,
     #[subdiagnostic]
     pub help: Option<InvalidTargetHelp>,
     #[warning(

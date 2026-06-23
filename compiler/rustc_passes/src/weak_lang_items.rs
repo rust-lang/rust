@@ -9,9 +9,7 @@ use rustc_middle::middle::lang_items::required;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
 
-use crate::diagnostics::{
-    MissingLangItem, MissingPanicHandler, PanicUnwindWithoutStd, UnknownExternLangItem,
-};
+use crate::diagnostics::{MissingLangItem, MissingPanicHandler, PanicUnwindWithoutStd};
 use crate::lang_items::extract_ast;
 
 /// Checks the crate for usage of weak lang items, returning a vector of all the
@@ -28,27 +26,23 @@ pub(crate) fn check_crate(
         items.missing.push(LangItem::EhPersonality);
     }
 
-    visit::Visitor::visit_crate(&mut WeakLangItemVisitor { tcx, items }, krate);
+    visit::Visitor::visit_crate(&mut WeakLangItemVisitor { items }, krate);
 
     verify(tcx, items);
 }
 
-struct WeakLangItemVisitor<'a, 'tcx> {
-    tcx: TyCtxt<'tcx>,
+struct WeakLangItemVisitor<'a> {
     items: &'a mut lang_items::LanguageItems,
 }
 
-impl<'ast> visit::Visitor<'ast> for WeakLangItemVisitor<'_, '_> {
+impl<'ast> visit::Visitor<'ast> for WeakLangItemVisitor<'_> {
     fn visit_foreign_item(&mut self, i: &'ast ast::ForeignItem) {
-        if let Some((lang_item, _)) = extract_ast(&i.attrs) {
-            if let Some(item) = LangItem::from_name(lang_item)
-                && item.is_weak()
-            {
-                if self.items.get(item).is_none() {
-                    self.items.missing.push(item);
-                }
-            } else {
-                self.tcx.dcx().emit_err(UnknownExternLangItem { span: i.span, lang_item });
+        if let Some((lang_item, _)) = extract_ast(&i.attrs)
+            && let Some(item) = LangItem::from_name(lang_item)
+            && item.is_weak()
+        {
+            if self.items.get(item).is_none() {
+                self.items.missing.push(item);
             }
         }
     }

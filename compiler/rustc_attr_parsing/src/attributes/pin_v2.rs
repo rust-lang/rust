@@ -12,7 +12,7 @@ pub(crate) struct PinV2Parser;
 
 impl NoArgsAttributeParser for PinV2Parser {
     const PATH: &[Symbol] = &[sym::pin_v2];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Enum),
         Allow(Target::Struct),
         Allow(Target::Union),

@@ -5,7 +5,7 @@ use super::prelude::*;
 pub(crate) struct LoopMatchParser;
 impl NoArgsAttributeParser for LoopMatchParser {
     const PATH: &[Symbol] = &[sym::loop_match];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Loop)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Loop)]);
     const STABILITY: AttributeStability = unstable!(loop_match);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::LoopMatch;
 }
@@ -13,7 +13,7 @@ impl NoArgsAttributeParser for LoopMatchParser {
 pub(crate) struct ConstContinueParser;
 impl NoArgsAttributeParser for ConstContinueParser {
     const PATH: &[Symbol] = &[sym::const_continue];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Break)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Break)]);
     const STABILITY: AttributeStability = unstable!(loop_match);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::ConstContinue;
 }

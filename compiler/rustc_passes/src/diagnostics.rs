@@ -5,7 +5,6 @@ use rustc_errors::codes::*;
 use rustc_errors::{
     Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, Level, MultiSpan, msg,
 };
-use rustc_hir::Target;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::{MainDefinition, Ty};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol};
@@ -327,14 +326,6 @@ pub(crate) struct DeprecatedAnnotationHasNoEffect {
 }
 
 #[derive(Diagnostic)]
-#[diag("unknown external lang item: `{$lang_item}`", code = E0264)]
-pub(crate) struct UnknownExternLangItem {
-    #[primary_span]
-    pub span: Span,
-    pub lang_item: Symbol,
-}
-
-#[derive(Diagnostic)]
 #[diag("`#[panic_handler]` function required, but not found")]
 pub(crate) struct MissingPanicHandler;
 
@@ -396,17 +387,6 @@ pub(crate) struct LangItemWithTargetFeature {
         } function is not allowed to have `#[target_feature]`"
     )]
     pub sig_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("`{$name}` lang item must be applied to a {$expected_target}", code = E0718)]
-pub(crate) struct LangItemOnIncorrectTarget {
-    #[primary_span]
-    #[label("attribute should be applied to a {$expected_target}, not a {$actual_target}")]
-    pub span: Span,
-    pub name: Symbol,
-    pub expected_target: Target,
-    pub actual_target: Target,
 }
 
 #[derive(Diagnostic)]

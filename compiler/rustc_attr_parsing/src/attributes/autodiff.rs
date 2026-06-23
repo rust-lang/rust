@@ -19,7 +19,7 @@ pub(crate) struct RustcAutodiffParser;
 
 impl SingleAttributeParser for RustcAutodiffParser {
     const PATH: &[Symbol] = &[sym::rustc_autodiff];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),

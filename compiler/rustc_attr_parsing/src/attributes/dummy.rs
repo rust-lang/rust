@@ -12,7 +12,7 @@ pub(crate) struct RustcDummyParser;
 impl SingleAttributeParser for RustcDummyParser {
     const PATH: &[Symbol] = &[sym::rustc_dummy];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Ignore;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::ManuallyChecked;
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::ManuallyChecked;
     const TEMPLATE: AttributeTemplate = template!(Word); // Anything, really
     const STABILITY: AttributeStability =
         unstable!(rustc_attrs, "the `#[rustc_dummy]` attribute is used for rustc unit tests");
