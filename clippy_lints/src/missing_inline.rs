@@ -1,8 +1,6 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_hir};
-use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, Attribute, find_attr};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::AssocContainer;
+use clippy_utils::diagnostics::span_lint;
+use rustc_hir::{ImplItem, ImplItemKind, Item, ItemKind, OwnerId, TraitFn, TraitItem, TraitItemKind, find_attr};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::config::CrateType;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
@@ -66,134 +64,41 @@ declare_clippy_lint! {
 
 declare_lint_pass!(MissingInline => [MISSING_INLINE_IN_PUBLIC_ITEMS]);
 
-fn check_missing_inline_attrs(
-    cx: &LateContext<'_>,
-    attrs: &[Attribute],
-    sp: Span,
-    desc: &'static str,
-    hir_id: Option<hir::HirId>,
-) {
-    if !find_attr!(attrs, Inline(..)) {
-        let msg = format!("missing `#[inline]` for {desc}");
-        if let Some(hir_id) = hir_id {
-            span_lint_hir(cx, MISSING_INLINE_IN_PUBLIC_ITEMS, hir_id, sp, msg);
-        } else {
-            span_lint(cx, MISSING_INLINE_IN_PUBLIC_ITEMS, sp, msg);
-        }
+fn check(cx: &LateContext<'_>, item: OwnerId, sp: Span) {
+    if cx.effective_visibilities.is_exported(item.def_id)
+        && !find_attr!(cx.tcx.hir_attrs(item.into()), Inline(..))
+        // Rust `inline` doesn't mean anything with external linkage.
+        && !cx.tcx.codegen_fn_attrs(item.def_id).contains_extern_indicator()
+        && !cx.tcx.crate_types().iter().any(|&t| matches!(t, CrateType::ProcMacro))
+        && !sp.in_external_macro(cx.tcx.sess.source_map())
+    {
+        span_lint(
+            cx,
+            MISSING_INLINE_IN_PUBLIC_ITEMS,
+            sp,
+            "missing `#[inline]` on a publicly callable function",
+        );
     }
 }
 
 impl<'tcx> LateLintPass<'tcx> for MissingInline {
-    fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx hir::Item<'_>) {
-        if it.span.in_external_macro(cx.sess().source_map()) {
-            return;
-        }
-
-        if cx
-            .tcx
-            .crate_types()
-            .iter()
-            .any(|t: &CrateType| matches!(t, CrateType::ProcMacro))
-        {
-            return;
-        }
-
-        if !cx.effective_visibilities.is_exported(it.owner_id.def_id) {
-            return;
-        }
-        match it.kind {
-            hir::ItemKind::Fn { .. } => {
-                if fn_is_externally_exported(cx, it.owner_id.to_def_id()) {
-                    return;
-                }
-
-                let desc = "a function";
-                let attrs = cx.tcx.hir_attrs(it.hir_id());
-                check_missing_inline_attrs(cx, attrs, it.span, desc, None);
-            },
-            hir::ItemKind::Trait { items: trait_items, .. } => {
-                // note: we need to check if the trait is exported so we can't use
-                // `LateLintPass::check_trait_item` here.
-                for &tit in trait_items {
-                    let tit_ = cx.tcx.hir_trait_item(tit);
-                    match tit_.kind {
-                        hir::TraitItemKind::Const(..) | hir::TraitItemKind::Type(..) => {},
-                        hir::TraitItemKind::Fn(..) => {
-                            if cx.tcx.defaultness(tit.owner_id).has_value() {
-                                // trait method with default body needs inline in case
-                                // an impl is not provided
-                                let desc = "a default trait method";
-                                let item = cx.tcx.hir_trait_item(tit);
-                                let attrs = cx.tcx.hir_attrs(item.hir_id());
-                                check_missing_inline_attrs(cx, attrs, item.span, desc, Some(tit.hir_id()));
-                            }
-                        },
-                    }
-                }
-            },
-            hir::ItemKind::Const(..)
-            | hir::ItemKind::Enum(..)
-            | hir::ItemKind::Macro(..)
-            | hir::ItemKind::Mod(..)
-            | hir::ItemKind::Static(..)
-            | hir::ItemKind::Struct(..)
-            | hir::ItemKind::TraitAlias(..)
-            | hir::ItemKind::GlobalAsm { .. }
-            | hir::ItemKind::TyAlias(..)
-            | hir::ItemKind::Union(..)
-            | hir::ItemKind::ExternCrate(..)
-            | hir::ItemKind::ForeignMod { .. }
-            | hir::ItemKind::Impl { .. }
-            | hir::ItemKind::Use(..) => {},
+    fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx Item<'_>) {
+        if let ItemKind::Fn { .. } = it.kind {
+            check(cx, it.owner_id, it.span);
         }
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
-        if impl_item.span.in_external_macro(cx.sess().source_map())
-            || cx
-                .tcx
-                .crate_types()
-                .iter()
-                .any(|t: &CrateType| matches!(t, CrateType::ProcMacro))
+    fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
+        if let TraitItemKind::Fn(_, f) = item.kind
+            && let TraitFn::Provided(_) = f
         {
-            return;
+            check(cx, item.owner_id, item.span);
         }
-
-        // If the item being implemented is not exported, then we don't need #[inline]
-        if !cx.effective_visibilities.is_exported(impl_item.owner_id.def_id) {
-            return;
-        }
-
-        let desc = match impl_item.kind {
-            hir::ImplItemKind::Fn(..) => "a method",
-            hir::ImplItemKind::Const(..) | hir::ImplItemKind::Type(_) => return,
-        };
-
-        let assoc_item = cx.tcx.associated_item(impl_item.owner_id);
-        let container_id = assoc_item.container_id(cx.tcx);
-        let trait_def_id = match assoc_item.container {
-            AssocContainer::Trait => Some(container_id),
-            AssocContainer::TraitImpl(_) => Some(cx.tcx.impl_trait_id(container_id)),
-            AssocContainer::InherentImpl => None,
-        };
-
-        if let Some(trait_def_id) = trait_def_id
-            && trait_def_id.is_local()
-            && !cx.effective_visibilities.is_exported(impl_item.owner_id.def_id)
-        {
-            // If a trait is being implemented for an item, and the
-            // trait is not exported, we don't need #[inline]
-            return;
-        }
-
-        let attrs = cx.tcx.hir_attrs(impl_item.hir_id());
-        check_missing_inline_attrs(cx, attrs, impl_item.span, desc, None);
     }
-}
 
-/// Checks if this function is externally exported, where #[inline] wouldn't have the desired effect
-/// and a rustc warning would be triggered, see #15301
-fn fn_is_externally_exported(cx: &LateContext<'_>, def_id: DefId) -> bool {
-    let attrs = cx.tcx.codegen_fn_attrs(def_id);
-    attrs.contains_extern_indicator()
+    fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
+        if let ImplItemKind::Fn(..) = item.kind {
+            check(cx, item.owner_id, item.span);
+        }
+    }
 }
