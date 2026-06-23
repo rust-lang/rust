@@ -522,9 +522,9 @@ pub fn eval_int(cx: &LateContext<'_>, e: &Expr<'_>) -> Option<FullInt> {
 ///
 /// See the module level documentation for some context.
 pub struct ConstEvalCtxt<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    typing_env: ty::TypingEnv<'tcx>,
-    typeck: &'tcx TypeckResults<'tcx>,
+    pub tcx: TyCtxt<'tcx>,
+    pub typing_env: ty::TypingEnv<'tcx>,
+    pub typeck: &'tcx TypeckResults<'tcx>,
     source: Cell<ConstantSource>,
     ctxt: Cell<SyntaxContext>,
 }

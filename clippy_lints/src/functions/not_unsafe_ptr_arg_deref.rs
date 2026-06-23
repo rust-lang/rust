@@ -50,7 +50,7 @@ fn check_raw_ptr<'tcx>(
 
         if !raw_ptrs.is_empty() {
             let typeck = cx.tcx.typeck_body(body.id());
-            let _: Option<!> = for_each_expr(cx, body.value, |e| {
+            let _: Option<!> = for_each_expr(cx.tcx, body.value, |e| {
                 match e.kind {
                     hir::ExprKind::Call(f, args) if is_unsafe_fn(cx, typeck.expr_ty(f)) => {
                         for arg in args {

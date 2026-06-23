@@ -147,7 +147,7 @@ fn check_manual_pattern_char_comparison(cx: &LateContext<'_>, method_arg: &Expr<
 
         // We want to retrieve all the comparisons done.
         // They are ordered in a nested way and so we need to traverse the AST to collect them all.
-        if for_each_expr(cx, body.value, |sub_expr| -> ControlFlow<(), Descend> {
+        if for_each_expr(cx.tcx, body.value, |sub_expr| -> ControlFlow<(), Descend> {
             match sub_expr.kind {
                 ExprKind::Binary(op, left, right) if op.node == BinOpKind::Eq => {
                     if left.res_local_id() == Some(binding)

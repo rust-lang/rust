@@ -25,7 +25,7 @@ pub(super) fn check<'tcx>(
         return;
     }
 
-    if is_const_evaluatable(cx, arg) {
+    if is_const_evaluatable(cx.tcx, cx.typeck_results(), arg) {
         if !msrv.meets(cx, msrvs::AS_CHUNKS) {
             return;
         }

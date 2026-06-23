@@ -383,12 +383,16 @@ fn is_call_max_min_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>)
             && let Some(inner_seg) = segment(cx, inner_fn)
             && let Some(outer_seg) = segment(cx, outer_fn)
         {
-            let (input, inner_arg) = match (is_const_evaluatable(cx, first), is_const_evaluatable(cx, second)) {
+            let typeck = cx.typeck_results();
+            let (input, inner_arg) = match (
+                is_const_evaluatable(cx.tcx, typeck, first),
+                is_const_evaluatable(cx.tcx, typeck, second),
+            ) {
                 (true, false) => (second, first),
                 (false, true) => (first, second),
                 _ => return None,
             };
-            let is_float = cx.typeck_results().expr_ty_adjusted(input).is_floating_point();
+            let is_float = typeck.expr_ty_adjusted(input).is_floating_point();
             let (min, max) = match (inner_seg, outer_seg) {
                 (FunctionType::CmpMin, FunctionType::CmpMax) => (outer_arg, inner_arg),
                 (FunctionType::CmpMax, FunctionType::CmpMin) => (inner_arg, outer_arg),

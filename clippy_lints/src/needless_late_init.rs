@@ -64,7 +64,7 @@ declare_clippy_lint! {
 declare_lint_pass!(NeedlessLateInit => [NEEDLESS_LATE_INIT]);
 
 fn contains_assign_expr<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'tcx>) -> bool {
-    for_each_expr(cx, stmt, |e| {
+    for_each_expr(cx.tcx, stmt, |e| {
         if matches!(e.kind, ExprKind::Assign(..)) {
             ControlFlow::Break(())
         } else {

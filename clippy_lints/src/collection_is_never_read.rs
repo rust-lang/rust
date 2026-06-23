@@ -79,7 +79,7 @@ fn has_no_read_access<'tcx, T: Visitable<'tcx>>(cx: &LateContext<'tcx>, id: HirI
     let mut has_read_access = false;
 
     // Inspect all expressions and sub-expressions in the block.
-    for_each_expr(cx, block, |expr| {
+    for_each_expr(cx.tcx, block, |expr| {
         // Ignore expressions that are not simply `id`.
         if expr.res_local_id() != Some(id) {
             return ControlFlow::Continue(());
