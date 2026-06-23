@@ -38,6 +38,8 @@ jobs:
 
       - name: Patch Cargo.toml to use release branch Cranelift
         run: |
+          sed -i -E '/cranelift-/s/"0\.[0-9]+\.0"/"*"/g' Cargo.toml
+
           cat >>Cargo.toml <<EOF
           [patch.crates-io]
           cranelift-codegen = { git = "https://github.com/bytecodealliance/wasmtime.git", branch = "$(echo $WASMTIME_RELEASE_BRANCH)" }
@@ -47,7 +49,8 @@ jobs:
           cranelift-jit = { git = "https://github.com/bytecodealliance/wasmtime.git", branch = "$(echo $WASMTIME_RELEASE_BRANCH)" }
           cranelift-object = { git = "https://github.com/bytecodealliance/wasmtime.git", branch = "$(echo $WASMTIME_RELEASE_BRANCH)" }
           EOF
-          cargo check -p rustc-hash # update lockfile
+          
+          cargo update
         env:
           WASMTIME_RELEASE_BRANCH: ${{ steps.wasmtime_release_branch.outputs.branch }}
 
