@@ -50,7 +50,9 @@ use rustc_trait_selection::traits::{self, FulfillmentError};
 use tracing::{debug, instrument};
 
 use crate::check::check_abi;
-use crate::diagnostics::{BadReturnTypeNotation, NoFieldOnType};
+use crate::diagnostics::{
+    BadReturnTypeNotation, ConstParamCannotInferAnonTypeParam, NoFieldOnType,
+};
 use crate::hir_ty_lowering::errors::{GenericsArgsErrExtend, prohibit_assoc_item_constraint};
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
 use crate::middle::resolve_bound_vars as rbv;
@@ -621,15 +623,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         span: Span,
         def_id: DefId,
         item_segment: &hir::PathSegment<'tcx>,
-    ) -> GenericArgsRef<'tcx> {
-        let (args, _) = self.lower_generic_args_of_path(span, def_id, &[], item_segment, None);
+    ) -> (GenericArgsRef<'tcx>, Option<DefId>) {
+        let (args, _, inferred_synth_args) =
+            self.lower_generic_args_of_path(span, def_id, &[], item_segment, None);
         if let Some(c) = item_segment.args().constraints.first() {
             prohibit_assoc_item_constraint(self, c, Some((def_id, item_segment, span)));
         }
-        args
+        (args, inferred_synth_args)
     }
 
     /// Lower the generic arguments provided to some path.
+    /// Returns the `DefId` of the first inferred synthetic argument lowered to a type parameter.
     ///
     /// If this is a trait reference, you also need to pass the self type `self_ty`.
     /// The lowering process may involve applying defaulted type parameters.
@@ -671,7 +675,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         parent_args: &[ty::GenericArg<'tcx>],
         segment: &hir::PathSegment<'tcx>,
         self_ty: Option<Ty<'tcx>>,
-    ) -> (GenericArgsRef<'tcx>, GenericArgCountResult) {
+    ) -> (GenericArgsRef<'tcx>, GenericArgCountResult, Option<DefId>) {
         // If the type is parameterized by this region, then replace this
         // region with the current anon region binding (in other words,
         // whatever & would get replaced with).
@@ -707,7 +711,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // here and so associated item constraints will be handled regardless of whether there are
         // any non-`Self` generic parameters.
         if generics.is_own_empty() {
-            return (tcx.mk_args(parent_args), arg_count);
+            return (tcx.mk_args(parent_args), arg_count, None);
         }
 
         struct GenericArgsCtxt<'a, 'tcx> {
@@ -716,6 +720,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             generic_args: &'a GenericArgs<'tcx>,
             span: Span,
             infer_args: bool,
+            inferred_synth_arg: Option<DefId>,
             incorrect_args: &'a Result<(), GenericArgCountMismatch>,
         }
 
@@ -829,6 +834,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 .skip_norm_wip()
                                 .into()
                         } else if synthetic {
+                            // cannot infer type in most situations, but delegation needs it to be a
+                            // type parameter, so return the param for if an error needs reporting
+                            let _ = self.inferred_synth_arg.get_or_insert(param.def_id);
                             Ty::new_param(tcx, param.index, param.name).into()
                         } else if infer_args {
                             self.lowerer.ty_infer(Some(param), self.span).into()
@@ -868,6 +876,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             span,
             generic_args: segment.args(),
             infer_args: segment.infer_args,
+            inferred_synth_arg: None,
             incorrect_args: &arg_count.correct,
         };
 
@@ -881,7 +890,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             &mut args_ctx,
         );
 
-        (args, arg_count)
+        let inferred_synth_arg = args_ctx.inferred_synth_arg;
+
+        (args, arg_count, inferred_synth_arg)
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -892,7 +903,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         item_segment: &hir::PathSegment<'tcx>,
         parent_args: GenericArgsRef<'tcx>,
     ) -> GenericArgsRef<'tcx> {
-        let (args, _) =
+        let (args, _, _) =
             self.lower_generic_args_of_path(span, item_def_id, parent_args, item_segment, None);
         if let Some(c) = item_segment.args().constraints.first() {
             prohibit_assoc_item_constraint(self, c, Some((item_def_id, item_segment, span)));
@@ -999,7 +1010,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let _ = self.prohibit_generic_args(leading_segments.iter(), GenericsArgsErrExtend::None);
         self.report_internal_fn_trait(span, trait_def_id, segment, false);
 
-        let (generic_args, arg_count) = self.lower_generic_args_of_path(
+        let (generic_args, arg_count, _) = self.lower_generic_args_of_path(
             trait_ref.path.span,
             trait_def_id,
             &[],
@@ -1180,7 +1191,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> ty::TraitRef<'tcx> {
         self.report_internal_fn_trait(span, trait_def_id, trait_segment, is_impl);
 
-        let (generic_args, _) =
+        let (generic_args, _, _) =
             self.lower_generic_args_of_path(span, trait_def_id, &[], trait_segment, Some(self_ty));
         if let Some(c) = trait_segment.args().constraints.first() {
             prohibit_assoc_item_constraint(self, c, Some((trait_def_id, trait_segment, span)));
@@ -1207,7 +1218,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         item_segment: &hir::PathSegment<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx();
-        let args = self.lower_generic_args_of_path_segment(span, def_id, item_segment);
+        let (args, _) = self.lower_generic_args_of_path_segment(span, def_id, item_segment);
 
         if let DefKind::TyAlias = tcx.def_kind(def_id)
             && tcx.type_alias_is_lazy(def_id)
@@ -2117,7 +2128,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     leading_segments.iter(),
                     GenericsArgsErrExtend::OpaqueTy,
                 );
-                let args = self.lower_generic_args_of_path_segment(span, did, segment);
+                let (args, _) = self.lower_generic_args_of_path_segment(span, did, segment);
                 Ty::new_opaque(tcx, did, args)
             }
             Res::Def(
@@ -2742,7 +2753,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let [leading_segments @ .., segment] = path.segments else { bug!() };
                 let _ = self
                     .prohibit_generic_args(leading_segments.iter(), GenericsArgsErrExtend::None);
-                let args = self.lower_generic_args_of_path_segment(span, did, segment);
+                let (args, _) = self.lower_generic_args_of_path_segment(span, did, segment);
                 ty::Const::new_unevaluated(
                     tcx,
                     ty::UnevaluatedConst::new(
@@ -2770,7 +2781,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     CtorOf::Variant => tcx.parent(parent_did),
                     CtorOf::Struct => parent_did,
                 };
-                let args = self.lower_generic_args_of_path_segment(
+                let (args, _) = self.lower_generic_args_of_path_segment(
                     span,
                     generics_did,
                     &path.segments[generic_segments[0].1],
@@ -2801,7 +2812,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 } else {
                     parent_did
                 };
-                let args = self.lower_generic_args_of_path_segment(
+                let (args, _) = self.lower_generic_args_of_path_segment(
                     span,
                     generics_did,
                     &path.segments[generic_segments[0].1],
@@ -2831,12 +2842,30 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // FIXME(const_generics): create real const to allow fn items as const paths
             Res::Def(DefKind::Fn | DefKind::AssocFn, did) => {
                 self.dcx().span_delayed_bug(span, "function items cannot be used as const args");
-                let args = self.lower_generic_args_of_path_segment(
+                let (args, inferred_synth_arg) = self.lower_generic_args_of_path_segment(
                     span,
                     did,
                     path.segments.last().unwrap(),
                 );
-                ty::Const::zero_sized(tcx, Ty::new_fn_def(tcx, did, args))
+                if let Some(param_id) = inferred_synth_arg {
+                    let fn_name = path.segments.last().unwrap().ident;
+                    let anon_param = tcx.def_path_str(param_id);
+                    let fn_span = tcx.hir_span_if_local(did);
+
+                    let e = tcx
+                        .dcx()
+                        .create_err(ConstParamCannotInferAnonTypeParam {
+                            span,
+                            fn_name,
+                            anon_param,
+                            fn_span,
+                        })
+                        .emit();
+
+                    ty::Const::new_error(tcx, e)
+                } else {
+                    ty::Const::zero_sized(tcx, Ty::new_fn_def(tcx, did, args))
+                }
             }
 
             // Exhaustive match to be clear about what exactly we're considering to be

@@ -1,0 +1,11 @@
+error: cannot infer anonymous type parameter of `fn_item`
+  --> $DIR/unexpected_fn_item_with_anon_type_param.rs:14:16
+   |
+LL | impl A<[usize; fn_item]> for () {}
+   |                ^^^^^^^ cannot infer type `fn_item::impl Trait`
+...
+LL | fn fn_item(_: impl Trait) {}
+   | ------------------------- anonymous type parameter declared here
+
+error: aborting due to 1 previous error
+

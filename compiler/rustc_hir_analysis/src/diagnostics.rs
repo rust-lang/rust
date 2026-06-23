@@ -338,6 +338,18 @@ pub(crate) struct ConstParamTyFieldVisMismatch {
 }
 
 #[derive(Diagnostic)]
+#[diag("cannot infer anonymous type parameter of `{$fn_name}`")]
+pub(crate) struct ConstParamCannotInferAnonTypeParam {
+    #[primary_span]
+    #[label("cannot infer type `{$anon_param}`")]
+    pub span: Span,
+    pub fn_name: Ident,
+    pub anon_param: String,
+    #[label("anonymous type parameter declared here")]
+    pub fn_span: Option<Span>,
+}
+
+#[derive(Diagnostic)]
 #[diag("at least one trait is required for an object type", code = E0224)]
 pub(crate) struct TraitObjectDeclaredWithNoTraits {
     #[primary_span]
