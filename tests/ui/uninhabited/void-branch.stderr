@@ -1,4 +1,19 @@
 error: unreachable expression
+  --> $DIR/void-branch.rs:33:5
+   |
+LL |     (x, loop {})
+   |     ^^^^-------^
+   |     |   |
+   |     |   any code following this expression is unreachable
+   |     unreachable expression
+   |
+note: the lint level is defined here
+  --> $DIR/void-branch.rs:1:9
+   |
+LL | #![deny(unreachable_code)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: unreachable expression
   --> $DIR/void-branch.rs:10:13
    |
 LL |             std::mem::uninitialized::<Void>();
@@ -11,11 +26,6 @@ note: this expression has type `Void`, which is uninhabited
    |
 LL |             std::mem::uninitialized::<Void>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: the lint level is defined here
-  --> $DIR/void-branch.rs:1:9
-   |
-LL | #![deny(unreachable_code)]
-   |         ^^^^^^^^^^^^^^^^
 
 error: unreachable expression
   --> $DIR/void-branch.rs:25:9
@@ -31,5 +41,19 @@ note: this expression has type `Infallible`, which is uninhabited
 LL |         infallible();
    |         ^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: unreachable expression
+  --> $DIR/void-branch.rs:38:48
+   |
+LL |     if x.len() > 0 { Err(infallible_with_arg(x)) } else { Ok(x) }
+   |                          ----------------------^ unreachable expression
+   |                          |
+   |                          any code following this expression is unreachable
+   |
+note: this expression has type `(String, Infallible)`, which is uninhabited
+  --> $DIR/void-branch.rs:38:26
+   |
+LL |     if x.len() > 0 { Err(infallible_with_arg(x)) } else { Ok(x) }
+   |                          ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
 
