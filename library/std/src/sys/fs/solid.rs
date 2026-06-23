@@ -531,6 +531,11 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
 }
 
 pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
+    // Solid does not support symlinks
+    set_perm_nofollow(p, perm)
+}
+
+pub fn set_perm_nofollow(p: &Path, perm: FilePermissions) -> io::Result<()> {
     error::SolidError::err_if_negative(unsafe {
         abi::SOLID_FS_Chmod(cstr(p)?.as_ptr(), perm.0.into())
     })
