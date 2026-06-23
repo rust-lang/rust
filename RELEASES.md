@@ -1,3 +1,11 @@
+Version 1.96.1 (2026-06-25)
+===========================
+
+<a id="1.96.1"></a>
+
+- [Cargo: fix timeout/retry behavior](https://github.com/rust-lang/cargo/pull/17131)
+- [rustc: fix unsoundness in MIR opt](https://github.com/rust-lang/rust/pull/158214)
+
 Version 1.96.0 (2026-05-28)
 ==========================
 
