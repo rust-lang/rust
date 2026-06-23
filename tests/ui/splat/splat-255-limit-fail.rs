@@ -8,8 +8,28 @@
 
 type A = ();
 
-// These functions are deliberately formatted with 17 arguments in 15 lines, to show they have 255
-// arguments.
+// These types and functions are deliberately formatted with 17 arguments in 15 lines, to show they
+// have ~255 arguments.
+#[rustfmt::skip]
+type Tuple256 = (
+    A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A,
+    A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A,
+    A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A,
+    A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A,
+    A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A,
+    A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A,
+    A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A,
+    A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A,
+    A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A,
+    A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A,
+    A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A,
+    A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A,
+    A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A,
+    A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A,
+    A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A,
+    A,
+);
+
 #[rustfmt::skip]
 fn s_255_terminal(
     _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A,
@@ -94,4 +114,86 @@ fn s_256_non_terminal(
     _: A,
 ) {}
 
-fn main() {}
+// It's only the splatted index that's constrained to 255, not the argument count of the caller or callee.
+fn more_than_255_splatted_args(#[splat] _t: Tuple256) {}
+
+fn main() {
+    let a = ();
+
+    #[rustfmt::skip]
+    more_than_255_splatted_args( //~ ERROR this splatted function takes 256 arguments, but 255 were provided [E0057]
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        /* missing: a, */
+    );
+
+    #[rustfmt::skip]
+    more_than_255_splatted_args( //~ ERROR this splatted function takes 256 arguments, but 257 were provided [E0057]
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, /* unexpected: */ a,
+    );
+
+    #[rustfmt::skip]
+    more_than_255_splatted_args( //~ ERROR this splatted function takes 256 arguments, but 512 were provided [E0057]
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a,
+        /* unexpected: */
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a, a,
+        a,
+    );
+}
