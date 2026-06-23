@@ -34,7 +34,8 @@ fn square<T: std::ops::Mul<Output = T> + Copy>(x: &T) -> T {
 // F64-NEXT: ; Function Attrs: {{.*}}
 // F64-NEXT: define internal {{.*}} void
 // F64-NEXT: start:
-// F64-NEXT:   {{(tail )?}}call {{(fastcc )?}}void @diffe_{{.*}}(double {{.*}}, ptr {{.*}})
+// F64-NEXT:   {{(tail )?}}call {{(fast )?}}{ double } @diffe_{{.*}}(ptr {{.*}}, ptr {{.*}}, double {{.*}})
+// F64-NEXT:   %1 = extractvalue { double } %0, 0
 // F64-NEXT: ret void
 
 // Main-LABEL: ; generic::main
