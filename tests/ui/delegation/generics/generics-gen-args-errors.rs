@@ -44,8 +44,6 @@ mod test_2 {
     fn foo<'a: 'a, 'b: 'b, T: Clone, U: Clone, const N: usize>() {}
 
     reuse foo::<> as bar1;
-    //~^ ERROR: the placeholder `_` is not allowed within types on item signatures for functions
-    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
 
     reuse foo::<String, String> as bar2;
     //~^ ERROR: function takes 3 generic arguments but 2 generic arguments were supplied
@@ -54,9 +52,9 @@ mod test_2 {
 
     reuse foo::<'static, _, 'asdasd, 'static, 'static, 'static, _> as bar3;
     //~^ ERROR: use of undeclared lifetime name `'asdasd`
-    //~| ERROR: function takes 2 lifetime arguments but 5 lifetime arguments were supplied
-    //~| ERROR: function takes 3 generic arguments but 2 generic arguments were supplied
-    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
+    //~| ERROR: function takes 2 lifetime arguments but 6 lifetime arguments were supplied
+    //~| ERROR: function takes 3 generic arguments but 1 generic argument was supplied
+    //~| ERROR: wrong infer used: expected '_, found: _
 
     reuse foo::<String, 'static, 123, asdasd> as bar4;
     //~^ ERROR: cannot find type `asdasd` in this scope
@@ -131,12 +129,13 @@ mod test_3 {
     //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
 
     reuse Trait::<Trait, Clone, _, 'static, dyn Send, _>::foo::<1, 2, 3, _, 6> as bar7;
-    //~^ ERROR: trait takes 3 lifetime arguments but 1 lifetime argument was supplied
-    //~| ERROR: trait takes 2 generic arguments but 5 generic arguments were supplied
+    //~^ ERROR: trait takes 3 lifetime arguments but 2 lifetime arguments were supplied
+    //~| ERROR: trait takes 2 generic arguments but 4 generic arguments were supplied
     //~| ERROR: method takes 2 generic arguments but 5 generic arguments were supplied
     //~| ERROR: method takes 1 lifetime argument but 0 lifetime arguments were supplied
     //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
     //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
+    //~| ERROR: wrong infer used: expected '_, found: _
 }
 
 fn main() {}
