@@ -15,12 +15,12 @@ pub struct Directive {
 
 #[derive(Debug)]
 pub enum DirectiveKind {
-    Jp(JpDirective),
+    JsonPath(JsonPathDirective),
     Jq(JqDirective),
 }
 
 #[derive(Debug)]
-pub enum JpDirective {
+pub enum JsonPathDirective {
     /// `//@ has <path>`
     ///
     /// Checks the path exists.
@@ -115,35 +115,42 @@ impl DirectiveKind {
             ("count", false) => {
                 assert_eq!(args.len(), 2);
                 let expected = args[1].parse().expect("invalid number for `count`");
-                Self::Jp(JpDirective::CountIs { expected })
+                Self::JsonPath(JsonPathDirective::CountIs { expected })
             }
             ("ismany", false) => {
                 // FIXME: Make this >= 3, and migrate len(values)==1 cases to @is
                 assert!(args.len() >= 2, "Not enough args to `ismany`");
                 let values = args[1..].to_owned();
-                Self::Jp(JpDirective::IsMany { values })
+                Self::JsonPath(JsonPathDirective::IsMany { values })
             }
             ("is", false) => {
                 assert_eq!(args.len(), 2);
-                Self::Jp(JpDirective::Is { value: args[1].clone() })
+                Self::JsonPath(JsonPathDirective::Is { value: args[1].clone() })
             }
             ("is", true) => {
                 assert_eq!(args.len(), 2);
-                Self::Jp(JpDirective::IsNot { value: args[1].clone() })
+                Self::JsonPath(JsonPathDirective::IsNot { value: args[1].clone() })
             }
             ("set", false) => {
                 assert_eq!(args.len(), 3);
                 assert_eq!(args[1], "=");
-                return Some((Self::Jp(JpDirective::Set { variable: args[0].clone() }), &args[2]));
+                return Some((
+                    Self::JsonPath(JsonPathDirective::Set { variable: args[0].clone() }),
+                    &args[2],
+                ));
             }
             ("has", false) => match args {
-                [_path] => Self::Jp(JpDirective::HasPath),
-                [_path, value] => Self::Jp(JpDirective::HasValue { value: value.clone() }),
+                [_path] => Self::JsonPath(JsonPathDirective::HasPath),
+                [_path, value] => {
+                    Self::JsonPath(JsonPathDirective::HasValue { value: value.clone() })
+                }
                 _ => panic!("`//@ has` must have 2 or 3 arguments, but got {args:?}"),
             },
             ("has", true) => match args {
-                [_path] => Self::Jp(JpDirective::HasNotPath),
-                [_path, value] => Self::Jp(JpDirective::HasNotValue { value: value.clone() }),
+                [_path] => Self::JsonPath(JsonPathDirective::HasNotPath),
+                [_path, value] => {
+                    Self::JsonPath(JsonPathDirective::HasNotValue { value: value.clone() })
+                }
                 _ => panic!("`//@ !has` must have 2 or 3 arguments, but got {args:?}"),
             },
 
@@ -194,20 +201,20 @@ impl Directive {
     /// Performs the actual work of ensuring a directive passes.
     pub fn check(&self, cache: &mut Cache) -> Result<(), String> {
         match &self.kind {
-            DirectiveKind::Jp(d) => {
+            DirectiveKind::JsonPath(d) => {
                 let matches = cache.select(&self.path);
                 match d {
-                    JpDirective::HasPath => {
+                    JsonPathDirective::HasPath => {
                         if matches.is_empty() {
                             return Err("matched to no values".to_owned());
                         }
                     }
-                    JpDirective::HasNotPath => {
+                    JsonPathDirective::HasNotPath => {
                         if !matches.is_empty() {
                             return Err(format!("matched to {matches:?}, but wanted no matches"));
                         }
                     }
-                    JpDirective::HasValue { value } => {
+                    JsonPathDirective::HasValue { value } => {
                         let want_value = string_to_value(value, cache);
                         if !matches.contains(&want_value.as_ref()) {
                             return Err(format!(
@@ -215,7 +222,7 @@ impl Directive {
                             ));
                         }
                     }
-                    JpDirective::HasNotValue { value } => {
+                    JsonPathDirective::HasNotValue { value } => {
                         let wantnt_value = string_to_value(value, cache);
                         if matches.contains(&wantnt_value.as_ref()) {
                             return Err(format!(
@@ -228,14 +235,14 @@ impl Directive {
                         }
                     }
 
-                    JpDirective::Is { value } => {
+                    JsonPathDirective::Is { value } => {
                         let want_value = string_to_value(value, cache);
                         let matched = get_one(&matches)?;
                         if matched != want_value.as_ref() {
                             return Err(format!("matched to {matched:?} but want {want_value:?}"));
                         }
                     }
-                    JpDirective::IsNot { value } => {
+                    JsonPathDirective::IsNot { value } => {
                         let wantnt_value = string_to_value(value, cache);
                         let matched = get_one(&matches)?;
                         if matched == wantnt_value.as_ref() {
@@ -245,7 +252,7 @@ impl Directive {
                         }
                     }
 
-                    JpDirective::IsMany { values } => {
+                    JsonPathDirective::IsMany { values } => {
                         // Serde json doesn't implement Ord or Hash for Value, so we must
                         // use a Vec here. While in theory that makes setwize equality
                         // O(n^2), in practice n will never be large enough to matter.
@@ -267,7 +274,7 @@ impl Directive {
                             }
                         }
                     }
-                    JpDirective::CountIs { expected } => {
+                    JsonPathDirective::CountIs { expected } => {
                         if *expected != matches.len() {
                             return Err(format!(
                                 "matched to `{matches:?}` with length {}, but expected length {expected}",
@@ -275,7 +282,7 @@ impl Directive {
                             ));
                         }
                     }
-                    JpDirective::Set { variable } => {
+                    JsonPathDirective::Set { variable } => {
                         let value = get_one(&matches)?;
                         let r = cache.variables.insert(variable.to_owned(), value.clone());
                         assert!(
