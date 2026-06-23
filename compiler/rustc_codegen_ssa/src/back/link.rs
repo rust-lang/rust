@@ -62,7 +62,10 @@ use super::metadata::{MetadataPosition, create_wrapper_file};
 use super::rpath::{self, RPathConfig};
 use super::{apple, rmeta_link, versioned_llvm_target};
 use crate::base::needs_allocator_shim_for_linking;
-use crate::{CodegenLintLevelSpecs, CompiledModule, CompiledModules, CrateInfo, NativeLib, errors};
+use crate::{
+    CodegenLintLevelSpecs, CompiledModule, CompiledModules, CrateInfo, NativeLib, SymbolExport,
+    errors,
+};
 
 pub fn ensure_removed(dcx: DiagCtxtHandle<'_>, path: &Path) {
     if let Err(e) = fs::remove_file(path) {
@@ -588,7 +591,7 @@ fn link_staticlib(
             crate_info
                 .exported_symbols
                 .get(&CrateType::StaticLib)
-                .map(|symbols| symbols.iter().map(|(s, _)| s.clone()).collect())
+                .map(|symbols| symbols.iter().map(|symbol| symbol.name.clone()).collect())
         }
     } else {
         None
@@ -2191,9 +2194,13 @@ fn add_linked_symbol_object(
     tmpdir: &Path,
     crate_type: CrateType,
     linked_symbols: &[(String, SymbolExportKind)],
-    exported_symbols: &[(String, SymbolExportKind)],
+    exported_symbols: &[SymbolExport],
 ) {
-    if linked_symbols.is_empty() && exported_symbols.is_empty() {
+    let should_export_symbols = sess.target.is_like_msvc
+        && !exported_symbols.is_empty()
+        && (crate_type != CrateType::Executable
+            || sess.opts.unstable_opts.export_executable_symbols);
+    if linked_symbols.is_empty() && !should_export_symbols {
         return;
     }
 
@@ -2288,39 +2295,35 @@ fn add_linked_symbol_object(
         }
     }
 
-    if sess.target.is_like_msvc {
-        // Symbol visibility takes care of this for executables typically
-        let should_filter_symbols = if crate_type == CrateType::Executable {
-            sess.opts.unstable_opts.export_executable_symbols
-        } else {
-            true
-        };
-        if should_filter_symbols {
-            // Currently the compiler doesn't use `dllexport` (an LLVM attribute) to
-            // export symbols from a dynamic library. When building a dynamic library,
-            // however, we're going to want some symbols exported, so this adds a
-            // `.drectve` section which lists all the symbols using /EXPORT arguments.
-            //
-            // The linker will read these arguments from the `.drectve` section and
-            // export all the symbols from the dynamic library. Note that this is not
-            // as simple as just exporting all the symbols in the current crate (as
-            // specified by `codegen.reachable`) but rather we also need to possibly
-            // export the symbols of upstream crates. Upstream rlibs may be linked
-            // statically to this dynamic library, in which case they may continue to
-            // transitively be used and hence need their symbols exported.
-            let drectve = exported_symbols
-                .into_iter()
-                .map(|(sym, kind)| match kind {
-                    SymbolExportKind::Text | SymbolExportKind::Tls => format!(" /EXPORT:\"{sym}\""),
-                    SymbolExportKind::Data => format!(" /EXPORT:\"{sym}\",DATA"),
-                })
-                .collect::<Vec<_>>()
-                .join("");
+    if should_export_symbols {
+        // Currently the compiler doesn't use `dllexport` (an LLVM attribute) to
+        // export symbols from a dynamic library. When building a dynamic library,
+        // however, we're going to want some symbols exported, so this adds a
+        // `.drectve` section which lists all the symbols using /EXPORT arguments.
+        //
+        // The linker will read these arguments from the `.drectve` section and
+        // export all the symbols from the dynamic library. Note that this is not
+        // as simple as just exporting all the symbols in the current crate (as
+        // specified by `codegen.reachable`) but rather we also need to possibly
+        // export the symbols of upstream crates. Upstream rlibs may be linked
+        // statically to this dynamic library, in which case they may continue to
+        // transitively be used and hence need their symbols exported.
+        fn msvc_drectve_export(symbol: &SymbolExport) -> String {
+            let data = if symbol.kind == SymbolExportKind::Data { ",DATA" } else { "" };
 
-            let section =
-                file.add_section(vec![], b".drectve".to_vec(), object::SectionKind::Linker);
-            file.append_section_data(section, drectve.as_bytes(), 1);
+            if let Some(link_name) = symbol.link_name.as_deref() {
+                // The first name is the decorated symbol used by the import library, while
+                // EXPORTAS gives the public name written to the DLL export table.
+                format!(" /EXPORT:\"{link_name}\"{data},EXPORTAS,\"{}\"", symbol.name)
+            } else {
+                format!(" /EXPORT:\"{}\"{data}", symbol.name)
+            }
         }
+
+        let drectve = exported_symbols.iter().map(msvc_drectve_export).collect::<String>();
+
+        let section = file.add_section(vec![], b".drectve".to_vec(), object::SectionKind::Linker);
+        file.append_section_data(section, drectve.as_bytes(), 1);
     }
 
     let path = tmpdir.join("symbols.o");
@@ -2453,7 +2456,7 @@ fn add_rpath_args(
 fn add_c_staticlib_symbols(
     sess: &Session,
     lib: &NativeLib,
-    out: &mut Vec<(String, SymbolExportKind)>,
+    out: &mut Vec<SymbolExport>,
 ) -> io::Result<()> {
     let file_path = find_native_static_library(lib.name.as_str(), lib.verbatim, sess);
 
@@ -2506,9 +2509,9 @@ fn add_c_staticlib_symbols(
                 _ => continue,
             };
 
-            // FIXME:The symbol mangle rules are slightly different in Windows(32-bit) and Apple.
-            // Need to be resolved.
-            out.push((name.to_string(), export_kind));
+            // Names read from the object file are already linker-visible.
+            // Do not apply symbol decoration again here.
+            out.push(SymbolExport::new(name.to_string(), export_kind));
         }
     }
 
