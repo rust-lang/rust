@@ -36,6 +36,9 @@ Examples:
         This will print the path to the generated sysroot (and nothing else) on stdout.
         stderr will still contain progress information about how the build is doing.
 
+For documentation on `-Zmiri-...` flags, see Miri's README.md, available at:
+- $(rustc --print sysroot)/share/doc/miri/README.md
+- https://github.com/rust-lang/miri/blob/master/README.md
 ";
 
 fn show_help() {
