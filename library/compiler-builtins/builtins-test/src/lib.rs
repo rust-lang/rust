@@ -1,6 +1,6 @@
 //! This crate is for integration testing and fuzz testing of functions in `compiler-builtins`. This
 //! includes publicly documented intrinsics and some internal alternative implementation functions
-//! such as `usize_leading_zeros_riscv` (which are tested because they are configured for
+//! such as `usize_leading_zeros_condset` (which are tested because they are configured for
 //! architectures not tested by the CI).
 //!
 //! The general idea is to use a combination of edge case testing and randomized fuzz testing. The
