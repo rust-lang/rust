@@ -32,11 +32,11 @@ impl<'tcx> crate::MirPass<'tcx> for ScalarReplacementOfAggregates {
         let typing_env = body.typing_env(tcx);
         loop {
             debug!(?excluded);
-            let escaping = escaping_locals(tcx, &excluded, body);
+            let escaping = escaping_locals(tcx, &excluded, typing_env, body);
             debug!(?escaping);
             let replacements = compute_flattening(tcx, typing_env, body, escaping);
             debug!(?replacements);
-            let all_dead_locals = replace_flattened_locals(tcx, body, replacements);
+            let all_dead_locals = replace_flattened_locals(tcx, typing_env, body, replacements);
             if !all_dead_locals.is_empty() {
                 excluded.union(&all_dead_locals);
                 excluded = {
@@ -65,6 +65,7 @@ impl<'tcx> crate::MirPass<'tcx> for ScalarReplacementOfAggregates {
 fn escaping_locals<'tcx>(
     tcx: TyCtxt<'tcx>,
     excluded: &DenseBitSet<Local>,
+    typing_env: ty::TypingEnv<'tcx>,
     body: &Body<'tcx>,
 ) -> DenseBitSet<Local> {
     let is_excluded_ty = |ty: Ty<'tcx>| {
@@ -88,20 +89,24 @@ fn escaping_locals<'tcx>(
 
     let mut set = DenseBitSet::new_empty(body.local_decls.len());
     set.insert_range(RETURN_PLACE..Local::arg(body.arg_count));
-    for (local, decl) in body.local_decls().iter_enumerated() {
+    for (local, decl) in body.local_decls.iter_enumerated() {
         if excluded.contains(local) || is_excluded_ty(decl.ty) {
             set.insert(local);
         }
     }
-    let mut visitor = EscapeVisitor { set };
+    let mut visitor = EscapeVisitor { tcx, typing_env, set, decls: &body.local_decls };
     visitor.visit_body(body);
     return visitor.set;
 
-    struct EscapeVisitor {
+    struct EscapeVisitor<'tcx, 'a> {
+        tcx: TyCtxt<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         set: DenseBitSet<Local>,
+        /// This is used to look at the field types of a transmuted local.
+        decls: &'a LocalDecls<'tcx>,
     }
 
-    impl<'tcx> Visitor<'tcx> for EscapeVisitor {
+    impl<'tcx> Visitor<'tcx> for EscapeVisitor<'tcx, '_> {
         fn visit_local(&mut self, local: Local, _: PlaceContext, _: Location) {
             self.set.insert(local);
         }
@@ -112,6 +117,28 @@ fn escaping_locals<'tcx>(
                 return;
             }
             self.super_place(place, context, location);
+        }
+
+        fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
+            // A transmute to a field type is either the same as a read of that
+            // field or it's UB for a size mismatch, so we can allow SRoA the same
+            // as if it had been written `Use(op)` with a field projection.
+            if let Rvalue::Cast(CastKind::Transmute, op, to_ty) = rvalue
+                && let Some(place) = op.place()
+                && let Some(local) = place.as_local()
+                && !self.set.contains(local)
+                && find_matching_struct_field(
+                    self.tcx,
+                    self.typing_env,
+                    *to_ty,
+                    self.decls[local].ty,
+                )
+                .is_some()
+            {
+                return;
+            }
+
+            self.super_rvalue(rvalue, location)
         }
 
         fn visit_assign(
@@ -145,6 +172,27 @@ fn escaping_locals<'tcx>(
         // `VarDebugInfoFragment`.
         fn visit_var_debug_info(&mut self, _: &VarDebugInfo<'tcx>) {}
     }
+}
+
+fn find_matching_struct_field<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
+    needle_ty: Ty<'tcx>,
+    haystack_ty: Ty<'tcx>,
+) -> Option<FieldIdx> {
+    if let ty::Adt(adt_def, adt_args) = haystack_ty.kind()
+        && adt_def.is_struct()
+    {
+        for (idx, data) in adt_def.non_enum_variant().fields.iter_enumerated() {
+            let field_ty = data.ty(tcx, adt_args);
+            let field_ty = tcx.normalize_erasing_regions(typing_env, field_ty);
+            if field_ty == needle_ty {
+                return Some(idx);
+            }
+        }
+    }
+
+    None
 }
 
 #[derive(Default, Debug)]
@@ -211,6 +259,7 @@ fn compute_flattening<'tcx>(
 /// Perform the replacement computed by `compute_flattening`.
 fn replace_flattened_locals<'tcx>(
     tcx: TyCtxt<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     body: &mut Body<'tcx>,
     replacements: ReplacementMap<'tcx>,
 ) -> DenseBitSet<Local> {
@@ -227,6 +276,7 @@ fn replace_flattened_locals<'tcx>(
 
     let mut visitor = ReplacementVisitor {
         tcx,
+        typing_env,
         local_decls: &body.local_decls,
         replacements: &replacements,
         all_dead_locals,
@@ -249,7 +299,9 @@ fn replace_flattened_locals<'tcx>(
 
 struct ReplacementVisitor<'tcx, 'll> {
     tcx: TyCtxt<'tcx>,
-    /// This is only used to compute the type for `VarDebugInfoFragment`.
+    typing_env: ty::TypingEnv<'tcx>,
+    /// This is used to compute the type for `VarDebugInfoFragment`
+    /// and to look at the field types of a transmuted local.
     local_decls: &'ll LocalDecls<'tcx>,
     /// Work to do.
     replacements: &'ll ReplacementMap<'tcx>,
@@ -428,6 +480,37 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
             _ => {}
         }
         self.super_statement(statement, location)
+    }
+
+    fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>, location: Location) {
+        // We have `other = transmute(move? a)`
+        // We replace it with
+        // ```
+        // other = move? a_i
+        // ```
+        // for the one relevant field.
+        if let Rvalue::Cast(CastKind::Transmute, ref op, to_ty) = *rvalue
+            && let Some(op_place) = op.place()
+            && let Some(op_local) = op_place.as_local()
+            && let is_move = matches!(op, Operand::Move(..))
+            && let Some(op_final_locals) = &self.replacements.fragments[op_local]
+        {
+            let field_idx = find_matching_struct_field(
+                self.tcx,
+                self.typing_env,
+                to_ty,
+                self.local_decls[op_local].ty,
+            )
+            .unwrap();
+            let (new_local_ty, new_local) = op_final_locals[field_idx].unwrap();
+            assert_eq!(new_local_ty, to_ty);
+            let new_place = Place::from(new_local);
+            let new_op = if is_move { Operand::Move(new_place) } else { Operand::Copy(new_place) };
+            *rvalue = Rvalue::Use(new_op, WithRetag::Yes);
+            return;
+        }
+
+        self.super_rvalue(rvalue, location);
     }
 
     fn visit_local(&mut self, local: &mut Local, _: PlaceContext, _: Location) {
