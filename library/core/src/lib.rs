@@ -411,5 +411,3 @@ include!("keyword_docs.rs");
 // the rustdoc documentation for primitive types. Using `include!`
 // because rustdoc only looks for these modules at the crate level.
 include!("primitive_docs.rs");
-
-
