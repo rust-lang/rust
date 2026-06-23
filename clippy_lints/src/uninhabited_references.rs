@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, Expr, ExprKind, FnDecl, FnRetTy, TyKind, UnOp};
-use rustc_hir_analysis::lower_ty;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
@@ -39,20 +39,19 @@ declare_lint_pass!(UninhabitedReferences => [UNINHABITED_REFERENCES]);
 
 impl LateLintPass<'_> for UninhabitedReferences {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {
-        if expr.span.in_external_macro(cx.tcx.sess.source_map()) {
-            return;
-        }
-
-        if let ExprKind::Unary(UnOp::Deref, _) = expr.kind {
-            let ty = cx.typeck_results().expr_ty_adjusted(expr);
-            if ty.is_privately_uninhabited(cx.tcx, cx.typing_env()) {
-                span_lint(
-                    cx,
-                    UNINHABITED_REFERENCES,
-                    expr.span,
-                    "dereferencing a reference to an uninhabited type is undefined behavior",
-                );
-            }
+        if let ExprKind::Unary(UnOp::Deref, _) = expr.kind
+            && cx
+                .typeck_results()
+                .expr_ty_adjusted(expr)
+                .is_privately_uninhabited(cx.tcx, cx.typing_env())
+            && !expr.span.in_external_macro(cx.tcx.sess.source_map())
+        {
+            span_lint(
+                cx,
+                UNINHABITED_REFERENCES,
+                expr.span,
+                "dereferencing a reference to an uninhabited type is undefined behavior",
+            );
         }
     }
 
@@ -63,14 +62,17 @@ impl LateLintPass<'_> for UninhabitedReferences {
         fndecl: &'_ FnDecl<'tcx>,
         _: &'_ Body<'_>,
         span: Span,
-        _: LocalDefId,
+        def_id: LocalDefId,
     ) {
-        if span.in_external_macro(cx.tcx.sess.source_map()) || matches!(kind, FnKind::Closure) {
-            return;
-        }
-        if let FnRetTy::Return(hir_ty) = fndecl.output
-            && let TyKind::Ref(_, mut_ty) = hir_ty.kind
-            && lower_ty(cx.tcx, mut_ty.ty).is_privately_uninhabited(cx.tcx, cx.typing_env())
+        if !matches!(kind, FnKind::Closure)
+            && let FnRetTy::Return(hir_ty) = fndecl.output
+            && let TyKind::Ref(..) = hir_ty.kind
+            && let sig = cx.tcx.fn_sig(def_id).instantiate_identity()
+            && let ty = sig.map(|x| cx.tcx.instantiate_bound_regions_with_erased(x.output()))
+            && let Ok(ty) = cx.tcx.try_normalize_erasing_regions(cx.typing_env(), ty)
+            && let ty::Ref(_, ty, _) = *ty.kind()
+            && ty.is_privately_uninhabited(cx.tcx, cx.typing_env())
+            && !span.in_external_macro(cx.tcx.sess.source_map())
         {
             span_lint(
                 cx,
