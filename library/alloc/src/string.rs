@@ -66,29 +66,19 @@ use crate::str::{self, CharIndices, Chars, Utf8Error, from_utf8_unchecked_mut};
 use crate::str::{FromStr, from_boxed_utf8_unchecked};
 use crate::vec::{self, Vec};
 
-/// A hack because we cannot add a type parameter, even one with a default value, to existing types
-/// which previously had no parameters.
-///
-/// Introducing generic parameters means any use of the type is now a possible site of type
-/// inference. Where previously, `String` just meant, well `String`, now `String` can mean
-/// `String<_>` (ie please infer the value from the context), or `String<Global>` (ie please use the
-/// default value). It's not always clear which is meant, and this is an open issue [#98931].
-///
-/// [#98931]: https://github.com/rust-lang/rust/issues/98931
+#[doc(hidden)]
 #[unstable(feature = "allocator_api", issue = "32838")]
 pub mod generic {
-    use super::{Allocator, Global, Vec};
-
-    /// A generic version of [`alloc::string::String`], which adds a type parameter for an Allocator
-    ///
-    /// see the docs for [`alloc::string::String`] for more info
-    ///
-    /// [`alloc::string::String`]: super::String
     #[unstable(feature = "allocator_api", issue = "32838")]
-    #[lang = "String"]
-    pub struct String<#[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
-        pub(super) vec: Vec<u8, A>,
-    }
+    pub use super::String;
+}
+
+#[doc(hidden)]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub mod global {
+    #[doc(hidden)]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub type String = super::String;
 }
 
 /// A UTF-8–encoded, growable string.
@@ -371,9 +361,12 @@ pub mod generic {
 /// [Deref]: core::ops::Deref "ops::Deref"
 /// [`Deref`]: core::ops::Deref "ops::Deref"
 /// [`as_str()`]: String::as_str
-#[rustc_diagnostic_item = "string_in_global"]
+// #[rustc_diagnostic_item = "string_in_global"]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub type String = generic::String;
+#[lang = "String"]
+pub struct String<#[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
+    pub(super) vec: Vec<u8, A>,
+}
 
 /// A possible error value when converting a `String` from a UTF-8 byte vector.
 ///
@@ -942,7 +935,7 @@ impl String {
     }
 }
 
-impl<A: Allocator> generic::String<A> {
+impl<A: Allocator> String<A> {
     /// Creates a new empty `String`.
     ///
     /// Given that the `String` is empty, this will not allocate any initial
@@ -960,7 +953,7 @@ impl<A: Allocator> generic::String<A> {
     /// #![feature(allocator_api)]
     ///
     /// use std::alloc::System;
-    /// use std::string::generic::String;
+    /// use std::string::String;
     ///
     /// # #[allow(unused_mut)]
     /// let mut s = String::new_in(System);
@@ -969,7 +962,7 @@ impl<A: Allocator> generic::String<A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[must_use]
     pub const fn new_in(alloc: A) -> Self {
-        generic::String { vec: Vec::new_in(alloc) }
+        String { vec: Vec::new_in(alloc) }
     }
 
     /// Creates a new empty `String` with at least the specified capacity in the specified allocator.
@@ -994,7 +987,7 @@ impl<A: Allocator> generic::String<A> {
     /// #![feature(allocator_api)]
     ///
     /// use std::alloc::System;
-    /// use std::string::generic::String;
+    /// use std::string::String;
     ///
     /// let mut s = String::with_capacity_in(10, System);
     ///
@@ -1017,7 +1010,7 @@ impl<A: Allocator> generic::String<A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[must_use]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
-        generic::String { vec: Vec::with_capacity_in(capacity, alloc) }
+        String { vec: Vec::with_capacity_in(capacity, alloc) }
     }
 
     /// Creates a new empty `String` with at least the specified capacity, in the specified allocator.
@@ -1031,7 +1024,7 @@ impl<A: Allocator> generic::String<A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "try_with_capacity", issue = "91913")]
     pub fn try_with_capacity_in(capacity: usize, alloc: A) -> Result<Self, TryReserveError> {
-        Ok(generic::String { vec: Vec::try_with_capacity_in(capacity, alloc)? })
+        Ok(String { vec: Vec::try_with_capacity_in(capacity, alloc)? })
     }
 
     /// Converts a vector of bytes to a `String`.
@@ -1093,9 +1086,9 @@ impl<A: Allocator> generic::String<A> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "string_from_utf8"]
-    pub fn from_utf8(vec: Vec<u8, A>) -> Result<generic::String<A>, FromUtf8Error<A>> {
+    pub fn from_utf8(vec: Vec<u8, A>) -> Result<String<A>, FromUtf8Error<A>> {
         match str::from_utf8(&vec) {
-            Ok(..) => Ok(generic::String { vec }),
+            Ok(..) => Ok(String { vec }),
             Err(e) => Err(FromUtf8Error { bytes: vec, error: e }),
         }
     }
@@ -1129,8 +1122,8 @@ impl<A: Allocator> generic::String<A> {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub unsafe fn from_utf8_unchecked(bytes: Vec<u8, A>) -> generic::String<A> {
-        generic::String { vec: bytes }
+    pub unsafe fn from_utf8_unchecked(bytes: Vec<u8, A>) -> String<A> {
+        String { vec: bytes }
     }
 
     /// Converts a `String` into a byte vector.
@@ -1765,7 +1758,7 @@ impl<A: Allocator> generic::String<A> {
         F: FnMut(char) -> bool,
     {
         struct SetLenOnDrop<'a, A: Allocator> {
-            s: &'a mut generic::String<A>,
+            s: &'a mut String<A>,
             idx: usize,
             del_bytes: usize,
         }
@@ -2028,13 +2021,13 @@ impl<A: Allocator> generic::String<A> {
     #[track_caller]
     #[stable(feature = "string_split_off", since = "1.16.0")]
     #[must_use = "use `.truncate()` if you don't need the other half"]
-    pub fn split_off(&mut self, at: usize) -> generic::String<A>
+    pub fn split_off(&mut self, at: usize) -> String<A>
     where
         A: Clone,
     {
         assert!(self.is_char_boundary(at));
         let other = self.vec.split_off(at);
-        unsafe { generic::String::from_utf8_unchecked(other) }
+        unsafe { String::from_utf8_unchecked(other) }
     }
 
     /// Truncates this `String`, removing all contents.
@@ -2319,7 +2312,7 @@ impl<A: Allocator> generic::String<A> {
     /// #![feature(allocator_api)]
     ///
     /// use std::alloc::System;
-    /// use std::string::generic::String;
+    /// use std::string::String;
     ///
     /// let mut s = String::new_in(System);
     /// s.push_str("hello");
@@ -2363,7 +2356,7 @@ impl<A: Allocator> generic::String<A> {
     /// #![feature(allocator_api)]
     ///
     /// use std::alloc::System;
-    /// use std::string::generic::String;
+    /// use std::string::String;
     ///
     /// let mut s = String::new_in(System);
     /// s.push_str("hello");
@@ -2383,7 +2376,7 @@ impl<A: Allocator> generic::String<A> {
         alloc: A,
     ) -> Self {
         let vec = unsafe { Vec::from_raw_parts_in(ptr, length, capacity, alloc) };
-        generic::String { vec }
+        String { vec }
     }
 
     /// Consumes and leaks the `String`, returning a mutable reference to the contents,
@@ -2467,7 +2460,7 @@ impl<A: Allocator> FromUtf8Error<A> {
     #[must_use]
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "string_from_utf8_lossy_owned", issue = "129436")]
-    pub fn into_utf8_lossy(self) -> generic::String<A>
+    pub fn into_utf8_lossy(self) -> String<A>
     where
         A: Clone,
     {
@@ -2483,7 +2476,7 @@ impl<A: Allocator> FromUtf8Error<A> {
             // SAFETY: This is safe because the only bytes present in the buffer
             // were validated as UTF-8 by the call to `String::from_utf8` which
             // produced this `FromUtf8Error`.
-            unsafe { generic::String::from_utf8_unchecked(v) }
+            unsafe { String::from_utf8_unchecked(v) }
         };
 
         let iter = self.bytes[self.error.valid_up_to()..].utf8_chunks();
@@ -2593,24 +2586,24 @@ impl<A: Allocator> Error for FromUtf8Error<A> {}
 impl Error for FromUtf16Error {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A1: Allocator, A2: Allocator> PartialEq<generic::String<A1>> for generic::String<A2> {
-    fn eq(&self, other: &generic::String<A1>) -> bool {
+impl<A1: Allocator, A2: Allocator> PartialEq<String<A1>> for String<A2> {
+    fn eq(&self, other: &String<A1>) -> bool {
         self.vec.eq(&other.vec)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Allocator> Eq for generic::String<A> {}
+impl<A: Allocator> Eq for String<A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A1: Allocator, A2: Allocator> PartialOrd<generic::String<A1>> for generic::String<A2> {
-    fn partial_cmp(&self, other: &generic::String<A1>) -> Option<core::cmp::Ordering> {
+impl<A1: Allocator, A2: Allocator> PartialOrd<String<A1>> for String<A2> {
+    fn partial_cmp(&self, other: &String<A1>) -> Option<core::cmp::Ordering> {
         self.vec.partial_cmp(&other.vec)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Allocator> Ord for generic::String<A> {
+impl<A: Allocator> Ord for String<A> {
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
         self.vec.cmp(&other.vec)
     }
@@ -2618,9 +2611,9 @@ impl<A: Allocator> Ord for generic::String<A> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Allocator + Clone> Clone for generic::String<A> {
+impl<A: Allocator + Clone> Clone for String<A> {
     fn clone(&self) -> Self {
-        generic::String { vec: self.vec.clone() }
+        String { vec: self.vec.clone() }
     }
 
     /// Clones the contents of `source` into `self`.
@@ -2735,7 +2728,7 @@ impl<'a> FromIterator<&'a core::ascii::Char> for String {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Allocator> Extend<char> for generic::String<A> {
+impl<A: Allocator> Extend<char> for String<A> {
     fn extend<I: IntoIterator<Item = char>>(&mut self, iter: I) {
         let iterator = iter.into_iter();
         let (lower_bound, _) = iterator.size_hint();
@@ -2756,7 +2749,7 @@ impl<A: Allocator> Extend<char> for generic::String<A> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "extend_ref", since = "1.2.0")]
-impl<'a, A: Allocator> Extend<&'a char> for generic::String<A> {
+impl<'a, A: Allocator> Extend<&'a char> for String<A> {
     fn extend<I: IntoIterator<Item = &'a char>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
     }
@@ -2774,7 +2767,7 @@ impl<'a, A: Allocator> Extend<&'a char> for generic::String<A> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, A: Allocator> Extend<&'a str> for generic::String<A> {
+impl<'a, A: Allocator> Extend<&'a str> for String<A> {
     fn extend<I: IntoIterator<Item = &'a str>>(&mut self, iter: I) {
         <I as SpecExtendStr>::spec_extend_into(iter, self)
     }
@@ -2787,33 +2780,33 @@ impl<'a, A: Allocator> Extend<&'a str> for generic::String<A> {
 
 #[cfg(not(no_global_oom_handling))]
 trait SpecExtendStr {
-    fn spec_extend_into<A: Allocator>(self, s: &mut generic::String<A>);
+    fn spec_extend_into<A: Allocator>(self, s: &mut String<A>);
 }
 
 #[cfg(not(no_global_oom_handling))]
 impl<'a, T: IntoIterator<Item = &'a str>> SpecExtendStr for T {
-    default fn spec_extend_into<A: Allocator>(self, target: &mut generic::String<A>) {
+    default fn spec_extend_into<A: Allocator>(self, target: &mut String<A>) {
         self.into_iter().for_each(move |s| target.push_str(s));
     }
 }
 
 #[cfg(not(no_global_oom_handling))]
 impl SpecExtendStr for [&str] {
-    fn spec_extend_into<A: Allocator>(self, target: &mut generic::String<A>) {
+    fn spec_extend_into<A: Allocator>(self, target: &mut String<A>) {
         target.push_str_slice(&self);
     }
 }
 
 #[cfg(not(no_global_oom_handling))]
 impl<const N: usize> SpecExtendStr for [&str; N] {
-    fn spec_extend_into<A: Allocator>(self, target: &mut generic::String<A>) {
+    fn spec_extend_into<A: Allocator>(self, target: &mut String<A>) {
         target.push_str_slice(&self[..]);
     }
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_str2", since = "1.45.0")]
-impl<A1: Allocator, A2: Allocator> Extend<Box<str, A1>> for generic::String<A2> {
+impl<A1: Allocator, A2: Allocator> Extend<Box<str, A1>> for String<A2> {
     fn extend<I: IntoIterator<Item = Box<str, A1>>>(&mut self, iter: I) {
         iter.into_iter().for_each(move |s| self.push_str(&s));
     }
@@ -2821,20 +2814,20 @@ impl<A1: Allocator, A2: Allocator> Extend<Box<str, A1>> for generic::String<A2> 
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "extend_string", since = "1.4.0")]
-impl<A1: Allocator, A2: Allocator> Extend<generic::String<A1>> for generic::String<A2> {
-    fn extend<I: IntoIterator<Item = generic::String<A1>>>(&mut self, iter: I) {
+impl<A1: Allocator, A2: Allocator> Extend<String<A1>> for String<A2> {
+    fn extend<I: IntoIterator<Item = String<A1>>>(&mut self, iter: I) {
         iter.into_iter().for_each(move |s| self.push_str(&s));
     }
 
     #[inline]
-    fn extend_one(&mut self, s: generic::String<A1>) {
+    fn extend_one(&mut self, s: String<A1>) {
         self.push_str(&s);
     }
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "herd_cows", since = "1.19.0")]
-impl<'a, A: Allocator> Extend<Cow<'a, str>> for generic::String<A> {
+impl<'a, A: Allocator> Extend<Cow<'a, str>> for String<A> {
     fn extend<I: IntoIterator<Item = Cow<'a, str>>>(&mut self, iter: I) {
         iter.into_iter().for_each(move |s| self.push_str(&s));
     }
@@ -2847,7 +2840,7 @@ impl<'a, A: Allocator> Extend<Cow<'a, str>> for generic::String<A> {
 
 #[cfg(not(no_global_oom_handling))]
 #[unstable(feature = "ascii_char", issue = "110998")]
-impl<A: Allocator> Extend<core::ascii::Char> for generic::String<A> {
+impl<A: Allocator> Extend<core::ascii::Char> for String<A> {
     #[inline]
     fn extend<I: IntoIterator<Item = core::ascii::Char>>(&mut self, iter: I) {
         self.vec.extend(iter.into_iter().map(|c| c.to_u8()));
@@ -2861,7 +2854,7 @@ impl<A: Allocator> Extend<core::ascii::Char> for generic::String<A> {
 
 #[cfg(not(no_global_oom_handling))]
 #[unstable(feature = "ascii_char", issue = "110998")]
-impl<'a, A: Allocator> Extend<&'a core::ascii::Char> for generic::String<A> {
+impl<'a, A: Allocator> Extend<&'a core::ascii::Char> for String<A> {
     #[inline]
     fn extend<I: IntoIterator<Item = &'a core::ascii::Char>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
@@ -2885,7 +2878,7 @@ impl<'a, A: Allocator> Extend<&'a core::ascii::Char> for generic::String<A> {
     reason = "API not fully fleshed out and ready to be stabilized",
     issue = "27721"
 )]
-impl<'b, A: Allocator> Pattern for &'b generic::String<A> {
+impl<'b, A: Allocator> Pattern for &'b String<A> {
     type Searcher<'a> = <&'b str as Pattern>::Searcher<'a>;
 
     fn into_searcher(self, haystack: &str) -> <&'b str as Pattern>::Searcher<'_> {
@@ -2956,14 +2949,14 @@ macro_rules! impl_eq {
     };
 }
 
-impl_eq! { [A: Allocator] generic::String<A>, str }
-impl_eq! { [A: Allocator] generic::String<A>, &str }
+impl_eq! { [A: Allocator] String<A>, str }
+impl_eq! { [A: Allocator] String<A>, &str }
 #[cfg(not(no_global_oom_handling))]
 impl_eq! { [] Cow<'_, str>, str }
 #[cfg(not(no_global_oom_handling))]
 impl_eq! { [] Cow<'_, str>, &'_ str }
 #[cfg(not(no_global_oom_handling))]
-impl_eq! { [A: Allocator] Cow<'_, str>, generic::String<A> }
+impl_eq! { [A: Allocator] Cow<'_, str>, String<A> }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
@@ -2976,7 +2969,7 @@ const impl Default for String {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Allocator> fmt::Display for generic::String<A> {
+impl<A: Allocator> fmt::Display for String<A> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&**self, f)
@@ -2984,7 +2977,7 @@ impl<A: Allocator> fmt::Display for generic::String<A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Allocator> fmt::Debug for generic::String<A> {
+impl<A: Allocator> fmt::Debug for String<A> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
@@ -2992,7 +2985,7 @@ impl<A: Allocator> fmt::Debug for generic::String<A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Allocator> hash::Hash for generic::String<A> {
+impl<A: Allocator> hash::Hash for String<A> {
     #[inline]
     fn hash<H: hash::Hasher>(&self, hasher: &mut H) {
         (**self).hash(hasher)
@@ -3038,11 +3031,11 @@ impl<A: Allocator> hash::Hash for generic::String<A> {
 /// ```
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Allocator> Add<&str> for generic::String<A> {
-    type Output = generic::String<A>;
+impl<A: Allocator> Add<&str> for String<A> {
+    type Output = String<A>;
 
     #[inline]
-    fn add(mut self, other: &str) -> generic::String<A> {
+    fn add(mut self, other: &str) -> String<A> {
         self.push_str(other);
         self
     }
@@ -3053,7 +3046,7 @@ impl<A: Allocator> Add<&str> for generic::String<A> {
 /// This has the same behavior as the [`push_str`][String::push_str] method.
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "stringaddassign", since = "1.12.0")]
-impl<A: Allocator> AddAssign<&str> for generic::String<A> {
+impl<A: Allocator> AddAssign<&str> for String<A> {
     #[inline]
     fn add_assign(&mut self, other: &str) {
         self.push_str(other);
@@ -3061,7 +3054,7 @@ impl<A: Allocator> AddAssign<&str> for generic::String<A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I, A: Allocator> ops::Index<I> for generic::String<A>
+impl<I, A: Allocator> ops::Index<I> for String<A>
 where
     I: slice::SliceIndex<str>,
 {
@@ -3074,7 +3067,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I, A: Allocator> ops::IndexMut<I> for generic::String<A>
+impl<I, A: Allocator> ops::IndexMut<I> for String<A>
 where
     I: slice::SliceIndex<str>,
 {
@@ -3085,7 +3078,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Allocator> ops::Deref for generic::String<A> {
+impl<A: Allocator> ops::Deref for String<A> {
     type Target = str;
 
     #[inline]
@@ -3095,10 +3088,10 @@ impl<A: Allocator> ops::Deref for generic::String<A> {
 }
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
-unsafe impl<A: Allocator> ops::DerefPure for generic::String<A> {}
+unsafe impl<A: Allocator> ops::DerefPure for String<A> {}
 
 #[stable(feature = "derefmut_for_string", since = "1.3.0")]
-impl<A: Allocator> ops::DerefMut for generic::String<A> {
+impl<A: Allocator> ops::DerefMut for String<A> {
     #[inline]
     fn deref_mut(&mut self) -> &mut str {
         self.as_mut_str()
@@ -3350,7 +3343,7 @@ impl SpecToString for fmt::Arguments<'_> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Allocator> AsRef<str> for generic::String<A> {
+impl<A: Allocator> AsRef<str> for String<A> {
     #[inline]
     fn as_ref(&self) -> &str {
         self
@@ -3358,7 +3351,7 @@ impl<A: Allocator> AsRef<str> for generic::String<A> {
 }
 
 #[stable(feature = "string_as_mut", since = "1.43.0")]
-impl<A: Allocator> AsMut<str> for generic::String<A> {
+impl<A: Allocator> AsMut<str> for String<A> {
     #[inline]
     fn as_mut(&mut self) -> &mut str {
         self
@@ -3366,7 +3359,7 @@ impl<A: Allocator> AsMut<str> for generic::String<A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Allocator> AsRef<[u8]> for generic::String<A> {
+impl<A: Allocator> AsRef<[u8]> for String<A> {
     #[inline]
     fn as_ref(&self) -> &[u8] {
         self.as_bytes()
@@ -3411,7 +3404,7 @@ impl From<&String> for String {
 
 // note: test pulls in std, which causes errors here
 #[stable(feature = "string_from_box", since = "1.18.0")]
-impl<A: Allocator> From<Box<str, A>> for generic::String<A> {
+impl<A: Allocator> From<Box<str, A>> for String<A> {
     /// Converts the given boxed `str` slice to a [`String`].
     /// It is notable that the `str` slice is owned.
     ///
@@ -3424,14 +3417,14 @@ impl<A: Allocator> From<Box<str, A>> for generic::String<A> {
     ///
     /// assert_eq!("hello world", s3)
     /// ```
-    fn from(s: Box<str, A>) -> generic::String<A> {
+    fn from(s: Box<str, A>) -> String<A> {
         s.into_string()
     }
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_from_str", since = "1.20.0")]
-impl<A: Allocator> From<generic::String<A>> for Box<str, A> {
+impl<A: Allocator> From<String<A>> for Box<str, A> {
     /// Converts the given [`String`] to a boxed `str` slice that is owned.
     ///
     /// # Examples
@@ -3443,7 +3436,7 @@ impl<A: Allocator> From<generic::String<A>> for Box<str, A> {
     ///
     /// assert_eq!("hello world", s3)
     /// ```
-    fn from(s: generic::String<A>) -> Box<str, A> {
+    fn from(s: String<A>) -> Box<str, A> {
         s.into_boxed_str()
     }
 }
@@ -3518,7 +3511,7 @@ impl<'a> From<String> for Cow<'a, str> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_from_string_ref", since = "1.28.0")]
-impl<'a, A: Allocator> From<&'a generic::String<A>> for Cow<'a, str> {
+impl<'a, A: Allocator> From<&'a String<A>> for Cow<'a, str> {
     /// Converts a [`String`] reference into a [`Borrowed`] variant.
     /// No heap allocation is performed, and the string
     /// is not copied.
@@ -3533,7 +3526,7 @@ impl<'a, A: Allocator> From<&'a generic::String<A>> for Cow<'a, str> {
     ///
     /// [`Borrowed`]: crate::borrow::Cow::Borrowed "borrow::Cow::Borrowed"
     #[inline]
-    fn from(s: &'a generic::String<A>) -> Cow<'a, str> {
+    fn from(s: &'a String<A>) -> Cow<'a, str> {
         Cow::Borrowed(s.as_str())
     }
 }
@@ -3571,7 +3564,7 @@ impl<'a> FromIterator<core::ascii::Char> for Cow<'a, str> {
 }
 
 #[stable(feature = "from_string_for_vec_u8", since = "1.14.0")]
-impl<A: Allocator> From<generic::String<A>> for Vec<u8, A> {
+impl<A: Allocator> From<String<A>> for Vec<u8, A> {
     /// Converts the given [`String`] to a vector [`Vec`] that holds values of type [`u8`].
     ///
     /// # Examples
@@ -3584,13 +3577,13 @@ impl<A: Allocator> From<generic::String<A>> for Vec<u8, A> {
     ///     println!("{b}");
     /// }
     /// ```
-    fn from(string: generic::String<A>) -> Vec<u8, A> {
+    fn from(string: String<A>) -> Vec<u8, A> {
         string.into_bytes()
     }
 }
 
 #[stable(feature = "try_from_vec_u8_for_string", since = "1.87.0")]
-impl<A: Allocator> TryFrom<Vec<u8, A>> for generic::String<A> {
+impl<A: Allocator> TryFrom<Vec<u8, A>> for String<A> {
     type Error = FromUtf8Error<A>;
     /// Converts the given [`Vec<u8>`] into a  [`String`] if it contains valid UTF-8 data.
     ///
@@ -3609,7 +3602,7 @@ impl<A: Allocator> TryFrom<Vec<u8, A>> for generic::String<A> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Allocator> fmt::Write for generic::String<A> {
+impl<A: Allocator> fmt::Write for String<A> {
     #[inline]
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.push_str(s);
@@ -3687,10 +3680,10 @@ impl<A: Allocator> IntoChars<A> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "string_into_chars", issue = "133125")]
     #[inline]
-    pub fn into_string(self) -> generic::String<A> {
+    pub fn into_string(self) -> String<A> {
         let vec: Vec<_, A> = self.bytes.into_vecdeque().into();
         // Safety: `bytes` are kept in UTF-8 form, only removing whole `char`s at a time.
-        unsafe { generic::String::from_utf8_unchecked(vec) }
+        unsafe { String::from_utf8_unchecked(vec) }
     }
 
     #[inline]
@@ -3763,7 +3756,7 @@ impl<A: Allocator> FusedIterator for IntoChars<A> {}
 pub struct Drain<'a, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global>
 {
     /// Will be used as &'a mut String in the destructor
-    string: *mut generic::String<A>,
+    string: *mut String<A>,
     /// Start of part to remove
     start: usize,
     /// End of part to remove

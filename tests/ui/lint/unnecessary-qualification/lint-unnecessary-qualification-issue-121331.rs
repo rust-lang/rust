@@ -44,7 +44,7 @@ pub fn main() {
     use std::string::String;
     let s = String::new();
     let y = std::string::String::new();
-    // unnecessary qualification
+    //~^ ERROR unnecessary qualification
     println!("{} {}", s, y);
 
 }

@@ -189,4 +189,8 @@ pub mod rust_future {
     // different. For `std` we explicitly want the one defined in `std`.
     #[unstable(feature = "prelude_next", issue = "none")]
     pub use super::v1::panic;
+
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[doc(no_inline)]
+    pub use crate::string::String;
 }

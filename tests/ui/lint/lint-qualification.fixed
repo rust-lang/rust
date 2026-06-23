@@ -16,8 +16,6 @@ fn main() {
 
     let _ = || -> Result<(), ()> { try!(Ok(())); Ok(()) }; // issue #37345
 
-    let _ = String::new(); //~ ERROR: unnecessary qualification
-
     let _: Vec<String> = Vec::<String>::new();
     //~^ ERROR: unnecessary qualification
     //~| ERROR: unnecessary qualification
