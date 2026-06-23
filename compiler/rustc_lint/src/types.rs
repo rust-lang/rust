@@ -194,10 +194,15 @@ declare_lint! {
 
 #[derive(Copy, Clone, Default)]
 pub(crate) struct TypeLimits {
-    /// Id of the last visited negated expression
-    negated_expr_id: Option<hir::HirId>,
-    /// Span of the last visited negated expression
-    negated_expr_span: Option<Span>,
+    last_visited_negation: Option<NegationInfo>,
+}
+
+#[derive(Copy, Clone)]
+struct NegationInfo {
+    /// A negation expression (a `rustc_hir::ExprKind::Unary`)
+    negation_span: Span,
+    /// The operand of the negation expression.
+    negated_id: hir::HirId,
 }
 
 impl_lint_pass!(TypeLimits => [
@@ -210,7 +215,7 @@ impl_lint_pass!(TypeLimits => [
 
 impl TypeLimits {
     pub(crate) fn new() -> TypeLimits {
-        TypeLimits { negated_expr_id: None, negated_expr_span: None }
+        TypeLimits { last_visited_negation: None }
     }
 }
 
@@ -546,20 +551,28 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
         lit: hir::Lit,
         is_negated_pat: bool,
     ) {
-        if is_negated_pat {
-            self.negated_expr_id = Some(hir_id);
-            self.negated_expr_span = Some(lit.span);
-        }
-        lint_literal(cx, self, hir_id, lit.span, &lit, is_negated_pat);
+        let surrounding_negation = if is_negated_pat {
+            // In this case, lit.span refers to a `rustc_hir::hir::PatExprKind::Lit`,
+            // which includes the minus sign in front.
+            Some(lit.span)
+        } else if let Some(negation_info) = self.last_visited_negation
+            && negation_info.negated_id == hir_id
+        {
+            Some(negation_info.negation_span)
+        } else {
+            None
+        };
+        lint_literal(cx, hir_id, lit.span, &lit, surrounding_negation);
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx hir::Expr<'tcx>) {
         match e.kind {
             hir::ExprKind::Unary(hir::UnOp::Neg, expr) => {
                 // Propagate negation, if the negation itself isn't negated
-                if self.negated_expr_id != Some(e.hir_id) {
-                    self.negated_expr_id = Some(expr.hir_id);
-                    self.negated_expr_span = Some(e.span);
+                if self.last_visited_negation.is_none_or(|negation| negation.negated_id != e.hir_id)
+                {
+                    self.last_visited_negation =
+                        Some(NegationInfo { negation_span: e.span, negated_id: expr.hir_id });
                 }
             }
             hir::ExprKind::Binary(binop, ref l, ref r) => {
