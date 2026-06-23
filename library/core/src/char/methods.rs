@@ -492,10 +492,15 @@ impl char {
             _ if self.is_control()
                 || self.is_private_use()
                 || self.is_whitespace()
-                || args.escape_grapheme_extender && self.is_grapheme_extender()
+                || args.escape_grapheme_extender_and_maybe_not_nfc
+                    && self.is_grapheme_extender()
                 || self.is_default_ignorable()
                 || self.is_format_control()
-                || self.is_full_composition_exclusion()
+                || match self.nfc_quick_check() {
+                    QuickCheckResult::No => true,
+                    QuickCheckResult::Maybe => args.escape_grapheme_extender_and_maybe_not_nfc,
+                    QuickCheckResult::Yes => false,
+                }
                 || self.is_deprecated()
                 || !self.is_assigned() =>
             {
@@ -1369,6 +1374,39 @@ impl char {
     #[inline]
     pub fn is_deprecated(self) -> bool {
         !self.is_ascii() && unicode::Deprecated(self)
+    }
+
+    /// Returns the value of the `NFC_Quick_Check` property for this character.
+    ///
+    /// For a character `c`, this method returns:
+    ///
+    /// - [`QuickCheckResult::No`] if `c.is_full_composition_exclusion()`.
+    ///   These characters cannot ever occur in an NFC-[normalized] string.
+    /// - [`QuickCheckResult::Maybe`] for characters that may occur in an NFC-[normalized] string,
+    ///   but may also be removed from a string by NFC [normalization], depending on context.
+    /// - [`QuickCheckResult::Yes`] for all other characters.
+    ///
+    /// [normalized]: https://www.unicode.org/faq/normalization.html
+    /// [normalization]: https://www.unicode.org/faq/normalization.html
+    ///
+    /// `NFC_Quick_Check` is [described] in Annex #15 ("Unicode Normalization Forms") of the Unicode Standard,
+    /// and [specified] in the Unicode Character Database [`DerivedNormalizationProps.txt`].
+    ///
+    /// [described]: https://www.unicode.org/reports/tr15/#Detecting_Normalization_Forms
+    /// [specified]: https://www.unicode.org/reports/tr44/#NFC_Quick_Check
+    /// [`DerivedNormalizationProps.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedNormalizationProps.txt
+    #[must_use]
+    #[inline]
+    fn nfc_quick_check(self) -> QuickCheckResult {
+        if self.is_ascii() {
+            QuickCheckResult::Yes
+        } else if self.is_full_composition_exclusion() {
+            QuickCheckResult::No
+        } else if unicode::NFC_QC_Maybe(self) {
+            QuickCheckResult::Maybe
+        } else {
+            QuickCheckResult::Yes
+        }
     }
 
     /// Returns an iterator that yields the lowercase mapping of this `char` as one or more
@@ -2499,8 +2537,8 @@ impl char {
 }
 
 pub(crate) struct EscapeDebugExtArgs {
-    /// Escape Grapheme Extender codepoints?
-    pub(crate) escape_grapheme_extender: bool,
+    /// Escape codepoints with `Grapheme_Extend` or `NFC_Quick_Check=Maybe`?
+    pub(crate) escape_grapheme_extender_and_maybe_not_nfc: bool,
 
     /// Escape single quotes?
     pub(crate) escape_single_quote: bool,
@@ -2511,7 +2549,7 @@ pub(crate) struct EscapeDebugExtArgs {
 
 impl EscapeDebugExtArgs {
     pub(crate) const ESCAPE_ALL: Self = Self {
-        escape_grapheme_extender: true,
+        escape_grapheme_extender_and_maybe_not_nfc: true,
         escape_single_quote: true,
         escape_double_quote: true,
     };

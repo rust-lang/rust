@@ -674,3 +674,11 @@ pub enum CharCase {
     /// Uppercase. Corresponds to the `Uppercase` Unicode property.
     Upper = 0b11,
 }
+
+/// Returned by [`char::nfc_quick_check`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+enum QuickCheckResult {
+    No,
+    Maybe,
+    Yes,
+}

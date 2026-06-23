@@ -123,7 +123,7 @@ impl fmt::Debug for Debug<'_> {
                 let mut from = 0;
                 for (i, c) in valid.char_indices() {
                     let esc = c.escape_debug_ext(EscapeDebugExtArgs {
-                        escape_grapheme_extender: true,
+                        escape_grapheme_extender_and_maybe_not_nfc: true,
                         escape_single_quote: false,
                         escape_double_quote: true,
                     });

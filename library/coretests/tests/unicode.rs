@@ -124,6 +124,12 @@ fn n() {
 
 #[test]
 #[cfg_attr(miri, ignore)] // Miri is too slow
+fn nfc_qc_maybe() {
+    test_boolean_property(test_data::NFC_QC_MAYBE, unicode_data::nfc_qc_maybe::lookup);
+}
+
+#[test]
+#[cfg_attr(miri, ignore)] // Miri is too slow
 fn uppercase() {
     test_boolean_property(test_data::UPPERCASE, unicode_data::uppercase::lookup);
     test_boolean_property(test_data::UPPERCASE, char::is_uppercase);
