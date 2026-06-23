@@ -109,7 +109,7 @@ rustflags = [
     "-Zunstable-options",
     "-Zinline-mir",
     "-Zinline-mir-preserve-debug",
-    "-Zmir_strip_debuginfo=locals-in-tiny-functions",
+    "-Zmir-strip-debuginfo=locals-in-tiny-functions",
 ]
 
 [profile.release.package.panic_abort]
