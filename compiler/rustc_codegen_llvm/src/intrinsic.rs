@@ -1807,6 +1807,7 @@ fn codegen_autodiff<'ll, 'tcx>(
     // Build body
     generate_enzyme_call(
         bx,
+        tcx,
         bx.cx,
         fn_to_diff,
         &diff_symbol,
