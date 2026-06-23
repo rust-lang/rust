@@ -6,4 +6,4 @@
 #![feature(staged_api)]
 #[path = "lol"]
 mod foo;
-//~^ ERROR couldn't read `$DIR/lol`
+//~^ ERROR couldn't find file `$DIR/lol`
