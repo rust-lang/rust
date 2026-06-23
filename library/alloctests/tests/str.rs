@@ -1141,7 +1141,7 @@ fn test_escape_debug() {
     assert_eq!("\u{10d4ea}\r".escape_debug().to_string(), "\\u{10d4ea}\\r");
     assert_eq!(
         "\u{301}a\u{301}bé\u{e000}".escape_debug().to_string(),
-        "\\u{301}a\u{301}bé\\u{e000}"
+        "\\u{301}a\\u{301}bé\\u{e000}"
     );
 }
 
