@@ -7,10 +7,9 @@ set -ex
 
 # 1. For the new trait solver, we want to:
 # - ensure it can build the standard library
-#
-# FIXME: we also need to ensure it actually bootstraps.
-
 RUSTFLAGS_NOT_BOOTSTRAP="-Znext-solver=globally" ../x build library --stage 1
+# - ensure it can bootstrap rustc (should used the cached std from above)
+RUSTFLAGS_NOT_BOOTSTRAP="-Znext-solver=globally" ../x build compiler --stage 2
 
 # 2. For the polonius alpha, we run the UI tests under the polonius
 # compare-mode.
