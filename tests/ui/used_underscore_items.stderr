@@ -2,7 +2,7 @@ error: used underscore-prefixed item
   --> tests/ui/used_underscore_items.rs:42:5
    |
 LL |     _foo1();
-   |     ^^^^^^^
+   |     ^^^^^
    |
 note: item is defined here
   --> tests/ui/used_underscore_items.rs:21:1
@@ -16,7 +16,7 @@ error: used underscore-prefixed item
   --> tests/ui/used_underscore_items.rs:44:13
    |
 LL |     let _ = _foo2();
-   |             ^^^^^^^
+   |             ^^^^^
    |
 note: item is defined here
   --> tests/ui/used_underscore_items.rs:23:1
@@ -28,7 +28,7 @@ error: used underscore-prefixed item
   --> tests/ui/used_underscore_items.rs:46:5
    |
 LL |     a::b::c::_foo3();
-   |     ^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^
    |
 note: item is defined here
   --> tests/ui/used_underscore_items.rs:30:13
