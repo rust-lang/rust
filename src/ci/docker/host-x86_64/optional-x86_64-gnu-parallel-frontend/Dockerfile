@@ -29,8 +29,22 @@ ENV RUST_CONFIGURE_ARGS \
  --enable-sanitizers \
  --enable-profiler \
  --enable-compiler-docs \
- --set llvm.libzstd=true
+ --set llvm.libzstd=true \
+ --set rust.parallel-frontend-threads=4
+
+ENV RUST_TEST_THREADS=1
 
 # Build the toolchain with multiple parallel frontend threads and then run tests
 # Tests are still compiled serially at the moment (intended to be changed in follow-ups).
-ENV SCRIPT python3 ../x.py --stage 2 test --set rust.parallel-frontend-threads=4
+# Running compiletest only tests for parallel frontend, then the rest without compiletest-only
+# options (i.e. `--parallel-frontend-threads=4 --iteration-count=2`)
+ENV SCRIPT python3 ../x.py --stage 2 test \
+    tests/ui \
+    tests/ui-fulldeps \
+    tests/mir-opt \
+    tests/codegen-llvm \
+    tests/codegen-units \
+    -- \
+    --parallel-frontend-threads=4 --iteration-count=2 \
+  && python3 ../x.py --stage 2 test \
+    # --skip tests/
