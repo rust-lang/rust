@@ -3418,6 +3418,29 @@ define_print_and_forward_display! {
         self.kind().print(p)?;
     }
 
+    ty::UserTypeKind<'tcx> {
+        match *self {
+            Self::Ty(ty) => {
+                write!(p, "Ty(")?;
+                ty.print(p)?;
+            }
+            Self::TypeOf(def_id, ty::UserArgs { args, user_self_ty }) => {
+                write!(p, "TypeOf(")?;
+                p.print_def_path(def_id, args)?;
+                if let Some(ty::UserSelfTy { impl_def_id, self_ty }) = user_self_ty {
+                    write!(p, " at <impl ")?;
+                    let key = p.tcx().def_key(impl_def_id);
+                    let parent_def_id = DefId { index: key.parent.unwrap(), ..impl_def_id };
+                    p.print_def_path(parent_def_id, &[])?;
+                    write!(p, "::<{}> for ", key.disambiguated_data.as_sym(false))?;
+                    self_ty.print(p)?;
+                    write!(p, ">")?;
+                }
+            }
+        }
+        write!(p, ")")?;
+    }
+
     GenericArg<'tcx> {
         match self.kind() {
             GenericArgKind::Lifetime(lt) => lt.print(p)?,
