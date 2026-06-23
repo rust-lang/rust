@@ -97,6 +97,13 @@ const USE_LZ: bool = {
         // The 'Zbb' Basic Bit-Manipulation extension on RISC-V
         // determines if a CLZ assembly instruction exists
         cfg!(target_feature = "zbb")
+    } else if cfg!(any(
+        target_arch = "loongarch32",
+        target_arch = "loongarch64"
+    )) {
+        // The '32s' 32-bit standard feature on LoongArch
+        // determines if a CLZ assembly instruction exists
+        cfg!(target_feature = "32s")
     } else {
         // All other common targets Rust supports should have CLZ instructions
         true
