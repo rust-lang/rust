@@ -1,6 +1,8 @@
 use rustc_ast::expand::typetree::{FncTree, Kind, Type, TypeTree};
-use crate::ty::{self, Ty, context::TyCtxt};
 use tracing::trace;
+
+use crate::ty::context::TyCtxt;
+use crate::ty::{self, Ty};
 
 /// Generate TypeTree information for autodiff.
 /// This function creates TypeTree metadata that describes the memory layout
@@ -33,48 +35,16 @@ pub fn fnc_typetrees<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>) -> FncTree {
     FncTree { args, ret }
 }
 
-/// Generate TypeTree for a specific type.
-/// This function analyzes a Rust type and creates appropriate TypeTree metadata.
+/// Generate a TypeTree for a specific type.
+/// Mainly a convenience wrapper around the actual implementation.
 pub fn typetree_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> TypeTree {
     let mut visited = Vec::new();
-    typetree_from_ty_inner(tcx, ty, 0, &mut visited)
+    typetree_from_ty_impl_inner(tcx, ty, 0, &mut visited, false)
 }
 
 /// Maximum recursion depth for TypeTree generation to prevent stack overflow
 /// from pathological deeply nested types. Combined with cycle detection.
 const MAX_TYPETREE_DEPTH: usize = 6;
-
-/// Internal recursive function for TypeTree generation with cycle detection and depth limiting.
-fn typetree_from_ty_inner<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    ty: Ty<'tcx>,
-    depth: usize,
-    visited: &mut Vec<Ty<'tcx>>,
-) -> TypeTree {
-    if depth >= MAX_TYPETREE_DEPTH {
-        trace!("typetree depth limit {} reached for type: {}", MAX_TYPETREE_DEPTH, ty);
-        return TypeTree::new();
-    }
-
-    if visited.contains(&ty) {
-        return TypeTree::new();
-    }
-
-    visited.push(ty);
-    let result = typetree_from_ty_impl(tcx, ty, depth, visited);
-    visited.pop();
-    result
-}
-
-/// Implementation of TypeTree generation logic.
-fn typetree_from_ty_impl<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    ty: Ty<'tcx>,
-    depth: usize,
-    visited: &mut Vec<Ty<'tcx>>,
-) -> TypeTree {
-    typetree_from_ty_impl_inner(tcx, ty, depth, visited, false)
-}
 
 /// Internal implementation with context about whether this is for a reference target.
 fn typetree_from_ty_impl_inner<'tcx>(
@@ -84,6 +54,16 @@ fn typetree_from_ty_impl_inner<'tcx>(
     visited: &mut Vec<Ty<'tcx>>,
     is_reference_target: bool,
 ) -> TypeTree {
+    if depth >= MAX_TYPETREE_DEPTH {
+        trace!("typetree depth limit {} reached for type: {}", MAX_TYPETREE_DEPTH, ty);
+        return TypeTree::new();
+    }
+
+    if visited.contains(&ty) {
+        return TypeTree::new();
+    }
+    visited.push(ty);
+
     if ty.is_scalar() {
         let (kind, size) = if ty.is_integral() || ty.is_char() || ty.is_bool() {
             (Kind::Integer, ty.primitive_size(tcx).bytes_usize())
