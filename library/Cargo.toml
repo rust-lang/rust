@@ -95,7 +95,6 @@ rustflags = [
     # Inherited from `profile.release.rustflags`
     "-Cembed-bitcode=yes",
     "--check-cfg=cfg(feature,values(any()))",
-    "-Zunstable-options",
     "-Zinline-mir",
     "-Zinline-mir-preserve-debug",
     "-Zmir_strip_debuginfo=locals-in-tiny-functions",
@@ -135,7 +134,6 @@ rustflags = [
     # Inherited from `profile.dist.rustflags`
     "-Cembed-bitcode=yes",
     "--check-cfg=cfg(feature,values(any()))",
-    "-Zunstable-options",
     "-Zinline-mir",
     "-Zinline-mir-preserve-debug",
     "-Zmir_strip_debuginfo=locals-in-tiny-functions",

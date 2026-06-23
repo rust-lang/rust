@@ -755,7 +755,11 @@ impl Builder<'_> {
         // Note: Although it would seems that "-Zunstable-options" to `rustflags` is useless as
         // cargo would implicitly add it, it was discover that sometimes bootstrap only use
         // `rustflags` without `cargo` making it required.
-        rustflags.arg("-Zunstable-options");
+        // This shouldn't be needed for DistStd unless the configuration of distributed std changes
+        // in the future.
+        if mode != Mode::DistStd {
+            rustflags.arg("-Zunstable-options");
+        }
 
         // Add parallel frontend threads configuration
         if let Some(threads) = self.config.rust_parallel_frontend_threads {
