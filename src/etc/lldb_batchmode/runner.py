@@ -68,7 +68,7 @@ new_breakpoints = []
 registered_breakpoints = set()
 
 
-def execute_command(command_interpreter, command):
+def execute_command(command_interpreter: lldb.SBCommandInterpreter, command: str):
     """Executes a single CLI command"""
     global new_breakpoints
     global registered_breakpoints
@@ -201,8 +201,12 @@ def main():
     # Start the timeout watchdog
     start_watchdog()
 
-    # Create a new debugger instance
-    debugger = lldb.SBDebugger.Create()
+    # This is the debugger instance of the lldb executable that imported and ran this python script.
+    # There is some weird behavior around LLDB reassigning, clearing, or not updating their own
+    # references (like `lldb.debugger`) while a python function is actively running (i.e. if control
+    # is not given back to the REPL). To prevent LLDB from changing things out from under us, we
+    # store this reference locally.
+    debugger = lldb.debugger
 
     # When we step or continue, don't return from the function until the process
     # stops. We do this by setting the async mode to false.
@@ -211,7 +215,9 @@ def main():
     # Create a target from a file and arch
     print("Creating a target for '%s'" % target_path)
     target_error = lldb.SBError()
-    target = debugger.CreateTarget(target_path, None, None, True, target_error)
+    target: lldb.SBTarget = debugger.CreateTarget(
+        target_path, None, None, True, target_error
+    )
 
     if not target:
         print(
@@ -249,6 +255,15 @@ def main():
         print("Could not read debugging script '%s'." % script_path, file=sys.stderr)
         print(e, file=sys.stderr)
         print("Aborting.", file=sys.stderr)
-        sys.exit(1)
+        # Returning status codes using `sys.exit` doesn't work since we're in an LLDB managed python
+        # instance. This command sets the exit code but *does not* kill LLDB, the debugee process,
+        # or the SBDebugger object.
+        debugger.HandleCommand("quit 1")
+    except Exception as e:
+        import traceback
+
+        for line in traceback.format_exception(e):
+            print(line)
+            debugger.HandleCommand("quit 1")
     finally:
         script_file.close()
