@@ -2518,14 +2518,28 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> Const<'tcx> {
         let tcx = self.tcx();
 
+        let found_tuple = || {
+            tcx.sess
+                .source_map()
+                .span_to_snippet(span)
+                .map(|snippet| format!("`{snippet}`"))
+                .unwrap_or_else(|_| "const tuple".to_string())
+        };
+
         let tys = match ty.kind() {
             ty::Tuple(tys) => tys,
             ty::Error(e) => return Const::new_error(tcx, *e),
             _ => {
-                let e = tcx.dcx().span_err(span, format!("expected `{}`, found const tuple", ty));
+                let e =
+                    tcx.dcx().span_err(span, format!("expected `{}`, found {}", ty, found_tuple()));
                 return Const::new_error(tcx, e);
             }
         };
+
+        if exprs.len() != tys.len() {
+            let e = tcx.dcx().span_err(span, format!("expected `{}`, found {}", ty, found_tuple()));
+            return Const::new_error(tcx, e);
+        }
 
         let exprs = exprs
             .iter()
