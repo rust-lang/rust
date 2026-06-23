@@ -5,5 +5,5 @@
 extern crate color;
 use color::Color::Red;
 
-//@ jq '.index["\(.root)"].links | has("Red")'
-//@ jq '[.index[] | select(.name == "Red" or .name == "Color")] == []'
+//@ jq_is '.index["\(.root)"].links | has("Red")' true
+//@ jq_count '[.index[] | select(.name == "Red" or .name == "Color")][]' 0

@@ -29,7 +29,7 @@ impl Cache {
 
         Cache {
             jq_value: serde_json::from_str::<Val>(&content).expect("failed to convert from JSON"),
-            jq_variables: HashMap::new(),
+            jq_variables: HashMap::from([("FILE".to_owned(), config.template.clone().into())]),
             value: serde_json::from_str::<Value>(&content).expect("failed to convert from JSON"),
             variables: HashMap::from([("FILE".to_owned(), config.template.clone().into())]),
         }
@@ -51,15 +51,18 @@ impl Cache {
 
         let modules = loader.load(&arena, program).unwrap();
 
-        let vars = self.jq_variables.iter().map(|t| (t.0, t.1));
+        let vars = self.jq_variables.iter().map(|t| (format!("${}", t.0), t.1)).collect::<Vec<_>>();
 
         let filter = jaq_core::Compiler::default()
             .with_funs(funs)
-            .with_global_vars(vars.clone().map(|t| t.0.as_str()))
+            .with_global_vars(vars.clone().iter().map(|t| t.0.as_str()))
             .compile(modules)
             .unwrap();
 
-        let ctx = Ctx::<data::JustLut<Val>>::new(&filter.lut, Vars::new(vars.map(|t| t.1.clone())));
+        let ctx = Ctx::<data::JustLut<Val>>::new(
+            &filter.lut,
+            Vars::new(vars.iter().map(|t| t.1.clone())),
+        );
 
         filter.id.run((ctx, self.jq_value.clone())).map(unwrap_valr).map(Result::unwrap).collect()
     }
