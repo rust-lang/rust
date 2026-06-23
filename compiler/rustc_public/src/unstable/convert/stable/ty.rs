@@ -32,10 +32,14 @@ impl<'tcx> Stable<'tcx> for ty::AliasTy<'tcx> {
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         let ty::AliasTy { args, kind, .. } = self;
-        crate::ty::AliasTy {
-            def_id: tables.alias_def(kind.def_id()),
-            args: args.stable(tables, cx),
-        }
+        // rustc_public must change its API once we introduce a variant without a def_id.
+        let def_id = match *kind {
+            ty::AliasTyKind::Projection { def_id }
+            | ty::AliasTyKind::Inherent { def_id }
+            | ty::AliasTyKind::Opaque { def_id }
+            | ty::AliasTyKind::Free { def_id } => def_id,
+        };
+        crate::ty::AliasTy { def_id: tables.alias_def(def_id), args: args.stable(tables, cx) }
     }
 }
 

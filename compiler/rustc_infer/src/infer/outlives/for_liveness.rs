@@ -59,8 +59,14 @@ where
             ty::Alias(ty::AliasTy { kind, args, .. }) => {
                 let tcx = self.tcx;
                 let param_env = self.param_env;
+                let def_id = match kind {
+                    ty::AliasTyKind::Projection { def_id }
+                    | ty::AliasTyKind::Inherent { def_id }
+                    | ty::AliasTyKind::Opaque { def_id }
+                    | ty::AliasTyKind::Free { def_id } => def_id,
+                };
                 let outlives_bounds: Vec<_> = tcx
-                    .item_bounds(kind.def_id())
+                    .item_bounds(def_id)
                     .iter_instantiated(tcx, args)
                     .map(Unnormalized::skip_norm_wip)
                     .chain(param_env.caller_bounds())

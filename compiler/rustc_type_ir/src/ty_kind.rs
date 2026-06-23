@@ -20,7 +20,10 @@ use crate::inherent::*;
 use crate::ty::AliasTy;
 #[cfg(feature = "nightly")]
 use crate::visit::TypeVisitable;
-use crate::{self as ty, BoundVarIndexKind, FloatTy, IntTy, Interner, UintTy};
+use crate::{
+    self as ty, BoundVarIndexKind, FloatTy, FreeAliasTy, InherentAliasTy, IntTy, Interner,
+    OpaqueAliasTy, ProjectionAliasTy, UintTy,
+};
 
 mod closure;
 
@@ -75,12 +78,31 @@ impl<I: Interner> AliasTyKind<I> {
         }
     }
 
-    pub fn def_id(self) -> I::DefId {
+    pub fn try_to_projection(self) -> Option<I::TraitAssocTyId> {
         match self {
-            AliasTyKind::Projection { def_id } => def_id.into(),
-            AliasTyKind::Inherent { def_id } => def_id.into(),
-            AliasTyKind::Opaque { def_id } => def_id.into(),
-            AliasTyKind::Free { def_id } => def_id.into(),
+            AliasTyKind::Projection { def_id } => Some(def_id),
+            _ => None,
+        }
+    }
+
+    pub fn try_to_inherent(self) -> Option<I::InherentAssocTyId> {
+        match self {
+            AliasTyKind::Inherent { def_id } => Some(def_id),
+            _ => None,
+        }
+    }
+
+    pub fn try_to_opaque(self) -> Option<I::OpaqueTyId> {
+        match self {
+            AliasTyKind::Opaque { def_id } => Some(def_id),
+            _ => None,
+        }
+    }
+
+    pub fn try_to_free(self) -> Option<I::FreeTyAliasId> {
+        match self {
+            AliasTyKind::Free { def_id } => Some(def_id),
+            _ => None,
         }
     }
 }
@@ -430,7 +452,15 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
 
 impl<I: Interner> AliasTy<I> {
     pub fn new_from_args(interner: I, kind: AliasTyKind<I>, args: I::GenericArgs) -> AliasTy<I> {
-        interner.debug_assert_args_compatible(kind.def_id(), args);
+        if cfg!(debug_assertions) {
+            let def_id = match kind {
+                AliasTyKind::Projection { def_id } => def_id.into(),
+                AliasTyKind::Inherent { def_id } => def_id.into(),
+                AliasTyKind::Opaque { def_id } => def_id.into(),
+                AliasTyKind::Free { def_id } => def_id.into(),
+            };
+            interner.debug_assert_args_compatible(def_id, args);
+        }
         AliasTy { kind, args, _use_alias_new_instead: () }
     }
 
@@ -451,9 +481,67 @@ impl<I: Interner> AliasTy<I> {
     pub fn to_ty(self, interner: I) -> I::Ty {
         Ty::new_alias(interner, self)
     }
+
+    pub fn try_to_projection(self) -> Option<ProjectionAliasTy<I>> {
+        self.kind.try_to_projection().map(|kind| ty::Alias {
+            kind,
+            args: self.args,
+            _use_alias_new_instead: (),
+        })
+    }
+
+    pub fn try_to_inherent(self) -> Option<InherentAliasTy<I>> {
+        self.kind.try_to_inherent().map(|kind| ty::Alias {
+            kind,
+            args: self.args,
+            _use_alias_new_instead: (),
+        })
+    }
+
+    pub fn try_to_opaque(self) -> Option<OpaqueAliasTy<I>> {
+        self.kind.try_to_opaque().map(|kind| ty::Alias {
+            kind,
+            args: self.args,
+            _use_alias_new_instead: (),
+        })
+    }
+
+    pub fn try_to_free(self) -> Option<FreeAliasTy<I>> {
+        self.kind.try_to_free().map(|kind| ty::Alias {
+            kind,
+            args: self.args,
+            _use_alias_new_instead: (),
+        })
+    }
+}
+
+impl<I: Interner> ProjectionAliasTy<I> {
+    pub fn new_projection_from_args(
+        interner: I,
+        kind: I::TraitAssocTyId,
+        args: I::GenericArgs,
+    ) -> Self {
+        interner.debug_assert_args_compatible(kind.into(), args);
+        Self { kind, args, _use_alias_new_instead: () }
+    }
+
+    pub fn projection_to_alias_ty(self) -> AliasTy<I> {
+        AliasTy {
+            kind: AliasTyKind::Projection { def_id: self.kind },
+            args: self.args,
+            _use_alias_new_instead: (),
+        }
+    }
+
+    #[track_caller]
+    pub fn projection_self_ty(self) -> I::Ty {
+        self.args.type_at(0)
+    }
 }
 
 /// The following methods work only with (trait) associated type projections.
+// FIXME: Migrate these to the impl on ProjectionAliasTy (by making callers use `try_to_projection`
+// or similar when they guard for projections)
 impl<I: Interner> AliasTy<I> {
     #[track_caller]
     pub fn self_ty(self) -> I::Ty {
@@ -495,6 +583,55 @@ impl<I: Interner> AliasTy<I> {
     /// as well.
     pub fn trait_ref(self, interner: I) -> ty::TraitRef<I> {
         self.trait_ref_and_own_args(interner).0
+    }
+}
+
+impl<I: Interner> InherentAliasTy<I> {
+    pub fn new_inherent_from_args(
+        interner: I,
+        kind: I::InherentAssocTyId,
+        args: I::GenericArgs,
+    ) -> Self {
+        interner.debug_assert_args_compatible(kind.into(), args);
+        Self { kind, args, _use_alias_new_instead: () }
+    }
+
+    pub fn inherent_to_alias_ty(self) -> AliasTy<I> {
+        AliasTy {
+            kind: AliasTyKind::Inherent { def_id: self.kind },
+            args: self.args,
+            _use_alias_new_instead: (),
+        }
+    }
+}
+
+impl<I: Interner> OpaqueAliasTy<I> {
+    pub fn new_opaque_from_args(interner: I, kind: I::OpaqueTyId, args: I::GenericArgs) -> Self {
+        interner.debug_assert_args_compatible(kind.into(), args);
+        Self { kind, args, _use_alias_new_instead: () }
+    }
+
+    pub fn opaque_to_alias_ty(self) -> AliasTy<I> {
+        AliasTy {
+            kind: AliasTyKind::Opaque { def_id: self.kind },
+            args: self.args,
+            _use_alias_new_instead: (),
+        }
+    }
+}
+
+impl<I: Interner> FreeAliasTy<I> {
+    pub fn new_free_from_args(interner: I, kind: I::FreeTyAliasId, args: I::GenericArgs) -> Self {
+        interner.debug_assert_args_compatible(kind.into(), args);
+        Self { kind, args, _use_alias_new_instead: () }
+    }
+
+    pub fn free_to_alias_ty(self) -> AliasTy<I> {
+        AliasTy {
+            kind: AliasTyKind::Free { def_id: self.kind },
+            args: self.args,
+            _use_alias_new_instead: (),
+        }
     }
 }
 

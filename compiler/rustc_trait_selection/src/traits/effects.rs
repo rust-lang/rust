@@ -218,7 +218,7 @@ fn evaluate_host_effect_from_conditionally_const_item_bounds<'tcx>(
                     if candidate.is_some() {
                         return Err(EvaluationFailure::Ambiguous);
                     } else {
-                        candidate = Some((data, alias_ty));
+                        candidate = Some((data, alias_ty, def_id));
                     }
                 }
             }
@@ -231,12 +231,11 @@ fn evaluate_host_effect_from_conditionally_const_item_bounds<'tcx>(
         consider_ty = alias_ty.self_ty();
     }
 
-    if let Some((data, alias_ty)) = candidate {
+    if let Some((data, alias_ty, def_id)) = candidate {
         Ok(match_candidate(selcx, obligation, data, true, |selcx, nested| {
             // An alias bound only holds if we also check the const conditions
             // of the alias, so we need to register those, too.
-            let const_conditions =
-                tcx.const_conditions(alias_ty.kind.def_id()).instantiate(tcx, alias_ty.args);
+            let const_conditions = tcx.const_conditions(def_id).instantiate(tcx, alias_ty.args);
             let const_conditions: Vec<_> = const_conditions
                 .into_iter()
                 .map(|(trait_ref, span)| {

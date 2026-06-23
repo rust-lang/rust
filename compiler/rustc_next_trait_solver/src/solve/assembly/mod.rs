@@ -741,7 +741,7 @@ where
         candidates: &mut Vec<Candidate<I>>,
         consider_self_bounds: AliasBoundKind,
     ) -> Result<(), RerunNonErased> {
-        let alias_ty = match self_ty.kind() {
+        let (alias_ty, def_id) = match self_ty.kind() {
             ty::Bool
             | ty::Char
             | ty::Int(_)
@@ -789,9 +789,12 @@ where
                 return Ok(());
             }
 
-            ty::Alias(
-                alias_ty @ AliasTy { kind: ty::Projection { .. } | ty::Opaque { .. }, .. },
-            ) => alias_ty,
+            ty::Alias(alias_ty @ AliasTy { kind: ty::Projection { def_id }, .. }) => {
+                (alias_ty, def_id.into())
+            }
+            ty::Alias(alias_ty @ AliasTy { kind: ty::Opaque { def_id }, .. }) => {
+                (alias_ty, def_id.into())
+            }
             ty::Alias(AliasTy { kind: ty::Inherent { .. } | ty::Free { .. }, .. }) => {
                 self.cx().delay_bug(format!("could not normalize {self_ty:?}, it is not WF"));
                 return Ok(());
@@ -802,7 +805,7 @@ where
             AliasBoundKind::SelfBounds => {
                 for assumption in self
                     .cx()
-                    .item_self_bounds(alias_ty.kind.def_id())
+                    .item_self_bounds(def_id)
                     .iter_instantiated(self.cx(), alias_ty.args)
                     .map(Unnormalized::skip_norm_wip)
                 {
@@ -818,7 +821,7 @@ where
             AliasBoundKind::NonSelfBounds => {
                 for assumption in self
                     .cx()
-                    .item_non_self_bounds(alias_ty.kind.def_id())
+                    .item_non_self_bounds(def_id)
                     .iter_instantiated(self.cx(), alias_ty.args)
                     .map(Unnormalized::skip_norm_wip)
                 {
@@ -835,12 +838,12 @@ where
 
         candidates.extend(G::consider_additional_alias_assumptions(self, goal, alias_ty));
 
-        if !matches!(alias_ty.kind, ty::Projection { .. }) {
+        let Some(projection_ty) = alias_ty.try_to_projection() else {
             return Ok(());
-        }
+        };
 
         // Recurse on the self type of the projection.
-        match self.structurally_normalize_ty(goal.param_env, alias_ty.self_ty()) {
+        match self.structurally_normalize_ty(goal.param_env, projection_ty.projection_self_ty()) {
             Ok(next_self_ty) => self.assemble_alias_bound_candidates_recur(
                 next_self_ty,
                 goal,
@@ -1072,12 +1075,12 @@ where
             return Ok(());
         }
 
-        for &alias_ty in &opaque_types {
-            debug!("self ty is sub unified with {alias_ty:?}");
+        for &opaque_ty in &opaque_types {
+            debug!("self ty is sub unified with {opaque_ty:?}");
 
             struct ReplaceOpaque<I: Interner> {
                 cx: I,
-                alias_ty: ty::AliasTy<I>,
+                opaque_ty: ty::OpaqueAliasTy<I>,
                 self_ty: I::Ty,
             }
             impl<I: Interner> TypeFolder<I> for ReplaceOpaque<I> {
@@ -1085,8 +1088,10 @@ where
                     self.cx
                 }
                 fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
-                    if let ty::Alias(alias_ty) = ty.kind() {
-                        if alias_ty == self.alias_ty {
+                    if let ty::Alias(alias_ty) = ty.kind()
+                        && let Some(opaque_ty) = alias_ty.try_to_opaque()
+                    {
+                        if opaque_ty == self.opaque_ty {
                             return self.self_ty;
                         }
                     }
@@ -1103,12 +1108,12 @@ where
             // in a `?x: Trait<u32>` alias-bound candidate.
             for item_bound in self
                 .cx()
-                .item_self_bounds(alias_ty.kind.def_id())
-                .iter_instantiated(self.cx(), alias_ty.args)
+                .item_self_bounds(opaque_ty.kind.into())
+                .iter_instantiated(self.cx(), opaque_ty.args)
                 .map(Unnormalized::skip_norm_wip)
             {
                 let assumption =
-                    item_bound.fold_with(&mut ReplaceOpaque { cx: self.cx(), alias_ty, self_ty });
+                    item_bound.fold_with(&mut ReplaceOpaque { cx: self.cx(), opaque_ty, self_ty });
                 candidates.extend(G::probe_and_match_goal_against_assumption(
                     self,
                     CandidateSource::AliasBound(AliasBoundKind::SelfBounds),

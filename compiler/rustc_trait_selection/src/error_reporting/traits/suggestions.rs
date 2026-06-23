@@ -128,7 +128,7 @@ pub fn suggest_restriction<'tcx, G: EmissionGuarantee>(
     msg: &str,
     err: &mut Diag<'_, G>,
     fn_sig: Option<&hir::FnSig<'_>>,
-    projection: Option<ty::AliasTy<'_>>,
+    projection: Option<ty::ProjectionAliasTy<'_>>,
     trait_pred: ty::PolyTraitPredicate<'tcx>,
     // When we are dealing with a trait, `super_traits` will be `Some`:
     // Given `trait T: A + B + C {}`
@@ -140,11 +140,8 @@ pub fn suggest_restriction<'tcx, G: EmissionGuarantee>(
     if hir_generics.where_clause_span.from_expansion()
         || hir_generics.where_clause_span.desugaring_kind().is_some()
         || projection.is_some_and(|projection| {
-            (tcx.is_impl_trait_in_trait(projection.kind.def_id())
-                && !tcx.features().return_type_notation())
-                || tcx
-                    .lookup_stability(projection.kind.def_id())
-                    .is_some_and(|stab| stab.is_unstable())
+            (tcx.is_impl_trait_in_trait(projection.kind) && !tcx.features().return_type_notation())
+                || tcx.lookup_stability(projection.kind).is_some_and(|stab| stab.is_unstable())
         })
     {
         return;
@@ -152,7 +149,7 @@ pub fn suggest_restriction<'tcx, G: EmissionGuarantee>(
     let generics = tcx.generics_of(item_id);
     // Given `fn foo(t: impl Trait)` where `Trait` requires assoc type `A`...
     if let Some((param, bound_str, fn_sig)) =
-        fn_sig.zip(projection).and_then(|(sig, p)| match *p.self_ty().kind() {
+        fn_sig.zip(projection).and_then(|(sig, p)| match *p.projection_self_ty().kind() {
             // Shenanigans to get the `Trait` from the `impl Trait`.
             ty::Param(param) => {
                 let param_def = generics.type_param(param, tcx);
@@ -479,8 +476,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let self_ty = trait_pred.skip_binder().self_ty();
         let (param_ty, projection) = match *self_ty.kind() {
             ty::Param(_) => (true, None),
-            ty::Alias(projection @ ty::AliasTy { kind: ty::Projection { .. }, .. }) => {
-                (false, Some(projection))
+            ty::Alias(alias) => {
+                if let Some(projection) = alias.try_to_projection() {
+                    (false, Some(projection))
+                } else {
+                    (false, None)
+                }
             }
             _ => (false, None),
         };

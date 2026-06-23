@@ -236,8 +236,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                 // And therefore we can safely use structural equality for alias types.
                 (GenericKind::Param(p1), ty::Param(p2)) if p1 == p2 => {}
                 (GenericKind::Placeholder(p1), ty::Placeholder(p2)) if p1 == p2 => {}
-                (GenericKind::Alias(a1), ty::Alias(a2)) if a1.kind.def_id() == a2.kind.def_id() => {
-                }
+                (GenericKind::Alias(a1), ty::Alias(a2)) if a1.kind == a2.kind => {}
                 _ => return None,
             }
 

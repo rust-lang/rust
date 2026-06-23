@@ -264,7 +264,14 @@ pub fn declared_bounds_from_definition<I: Interner>(
     cx: I,
     alias_ty: AliasTy<I>,
 ) -> impl Iterator<Item = I::Region> {
-    let bounds = cx.item_self_bounds(alias_ty.kind.def_id());
+    let def_id = match alias_ty.kind {
+        ty::AliasTyKind::Projection { def_id } => def_id.into(),
+        ty::AliasTyKind::Inherent { def_id } => def_id.into(),
+        ty::AliasTyKind::Opaque { def_id } => def_id.into(),
+        ty::AliasTyKind::Free { def_id } => def_id.into(),
+    };
+
+    let bounds = cx.item_self_bounds(def_id);
     bounds
         .iter_instantiated(cx, alias_ty.args)
         .map(Unnormalized::skip_norm_wip)

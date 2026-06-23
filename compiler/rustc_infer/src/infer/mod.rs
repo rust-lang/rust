@@ -1115,7 +1115,10 @@ impl<'tcx> InferCtxt<'tcx> {
     /// Searches for an opaque type key whose hidden type is related to `ty_vid`.
     ///
     /// This only checks for a subtype relation, it does not require equality.
-    pub fn opaques_with_sub_unified_hidden_type(&self, ty_vid: TyVid) -> Vec<ty::AliasTy<'tcx>> {
+    pub fn opaques_with_sub_unified_hidden_type(
+        &self,
+        ty_vid: TyVid,
+    ) -> Vec<ty::OpaqueAliasTy<'tcx>> {
         // Avoid accidentally allowing more code to compile with the old solver.
         if !self.next_trait_solver() {
             return vec![];
@@ -1133,9 +1136,9 @@ impl<'tcx> InferCtxt<'tcx> {
                 if let ty::Infer(ty::TyVar(hidden_vid)) = *hidden_ty.ty.kind() {
                     let opaque_sub_vid = type_variables.sub_unification_table_root_var(hidden_vid);
                     if opaque_sub_vid == ty_sub_vid {
-                        return Some(ty::AliasTy::new_from_args(
+                        return Some(ty::OpaqueAliasTy::new_opaque_from_args(
                             self.tcx,
-                            ty::Opaque { def_id: key.def_id.into() },
+                            key.def_id.into(),
                             key.args,
                         ));
                     }

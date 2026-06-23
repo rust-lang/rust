@@ -223,18 +223,14 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
     }
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) {
-        if let ty::Alias(
-            unshifted_alias_ty @ ty::AliasTy {
-                kind: ty::Projection { def_id: unshifted_alias_ty_def_id },
-                ..
-            },
-        ) = *ty.kind()
+        if let ty::Alias(unshifted_alias_ty) = *ty.kind()
+            && let Some(unshifted_alias_ty) = unshifted_alias_ty.try_to_projection()
             && let Some(
                 ty::ImplTraitInTraitData::Trait { fn_def_id, .. }
                 | ty::ImplTraitInTraitData::Impl { fn_def_id, .. },
-            ) = self.tcx.opt_rpitit_info(unshifted_alias_ty_def_id)
+            ) = self.tcx.opt_rpitit_info(unshifted_alias_ty.kind)
             && fn_def_id == self.fn_def_id
-            && self.seen.insert(unshifted_alias_ty_def_id)
+            && self.seen.insert(unshifted_alias_ty.kind)
         {
             // We have entered some binders as we've walked into the
             // bounds of the RPITIT. Shift these binders back out when
@@ -259,14 +255,14 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
             // strategy, then just reinterpret the associated type like an opaque :^)
             let default_ty = self
                 .tcx
-                .type_of(shifted_alias_ty.kind.def_id())
+                .type_of(shifted_alias_ty.kind)
                 .instantiate(self.tcx, shifted_alias_ty.args)
                 .skip_norm_wip();
 
             self.predicates.push(
                 ty::Binder::bind_with_vars(
                     ty::ProjectionPredicate {
-                        projection_term: shifted_alias_ty.into(),
+                        projection_term: shifted_alias_ty.projection_to_alias_ty().into(),
                         term: default_ty.into(),
                     },
                     self.bound_vars,
@@ -280,7 +276,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
             // easier to just do this.
             for bound in self
                 .tcx
-                .item_bounds(unshifted_alias_ty_def_id)
+                .item_bounds(unshifted_alias_ty.kind)
                 .iter_instantiated(self.tcx, unshifted_alias_ty.args)
                 .map(Unnormalized::skip_norm_wip)
             {
