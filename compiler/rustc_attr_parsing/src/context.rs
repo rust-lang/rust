@@ -85,7 +85,7 @@ pub(super) struct GroupTypeInner {
 pub(super) struct GroupTypeInnerAccept {
     pub(super) template: AttributeTemplate,
     pub(super) accept_fn: AcceptFn,
-    pub(super) allowed_targets: AllowedTargets,
+    pub(super) allowed_targets: AllowedTargets<'static>,
     pub(super) safety: AttributeSafety,
     pub(super) stability: AttributeStability,
     pub(super) finalizer: FinalizeFn,

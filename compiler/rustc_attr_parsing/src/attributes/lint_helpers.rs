@@ -5,7 +5,7 @@ use super::prelude::*;
 pub(crate) struct RustcAsPtrParser;
 impl NoArgsAttributeParser for RustcAsPtrParser {
     const PATH: &[Symbol] = &[sym::rustc_as_ptr];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: false })),
@@ -19,7 +19,7 @@ impl NoArgsAttributeParser for RustcAsPtrParser {
 pub(crate) struct RustcPubTransparentParser;
 impl NoArgsAttributeParser for RustcPubTransparentParser {
     const PATH: &[Symbol] = &[sym::rustc_pub_transparent];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Struct),
         Allow(Target::Enum),
         Allow(Target::Union),
@@ -31,7 +31,7 @@ impl NoArgsAttributeParser for RustcPubTransparentParser {
 pub(crate) struct RustcPassByValueParser;
 impl NoArgsAttributeParser for RustcPassByValueParser {
     const PATH: &[Symbol] = &[sym::rustc_pass_by_value];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Struct),
         Allow(Target::Enum),
         Allow(Target::TyAlias),
@@ -43,7 +43,7 @@ impl NoArgsAttributeParser for RustcPassByValueParser {
 pub(crate) struct RustcShouldNotBeCalledOnConstItemsParser;
 impl NoArgsAttributeParser for RustcShouldNotBeCalledOnConstItemsParser {
     const PATH: &[Symbol] = &[sym::rustc_should_not_be_called_on_const_items];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
@@ -55,7 +55,7 @@ pub(crate) struct AutomaticallyDerivedParser;
 impl NoArgsAttributeParser for AutomaticallyDerivedParser {
     const PATH: &[Symbol] = &[sym::automatically_derived];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Impl { of_trait: true }),
         Error(Target::Crate),
         Error(Target::WherePredicate),

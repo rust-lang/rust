@@ -16,7 +16,7 @@ impl SingleAttributeParser for DoNotRecommendParser {
     const PATH: &[Symbol] = &[sym::diagnostic, sym::do_not_recommend];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
     // "Allowed" on any target, noop on all but trait impls
-    const ALLOWED_TARGETS: AllowedTargets =
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::Impl { of_trait: true })]);
     const TEMPLATE: AttributeTemplate = template!(Word /*doesn't matter */);
     const STABILITY: AttributeStability = AttributeStability::Stable;
