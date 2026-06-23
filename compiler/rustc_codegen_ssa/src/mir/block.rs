@@ -618,7 +618,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let ty = self.monomorphize(ty);
         let drop_fn = Instance::resolve_drop_glue(bx.tcx(), ty);
 
-        if let ty::InstanceKind::DropGlue(_, None) = drop_fn.def {
+        if let ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, None)) = drop_fn.def {
             // we don't actually need to drop anything.
             return helper.funclet_br(self, bx, target, mergeable_succ, &[]);
         }
@@ -934,7 +934,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 match instance.def {
                     // We don't need AsyncDropGlueCtorShim here because it is not `noop func`,
                     // it is `func returning noop future`
-                    ty::InstanceKind::DropGlue(_, None) => {
+                    ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, None)) => {
                         // Empty drop glue; a no-op.
                         let target = target.unwrap();
                         return helper.funclet_br(self, bx, target, mergeable_succ, &[]);
