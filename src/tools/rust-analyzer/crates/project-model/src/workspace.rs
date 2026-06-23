@@ -811,6 +811,7 @@ impl ProjectWorkspace {
                     .packages()
                     .map(|pkg| {
                         let is_local = cargo[pkg].is_local;
+                        let is_member = cargo[pkg].is_member;
                         let pkg_root = cargo[pkg].manifest.parent().to_path_buf();
 
                         let mut include = vec![pkg_root.clone()];
@@ -844,9 +845,11 @@ impl ProjectWorkspace {
                         let mut exclude = vec![pkg_root.join(".git")];
                         if is_local {
                             include.extend(self.extra_includes.iter().cloned());
-
                             exclude.push(pkg_root.join("target"));
-                        } else {
+                        }
+                        if !is_member {
+                            // For non-workspace-members, we only resolve library targets,
+                            // so none of these need to be loaded into the VFS.
                             exclude.push(pkg_root.join("tests"));
                             exclude.push(pkg_root.join("examples"));
                             exclude.push(pkg_root.join("benches"));
@@ -874,6 +877,7 @@ impl ProjectWorkspace {
                 .chain(cargo_script.iter().flat_map(|(cargo, build_scripts, _)| {
                     cargo.packages().map(|pkg| {
                         let is_local = cargo[pkg].is_local;
+                        let is_member = cargo[pkg].is_member;
                         let pkg_root = cargo[pkg].manifest.parent().to_path_buf();
 
                         let mut include = vec![pkg_root.clone()];
@@ -909,7 +913,10 @@ impl ProjectWorkspace {
                             include.extend(self.extra_includes.iter().cloned());
 
                             exclude.push(pkg_root.join("target"));
-                        } else {
+                        }
+                        if !is_member {
+                            // For non-workspace-members, we only resolve library targets,
+                            // so none of these need to be loaded into the VFS.
                             exclude.push(pkg_root.join("tests"));
                             exclude.push(pkg_root.join("examples"));
                             exclude.push(pkg_root.join("benches"));

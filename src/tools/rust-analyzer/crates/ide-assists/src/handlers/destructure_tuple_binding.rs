@@ -1236,15 +1236,11 @@ fn main {
         fn destructure_in_sub_pattern() {
             check_sub_pattern_assist(
                 r#"
-#![feature(bindings_after_at)]
-
 fn main() {
     let $0t = (1,2);
 }
                 "#,
                 r#"
-#![feature(bindings_after_at)]
-
 fn main() {
     let t @ ($0_0, _1) = (1,2);
 }
