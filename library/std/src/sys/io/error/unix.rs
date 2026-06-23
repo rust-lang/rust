@@ -137,6 +137,7 @@ pub fn decode_error_kind(errno: i32) -> io::ErrorKind {
         libc::ETXTBSY => ExecutableFileBusy,
         libc::EXDEV => CrossesDevices,
         libc::EINPROGRESS => InProgress,
+        libc::EMFILE | libc::ENFILE => TooManyOpenFiles,
         libc::EOPNOTSUPP => Unsupported,
 
         libc::EACCES | libc::EPERM => PermissionDenied,
