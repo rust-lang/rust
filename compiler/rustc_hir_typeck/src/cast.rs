@@ -739,9 +739,21 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         );
     }
 
+    fn expr_span_for_type_resolution(&self, fcx: &FnCtxt<'a, 'tcx>) -> Span {
+        if let hir::ExprKind::Index(_, idx, _) = self.expr.kind
+            && fcx.resolve_vars_if_possible(self.expr_ty).is_ty_var()
+            && fcx.resolve_vars_if_possible(fcx.node_ty(idx.hir_id)).is_ty_var()
+        {
+            index_operand_ambiguity_span(idx)
+        } else {
+            self.expr_span
+        }
+    }
+
     #[instrument(skip(fcx), level = "debug")]
     pub(crate) fn check(mut self, fcx: &FnCtxt<'a, 'tcx>) {
-        self.expr_ty = fcx.structurally_resolve_type(self.expr_span, self.expr_ty);
+        let expr_span = self.expr_span_for_type_resolution(fcx);
+        self.expr_ty = fcx.structurally_resolve_type(expr_span, self.expr_ty);
         self.cast_ty = fcx.structurally_resolve_type(self.cast_span, self.cast_ty);
 
         debug!("check_cast({}, {:?} as {:?})", self.expr.hir_id, self.expr_ty, self.cast_ty);
@@ -1167,5 +1179,12 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 });
             }
         }
+    }
+}
+
+fn index_operand_ambiguity_span(expr: &hir::Expr<'_>) -> Span {
+    match expr.kind {
+        hir::ExprKind::MethodCall(segment, ..) => segment.ident.span,
+        _ => expr.span,
     }
 }
