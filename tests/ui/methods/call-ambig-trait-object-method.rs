@@ -1,20 +1,53 @@
-//! Regression test for <https://github.com/rust-lang/rust/issues/18446>.
-//! Test that name clashes between the method in an impl for the type
-//! and the method in the trait when both are in the same scope.
+//@ edition: 2024
+//@ run-pass
+
+//! Regression test for <https://github.com/rust-lang/rust/issues/51402>.
+//! Test that for trait objects, inherent methods take precedence
+//! over the underlying trait implementation,
+//! which themselves take precedence over other trait implementations.
 
 trait T {
-    fn foo(&self);
+    fn foo(&self) -> i32;
+    fn bar(&self) -> i32;
 }
 
 impl<'a> dyn T + 'a {
-    fn foo(&self) {}
+    fn foo(&self) -> i32 {
+        1
+    }
+
+    fn bar(&self) {}
 }
 
 impl T for i32 {
-    fn foo(&self) {}
+    fn foo(&self) -> i32 {
+        0
+    }
+
+    fn bar(&self) -> i32 {
+        0
+    }
 }
 
+trait OtherTrait {
+    fn foo(&self) -> i32 {
+        i32::MIN
+    }
+}
+
+impl OtherTrait for dyn T {}
+
 fn main() {
-    let x: &dyn T = &0i32;
-    x.foo(); //~ ERROR multiple applicable items in scope [E0034]
+    let x = &0i32;
+    assert_eq!(x.foo(), 0);
+    assert_eq!(x.bar(), 0);
+
+    let x: &dyn T = x;
+    assert_eq!(x.foo(), 1);
+    assert_eq!(x.bar(), ());
+    assert_eq!(<dyn T>::foo(x), 1);
+    assert_eq!(<dyn T as T>::foo(x), 0);
+    assert_eq!(<dyn T>::bar(x), ());
+    assert_eq!(<dyn T as T>::bar(x), 0);
+    assert_eq!(<dyn T as OtherTrait>::foo(x), i32::MIN);
 }
