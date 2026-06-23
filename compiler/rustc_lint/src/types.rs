@@ -568,12 +568,8 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx hir::Expr<'tcx>) {
         match e.kind {
             hir::ExprKind::Unary(hir::UnOp::Neg, expr) => {
-                // Propagate negation, if the negation itself isn't negated
-                if self.last_visited_negation.is_none_or(|negation| negation.negated_id != e.hir_id)
-                {
-                    self.last_visited_negation =
-                        Some(NegationInfo { negation_span: e.span, negated_id: expr.hir_id });
-                }
+                self.last_visited_negation =
+                    Some(NegationInfo { negation_span: e.span, negated_id: expr.hir_id });
             }
             hir::ExprKind::Binary(binop, ref l, ref r) => {
                 if is_comparison(binop.node) {

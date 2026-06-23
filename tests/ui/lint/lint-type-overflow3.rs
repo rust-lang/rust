@@ -9,16 +9,13 @@ fn main() {
     //~^ ERROR literal out of range for `i8`
     let x: i8 = -128;
     let x: i8 = --128; //~ WARN use of a double negation
-    //~^ ERROR literal out of range for `i8`
-    //~| ERROR this arithmetic operation will overflow
+    //~^ ERROR this arithmetic operation will overflow
     let x: i8 = ---128; //~ WARN use of a double negation
     //~^ ERROR this arithmetic operation will overflow
     let x: i8 = ----128; //~ WARN use of a double negation
-    //~^ ERROR literal out of range for `i8`
-    //~| ERROR this arithmetic operation will overflow
+    //~^ ERROR this arithmetic operation will overflow
     let x: i8 = -----128; //~ WARN use of a double negation
     //~^ ERROR this arithmetic operation will overflow
     let x: i8 = ------128; //~ WARN use of a double negation
-    //~^ ERROR literal out of range for `i8`
-    //~| ERROR this arithmetic operation will overflow
+    //~^ ERROR this arithmetic operation will overflow
 }
