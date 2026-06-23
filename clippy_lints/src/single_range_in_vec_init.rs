@@ -69,6 +69,7 @@ impl Display for SuggestedType {
 }
 
 impl LateLintPass<'_> for SingleRangeInVecInit {
+    #[expect(clippy::too_many_lines)]
     fn check_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         // inner_expr: `vec![0..200]` or `[0..200]`
         //                   ^^^^^^       ^^^^^^^
@@ -102,12 +103,12 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
         let mut applicability = Applicability::MaybeIncorrect;
         let suggestion = match (range.start, range.end, range.limits) {
             (Some(start), Some(end), limits) => {
-                let ty = cx.typeck_results().expr_ty(start);
+                let element_ty = cx.typeck_results().expr_ty(start);
                 let (start_snippet, _) = snippet_with_context(cx, start.span, span.ctxt(), "..", &mut applicability);
                 let (end_snippet, _) = snippet_with_context(cx, end.span, span.ctxt(), "..", &mut applicability);
 
                 let should_emit_every_value = if let Some(step_def_id) = cx.tcx.get_diagnostic_item(sym::range_step)
-                    && implements_trait(cx, ty, step_def_id, &[])
+                    && implements_trait(cx, element_ty, step_def_id, &[])
                 {
                     true
                 } else {
@@ -115,7 +116,7 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
                 };
                 let should_emit_of_len = if limits == RangeLimits::HalfOpen
                     && let Some(copy_def_id) = cx.tcx.lang_items().copy_trait()
-                    && implements_trait(cx, ty, copy_def_id, &[])
+                    && implements_trait(cx, element_ty, copy_def_id, &[])
                     && let ExprKind::Lit(lit_kind) = end.kind
                     && let LitKind::Int(.., suffix_type) = lit_kind.node
                     && let LitIntType::Unsigned(UintTy::Usize) | LitIntType::Unsuffixed = suffix_type
@@ -127,7 +128,7 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
 
                 if should_emit_every_value || should_emit_of_len {
                     Some((
-                        ty,
+                        element_ty,
                         start_snippet,
                         end_snippet,
                         limits,
@@ -162,10 +163,29 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
                             RangeLimits::HalfOpen => "..",
                             RangeLimits::Closed => "..=",
                         };
+
+                        // Old range types implement Iterator (and IntoIterator).
+                        // New range types implement IntoIterator only.
+                        // These have different optimal suggestions.
+                        let range_ty = cx.typeck_results().expr_ty(inner_expr);
+                        let range_implements_iterator = cx
+                            .tcx
+                            .get_diagnostic_item(sym::Iterator)
+                            .is_some_and(|id| implements_trait(cx, range_ty, id, &[]));
+
+                        let collect_code = if range_implements_iterator {
+                            format!("({start_snippet}{range_op}{end_snippet}).collect::<std::vec::Vec<{ty}>>()")
+                        } else {
+                            // If the range type does not implement `Iterator` then we cannot just call `.collect()`.
+                            // In that case, we use `from_iter()` rather than `.into_iter().collect::<...>()` because
+                            // it is more concise.
+                            format!("std::vec::Vec::<{ty}>::from_iter({start_snippet}{range_op}{end_snippet})")
+                        };
+
                         diag.span_suggestion(
                             span,
                             "if you wanted a `Vec` that contains the entire range, try",
-                            format!("({start_snippet}{range_op}{end_snippet}).collect::<std::vec::Vec<{ty}>>()"),
+                            collect_code,
                             applicability,
                         );
                     }

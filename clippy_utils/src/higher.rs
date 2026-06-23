@@ -236,13 +236,17 @@ impl<'a> Range<'a> {
                     limits: ast::RangeLimits::HalfOpen,
                     span,
                 }),
-                (hir::LangItem::RangeFrom, [field]) if field.ident.name == sym::start => Some(Range {
-                    start: Some(field.expr),
-                    end: None,
-                    limits: ast::RangeLimits::HalfOpen,
-                    span,
-                }),
-                (hir::LangItem::Range, [field1, field2]) => {
+                (hir::LangItem::RangeFrom | hir::LangItem::RangeFromCopy, [field])
+                    if field.ident.name == sym::start =>
+                {
+                    Some(Range {
+                        start: Some(field.expr),
+                        end: None,
+                        limits: ast::RangeLimits::HalfOpen,
+                        span,
+                    })
+                },
+                (hir::LangItem::Range | hir::LangItem::RangeCopy, [field1, field2]) => {
                     let (start, end) = match (field1.ident.name, field2.ident.name) {
                         (sym::start, sym::end) => (field1.expr, field2.expr),
                         (sym::end, sym::start) => (field2.expr, field1.expr),
@@ -255,12 +259,29 @@ impl<'a> Range<'a> {
                         span,
                     })
                 },
-                (hir::LangItem::RangeToInclusive, [field]) if field.ident.name == sym::end => Some(Range {
-                    start: None,
-                    end: Some(field.expr),
-                    limits: ast::RangeLimits::Closed,
-                    span,
-                }),
+                (hir::LangItem::RangeInclusiveCopy, [field1, field2]) => {
+                    let (start, last) = match (field1.ident.name, field2.ident.name) {
+                        (sym::start, sym::last) => (field1.expr, field2.expr),
+                        (sym::last, sym::start) => (field2.expr, field1.expr),
+                        _ => return None,
+                    };
+                    Some(Range {
+                        start: Some(start),
+                        end: Some(last),
+                        limits: ast::RangeLimits::Closed,
+                        span,
+                    })
+                },
+                (hir::LangItem::RangeToInclusive | hir::LangItem::RangeToInclusiveCopy, [field])
+                    if field.ident.name == sym::end =>
+                {
+                    Some(Range {
+                        start: None,
+                        end: Some(field.expr),
+                        limits: ast::RangeLimits::Closed,
+                        span,
+                    })
+                },
                 (hir::LangItem::RangeTo, [field]) if field.ident.name == sym::end => Some(Range {
                     start: None,
                     end: Some(field.expr),
