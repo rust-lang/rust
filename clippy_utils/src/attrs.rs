@@ -37,8 +37,6 @@ pub fn check_clippy_attr<A: AttributeExt>(sess: &Session, attr: &A) {
             | sym::version
             | sym::cognitive_complexity
             | sym::dump
-            | sym::disallowed_profile
-            | sym::disallowed_profiles
             | sym::msrv
             | sym::has_significant_drop
             | sym::format_args => {},
