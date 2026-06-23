@@ -883,6 +883,10 @@ pub fn codegen_crate<
 /// unlinkable calls.
 ///
 /// Note that calls to LLVM intrinsics are uniquely okay because they won't make it to the linker.
+/// Note also that calls to foreign items that are actually exported by the local crate are also
+/// okay. This situation arises because compiler-builtins calls functions in core that are
+/// `#[inline]` wrappers for `extern "C"` declarations in core, which resolve to a symbol exported
+/// by compiler-builtins.
 pub fn is_call_from_compiler_builtins_to_upstream_monomorphization<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
@@ -895,11 +899,19 @@ pub fn is_call_from_compiler_builtins_to_upstream_monomorphization<'tcx>(
         }
     }
 
+    fn is_extern_call_to_local_crate<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> bool {
+        tcx.is_foreign_item(instance.def_id())
+            && tcx.exported_non_generic_symbols(LOCAL_CRATE).iter().any(|(sym, _info)| {
+                sym.symbol_name_for_local_instance(tcx) == tcx.symbol_name(instance)
+            })
+    }
+
     let def_id = instance.def_id();
     !def_id.is_local()
         && tcx.is_compiler_builtins(LOCAL_CRATE)
         && !is_llvm_intrinsic(tcx, def_id)
         && !tcx.should_codegen_locally(instance)
+        && !is_extern_call_to_local_crate(tcx, instance)
 }
 
 impl CrateInfo {
