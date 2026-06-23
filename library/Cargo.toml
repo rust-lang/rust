@@ -2,17 +2,12 @@ cargo-features = ["profile-rustflags"]
 
 [workspace]
 resolver = "1"
-members = [
-    "std",
-    "sysroot",
-    "coretests",
-    "alloctests",
-]
+members = ["std", "sysroot", "coretests", "alloctests"]
 
 exclude = [
     # stdarch has its own Cargo workspace
     "stdarch",
-    "windows_link"
+    "windows_link",
 ]
 
 [profile.release.package.compiler_builtins]
