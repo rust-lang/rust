@@ -195,7 +195,7 @@ mod break_keyword {}
 /// to be most things that would be reasonable to have in a constant (barring `const fn`s). For
 /// example, you can't have a [`File`] as a `const`.
 ///
-/// [`File`]: crate::fs::File
+/// [`File`]: ../std/fs/struct.File.html
 ///
 /// The only lifetime allowed in a constant is `'static`, which is the lifetime that encompasses
 /// all others in a Rust program. For example, if you wanted to define a constant string, it would
@@ -484,7 +484,7 @@ mod extern_keyword {}
 
 #[doc(keyword = "false")]
 //
-/// A value of type [`bool`] representing logical **false**.
+/// A value of type [`prim@bool`] representing logical **false**.
 ///
 /// `false` is the logical opposite of [`true`].
 ///
@@ -1235,31 +1235,18 @@ mod ref_keyword {}
 /// `return` returns from the function immediately (an "early return"):
 ///
 /// ```no_run
-/// use std::fs::File;
-/// use std::io::{Error, ErrorKind, Read, Result};
+/// fn main() -> Result<(), &'static str> {
+///    let contents = "Hello, world!";
 ///
-/// fn main() -> Result<()> {
-///     let mut file = match File::open("foo.txt") {
-///         Ok(f) => f,
-///         Err(e) => return Err(e),
-///     };
+///    if contents.contains("impossible!") {
+///        return Err("oh no!");
+///    }
 ///
-///     let mut contents = String::new();
-///     let size = match file.read_to_string(&mut contents) {
-///         Ok(s) => s,
-///         Err(e) => return Err(e),
-///     };
+///    if contents.len() > 9000 {
+///        return Err("over 9000!");
+///    }
 ///
-///     if contents.contains("impossible!") {
-///         return Err(Error::new(ErrorKind::Other, "oh no!"));
-///     }
-///
-///     if size > 9000 {
-///         return Err(Error::new(ErrorKind::Other, "over 9000!"));
-///     }
-///
-///     assert_eq!(contents, "Hello, world!");
-///     Ok(())
+///    Ok(())
 /// }
 /// ```
 ///
@@ -1631,8 +1618,8 @@ mod self_upper_keyword {}
 /// [`extern`]: keyword.extern.html
 /// [`mut`]: keyword.mut.html
 /// [`unsafe`]: keyword.unsafe.html
-/// [`Mutex`]: sync::Mutex
-/// [`OnceLock`]: sync::OnceLock
+/// [`Mutex`]: ../std/sync/struct.Mutex.html
+/// [`OnceLock`]: ../std/sync/struct.OnceLock.html
 /// [`RefCell`]: cell::RefCell
 /// [atomic]: sync::atomic
 /// [Reference]: ../reference/items/static-items.html
@@ -1959,7 +1946,7 @@ mod trait_keyword {}
 
 #[doc(keyword = "true")]
 //
-/// A value of type [`bool`] representing logical **true**.
+/// A value of type [`prim@bool`] representing logical **true**.
 ///
 /// Logically `true` is not equal to [`false`].
 ///
@@ -2146,22 +2133,30 @@ mod type_keyword {}
 /// Since `unsafe fn` and `unsafe trait` indicate that there is a safety
 /// contract that the compiler cannot enforce, documenting it is important. The
 /// standard library has many examples of this, like the following which is an
-/// extract from [`Vec::set_len`]. The `# Safety` section explains the contract
+/// extract from [`ptr::replace`]. The `# Safety` section explains the contract
 /// that must be fulfilled to safely call the function.
 ///
 /// ```rust,ignore (stub-to-show-doc-example)
-/// /// Forces the length of the vector to `new_len`.
+/// /// Moves `src` into the pointed `dst`, returning the previous `dst` value.
 /// ///
-/// /// This is a low-level operation that maintains none of the normal
-/// /// invariants of the type. Normally changing the length of a vector
-/// /// is done using one of the safe operations instead, such as
-/// /// `truncate`, `resize`, `extend`, or `clear`.
+/// /// Neither value is dropped.
+/// ///
+/// /// This function is semantically equivalent to [`mem::replace`] except that it
+/// /// operates on raw pointers instead of references. When references are
+/// /// available, [`mem::replace`] should be preferred.
 /// ///
 /// /// # Safety
 /// ///
-/// /// - `new_len` must be less than or equal to `capacity()`.
-/// /// - The elements at `old_len..new_len` must be initialized.
-/// pub unsafe fn set_len(&mut self, new_len: usize)
+/// /// Behavior is undefined if any of the following conditions are violated:
+/// ///
+/// /// * `dst` must be [valid] for both reads and writes or `T` must be a ZST.
+/// ///
+/// /// * `dst` must be properly aligned.
+/// ///
+/// /// * `dst` must point to a properly initialized value of type `T`.
+/// ///
+/// /// Note that even if `T` has size `0`, the pointer must be properly aligned.
+/// pub const unsafe fn replace<T>(dst: *mut T, src: T) -> T
 /// ```
 ///
 /// ## Using `unsafe {}` blocks and `impl`s
@@ -2502,7 +2497,7 @@ mod use_keyword {}
 /// ```
 ///
 /// `where` is available anywhere generic and lifetime parameters are available,
-/// as can be seen with the [`Cow`](crate::borrow::Cow) type from the standard
+/// as can be seen with the [`Cow`](../std/borrow/enum.Cow.html) type from the standard
 /// library:
 ///
 /// ```rust
