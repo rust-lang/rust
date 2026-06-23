@@ -1139,7 +1139,7 @@ impl char {
     /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
     ///
     #[must_use]
-    #[unstable(feature = "char_unassigned_private_use", issue = "none")]
+    #[unstable(feature = "char_unassigned_private_use", issue = "158322")]
     #[inline]
     pub const fn is_private_use(self) -> bool {
         // According to
@@ -1213,7 +1213,7 @@ impl char {
     /// /* assert!(!'\u{7AAAA}'.is_assigned()); */
     /// ```
     #[must_use]
-    #[unstable(feature = "char_unassigned_private_use", issue = "none")]
+    #[unstable(feature = "char_unassigned_private_use", issue = "158322")]
     #[inline]
     pub fn is_assigned(self) -> bool {
         match self {
