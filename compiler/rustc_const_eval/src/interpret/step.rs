@@ -607,7 +607,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         enter_trace_span!(M, resolve::resolve_drop_glue, ty = ?place.layout.ty);
                     Instance::resolve_drop_glue(*self.tcx, place.layout.ty)
                 };
-                if let ty::InstanceKind::DropGlue(_, None) = instance.def {
+                if let ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, None)) = instance.def {
                     // This is the branch we enter if and only if the dropped type has no drop glue
                     // whatsoever. This can happen as a result of monomorphizing a drop of a
                     // generic. In order to make sure that generic and non-generic code behaves
