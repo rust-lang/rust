@@ -896,7 +896,8 @@ impl Builder<'_> {
         // just here to make sure things build right. If you can remove this and
         // things still build right, please do!
         match mode {
-            Mode::Std | Mode::DistStd => metadata.push_str("std"),
+            Mode::Std => metadata.push_str("std"),
+            Mode::DistStd => metadata.push_str("diststd"),
             // When we're building rustc tools, they're built with a search path
             // that contains things built during the rustc build. For example,
             // bitflags is built during the rustc build, and is a dependency of
