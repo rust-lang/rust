@@ -2530,6 +2530,7 @@ impl<T> [T] {
         F: FnMut(&T) -> bool,
     {
         let index = self.iter().position(pred)?;
+        // Slice bounds checks optimized are away (as of June 2026)
         Some((&self[..index], &self[index + 1..]))
     }
 
@@ -2558,6 +2559,7 @@ impl<T> [T] {
         F: FnMut(&T) -> bool,
     {
         let index = self.iter().rposition(pred)?;
+        // Slice bounds checks optimized are away (as of June 2026)
         Some((&self[..index], &self[index + 1..]))
     }
 
