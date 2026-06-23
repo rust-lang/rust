@@ -234,6 +234,10 @@ impl Directive {
                         let value = get_one(&matches)?;
                         let r = cache.variables.insert(variable.to_owned(), value.clone());
                         assert!(r.is_none(), "name collision: {variable:?} is duplicated");
+                        assert!(
+                            !cache.jq_variables.contains_key(variable),
+                            "name collision: {variable:?} is duplicated"
+                        )
                     }
                 }
             }
@@ -244,6 +248,10 @@ impl Directive {
                         let value = get_one(&matches.iter().collect::<Vec<&Val>>())?;
                         let r = cache.jq_variables.insert(format!("${variable}"), value.clone());
                         assert!(r.is_none(), "name collision: {variable:?} is duplicated");
+                        assert!(
+                            !cache.variables.contains_key(variable),
+                            "name collision: {variable:?} is duplicated"
+                        )
                     }
                     JqDirective::Jq => {
                         let matched = get_one(&matches.iter().collect::<Vec<&Val>>())?;
