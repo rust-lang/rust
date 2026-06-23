@@ -160,6 +160,10 @@ extern "C" void LLVMRustPrintStatisticsJSON(RustStringRef OutBuf) {
   llvm::PrintStatisticsJSON(OS);
 }
 
+extern "C" bool LLVMRustIsCall(LLVMValueRef V) {
+  return llvm::isa<llvm::CallBase>(llvm::unwrap(V));
+}
+
 // Some of the functions here rely on LLVM modules that may not always be
 // available. As such, we only try to build it in the first place, if
 // llvm.offload is enabled.

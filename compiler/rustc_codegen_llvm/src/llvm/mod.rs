@@ -76,6 +76,21 @@ pub(crate) fn CreateAttrStringValue<'ll>(
         )
     }
 }
+pub(crate) fn CreateAttrStringValueFromCStr<'ll>(
+    llcx: &'ll Context,
+    attr: &std::ffi::CStr,
+    value: &std::ffi::CStr,
+) -> &'ll Attribute {
+    unsafe {
+        LLVMCreateStringAttribute(
+            llcx,
+            (*attr).as_ptr(),
+            (*attr).to_bytes().len() as c_uint,
+            (*value).as_ptr(),
+            (*value).to_bytes().len() as c_uint,
+        )
+    }
+}
 
 pub(crate) fn CreateAttrString<'ll>(llcx: &'ll Context, attr: &str) -> &'ll Attribute {
     unsafe {

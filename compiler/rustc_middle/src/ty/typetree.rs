@@ -32,12 +32,19 @@ pub fn fnc_typetrees<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>) -> FncTree {
     // Create TypeTree for return type
     let ret = typetree_from_ty(tcx, sig.output());
 
-    FncTree { args, ret }
+    let f = FncTree { args, ret };
+    f
 }
 
 /// Generate a TypeTree for a specific type.
 /// Mainly a convenience wrapper around the actual implementation.
 pub fn typetree_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> TypeTree {
+    if !tcx.sess.opts.unstable_opts.autodiff.contains(&rustc_session::config::AutoDiff::Enable) {
+        return TypeTree::new();
+    }
+    if tcx.sess.opts.unstable_opts.autodiff.contains(&rustc_session::config::AutoDiff::NoTT) {
+        return TypeTree::new();
+    }
     let mut visited = Vec::new();
     typetree_from_ty_impl_inner(tcx, ty, 0, &mut visited, false)
 }
@@ -64,31 +71,29 @@ fn typetree_from_ty_impl_inner<'tcx>(
     }
     visited.push(ty);
 
-    if ty.is_scalar() {
-        let (kind, size) = if ty.is_integral() || ty.is_char() || ty.is_bool() {
-            (Kind::Integer, ty.primitive_size(tcx).bytes_usize())
-        } else if ty.is_floating_point() {
-            match ty {
-                x if x == tcx.types.f16 => (Kind::Half, 2),
-                x if x == tcx.types.f32 => (Kind::Float, 4),
-                x if x == tcx.types.f64 => (Kind::Double, 8),
-                x if x == tcx.types.f128 => (Kind::F128, 16),
-                _ => (Kind::Integer, 0),
-            }
-        } else {
-            (Kind::Integer, 0)
-        };
-
-        // Use offset 0 for scalars that are direct targets of references (like &f64)
-        // Use offset -1 for scalars used directly (like function return types)
-        let offset = if is_reference_target && !ty.is_array() { 0 } else { -1 };
-        return TypeTree(vec![Type { offset, size, kind, child: TypeTree::new() }]);
+    if ty.is_slice() {
+        bug!("incorrect autodiff typetree handling for slice: {}", ty);
     }
 
     if ty.is_ref() || ty.is_raw_ptr() || ty.is_box() {
         let Some(inner_ty) = ty.builtin_deref(true) else {
-            return TypeTree::new();
+            bug!("incorrect autodiff typetree handling for type: {}", ty);
         };
+        // slices are represented as `&'{erased} mut [f32]`
+        // This reads as a reference to a slice of f32.
+        // So we'd end up with ptr->RustSlice->f32 without this extra handling
+        if inner_ty.is_slice() {
+            if let ty::Slice(element_ty) = inner_ty.kind() {
+                let element_tree =
+                    typetree_from_ty_impl_inner(tcx, *element_ty, depth + 1, visited, false);
+                return TypeTree(vec![Type {
+                    offset: -1,
+                    size: tcx.data_layout.pointer_size().bytes_usize(),
+                    kind: Kind::RustSlice,
+                    child: element_tree,
+                }]);
+            }
+        }
 
         let child = typetree_from_ty_impl_inner(tcx, inner_ty, depth + 1, visited, true);
         return TypeTree(vec![Type {
@@ -118,14 +123,6 @@ fn typetree_from_ty_impl_inner<'tcx>(
             }
 
             return TypeTree(types);
-        }
-    }
-
-    if ty.is_slice() {
-        if let ty::Slice(element_ty) = ty.kind() {
-            let element_tree =
-                typetree_from_ty_impl_inner(tcx, *element_ty, depth + 1, visited, false);
-            return element_tree;
         }
     }
 
@@ -202,6 +199,29 @@ fn typetree_from_ty_impl_inner<'tcx>(
                 return TypeTree(types);
             }
         }
+    }
+
+    if ty.is_scalar() {
+        let (kind, size) = if ty.is_integral() || ty.is_char() || ty.is_bool() {
+            (Kind::Integer, ty.primitive_size(tcx).bytes_usize())
+        } else if ty.is_floating_point() {
+            match ty {
+                x if x == tcx.types.f16 => (Kind::Half, 2),
+                x if x == tcx.types.f32 => (Kind::Float, 4),
+                x if x == tcx.types.f64 => (Kind::Double, 8),
+                x if x == tcx.types.f128 => (Kind::F128, 16),
+                _ => bug!("Unexpected floating point type: {:?}", ty),
+            }
+        } else {
+            // is_scalar also accepts things like FnDef or FnPtr, for which we don't know how to
+            // generate a TypeTree, so return nothing.
+            return TypeTree::new();
+        };
+
+        // Use offset 0 for scalars that are direct targets of references (like &f64)
+        // Use offset -1 for scalars used directly (like function return types) or slices.
+        let offset = if is_reference_target && !ty.is_array() { 0 } else { -1 };
+        return TypeTree(vec![Type { offset, size, kind, child: TypeTree::new() }]);
     }
 
     TypeTree::new()
