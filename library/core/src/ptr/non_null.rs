@@ -47,7 +47,12 @@ use crate::{fmt, hash, intrinsics, mem, ptr};
 /// it is your responsibility to ensure that `as_mut` is never called, and `as_ptr`
 /// is never used for mutation.
 ///
-/// # Representation
+/// # Layout
+///
+/// `NonNull<T>` is guaranteed to have the same layout and bit validity as `*mut T`
+/// with the exception that a null pointer is invalid.
+/// `Option<NonNull<T>>` is guaranteed to be compatible with `*mut T`, including in
+/// FFI.
 ///
 /// Thanks to the [null pointer optimization],
 /// `NonNull<T>` and `Option<NonNull<T>>`
