@@ -1,4 +1,4 @@
-use rustc_errors::{Applicability, DiagArgValue, E0232, MultiSpan};
+use rustc_errors::{Applicability, DiagArgValue, E0232, E0264, MultiSpan};
 use rustc_hir::AttrPath;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
@@ -800,4 +800,12 @@ pub(crate) struct DupesNotAllowed;
 pub(crate) struct UnsafeAttribute {
     pub attr_path: AttrPath,
     pub note: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag("unknown external lang item: `{$lang_item}`", code = E0264)]
+pub(crate) struct UnknownExternLangItem {
+    #[primary_span]
+    pub span: Span,
+    pub lang_item: Symbol,
 }

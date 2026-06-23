@@ -9,7 +9,7 @@ pub(crate) struct SplatParser;
 
 impl NoArgsAttributeParser for SplatParser {
     const PATH: &[Symbol] = &[sym::splat];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Param)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Param)]);
     const STABILITY: AttributeStability =
         unstable!(splat, "the `#[splat]` attribute is experimental");
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::Splat;

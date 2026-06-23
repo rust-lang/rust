@@ -18,7 +18,7 @@ impl SingleAttributeParser for CustomMirParser {
     const PATH: &[rustc_span::Symbol] = &[sym::custom_mir];
     const STABILITY: AttributeStability = unstable!(custom_mir);
 
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
 
     const TEMPLATE: AttributeTemplate = template!(List: &[r#"dialect = "...", phase = "...""#]);
 

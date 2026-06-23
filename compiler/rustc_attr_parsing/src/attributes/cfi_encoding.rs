@@ -4,7 +4,7 @@ use super::prelude::*;
 pub(crate) struct CfiEncodingParser;
 impl SingleAttributeParser for CfiEncodingParser {
     const PATH: &[Symbol] = &[sym::cfi_encoding];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Struct),
         Allow(Target::ForeignTy),
         Allow(Target::Enum),
