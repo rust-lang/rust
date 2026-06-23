@@ -1312,9 +1312,26 @@ impl char {
     /// [described]: https://www.unicode.org/versions/latest/core-spec/chapter-3/#G49605
     /// [specified]: https://www.unicode.org/reports/tr44/#Full_Composition_Exclusion
     /// [`DerivedNormalizationProps.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedNormalizationProps.txt
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(unicode_discouraged)]
+    /// assert!('\u{0340}'.is_full_composition_exclusion()); // COMBINING GRAVE TONE MARK
+    /// assert!('\u{0344}'.is_full_composition_exclusion()); // COMBINING GREEK DIALYTIKA TONOS
+    /// assert!('\u{0387}'.is_full_composition_exclusion()); // GREEK ANO TELEIA
+    /// assert!('\u{2126}'.is_full_composition_exclusion()); // OHM SIGH
+    /// assert!('\u{2ADC}'.is_full_composition_exclusion()); // FORKING
+    /// assert!('\u{F900}'.is_full_composition_exclusion()); // CJK COMPATIBILITY IDEOGRAPH-F900
+    /// assert!(!'a'.is_full_composition_exclusion());
+    /// assert!(!'á'.is_full_composition_exclusion());
+    /// ```
     #[must_use]
+    #[unstable(feature = "unicode_discouraged", issue = "none")]
     #[inline]
-    fn is_full_composition_exclusion(self) -> bool {
+    pub fn is_full_composition_exclusion(self) -> bool {
         match self {
             '\0'..='\u{033F}' => false,
             _ => unicode::Full_Composition_Exclusion(self),
@@ -1330,9 +1347,27 @@ impl char {
     /// [described]: https://www.unicode.org/versions/latest/core-spec/chapter-3/#G48383
     /// [specified]: https://www.unicode.org/reports/tr44/#Deprecated
     /// [`PropList.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/PropList.txt
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(unicode_discouraged)]
+    /// assert!('\u{0149}'.is_deprecated()); // LATIN SMALL LETTER N PRECEDED BY APOSTROPHE
+    /// assert!('\u{0673}'.is_deprecated()); // ARABIC LETTER ALEF WITH WAVY HAMZA BELOW
+    /// assert!('\u{0F77}'.is_deprecated()); // TIBETAN VOWEL SIGN VOCALIC RR
+    /// assert!('\u{17A3}'.is_deprecated()); // KHMER INDEPENDENT VOWEL QAQ
+    /// assert!('\u{206A}'.is_deprecated()); // INHIBIT SYMMETRIC SWAPPING
+    /// assert!('\u{2329}'.is_deprecated()); // LEFT-POINTING ANGLE BRACKET
+    /// assert!('\u{E0001}'.is_deprecated()); // LANGUAGE TAG
+    /// assert!(!'a'.is_deprecated());
+    /// assert!(!'á'.is_deprecated());
+    /// ```
     #[must_use]
+    #[unstable(feature = "unicode_discouraged", issue = "none")]
     #[inline]
-    fn is_deprecated(self) -> bool {
+    pub fn is_deprecated(self) -> bool {
         !self.is_ascii() && unicode::Deprecated(self)
     }
 
