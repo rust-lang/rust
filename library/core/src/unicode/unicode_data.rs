@@ -4,6 +4,8 @@
 // Cf                          :    87 bytes,    170 codepoints in  21 ranges (U+0000AD - U+0E0080) using skiplist
 // Cn_Planes_0_3               :  1677 bytes,  94165 codepoints in 730 ranges (U+000378 - U+03FFFE) using skiplist
 // Default_Ignorable_Code_Point:    83 bytes,   4174 codepoints in  17 ranges (U+0000AD - U+0E1000) using skiplist
+// Deprecated                  :    49 bytes,     15 codepoints in   8 ranges (U+000149 - U+0E0002) using skiplist
+// Full_Composition_Exclusion  :   199 bytes,   1120 codepoints in  73 ranges (U+000340 - U+02FA1E) using skiplist
 // Grapheme_Extend             :   899 bytes,   2232 codepoints in 383 ranges (U+000300 - U+0E01F0) using skiplist
 // Lowercase                   :   943 bytes,   2569 codepoints in 676 ranges (U+0000AA - U+01E944) using bitset
 // Lt                          :    33 bytes,     31 codepoints in  10 ranges (U+0001C5 - U+001FFD) using skiplist
@@ -14,7 +16,7 @@
 // to_upper                    :  1998 bytes,   1554 codepoints in 299 ranges (U+0000B5 - U+01E943) using 2-level LUT
 // to_title                    :   340 bytes,    135 codepoints in  49 ranges (U+0000DF - U+00FB17) using 2-level LUT
 // to_casefold                 :    32 bytes,    174 codepoints in   5 ranges (U+000131 - U+00ABBF) using 2-level LUT
-// Total                       : 11508 bytes
+// Total                       : 11756 bytes
 
 #[inline(always)]
 const fn bitset_search<
@@ -510,6 +512,84 @@ pub mod default_ignorable_code_point {
     pub fn lookup(c: char) -> bool {
         debug_assert!(!c.is_ascii());
         (c as u32) >= 0xad && lookup_slow(c)
+    }
+
+    #[inline(never)]
+    fn lookup_slow(c: char) -> bool {
+        const {
+            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
+            let mut i = 0;
+            while i < SHORT_OFFSET_RUNS.len() {
+                assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
+                i += 1;
+            }
+        }
+        // SAFETY: We just ensured the last element of `SHORT_OFFSET_RUNS` is greater than `std::char::MAX`
+        // and the start indices of all elements in `SHORT_OFFSET_RUNS` are smaller than `OFFSETS.len()`.
+        unsafe { super::skip_search(c, &SHORT_OFFSET_RUNS, &OFFSETS) }
+    }
+}
+
+#[rustfmt::skip]
+pub mod deprecated {
+    use super::ShortOffsetRunHeader;
+
+    static SHORT_OFFSET_RUNS: [ShortOffsetRunHeader; 8] = [
+        ShortOffsetRunHeader::new(0, 329), ShortOffsetRunHeader::new(1, 1651),
+        ShortOffsetRunHeader::new(3, 3959), ShortOffsetRunHeader::new(5, 6051),
+        ShortOffsetRunHeader::new(9, 8298), ShortOffsetRunHeader::new(11, 9001),
+        ShortOffsetRunHeader::new(13, 917505), ShortOffsetRunHeader::new(15, 2031618),
+    ];
+    static OFFSETS: [u8; 17] = [
+        0, 1, 0, 1, 0, 1, 1, 1, 0, 2, 0, 6, 0, 2, 0, 1, 0,
+    ];
+    #[inline]
+    pub fn lookup(c: char) -> bool {
+        debug_assert!(!c.is_ascii());
+        (c as u32) >= 0x149 && lookup_slow(c)
+    }
+
+    #[inline(never)]
+    fn lookup_slow(c: char) -> bool {
+        const {
+            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
+            let mut i = 0;
+            while i < SHORT_OFFSET_RUNS.len() {
+                assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
+                i += 1;
+            }
+        }
+        // SAFETY: We just ensured the last element of `SHORT_OFFSET_RUNS` is greater than `std::char::MAX`
+        // and the start indices of all elements in `SHORT_OFFSET_RUNS` are smaller than `OFFSETS.len()`.
+        unsafe { super::skip_search(c, &SHORT_OFFSET_RUNS, &OFFSETS) }
+    }
+}
+
+#[rustfmt::skip]
+pub mod full_composition_exclusion {
+    use super::ShortOffsetRunHeader;
+
+    static SHORT_OFFSET_RUNS: [ShortOffsetRunHeader; 13] = [
+        ShortOffsetRunHeader::new(0, 832), ShortOffsetRunHeader::new(1, 2392),
+        ShortOffsetRunHeader::new(11, 3907), ShortOffsetRunHeader::new(27, 8049),
+        ShortOffsetRunHeader::new(59, 8486), ShortOffsetRunHeader::new(99, 9001),
+        ShortOffsetRunHeader::new(103, 10972), ShortOffsetRunHeader::new(105, 63744),
+        ShortOffsetRunHeader::new(107, 64014), ShortOffsetRunHeader::new(108, 119134),
+        ShortOffsetRunHeader::new(141, 194560), ShortOffsetRunHeader::new(145, 195102),
+        ShortOffsetRunHeader::new(146, 1309214),
+    ];
+    static OFFSETS: [u8; 147] = [
+        0, 2, 1, 2, 47, 1, 9, 1, 8, 1, 0, 8, 124, 2, 1, 1, 83, 1, 2, 1, 34, 3, 2, 1, 253, 2, 0, 1,
+        9, 1, 4, 1, 4, 1, 4, 1, 12, 1, 9, 1, 1, 2, 1, 1, 8, 1, 17, 1, 9, 1, 4, 1, 4, 1, 4, 1, 12, 1,
+        0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 61, 1, 2, 1, 10, 1, 1, 1, 7, 1, 7, 1, 7, 1, 7, 1,
+        2, 2, 9, 1, 1, 1, 1, 1, 2, 2, 0, 1, 3, 2, 0, 2, 0, 1, 0, 0, 2, 1, 1, 1, 2, 10, 1, 1, 1, 1,
+        2, 2, 3, 68, 2, 106, 67, 1, 1, 1, 10, 13, 1, 5, 1, 1, 1, 2, 1, 2, 1, 9, 0, 7, 86, 6, 0, 0,
+        0,
+    ];
+    #[inline]
+    pub fn lookup(c: char) -> bool {
+        debug_assert!(!c.is_ascii());
+        (c as u32) >= 0x340 && lookup_slow(c)
     }
 
     #[inline(never)]

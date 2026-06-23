@@ -10,6 +10,7 @@ static README: &str = "ReadMe.txt";
 static RESOURCES: &[&str] = &[
     "CaseFolding.txt",
     "DerivedCoreProperties.txt",
+    "DerivedNormalizationProps.txt",
     "PropList.txt",
     "SpecialCasing.txt",
     "UnicodeData.txt",

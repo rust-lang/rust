@@ -495,6 +495,8 @@ impl char {
                 || args.escape_grapheme_extender && self.is_grapheme_extender()
                 || self.is_default_ignorable()
                 || self.is_format_control()
+                || self.is_full_composition_exclusion()
+                || self.is_deprecated()
                 || !self.is_assigned() =>
             {
                 EscapeDebug::unicode(self)
@@ -1296,6 +1298,42 @@ impl char {
         } else {
             unicode::Case_Ignorable(self)
         }
+    }
+
+    /// Returns `true` if this `char` has the `Full_Composition_Exclusion` property.
+    /// These characters can never appear in strings normalized according to any
+    /// Unicode [Normalization Form].
+    ///
+    /// [Normalization Form]: https://www.unicode.org/reports/tr15/#Norm_Forms
+    ///
+    /// `Full_Composition_Exclusion` is [described] in Chapter 3 (Conformance) of the Unicode Standard,
+    /// and [specified] in the Unicode Character Database [`DerivedNormalizationProps.txt`].
+    ///
+    /// [described]: https://www.unicode.org/versions/latest/core-spec/chapter-3/#G49605
+    /// [specified]: https://www.unicode.org/reports/tr44/#Full_Composition_Exclusion
+    /// [`DerivedNormalizationProps.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedNormalizationProps.txt
+    #[must_use]
+    #[inline]
+    fn is_full_composition_exclusion(self) -> bool {
+        match self {
+            '\0'..='\u{033F}' => false,
+            _ => unicode::Full_Composition_Exclusion(self),
+        }
+    }
+
+    /// Returns `true` if this `char` has the `Deprecated` property.
+    /// Using these characters is strongly discouraged.
+    ///
+    /// `Deprecated` is [described] in Chapter 3 (Conformance) of the Unicode Standard,
+    /// and [specified] in the Unicode Character Database [`PropList.txt`].
+    ///
+    /// [described]: https://www.unicode.org/versions/latest/core-spec/chapter-3/#G48383
+    /// [specified]: https://www.unicode.org/reports/tr44/#Deprecated
+    /// [`PropList.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/PropList.txt
+    #[must_use]
+    #[inline]
+    fn is_deprecated(self) -> bool {
+        !self.is_ascii() && unicode::Deprecated(self)
     }
 
     /// Returns an iterator that yields the lowercase mapping of this `char` as one or more

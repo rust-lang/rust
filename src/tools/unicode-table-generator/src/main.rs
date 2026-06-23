@@ -95,6 +95,8 @@ static PROPERTIES: &[&str] = &[
     "Cf",
     "Cn_Planes_0_3",
     "Default_Ignorable_Code_Point",
+    "Deprecated",
+    "Full_Composition_Exclusion",
     "Grapheme_Extend",
     "Lowercase",
     "Lt",
@@ -142,6 +144,13 @@ fn load_data() -> UnicodeData {
         }
     }
     for row in ucd_parse::parse::<_, ucd_parse::Property>(&UNICODE_DIRECTORY).unwrap() {
+        if let Some(name) = PROPERTIES.iter().find(|prop| **prop == row.property.as_str()) {
+            properties.entry(*name).or_insert_with(Vec::new).push(row.codepoints);
+        }
+    }
+    for row in
+        ucd_parse::parse::<_, ucd_parse::DerivedNormalizationProperty>(&UNICODE_DIRECTORY).unwrap()
+    {
         if let Some(name) = PROPERTIES.iter().find(|prop| **prop == row.property.as_str()) {
             properties.entry(*name).or_insert_with(Vec::new).push(row.codepoints);
         }
