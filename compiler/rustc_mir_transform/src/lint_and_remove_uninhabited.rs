@@ -93,8 +93,8 @@ fn find_unreachable_code_from<'tcx>(
     bb: BasicBlock,
     body: &Body<'tcx>,
 ) -> Option<(SourceInfo, &'static str)> {
-    let bb = &body.basic_blocks[bb];
-    for stmt in &bb.statements {
+    let bbdata = &body.basic_blocks[bb];
+    for stmt in &bbdata.statements {
         match &stmt.kind {
             // Ignore the implicit `()` return place assignment for unit functions/blocks
             StatementKind::Assign((_, Rvalue::Use(Operand::Constant(const_), _)))
@@ -108,7 +108,10 @@ fn find_unreachable_code_from<'tcx>(
             StatementKind::Assign((place, _)) if place.as_local() == Some(RETURN_PLACE) => {
                 continue;
             }
-            StatementKind::StorageLive(_) | StatementKind::StorageDead(_) => {
+            // Ignore statements inserted by MIR building that do not correspond to user code.
+            StatementKind::StorageLive(_)
+            | StatementKind::StorageDead(_)
+            | StatementKind::BackwardIncompatibleDropHint { .. } => {
                 continue;
             }
             StatementKind::FakeRead(..) => return Some((stmt.source_info, "definition")),
@@ -116,10 +119,18 @@ fn find_unreachable_code_from<'tcx>(
         }
     }
 
-    let term = bb.terminator();
+    let term = bbdata.terminator();
     match term.kind {
-        // No user code in this bb, and our goto target may be reachable via other paths
-        TerminatorKind::Goto { .. } | TerminatorKind::Return => None,
+        // The user does not care for `goto` and compiler-generated drops. If the target block is
+        // only reachable through those terminators, continue searching there.
+        TerminatorKind::Goto { target } | TerminatorKind::Drop { target, .. } => {
+            if &body.basic_blocks.predecessors()[target][..] == &[bb] {
+                find_unreachable_code_from(target, body)
+            } else {
+                None
+            }
+        }
+        TerminatorKind::Return => None,
         _ => Some((term.source_info, "expression")),
     }
 }
