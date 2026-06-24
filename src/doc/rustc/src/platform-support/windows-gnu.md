@@ -26,6 +26,18 @@ They follow Windows calling convention for `extern "C"`.
 
 Like with any other Windows target, created binaries are in PE format.
 
+### C toolchain
+
+The targets are built and tested using a reasonably modern C toolchain, and it should be considered as the oldest supported version:
+
+* GNU Binutils 2.44
+* GCC 14.2
+* mingw-w64 12.0.0
+* MSVCRT library as the default
+
+Using older tools (especially Binutils) may not work properly, due to the number of issues plaguing older versions of Binutils.
+The supported toolchain versions are subject to change.
+
 ## Building Rust programs
 
 Rust does ship a pre-compiled std library for those targets.
