@@ -1,3 +1,4 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/28561
 //@ check-pass
 #[derive(Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd, Clone, Copy)]
 struct Array<T> {

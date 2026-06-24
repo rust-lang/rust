@@ -1,3 +1,4 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/27340
 struct Foo;
 #[derive(Copy, Clone)]
 struct Bar(Foo);

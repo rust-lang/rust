@@ -1,5 +1,5 @@
 error[E0204]: the trait `Copy` cannot be implemented for this type
-  --> $DIR/issue-27340.rs:3:8
+  --> $DIR/derived-trait-requires-field-impl.rs:4:8
    |
 LL | #[derive(Copy, Clone)]
    |          ---- in this derive macro expansion
@@ -7,7 +7,7 @@ LL | struct Bar(Foo);
    |        ^^^ --- this field does not implement `Copy`
 
 error[E0277]: the trait bound `Foo: Clone` is not satisfied
-  --> $DIR/issue-27340.rs:3:12
+  --> $DIR/derived-trait-requires-field-impl.rs:4:12
    |
 LL | #[derive(Copy, Clone)]
    |                ----- in this derive macro expansion
