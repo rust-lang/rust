@@ -991,9 +991,8 @@ impl<T> GuardBack<'_, T> {
     /// # Safety
     ///
     /// No more than N elements must be initialized.
-    #[rustc_const_unstable(feature = "array_try_from_fn", issue = "89379")]
     #[inline]
-    pub(crate) const unsafe fn push_unchecked(&mut self, item: T) {
+    pub(crate) unsafe fn push_unchecked(&mut self, item: T) {
         // SAFETY: If `initialized` was correct before and the caller does not
         // invoke this method more than N times, then writes will be in-bounds
         // and slots will not be initialized more than once.
@@ -1006,8 +1005,7 @@ impl<T> GuardBack<'_, T> {
     }
 }
 
-#[rustc_const_unstable(feature = "array_try_from_fn", issue = "89379")]
-const impl<T: [const] Destruct> Drop for GuardBack<'_, T> {
+impl<T: Destruct> Drop for GuardBack<'_, T> {
     #[inline]
     fn drop(&mut self) {
         debug_assert!(self.initialized <= self.array_mut.len());
@@ -1139,24 +1137,20 @@ const fn iter_next_chunk_erased<T>(
 /// dropped.
 ///
 /// Used for [`DoubleEndedIterator::next_chunk_back`].
-#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
 #[inline]
-pub(crate) const fn iter_next_chunk_back<T, const N: usize>(
-    iter: &mut impl [const] DoubleEndedIterator<Item = T>,
+pub(crate) fn iter_next_chunk_back<T, const N: usize>(
+    iter: &mut impl DoubleEndedIterator<Item = T>,
 ) -> Result<[T; N], IntoIter<T, N>> {
     iter.spec_next_chunk_back()
 }
 
-pub(crate) const trait SpecNextChunkBack<T, const N: usize>:
+pub(crate) trait SpecNextChunkBack<T, const N: usize>:
     DoubleEndedIterator<Item = T>
 {
     fn spec_next_chunk_back(&mut self) -> Result<[T; N], IntoIter<T, N>>;
 }
 
-#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
-const impl<I: [const] DoubleEndedIterator<Item = T>, T, const N: usize> SpecNextChunkBack<T, N>
-    for I
-{
+impl<I: DoubleEndedIterator<Item = T>, T, const N: usize> SpecNextChunkBack<T, N> for I {
     #[inline]
     default fn spec_next_chunk_back(&mut self) -> Result<[T; N], IntoIter<T, N>> {
         let mut array = [const { MaybeUninit::uninit() }; N];
@@ -1174,9 +1168,8 @@ const impl<I: [const] DoubleEndedIterator<Item = T>, T, const N: usize> SpecNext
     }
 }
 
-#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
-const impl<I: [const] DoubleEndedIterator<Item = T> + TrustedLen, T, const N: usize>
-    SpecNextChunkBack<T, N> for I
+impl<I: DoubleEndedIterator<Item = T> + TrustedLen, T, const N: usize> SpecNextChunkBack<T, N>
+    for I
 {
     fn spec_next_chunk_back(&mut self) -> Result<[T; N], IntoIter<T, N>> {
         let len = (*self).size_hint().0;
@@ -1196,10 +1189,9 @@ const impl<I: [const] DoubleEndedIterator<Item = T> + TrustedLen, T, const N: us
 }
 
 // SAFETY: `from` must have len items, and len items must be < N.
-#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
-const unsafe fn write_back<T, const N: usize>(
+unsafe fn write_back<T, const N: usize>(
     to: &mut [MaybeUninit<T>; N],
-    from: &mut impl [const] DoubleEndedIterator<Item = T>,
+    from: &mut impl DoubleEndedIterator<Item = T>,
     len: usize,
 ) {
     let mut guard = GuardBack { array_mut: to, initialized: 0 };
@@ -1217,11 +1209,10 @@ const unsafe fn write_back<T, const N: usize>(
 ///
 /// Unfortunately this loop has two exit conditions, the buffer filling up
 /// or the iterator running out of items, making it tend to optimize poorly.
-#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
 #[inline]
-const fn iter_next_chunk_back_erased<T>(
+fn iter_next_chunk_back_erased<T>(
     buffer: &mut [MaybeUninit<T>],
-    iter: &mut impl [const] DoubleEndedIterator<Item = T>,
+    iter: &mut impl DoubleEndedIterator<Item = T>,
 ) -> Result<(), usize> {
     // if `Iterator::next_back` panics, this guard will drop already initialized items
     let mut guard = GuardBack { array_mut: buffer, initialized: 0 };
