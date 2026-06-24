@@ -127,8 +127,9 @@ where
         let constraint = self.delegate.get_solver_region_constraint();
 
         let smallest_universe = self.max_input_universe.index();
-        let largest_universe = self.delegate.universe().index();
-        debug!(?smallest_universe, largest_universe);
+        let current_universe = self.delegate.universe().index();
+        let largest_universe = max_universe(&**self.delegate, constraint.clone()).index();
+        debug!(?smallest_universe, ?largest_universe, ?current_universe);
 
         let constraint = ((smallest_universe + 1)..=largest_universe)
             .map(|u| UniverseIndex::from_usize(u))
