@@ -12,7 +12,7 @@ pub(crate) struct NonExhaustiveParser;
 impl NoArgsAttributeParser for NonExhaustiveParser {
     const PATH: &[Symbol] = &[sym::non_exhaustive];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Enum),
         Allow(Target::Struct),
         Allow(Target::Variant),
