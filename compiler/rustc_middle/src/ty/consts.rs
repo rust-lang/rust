@@ -4,7 +4,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_error_messages::MultiSpan;
 use rustc_macros::StableHash;
 use rustc_type_ir::walk::TypeWalker;
-use rustc_type_ir::{self as ir, TypeFlags, WithCachedTypeInfo};
+use rustc_type_ir::{self as ir, TypeFlags, TypeVisitableExt, WithCachedTypeInfo};
 
 use crate::mir::interpret::Scalar;
 use crate::ty::{self, Ty, TyCtxt};
@@ -114,6 +114,22 @@ impl<'tcx> Const<'tcx> {
     #[inline]
     pub fn new_value(tcx: TyCtxt<'tcx>, valtree: ty::ValTree<'tcx>, ty: Ty<'tcx>) -> Const<'tcx> {
         Const::new(tcx, ty::ConstKind::Value(ty::Value { ty, valtree }))
+    }
+
+    pub fn new_value_from_branches(
+        tcx: TyCtxt<'tcx>,
+        branches: impl IntoIterator<Item = ty::Const<'tcx>>,
+        ty: Ty<'tcx>,
+    ) -> Const<'tcx> {
+        let branches: Vec<_> = branches.into_iter().collect();
+        if let Some(e) = branches.iter().find_map(|c| c.error_reported().err()) {
+            return Const::new_error(tcx, e);
+        }
+        if let Err(e) = ty.error_reported() {
+            return Const::new_error(tcx, e);
+        }
+
+        Const::new_value(tcx, ty::ValTree::from_branches(tcx, branches), ty)
     }
 
     #[inline]
