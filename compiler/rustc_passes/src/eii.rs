@@ -18,8 +18,16 @@ enum CheckingMode {
 }
 
 fn get_checking_mode(tcx: TyCtxt<'_>) -> CheckingMode {
-    // if any of the crate types is not rlib, we must check for existence.
-    if tcx.crate_types().iter().any(|i| !matches!(i, CrateType::Rlib)) {
+    // Only final artifacts (Executable, Cdylib, StaticLib) need to check
+    // that every EII actually has an implementation. Intermediate products
+    // like Rlib, Dylib, Sdylib, and ProcMacro only check for duplicate
+    // explicit implementations, because their EIIs may be resolved by
+    // downstream crates.
+    if tcx
+        .crate_types()
+        .iter()
+        .any(|i| matches!(i, CrateType::Executable | CrateType::Cdylib | CrateType::StaticLib))
+    {
         CheckingMode::CheckExistence
     } else {
         CheckingMode::CheckDuplicates
@@ -35,9 +43,12 @@ fn get_checking_mode(tcx: TyCtxt<'_>) -> CheckingMode {
 /// though it's also entirely possible that the source is two dependencies with an explicit implementation.
 /// Those work fine on their own but the combination of the two is a conflict.
 ///
-/// However, if the current crate is a "root" crate, one that generates a final artifact like a binary,
-/// then we check one more thing, namely that every EII actually has an implementation, either default or not.
-/// If one EII has no implementation, that's an error at that point.
+/// However, if the current crate is a "root" crate -- one that generates a final artifact
+/// like an executable, cdylib, or staticlib -- then we check one more thing, namely that
+/// every EII actually has an implementation, either default or not.
+/// Intermediate products like rlib, dylib, sdylib, and proc-macro crates only check for duplicate
+/// explicit implementations, because their EIIs may be resolved by downstream crates that depend
+/// on them.
 ///
 /// These two behaviors are implemented using `CheckingMode`.
 pub(crate) fn check_externally_implementable_items<'tcx>(tcx: TyCtxt<'tcx>, (): ()) {
