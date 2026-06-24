@@ -663,6 +663,11 @@ impl<'a, 'tcx, M: MetadataEncoder<'tcx>> EncodeContext<'a, 'tcx, M> {
         M::with_record_mode(self, mode, f)
     }
 
+    fn record_raw_def_id(&mut self, def_id: DefId) -> RawDefId {
+        self.record_encoded_index(def_id);
+        M::into_raw_def_id(self.tcx, def_id)
+    }
+
     fn record_encoded_index(&mut self, index: impl Into<Node<'tcx>>) {
         self.spec_encoder_data.record_encoded_index(index.into());
     }
@@ -1859,21 +1864,22 @@ impl<'a, 'tcx, M: MetadataEncoder<'tcx>> EncodeContext<'a, 'tcx, M> {
                 && tcx.type_of(def_id).skip_binder().is_coroutine_closure()
             {
                 let coroutine_for_closure = self.tcx.coroutine_for_closure(def_id);
-                self.tables.coroutine_for_closure.set_hashed(
+                let raw_id = self.record_raw_def_id(coroutine_for_closure);
+                self.tables.coroutine_for_closure.set_some_hashed(
                     def_id.index,
-                    Some(M::into_raw_def_id(tcx, coroutine_for_closure)),
+                    raw_id,
                     (def_id, coroutine_for_closure),
                     hcx,
                 );
 
                 // If this async closure has a by-move body, record it too.
                 if tcx.needs_coroutine_by_move_body_def_id(coroutine_for_closure) {
-                    self.tables.coroutine_by_move_body_def_id.set_hashed(
+                    let raw_id = self.record_raw_def_id(
+                        self.tcx.coroutine_by_move_body_def_id(coroutine_for_closure),
+                    );
+                    self.tables.coroutine_by_move_body_def_id.set_some_hashed(
                         coroutine_for_closure.index,
-                        Some(M::into_raw_def_id(
-                            tcx,
-                            self.tcx.coroutine_by_move_body_def_id(coroutine_for_closure),
-                        )),
+                        raw_id,
                         (
                             coroutine_for_closure,
                             self.tcx.coroutine_by_move_body_def_id(coroutine_for_closure),
@@ -2645,9 +2651,10 @@ impl<'a, 'tcx, M: MetadataEncoder<'tcx>> EncodeContext<'a, 'tcx, M> {
                 if let Ok(mut an) = trait_def.ancestors(tcx, def_id)
                     && let Some(specialization_graph::Node::Impl(parent)) = an.nth(1)
                 {
-                    self.tables.impl_parent.set_hashed(
+                    let raw_id = self.record_raw_def_id(parent);
+                    self.tables.impl_parent.set_some_hashed(
                         def_id.index,
-                        Some(M::into_raw_def_id(tcx, parent)),
+                        raw_id,
                         (def_id, parent),
                         hcx,
                     );
