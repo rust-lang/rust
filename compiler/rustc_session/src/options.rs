@@ -1105,7 +1105,7 @@ pub mod parse {
         // We want to cap the number of threads here to avoid large numbers like 999999 and compiler panics.
         // This solution was suggested here https://github.com/rust-lang/rust/issues/117638#issuecomment-1800925067
         let n = n.min(MAX_THREADS_CAP);
-        *slot = (n > 1).then_some(n); // Enable synchronization if we're using more than one thread.
+        *slot = Some(n);
         true
     }
 
@@ -2753,7 +2753,7 @@ written to standard error output)"),
     /// in the future. Note that -Zthreads=0 is the way to get
     /// the num_cpus behavior.
     #[rustc_lint_opt_deny_field_access("use `Session::threads` instead of this field")]
-    threads: Option<usize> = (None, parse_threads, [UNTRACKED],
+    threads: Option<usize> = (Some(1), parse_threads, [UNTRACKED],
         "use a thread pool with N threads"),
     time_llvm_passes: bool = (false, parse_bool, [UNTRACKED],
         "measure time of each LLVM pass (default: no)"),
