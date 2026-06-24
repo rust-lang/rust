@@ -718,7 +718,7 @@ impl<'tcx> Deref for BorrowckInferCtxt<'tcx> {
 }
 
 pub(crate) struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
-    root_cx: &'a mut BorrowCheckRootCtxt<'tcx>,
+    root_cx: &'a BorrowCheckRootCtxt<'tcx>,
     infcx: &'infcx BorrowckInferCtxt<'tcx>,
     body: &'a Body<'tcx>,
     move_data: &'a MoveData<'tcx>,
