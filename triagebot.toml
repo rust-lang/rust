@@ -1155,7 +1155,6 @@ otherwise, make sure you bump the `FORMAT_VERSION` constant.
 """
 cc = [
     "@CraftSpider",
-    "@aDotInTheVoid",
     "@Enselic",
     "@obi1kenobi",
 ]
@@ -1313,7 +1312,7 @@ Please ensure that if you've changed the output:
 - It's intentional.
 - The `FORMAT_VERSION` in `src/librustdoc-json-types` is bumped if necessary.
 """
-cc = ["@aDotInTheVoid", "@obi1kenobi"]
+cc = ["@obi1kenobi"]
 
 [mentions."tests/ui/derives/deriving-all-codegen.stdout"]
 message = "Changes to the code generated for builtin derived traits."
@@ -1698,7 +1697,7 @@ dep-bumps = [
 "/tests/rustdoc-gui" =                                   ["rustdoc"]
 "/tests/rustdoc-js-std" =                                ["rustdoc"]
 "/tests/rustdoc-js/" =                                   ["rustdoc"]
-"/tests/rustdoc-json" =                                  ["@aDotInTheVoid"]
+"/tests/rustdoc-json" =                                  ["rustdoc"]
 "/tests/rustdoc-ui" =                                    ["rustdoc"]
 "/tests/ui" =                                            ["compiler"]
 "/tests/ui-fulldeps" =                                   ["compiler"]
