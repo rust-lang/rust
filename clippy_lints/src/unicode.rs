@@ -108,6 +108,8 @@ fn check_str(cx: &LateContext<'_>, span: Span, id: HirId) {
     }
 
     let string = snippet(cx, span, "");
+    let is_raw = string.starts_with('r');
+
     if string.chars().any(|c| ['\u{200B}', '\u{ad}', '\u{2060}'].contains(&c)) {
         #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
         span_lint_and_then(cx, INVISIBLE_CHARACTERS, span, "invisible character detected", |diag| {
@@ -124,23 +126,26 @@ fn check_str(cx: &LateContext<'_>, span: Span, id: HirId) {
     }
 
     if string.chars().any(|c| c as u32 > 0x7F) {
-        #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
         span_lint_and_then(
             cx,
             NON_ASCII_LITERAL,
             span,
             "literal non-ASCII character detected",
             |diag| {
-                diag.span_suggestion(
-                    span,
-                    "consider replacing the string with",
-                    if is_lint_allowed(cx, UNICODE_NOT_NFC, id) {
-                        escape(string.chars())
-                    } else {
-                        escape(string.nfc())
-                    },
-                    Applicability::MachineApplicable,
-                );
+                if is_raw {
+                    diag.help("use a normal string literal instead of a raw one to escape the character");
+                } else {
+                    diag.span_suggestion(
+                        span,
+                        "consider replacing the string with",
+                        if is_lint_allowed(cx, UNICODE_NOT_NFC, id) {
+                            escape(string.chars())
+                        } else {
+                            escape(string.nfc())
+                        },
+                        Applicability::MachineApplicable,
+                    );
+                }
             },
         );
     }
