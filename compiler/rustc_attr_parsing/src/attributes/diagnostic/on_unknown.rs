@@ -40,7 +40,7 @@ impl AttributeParser for OnUnknownParser {
         },
     )];
     // "Allowed" for all targets, but noop for all but use statements.
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Use),
         Allow(Target::Mod),
         Allow(Target::Crate),
