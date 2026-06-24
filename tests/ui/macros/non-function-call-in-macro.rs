@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/26237>.
+
 macro_rules! macro_panic {
     ($not_a_function:expr, $some_argument:ident) => {
         $not_a_function($some_argument)
