@@ -761,7 +761,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             Scope::BuiltinTypes => match self.builtin_type_decls.get(&ident.name) {
                 Some(decl) => {
                     if matches!(ident.name, sym::f16)
-                        && !self.tcx.features().f16()
+                        && !self.features.f16()
                         && !orig_ident_span.allows_unstable(sym::f16)
                         && finalize.is_some()
                     {
@@ -774,7 +774,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         .emit();
                     }
                     if matches!(ident.name, sym::f128)
-                        && !self.tcx.features().f128()
+                        && !self.features.f128()
                         && !orig_ident_span.allows_unstable(sym::f128)
                         && finalize.is_some()
                     {
@@ -1584,7 +1584,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
 
                         RibKind::ConstParamTy => {
-                            if !self.tcx.features().generic_const_parameter_types() {
+                            if !self.features.generic_const_parameter_types() {
                                 if let Some(span) = finalize {
                                     self.report_error(
                                         span,
@@ -1613,7 +1613,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                         }
                                         NoConstantGenericsReason::NonTrivialConstArg => {
                                             ResolutionError::ParamInNonTrivialAnonConst {
-                                                is_gca: self.tcx.features().generic_const_args(),
+                                                is_gca: self.features.generic_const_args(),
                                                 name: rib_ident.name,
                                                 param_kind: ParamKindInNonTrivialAnonConst::Type,
                                             }
@@ -1678,7 +1678,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         | RibKind::ForwardGenericParamBan(_) => continue,
 
                         RibKind::ConstParamTy => {
-                            if !self.tcx.features().generic_const_parameter_types() {
+                            if !self.features.generic_const_parameter_types() {
                                 if let Some(span) = finalize {
                                     self.report_error(
                                         span,
@@ -1705,7 +1705,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                         }
                                         NoConstantGenericsReason::NonTrivialConstArg => {
                                             ResolutionError::ParamInNonTrivialAnonConst {
-                                                is_gca: self.tcx.features().generic_const_args(),
+                                                is_gca: self.features.generic_const_args(),
                                                 name: rib_ident.name,
                                                 param_kind: ParamKindInNonTrivialAnonConst::Const {
                                                     name: rib_ident.name,
@@ -2068,7 +2068,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             module,
                             || {
                                 let import_inherent_item_error_flag =
-                                    self.tcx.features().import_trait_associated_functions()
+                                    self.features.import_trait_associated_functions()
                                         && matches!(
                                             res,
                                             Res::Def(

@@ -186,7 +186,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 // Does that prevents errors from happening? maybe
                 let mut parser = AttributeParser::new(
                     &self.r.tcx.sess,
-                    self.r.tcx.features(),
+                    self.r.features,
                     self.r.tcx().registered_tools(()),
                     ShouldEmit::Nothing,
                 );
@@ -433,7 +433,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         // `MgcaDisambiguation::Direct` is set even when MGCA is disabled, so
         // to avoid affecting stable we have to feature gate the not creating
         // anon consts
-        if !self.r.tcx.features().min_generic_const_args() {
+        if !self.r.features.min_generic_const_args() {
             let parent = self
                 .create_def(constant.id, None, DefKind::AnonConst, constant.value.span)
                 .def_id();
