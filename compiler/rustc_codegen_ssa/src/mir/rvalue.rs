@@ -1,5 +1,6 @@
 use itertools::Itertools as _;
 use rustc_abi::{self as abi, BackendRepr, FIRST_VARIANT};
+use rustc_index::IndexVec;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
@@ -15,6 +16,64 @@ use crate::traits::*;
 use crate::{MemFlags, base};
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+    fn try_codegen_const_aggregate_as_immediate(
+        &mut self,
+        bx: &mut Bx,
+        dest: PlaceRef<'tcx, Bx::Value>,
+        kind: &mir::AggregateKind<'tcx>,
+        operands: &IndexVec<abi::FieldIdx, mir::Operand<'tcx>>,
+    ) -> bool {
+        // Keep this allowlist limited to aggregate kinds with direct codegen coverage.
+        if !matches!(kind, mir::AggregateKind::Tuple | mir::AggregateKind::Adt(_, _, _, _, None)) {
+            return false;
+        }
+        if !matches!(dest.layout.fields, abi::FieldsShape::Arbitrary { .. }) {
+            return false;
+        }
+        if !matches!(dest.layout.variants, abi::Variants::Single { .. }) {
+            return false;
+        }
+        debug_assert_eq!(operands.len(), dest.layout.fields.count());
+
+        let size = dest.layout.size.bytes();
+        let llty = match size {
+            1 => bx.cx().type_i8(),
+            2 => bx.cx().type_i16(),
+            4 => bx.cx().type_i32(),
+            8 => bx.cx().type_i64(),
+            16 => bx.cx().type_i128(),
+            _ => return false,
+        };
+
+        let mut value = 0u128;
+        for (field_idx, operand) in operands.iter_enumerated() {
+            let field_layout = dest.layout.field(bx.cx(), field_idx.as_usize());
+            if field_layout.is_zst() {
+                continue;
+            }
+            let mir::Operand::Constant(constant) = operand else {
+                return false;
+            };
+            let Some(field_value) = self.eval_mir_constant(constant).try_to_bits(field_layout.size)
+            else {
+                return false;
+            };
+
+            let field_size = field_layout.size.bytes();
+            let field_offset = dest.layout.fields.offset(field_idx.as_usize()).bytes();
+            debug_assert!(field_offset + field_size <= size);
+            let shift = match bx.tcx().data_layout.endian {
+                abi::Endian::Little => field_offset * 8,
+                abi::Endian::Big => (size - field_offset - field_size) * 8,
+            };
+            value |= field_value << shift;
+        }
+
+        let value = bx.cx().const_uint_big(llty, value);
+        bx.store_to_place(value, dest.val);
+        true
+    }
+
     #[instrument(level = "trace", skip(self, bx))]
     pub(crate) fn codegen_rvalue(
         &mut self,
@@ -168,6 +227,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::Aggregate(ref kind, ref operands)
                 if !matches!(**kind, mir::AggregateKind::RawPtr(..)) =>
             {
+                if self.try_codegen_const_aggregate_as_immediate(bx, dest, kind, operands) {
+                    return;
+                }
+
                 let (variant_index, variant_dest, active_field_index) = match **kind {
                     mir::AggregateKind::Adt(_, variant_index, _, _, active_field_index) => {
                         let variant_dest = dest.project_downcast(bx, variant_index);
