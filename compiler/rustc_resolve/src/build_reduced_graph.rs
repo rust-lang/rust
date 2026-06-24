@@ -548,7 +548,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             root_id,
             vis,
             vis_span: item.vis.span,
-            on_unknown_attr: OnUnknownData::from_attrs(self.r.tcx, &item.attrs),
+            on_unknown_attr: OnUnknownData::from_attrs(self.r, &item.attrs),
         });
 
         self.r.indeterminate_imports.push(import);
@@ -863,7 +863,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                         || ast::attr::contains_name(&item.attrs, sym::no_implicit_prelude),
                 );
                 self.parent_scope.module = module.to_module();
-                if let Some(directive) = OnUnknownData::from_attrs(self.r.tcx, &item.attrs) {
+                if let Some(directive) = OnUnknownData::from_attrs(self.r, &item.attrs) {
                     self.r.on_unknown_data.insert(local_def_id, directive);
                 }
             }
@@ -1040,7 +1040,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             module_path: Vec::new(),
             vis,
             vis_span: item.vis.span,
-            on_unknown_attr: OnUnknownData::from_attrs(self.r.tcx, &item.attrs),
+            on_unknown_attr: OnUnknownData::from_attrs(self.r, &item.attrs),
         });
         if used {
             self.r.import_use_map.insert(import, Used::Other);
@@ -1172,7 +1172,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 module_path: Vec::new(),
                 vis: Visibility::Restricted(CRATE_DEF_ID),
                 vis_span: item.vis.span,
-                on_unknown_attr: OnUnknownData::from_attrs(this.r.tcx, &item.attrs),
+                on_unknown_attr: OnUnknownData::from_attrs(this.r, &item.attrs),
             })
         };
 
@@ -1353,7 +1353,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     module_path: Vec::new(),
                     vis,
                     vis_span: item.vis.span,
-                    on_unknown_attr: OnUnknownData::from_attrs(self.r.tcx, &item.attrs),
+                    on_unknown_attr: OnUnknownData::from_attrs(self.r, &item.attrs),
                 });
                 self.r.import_use_map.insert(import, Used::Other);
                 let import_decl = self.r.new_import_decl(decl, import);
