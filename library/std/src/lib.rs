@@ -386,6 +386,7 @@
 #![feature(ub_checks)]
 #![feature(uint_carryless_mul)]
 #![feature(used_with_arg)]
+#![feature(widening_mul)]
 // tidy-alphabetical-end
 //
 // Library features (alloc):

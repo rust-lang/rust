@@ -1,31 +1,19 @@
-use crate::sys::pal::abi::usercalls;
-use crate::time::Duration;
+use core::num::niche_types::Nanoseconds;
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub struct Instant(Duration);
+use crate::sys::pal::abi::usercalls;
+use crate::time::{Duration, Instant};
+
+pub fn now() -> Instant {
+    let time = usercalls::insecure_time();
+    let secs = (time / 1_000_000_000) as i64;
+    let nanos = Nanoseconds::new((time % 1_000_000_000) as u32).unwrap();
+    Instant { secs, nanos }
+}
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub struct SystemTime(Duration);
 
 pub const UNIX_EPOCH: SystemTime = SystemTime(Duration::from_secs(0));
-
-impl Instant {
-    pub fn now() -> Instant {
-        Instant(usercalls::insecure_time())
-    }
-
-    pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
-        self.0.checked_sub(other.0)
-    }
-
-    pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
-        Some(Instant(self.0.checked_add(*other)?))
-    }
-
-    pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
-        Some(Instant(self.0.checked_sub(*other)?))
-    }
-}
 
 impl SystemTime {
     pub const MAX: SystemTime = SystemTime(Duration::MAX);
@@ -33,7 +21,8 @@ impl SystemTime {
     pub const MIN: SystemTime = SystemTime(Duration::ZERO);
 
     pub fn now() -> SystemTime {
-        SystemTime(usercalls::insecure_time())
+        let t = usercalls::insecure_time();
+        SystemTime(Duration::new(t / 1_000_000_000, (t % 1_000_000_000) as _))
     }
 
     pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {

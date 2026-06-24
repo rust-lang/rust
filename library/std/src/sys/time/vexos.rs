@@ -1,23 +1,10 @@
-use crate::time::Duration;
+use core::num::niche_types::Nanoseconds;
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub struct Instant(Duration);
+use crate::time::Instant;
 
-impl Instant {
-    pub fn now() -> Instant {
-        let micros = unsafe { vex_sdk::vexSystemHighResTimeGet() };
-        Self(Duration::from_micros(micros))
-    }
-
-    pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
-        self.0.checked_sub(other.0)
-    }
-
-    pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
-        Some(Instant(self.0.checked_add(*other)?))
-    }
-
-    pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
-        Some(Instant(self.0.checked_sub(*other)?))
-    }
+pub fn now() -> Instant {
+    let micros = unsafe { vex_sdk::vexSystemHighResTimeGet() };
+    let secs = (micros / 1_000_000) as i64;
+    let nanos = Nanoseconds::new(1000 * (micros % 1_000_000) as u32).unwrap();
+    Instant { secs, nanos }
 }
