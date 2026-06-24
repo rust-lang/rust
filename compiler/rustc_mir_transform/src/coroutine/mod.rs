@@ -71,7 +71,7 @@ use rustc_index::{Idx, IndexVec, indexvec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{
-    self, CoroutineArgs, CoroutineArgsExt, GenericArgsRef, InstanceKind, Ty, TyCtxt,
+    self, CoroutineArgs, CoroutineArgsExt, GenericArgsRef, InstanceKind, ShimKind, Ty, TyCtxt,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::impls::always_storage_live_locals;
