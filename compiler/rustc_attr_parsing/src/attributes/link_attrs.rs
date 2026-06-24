@@ -14,11 +14,11 @@ use super::util::parse_single_integer;
 use crate::attributes::AttributeSafety;
 use crate::attributes::cfg::parse_cfg_entry;
 use crate::session_diagnostics::{
-    AsNeededCompatibility, BundleNeedsStatic, EmptyLinkName, ExportSymbolsNeedsStatic,
-    ImportNameTypeRaw, ImportNameTypeX86, IncompatibleWasmLink, InvalidLinkModifier,
-    InvalidMachoSection, InvalidMachoSectionReason, LinkFrameworkApple, LinkOrdinalOutOfRange,
-    LinkRequiresName, MultipleModifiers, NullOnLinkName, NullOnLinkSection, RawDylibOnlyWindows,
-    WholeArchiveNeedsStatic,
+    AsNeededCompatibility, BothFfiConstAndPure, BundleNeedsStatic, EmptyLinkName,
+    ExportSymbolsNeedsStatic, ImportNameTypeRaw, ImportNameTypeX86, IncompatibleWasmLink,
+    InvalidLinkModifier, InvalidMachoSection, InvalidMachoSectionReason, LinkFrameworkApple,
+    LinkOrdinalOutOfRange, LinkRequiresName, MultipleModifiers, NullOnLinkName, NullOnLinkSection,
+    RawDylibOnlyWindows, UnusedMultiple, WholeArchiveNeedsStatic,
 };
 
 pub(crate) struct LinkNameParser;
@@ -563,16 +563,37 @@ impl NoArgsAttributeParser for FfiConstParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::FfiConst;
 }
 
-pub(crate) struct FfiPureParser;
-impl NoArgsAttributeParser for FfiPureParser {
-    const PATH: &[Symbol] = &[sym::ffi_pure];
+#[derive(Default)]
+pub(crate) struct FfiPureParser {
+    first_span: Option<Span>,
+}
+
+impl AttributeParser for FfiPureParser {
+    const ATTRIBUTES: AcceptMapping<Self> =
+        &[(&[sym::ffi_pure], template!(Word), unstable!(ffi_pure), |this, cx, args| {
+            let _ = cx.expect_no_args(args);
+            let span = cx.attr_span;
+            // `#[ffi_pure]` may only appear once; mirror the previous `OnDuplicate::Error`.
+            if let Some(first) = this.first_span {
+                cx.emit_err(UnusedMultiple { this: span, other: first, name: sym::ffi_pure });
+            } else {
+                this.first_span = Some(span);
+            }
+        })];
     const SAFETY: AttributeSafety = AttributeSafety::Unsafe {
         note: "`#[ffi_pure]` functions shall have no effects except for its return value, which shall not change across two consecutive function calls with the same parameters.",
         unsafe_since: None,
     };
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::ForeignFn)]);
-    const STABILITY: AttributeStability = unstable!(ffi_pure);
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::FfiPure;
+
+    fn finalize(self, cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
+        let span = self.first_span?;
+        // `#[ffi_const]` functions cannot be `#[ffi_pure]`.
+        if cx.all_attrs.iter().any(|a| a.word_is(sym::ffi_const)) {
+            cx.emit_err(BothFfiConstAndPure { attr_span: span });
+        }
+        Some(AttributeKind::FfiPure(span))
+    }
 }
 
 pub(crate) struct RustcStdInternalSymbolParser;
