@@ -6,7 +6,7 @@ pub(crate) struct RustcAllocatorParser;
 
 impl NoArgsAttributeParser for RustcAllocatorParser {
     const PATH: &[Symbol] = &[sym::rustc_allocator];
-    const ALLOWED_TARGETS: AllowedTargets =
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowList(&[Allow(Target::Fn), Allow(Target::ForeignFn)]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcAllocator;
@@ -16,7 +16,7 @@ pub(crate) struct RustcAllocatorZeroedParser;
 
 impl NoArgsAttributeParser for RustcAllocatorZeroedParser {
     const PATH: &[Symbol] = &[sym::rustc_allocator_zeroed];
-    const ALLOWED_TARGETS: AllowedTargets =
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowList(&[Allow(Target::Fn), Allow(Target::ForeignFn)]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcAllocatorZeroed;
@@ -26,7 +26,7 @@ pub(crate) struct RustcAllocatorZeroedVariantParser;
 
 impl SingleAttributeParser for RustcAllocatorZeroedVariantParser {
     const PATH: &[Symbol] = &[sym::rustc_allocator_zeroed_variant];
-    const ALLOWED_TARGETS: AllowedTargets =
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowList(&[Allow(Target::Fn), Allow(Target::ForeignFn)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "function");
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
@@ -42,7 +42,7 @@ pub(crate) struct RustcDeallocatorParser;
 
 impl NoArgsAttributeParser for RustcDeallocatorParser {
     const PATH: &[Symbol] = &[sym::rustc_deallocator];
-    const ALLOWED_TARGETS: AllowedTargets =
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowList(&[Allow(Target::Fn), Allow(Target::ForeignFn)]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDeallocator;
@@ -52,7 +52,7 @@ pub(crate) struct RustcReallocatorParser;
 
 impl NoArgsAttributeParser for RustcReallocatorParser {
     const PATH: &[Symbol] = &[sym::rustc_reallocator];
-    const ALLOWED_TARGETS: AllowedTargets =
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowList(&[Allow(Target::Fn), Allow(Target::ForeignFn)]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcReallocator;
