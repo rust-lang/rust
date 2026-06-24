@@ -28,11 +28,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
 
         let infcx = self.infcx;
-        let mut guar = None;
         let mut last_unexpected_hidden_region: Option<(Span, Ty<'_>, ty::OpaqueTypeKey<'tcx>)> =
             None;
         for error in errors {
-            guar = Some(match error {
+            match error {
                 DeferredOpaqueTypeError::InvalidOpaqueTypeArgs(err) => err.report(infcx),
                 DeferredOpaqueTypeError::LifetimeMismatchOpaqueParam(err) => {
                     infcx.dcx().emit_err(err)
@@ -81,11 +80,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         )
                     ),
                 ),
-            });
+            };
         }
-        let guar = guar.unwrap();
-        self.root_cx.set_tainted_by_errors(guar);
-        self.infcx.set_tainted_by_errors(guar);
     }
 
     /// Try to note when an opaque is involved in a borrowck error and that

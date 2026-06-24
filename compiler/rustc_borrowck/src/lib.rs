@@ -323,7 +323,6 @@ fn borrowck_collect_region_constraints<'tcx>(
     let input_promoted: &IndexSlice<_, _> = &promoted.borrow();
     if let Some(e) = input_body.tainted_by_errors {
         infcx.set_tainted_by_errors(e);
-        root_cx.set_tainted_by_errors(e);
     }
 
     // Replace all regions with fresh inference variables. This
@@ -571,14 +570,15 @@ fn borrowck_check_region_constraints<'tcx>(
 
     debug!("mbcx.used_mut: {:?}", mbcx.used_mut);
     mbcx.lint_unused_mut();
-    if let Some(guar) = mbcx.emit_errors() {
-        mbcx.root_cx.set_tainted_by_errors(guar);
-    }
 
     let result = PropagatedBorrowCheckResults {
         closure_requirements: opt_closure_req,
         used_mut_upvars: mbcx.used_mut_upvars,
     };
+
+    if let Some(guar) = mbcx.diags_buffer.emit_errors().or(infcx.tainted_by_errors()) {
+        root_cx.set_tainted_by_errors(guar);
+    }
 
     if let Some(consumer) = &mut root_cx.consumer {
         consumer.insert_body(

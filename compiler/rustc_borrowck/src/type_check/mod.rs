@@ -198,7 +198,6 @@ pub(crate) fn type_check<'tcx>(
         debug!("encountered an error region; removing constraints!");
         constraints.outlives_constraints = Default::default();
         constraints.type_tests = Default::default();
-        root_cx.set_tainted_by_errors(guar);
         infcx.set_tainted_by_errors(guar);
     }
 
