@@ -560,3 +560,12 @@ pub(crate) struct DelegationAttemptedBlockWithDefsDeletion {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("wrong infer used: expected {$expected}, found: {$actual}")]
+pub(crate) struct DelegationInfersMismatch {
+    #[primary_span]
+    pub span: Span,
+    pub expected: Symbol,
+    pub actual: Symbol,
+}
