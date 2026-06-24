@@ -170,9 +170,10 @@ def test_cargo_miri_test():
         "test.empty.ref",
         env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
     )
-    test("`cargo miri test` (proc-macro crate)",
-        cargo_miri("test") + ["-p", "proc_macro_crate"],
-        "test.proc-macro.stdout.ref", "test.proc-macro.stderr.ref",
+    test("`cargo miri test` (entire workspace, no isolation)",
+        cargo_miri("test") + ["--workspace"],
+        "test.workspace.stdout.ref", "test.workspace.stderr.ref",
+        env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
     )
     test("`cargo miri test` (custom target dir)",
         cargo_miri("test") + ["--target-dir=custom-test"],
