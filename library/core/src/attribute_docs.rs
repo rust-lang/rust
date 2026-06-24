@@ -405,3 +405,43 @@ mod warn_attribute {}
 /// [`Result`]: result::Result
 /// [the `no_std` attribute]: ../reference/names/preludes.html#the-no_std-attribute
 mod no_std_attribute {}
+
+#[doc(attribute = "inline")]
+//
+/// Suggest that the compiler inline a function at its call sites.
+///
+/// Inlining replaces a call with a copy of the called function's body, which can remove the
+/// overhead of the call. The `inline` attribute is only a hint: the compiler may ignore it, and
+/// it already inlines functions on its own when that looks worthwhile. Poor choices about what to
+/// inline can make a program larger or slower.
+///
+/// Where it does matter is inlining across crate boundaries. A non-generic function is not
+/// normally inlined into another crate, since the calling crate compiles against only its
+/// signature. Marking it `#[inline]` makes the body available to other crates so they can inline
+/// it too:
+///
+/// ```rust
+/// # #![allow(dead_code)]
+/// #[inline]
+/// pub fn square(x: i32) -> i32 {
+///     x * x
+/// }
+/// ```
+///
+/// Generic functions do not need this. They are instantiated in each crate that uses them, so
+/// their bodies are already available to inline.
+///
+/// The attribute applies to functions and has three forms:
+///
+/// - `#[inline]` suggests inlining the function.
+/// - `#[inline(always)]` suggests inlining it at every call site.
+/// - `#[inline(never)]` suggests never inlining it.
+///
+/// You should almost never need `#[inline(always)]`: prefer to let the compiler decide unless
+/// profiling shows a small, hot function that benefits from it. `#[inline(never)]` is useful to
+/// keep a rarely used path, such as a function that only reports an error, out of its caller.
+///
+/// For more information, see the Reference on [the `inline` attribute].
+///
+/// [the `inline` attribute]: ../reference/attributes/codegen.html#the-inline-attribute
+mod inline_attribute {}
