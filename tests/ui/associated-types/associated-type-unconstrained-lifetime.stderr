@@ -1,5 +1,5 @@
 error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/issue-22886.rs:13:6
+  --> $DIR/associated-type-unconstrained-lifetime.rs:24:6
    |
 LL | impl<'a> Iterator for Newtype {
    |      ^^ unconstrained lifetime parameter
