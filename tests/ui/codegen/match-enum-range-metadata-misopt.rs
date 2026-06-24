@@ -1,4 +1,7 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/26468>.
+//! Range bug in LLVM misoptimized second `if let` inside `for _ in 0..1` away.
 //@ run-pass
+
 #![allow(dead_code)]
 
 enum FooMode {
