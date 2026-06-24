@@ -658,6 +658,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             | ty::InstanceKind::Shim(ty::ShimKind::ConstructCoroutineInClosure { .. })
             | ty::InstanceKind::Shim(ty::ShimKind::FnPtr(..))
             | ty::InstanceKind::Shim(ty::ShimKind::DropGlue(..))
+            | ty::InstanceKind::Shim(ty::ShimKind::DropGlueNoop(..))
             | ty::InstanceKind::Shim(ty::ShimKind::Clone(..))
             | ty::InstanceKind::Shim(ty::ShimKind::FnPtrAddr(..))
             | ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(..))

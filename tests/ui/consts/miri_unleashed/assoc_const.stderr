@@ -4,9 +4,9 @@ error[E0080]: calling non-const function `<NotConstDestruct as Drop>::drop`
 LL |     const F: u32 = (U::X, 42).1;
    |                               ^ evaluation of `<NotConstDestruct as Bar<NotConstDestruct, NotConstDestruct>>::F` failed inside this call
    |
-note: inside `std::ptr::drop_glue::<(NotConstDestruct, u32)> - shim(Some((NotConstDestruct, u32)))`
+note: inside `std::ptr::drop_glue::<(NotConstDestruct, u32)> - shim((NotConstDestruct, u32))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-note: inside `std::ptr::drop_glue::<NotConstDestruct> - shim(Some(NotConstDestruct))`
+note: inside `std::ptr::drop_glue::<NotConstDestruct> - shim(NotConstDestruct)`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 
 note: erroneous constant encountered

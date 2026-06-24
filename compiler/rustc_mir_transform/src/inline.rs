@@ -739,7 +739,7 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
         // the correct param-env for types being dropped. Stall resolving
         // the MIR for this instance until all of its const params are
         // substituted.
-        InstanceKind::Shim(ShimKind::DropGlue(_, Some(ty)))
+        InstanceKind::Shim(ShimKind::DropGlue(_, ty))
             if ty.has_type_flags(TypeFlags::HAS_CT_PARAM) =>
         {
             debug!("still needs substitution");
@@ -771,6 +771,7 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
         | InstanceKind::Shim(ShimKind::ClosureOnce { .. })
         | InstanceKind::Shim(ShimKind::ConstructCoroutineInClosure { .. })
         | InstanceKind::Shim(ShimKind::DropGlue(..))
+        | InstanceKind::Shim(ShimKind::DropGlueNoop(..))
         | InstanceKind::Shim(ShimKind::Clone(..))
         | InstanceKind::Shim(ShimKind::ThreadLocal(..))
         | InstanceKind::Shim(ShimKind::FnPtrAddr(..)) => return Ok(()),
@@ -1373,7 +1374,7 @@ fn try_instance_mir<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: InstanceKind<'tcx>,
 ) -> Result<&'tcx Body<'tcx>, &'static str> {
-    if let ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, Some(ty)))
+    if let ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, ty))
     | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtor(_, ty)) = instance
         && let ty::Adt(def, args) = ty.kind()
     {

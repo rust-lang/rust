@@ -41,6 +41,7 @@ fn should_recurse<'tcx>(tcx: TyCtxt<'tcx>, callee: ty::Instance<'tcx>) -> bool {
         // have its MIR built. Likely oli-obk just screwed up the `ParamEnv`s, so this
         // needs some more analysis.
         InstanceKind::Shim(ShimKind::DropGlue(..))
+        | InstanceKind::Shim(ShimKind::DropGlueNoop(..))
         | InstanceKind::Shim(ShimKind::FutureDropPoll(..))
         | InstanceKind::Shim(ShimKind::AsyncDropGlue(..))
         | InstanceKind::Shim(ShimKind::AsyncDropGlueCtor(..)) => {

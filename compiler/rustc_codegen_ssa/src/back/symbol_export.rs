@@ -335,7 +335,7 @@ fn exported_generic_symbols_provider_local<'tcx>(
                     }
                 }
                 MonoItem::Fn(Instance {
-                    def: InstanceKind::Shim(ShimKind::DropGlue(_, Some(ty))),
+                    def: InstanceKind::Shim(ShimKind::DropGlue(_, ty)),
                     args,
                 }) => {
                     // A little sanity-check

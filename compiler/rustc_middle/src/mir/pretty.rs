@@ -218,7 +218,7 @@ impl<'a, 'tcx> MirDumper<'a, 'tcx> {
         // All drop shims have the same DefId, so we have to add the type
         // to get unique file names.
         let shim_disambiguator = match source.instance {
-            ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, Some(ty))) => {
+            ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, ty)) => {
                 // Unfortunately, pretty-printed types are not very filename-friendly.
                 // We do some filtering.
                 let mut s = ".".to_owned();

@@ -173,7 +173,7 @@ impl<'tcx> MonoItem<'tcx> {
         // incrementality (which wants small CGUs with as many things GloballyShared as possible).
         // The heuristics implemented here do better than a completely naive approach in the
         // compiler benchmark suite, but there is no reason to believe they are optimal.
-        if let InstanceKind::Shim(ShimKind::DropGlue(_, Some(ty))) = instance.def {
+        if let InstanceKind::Shim(ShimKind::DropGlue(_, ty)) = instance.def {
             if tcx.sess.opts.optimize == OptLevel::No {
                 return InstantiationMode::GloballyShared { may_conflict: false };
             }
@@ -531,6 +531,7 @@ impl<'tcx> CodegenUnit<'tcx> {
                     | InstanceKind::Shim(ShimKind::ClosureOnce { .. })
                     | InstanceKind::Shim(ShimKind::ConstructCoroutineInClosure { .. })
                     | InstanceKind::Shim(ShimKind::DropGlue(..))
+                    | InstanceKind::Shim(ShimKind::DropGlueNoop(..))
                     | InstanceKind::Shim(ShimKind::Clone(..))
                     | InstanceKind::Shim(ShimKind::ThreadLocal(..))
                     | InstanceKind::Shim(ShimKind::FnPtrAddr(..))

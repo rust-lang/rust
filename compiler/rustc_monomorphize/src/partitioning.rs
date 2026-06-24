@@ -638,6 +638,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
                 | ty::InstanceKind::Shim(ty::ShimKind::ClosureOnce { .. })
                 | ty::InstanceKind::Shim(ty::ShimKind::ConstructCoroutineInClosure { .. })
                 | ty::InstanceKind::Shim(ty::ShimKind::DropGlue(..))
+                | ty::InstanceKind::Shim(ty::ShimKind::DropGlueNoop(..))
                 | ty::InstanceKind::Shim(ty::ShimKind::Clone(..))
                 | ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(..))
                 | ty::InstanceKind::Shim(ty::ShimKind::FnPtrAddr(..))
@@ -794,7 +795,7 @@ fn mono_item_visibility<'tcx>(
 
     let def_id = match instance.def {
         InstanceKind::Item(def_id)
-        | InstanceKind::Shim(ShimKind::DropGlue(def_id, Some(_)))
+        | InstanceKind::Shim(ShimKind::DropGlue(def_id, _))
         | InstanceKind::Shim(ShimKind::FutureDropPoll(def_id, _, _))
         | InstanceKind::Shim(ShimKind::AsyncDropGlue(def_id, _))
         | InstanceKind::Shim(ShimKind::AsyncDropGlueCtor(def_id, _)) => def_id,
@@ -812,7 +813,7 @@ fn mono_item_visibility<'tcx>(
         | InstanceKind::Intrinsic(..)
         | InstanceKind::Shim(ShimKind::ClosureOnce { .. })
         | InstanceKind::Shim(ShimKind::ConstructCoroutineInClosure { .. })
-        | InstanceKind::Shim(ShimKind::DropGlue(..))
+        | InstanceKind::Shim(ShimKind::DropGlueNoop(..))
         | InstanceKind::Shim(ShimKind::Clone(..))
         | InstanceKind::Shim(ShimKind::FnPtrAddr(..)) => return Visibility::Hidden,
     };
@@ -1332,6 +1333,7 @@ pub(crate) fn provide(providers: &mut Providers) {
             // statements, plus one for the terminator.
             InstanceKind::Item(..)
             | InstanceKind::Shim(ShimKind::DropGlue(..))
+            | InstanceKind::Shim(ShimKind::DropGlueNoop(..))
             | InstanceKind::Shim(ShimKind::AsyncDropGlueCtor(..)) => {
                 let mir = tcx.instance_mir(instance.def);
                 mir.basic_blocks

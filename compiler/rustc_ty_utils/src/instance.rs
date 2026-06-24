@@ -45,9 +45,9 @@ fn resolve_instance_raw<'tcx>(
                         // FIXME: sync drop of coroutine with async drop (generate both versions?)
                         // Currently just ignored
                         if tcx.optimized_mir(coroutine_def_id).coroutine_drop_async().is_some() {
-                            ty::ShimKind::DropGlue(def_id, None)
+                            ty::ShimKind::DropGlueNoop(def_id)
                         } else {
-                            ty::ShimKind::DropGlue(def_id, Some(ty))
+                            ty::ShimKind::DropGlue(def_id, ty)
                         }
                     }
                     ty::Closure(..)
@@ -57,13 +57,13 @@ fn resolve_instance_raw<'tcx>(
                     | ty::Dynamic(..)
                     | ty::Array(..)
                     | ty::Slice(..)
-                    | ty::UnsafeBinder(..) => ty::ShimKind::DropGlue(def_id, Some(ty)),
+                    | ty::UnsafeBinder(..) => ty::ShimKind::DropGlue(def_id, ty),
                     // Drop shims can only be built from ADTs.
                     _ => return Ok(None),
                 }
             } else {
                 debug!(" => trivial drop glue");
-                ty::ShimKind::DropGlue(def_id, None)
+                ty::ShimKind::DropGlueNoop(def_id)
             };
             ty::InstanceKind::Shim(shim)
         } else if tcx.is_lang_item(def_id, LangItem::AsyncDropInPlace) {

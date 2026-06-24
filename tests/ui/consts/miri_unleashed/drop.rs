@@ -22,6 +22,6 @@ static TEST_BAD: () = {
     let _v: NotConstDestruct = NotConstDestruct;
 }; //~ NOTE failed inside this call
    //~| ERROR calling non-const function `<NotConstDestruct as Drop>::drop`
-   //~| NOTE inside `std::ptr::drop_glue::<NotConstDestruct> - shim(Some(NotConstDestruct))`
+   //~| NOTE inside `std::ptr::drop_glue::<NotConstDestruct> - shim(NotConstDestruct)`
 
 //~? WARN skipping const checks

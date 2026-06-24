@@ -62,7 +62,9 @@ pub(super) fn mangle<'tcx>(
     let mut p = LegacySymbolMangler { tcx, path: SymbolPath::new(), keep_within_component: false };
     p.print_def_path(
         def_id,
-        if let ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, _))
+        if let ty::InstanceKind::Shim(
+            ty::ShimKind::DropGlue(_, _) | ty::ShimKind::DropGlueNoop(_),
+        )
         | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtor(_, _))
         | ty::InstanceKind::Shim(ty::ShimKind::FutureDropPoll(_, _, _)) = instance.def
         {

@@ -156,11 +156,17 @@ pub enum ShimKind<'tcx> {
     /// `core::ptr::drop_glue::<T>`.
     ///
     /// The `DefId` is for `core::ptr::drop_glue`.
-    /// The `Option<Ty<'tcx>>` is either `Some(T)`, or `None` for empty drop glue.
+    /// The `Ty<'tcx>` is for `T`.
+    /// See [`ShimKind::DropGlueNoop`] for no-op drop glue.
     ///
     /// The type must be monomorphic; for polymorphic drop glue use
     /// `rustc_mir_transform::build_drop_shim`.
-    DropGlue(DefId, Option<Ty<'tcx>>),
+    DropGlue(DefId, Ty<'tcx>),
+
+    /// `core::ptr::drop_glue::<T>`.
+    ///
+    /// The `DefId` is for `core::ptr::drop_glue`.
+    DropGlueNoop(DefId),
 
     /// Compiler-generated `<T as Clone>::clone` implementation.
     ///
@@ -234,9 +240,7 @@ impl<'tcx> Instance<'tcx> {
             InstanceKind::Item(def) => tcx
                 .upstream_monomorphizations_for(def)
                 .and_then(|monos| monos.get(&self.args).cloned()),
-            InstanceKind::Shim(ShimKind::DropGlue(_, Some(_))) => {
-                tcx.upstream_drop_glue_for(self.args)
-            }
+            InstanceKind::Shim(ShimKind::DropGlue(_, _)) => tcx.upstream_drop_glue_for(self.args),
             InstanceKind::Shim(ShimKind::AsyncDropGlue(_, _)) => None,
             InstanceKind::Shim(ShimKind::FutureDropPoll(_, _, _)) => None,
             InstanceKind::Shim(ShimKind::AsyncDropGlueCtor(_, _)) => {
@@ -328,6 +332,7 @@ impl<'tcx> ShimKind<'tcx> {
                 receiver_by_ref: _,
             }
             | ShimKind::DropGlue(def_id, _)
+            | ShimKind::DropGlueNoop(def_id)
             | ShimKind::Clone(def_id, _)
             | ShimKind::FnPtrAddr(def_id, _)
             | ShimKind::FutureDropPoll(def_id, _, _)
@@ -339,7 +344,7 @@ impl<'tcx> ShimKind<'tcx> {
     /// Returns the `DefId` of instances which might not require codegen locally.
     pub fn def_id_if_not_guaranteed_local_codegen(self) -> Option<DefId> {
         match self {
-            ShimKind::DropGlue(def_id, Some(_))
+            ShimKind::DropGlue(def_id, _)
             | ShimKind::AsyncDropGlueCtor(def_id, _)
             | ShimKind::AsyncDropGlue(def_id, _)
             | ShimKind::FutureDropPoll(def_id, ..)
@@ -349,7 +354,7 @@ impl<'tcx> ShimKind<'tcx> {
             | ShimKind::FnPtr(..)
             | ShimKind::ClosureOnce { .. }
             | ShimKind::ConstructCoroutineInClosure { .. }
-            | ShimKind::DropGlue(..)
+            | ShimKind::DropGlueNoop(..)
             | ShimKind::Clone(..)
             | ShimKind::FnPtrAddr(..) => None,
         }
@@ -357,7 +362,7 @@ impl<'tcx> ShimKind<'tcx> {
 
     pub fn requires_inline(&self) -> bool {
         match self {
-            ShimKind::DropGlue(_, Some(ty)) => ty.is_array(),
+            ShimKind::DropGlue(_, ty) => ty.is_array(),
             ShimKind::AsyncDropGlueCtor(_, ty) => ty.is_coroutine(),
             ShimKind::FutureDropPoll(_, _, _) => false,
             ShimKind::AsyncDropGlue(_, _) => false,
@@ -372,13 +377,13 @@ impl<'tcx> ShimKind<'tcx> {
             | ShimKind::ThreadLocal(..)
             | ShimKind::FnPtrAddr(..)
             | ShimKind::FnPtr(..)
-            | ShimKind::DropGlue(_, Some(_))
+            | ShimKind::DropGlue(..)
             | ShimKind::FutureDropPoll(..)
             | ShimKind::AsyncDropGlue(_, _) => false,
             ShimKind::AsyncDropGlueCtor(_, _) => false,
             ShimKind::ClosureOnce { .. }
             | ShimKind::ConstructCoroutineInClosure { .. }
-            | ShimKind::DropGlue(..)
+            | ShimKind::DropGlueNoop(..)
             | ShimKind::Reify(..)
             | ShimKind::VTable(..) => true,
         }

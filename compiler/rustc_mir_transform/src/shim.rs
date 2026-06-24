@@ -81,7 +81,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
         ty::ShimKind::DropGlue(def_id, ty) => {
             // FIXME(#91576): Drop shims for coroutines aren't subject to the MIR passes at the end
             // of this function. Is this intentional?
-            if let Some(&ty::Coroutine(coroutine_def_id, args)) = ty.map(Ty::kind) {
+            if let &ty::Coroutine(coroutine_def_id, args) = ty.kind() {
                 let coroutine_body = tcx.optimized_mir(coroutine_def_id);
 
                 let ty::Coroutine(_, id_args) = *tcx.type_of(coroutine_def_id).skip_binder().kind()
@@ -125,7 +125,10 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
                 return body;
             }
 
-            build_drop_shim(tcx, def_id, ty, ty::TypingEnv::post_analysis(tcx, def_id))
+            build_drop_shim(tcx, def_id, Some(ty), ty::TypingEnv::post_analysis(tcx, def_id))
+        }
+        ty::ShimKind::DropGlueNoop(def_id) => {
+            build_drop_shim(tcx, def_id, None, ty::TypingEnv::post_analysis(tcx, def_id))
         }
         ty::ShimKind::ThreadLocal(..) => build_thread_local_shim(tcx, shim),
         ty::ShimKind::Clone(def_id, ty) => build_clone_shim(tcx, def_id, ty),
@@ -292,7 +295,9 @@ pub fn build_drop_shim<'tcx>(
     }
     block(&mut blocks, TerminatorKind::Return);
 
-    let source = MirSource::from_shim(ty::ShimKind::DropGlue(def_id, ty));
+    let source = MirSource::from_shim(
+        ty.map_or(ty::ShimKind::DropGlueNoop(def_id), |t| ty::ShimKind::DropGlue(def_id, t)),
+    );
     let mut body =
         new_body(source, blocks, local_decls_for_sig(&sig, span), sig.inputs().len(), span);
 

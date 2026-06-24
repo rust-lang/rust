@@ -1016,7 +1016,7 @@ fn visit_instance_use<'tcx>(
         ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(..)) => {
             bug!("{:?} being reified", instance);
         }
-        ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, None)) => {
+        ty::InstanceKind::Shim(ty::ShimKind::DropGlueNoop(_)) => {
             // Don't need to emit noop drop glue if we are calling directly.
             //
             // Note that we also optimize away the call to visit_instance_use in vtable construction
@@ -1026,7 +1026,7 @@ fn visit_instance_use<'tcx>(
             }
         }
         ty::InstanceKind::Item(..)
-        | ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, Some(_)))
+        | ty::InstanceKind::Shim(ty::ShimKind::DropGlue(..))
         | ty::InstanceKind::Shim(ty::ShimKind::FutureDropPoll(..))
         | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(_, _))
         | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtor(_, _))
