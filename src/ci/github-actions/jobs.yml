@@ -720,7 +720,7 @@ auto:
         --target=i686-pc-windows-msvc
         --enable-full-tools
         --enable-profiler
-      SCRIPT: python x.py dist bootstrap --include-default-paths
+      SCRIPT: make ci-test
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-windows

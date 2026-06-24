@@ -128,4 +128,8 @@ ci-mingw-bootstrap:
 	$(Q)$(BOOTSTRAP) test --stage 2 $(TEST_SET2)
 ci-mingw: ci-mingw-x ci-mingw-bootstrap
 
+ci-test:
+    $(Q)$(BOOTSTRAP) build --stage 1 --target i686-pc-windows-msvc
+    $(Q)$(CFG_SRC_DIR)/build/host/stage1/bin/rustc --edition=2024 --target i686-pc-windows-msvc test.rs
+
 .PHONY: dist
