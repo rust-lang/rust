@@ -161,6 +161,12 @@ function createCommands(): Record<string, CommandFactory> {
         memoryUsage: { enabled: commands.memoryUsage },
         reloadWorkspace: { enabled: commands.reloadWorkspace },
         rebuildProcMacros: { enabled: commands.rebuildProcMacros },
+        newProject: {
+            // Project creation is a pure VS Code-side workflow and should stay available even in
+            // empty windows before rust-analyzer has started or a Rust workspace exists.
+            enabled: commands.newProject,
+            disabled: commands.newProject,
+        },
         matchingBrace: { enabled: commands.matchingBrace },
         joinLines: { enabled: commands.joinLines },
         parentModule: { enabled: commands.parentModule },

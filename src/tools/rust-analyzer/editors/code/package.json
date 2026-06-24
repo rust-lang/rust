@@ -215,6 +215,11 @@
                 "category": "rust-analyzer"
             },
             {
+                "command": "rust-analyzer.newProject",
+                "title": "Create New Project...",
+                "category": "rust-analyzer"
+            },
+            {
                 "command": "rust-analyzer.rebuildProcMacros",
                 "title": "Rebuild proc macros and build scripts",
                 "category": "rust-analyzer"
@@ -491,6 +496,23 @@
                         "markdownDescription": "Do not start rust-analyzer server when the extension is activated.",
                         "default": false,
                         "type": "boolean"
+                    },
+                    "rust-analyzer.projectCreation.openAfterCreate": {
+                        "markdownDescription": "Control what happens after `rust-analyzer: Create New Project...` finishes creating a Cargo project.",
+                        "default": "ask",
+                        "enum": [
+                            "ask",
+                            "open",
+                            "openNewWindow",
+                            "addToWorkspace"
+                        ],
+                        "enumDescriptions": [
+                            "Prompt for how to open the new project.",
+                            "Open the new project in the current window.",
+                            "Open the new project in a new window.",
+                            "Add the new project to the current workspace, or open it if no workspace is open."
+                        ],
+                        "type": "string"
                     }
                 }
             },
@@ -1333,7 +1355,7 @@
                 "title": "Completion",
                 "properties": {
                     "rust-analyzer.completion.autoimport.exclude": {
-                        "markdownDescription": "A list of full paths to items to exclude from auto-importing completions.\n\nTraits in this list won't have their methods suggested in completions unless the trait\nis in scope.\n\nYou can either specify a string path which defaults to type \"always\" or use the more\nverbose form `{ \"path\": \"path::to::item\", type: \"always\" }`.\n\nFor traits the type \"methods\" can be used to only exclude the methods but not the trait\nitself.\n\nFor modules the type \"subItems\" can be used to only exclude the all items in it but not the module\nitself. This does not include items defined in nested modules.\n\nThis setting also inherits `#rust-analyzer.completion.excludeTraits#`.",
+                        "markdownDescription": "A list of full paths to items to exclude from auto-importing completions.\n\nTraits in this list won't have their methods suggested in completions unless the trait\nis in scope.\n\nYou can either specify a string path which defaults to type \"always\" or use the more\nverbose form `{ \"path\": \"path::to::item\", type: \"always\" }`.\n\nFor traits the type \"methods\" can be used to only exclude the methods but not the trait\nitself.\n\nFor modules the type \"sub_items\" can be used to only exclude the all items in it but not the module\nitself. This does not include items defined in nested modules.\n\nFor enums the type \"variants\" can be used to only exclude the all variants in it but not the enum\nitself.\n\nThis setting also inherits `#rust-analyzer.completion.excludeTraits#`.",
                         "default": [
                             {
                                 "path": "core::borrow::Borrow",
@@ -1361,7 +1383,8 @@
                                             "enum": [
                                                 "always",
                                                 "methods",
-                                                "subItems"
+                                                "sub_items",
+                                                "variants"
                                             ],
                                             "enumDescriptions": [
                                                 "Do not show this item or its methods (if it is a trait) in auto-import completions.",
@@ -3812,6 +3835,9 @@
                     "when": "inRustProject"
                 },
                 {
+                    "command": "rust-analyzer.newProject"
+                },
+                {
                     "command": "rust-analyzer.reloadWorkspace",
                     "when": "inRustProject"
                 },
@@ -3930,6 +3956,13 @@
                 }
             ]
         },
+        "viewsWelcome": [
+            {
+                "view": "explorer",
+                "contents": "Create a new Rust project.\n[Create Rust Project](command:rust-analyzer.newProject)",
+                "when": "workspaceFolderCount == 0"
+            }
+        ],
         "viewsContainers": {
             "activitybar": [
                 {
@@ -3955,6 +3988,14 @@
                 "title": "Learn about rust-analyzer",
                 "description": "A brief introduction to get started with rust-analyzer. Learn about key features and resources to help you get the most out of the extension.",
                 "steps": [
+                    {
+                        "id": "create-project",
+                        "title": "Create a Rust project",
+                        "description": "Start a new Cargo binary or library project from VS Code.\n\n[Create a Rust Project](command:rust-analyzer.newProject)",
+                        "media": {
+                            "markdown": "./walkthrough-create-project.md"
+                        }
+                    },
                     {
                         "id": "setup",
                         "title": "Useful Setup Tips",

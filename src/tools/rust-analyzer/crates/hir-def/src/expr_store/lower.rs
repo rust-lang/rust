@@ -671,6 +671,7 @@ impl<'db> ExprCollector<'db> {
                     }
 
                     pl.params()
+                        .filter(|it| it.dotdotdot_token().is_none())
                         .map(|it| {
                             let type_ref = self.lower_type_ref_opt(it.ty(), impl_trait_lower_fn);
                             let name = match it.pat() {
@@ -2403,6 +2404,10 @@ impl<'db> ExprCollector<'db> {
         statements: &mut Vec<Statement>,
         mac: ast::MacroExpr,
     ) -> Option<ExprId> {
+        if !self.check_cfg(&ast::Expr::MacroExpr(mac.clone())) {
+            return None;
+        }
+
         let mac_call = mac.macro_call()?;
         let syntax_ptr = AstPtr::new(&ast::Expr::from(mac));
         let macro_ptr = AstPtr::new(&mac_call);
@@ -2446,10 +2451,6 @@ impl<'db> ExprCollector<'db> {
             }
             ast::Stmt::ExprStmt(stmt) => {
                 let expr = stmt.expr();
-                match &expr {
-                    Some(expr) if !self.check_cfg(expr) => return,
-                    _ => (),
-                }
                 let has_semi = stmt.semicolon_token().is_some();
                 // Note that macro could be expanded to multiple statements
                 if let Some(ast::Expr::MacroExpr(mac)) = expr {
