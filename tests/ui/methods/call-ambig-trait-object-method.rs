@@ -42,7 +42,7 @@ fn main() {
     assert_eq!(x.foo(), 0);
     assert_eq!(x.bar(), 0);
 
-    let x: &dyn T = x;
+    let x: &dyn T = &0i32;
     assert_eq!(x.foo(), 1);
     assert_eq!(x.bar(), ());
     assert_eq!(<dyn T>::foo(x), 1);
@@ -50,4 +50,7 @@ fn main() {
     assert_eq!(<dyn T>::bar(x), ());
     assert_eq!(<dyn T as T>::bar(x), 0);
     assert_eq!(<dyn T as OtherTrait>::foo(x), i32::MIN);
+
+    let x: &(dyn T + Send) = &0i32;
+    assert_eq!(x.foo(), 0);
 }
