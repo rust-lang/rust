@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/issue-26217.rs:4:5
+  --> $DIR/forall-implies-static.rs:6:5
    |
 LL | fn bar<'a>() {
    |        -- lifetime `'a` defined here
@@ -7,7 +7,7 @@ LL |     foo::<&'a i32>();
    |     ^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
    |
 note: due to a current limitation of the type system, this implies a `'static` lifetime
-  --> $DIR/issue-26217.rs:1:19
+  --> $DIR/forall-implies-static.rs:3:19
    |
 LL | fn foo<T>() where for<'a> T: 'a {}
    |                   ^^^^^^^^^^^^^

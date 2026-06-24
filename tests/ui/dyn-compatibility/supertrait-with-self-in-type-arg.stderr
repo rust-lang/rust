@@ -1,12 +1,12 @@
 error[E0038]: the trait `Map` is not dyn compatible
-  --> $DIR/issue-26056.rs:20:17
+  --> $DIR/supertrait-with-self-in-type-arg.rs:22:17
    |
 LL |         as &dyn Map<Key=u32,MapValue=u32>;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ `Map` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/issue-26056.rs:9:12
+  --> $DIR/supertrait-with-self-in-type-arg.rs:11:12
    |
 LL | trait Map: MapLookup<<Self as Map>::Key> {
    |       ---  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...because it uses `Self` as a type parameter
