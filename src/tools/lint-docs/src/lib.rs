@@ -158,8 +158,10 @@ impl Level {
 impl<'a> LintExtractor<'a> {
     /// Collects all lints, and writes the markdown documentation at the given directory.
     pub fn extract_lint_docs(&self) -> Result<(), Box<dyn Error>> {
+        println!("[lint-docs] Gathering lints");
         let mut lints = self.gather_lints()?;
         for lint in &mut lints {
+            println!("[lint-docs] Generating output for {}", lint.name);
             self.generate_output_example(lint).map_err(|e| {
                 format!(
                     "failed to test example in lint docs for `{}` in {}:{}: {}",
@@ -170,9 +172,13 @@ impl<'a> LintExtractor<'a> {
                 )
             })?;
         }
+        println!("[lint-docs] Add renamed lints");
         add_renamed_lints(&mut lints);
+        println!("[lint-docs] Save lints markdown");
         self.save_lints_markdown(&lints)?;
+        println!("[lint-docs] Generate group docs");
         self.generate_group_docs(&lints)?;
+        println!("[lint-docs] Done");
         Ok(())
     }
 
