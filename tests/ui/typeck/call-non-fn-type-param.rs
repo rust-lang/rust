@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/21701>.
+
 fn foo<U>(t: U) {
     let y = t();
 //~^ ERROR: expected function, found `U`
