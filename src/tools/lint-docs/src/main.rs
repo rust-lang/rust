@@ -22,6 +22,7 @@ and are only modifying the doc comments to avoid rebuilding the compiler.
 }
 
 fn doit() -> Result<(), Box<dyn Error>> {
+    println!("[lint-docs] Starting");
     let mut args = std::env::args().skip(1);
     let mut src_path = None;
     let mut out_path = None;
@@ -91,7 +92,7 @@ fn doit() -> Result<(), Box<dyn Error>> {
     if rustc_target.is_none() {
         return Err("--rustc-target must be specified to the rustc target".into());
     }
-    let le = lint_docs::LintExtractor {
+    let mut le = lint_docs::LintExtractor {
         src_path: &src_path.unwrap(),
         out_path: &out_path.unwrap(),
         rustc_path: &rustc_path.unwrap(),
@@ -101,5 +102,6 @@ fn doit() -> Result<(), Box<dyn Error>> {
         verbose,
         validate,
     };
+    le.verbose = true;
     le.extract_lint_docs()
 }
