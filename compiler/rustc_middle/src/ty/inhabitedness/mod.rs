@@ -213,6 +213,12 @@ impl<'tcx> Ty<'tcx> {
 
     /// Returns whether `self` is considered inhabited on the opsem level, i.e., its validity
     /// invariant might be satisfiable. `self` is expected to be monomorphic and normalized.
+    ///
+    /// Key constraints are:
+    /// - if a type's validity invariant is satisfiable, it must be opsem-inhabited.
+    /// - if a type's layout is marked uninhabited, it must be opsem-uninhabited.
+    ///
+    /// Beyond that, the value returned by this function is not a stable guarantee.
     pub fn is_opsem_inhabited(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
         // Handle simple cases directly, use the query with its cache for the rest.
         is_opsem_inhabited_recursor(self, tcx, &mut (), /* stop_at_ref */ false, &|ty, _, _| {
@@ -244,11 +250,7 @@ fn inhabited_predicate_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> InhabitedP
 }
 
 /// Recurse over a type to determine whether it is inhabited on the opsem level.
-/// Key constraints are:
-/// - if a type's validity invariant is satisfiable, it must be opsem-inhabited.
-/// - if a type's layout is marked uninhabited, it must be opsem-uninhabited.
-///
-/// Beyond that, the value returned by this function is not a stable guarantee.
+/// See `is_opsem_inhabited` above for the spec of what we compute.
 ///
 /// When we encounter an ADT, we call `adt_handler`, giving it as its last argument a closure that
 /// it can invoke to continue the recursion. This lets us share the logic for "simple" cases
@@ -376,8 +378,9 @@ fn is_opsem_inhabited_raw<'tcx>(
 
             let new_adt = seen.insert(adt_def.did());
             // If we have seen this ADT before, stop at the next reference to avoid infinite
-            // recursion. We can't stop here since we have to ensure that "layout inhabited"
-            // implies "opsem inhabited".
+            // recursion. We can't stop here since we have to ensure that "layout uninhabited"
+            // implies "opsem uninhabited". References are always layout-inhabited so the
+            // implication is vacuously true.
             let stop_at_ref = !new_adt;
 
             // We are inhabited if in some variant all fields are inhabited.
