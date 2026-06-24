@@ -64,9 +64,6 @@ const NANOS_PER_SEC: u32 = 1_000_000_000;
 /// allows measuring the duration between two instants (or comparing two
 /// instants).
 ///
-/// The size of an `Instant` struct may vary depending on the target operating
-/// system.
-///
 /// Example:
 ///
 /// ```no_run
@@ -84,27 +81,6 @@ const NANOS_PER_SEC: u32 = 1_000_000_000;
 /// ```
 ///
 /// [platform bugs]: Instant#monotonicity
-///
-/// # OS-specific behaviors
-///
-/// An `Instant` is a wrapper around system-specific types and it may behave
-/// differently depending on the underlying operating system. For example,
-/// the following snippet is fine on Linux but panics on macOS:
-///
-/// ```no_run
-/// use std::time::{Instant, Duration};
-///
-/// let now = Instant::now();
-/// let days_per_10_millennia = 365_2425;
-/// let solar_seconds_per_day = 60 * 60 * 24;
-/// let millennium_in_solar_seconds = 31_556_952_000;
-/// assert_eq!(millennium_in_solar_seconds, days_per_10_millennia * solar_seconds_per_day / 10);
-///
-/// let duration = Duration::new(millennium_in_solar_seconds, 0);
-/// println!("{:?}", now + duration);
-/// ```
-///
-/// For cross-platform code, you can comfortably use durations of up to around one hundred years.
 ///
 /// # Underlying System calls
 ///
@@ -129,8 +105,8 @@ const NANOS_PER_SEC: u32 = 1_000_000_000;
 ///
 /// **Disclaimer:** These system calls might change over time.
 ///
-/// > Note: mathematical operations like [`add`] may panic if the underlying
-/// > structure cannot represent the new point in time.
+/// > Note: mathematical operations like [`add`] may panic if the new point in
+/// > time cannot be represented.
 ///
 /// [`add`]: Instant::add
 ///
@@ -416,8 +392,7 @@ impl Instant {
     }
 
     /// Returns `Some(t)` where `t` is the time `self + duration` if `t` can be represented as
-    /// `Instant` (which means it's inside the bounds of the underlying data structure), `None`
-    /// otherwise.
+    /// `Instant`, `None` otherwise.
     #[stable(feature = "time_checked_add", since = "1.34.0")]
     pub fn checked_add(&self, duration: Duration) -> Option<Instant> {
         let secs = self.secs.checked_add_unsigned(duration.as_secs())?;
@@ -433,8 +408,7 @@ impl Instant {
     }
 
     /// Returns `Some(t)` where `t` is the time `self - duration` if `t` can be represented as
-    /// `Instant` (which means it's inside the bounds of the underlying data structure), `None`
-    /// otherwise.
+    /// `Instant`, `None` otherwise.
     #[stable(feature = "time_checked_add", since = "1.34.0")]
     pub fn checked_sub(&self, duration: Duration) -> Option<Instant> {
         let secs = self.secs.checked_sub_unsigned(duration.as_secs())?;
@@ -456,8 +430,8 @@ impl Add<Duration> for Instant {
 
     /// # Panics
     ///
-    /// This function may panic if the resulting point in time cannot be represented by the
-    /// underlying data structure. See [`Instant::checked_add`] for a version without panic.
+    /// This function may panic if the resulting point in time cannot be represented.
+    /// See [`Instant::checked_add`] for a version without panic.
     #[track_caller]
     fn add(self, other: Duration) -> Instant {
         self.checked_add(other).expect("overflow when adding duration to instant")
