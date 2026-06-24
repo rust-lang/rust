@@ -1,4 +1,5 @@
-// Regression test for #27042. Test that a loop's label is included in its span.
+//! Regression test for <https://github.com/rust-lang/rust/issues/27042>.
+//! Test that a loop's label is included in its span.
 
 fn main() {
     let _: i32 =
