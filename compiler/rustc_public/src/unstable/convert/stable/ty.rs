@@ -994,18 +994,7 @@ impl<'tcx> Stable<'tcx> for ty::Instance<'tcx> {
             ty::InstanceKind::Virtual(_def_id, idx) => {
                 crate::mir::mono::InstanceKind::Virtual { idx }
             }
-            ty::InstanceKind::VTableShim(..)
-            | ty::InstanceKind::ReifyShim(..)
-            | ty::InstanceKind::FnPtrAddrShim(..)
-            | ty::InstanceKind::ClosureOnceShim { .. }
-            | ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
-            | ty::InstanceKind::ThreadLocalShim(..)
-            | ty::InstanceKind::DropGlue(..)
-            | ty::InstanceKind::CloneShim(..)
-            | ty::InstanceKind::FnPtrShim(..)
-            | ty::InstanceKind::FutureDropPollShim(..)
-            | ty::InstanceKind::AsyncDropGlue(..)
-            | ty::InstanceKind::AsyncDropGlueCtorShim(..) => crate::mir::mono::InstanceKind::Shim,
+            ty::InstanceKind::Shim(..) => crate::mir::mono::InstanceKind::Shim,
         };
         crate::mir::mono::Instance { def, kind }
     }
