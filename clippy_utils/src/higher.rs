@@ -209,12 +209,25 @@ pub struct Range<'a> {
     pub end: Option<&'a Expr<'a>>,
     /// Whether the interval is open or closed.
     pub limits: ast::RangeLimits,
+    pub iterable: RangeIterability,
     pub span: Span,
+}
+
+/// Whether a range type is iterable (presuming that its element type implements the `Step` trait).
+///
+/// This is a component of [`Range`].
+#[derive(Debug, Copy, Clone)]
+pub enum RangeIterability {
+    /// Not iterable.
+    None,
+    /// Implements the [`Iterator`] trait (and [`IntoIterator`] by blanket impl).
+    Iterator,
+    /// Implements the [`IntoIterator`] trait, but not [`Iterator`].
+    IntoIterator,
 }
 
 impl<'a> Range<'a> {
     /// Higher a `hir` range to something similar to `ast::ExprKind::Range`.
-    #[expect(clippy::similar_names)]
     pub fn hir(cx: &LateContext<'_>, expr: &'a Expr<'_>) -> Option<Range<'a>> {
         let span = expr.range_span()?;
         match expr.kind {
@@ -226,6 +239,7 @@ impl<'a> Range<'a> {
                     start: Some(arg1),
                     end: Some(arg2),
                     limits: ast::RangeLimits::Closed,
+                    iterable: RangeIterability::Iterator,
                     span,
                 })
             },
@@ -234,58 +248,72 @@ impl<'a> Range<'a> {
                     start: None,
                     end: None,
                     limits: ast::RangeLimits::HalfOpen,
+                    iterable: RangeIterability::None,
                     span,
                 }),
-                (hir::LangItem::RangeFrom | hir::LangItem::RangeFromCopy, [field])
-                    if field.ident.name == sym::start =>
+                (hir::LangItem::RangeFrom, [start]) if start.ident.name == sym::start => Some(Range {
+                    start: Some(start.expr),
+                    end: None,
+                    limits: ast::RangeLimits::HalfOpen,
+                    iterable: RangeIterability::Iterator,
+                    span,
+                }),
+                (hir::LangItem::RangeFromCopy, [start]) if start.ident.name == sym::start => Some(Range {
+                    start: Some(start.expr),
+                    end: None,
+                    limits: ast::RangeLimits::HalfOpen,
+                    iterable: RangeIterability::IntoIterator,
+                    span,
+                }),
+                (hir::LangItem::Range, [start, end] | [end, start])
+                    if start.ident.name == sym::start && end.ident.name == sym::end =>
                 {
                     Some(Range {
-                        start: Some(field.expr),
-                        end: None,
+                        start: Some(start.expr),
+                        end: Some(end.expr),
                         limits: ast::RangeLimits::HalfOpen,
+                        iterable: RangeIterability::Iterator,
                         span,
                     })
                 },
-                (hir::LangItem::Range | hir::LangItem::RangeCopy, [field1, field2]) => {
-                    let (start, end) = match (field1.ident.name, field2.ident.name) {
-                        (sym::start, sym::end) => (field1.expr, field2.expr),
-                        (sym::end, sym::start) => (field2.expr, field1.expr),
-                        _ => return None,
-                    };
+                (hir::LangItem::RangeCopy, [start, end] | [end, start])
+                    if start.ident.name == sym::start && end.ident.name == sym::end =>
+                {
                     Some(Range {
-                        start: Some(start),
-                        end: Some(end),
+                        start: Some(start.expr),
+                        end: Some(end.expr),
                         limits: ast::RangeLimits::HalfOpen,
+                        iterable: RangeIterability::IntoIterator,
                         span,
                     })
                 },
-                (hir::LangItem::RangeInclusiveCopy, [field1, field2]) => {
-                    let (start, last) = match (field1.ident.name, field2.ident.name) {
-                        (sym::start, sym::last) => (field1.expr, field2.expr),
-                        (sym::last, sym::start) => (field2.expr, field1.expr),
-                        _ => return None,
-                    };
+                (hir::LangItem::RangeInclusiveCopy, [start, last] | [last, start])
+                    if start.ident.name == sym::start && last.ident.name == sym::last =>
+                {
                     Some(Range {
-                        start: Some(start),
-                        end: Some(last),
+                        start: Some(start.expr),
+                        end: Some(last.expr),
                         limits: ast::RangeLimits::Closed,
+                        iterable: RangeIterability::IntoIterator,
                         span,
                     })
                 },
-                (hir::LangItem::RangeToInclusive | hir::LangItem::RangeToInclusiveCopy, [field])
-                    if field.ident.name == sym::end =>
+                (hir::LangItem::RangeToInclusive | hir::LangItem::RangeToInclusiveCopy, [end])
+                    if end.ident.name == sym::end =>
                 {
                     Some(Range {
                         start: None,
-                        end: Some(field.expr),
+                        end: Some(end.expr),
                         limits: ast::RangeLimits::Closed,
+                        iterable: RangeIterability::None,
                         span,
                     })
                 },
-                (hir::LangItem::RangeTo, [field]) if field.ident.name == sym::end => Some(Range {
+                (hir::LangItem::RangeTo, [end]) if end.ident.name == sym::end => Some(Range {
                     start: None,
-                    end: Some(field.expr),
+                    end: Some(end.expr),
                     limits: ast::RangeLimits::HalfOpen,
+                    iterable: RangeIterability::None,
                     span,
                 }),
                 _ => None,

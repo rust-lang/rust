@@ -39,6 +39,7 @@ pub(super) fn check<'tcx>(
                 start: Some(start_expr),
                 end: None,
                 limits: ast::RangeLimits::HalfOpen,
+                iterable: _,
                 span: _,
             }) = higher::Range::hir(cx, index_expr)
             && let hir::ExprKind::Lit(start_lit) = &start_expr.kind

@@ -28,6 +28,7 @@ pub(super) fn check<'tcx>(
         start: Some(start),
         end: Some(end),
         limits,
+        iterable: _,
         span: _,
     }) = higher::Range::hir(cx, arg)
         // the var must be a single name

@@ -31,6 +31,7 @@ pub(super) fn check<'tcx>(
         start: Some(start),
         end: Some(end),
         limits: RangeLimits::HalfOpen,
+        iterable: _,
         span: _,
     }) = higher::Range::hir(cx, arg)
         && let ExprKind::Lit(Spanned {

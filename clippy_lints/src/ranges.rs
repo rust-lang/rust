@@ -524,6 +524,7 @@ fn check_range_switch<'tcx>(
         start,
         end: Some(end),
         limits,
+        iterable: _,
         span,
     } = *range
         && span.can_be_used_for_suggestions()
@@ -591,6 +592,7 @@ fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>, range: &hig
         start: Some(start),
         end: Some(end),
         limits,
+        iterable: _,
         span,
     } = *range
         && let ty = cx.typeck_results().expr_ty(start)

@@ -30,6 +30,7 @@ pub(super) fn check<'tcx>(
         start: Some(start),
         ref end,
         limits,
+        iterable: _,
         span,
     }) = higher::Range::hir(cx, arg)
         // the var must be a single name
