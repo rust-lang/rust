@@ -348,7 +348,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
     fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
         intravisit::walk_ty(self, hir_ty);
         // If there are type checking errors, Type privacy pass will stop,
-        // so we may not get the type from hid_id, see #104513
+        // so we may not get the type from hir_id, see #104513
         if let Some(ty) = self.fcx.node_ty_opt(hir_ty.hir_id) {
             let ty = self.resolve(ty, &hir_ty.span);
             self.write_ty_to_typeck_results(hir_ty.hir_id, ty);
