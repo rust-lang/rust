@@ -63,6 +63,12 @@ impl QueryKey for () {
     }
 }
 
+impl<'tcx> QueryKey for ty::ShimKind<'tcx> {
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        tcx.def_span(self.def_id())
+    }
+}
+
 impl<'tcx> QueryKey for ty::InstanceKind<'tcx> {
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         tcx.def_span(self.def_id())
