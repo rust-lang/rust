@@ -10,7 +10,7 @@ use rustc_span::Symbol;
 
 use crate::rmeta::encoder::EncodeContext;
 use crate::rmeta::encoder::public_api_hasher::{PublicApiHashState, PublicApiHasher};
-use crate::rmeta::remapped_def_id::RemappedRawDefId;
+use crate::rmeta::remapped_def_id::{RemappedRawDefId, RemappedWideRawDefId};
 use crate::rmeta::{LazyArray, LazyValue, LocalDefId, MetadataEncoder};
 
 pub(crate) trait ParameterizedOverTcx: 'static {
@@ -91,6 +91,7 @@ trivially_parameterized_over_tcx! {
     crate::rmeta::TraitImpls<RemappedRawDefId>,
     crate::rmeta::VariantData,
     crate::rmeta::remapped_def_id::RemappedRawDefId,
+    crate::rmeta::remapped_def_id::RemappedWideRawDefId,
     rustc_abi::ReprOptions,
     rustc_ast::DelimArgs,
     rustc_attr_ir::Attribute,
@@ -291,9 +292,9 @@ macro_rules! lazy_encode_from_unhashed {
     };
 }
 
-impl<'tcx, M: MetadataEncoder> EncodeFrom<'tcx, DefId, M> for RemappedRawDefId {
+impl<'tcx, M: MetadataEncoder> EncodeFrom<'tcx, DefId, M> for RemappedWideRawDefId {
     fn encode_from<'a>(encoder: &mut EncodeContext<'a, 'tcx, M>, value: DefId) -> Self {
-        RemappedRawDefId::create(value, &encoder.local_defs_remapping)
+        M::into_remapped_wide_raw_def_id(encoder.tcx(), &encoder.local_defs_remapping, value)
     }
 
     #[inline(always)]
@@ -304,7 +305,7 @@ impl<'tcx, M: MetadataEncoder> EncodeFrom<'tcx, DefId, M> for RemappedRawDefId {
         hasher: &mut PublicApiHasher,
     ) -> Self {
         hasher.digest(value, hcx);
-        RemappedRawDefId::create(value, &encoder.local_defs_remapping)
+        M::into_remapped_wide_raw_def_id(encoder.tcx(), &encoder.local_defs_remapping, value)
     }
 }
 

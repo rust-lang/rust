@@ -65,7 +65,7 @@ use crate::rmeta::encoder::public_api_hasher::{
     Hashed, PublicApiHashState, PublicApiHasher, RDRHashAll, RDRHashNone,
 };
 use crate::rmeta::parameterized::EncodeFrom;
-use crate::rmeta::remapped_def_id::RemappedRawDefId;
+use crate::rmeta::remapped_def_id::{RemappedRawDefId, RemappedWideRawDefId};
 use crate::rmeta::table::TableIdx;
 
 mod decoder;
@@ -604,19 +604,57 @@ pub(crate) mod remapped_def_id {
             RemappedRawDefId { krate: def_id.krate.as_u32(), index: def_id.index.as_u32() }
         }
 
-        /// This exists so that `provide_one!` is happy
-        pub(crate) fn decode(self, meta: (&CrateMetadata, TyCtxt<'_>)) -> DefId {
-            let krate = CrateNum::from_u32(self.krate);
-            let krate = meta.0.map_encoded_cnum_to_current(krate);
-            DefId { krate, index: DefIndex::from_u32(self.index) }
-        }
-
-        pub(crate) fn decompose(&self) -> (u32, u32) {
-            (self.krate, self.index)
-        }
-
         pub(crate) fn krate(&self) -> u32 {
             self.krate
+        }
+    }
+
+    /// stores either a `CrateNum`, `DefIndex` or a `CrateNum`, `Hash64` pair
+    pub(crate) struct RemappedWideRawDefId {
+        krate: u32,
+        index: u64,
+    }
+
+    impl RemappedWideRawDefId {
+        pub(crate) fn new_unchecked(krate: u32, index: u64) -> RemappedWideRawDefId {
+            RemappedWideRawDefId { krate, index }
+        }
+
+        pub(crate) fn indexed(
+            def_id: DefId,
+            remapping: &LocalDefsRemapping,
+        ) -> RemappedWideRawDefId {
+            let def_id = remapping.map_def_id(def_id);
+            RemappedWideRawDefId {
+                krate: def_id.krate.as_u32(),
+                index: def_id.index.as_u32().into(),
+            }
+        }
+
+        pub(crate) fn hashed(def_id: DefId, tcx: TyCtxt<'_>) -> RemappedWideRawDefId {
+            RemappedWideRawDefId {
+                krate: def_id.krate.as_u32(),
+                index: tcx.def_path_hash(def_id).local_hash().as_u64(),
+            }
+        }
+
+        /// This exists so that `provide_one!` is happy
+        pub(crate) fn decode(self, meta: (&CrateMetadata, TyCtxt<'_>)) -> DefId {
+            let (cdata, tcx) = meta;
+            let krate = CrateNum::from_u32(self.krate);
+            let krate = cdata.map_encoded_cnum_to_current(krate);
+
+            let index = if cdata.root.public_api_hash_opt_enabled {
+                let hash = Hash64::new(self.index);
+                cdata.hash_to_def_index(krate, hash, tcx)
+            } else {
+                DefIndex::from_u32(self.index.try_into().unwrap())
+            };
+            DefId { krate, index }
+        }
+
+        pub(crate) fn decompose(&self) -> (u32, u64) {
+            (self.krate, self.index)
         }
     }
 }
@@ -825,7 +863,7 @@ define_tables! {
     mir_coroutine_witnesses: Table<LazyValue<mir::CoroutineLayout<'static>>>,
     promoted_mir: Table<LazyValue<IndexVec<mir::Promoted, mir::Body<'static>>>>,
     thir_abstract_const: Table<LazyValue<ty::EarlyBinder<'static, ty::Const<'static>>>>,
-    impl_parent: Table<RemappedRawDefId>,
+    impl_parent: Table<RemappedWideRawDefId>,
     const_conditions: Table<LazyValue<ty::ConstConditions<'static>>>,
     // FIXME(eddyb) perhaps compute this on the fly if cheap enough?
     coerce_unsized_info: Table<LazyValue<ty::adjustment::CoerceUnsizedInfo>>,
@@ -834,10 +872,10 @@ define_tables! {
     rendered_precise_capturing_args: Table<LazyArray<PreciseCapturingArgKind<Symbol, Symbol>>>,
     fn_arg_idents: Table<LazyArray<Option<Ident>>>,
     coroutine_kind: Table<hir::CoroutineKind>,
-    coroutine_for_closure: Table<RemappedRawDefId>,
+    coroutine_for_closure: Table<RemappedWideRawDefId>,
     adt_destructor: Table<LazyValue<ty::Destructor>>,
     adt_async_destructor: Table<LazyValue<ty::AsyncDestructor>>,
-    coroutine_by_move_body_def_id: Table<RemappedRawDefId>,
+    coroutine_by_move_body_def_id: Table<RemappedWideRawDefId>,
     eval_static_initializer: Table<LazyValue<mir::interpret::ConstAllocation<'static>>>,
     trait_def: Table<LazyValue<ty::TraitDef>>,
     expn_that_defined: Table<LazyValue<ExpnId>>,

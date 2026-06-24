@@ -57,7 +57,7 @@ use self::public_api_hasher::{
 use crate::diagnostics::{FailCreateFileEncoder, FailWriteFile};
 use crate::eii::EiiMapEncodedKeyValue;
 use crate::rmeta::encoder::public_api_hasher::PublicApiHashState;
-use crate::rmeta::remapped_def_id::RemappedRawDefId;
+use crate::rmeta::remapped_def_id::{RemappedRawDefId, RemappedWideRawDefId};
 use crate::rmeta::*;
 
 pub(super) mod public_api_hasher;
@@ -75,6 +75,12 @@ pub(super) trait MetadataEncoder: Sized {
         remapping: &LocalDefsRemapping,
         def_id: LocalDefId,
     ) -> Self::EncodedLocalDefId;
+    fn into_remapped_wide_raw_def_id(
+        tcx: TyCtxt<'_>,
+        remapping: &LocalDefsRemapping,
+        def_id: DefId,
+    ) -> RemappedWideRawDefId;
+
     fn public_api_hasher<'h>(hcx: StableHashState<'h>) -> impl PublicApiHashState<'h>;
     fn encode_trait_impls<'h, H: PublicApiHashState<'h>>(
         ecx: &mut MetadataBuilder<'_, '_, 'h, '_, '_, H, Self>,
@@ -129,6 +135,13 @@ impl MetadataEncoder for DefPathHashDefIdEncoder {
     ) -> Self::EncodedLocalDefId {
         remapping.map_local_def_id(def_id)
     }
+    fn into_remapped_wide_raw_def_id(
+        tcx: TyCtxt<'_>,
+        _remapping: &LocalDefsRemapping,
+        def_id: DefId,
+    ) -> RemappedWideRawDefId {
+        RemappedWideRawDefId::hashed(def_id, tcx)
+    }
     fn public_api_hasher<'h>(hcx: StableHashState<'h>) -> impl PublicApiHashState<'h> {
         PublicApiHashingContext::<true>::new(hcx)
     }
@@ -155,6 +168,14 @@ impl MetadataEncoder for DefIndexDefIdEncoder {
         def_id: LocalDefId,
     ) -> Self::EncodedLocalDefId {
         remapping.map_local_def_id(def_id)
+    }
+
+    fn into_remapped_wide_raw_def_id(
+        _tcx: TyCtxt<'_>,
+        remapping: &LocalDefsRemapping,
+        def_id: DefId,
+    ) -> RemappedWideRawDefId {
+        RemappedWideRawDefId::indexed(def_id, remapping)
     }
 
     fn public_api_hasher<'h>(hcx: StableHashState<'h>) -> impl PublicApiHashState<'h> {
@@ -592,7 +613,7 @@ where
         self.is_proc_macro
     }
 
-    fn tcx(&self) -> TyCtxt<'tcx> {
+    pub(super) fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
