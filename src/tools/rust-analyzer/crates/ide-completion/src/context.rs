@@ -868,10 +868,22 @@ impl<'a, 'db> CompletionContext<'a, 'db> {
                 _ => None,
             })
             .collect::<Vec<_>>();
+        let exclude_variants = exclude_flyimport
+            .iter()
+            .flat_map(|it| match it {
+                (ModuleDef::Adt(hir::Adt::Enum(enum_)), AutoImportExclusionType::Variants) => {
+                    enum_.variants(db)
+                }
+                _ => vec![],
+            })
+            .collect::<Vec<_>>();
         exclude_flyimport
             .extend(exclude_traits.iter().map(|&t| (t.into(), AutoImportExclusionType::Always)));
         exclude_flyimport
             .extend(exclude_subitems.into_iter().map(|it| (it, AutoImportExclusionType::Always)));
+        exclude_flyimport.extend(
+            exclude_variants.into_iter().map(|it| (it.into(), AutoImportExclusionType::Always)),
+        );
 
         // FIXME: This should be part of `CompletionAnalysis` / `expand_and_analyze`
         let complete_semicolon = if !config.add_semicolon_to_unit {

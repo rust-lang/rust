@@ -617,3 +617,40 @@ fn foo(foo: &Foo) {
         expect!["102..126;85..88;114..117 ByRef(Immutable) *foo &'<erased> Foo"],
     );
 }
+
+#[test]
+fn method_call_field_access_regression() {
+    check_closure_captures(
+        r#"
+//- minicore:copy, fn
+struct NonCopy;
+
+struct Wrapper {
+    field: NonCopy,
+}
+
+impl Wrapper {
+    fn wrapped(&self) -> NonCopy {
+        NonCopy
+    }
+}
+
+pub struct Wrapper2 {
+    field1: NonCopy,
+    field2: NonCopy,
+}
+
+fn fun(wrapper: Wrapper) {
+    pub fn update<T>(_: impl FnOnce(&mut T)) {
+        todo!()
+    }
+
+    update::<Wrapper2>(|this| {
+        this.field1 = wrapper.wrapped();
+        this.field2 = wrapper.field;
+    });
+}
+    "#,
+        expect!["319..411;206..213;350..357,391..398 ByValue wrapper Wrapper"],
+    );
+}
