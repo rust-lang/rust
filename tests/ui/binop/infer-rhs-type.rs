@@ -1,3 +1,4 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/21634>.
 //@ run-pass
 
 #[cfg(any(not(target_arch = "x86"), target_feature = "sse2"))]

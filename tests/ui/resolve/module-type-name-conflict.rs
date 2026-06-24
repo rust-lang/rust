@@ -1,4 +1,7 @@
-// Also works as a test for #14564
+//! Regression test for <https://github.com/rust-lang/rust/issues/21546>.
+//! Ensure structs, enums and modules cannot share name in namespace.
+//!
+//! Also works as a test for <https://github.com/rust-lang/rust/issues/14564>.
 
 #[allow(non_snake_case)]
 mod Foo { }
