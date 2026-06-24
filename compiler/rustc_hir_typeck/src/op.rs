@@ -313,6 +313,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 self.write_method_call_and_enforce_effects(expr.hir_id, expr.span, method);
+
                 method.sig.output()
             }
             // error types are considered "builtin"
