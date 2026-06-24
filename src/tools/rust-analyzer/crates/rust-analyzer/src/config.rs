@@ -1127,7 +1127,7 @@ pub struct Config {
 
     default_config: &'static DefaultConfigData,
     /// Config node that obtains its initial value during the server initialization and
-    /// by receiving a `lsp_types::notification::DidChangeConfiguration`.
+    /// by receiving a [`lsp_types::DidChangeConfigurationNotification`].
     client_config: (FullConfigInput, ConfigErrors),
 
     /// Config node whose values apply to **every** Rust project.

@@ -55,6 +55,7 @@
                 "clippy",
             ),
             message: "returning the result of a let binding from a block\n`#[warn(clippy::let_and_return)]` on by default\nfor further information visit https://rust-lang.github.io/rust-clippy/master/index.html#let_and_return",
+            tags: None,
             related_information: Some(
                 [
                     DiagnosticRelatedInformation {
@@ -111,7 +112,6 @@
                     },
                 ],
             ),
-            tags: None,
             data: None,
         },
         fix: None,
@@ -172,6 +172,7 @@
                 "clippy",
             ),
             message: "unnecessary let binding",
+            tags: None,
             related_information: Some(
                 [
                     DiagnosticRelatedInformation {
@@ -202,7 +203,6 @@
                     },
                 ],
             ),
-            tags: None,
             data: None,
         },
         fix: None,
@@ -263,6 +263,7 @@
                 "clippy",
             ),
             message: "return the expression directly: `(0..10).collect()`",
+            tags: None,
             related_information: Some(
                 [
                     DiagnosticRelatedInformation {
@@ -293,7 +294,6 @@
                     },
                 ],
             ),
-            tags: None,
             data: None,
         },
         fix: Some(
@@ -324,9 +324,7 @@
                     title: "return the expression directly: `(0..10).collect()`",
                     group: None,
                     kind: Some(
-                        CodeActionKind(
-                            "quickfix",
-                        ),
+                        QuickFix,
                     ),
                     command: None,
                     edit: Some(

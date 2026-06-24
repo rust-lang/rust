@@ -29,7 +29,7 @@ ide-completion.workspace = true
 indexmap.workspace = true
 itertools.workspace = true
 scip = "0.7.1"
-lsp-types = { version = "=0.95.0", features = ["proposed"] }
+lsp-types = { version = "0.4.0", package = "gen-lsp-types", features=["url"] }
 parking_lot = "0.12.4"
 xflags = "0.3.2"
 oorandom = "11.1.5"
