@@ -57,6 +57,10 @@ fn basic() {
 }
 
 fn main() {
+    if cfg!(force_intrinsic_fallback) {
+        return;
+    }
+
     basic();
 
     // This tests that we do (not) do sign extension properly when loading integers

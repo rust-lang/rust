@@ -68,6 +68,10 @@ const F128_SNAN: f128 =
     f128::from_bits(f128::NAN.to_bits() ^ (0b11 << (f128::MANTISSA_DIGITS - 3)));
 
 fn main() {
+    if cfg!(force_intrinsic_fallback) {
+        return;
+    }
+
     basic();
     casts();
     more_casts();

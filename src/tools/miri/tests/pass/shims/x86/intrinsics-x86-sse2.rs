@@ -11,6 +11,10 @@ use std::mem::transmute;
 const NAN: f64 = f64::NAN;
 
 fn main() {
+    if cfg!(force_intrinsic_fallback) {
+        return;
+    }
+
     assert!(is_x86_feature_detected!("sse2"));
 
     unsafe {

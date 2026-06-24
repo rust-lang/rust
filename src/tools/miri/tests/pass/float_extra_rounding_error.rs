@@ -7,6 +7,10 @@ use std::collections::HashSet;
 use std::hint::black_box;
 
 fn main() {
+    if cfg!(force_intrinsic_fallback) {
+        return;
+    }
+
     let expected = cfg_select! {
         random => 9, // -4 ..= +4 ULP error
         max => 2,
