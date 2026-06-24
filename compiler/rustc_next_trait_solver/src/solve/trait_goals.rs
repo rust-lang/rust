@@ -119,7 +119,7 @@ where
                     .map(|pred| goal.with(cx, pred)),
             );
 
-            then(ecx, maximal_certainty).map_err(Into::into)
+            then(ecx, maximal_certainty)
         })
     }
 
@@ -399,7 +399,6 @@ where
             pred,
             [(GoalSource::ImplWhereBound, goal.with(cx, output_is_sized_pred))],
         )
-        .map_err(Into::into)
     }
 
     fn consider_builtin_async_fn_trait_candidates(
@@ -450,7 +449,6 @@ where
                 .chain(nested_preds.into_iter().map(|pred| goal.with(cx, pred)))
                 .map(|goal| (GoalSource::ImplWhereBound, goal)),
         )
-        .map_err(Into::into)
     }
 
     fn consider_builtin_async_fn_kind_helper_candidate(
@@ -696,7 +694,7 @@ where
                     goal.predicate.trait_ref.args.type_at(1),
                     assume,
                 )?;
-                ecx.evaluate_added_goals_and_make_canonical_response(certainty).map_err(Into::into)
+                ecx.evaluate_added_goals_and_make_canonical_response(certainty)
             },
         )
     }
@@ -1085,7 +1083,6 @@ where
                                     ecx.try_evaluate_added_goals()
                                 },
                             )
-                            .map_err(Into::into)
                         })
                         .is_ok()
             };
@@ -1124,11 +1121,9 @@ where
                             return Err(NoSolution.into());
                         };
                         if matching_projections.next().is_some() {
-                            return ecx
-                                .evaluate_added_goals_and_make_canonical_response(
-                                    Certainty::AMBIGUOUS,
-                                )
-                                .map_err(Into::into);
+                            return ecx.evaluate_added_goals_and_make_canonical_response(
+                                Certainty::AMBIGUOUS,
+                            );
                         }
                         ecx.enter_forall_with_assumptions(
                             target_projection,
@@ -1156,7 +1151,7 @@ where
                 Goal::new(ecx.cx(), param_env, ty::OutlivesPredicate(a_region, b_region)),
             );
 
-            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes).map_err(Into::into)
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
 
