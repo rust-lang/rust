@@ -720,7 +720,7 @@ auto:
         --target=i686-pc-windows-msvc
         --enable-full-tools
         --enable-profiler
-      SCRIPT: make ci-test
+      SCRIPT: python x.py build --stage 1 --target i686-pc-windows-msvc && ./build/host/stage1/bin/rustc --edition=2024 --target i686-pc-windows-msvc test.rs
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-windows
