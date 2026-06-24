@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/22356>.
+
 //@ check-pass
 #![allow(type_alias_bounds)]
 

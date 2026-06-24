@@ -1,7 +1,10 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/22443>.
+//!
+//! This test is reduced from librustc_ast.  It is just checking that we
+//! can successfully deal with a "deep" structure, which the drop-check
+//! was hitting a recursion limit on at one point.
+
 //@ check-pass
-// This test is reduced from librustc_ast.  It is just checking that we
-// can successfully deal with a "deep" structure, which the drop-check
-// was hitting a recursion limit on at one point.
 
 
 #![allow(non_camel_case_types)]
