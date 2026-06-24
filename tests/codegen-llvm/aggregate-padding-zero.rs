@@ -20,6 +20,12 @@ pub struct InnerPadded {
     c: u32,
 }
 
+#[repr(transparent)]
+pub struct Nested1(InnerPadded);
+
+#[repr(transparent)]
+pub struct Nested2(Nested1);
+
 // PR 157690's original ptr::write entry point, checked against the current
 // aggregate-immediate codegen shape.
 // CHECK-LABEL: @via_ptr_write(
@@ -61,6 +67,25 @@ pub fn const_init_non_zero(dest: *mut InnerPadded) {
     }
 }
 
+// From issue #157373: nesting wrapper structs used to change the lowering
+// shape enough that LLVM would sometimes find the wide store only in the
+// nested case.
+// CHECK-LABEL: @bad(
+#[no_mangle]
+pub fn bad(a: &mut InnerPadded) {
+    let x = InnerPadded { a: 0, b: 1, c: 0 };
+    // CHECK: store i64 65536, ptr %x, align 4
+    *a = x;
+}
+
+// CHECK-LABEL: @good(
+#[no_mangle]
+pub fn good(a: &mut Nested2) {
+    let x = InnerPadded { a: 0, b: 1, c: 0 };
+    // CHECK: store i64 65536, ptr %x, align 4
+    *a = Nested2(Nested1(x));
+}
+
 // The same direct constant aggregate packing should apply through ptr::write on MaybeUninit.
 // CHECK-LABEL: @via_ptr_write_non_zero(
 #[no_mangle]
@@ -85,6 +110,28 @@ pub fn via_maybe_uninit_write_non_zero(dest: &mut MaybeUninit<InnerPadded>) {
     // CHECK-NEXT: store i64 65536, ptr %val, align 4
     // CHECK: call void @llvm.memcpy.p0.p0.i64(ptr align 4 %dest, ptr align 4 %{{.*}}, i64 8, i1 false)
     dest.write(val);
+}
+
+// CHECK-LABEL: @bad_non_zero(
+#[no_mangle]
+pub fn bad_non_zero(a: &mut InnerPadded) {
+    let x = InnerPadded { a: 0, b: 1, c: 0 };
+    // CHECK: %x = alloca [8 x i8], align 4
+    // CHECK-NEXT: call void @llvm.lifetime.start.p0(ptr %x)
+    // CHECK-NEXT: store i64 65536, ptr %x, align 4
+    // CHECK: call void @llvm.memcpy.p0.p0.i64(ptr align 4 %a, ptr align 4 %x, i64 8, i1 false)
+    *a = x;
+}
+
+// CHECK-LABEL: @good_non_zero(
+#[no_mangle]
+pub fn good_non_zero(a: &mut Nested2) {
+    let x = InnerPadded { a: 0, b: 1, c: 0 };
+    // CHECK: %x = alloca [8 x i8], align 4
+    // CHECK-NEXT: call void @llvm.lifetime.start.p0(ptr %x)
+    // CHECK-NEXT: store i64 65536, ptr %x, align 4
+    // CHECK: call void @llvm.memcpy.p0.p0.i64(ptr align 4 %a, ptr align 4 %{{.*}}, i64 8, i1 false)
+    *a = Nested2(Nested1(x));
 }
 
 // Trailing padding only (no inter-field padding): a (offset 0, size 4),
