@@ -128,9 +128,16 @@ where
             }
         }
 
-        (other, ty::Alias(..)) | (ty::Alias(..), other) if infcx.next_trait_solver() => {
-            match relation.structurally_relate_aliases() {
-                StructurallyRelateAliases::Yes => match other {
+        (other, ty::Alias(is_rigid, _)) | (ty::Alias(is_rigid, _), other)
+            if infcx.next_trait_solver() =>
+        {
+            if let StructurallyRelateAliases::No = relation.structurally_relate_aliases()
+                && is_rigid == ty::IsRigid::No
+            {
+                relation.register_alias_relate_predicate(a, b);
+                Ok(a)
+            } else {
+                match other {
                     ty::Infer(infer_ty) => match infer_ty {
                         // Normally, we shouldn't be combining an infer ty with an alias here. But
                         // when we evaluate a `Projection(assoc_ty, expected)` goal, we normalize
@@ -152,10 +159,6 @@ where
                         | ty::InferTy::FreshFloatTy(_) => unreachable!(),
                     },
                     _ => structurally_relate_tys(relation, a, b),
-                },
-                StructurallyRelateAliases::No => {
-                    relation.register_alias_relate_predicate(a, b);
-                    Ok(a)
                 }
             }
         }

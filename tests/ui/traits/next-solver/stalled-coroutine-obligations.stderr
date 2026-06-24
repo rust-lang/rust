@@ -20,7 +20,13 @@ error[E0271]: type mismatch resolving `impl Future + Send == {async block@$DIR/s
   --> $DIR/stalled-coroutine-obligations.rs:39:43
    |
 LL |     fn stalled_send(&self, b: *mut ()) -> impl Future + Send {
-   |                                           ^^^^^^^^^^^^^^^^^^ types differ
+   |                                           ^^^^^^^^^^^^^^^^^^ expected `async` block, found associated type
+LL |
+LL |         async move {
+   |         ---------- the expected `async` block
+   |
+   = note: expected `async` block `{async block@$DIR/stalled-coroutine-obligations.rs:41:9: 41:19}`
+            found associated type `impl Future + Send`
 
 error: aborting due to 4 previous errors
 
