@@ -7,7 +7,7 @@ pub(crate) struct NoImplicitPreludeParser;
 impl NoArgsAttributeParser for NoImplicitPreludeParser {
     const PATH: &[rustc_span::Symbol] = &[sym::no_implicit_prelude];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets =
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::Mod), Allow(Target::Crate)]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NoImplicitPrelude;

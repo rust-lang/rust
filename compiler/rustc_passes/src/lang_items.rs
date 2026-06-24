@@ -18,9 +18,7 @@ use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_session::cstore::ExternCrate;
 use rustc_span::{Span, Symbol, sym};
 
-use crate::diagnostics::{
-    DuplicateLangItem, IncorrectCrateType, IncorrectTarget, LangItemOnIncorrectTarget,
-};
+use crate::diagnostics::{DuplicateLangItem, IncorrectCrateType, IncorrectTarget};
 use crate::weak_lang_items;
 
 pub(crate) enum Duplicate {
@@ -63,8 +61,14 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
     ) {
         if let Some((name, attr_span)) = extract_ast(attrs) {
             match LangItem::from_name(name) {
-                // Known lang item with attribute on correct target.
-                Some(lang_item) if actual_target == lang_item.target() => {
+                // Known lang item
+                Some(lang_item) => {
+                    if actual_target != lang_item.target() {
+                        self.tcx
+                            .dcx()
+                            .delayed_bug("lang item target is checked in attribute parser");
+                        return;
+                    }
                     self.collect_item_extended(
                         lang_item,
                         def_id,
@@ -73,15 +77,6 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
                         generics,
                         actual_target,
                     );
-                }
-                // Known lang item with attribute on incorrect target.
-                Some(lang_item) => {
-                    self.tcx.dcx().emit_err(LangItemOnIncorrectTarget {
-                        span: attr_span,
-                        name,
-                        expected_target: lang_item.target(),
-                        actual_target,
-                    });
                 }
                 // Unknown lang item.
                 _ => {

@@ -13,7 +13,7 @@ use super::prelude::*;
 use super::util::parse_version;
 use crate::session_diagnostics;
 
-const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
     Allow(Target::Fn),
     Allow(Target::Struct),
     Allow(Target::Enum),
@@ -102,7 +102,7 @@ impl AttributeParser for StabilityParser {
             },
         ),
     ];
-    const ALLOWED_TARGETS: AllowedTargets = ALLOWED_TARGETS;
+    const ALLOWED_TARGETS: AllowedTargets<'_> = ALLOWED_TARGETS;
 
     fn finalize(mut self, cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
         if let Some(atum) = self.allowed_through_unstable_modules {
@@ -158,7 +158,7 @@ impl AttributeParser for BodyStabilityParser {
             }
         },
     )];
-    const ALLOWED_TARGETS: AllowedTargets = ALLOWED_TARGETS;
+    const ALLOWED_TARGETS: AllowedTargets<'_> = ALLOWED_TARGETS;
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
         let (stability, span) = self.stability?;
@@ -171,7 +171,7 @@ pub(crate) struct RustcConstStableIndirectParser;
 impl NoArgsAttributeParser for RustcConstStableIndirectParser {
     const PATH: &[Symbol] = &[sym::rustc_const_stable_indirect];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Ignore;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
     ]);
@@ -233,7 +233,7 @@ impl AttributeParser for ConstStabilityParser {
             this.promotable = true;
         }),
     ];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::TraitImpl)),
@@ -460,7 +460,7 @@ pub(crate) struct UnstableRemovedParser;
 impl CombineAttributeParser for UnstableRemovedParser {
     type Item = UnstableRemovedFeature;
     const PATH: &[Symbol] = &[sym::unstable_removed];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate =
         template!(List: &[r#"feature = "name", reason = "...", link = "...", since = "version""#]);
     const STABILITY: AttributeStability = unstable!(staged_api);
