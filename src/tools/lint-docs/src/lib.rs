@@ -467,7 +467,7 @@ impl<'a> LintExtractor<'a> {
         if needs_main {
             source.push_str("}\n");
         }
-        fs::write(&tempfile, source)
+        fs::write(&tempfile, &source)
             .map_err(|e| format!("failed to write {}: {}", tempfile.display(), e))?;
         let mut cmd = Command::new(self.rustc_path);
         let edition = options
@@ -491,8 +491,10 @@ impl<'a> LintExtractor<'a> {
         cmd.current_dir(tempdir.path());
         if self.verbose {
             eprintln!("running: {cmd:?}");
+            eprintln!("{source}");
         }
         let output = cmd.output().map_err(|e| format!("failed to run command {:?}\n{}", cmd, e))?;
+        eprintln!("run finished");
         let stderr = std::str::from_utf8(&output.stderr).unwrap();
         let msgs = stderr
             .lines()
