@@ -1,3 +1,4 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/23024>.
 use std::any::Any;
 
 fn main()
