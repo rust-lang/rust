@@ -978,11 +978,14 @@ pub fn regions_outlived_by_placeholder<I: Interner>(
 }
 
 /// The largest universe a variable or placeholder was from in `t`
-pub fn max_universe<Infcx: InferCtxtLike<Interner = I>, I: Interner, T: TypeVisitable<I>>(
+pub fn max_universe<Infcx: InferCtxtLike<Interner = I>, I: Interner, T: TypeFoldable<I>>(
     infcx: &Infcx,
     t: T,
 ) -> UniverseIndex {
     let mut visitor = MaxUniverse::new(infcx);
+    // `max_universe` is also used while rewriting constraints to lower universes,
+    // so do not rely on callers having already resolved non-region infer vars.
+    let t = infcx.resolve_vars_if_possible(t);
     t.visit_with(&mut visitor);
     visitor.max_universe()
 }
@@ -1036,11 +1039,17 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeVisitor<I>
     fn visit_region(&mut self, r: I::Region) {
         match r.kind() {
             RegionKind::RePlaceholder(p) => self.max_universe = self.max_universe.max(p.universe),
-            RegionKind::ReVar(var) => {
-                let u = self.infcx.universe_of_lt(var).unwrap();
-                debug!("var {var:?} in universe {u:?}");
-                self.max_universe = self.max_universe.max(u);
-            }
+            RegionKind::ReVar(var) => match self.infcx.opportunistic_resolve_lt_var(var).kind() {
+                RegionKind::RePlaceholder(p) => {
+                    self.max_universe = self.max_universe.max(p.universe)
+                }
+                RegionKind::ReVar(var) => {
+                    let u = self.infcx.universe_of_lt(var).unwrap();
+                    debug!("var {var:?} in universe {u:?}");
+                    self.max_universe = self.max_universe.max(u);
+                }
+                _ => (),
+            },
             _ => (),
         }
     }
