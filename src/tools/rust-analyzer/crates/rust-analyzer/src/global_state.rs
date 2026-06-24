@@ -661,17 +661,28 @@ impl GlobalState {
 
                 // See https://github.com/rust-lang/rust-analyzer/issues/11404
                 // See https://github.com/rust-lang/rust-analyzer/issues/13130
-                let patch_empty = |message: &mut String| {
-                    if message.is_empty() {
-                        " ".clone_into(message);
+                let patch_empty = |message: &mut lsp_types::Message| match message {
+                    lsp_types::Message::String(m) if m.is_empty() => {
+                        " ".clone_into(m);
                     }
+                    lsp_types::Message::MarkupContent(lsp_types::MarkupContent {
+                        value,
+                        kind: _,
+                    }) if value.is_empty() => {
+                        " ".clone_into(value);
+                    }
+                    _ => {}
                 };
 
                 for d in &mut diagnostics {
                     patch_empty(&mut d.message);
                     if let Some(dri) = &mut d.related_information {
                         for dri in dri {
-                            patch_empty(&mut dri.message);
+                            // The LSP does not (yet?) specify that related diagnostic messages can
+                            // be in Markdown format (in addition to plain text).
+                            if dri.message.is_empty() {
+                                " ".clone_into(&mut dri.message);
+                            }
                         }
                     }
                 }
