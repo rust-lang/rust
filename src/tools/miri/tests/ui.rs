@@ -414,7 +414,7 @@ fn ui(
         WithoutDeps => false,
     };
     run_tests(mode, path, target, with_dependencies, tmpdir)
-        .with_context(|| format!("ui tests in {path} for {target} failed"))
+        .with_context(|| format!("{mode} ui tests in {path} for {target} failed"))
 }
 
 fn get_host() -> String {
