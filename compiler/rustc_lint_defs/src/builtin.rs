@@ -4174,9 +4174,9 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// Due to historic reasons never type fallback was `()`, meaning that `!` got spontaneously
-    /// coerced to `()`. There are plans to change that, but they may make the code such as above
-    /// unsound. Instead of depending on the fallback, you should specify the type explicitly:
+    /// The never type fallback used to be `()`, meaning that `!` got spontaneously coerced to `()`.
+    /// Since then the never type fallback has been changed to `!`, making the above code undefined
+    /// behavior. Instead of depending on the fallback, you should specify the type explicitly:
     /// ```
     /// if true {
     ///     return
@@ -4193,11 +4193,6 @@ declare_lint! {
     pub NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
     Deny,
     "never type fallback affecting unsafe function calls",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionAndFutureReleaseSemanticsChange 2024 "never-type-fallback"),
-        report_in_deps: true,
-    };
-    @edition Edition2024 => Deny;
     report_in_external_macro
 }
 
