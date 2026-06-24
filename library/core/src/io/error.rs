@@ -238,6 +238,11 @@ pub enum ErrorKind {
     #[unstable(feature = "io_error_inprogress", issue = "130840")]
     InProgress,
 
+    /// The process or the whole system has reached its limit on the number of
+    /// open files or sockets.
+    #[unstable(feature = "io_error_too_many_open_files", issue = "158319")]
+    TooManyOpenFiles,
+
     // "Unusual" error kinds which do not correspond simply to (sets
     // of) OS error codes, should be added just above this comment.
     // `Other` and `Uncategorized` should remain at the end:
@@ -309,6 +314,7 @@ impl ErrorKind {
             StorageFull => "no storage space",
             TimedOut => "timed out",
             TooManyLinks => "too many links",
+            TooManyOpenFiles => "too many open files",
             Uncategorized => "uncategorized error",
             UnexpectedEof => "unexpected end of file",
             Unsupported => "unsupported",
@@ -379,6 +385,7 @@ impl ErrorKind {
             Unsupported,
             OutOfMemory,
             InProgress,
+            TooManyOpenFiles,
             Uncategorized,
         })
     }

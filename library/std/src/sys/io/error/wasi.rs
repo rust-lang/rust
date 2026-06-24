@@ -59,6 +59,7 @@ pub fn decode_error_kind(errno: i32) -> std_io::ErrorKind {
         libc::ETXTBSY => ExecutableFileBusy,
         libc::EXDEV => CrossesDevices,
         libc::EINPROGRESS => InProgress,
+        libc::EMFILE | libc::ENFILE => TooManyOpenFiles,
         libc::EOPNOTSUPP => Unsupported,
         libc::EACCES | libc::EPERM => PermissionDenied,
         libc::EWOULDBLOCK => WouldBlock,
