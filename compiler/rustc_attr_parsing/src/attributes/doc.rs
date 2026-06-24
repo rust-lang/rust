@@ -325,17 +325,17 @@ impl DocParser {
                     kind: LitKind::Str(symbol, _),
                     span,
                     ..
-                }) => match &mut cfg_values.values {
-                    DocCfgHideShowValue::Any(any_span) => {
+                }) => match &mut cfg_values {
+                    DocCfgHideShow::Any(any_span) => {
                         cx.emit_lint(
                             rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
                             DocAutoCfgHideShowValuesMix { value_span: *span },
                             *any_span,
                         );
                     }
-                    DocCfgHideShowValue::List(symbols) => {
+                    DocCfgHideShow::List(symbols) => {
                         if values_set.insert(symbol) {
-                            symbols.push((*symbol, *span));
+                            symbols.push(DocCfgHideShowValue::new(*symbol, *span));
                         }
                     }
                 },
@@ -354,19 +354,19 @@ impl DocParser {
                         && list.mixed().count() == 0
                     {
                         if ident.name == sym::any {
-                            if let DocCfgHideShowValue::List(values) = &cfg_values.values
-                                && let Some((_, span)) = values.first()
+                            if let DocCfgHideShow::List(values) = &cfg_values
+                                && let Some(value) = values.first()
                             {
                                 cx.emit_lint(
                                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                                    DocAutoCfgHideShowValuesMix { value_span: *span },
+                                    DocAutoCfgHideShowValuesMix { value_span: value.span },
                                     sub_item.span(),
                                 );
                             } else {
-                                cfg_values.values = DocCfgHideShowValue::Any(sub_item.span());
+                                cfg_values.merge_with(&DocCfgHideShow::Any(sub_item.span()));
                             }
                         } else {
-                            cfg_values.only_key = Some(sub_item.span());
+                            cfg_values.push_none(sub_item.span());
                         }
                     } else {
                         cx.emit_lint(

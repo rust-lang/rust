@@ -32,6 +32,87 @@ mod tests;
 #[cfg_attr(test, derive(PartialEq))]
 pub(crate) struct Cfg(CfgEntry);
 
+// Similar to `hir::DocCfgHideShow` but allows to handle both `show` and `hide` as with the `except`
+// field in `Any` variant.
+#[derive(Clone, Debug)]
+enum DocCfgHide {
+    Any { except: ThinVec<DocCfgHideShowValue> },
+    List(ThinVec<DocCfgHideShowValue>),
+}
+
+impl DocCfgHide {
+    fn new() -> Self {
+        Self::List([DocCfgHideShowValue::new_none(DUMMY_SP)].into())
+    }
+
+    fn contains(&self, value: Option<Symbol>) -> bool {
+        match self {
+            // Contains any values except the ones listed in `except`.
+            Self::Any { except } => !except.iter().any(|e| e.value == value),
+            Self::List(values) => values.iter().any(|v| v.value == value),
+        }
+    }
+
+    fn merge_with(&mut self, other: &DocCfgHideShow) {
+        match (self, other) {
+            (Self::Any { except }, DocCfgHideShow::Any(_)) => {
+                except.clear();
+            }
+            (s, DocCfgHideShow::Any(_)) => {
+                // We "upgrade" the list values to "all".
+                *s = Self::Any { except: ThinVec::new() };
+            }
+            (Self::Any { except }, DocCfgHideShow::List(values)) => {
+                for other in values {
+                    if let Some(index) = except.iter().position(|value| value.value == other.value)
+                    {
+                        except.remove(index);
+                    }
+                }
+            }
+            (Self::List(values), DocCfgHideShow::List(other_values)) => {
+                for other in other_values {
+                    if !values.iter().any(|value| value.value == other.value) {
+                        values.push(*other);
+                    }
+                }
+            }
+        }
+    }
+
+    fn remove(&mut self, other: &DocCfgHideShow) {
+        match (self, other) {
+            (s, DocCfgHideShow::Any(_)) => {
+                *s = Self::List(ThinVec::new());
+            }
+            (Self::Any { except }, DocCfgHideShow::List(other_values)) => {
+                for other in other_values {
+                    if !except.iter().any(|value| value.value == other.value) {
+                        except.push(*other);
+                    }
+                }
+            }
+            (Self::List(values), DocCfgHideShow::List(other_values)) => {
+                for other in other_values {
+                    if let Some(index) = values.iter().position(|value| value.value == other.value)
+                    {
+                        values.remove(index);
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl From<&DocCfgHideShow> for DocCfgHide {
+    fn from(from: &DocCfgHideShow) -> Self {
+        match from {
+            DocCfgHideShow::Any(_) => Self::Any { except: ThinVec::new() },
+            DocCfgHideShow::List(values) => Self::List(values.clone()),
+        }
+    }
+}
+
 /// Whether the configuration consists of just `Cfg` or `Not`.
 fn is_simple_cfg(cfg: &CfgEntry) -> bool {
     match cfg {
@@ -55,24 +136,15 @@ fn is_any_cfg(cfg: &CfgEntry) -> bool {
     }
 }
 
-fn strip_hidden(cfg: &CfgEntry, hidden: &FxHashMap<Symbol, DocCfgHideShow>) -> Option<CfgEntry> {
+fn strip_hidden(cfg: &CfgEntry, hidden: &FxHashMap<Symbol, DocCfgHide>) -> Option<CfgEntry> {
     match cfg {
         CfgEntry::Bool(..) => Some(cfg.clone()),
         CfgEntry::NameValue { name, value, .. } => {
-            let mut is_stripped = false;
-            if let Some(values) = hidden.get(name) {
-                if let Some(value) = value {
-                    match &values.values {
-                        DocCfgHideShowValue::Any(_) => is_stripped = true,
-                        DocCfgHideShowValue::List(values) => {
-                            is_stripped = values.iter().any(|(v, _)| v == value);
-                        }
-                    }
-                } else {
-                    is_stripped = values.only_key.is_some();
-                }
+            if hidden.get(name).is_some_and(|values| values.contains(*value)) {
+                None
+            } else {
+                Some(cfg.clone())
             }
-            if !is_stripped { Some(cfg.clone()) } else { None }
         }
         CfgEntry::Not(cfg, _) => {
             if let Some(cfg) = strip_hidden(cfg, hidden) {
@@ -669,7 +741,7 @@ fn human_readable_target_env(env: Symbol) -> Option<&'static str> {
 pub(crate) struct CfgInfo {
     /// List of currently active `doc(auto_cfg(hide(...)))` cfgs, minus currently active
     /// `doc(auto_cfg(show(...)))` cfgs.
-    hidden_cfg: FxHashMap<Symbol, DocCfgHideShow>,
+    hidden_cfg: FxHashMap<Symbol, DocCfgHide>,
     /// Current computed `cfg`. Each time we enter a new item, this field is updated as well while
     /// taking into account the `hidden_cfg` information.
     current_cfg: Cfg,
@@ -685,9 +757,9 @@ impl Default for CfgInfo {
     fn default() -> Self {
         Self {
             hidden_cfg: FxHashMap::from_iter([
-                (sym::test, DocCfgHideShow::new_with_only_key(DUMMY_SP)),
-                (sym::doc, DocCfgHideShow::new_with_only_key(DUMMY_SP)),
-                (sym::doctest, DocCfgHideShow::new_with_only_key(DUMMY_SP)),
+                (sym::test, DocCfgHide::new()),
+                (sym::doc, DocCfgHide::new()),
+                (sym::doctest, DocCfgHide::new()),
             ]),
             current_cfg: Cfg(CfgEntry::Bool(true, DUMMY_SP)),
             auto_cfg_active: true,
@@ -696,104 +768,24 @@ impl Default for CfgInfo {
     }
 }
 
-fn show_hide_show_conflict_error(
-    tcx: TyCtxt<'_>,
-    item_span: rustc_span::Span,
-    previous: rustc_span::Span,
-    errors: &mut usize,
-) {
-    *errors += 1;
-    let mut diag = tcx.sess.dcx().struct_span_err(
-        item_span,
-        format!(
-            "same `cfg` was in `auto_cfg(hide(...))` and `auto_cfg(show(...))` on the same item"
-        ),
-    );
-    diag.span_note(previous, "first change was here");
-    diag.emit();
-}
-
-fn check_if_no_overlap(
-    tcx: TyCtxt<'_>,
-    attrs: &FxHashMap<Symbol, DocCfgHideShow>,
-    cfg_name: Symbol,
-    info: &DocCfgHideShow,
-) -> bool {
-    let mut errors = 0;
-    if let Some(other) = attrs.get(&cfg_name) {
-        match (&other.only_key, &info.only_key) {
-            (Some(previous_span), Some(span)) => {
-                show_hide_show_conflict_error(tcx, *span, *previous_span, &mut errors);
-            }
-            _ => {}
-        }
-        match (&other.values, &info.values) {
-            (DocCfgHideShowValue::Any(previous_span), DocCfgHideShowValue::Any(span)) => {
-                show_hide_show_conflict_error(tcx, *span, *previous_span, &mut errors);
-            }
-            (DocCfgHideShowValue::Any(previous_span), DocCfgHideShowValue::List(items)) => {
-                // If the list is empty, then it's just the default so no problem there.
-                if let Some((_, span)) = items.first() {
-                    show_hide_show_conflict_error(tcx, *span, *previous_span, &mut errors);
-                }
-            }
-            (DocCfgHideShowValue::List(previous_items), DocCfgHideShowValue::Any(span)) => {
-                // If the list is empty, then it's just the default so no problem there.
-                if let Some((_, previous_span)) = previous_items.first() {
-                    show_hide_show_conflict_error(tcx, *span, *previous_span, &mut errors);
-                }
-            }
-            (DocCfgHideShowValue::List(previous_items), DocCfgHideShowValue::List(items)) => {
-                for (previous_name, previous_span) in previous_items {
-                    if let Some((_, span)) = items.iter().find(|(name, _)| name == previous_name) {
-                        show_hide_show_conflict_error(tcx, *span, *previous_span, &mut errors);
-                    }
-                }
-            }
-        }
-    }
-    errors == 0
-}
-
 /// This functions updates the `hidden_cfg` field of the provided `cfg_info` argument.
-///
-/// It also checks if a same `cfg` is present in both `auto_cfg(hide(...))` and
-/// `auto_cfg(show(...))` on the same item and emits an error if it's the case.
 ///
 /// Because we go through a list of `cfg`s, we keep track of the `cfg`s we saw in `new_show_attrs`
 /// and in `new_hide_attrs` arguments.
-fn handle_auto_cfg_hide_show(
-    tcx: TyCtxt<'_>,
-    cfg_info: &mut CfgInfo,
-    attr: &CfgHideShow,
-    new_show_attrs: &mut FxHashMap<Symbol, DocCfgHideShow>,
-    new_hide_attrs: &mut FxHashMap<Symbol, DocCfgHideShow>,
-) {
+fn handle_auto_cfg_hide_show(cfg_info: &mut CfgInfo, attr: &CfgHideShow) {
     for (cfg_name, value) in &attr.values {
         if attr.kind == HideOrShow::Show {
-            if check_if_no_overlap(tcx, new_hide_attrs, *cfg_name, value) {
-                new_show_attrs
-                    .entry(*cfg_name)
-                    .and_modify(|entry| entry.update_with(value))
-                    .or_insert_with(|| value.clone());
-                cfg_info
-                    .hidden_cfg
-                    .entry(*cfg_name)
-                    .and_modify(|entry| entry.remove_overlap(value))
-                    .or_insert_with(|| value.clone());
-            }
+            cfg_info
+                .hidden_cfg
+                .entry(*cfg_name)
+                .and_modify(|entry| entry.remove(value))
+                .or_insert_with(|| value.into());
         } else {
-            if check_if_no_overlap(tcx, new_show_attrs, *cfg_name, value) {
-                new_hide_attrs
-                    .entry(*cfg_name)
-                    .and_modify(|entry| entry.update_with(value))
-                    .or_insert_with(|| value.clone());
-                cfg_info
-                    .hidden_cfg
-                    .entry(*cfg_name)
-                    .and_modify(|entry| entry.update_with(value))
-                    .or_insert_with(|| value.clone());
-            }
+            cfg_info
+                .hidden_cfg
+                .entry(*cfg_name)
+                .and_modify(|entry| entry.merge_with(value))
+                .or_insert_with(|| value.into());
         }
     }
 }
@@ -827,9 +819,6 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
         cfg_info.auto_cfg_active = new_value;
         false
     }
-
-    let mut new_show_attrs = FxHashMap::default();
-    let mut new_hide_attrs = FxHashMap::default();
 
     let mut doc_cfg = attrs
         .clone()
@@ -881,13 +870,7 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
                     return None;
                 }
                 for (value, _) in &d.auto_cfg {
-                    handle_auto_cfg_hide_show(
-                        tcx,
-                        cfg_info,
-                        value,
-                        &mut new_show_attrs,
-                        &mut new_hide_attrs,
-                    );
+                    handle_auto_cfg_hide_show(cfg_info, value);
                 }
             }
         } else if let hir::Attribute::Parsed(AttributeKind::TargetFeature { features, .. }) = attr {

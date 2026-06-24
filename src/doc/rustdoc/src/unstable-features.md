@@ -867,26 +867,40 @@ In this case, `#[cfg(feature = "linux")]`, `#[cfg(feature = "something")]`, `#[c
 ```rust,ignore (nightly)
 #[doc(auto_cfg(
     hide(feature, values("something")),
-    hide(target_os, values("linux"))))]
+    hide(target_os, values("linux")),
+))]
 ```
 
-Now, only `#[cfg(feature = "something")]` and `#[cfg(target_os = "linux")]` will be hidden. If you want to hide all values of a key, you can use `any()`:
+Now, only `#[cfg(feature = "something")]` and `#[cfg(target_os = "linux")]` will be hidden. If you want to hide a key and all its values, you can use `any()`:
 
 ```rust,ignore (nightly)
-#[doc(auto_cfg(hide(feature, values(any()))))]
+#[doc(auto_cfg(
+    hide(feature, values(any())),
+))]
 ```
 
-If you want to hide when there is no value you can use `none()`:
+If you want to hide only when there is no value you can use `none()`:
 
 ```rust,ignore (nightly)
-#[doc(auto_cfg(hide(feature, values("something", none()))))]
+#[doc(auto_cfg(
+    hide(feature, values("something", none())),
+))]
+```
+
+So now, if you want to forbid all values for a key, but allow the key itself, you can do:
+
+```rust,ignore (nightly)
+#[doc(auto_cfg(
+    hide(feature, values(any())), // We completely hide "feature".
+    show(feature), // We show again "feature" (but not any value).
+))]
 ```
 
 If the previous example, both `#[cfg(feature)]` and `#[cfg(feature = "something")]` will be hidden.
 
 Rustdoc currently hides `test`, `doc` and `doctest` attributes by default and reserves the right to change the list of "hidden by default" attributes.
 
-The attribute accepts only a list of identifiers or key/value items. So you can write:
+The attribute accepts only a list of identifiers and `values()`. So you can write:
 
 ```rust,ignore (nightly)
 #[doc(auto_cfg(
@@ -916,14 +930,6 @@ However, it only impacts the `unix` cfg, not the feature:
 #[cfg(feature = "unix")] // `feature = "unix"` is displayed
 ```
 
-If `cfg_auto(show(...))` and `cfg_auto(hide(...))` are used to show/hide a same `cfg` on a same item, it'll emit an error. Example:
-
-```rust,ignore (nightly)
-#[doc(auto_cfg(hide(unix)))]
-#[doc(auto_cfg(show(unix)))] // Error!
-pub fn foo() {}
-```
-
 Using this attribute will re-enable `auto_cfg` if it was disabled at this location:
 
 ```rust,ignore (nightly)
@@ -939,14 +945,6 @@ pub mod module {
     #[doc(auto_cfg(hide(unix)))] // `auto_cfg` is re-enabled.
     pub fn foo() {}
 }
-```
-
-However, using `doc(auto_cfg = ...)` and `doc(auto_cfg(...))` on the same item will emit an error:
-
-```rust,ignore (nightly)
-#[doc(auto_cfg = false)]
-#[doc(auto_cfg(hide(unix)))] // error
-pub fn foo() {}
 ```
 
 The reason behind this is that `doc(auto_cfg = ...)` enables or disables the feature, whereas `doc(auto_cfg(...))` enables it unconditionally, making the first attribute to appear useless as it will be overidden by the next `doc(auto_cfg)` attribute.

@@ -85,7 +85,7 @@ pub mod sub3 {
 
     //@ has foo/sub3/fn.foo.html
     //@ has - '//*[@class="item-info"]/*[@class="stab portability"]' 'non-blob'
-    //@ !has - '//*[@class="item-info"]/*[@class="stab portability"]' 'non-meow'
+    //@ has - '//*[@class="item-info"]/*[@class="stab portability"]' 'non-meow'
     #[cfg(not(meow))]
     #[cfg(not(blob))]
     pub fn foo() {}
@@ -132,4 +132,48 @@ pub mod sub4 {
     #[cfg(not(bla = "tic"))]
     #[cfg(not(alb))]
     pub fn foo2() {}
+}
+
+// This test the mix of `any()` and values.
+#[doc(auto_cfg(
+    hide(alb, values(any())),
+    hide(bla, values(any())),
+    show(bla, values("top")),
+))]
+pub mod sub5 {
+    //@ has foo/sub5/fn.foo.html
+    //@ !has - '//*[@class="item-info"]/*[@class="stab portability"]' 'non-alb'
+    //@ has - '//*[@class="item-info"]/*[@class="stab portability"]' 'non-bla=top'
+    //@ !has - '//*[@class="item-info"]/*[@class="stab portability"]' 'non-bla=a'
+    #[cfg(not(alb))]
+    #[cfg(not(bla = "top"))]
+    #[cfg(not(bla = "a"))]
+    pub fn foo() {}
+
+    //@ has foo/sub5/fn.foo2.html
+    //@ has - '//*[@class="item-info"]/*[@class="stab portability"]' 'non-alb'
+    //@ !has - '//*[@class="item-info"]/*[@class="stab portability"]' 'non-bla=top'
+    //@ !has - '//*[@class="item-info"]/*[@class="stab portability"]' 'non-bla=a'
+    #[doc(auto_cfg(
+        show(alb, values(none())),
+        hide(bla, values("top")),
+    ))]
+    #[cfg(not(alb))]
+    #[cfg(not(bla = "top"))]
+    #[cfg(not(bla = "a"))]
+    pub fn foo2() {}
+
+    //@ has foo/sub5/fn.foo3.html
+    //@ has - '//*[@class="item-info"]/*[@class="stab portability"]' 'non-alb'
+    //@ !has - '//*[@class="item-info"]/*[@class="stab portability"]' 'non-bla=top'
+    //@ has - '//*[@class="item-info"]/*[@class="stab portability"]' 'non-bla=a'
+    #[doc(auto_cfg(
+        show(alb, values(any())),
+        show(bla, values(any())),
+        hide(bla, values(none(), "top")),
+    ))]
+    #[cfg(not(alb))]
+    #[cfg(not(bla = "top"))]
+    #[cfg(not(bla = "a"))]
+    pub fn foo3() {}
 }

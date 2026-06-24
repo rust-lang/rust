@@ -8,7 +8,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::attrs::{
-    self, DeprecatedSince, DocAttribute, DocCfgHideShowValue, DocInline, HideOrShow,
+    self, DeprecatedSince, DocAttribute, DocCfgHideShow, DocInline, HideOrShow,
 };
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::DefId;
@@ -1137,25 +1137,20 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
                     out.push_str(&format!("{kind}("));
                     for (name, cfgs) in &auto_cfg.values {
                         out.push_str(&format!("{name}, values("));
-                        let mut pos = 0;
-                        if cfgs.only_key.is_some() {
-                            out.push_str("none()");
-                            pos += 1;
-                        }
-                        match &cfgs.values {
-                            DocCfgHideShowValue::Any(_) => {
-                                out.push_str(&format!("{}any()", if pos > 0 { ", " } else { "" }));
+                        match cfgs {
+                            DocCfgHideShow::Any(_) => {
+                                out.push_str("any()");
                             }
-                            DocCfgHideShowValue::List(values) => {
-                                for (value, _) in values {
-                                    // We use `as_str` and debug display to have characters escaped
-                                    // and `"` characters surrounding the string.
-                                    out.push_str(&format!(
-                                        "{}{:?}",
-                                        if pos > 0 { ", " } else { "" },
-                                        value.as_str()
-                                    ));
-                                    pos += 1;
+                            DocCfgHideShow::List(values) => {
+                                for (pos, value) in values.iter().enumerate() {
+                                    let separator = if pos > 0 { ", " } else { "" };
+                                    if let Some(value) = &value.value {
+                                        // We use `as_str` and debug display to have characters escaped
+                                        // and `"` characters surrounding the string.
+                                        out.push_str(&format!("{separator}{:?}", value.as_str()));
+                                    } else {
+                                        out.push_str(&format!("{separator}none()"));
+                                    }
                                 }
                             }
                         }
