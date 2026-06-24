@@ -160,7 +160,7 @@ pub mod os {
 
 #[cfg(target_os = "ios")]
 pub mod os {
-    pub const FAMILY: &str = "unix";
+    pub const FAMILY: &str = "xnu";
     pub const OS: &str = "ios";
     pub const DLL_PREFIX: &str = "lib";
     pub const DLL_SUFFIX: &str = ".dylib";
@@ -193,7 +193,7 @@ pub mod os {
 
 #[cfg(target_os = "macos")]
 pub mod os {
-    pub const FAMILY: &str = "unix";
+    pub const FAMILY: &str = "xnu";
     pub const OS: &str = "macos";
     pub const DLL_PREFIX: &str = "lib";
     pub const DLL_SUFFIX: &str = ".dylib";
@@ -303,7 +303,7 @@ pub mod os {
 
 #[cfg(target_os = "tvos")]
 pub mod os {
-    pub const FAMILY: &str = "unix";
+    pub const FAMILY: &str = "xnu";
     pub const OS: &str = "tvos";
     pub const DLL_PREFIX: &str = "lib";
     pub const DLL_SUFFIX: &str = ".dylib";
@@ -336,7 +336,7 @@ pub mod os {
 
 #[cfg(target_os = "visionos")]
 pub mod os {
-    pub const FAMILY: &str = "unix";
+    pub const FAMILY: &str = "xnu";
     pub const OS: &str = "visionos";
     pub const DLL_PREFIX: &str = "lib";
     pub const DLL_SUFFIX: &str = ".dylib";
@@ -380,7 +380,7 @@ pub mod os {
 
 #[cfg(target_os = "watchos")]
 pub mod os {
-    pub const FAMILY: &str = "unix";
+    pub const FAMILY: &str = "xnu";
     pub const OS: &str = "watchos";
     pub const DLL_PREFIX: &str = "lib";
     pub const DLL_SUFFIX: &str = ".dylib";
