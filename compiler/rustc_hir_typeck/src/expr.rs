@@ -3159,6 +3159,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn suggest_first_deref_field(&self, err: &mut Diag<'_>, base: &hir::Expr<'_>, field: Ident) {
         err.span_label(field.span, "unknown field");
+        if base.span.from_expansion() || field.span.from_expansion() {
+            return;
+        }
         let val = if let Ok(base) = self.tcx.sess.source_map().span_to_snippet(base.span)
             && base.len() < 20
         {

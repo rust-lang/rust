@@ -8,11 +8,6 @@ LL |     let _ = get_value!(d);
    |             ------------- in this macro invocation
    |
    = note: this error originates in the macro `get_value` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: `$d as *mut Demo` is a raw pointer; try dereferencing it
-   |
-LL -         &mut $d as *mut Demo
-LL +         &mut (*).
-   |
 
 error: aborting due to 1 previous error
 
