@@ -53,6 +53,7 @@ pub(super) mod public_api_hasher;
 pub(super) trait MetadataEncoder: Sized {
     type EncodedDefIndex: for<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx, Self>>;
     fn encoded_def_index(tcx: TyCtxt<'_>, def_id: DefId) -> Self::EncodedDefIndex;
+    fn into_raw_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> RawDefId;
     fn public_api_hasher<'h>(hcx: StableHashState<'h>) -> impl PublicApiHashState<'h>;
     fn encode_trait_impls<'h>(
         ecx: &mut EncodeContext<'_, '_, Self>,
@@ -90,6 +91,12 @@ impl MetadataEncoder for DefPathHashDefIdEncoder {
     fn encoded_def_index(tcx: TyCtxt<'_>, def_id: DefId) -> Self::EncodedDefIndex {
         tcx.def_path_hash(def_id).local_hash()
     }
+    fn into_raw_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> RawDefId {
+        RawDefId {
+            krate: def_id.krate.as_u32(),
+            index: Self::encoded_def_index(tcx, def_id).as_u64(),
+        }
+    }
     fn public_api_hasher<'h>(hcx: StableHashState<'h>) -> impl PublicApiHashState<'h> {
         PublicApiHashingContext::<true>::new(hcx)
     }
@@ -100,6 +107,12 @@ impl MetadataEncoder for DefIndexDefIdEncoder {
     type EncodedDefIndex = DefIndex;
     fn encoded_def_index(_tcx: TyCtxt<'_>, def_id: DefId) -> Self::EncodedDefIndex {
         def_id.index
+    }
+    fn into_raw_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> RawDefId {
+        RawDefId {
+            krate: def_id.krate.as_u32(),
+            index: Self::encoded_def_index(tcx, def_id).as_u32() as u64,
+        }
     }
     fn public_api_hasher<'h>(hcx: StableHashState<'h>) -> impl PublicApiHashState<'h> {
         PublicApiHashingContext::<false>::new(hcx)
@@ -1789,7 +1802,7 @@ impl<'a, 'tcx, M: MetadataEncoder> EncodeContext<'a, 'tcx, M> {
                 let coroutine_for_closure = self.tcx.coroutine_for_closure(def_id);
                 self.tables.coroutine_for_closure.set_hashed(
                     def_id.index,
-                    Some(coroutine_for_closure.into()),
+                    Some(M::into_raw_def_id(tcx, coroutine_for_closure)),
                     (def_id, coroutine_for_closure),
                     hcx,
                 );
@@ -1798,7 +1811,10 @@ impl<'a, 'tcx, M: MetadataEncoder> EncodeContext<'a, 'tcx, M> {
                 if tcx.needs_coroutine_by_move_body_def_id(coroutine_for_closure) {
                     self.tables.coroutine_by_move_body_def_id.set_hashed(
                         coroutine_for_closure.index,
-                        Some(self.tcx.coroutine_by_move_body_def_id(coroutine_for_closure).into()),
+                        Some(M::into_raw_def_id(
+                            tcx,
+                            self.tcx.coroutine_by_move_body_def_id(coroutine_for_closure),
+                        )),
                         (
                             coroutine_for_closure,
                             self.tcx.coroutine_by_move_body_def_id(coroutine_for_closure),
@@ -2550,7 +2566,7 @@ impl<'a, 'tcx, M: MetadataEncoder> EncodeContext<'a, 'tcx, M> {
                 {
                     self.tables.impl_parent.set_hashed(
                         def_id.index,
-                        Some(parent.into()),
+                        Some(M::into_raw_def_id(tcx, parent)),
                         (def_id, parent),
                         hcx,
                     );

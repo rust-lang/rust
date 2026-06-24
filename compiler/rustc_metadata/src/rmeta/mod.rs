@@ -330,21 +330,23 @@ pub(crate) struct CrateHashes {
 #[derive(Copy, Clone)]
 pub(crate) struct RawDefId {
     krate: u32,
-    index: u32,
-}
-
-impl From<DefId> for RawDefId {
-    fn from(val: DefId) -> Self {
-        RawDefId { krate: val.krate.as_u32(), index: val.index.as_u32() }
-    }
+    index: u64,
 }
 
 impl RawDefId {
     /// This exists so that `provide_one!` is happy
     fn decode(self, meta: (&CrateMetadata, TyCtxt<'_>)) -> DefId {
+        let (cdata, tcx) = meta;
         let krate = CrateNum::from_u32(self.krate);
-        let krate = meta.0.map_encoded_cnum_to_current(krate);
-        DefId { krate, index: DefIndex::from_u32(self.index) }
+        let krate = cdata.map_encoded_cnum_to_current(krate);
+
+        let index = if cdata.root.public_api_hash_opt_enabled {
+            let hash = Hash64::new(self.index);
+            cdata.hash_to_def_index(krate, hash, tcx)
+        } else {
+            DefIndex::from_u32(self.index.try_into().unwrap())
+        };
+        DefId { krate, index }
     }
 }
 

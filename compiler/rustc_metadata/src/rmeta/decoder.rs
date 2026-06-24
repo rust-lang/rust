@@ -109,7 +109,7 @@ pub(crate) struct CrateMetadata {
 
     // --- Some data pre-decoded from the metadata blob, usually for performance ---
     /// Data about the top-level items in a crate, as well as various crate-level metadata.
-    root: CrateRoot,
+    pub(super) root: CrateRoot,
     /// Trait impl data.
     /// FIXME: Used only from queries and can use query cache,
     /// so pre-decoding can probably be avoided.
@@ -379,15 +379,7 @@ impl<T: ParameterizedOverTcx> LazyArray<T> {
 
 impl<'a, 'tcx> MetadataDecodeContext<'a, 'tcx> {
     fn hash_to_def_index(&self, cnum: CrateNum, hash: Hash64) -> DefIndex {
-        assert!(cnum != LOCAL_CRATE, "Deserialized LOCAL_CRATE from a crate metadata!");
-        if cnum == self.cdata.cnum {
-            self.cdata.local_def_path_hash_to_def_index(hash).unwrap()
-        } else {
-            CStore::from_tcx(self.tcx)
-                .get_crate_data(cnum)
-                .local_def_path_hash_to_def_index(hash)
-                .unwrap()
-        }
+        self.cdata.hash_to_def_index(cnum, hash, self.tcx)
     }
 
     #[inline]
@@ -1011,6 +1003,29 @@ impl CrateRoot {
 }
 
 impl CrateMetadata {
+    pub(super) fn hash_to_def_index(
+        &self,
+        cnum: CrateNum,
+        hash: Hash64,
+        tcx: TyCtxt<'_>,
+    ) -> DefIndex {
+        assert!(cnum != LOCAL_CRATE, "Deserialized LOCAL_CRATE from a crate metadata!");
+        if cnum == self.cnum {
+            self.local_def_path_hash_to_def_index(hash).unwrap()
+        } else {
+            CStore::from_tcx(tcx)
+                .get_crate_data(cnum)
+                .local_def_path_hash_to_def_index(hash)
+                .unwrap_or_else(||
+                    bug!(
+                        "Failed to find definition with hash {hash:x?} in crate {} while decoding DefId-s in {}",
+                        tcx.crate_name(cnum),
+                        tcx.crate_name(self.cnum)
+                    )
+                )
+        }
+    }
+
     fn missing(&self, descr: &str, id: DefIndex) -> ! {
         bug!("missing `{descr}` for {:?}", self.local_def_id(id))
     }

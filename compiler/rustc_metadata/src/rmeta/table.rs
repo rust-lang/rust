@@ -266,22 +266,22 @@ fixed_size_enum! {
 
 // We directly encode RawDefId because using a `LazyValue` would incur a 50% overhead in the worst case.
 impl FixedSizeEncoding for Option<RawDefId> {
-    type ByteArray = [u8; 8];
+    type ByteArray = [u8; 12];
 
     #[inline]
-    fn from_bytes(encoded: &[u8; 8]) -> Self {
+    fn from_bytes(encoded: &[u8; 12]) -> Self {
         let (index, krate) = decode_interleaved(encoded);
         let krate = u32::from_le_bytes(krate);
         if krate == 0 {
             return None;
         }
-        let index = u32::from_le_bytes(index);
+        let index = u64::from_le_bytes(index);
 
         Some(RawDefId { krate: krate - 1, index })
     }
 
     #[inline]
-    fn write_to_bytes(self, dest: &mut [u8; 8]) {
+    fn write_to_bytes(self, dest: &mut [u8; 12]) {
         match self {
             None => unreachable!(),
             Some(RawDefId { krate, index }) => {
@@ -372,13 +372,24 @@ impl<T> LazyArray<T> {
 // Interleaving the bytes of the two integers exposes trailing bytes in the first integer
 // to the varint scheme that we use for tables.
 #[inline]
-fn decode_interleaved<const N: usize, const M: usize>(encoded: &[u8; N]) -> ([u8; M], [u8; M]) {
-    assert_eq!(M * 2, N);
-    let mut first = [0u8; M];
-    let mut second = [0u8; M];
-    for i in 0..M {
+fn decode_interleaved<const N: usize, const M1: usize, const M2: usize>(
+    encoded: &[u8; N],
+) -> ([u8; M1], [u8; M2]) {
+    assert_eq!(M1 + M2, N);
+    let first_longer: bool = M1 > M2;
+    let (min, max) = if first_longer { (M2, M1) } else { (M1, M2) };
+    let mut first = [0u8; M1];
+    let mut second = [0u8; M2];
+    for i in 0..min {
         first[i] = encoded[2 * i];
         second[i] = encoded[2 * i + 1];
+    }
+    for i in min..max {
+        if first_longer {
+            first[i] = encoded[i + min];
+        } else {
+            second[i] = encoded[i + min];
+        }
     }
     (first, second)
 }
@@ -391,11 +402,20 @@ fn decode_interleaved<const N: usize, const M: usize>(encoded: &[u8; N]) -> ([u8
 //
 // Prefer passing a and b such that `b` is usually smaller.
 #[inline]
-fn encode_interleaved<const N: usize, const M: usize>(a: [u8; M], b: [u8; M], dest: &mut [u8; N]) {
-    assert_eq!(M * 2, N);
-    for i in 0..M {
+fn encode_interleaved<const N: usize, const M1: usize, const M2: usize>(
+    a: [u8; M1],
+    b: [u8; M2],
+    dest: &mut [u8; N],
+) {
+    assert_eq!(M1 + M2, N);
+    let first_longer: bool = M1 > M2;
+    let (min, max) = if first_longer { (M2, M1) } else { (M1, M2) };
+    for i in 0..min {
         dest[2 * i] = a[i];
         dest[2 * i + 1] = b[i];
+    }
+    for i in min..max {
+        dest[i + min] = if first_longer { a[i] } else { b[i] }
     }
 }
 
