@@ -5,9 +5,7 @@ use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
 };
 
-use crate::predicate::AliasTermKind;
-use crate::ty_kind::AliasTyKind;
-use crate::{Interner, UnevaluatedConstKind};
+use crate::{AliasTermKind, AliasTyKind, Interner, UnevaluatedConstKind};
 
 /// Represents an alias of a type, constant, or other term-like item.
 ///
