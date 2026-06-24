@@ -1181,7 +1181,7 @@ macro_rules! int_impl {
                 (
                     lhs: $SelfT = self,
                     rhs: $SelfT = rhs,
-                ) => rhs > 0 && lhs % rhs == 0 && (lhs != <$SelfT>::MIN || rhs != -1),
+                ) => rhs != 0 && lhs % rhs == 0 && (lhs != <$SelfT>::MIN || rhs != -1),
             );
             // SAFETY: Same precondition
             unsafe { intrinsics::exact_div(self, rhs) }
