@@ -34,6 +34,7 @@ use crate::resolve::eager_resolve_vars;
 use crate::solve::eval_ctxt::fast_path::{
     RerunStalled, compute_goal_fast_path, rerunning_stalled_goal_may_make_progress,
 };
+use crate::solve::fast_path::compute_goal_fast_path_cold;
 use crate::solve::search_graph::SearchGraph;
 use crate::solve::ty::may_use_unstable_feature;
 use crate::solve::{
@@ -43,7 +44,7 @@ use crate::solve::{
     VisibleForLeakCheck, inspect,
 };
 
-mod fast_path;
+pub mod fast_path;
 mod probe;
 mod solver_region_constraints;
 
@@ -236,7 +237,13 @@ where
             });
         }
 
-        if let Some(res) = compute_goal_fast_path(self, goal, span) {
+        if
+        // No need to try the fast path if stalled_on is `None`, since we already try the fast path
+        // immediately when adding new goals. If we didn't check `stalled_on` here we'd be trying
+        // the fast path twice for some goals.
+        stalled_on.is_some()
+            && let Some(res) = compute_goal_fast_path_cold(self, goal, span)
+        {
             return Ok(res);
         }
 
@@ -503,7 +510,13 @@ where
             });
         }
 
-        if let Some(res) = compute_goal_fast_path(self.delegate, goal, self.origin_span) {
+        if
+        // No need to try the fast path if stalled_on is `None`, since we already try the fast path
+        // immediately when adding new goals. If we didn't check `stalled_on` here we'd be trying
+        // the fast path twice for some goals.
+        stalled_on.is_some()
+            && let Some(res) = compute_goal_fast_path_cold(self.delegate, goal, self.origin_span)
+        {
             return Ok(res);
         }
 
@@ -901,7 +914,20 @@ where
             ty::Unnormalized::new_wip(goal.predicate),
         )?;
         self.inspect.add_goal(self.delegate, self.max_input_universe, source, goal);
-        self.nested_goals.push((source, goal, None));
+
+        if let Some(GoalEvaluation { goal, certainty, has_changed: _, stalled_on }) =
+            compute_goal_fast_path(self.delegate, goal, self.origin_span)
+        {
+            match certainty {
+                // We're done here
+                Certainty::Yes => {}
+                Certainty::Maybe(_) => {
+                    self.nested_goals.push((source, goal, stalled_on));
+                }
+            }
+        } else {
+            self.nested_goals.push((source, goal, None));
+        }
         Ok(())
     }
 
