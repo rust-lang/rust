@@ -1212,9 +1212,9 @@ LL + use std::collections::btree_map::Range;
    |
 LL + use std::collections::btree_set::Range;
    |
-LL + use std::ops::Range;
-   |
 LL + use std::range::Range;
+   |
+LL + use std::range::legacy::Range;
    |
 
 error[E0425]: cannot find type `Rangefrom` in this scope
@@ -1225,9 +1225,9 @@ LL | fn test_rangefrom(_x: Rangefrom<()>){}
    |
 help: consider importing one of these similarly named structs
    |
-LL + use std::ops::RangeFrom;
-   |
 LL + use std::range::RangeFrom;
+   |
+LL + use std::range::legacy::RangeFrom;
    |
 
 error[E0425]: cannot find type `Rangefull` in this scope
@@ -1238,7 +1238,7 @@ LL | fn test_rangefull(_x: Rangefull<()>){}
    |
 help: consider importing this similarly named struct
    |
-LL + use std::ops::RangeFull;
+LL + use std::range::RangeFull;
    |
 
 error[E0425]: cannot find type `Rangeinclusive` in this scope
@@ -1249,9 +1249,9 @@ LL | fn test_rangeinclusive(_x: Rangeinclusive<()>){}
    |
 help: consider importing one of these similarly named structs
    |
-LL + use std::ops::RangeInclusive;
-   |
 LL + use std::range::RangeInclusive;
+   |
+LL + use std::range::legacy::RangeInclusive;
    |
 
 error[E0425]: cannot find type `Rangeto` in this scope
@@ -1262,7 +1262,7 @@ LL | fn test_rangeto(_x: Rangeto<()>){}
    |
 help: consider importing this similarly named struct
    |
-LL + use std::ops::RangeTo;
+LL + use std::range::RangeTo;
    |
 
 error[E0425]: cannot find type `RangetoInclusive` in this scope
@@ -1273,9 +1273,9 @@ LL | fn test_rangetoinclusive(_x: RangetoInclusive<()>){}
    |
 help: consider importing one of these similarly named structs
    |
-LL + use std::ops::RangeToInclusive;
-   |
 LL + use std::range::RangeToInclusive;
+   |
+LL + use std::range::legacy::RangeToInclusive;
    |
 
 error[E0425]: cannot find type `AssertUnwindsafe` in this scope
