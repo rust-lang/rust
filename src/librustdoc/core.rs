@@ -227,7 +227,6 @@ pub(crate) fn create_config(
         scrape_examples_options,
         remap_path_prefix,
         remap_path_scope,
-        target_modifiers,
         ..
     }: RustdocOptions,
     render_options: &RenderOptions,
@@ -293,7 +292,6 @@ pub(crate) fn create_config(
         } else {
             OutputTypes::new(&[])
         },
-        target_modifiers,
         ..Options::default()
     };
 

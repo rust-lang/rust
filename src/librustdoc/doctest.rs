@@ -174,7 +174,6 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
         remap_path_scope: options.remap_path_scope.clone(),
         unstable_opts: options.unstable_opts.clone(),
         error_format: options.error_format.clone(),
-        target_modifiers: options.target_modifiers.clone(),
         ..config::Options::default()
     };
 
