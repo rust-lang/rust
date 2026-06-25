@@ -114,6 +114,13 @@ const impl CarryingMulAdd for i128 {
 pub const trait DisjointBitOr: Copy + 'static {
     /// See [`super::disjoint_bitor`]; we just need the trait indirection to handle
     /// different types since calling intrinsics with generics doesn't work.
+    ///
+    /// # Safety
+    ///
+    /// Requires that `(self & other) == 0`, or equivalently that
+    /// `(self | other) == (self + other)`.
+    ///
+    /// Otherwise it's immediate UB.
     unsafe fn disjoint_bitor(self, other: Self) -> Self;
 }
 macro_rules! zero {
