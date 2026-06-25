@@ -359,7 +359,7 @@ fn test_shutdown_read_write() {
     let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
-    let epfd = unsafe { libc::epoll_create1(0) };
+    let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Spawn the server thread.
     let server_thread = thread::spawn(move || net::accept_ipv4(server_sockfd).unwrap());
@@ -387,7 +387,7 @@ fn test_shutdown_read() {
     let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
-    let epfd = unsafe { libc::epoll_create1(0) };
+    let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Spawn the server thread.
     let server_thread = thread::spawn(move || net::accept_ipv4(server_sockfd).unwrap());
@@ -411,7 +411,7 @@ fn test_shutdown_write() {
     let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
-    let epfd = unsafe { libc::epoll_create1(0) };
+    let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Spawn the server thread.
     let server_thread = thread::spawn(move || {
