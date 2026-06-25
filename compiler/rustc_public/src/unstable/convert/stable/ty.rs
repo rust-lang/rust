@@ -493,6 +493,8 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
                 TyKind::Alias(alias_ty.kind.stable(tables, cx), alias_ty.stable(tables, cx))
             }
             ty::Param(param_ty) => TyKind::Param(param_ty.stable(tables, cx)),
+            // TODO: should add new rustc_public::TyKind variant probably
+            ty::Erased(..) => todo!(),
             ty::Bound(ty::BoundVarIndexKind::Canonical, _) => {
                 unreachable!()
             }

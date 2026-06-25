@@ -534,6 +534,8 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             }
             ty::Tuple(_) if ty.is_unit() => unreachable!(),
             ty::Param(_) => unreachable!(),
+            // TODO: implement
+            ty::Erased(..) => todo!(),
 
             ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) | ty::Error(_) => bug!(),
 

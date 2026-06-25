@@ -111,6 +111,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type Pat = Pattern<'tcx>;
     type PatList = &'tcx List<Pattern<'tcx>>;
     type Safety = hir::Safety;
+    type ParamLayout = ty::ParamLayout<'tcx>;
     type Const = ty::Const<'tcx>;
     type Consts = &'tcx List<Self::Const>;
 
@@ -663,6 +664,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             // These variants should not exist as a self type.
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
             | ty::Param(_)
+            | ty::Erased(..)
             | ty::Bound(_, _) => bug!("unexpected self type: {self_ty}"),
         }
 

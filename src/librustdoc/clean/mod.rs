@@ -2374,6 +2374,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
         ty::Closure(..) => panic!("Closure"),
         ty::CoroutineClosure(..) => panic!("CoroutineClosure"),
         ty::Coroutine(..) => panic!("Coroutine"),
+        ty::Erased(..) => panic!("Erased"),
         ty::Placeholder(..) => panic!("Placeholder"),
         ty::CoroutineWitness(..) => panic!("CoroutineWitness"),
         ty::Infer(..) => panic!("Infer"),

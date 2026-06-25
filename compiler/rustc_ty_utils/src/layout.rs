@@ -811,6 +811,8 @@ fn layout_of_uncached<'tcx>(
             cx.layout_of(ty)?.layout
         }
 
+        ty::Erased(_, param_layout) => param_layout.0,
+
         // Types with no meaningful known layout.
         ty::Param(_) | ty::Placeholder(..) => {
             return Err(error(cx, LayoutError::TooGeneric(ty)));

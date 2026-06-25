@@ -735,7 +735,10 @@ where
                     .skip_norm_wip()
             }
 
-            ty::Alias(ty::IsRigid::Yes, _) | ty::Param(_) | ty::Placeholder(..) => {
+            ty::Alias(ty::IsRigid::Yes, _)
+            | ty::Param(_)
+            | ty::Erased(..)
+            | ty::Placeholder(..) => {
                 // This is the "fallback impl" for type parameters, unnormalizable projections
                 // and opaque types: If the `self_ty` is `Sized`, then the metadata is `()`.
                 // FIXME(ptr_metadata): This impl overlaps with the other impls and shouldn't
@@ -1012,7 +1015,10 @@ where
             // Given an alias, parameter, or placeholder we add an impl candidate normalizing to a rigid
             // alias. In case there's a where-bound further constraining this alias it is preferred over
             // this impl candidate anyways. It's still a bit scuffed.
-            ty::Alias(ty::IsRigid::Yes, _) | ty::Param(_) | ty::Placeholder(..) => {
+            ty::Alias(ty::IsRigid::Yes, _)
+            | ty::Param(_)
+            | ty::Erased(..)
+            | ty::Placeholder(..) => {
                 return ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
                     ecx.instantiate_normalizes_to_as_rigid(goal)?;
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)

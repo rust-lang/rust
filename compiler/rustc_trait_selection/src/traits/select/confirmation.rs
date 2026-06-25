@@ -1291,6 +1291,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Adt(..)
             | ty::Alias(..)
             | ty::Param(_)
+            | ty::Erased(..)
             | ty::Placeholder(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)

@@ -7,12 +7,12 @@ use std::debug_assert_matches;
 use std::ops::{ControlFlow, Range};
 
 use hir::def::{CtorKind, DefKind};
-use rustc_abi::{FIRST_VARIANT, FieldIdx, NumScalableVectors, ScalableElt, VariantIdx};
+use rustc_abi::{FIRST_VARIANT, FieldIdx, Layout, NumScalableVectors, ScalableElt, VariantIdx};
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::LangItem;
 use rustc_hir::def_id::DefId;
-use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, extension};
+use rustc_macros::{Lift, StableHash, TyDecodable, TyEncodable, TypeFoldable, extension};
 use rustc_span::{DUMMY_SP, Span, Symbol, kw, sym};
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::solve::SizedTraitKind;
@@ -364,6 +364,9 @@ impl ParamConst {
         ty
     }
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, StableHash, Lift)]
+pub struct ParamLayout<'tcx>(pub Layout<'tcx>);
 
 /// Constructors for `Ty`
 impl<'tcx> Ty<'tcx> {
@@ -1719,7 +1722,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Adt(adt, _) if adt.is_enum() => adt.repr().discr_type().to_ty(tcx),
             ty::Coroutine(_, args) => args.as_coroutine().discr_ty(tcx),
 
-            ty::Param(_) | ty::Alias(..) | ty::Infer(ty::TyVar(_)) => {
+            ty::Param(_) | ty::Erased(..) | ty::Alias(..) | ty::Infer(ty::TyVar(_)) => {
                 let assoc_items = tcx.associated_item_def_ids(
                     tcx.require_lang_item(hir::LangItem::DiscriminantKind, DUMMY_SP),
                 );
@@ -1812,7 +1815,7 @@ impl<'tcx> Ty<'tcx> {
 
             // We don't know the metadata of `self`, but it must be equal to the
             // metadata of `tail`.
-            ty::Param(_) | ty::Alias(..) => Err(tail),
+            ty::Param(_) | ty::Erased(..) | ty::Alias(..) => Err(tail),
 
             ty::UnsafeBinder(_) => unimplemented!("FIXME(unsafe_binder)"),
 
@@ -2002,7 +2005,9 @@ impl<'tcx> Ty<'tcx> {
                 ty.instantiate(tcx, args).skip_norm_wip().has_trivial_sizedness(tcx, sizedness)
             }),
 
-            ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) | ty::Bound(..) => false,
+            ty::Alias(..) | ty::Param(_) | ty::Erased(..) | ty::Placeholder(..) | ty::Bound(..) => {
+                false
+            }
 
             ty::Infer(ty::TyVar(_)) => false,
 
@@ -2065,9 +2070,12 @@ impl<'tcx> Ty<'tcx> {
             // Needs normalization or revealing to determine, so no is the safe answer.
             ty::Alias(..) => false,
 
-            ty::Param(..) | ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error(..) => {
-                false
-            }
+            ty::Param(..)
+            | ty::Erased(..)
+            | ty::Placeholder(..)
+            | ty::Bound(..)
+            | ty::Infer(..)
+            | ty::Error(..) => false,
         }
     }
 
@@ -2081,6 +2089,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Str
             | ty::Never
             | ty::Param(_)
+            | ty::Erased(..)
             | ty::Placeholder(_)
             | ty::Bound(..) => true,
 

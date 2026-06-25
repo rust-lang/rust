@@ -385,6 +385,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             | ty::Error(_)
             | ty::Infer(_)
             | ty::Param(..)
+            | ty::Erased(..)
             | ty::Bound(..)
             | ty::Placeholder(..)
             | ty::Never
@@ -424,6 +425,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             | ty::Error(_)
             | ty::Infer(_)
             | ty::Param(..)
+            | ty::Erased(..)
             | ty::Bound(..)
             | ty::Placeholder(..)
             | ty::Never
@@ -479,6 +481,7 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
             | ty::Bound(..)
             | ty::Placeholder(..)
             | ty::Param(..)
+            | ty::Erased(..)
             | ty::Never
             | ty::Foreign(..) => V::Result::output(),
         }

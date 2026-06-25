@@ -49,6 +49,7 @@ where
 
         ty::Dynamic(..)
         | ty::Param(..)
+        | ty::Erased(..)
         | ty::Alias(
             ty::IsRigid::Yes,
             ty::AliasTy {
@@ -158,7 +159,7 @@ where
         // impl {} for extern type
         ty::Foreign(..) => Err(NoSolution),
 
-        ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => Err(NoSolution),
+        ty::Alias(..) | ty::Param(_) | ty::Erased(..) | ty::Placeholder(..) => Err(NoSolution),
 
         ty::Bound(..)
         | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
@@ -232,6 +233,7 @@ where
         | ty::Adt(_, _)
         | ty::Alias(ty::IsRigid::Yes, _)
         | ty::Param(_)
+        | ty::Erased(..)
         | ty::Placeholder(..) => Err(NoSolution),
 
         // impl Copy/Clone for (T1, T2, .., Tn) where T1: Copy/Clone, T2: Copy/Clone, .. Tn: Copy/Clone
@@ -407,6 +409,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
         | ty::UnsafeBinder(_)
         | ty::Alias(ty::IsRigid::Yes, _)
         | ty::Param(_)
+        | ty::Erased(..)
         | ty::Placeholder(..)
         | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
         | ty::Error(_) => Err(NoSolution),
@@ -583,6 +586,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
         | ty::Tuple(_)
         | ty::Alias(ty::IsRigid::Yes, _)
         | ty::Param(_)
+        | ty::Erased(..)
         | ty::Placeholder(..)
         | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
         | ty::Error(_) => Err(NoSolution),
@@ -753,6 +757,7 @@ pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
         | ty::Pat(_, _)
         | ty::Alias(ty::IsRigid::Yes, _)
         | ty::Param(_)
+        | ty::Erased(..)
         | ty::Placeholder(..)
         | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
         | ty::Error(_)
@@ -841,9 +846,12 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
         // if their inner type implements it.
         ty::UnsafeBinder(_) => Err(NoSolution),
 
-        ty::Dynamic(..) | ty::Param(_) | ty::Alias(..) | ty::Placeholder(_) | ty::Foreign(_) => {
-            Err(NoSolution)
-        }
+        ty::Dynamic(..)
+        | ty::Param(_)
+        | ty::Erased(..)
+        | ty::Alias(..)
+        | ty::Placeholder(_)
+        | ty::Foreign(_) => Err(NoSolution),
 
         ty::Bound(..)
         | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {

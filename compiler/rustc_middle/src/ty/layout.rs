@@ -1008,6 +1008,8 @@ where
                 | ty::Bound(..)
                 | ty::Placeholder(..)
                 | ty::Param(_)
+                // TODO: probably need to support this
+                | ty::Erased(..)
                 | ty::Infer(_)
                 | ty::Error(_) => bug!("TyAndLayout::field: unexpected type `{}`", this.ty),
             }

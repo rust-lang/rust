@@ -198,6 +198,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                         | ty::Never
                         | ty::Alias(..)
                         | ty::Param(_)
+                        | ty::Erased(..)
                         | ty::Bound(..)
                         | ty::Placeholder(_)
                         | ty::Infer(..)

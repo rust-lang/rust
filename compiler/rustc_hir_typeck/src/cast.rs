@@ -127,6 +127,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Param(p) => Some(PointerKind::OfParam(p)),
             // Insufficient type information.
             ty::Placeholder(..) | ty::Bound(..) | ty::Infer(_) => None,
+            ty::Erased(..) => bug!("erased type not expected here"),
 
             ty::Bool
             | ty::Char

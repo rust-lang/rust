@@ -210,7 +210,8 @@ impl<'tcx> InherentCollect<'tcx> {
                     ..
                 },
             )
-            | ty::Param(_) => {
+            | ty::Param(_)
+            | ty::Erased(..) => {
                 Err(self.tcx.dcx().emit_err(diagnostics::InherentNominal { span: item_span }))
             }
             ty::FnDef(..)

@@ -304,6 +304,8 @@ pub enum TyKind<I: Interner> {
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}`.
     Param(I::ParamTy),
 
+    Erased(I::ParamTy, I::ParamLayout),
+
     /// Bound type variable, used to represent the `'a` in `for<'a> fn(&'a ())`.
     ///
     /// For canonical queries, we replace inference variables with bound variables,
@@ -400,6 +402,7 @@ impl<I: Interner> TyKind<I> {
             | ty::CoroutineClosure(_, _)
             | ty::Coroutine(_, _)
             | ty::CoroutineWitness(..)
+            | ty::Erased(..)
             | ty::Never
             | ty::Tuple(_) => true,
 
@@ -472,6 +475,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
             }
             Alias(is_rigid, a) => f.debug_tuple("Alias").field(&is_rigid).field(&a).finish(),
             Param(p) => write!(f, "{p:?}"),
+            Erased(p, l) => write!(f, "{p:?}@{l:?}"),
             Bound(d, b) => crate::debug_bound_var(f, *d, b),
             Placeholder(p) => write!(f, "{p:?}"),
             Infer(t) => write!(f, "{:?}", t),

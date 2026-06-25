@@ -1,5 +1,6 @@
 use std::{assert_matches, fmt};
 
+use rustc_abi::Layout;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
@@ -16,8 +17,8 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::print::{FmtPrinter, Print};
 use crate::ty::{
-    self, AssocContainer, EarlyBinder, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    self, AssocContainer, EarlyBinder, GenericArg, GenericArgs, GenericArgsRef, ParamTy, Ty,
+    TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 
 /// An `InstanceKind` along with the args that are needed to substitute the instance.
@@ -33,6 +34,13 @@ use crate::ty::{
 pub struct Instance<'tcx> {
     pub def: InstanceKind<'tcx>,
     pub args: GenericArgsRef<'tcx>,
+}
+
+pub type InstanceArgs<'tcx> = ty::List<InstanceArg<'tcx>>;
+
+pub enum InstanceArg<'tcx> {
+    Mono(GenericArg<'tcx>),
+    Poly(ParamTy, Layout<'tcx>),
 }
 
 /// Describes why a `ReifyShim` was created. This is needed to distinguish a ReifyShim created to

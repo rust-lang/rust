@@ -347,6 +347,7 @@ where
             | ty::UnsafeBinder(_) => self.found_non_local_ty(ty),
 
             ty::Param(..) => panic!("unexpected ty param"),
+            ty::Erased(..) => panic!("unexpected erased param type"),
 
             ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) => {
                 match self.in_crate {

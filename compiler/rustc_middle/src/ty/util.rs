@@ -1215,6 +1215,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Infer(_)
             | ty::Alias(..)
             | ty::Param(_)
+            | ty::Erased(..)
             | ty::Placeholder(_) => false,
         }
     }
@@ -1265,6 +1266,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Infer(_)
             | ty::Alias(..)
             | ty::Param(_)
+            | ty::Erased(..)
             | ty::Placeholder(_) => false,
         }
     }
@@ -1319,6 +1321,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Infer(_)
             | ty::Alias(..)
             | ty::Param(_)
+            | ty::Erased(..)
             | ty::Placeholder(_) => false,
         }
     }
@@ -1484,9 +1487,12 @@ impl<'tcx> Ty<'tcx> {
             //
             // FIXME(ecstaticmorse): Maybe we should `bug` here? This should probably only be
             // called for known, fully-monomorphized types.
-            ty::Alias(..) | ty::Param(_) | ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) => {
-                false
-            }
+            ty::Alias(..)
+            | ty::Param(_)
+            | ty::Erased(..)
+            | ty::Bound(..)
+            | ty::Placeholder(_)
+            | ty::Infer(_) => false,
 
             ty::Foreign(_) | ty::CoroutineWitness(..) | ty::Error(_) | ty::UnsafeBinder(_) => false,
         }
@@ -1586,6 +1592,7 @@ pub fn needs_drop_components_with_async<'tcx>(
         ty::Adt(..)
         | ty::Alias(..)
         | ty::Param(_)
+        | ty::Erased(..)
         | ty::Bound(..)
         | ty::Placeholder(..)
         | ty::Infer(_)

@@ -446,6 +446,8 @@ fn push_debuginfo_type_name<'tcx>(
                 push_close_angle_bracket(cpp_like_debuginfo, output);
             }
         }
+        // TODO
+        ty::Erased(..) => todo!(),
         ty::Param(_)
         | ty::Error(_)
         | ty::Infer(_)

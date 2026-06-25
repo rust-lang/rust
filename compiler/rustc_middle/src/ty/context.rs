@@ -1833,6 +1833,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 Tuple,
                 Bound,
                 Param,
+                Erased,
                 Infer,
                 Alias,
                 Pat,

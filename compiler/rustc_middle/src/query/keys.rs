@@ -444,6 +444,7 @@ fn def_id_of_type_cached<'a>(ty: Ty<'a>, visited: &mut SsoHashSet<Ty<'a>>) -> Op
         | ty::UnsafeBinder(_)
         | ty::Placeholder(..)
         | ty::Param(_)
+        | ty::Erased(..)
         | ty::Infer(_)
         | ty::Bound(..)
         | ty::Error(_)

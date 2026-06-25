@@ -260,6 +260,7 @@ impl<I: Interner> FlagComputation<I> {
             | ty::Uint(_)
             | ty::Never
             | ty::Str
+            | ty::Erased(..)
             | ty::Foreign(..) => {}
 
             ty::Error(_) => self.add_flags(TypeFlags::HAS_NON_REGION_ERROR),

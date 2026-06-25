@@ -131,6 +131,7 @@ pub fn simplify_type<I: Interner>(
             TreatParams::AsRigid => Some(SimplifiedType::Placeholder),
             TreatParams::InstantiateWithInfer => None,
         },
+        ty::Erased(..) => None,
         ty::Alias(..) => match treat_params {
             // When treating `ty::Param` as a placeholder, projections also
             // don't unify with anything else as long as they are fully normalized.
@@ -296,6 +297,7 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
             | ty::CoroutineWitness(..)
             | ty::Foreign(_)
             | ty::Placeholder(_)
+            | ty::Erased(..)
             | ty::UnsafeBinder(_) => {}
         };
 
@@ -361,6 +363,8 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
             // inside of binders and what not, so we're just going to assume that
             // non-rigid alias can unify with anything.
             ty::Alias(ty::IsRigid::No, _) => true,
+
+            ty::Erased(..) => true,
 
             ty::Int(_)
             | ty::Uint(_)

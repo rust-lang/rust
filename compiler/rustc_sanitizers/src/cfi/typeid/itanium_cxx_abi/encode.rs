@@ -634,6 +634,9 @@ pub(crate) fn encode_ty<'tcx>(
             typeid.push_str(&s);
         }
 
+        // TODO
+        ty::Erased(..) => todo!(),
+
         // Unexpected types
         ty::Alias(..)
         | ty::Bound(..)
