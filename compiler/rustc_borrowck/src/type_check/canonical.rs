@@ -179,7 +179,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let _: Result<_, ErrorGuaranteed> = self.fully_perform_op(
             locations,
             category,
-            param_env.and(type_op::prove_predicate::ProvePredicate { predicate }),
+            param_env.and(type_op::prove_predicate::ProvePredicate {
+                predicate,
+                body_id: self.infcx.root_def_id,
+            }),
         );
     }
 

@@ -361,6 +361,56 @@ mod char {
             }
         }
     }
+
+    #[test]
+    fn should_permit_valid_nonzero_char_transmutation() {
+        for order in [Endian::Big, Endian::Little] {
+            use Answer::*;
+            let char_layout = layout::Tree::<Def, !, !>::char(order);
+            let nonzero_char_layout = layout::Tree::<Def, !, !>::nonzero_char(order);
+            let nonzero_u32_layout = layout::Tree::<Def, !, !>::nonzero(4);
+
+            assert_eq!(
+                is_transmutable(&nonzero_char_layout, &char_layout, Assume::default()),
+                Yes,
+                "endian:{order:?}",
+            );
+            assert_eq!(
+                is_transmutable(&char_layout, &nonzero_char_layout, Assume::default()),
+                No(Reason::DstIsBitIncompatible),
+                "endian:{order:?}",
+            );
+            assert_eq!(
+                is_transmutable(&nonzero_char_layout, &nonzero_u32_layout, Assume::default()),
+                Yes,
+                "endian:{order:?}",
+            );
+            assert_eq!(
+                is_transmutable(&nonzero_u32_layout, &nonzero_char_layout, Assume::default()),
+                No(Reason::DstIsBitIncompatible),
+                "endian:{order:?}",
+            );
+
+            let no = No(Reason::DstIsBitIncompatible);
+            for (src, answer) in [
+                (0u32, no.clone()),
+                (1, Yes),
+                (0xD7FF, Yes),
+                (0xD800, no.clone()),
+                (0xDFFF, no.clone()),
+                (0xE000, Yes),
+                (0x10FFFF, Yes),
+                (0x110000, no.clone()),
+                (0xFFFFFFFF, no),
+            ] {
+                let src_layout =
+                    layout::tree::Tree::<Def, !, !>::from_big_endian(order, src.to_be_bytes());
+
+                let a = is_transmutable(&src_layout, &nonzero_char_layout, Assume::default());
+                assert_eq!(a, answer, "endian:{order:?},\nsrc:{src:x}");
+            }
+        }
+    }
 }
 
 mod nonzero {

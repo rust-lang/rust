@@ -139,18 +139,20 @@ pub mod rustc {
     /// A visibility node in the layout.
     #[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
     pub enum Def<'tcx> {
-        Adt(ty::AdtDef<'tcx>),
-        Variant(&'tcx ty::VariantDef),
-        Field(&'tcx ty::FieldDef),
+        Adt(ty::AdtDef<'tcx>, bool),
+        Variant(&'tcx ty::VariantDef, bool),
+        Field(&'tcx ty::FieldDef, bool),
         Primitive,
     }
 
     impl<'tcx> super::Def for Def<'tcx> {
         fn has_safety_invariants(&self) -> bool {
-            // Rust presently has no notion of 'unsafe fields', so for now we
-            // make the conservative assumption that everything besides
-            // primitive types carry safety invariants.
-            self != &Self::Primitive
+            match self {
+                Self::Adt(_, has_safety_invariants)
+                | Self::Variant(_, has_safety_invariants)
+                | Self::Field(_, has_safety_invariants) => *has_safety_invariants,
+                Self::Primitive => false,
+            }
         }
     }
 

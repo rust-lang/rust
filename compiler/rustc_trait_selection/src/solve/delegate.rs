@@ -3,7 +3,7 @@ use std::ops::Deref;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::LangItem;
-use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId, LocalModDefId};
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::{
     Canonical, CanonicalExt as _, CanonicalQueryInput, CanonicalVarKind, CanonicalVarValues,
@@ -368,6 +368,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         src: Ty<'tcx>,
         dst: Ty<'tcx>,
         assume: ty::Const<'tcx>,
+        body_id: Option<LocalDefId>,
     ) -> Result<Certainty, NoSolution> {
         // Erase regions because we compute layouts in `rustc_transmute`,
         // which will ICE for region vars.
@@ -377,8 +378,14 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             return Err(NoSolution);
         };
 
+        let caller_module = body_id
+            .map(|body_id| self.tcx.parent_module_from_def_id(body_id))
+            .unwrap_or(LocalModDefId::CRATE_DEF_ID);
+
         // FIXME(transmutability): This really should be returning nested goals for `Answer::If*`
-        match rustc_transmute::TransmuteTypeEnv::new(self.0.tcx).is_transmutable(src, dst, assume) {
+        match rustc_transmute::TransmuteTypeEnv::new(self.0.tcx, caller_module)
+            .is_transmutable(src, dst, assume)
+        {
             rustc_transmute::Answer::Yes => Ok(Certainty::Yes),
             rustc_transmute::Answer::No(_) | rustc_transmute::Answer::If(_) => Err(NoSolution),
         }

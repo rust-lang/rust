@@ -2,7 +2,7 @@
 //! be rejected if the source potentially carries safety invariants.
 
 #![crate_type = "lib"]
-#![feature(transmutability)]
+#![feature(transmutability, unsafe_fields)]
 #![allow(dead_code)]
 
 mod assert {
@@ -17,7 +17,7 @@ mod assert {
 fn test() {
     #[repr(C)]
     struct Src {
-        non_zero: u8,
+        pub unsafe non_zero: u8,
     }
     type Dst = u8;
     assert::is_transmutable::<&mut Src, &mut Dst>(); //~ ERROR cannot be safely transmuted

@@ -32,27 +32,30 @@ where
 #[cfg(feature = "rustc")]
 mod rustc {
     use rustc_middle::ty::layout::LayoutCx;
-    use rustc_middle::ty::{Ty, TyCtxt, TypingEnv};
+    use rustc_middle::ty::{Ty, TypingEnv};
 
     use super::*;
     use crate::layout::tree::rustc::Err;
+    use crate::maybe_transmutable::query_context::rustc::RustcQueryContext;
 
-    impl<'tcx> MaybeTransmutableQuery<Ty<'tcx>, TyCtxt<'tcx>> {
+    impl<'tcx> MaybeTransmutableQuery<Ty<'tcx>, RustcQueryContext<'tcx>> {
         /// This method begins by converting `src` and `dst` from `Ty`s to `Tree`s,
         /// then computes an answer using those trees.
         #[instrument(level = "debug", skip(self), fields(src = ?self.src, dst = ?self.dst))]
         pub(crate) fn answer(
             self,
-        ) -> Answer<<TyCtxt<'tcx> as QueryContext>::Region, <TyCtxt<'tcx> as QueryContext>::Type>
-        {
+        ) -> Answer<
+            <RustcQueryContext<'tcx> as QueryContext>::Region,
+            <RustcQueryContext<'tcx> as QueryContext>::Type,
+        > {
             let Self { src, dst, assume, context } = self;
 
-            let layout_cx = LayoutCx::new(context, TypingEnv::fully_monomorphized());
+            let layout_cx = LayoutCx::new(context.tcx, TypingEnv::fully_monomorphized());
 
             // Convert `src` and `dst` from their rustc representations, to `Tree`-based
             // representations.
-            let src = Tree::from_ty(src, layout_cx);
-            let dst = Tree::from_ty(dst, layout_cx);
+            let src = Tree::from_ty(src, layout_cx, context.caller_module);
+            let dst = Tree::from_ty(dst, layout_cx, context.caller_module);
 
             match (src, dst) {
                 (Err(Err::TypeError(_)), _) | (_, Err(Err::TypeError(_))) => {

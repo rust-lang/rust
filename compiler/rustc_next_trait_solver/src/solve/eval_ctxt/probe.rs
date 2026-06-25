@@ -86,6 +86,7 @@ where
             search_graph: outer.search_graph,
             nested_goals: propagated_nested_goals,
             origin_span: outer.origin_span,
+            root_body_id: outer.root_body_id,
             tainted: outer.tainted,
             inspect: outer.inspect.take_and_enter_probe(),
             opaque_accesses: AccessedOpaques::default(),

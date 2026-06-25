@@ -1,0 +1,33 @@
+error[E0277]: `u8` cannot be safely transmuted into `PrivateField`
+  --> $DIR/field-visibility.rs:42:27
+   |
+LL |     assert::nothing::<u8, owner::PrivateField>();
+   |                           ^^^^^^^^^^^^^^^^^^^ `PrivateField` may carry safety invariants
+   |
+note: required by a bound in `nothing`
+  --> $DIR/field-visibility.rs:10:14
+   |
+LL |     pub fn nothing<Src, Dst>()
+   |            ------- required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::NOTHING }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `nothing`
+
+error[E0277]: `u8` cannot be safely transmuted into `PublicUnsafeField`
+  --> $DIR/field-visibility.rs:46:27
+   |
+LL |     assert::nothing::<u8, owner::PublicUnsafeField>();
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^ `PublicUnsafeField` may carry safety invariants
+   |
+note: required by a bound in `nothing`
+  --> $DIR/field-visibility.rs:10:14
+   |
+LL |     pub fn nothing<Src, Dst>()
+   |            ------- required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::NOTHING }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `nothing`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

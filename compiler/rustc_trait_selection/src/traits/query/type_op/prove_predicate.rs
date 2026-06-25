@@ -43,7 +43,7 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ProvePredicate<'tcx> {
     ) -> Result<Self::QueryResponse, NoSolution> {
         ocx.register_obligation(Obligation::new(
             ocx.infcx.tcx,
-            ObligationCause::dummy_with_span(span),
+            ObligationCause::misc(span, key.value.body_id),
             key.param_env,
             key.value.predicate,
         ));

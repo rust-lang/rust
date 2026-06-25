@@ -1,0 +1,558 @@
+error[E0277]: `u8` cannot be safely transmuted into `NonZero<u8>`
+  --> $DIR/nonzero.rs:28:26
+   |
+LL |     assert::safety::<u8, NonZeroU8>();
+   |                          ^^^^^^^^^ at least one value of `u8` isn't a bit-valid value of `NonZero<u8>`
+   |
+note: required by a bound in `safety`
+  --> $DIR/nonzero.rs:15:14
+   |
+LL |     pub fn safety<Src, Dst>()
+   |            ------ required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `safety`
+
+error[E0277]: `u16` cannot be safely transmuted into `NonZero<u16>`
+  --> $DIR/nonzero.rs:29:27
+   |
+LL |     assert::safety::<u16, NonZeroU16>();
+   |                           ^^^^^^^^^^ at least one value of `u16` isn't a bit-valid value of `NonZero<u16>`
+   |
+note: required by a bound in `safety`
+  --> $DIR/nonzero.rs:15:14
+   |
+LL |     pub fn safety<Src, Dst>()
+   |            ------ required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `safety`
+
+error[E0277]: `u32` cannot be safely transmuted into `NonZero<u32>`
+  --> $DIR/nonzero.rs:30:27
+   |
+LL |     assert::safety::<u32, NonZeroU32>();
+   |                           ^^^^^^^^^^ at least one value of `u32` isn't a bit-valid value of `NonZero<u32>`
+   |
+note: required by a bound in `safety`
+  --> $DIR/nonzero.rs:15:14
+   |
+LL |     pub fn safety<Src, Dst>()
+   |            ------ required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `safety`
+
+error[E0277]: `u64` cannot be safely transmuted into `NonZero<u64>`
+  --> $DIR/nonzero.rs:31:27
+   |
+LL |     assert::safety::<u64, NonZeroU64>();
+   |                           ^^^^^^^^^^ at least one value of `u64` isn't a bit-valid value of `NonZero<u64>`
+   |
+note: required by a bound in `safety`
+  --> $DIR/nonzero.rs:15:14
+   |
+LL |     pub fn safety<Src, Dst>()
+   |            ------ required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `safety`
+
+error[E0277]: `u128` cannot be safely transmuted into `NonZero<u128>`
+  --> $DIR/nonzero.rs:32:28
+   |
+LL |     assert::safety::<u128, NonZeroU128>();
+   |                            ^^^^^^^^^^^ at least one value of `u128` isn't a bit-valid value of `NonZero<u128>`
+   |
+note: required by a bound in `safety`
+  --> $DIR/nonzero.rs:15:14
+   |
+LL |     pub fn safety<Src, Dst>()
+   |            ------ required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `safety`
+
+error[E0277]: `usize` cannot be safely transmuted into `NonZero<usize>`
+  --> $DIR/nonzero.rs:33:29
+   |
+LL |     assert::safety::<usize, NonZeroUsize>();
+   |                             ^^^^^^^^^^^^ at least one value of `usize` isn't a bit-valid value of `NonZero<usize>`
+   |
+note: required by a bound in `safety`
+  --> $DIR/nonzero.rs:15:14
+   |
+LL |     pub fn safety<Src, Dst>()
+   |            ------ required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `safety`
+
+error[E0277]: `i8` cannot be safely transmuted into `NonZero<i8>`
+  --> $DIR/nonzero.rs:35:26
+   |
+LL |     assert::safety::<i8, NonZeroI8>();
+   |                          ^^^^^^^^^ at least one value of `i8` isn't a bit-valid value of `NonZero<i8>`
+   |
+note: required by a bound in `safety`
+  --> $DIR/nonzero.rs:15:14
+   |
+LL |     pub fn safety<Src, Dst>()
+   |            ------ required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `safety`
+
+error[E0277]: `i16` cannot be safely transmuted into `NonZero<i16>`
+  --> $DIR/nonzero.rs:36:27
+   |
+LL |     assert::safety::<i16, NonZeroI16>();
+   |                           ^^^^^^^^^^ at least one value of `i16` isn't a bit-valid value of `NonZero<i16>`
+   |
+note: required by a bound in `safety`
+  --> $DIR/nonzero.rs:15:14
+   |
+LL |     pub fn safety<Src, Dst>()
+   |            ------ required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `safety`
+
+error[E0277]: `i32` cannot be safely transmuted into `NonZero<i32>`
+  --> $DIR/nonzero.rs:37:27
+   |
+LL |     assert::safety::<i32, NonZeroI32>();
+   |                           ^^^^^^^^^^ at least one value of `i32` isn't a bit-valid value of `NonZero<i32>`
+   |
+note: required by a bound in `safety`
+  --> $DIR/nonzero.rs:15:14
+   |
+LL |     pub fn safety<Src, Dst>()
+   |            ------ required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `safety`
+
+error[E0277]: `i64` cannot be safely transmuted into `NonZero<i64>`
+  --> $DIR/nonzero.rs:38:27
+   |
+LL |     assert::safety::<i64, NonZeroI64>();
+   |                           ^^^^^^^^^^ at least one value of `i64` isn't a bit-valid value of `NonZero<i64>`
+   |
+note: required by a bound in `safety`
+  --> $DIR/nonzero.rs:15:14
+   |
+LL |     pub fn safety<Src, Dst>()
+   |            ------ required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `safety`
+
+error[E0277]: `i128` cannot be safely transmuted into `NonZero<i128>`
+  --> $DIR/nonzero.rs:39:28
+   |
+LL |     assert::safety::<i128, NonZeroI128>();
+   |                            ^^^^^^^^^^^ at least one value of `i128` isn't a bit-valid value of `NonZero<i128>`
+   |
+note: required by a bound in `safety`
+  --> $DIR/nonzero.rs:15:14
+   |
+LL |     pub fn safety<Src, Dst>()
+   |            ------ required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `safety`
+
+error[E0277]: `isize` cannot be safely transmuted into `NonZero<isize>`
+  --> $DIR/nonzero.rs:40:29
+   |
+LL |     assert::safety::<isize, NonZeroIsize>();
+   |                             ^^^^^^^^^^^^ at least one value of `isize` isn't a bit-valid value of `NonZero<isize>`
+   |
+note: required by a bound in `safety`
+  --> $DIR/nonzero.rs:15:14
+   |
+LL |     pub fn safety<Src, Dst>()
+   |            ------ required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `safety`
+
+error[E0277]: `NonZero<u8>` cannot be safely transmuted into `NonZero<u8>`
+  --> $DIR/nonzero.rs:42:34
+   |
+LL |     assert::nothing::<NonZeroU8, NonZeroU8>();
+   |                                  ^^^^^^^^^ `NonZero<u8>` may carry safety invariants
+   |
+note: required by a bound in `nothing`
+  --> $DIR/nonzero.rs:9:14
+   |
+LL |     pub fn nothing<Src, Dst>()
+   |            ------- required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::NOTHING }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `nothing`
+
+error[E0277]: `NonZero<u16>` cannot be safely transmuted into `NonZero<u16>`
+  --> $DIR/nonzero.rs:43:35
+   |
+LL |     assert::nothing::<NonZeroU16, NonZeroU16>();
+   |                                   ^^^^^^^^^^ `NonZero<u16>` may carry safety invariants
+   |
+note: required by a bound in `nothing`
+  --> $DIR/nonzero.rs:9:14
+   |
+LL |     pub fn nothing<Src, Dst>()
+   |            ------- required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::NOTHING }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `nothing`
+
+error[E0277]: `NonZero<u32>` cannot be safely transmuted into `NonZero<u32>`
+  --> $DIR/nonzero.rs:44:35
+   |
+LL |     assert::nothing::<NonZeroU32, NonZeroU32>();
+   |                                   ^^^^^^^^^^ `NonZero<u32>` may carry safety invariants
+   |
+note: required by a bound in `nothing`
+  --> $DIR/nonzero.rs:9:14
+   |
+LL |     pub fn nothing<Src, Dst>()
+   |            ------- required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::NOTHING }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `nothing`
+
+error[E0277]: `NonZero<u64>` cannot be safely transmuted into `NonZero<u64>`
+  --> $DIR/nonzero.rs:45:35
+   |
+LL |     assert::nothing::<NonZeroU64, NonZeroU64>();
+   |                                   ^^^^^^^^^^ `NonZero<u64>` may carry safety invariants
+   |
+note: required by a bound in `nothing`
+  --> $DIR/nonzero.rs:9:14
+   |
+LL |     pub fn nothing<Src, Dst>()
+   |            ------- required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::NOTHING }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `nothing`
+
+error[E0277]: `NonZero<u128>` cannot be safely transmuted into `NonZero<u128>`
+  --> $DIR/nonzero.rs:46:36
+   |
+LL |     assert::nothing::<NonZeroU128, NonZeroU128>();
+   |                                    ^^^^^^^^^^^ `NonZero<u128>` may carry safety invariants
+   |
+note: required by a bound in `nothing`
+  --> $DIR/nonzero.rs:9:14
+   |
+LL |     pub fn nothing<Src, Dst>()
+   |            ------- required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::NOTHING }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `nothing`
+
+error[E0277]: `NonZero<usize>` cannot be safely transmuted into `NonZero<usize>`
+  --> $DIR/nonzero.rs:47:37
+   |
+LL |     assert::nothing::<NonZeroUsize, NonZeroUsize>();
+   |                                     ^^^^^^^^^^^^ `NonZero<usize>` may carry safety invariants
+   |
+note: required by a bound in `nothing`
+  --> $DIR/nonzero.rs:9:14
+   |
+LL |     pub fn nothing<Src, Dst>()
+   |            ------- required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::NOTHING }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `nothing`
+
+error[E0277]: `NonZero<i8>` cannot be safely transmuted into `NonZero<i8>`
+  --> $DIR/nonzero.rs:49:34
+   |
+LL |     assert::nothing::<NonZeroI8, NonZeroI8>();
+   |                                  ^^^^^^^^^ `NonZero<i8>` may carry safety invariants
+   |
+note: required by a bound in `nothing`
+  --> $DIR/nonzero.rs:9:14
+   |
+LL |     pub fn nothing<Src, Dst>()
+   |            ------- required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::NOTHING }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `nothing`
+
+error[E0277]: `NonZero<i16>` cannot be safely transmuted into `NonZero<i16>`
+  --> $DIR/nonzero.rs:50:35
+   |
+LL |     assert::nothing::<NonZeroI16, NonZeroI16>();
+   |                                   ^^^^^^^^^^ `NonZero<i16>` may carry safety invariants
+   |
+note: required by a bound in `nothing`
+  --> $DIR/nonzero.rs:9:14
+   |
+LL |     pub fn nothing<Src, Dst>()
+   |            ------- required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::NOTHING }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `nothing`
+
+error[E0277]: `NonZero<i32>` cannot be safely transmuted into `NonZero<i32>`
+  --> $DIR/nonzero.rs:51:35
+   |
+LL |     assert::nothing::<NonZeroI32, NonZeroI32>();
+   |                                   ^^^^^^^^^^ `NonZero<i32>` may carry safety invariants
+   |
+note: required by a bound in `nothing`
+  --> $DIR/nonzero.rs:9:14
+   |
+LL |     pub fn nothing<Src, Dst>()
+   |            ------- required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::NOTHING }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `nothing`
+
+error[E0277]: `NonZero<i64>` cannot be safely transmuted into `NonZero<i64>`
+  --> $DIR/nonzero.rs:52:35
+   |
+LL |     assert::nothing::<NonZeroI64, NonZeroI64>();
+   |                                   ^^^^^^^^^^ `NonZero<i64>` may carry safety invariants
+   |
+note: required by a bound in `nothing`
+  --> $DIR/nonzero.rs:9:14
+   |
+LL |     pub fn nothing<Src, Dst>()
+   |            ------- required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::NOTHING }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `nothing`
+
+error[E0277]: `NonZero<i128>` cannot be safely transmuted into `NonZero<i128>`
+  --> $DIR/nonzero.rs:53:36
+   |
+LL |     assert::nothing::<NonZeroI128, NonZeroI128>();
+   |                                    ^^^^^^^^^^^ `NonZero<i128>` may carry safety invariants
+   |
+note: required by a bound in `nothing`
+  --> $DIR/nonzero.rs:9:14
+   |
+LL |     pub fn nothing<Src, Dst>()
+   |            ------- required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::NOTHING }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `nothing`
+
+error[E0277]: `NonZero<isize>` cannot be safely transmuted into `NonZero<isize>`
+  --> $DIR/nonzero.rs:54:37
+   |
+LL |     assert::nothing::<NonZeroIsize, NonZeroIsize>();
+   |                                     ^^^^^^^^^^^^ `NonZero<isize>` may carry safety invariants
+   |
+note: required by a bound in `nothing`
+  --> $DIR/nonzero.rs:9:14
+   |
+LL |     pub fn nothing<Src, Dst>()
+   |            ------- required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::NOTHING }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `nothing`
+
+error[E0277]: `char` cannot be safely transmuted into `NonZero<char>`
+  --> $DIR/nonzero.rs:56:28
+   |
+LL |     assert::safety::<char, NonZeroChar>();
+   |                            ^^^^^^^^^^^ at least one value of `char` isn't a bit-valid value of `NonZero<char>`
+   |
+note: required by a bound in `safety`
+  --> $DIR/nonzero.rs:15:14
+   |
+LL |     pub fn safety<Src, Dst>()
+   |            ------ required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `safety`
+
+error[E0277]: `u32` cannot be safely transmuted into `NonZero<char>`
+  --> $DIR/nonzero.rs:57:27
+   |
+LL |     assert::safety::<u32, NonZeroChar>();
+   |                           ^^^^^^^^^^^ at least one value of `u32` isn't a bit-valid value of `NonZero<char>`
+   |
+note: required by a bound in `safety`
+  --> $DIR/nonzero.rs:15:14
+   |
+LL |     pub fn safety<Src, Dst>()
+   |            ------ required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `safety`
+
+error[E0277]: `NonZero<u32>` cannot be safely transmuted into `NonZero<char>`
+  --> $DIR/nonzero.rs:58:34
+   |
+LL |     assert::safety::<NonZeroU32, NonZeroChar>();
+   |                                  ^^^^^^^^^^^ at least one value of `NonZero<u32>` isn't a bit-valid value of `NonZero<char>`
+   |
+note: required by a bound in `safety`
+  --> $DIR/nonzero.rs:15:14
+   |
+LL |     pub fn safety<Src, Dst>()
+   |            ------ required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `safety`
+
+error[E0277]: `NonZero<char>` cannot be safely transmuted into `NonZero<char>`
+  --> $DIR/nonzero.rs:59:36
+   |
+LL |     assert::nothing::<NonZeroChar, NonZeroChar>();
+   |                                    ^^^^^^^^^^^ `NonZero<char>` may carry safety invariants
+   |
+note: required by a bound in `nothing`
+  --> $DIR/nonzero.rs:9:14
+   |
+LL |     pub fn nothing<Src, Dst>()
+   |            ------- required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::NOTHING }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `nothing`
+
+error[E0277]: `[u8; 3]` cannot be safely transmuted into `[NonZero<u8>; 3]`
+  --> $DIR/nonzero.rs:61:31
+   |
+LL |     assert::safety::<[u8; 3], [NonZeroU8; 3]>();
+   |                               ^^^^^^^^^^^^^^ at least one value of `[u8; 3]` isn't a bit-valid value of `[NonZero<u8>; 3]`
+   |
+note: required by a bound in `safety`
+  --> $DIR/nonzero.rs:15:14
+   |
+LL |     pub fn safety<Src, Dst>()
+   |            ------ required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `safety`
+
+error[E0277]: `[i16; 3]` cannot be safely transmuted into `[NonZero<i16>; 3]`
+  --> $DIR/nonzero.rs:62:32
+   |
+LL |     assert::safety::<[i16; 3], [NonZeroI16; 3]>();
+   |                                ^^^^^^^^^^^^^^^ at least one value of `[i16; 3]` isn't a bit-valid value of `[NonZero<i16>; 3]`
+   |
+note: required by a bound in `safety`
+  --> $DIR/nonzero.rs:15:14
+   |
+LL |     pub fn safety<Src, Dst>()
+   |            ------ required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `safety`
+
+error[E0277]: `[char; 3]` cannot be safely transmuted into `[NonZero<char>; 3]`
+  --> $DIR/nonzero.rs:63:33
+   |
+LL |     assert::safety::<[char; 3], [NonZeroChar; 3]>();
+   |                                 ^^^^^^^^^^^^^^^^ at least one value of `[char; 3]` isn't a bit-valid value of `[NonZero<char>; 3]`
+   |
+note: required by a bound in `safety`
+  --> $DIR/nonzero.rs:15:14
+   |
+LL |     pub fn safety<Src, Dst>()
+   |            ------ required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `safety`
+
+error[E0277]: `(u8, u16)` cannot be safely transmuted into `(NonZero<u8>, NonZero<u16>)`
+  --> $DIR/nonzero.rs:65:33
+   |
+LL |     assert::safety::<(u8, u16), (NonZeroU8, NonZeroU16)>();
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^ at least one value of `(u8, u16)` isn't a bit-valid value of `(NonZero<u8>, NonZero<u16>)`
+   |
+note: required by a bound in `safety`
+  --> $DIR/nonzero.rs:15:14
+   |
+LL |     pub fn safety<Src, Dst>()
+   |            ------ required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `safety`
+
+error[E0277]: `(char, u32)` cannot be safely transmuted into `(NonZero<char>, NonZero<u32>)`
+  --> $DIR/nonzero.rs:66:35
+   |
+LL |     assert::safety::<(char, u32), (NonZeroChar, NonZeroU32)>();
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^ at least one value of `(char, u32)` isn't a bit-valid value of `(NonZero<char>, NonZero<u32>)`
+   |
+note: required by a bound in `safety`
+  --> $DIR/nonzero.rs:15:14
+   |
+LL |     pub fn safety<Src, Dst>()
+   |            ------ required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `safety`
+
+error[E0277]: `u32` cannot be safely transmuted into `Option<NonZero<char>>`
+  --> $DIR/nonzero.rs:68:27
+   |
+LL |     assert::safety::<u32, Option<NonZeroChar>>();
+   |                           ^^^^^^^^^^^^^^^^^^^ at least one value of `u32` isn't a bit-valid value of `Option<NonZero<char>>`
+   |
+note: required by a bound in `safety`
+  --> $DIR/nonzero.rs:15:14
+   |
+LL |     pub fn safety<Src, Dst>()
+   |            ------ required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `safety`
+
+error[E0277]: `NonZero<u32>` cannot be safely transmuted into `Option<NonZero<char>>`
+  --> $DIR/nonzero.rs:69:34
+   |
+LL |     assert::safety::<NonZeroU32, Option<NonZeroChar>>();
+   |                                  ^^^^^^^^^^^^^^^^^^^ at least one value of `NonZero<u32>` isn't a bit-valid value of `Option<NonZero<char>>`
+   |
+note: required by a bound in `safety`
+  --> $DIR/nonzero.rs:15:14
+   |
+LL |     pub fn safety<Src, Dst>()
+   |            ------ required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `safety`
+
+error[E0277]: `bool` cannot be safely transmuted into `NonZero<u8>`
+  --> $DIR/nonzero.rs:71:28
+   |
+LL |     assert::safety::<bool, NonZeroU8>();
+   |                            ^^^^^^^^^ at least one value of `bool` isn't a bit-valid value of `NonZero<u8>`
+   |
+note: required by a bound in `safety`
+  --> $DIR/nonzero.rs:15:14
+   |
+LL |     pub fn safety<Src, Dst>()
+   |            ------ required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `safety`
+
+error[E0277]: `NonZero<u8>` cannot be safely transmuted into `bool`
+  --> $DIR/nonzero.rs:72:33
+   |
+LL |     assert::safety::<NonZeroU8, bool>();
+   |                                 ^^^^ at least one value of `NonZero<u8>` isn't a bit-valid value of `bool`
+   |
+note: required by a bound in `safety`
+  --> $DIR/nonzero.rs:15:14
+   |
+LL |     pub fn safety<Src, Dst>()
+   |            ------ required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `safety`
+
+error: aborting due to 37 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

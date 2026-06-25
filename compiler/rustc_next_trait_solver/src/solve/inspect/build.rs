@@ -28,20 +28,25 @@ where
     I: Interner,
 {
     state: Option<Box<Option<inspect::Probe<I>>>>,
+    root_body_id: Option<I::LocalDefId>,
     _infcx: PhantomData<D>,
 }
 
 impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
     pub(crate) fn new() -> ProofTreeBuilder<D> {
-        ProofTreeBuilder { state: Some(Box::new(None)), _infcx: PhantomData }
+        ProofTreeBuilder { state: Some(Box::new(None)), root_body_id: None, _infcx: PhantomData }
     }
 
-    pub(crate) fn new_noop() -> ProofTreeBuilder<D> {
-        ProofTreeBuilder { state: None, _infcx: PhantomData }
+    pub(crate) fn new_noop(root_body_id: Option<I::LocalDefId>) -> ProofTreeBuilder<D> {
+        ProofTreeBuilder { state: None, root_body_id, _infcx: PhantomData }
     }
 
     pub(crate) fn is_noop(&self) -> bool {
         self.state.is_none()
+    }
+
+    pub(crate) fn root_body_id(&self) -> Option<I::LocalDefId> {
+        self.root_body_id
     }
 
     pub(crate) fn new_evaluation_step(
