@@ -752,24 +752,40 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
             //
             // FIXME: replace the StructurallyRelateAliases::Yes branch with
             // `structurally_relate_consts` once it is fully structural.
-            ty::ConstKind::Unevaluated(uv) => match self.structurally_relate_aliases {
-                // Hack: Fall back to old behavior if GCE is enabled (it used to just be the Yes
-                // path), as doing this new No path breaks some GCE things. I expect GCE to be
-                // ripped out soon so this shouldn't matter soon.
-                StructurallyRelateAliases::No if !tcx.features().generic_const_exprs() => {
-                    self.generalize_alias_term(uv.into()).map(|v| v.expect_const())
+            ty::ConstKind::Unevaluated(uv) => {
+                // a normalizable const in coherence mode misses overlaps; see #157937
+                // assoc const is now anon const, so unwrap with `expand_abstract_consts`
+                let defer_in_coherence = self.infcx.typing_mode_raw().is_coherence()
+                    && matches!(
+                        tcx.expand_abstract_consts(c).kind(),
+                        ty::ConstKind::Unevaluated(e)
+                            if !matches!(e.kind, ty::UnevaluatedConstKind::Anon { .. })
+                    );
+
+                match self.structurally_relate_aliases {
+                    // Hack: Fall back to old behavior if GCE is enabled (it used to just be the
+                    // Yes path), as doing this new No path breaks some GCE things. I expect GCE
+                    // to be ripped out soon so this shouldn't matter soon.
+                    StructurallyRelateAliases::No
+                        if !tcx.features().generic_const_exprs() || defer_in_coherence =>
+                    {
+                        self.generalize_alias_term(uv.into()).map(|v| v.expect_const())
+                    }
+                    _ => {
+                        let ty::UnevaluatedConst { kind, args, .. } = uv;
+                        let args = self.relate_with_variance(
+                            ty::Invariant,
+                            ty::VarianceDiagInfo::default(),
+                            args,
+                            args,
+                        )?;
+                        Ok(ty::Const::new_unevaluated(
+                            tcx,
+                            ty::UnevaluatedConst::new(tcx, kind, args),
+                        ))
+                    }
                 }
-                _ => {
-                    let ty::UnevaluatedConst { kind, args, .. } = uv;
-                    let args = self.relate_with_variance(
-                        ty::Invariant,
-                        ty::VarianceDiagInfo::default(),
-                        args,
-                        args,
-                    )?;
-                    Ok(ty::Const::new_unevaluated(tcx, ty::UnevaluatedConst::new(tcx, kind, args)))
-                }
-            },
+            }
             ty::ConstKind::Placeholder(placeholder) => {
                 if self.for_universe.can_name(placeholder.universe) {
                     Ok(c)
