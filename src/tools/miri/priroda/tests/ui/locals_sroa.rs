@@ -2,9 +2,7 @@
 
 // Source only declares `s` and `_slice` in `extra`. But after the
 // ScalarReplacementOfAggregates optimization, rustc splits the struct into fields. Priroda should
-// show those split field locals as separate MIR locals with the original `_slice` debug name.
-// FIXME: The CLI currently prints both split fields as `_slice`; it should preserve the projected
-// debug-info paths and show `_slice._slice` and `_slice._extra` instead.
+// show those split field locals as separate MIR locals with the projected source debug paths.
 
 pub struct ExtraSlice<'a> {
     _slice: &'a [u8],
