@@ -252,9 +252,13 @@ pub fn current_exe() -> io::Result<PathBuf> {
             return Err(io::const_error!(io::ErrorKind::Uncategorized, "no current exe available"));
         }
         let argv0 = CStr::from_ptr(argv[0]).to_bytes();
-        if argv0[0] == b'.' || argv0.iter().any(|b| *b == b'/') {
+        if argv0.iter().any(|b| *b == b'/') {
+            // The program name is path-like, so try to canonicalize it.
             crate::fs::canonicalize(OsStr::from_bytes(argv0))
         } else {
+            // The program was probably found in the PATH. Instead of trying to
+            // find it again (which might not succeed if PATH has changed), just
+            // return the program name – this function is best-effort anyway.
             Ok(PathBuf::from(OsStr::from_bytes(argv0)))
         }
     }
