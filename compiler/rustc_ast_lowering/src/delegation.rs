@@ -93,7 +93,7 @@ struct ParamInfo {
     pub c_variadic: bool,
 
     /// The index of the splatted parameter, if any.
-    pub splatted: Option<u16>,
+    pub splatted: Option<u8>,
 }
 
 const PARENT_ID: hir::ItemLocalId = hir::ItemLocalId::ZERO;
@@ -364,11 +364,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn param_info(&self, def_id: DefId) -> ParamInfo {
         let sig = self.tcx.fn_sig(def_id).skip_binder().skip_binder();
 
-        // FIXME(splat): use `sig.splatted()` once FnSig has it
         ParamInfo {
             param_count: sig.inputs().len() + usize::from(sig.c_variadic()),
             c_variadic: sig.c_variadic(),
-            splatted: None,
+            splatted: sig.splatted(),
         }
     }
 
