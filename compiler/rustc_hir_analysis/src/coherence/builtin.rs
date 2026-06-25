@@ -707,9 +707,7 @@ fn first_explicit_lifetime_span(lifetime: &hir::Lifetime) -> Option<Span> {
     }
 }
 
-fn first_explicit_lifetime_span_in_ambig_ty(
-    ty: &hir::Ty<'_, hir::AmbigArg>,
-) -> Option<Span> {
+fn first_explicit_lifetime_span_in_ambig_ty(ty: &hir::Ty<'_, hir::AmbigArg>) -> Option<Span> {
     first_explicit_lifetime_span_in_ty(ty.as_unambig_ty())
 }
 
@@ -730,17 +728,16 @@ fn first_explicit_lifetime_span_in_ty(ty: &hir::Ty<'_>) -> Option<Span> {
             .or_else(|| first_explicit_lifetime_span(&lifetime)),
         hir::TyKind::OpaqueDef(opaque) => first_explicit_lifetime_span_in_bounds(opaque.bounds),
         hir::TyKind::TraitAscription(bounds) => first_explicit_lifetime_span_in_bounds(bounds),
-        hir::TyKind::FnPtr(fn_ptr) => fn_ptr
-            .generic_params
-            .iter()
-            .find_map(|param| match param.kind {
+        hir::TyKind::FnPtr(fn_ptr) => {
+            fn_ptr.generic_params.iter().find_map(|param| match param.kind {
                 hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Explicit } => {
                     Some(param.span)
                 }
                 hir::GenericParamKind::Lifetime { .. }
                 | hir::GenericParamKind::Type { .. }
                 | hir::GenericParamKind::Const { .. } => None,
-            }),
+            })
+        }
         hir::TyKind::UnsafeBinder(binder) => binder
             .generic_params
             .iter()
@@ -789,9 +786,7 @@ fn first_explicit_lifetime_span_in_path(path: &hir::Path<'_>) -> Option<Span> {
     path.segments.iter().find_map(first_explicit_lifetime_span_in_path_segment)
 }
 
-fn first_explicit_lifetime_span_in_path_segment(
-    segment: &hir::PathSegment<'_>,
-) -> Option<Span> {
+fn first_explicit_lifetime_span_in_path_segment(segment: &hir::PathSegment<'_>) -> Option<Span> {
     first_explicit_lifetime_span_in_generic_args(segment.args())
 }
 
@@ -805,9 +800,8 @@ fn first_explicit_lifetime_span_in_generic_args(args: &hir::GenericArgs<'_>) -> 
         })
         .or_else(|| {
             args.constraints.iter().find_map(|constraint| {
-                first_explicit_lifetime_span_in_generic_args(constraint.gen_args).or_else(|| {
-                    constraint.ty().and_then(first_explicit_lifetime_span_in_ty)
-                })
+                first_explicit_lifetime_span_in_generic_args(constraint.gen_args)
+                    .or_else(|| constraint.ty().and_then(first_explicit_lifetime_span_in_ty))
             })
         })
 }
@@ -1188,16 +1182,14 @@ fn validate_coerce_shared_fields_are_memcpy_compatible<'tcx>(
                 *target,
             )
         }
-        _ => {
-            Err(tcx.dcx().emit_err(diagnostics::CoerceSharedMultipleNonZstFields {
-                span: diagnostic_context.impl_span,
-                source_ty_span: diagnostic_context.source_ty_span,
-                target_ty_span: diagnostic_context.target_ty_span,
-                trait_name,
-                source_count: source_non_zst_fields.len(),
-                target_count: target_non_zst_fields.len(),
-            }))
-        }
+        _ => Err(tcx.dcx().emit_err(diagnostics::CoerceSharedMultipleNonZstFields {
+            span: diagnostic_context.impl_span,
+            source_ty_span: diagnostic_context.source_ty_span,
+            target_ty_span: diagnostic_context.target_ty_span,
+            trait_name,
+            source_count: source_non_zst_fields.len(),
+            target_count: target_non_zst_fields.len(),
+        })),
     }
 }
 
@@ -1369,9 +1361,11 @@ fn field_tys_satisfy_relation_after_normalization_and_resolution<'tcx>(
                 return false;
             };
 
-            ocx.register_obligations(goals.into_iter().map(|goal| {
-                Obligation::new(tcx, cause.clone(), goal.param_env, goal.predicate)
-            }));
+            ocx.register_obligations(
+                goals.into_iter().map(|goal| {
+                    Obligation::new(tcx, cause.clone(), goal.param_env, goal.predicate)
+                }),
+            );
         }
         FieldRelation::MutRefToSharedRef => {
             let (
