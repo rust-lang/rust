@@ -1,4 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/27105>.
 //@ check-pass
+
 use std::cell::RefCell;
 use std::rc::Rc;
 

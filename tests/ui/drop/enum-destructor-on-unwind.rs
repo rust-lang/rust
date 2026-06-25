@@ -1,9 +1,9 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/26655>.
+//! Check that the destructors of simple enums are run on unwinding.
 //@ run-pass
 //@ needs-unwind
 //@ needs-threads
 //@ ignore-backends: gcc
-
-// Check that the destructors of simple enums are run on unwinding
 
 use std::sync::atomic::{Ordering, AtomicUsize};
 use std::thread;
