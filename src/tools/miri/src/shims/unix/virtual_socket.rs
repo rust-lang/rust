@@ -13,7 +13,6 @@ use crate::shims::files::{
     EvalContextExt as _, FdId, FileDescription, FileDescriptionRef, WeakFileDescriptionRef,
 };
 use crate::shims::unix::UnixFileDescription;
-use crate::shims::unix::linux_like::epoll::{EpollReadiness, EvalContextExt as _};
 use crate::*;
 
 /// The maximum capacity of the socketpair buffer in bytes.
@@ -108,7 +107,7 @@ impl FileDescription for VirtualSocket {
                 }
             }
             // Notify peer fd that close has happened, since that can unblock reads and writes.
-            ecx.update_epoll_active_events(peer_fd, /* force_edge */ false)?;
+            ecx.update_fd_readiness(peer_fd, /* force_edge */ false)?;
         }
         interp_ok(Ok(()))
     }
@@ -198,7 +197,55 @@ impl FileDescription for VirtualSocket {
 
         interp_ok(Scalar::from_i32(0))
     }
+
+    fn readiness<'tcx>(&self) -> InterpResult<'tcx, Readiness> {
+        // We only check the "readable", "writable", "read closed" and "write closed" readiness.
+        // If other event flags need to be supported in the future, the check should be added here.
+
+        let mut readiness = Readiness::EMPTY;
+
+        // Check if it is readable.
+        if let Some(readbuf) = &self.readbuf {
+            if !readbuf.borrow().buf.is_empty() {
+                readiness.readable = true;
+            }
+        } else {
+            // Without a read buffer, reading never blocks, so we are always ready.
+            readiness.readable = true;
+        }
+
+        // Check if is writable.
+        if let Some(peer_fd) = self.peer_fd().upgrade() {
+            if let Some(writebuf) = &peer_fd.readbuf {
+                let data_size = writebuf.borrow().buf.len();
+                let available_space = MAX_SOCKETPAIR_BUFFER_CAPACITY.strict_sub(data_size);
+                if available_space != 0 {
+                    readiness.writable = true;
+                }
+            } else {
+                // Without a write buffer, writing never blocks.
+                readiness.writable = true;
+            }
+        } else {
+            // Peer FD has been closed. This always sets both the "read closed" and "write closed" flags
+            // as we do not support `shutdown` that could be used to partially close the stream.
+            readiness.read_closed = true;
+            readiness.write_closed = true;
+            // Since the peer is closed, even if no data is available reads will return EOF and
+            // writes will return EPIPE. In other words, they won't block, so we mark this as ready
+            // for read and write.
+            readiness.readable = true;
+            readiness.writable = true;
+            // If there is data lost in peer_fd, set error readiness.
+            if self.peer_lost_data.get() {
+                readiness.error = true;
+            }
+        }
+        interp_ok(readiness)
+    }
 }
+
+impl UnixFileDescription for VirtualSocket {}
 
 /// Write to VirtualSocket based on the space available and return the written byte size.
 fn virtual_socket_write<'tcx>(
@@ -278,11 +325,11 @@ fn virtual_socket_write<'tcx>(
         for thread_id in waiting_threads {
             ecx.unblock_thread(thread_id, BlockReason::VirtualSocket)?;
         }
-        // Notify epoll waiters: we might be no longer writable, peer might now be readable.
+        // Notify readiness watchers: we might be no longer writable, peer might now be readable.
         // The notification to the peer seems to be always sent on Linux, even if the
         // FD was readable before.
-        ecx.update_epoll_active_events(self_ref, /* force_edge */ false)?;
-        ecx.update_epoll_active_events(peer_fd, /* force_edge */ true)?;
+        ecx.update_fd_readiness(self_ref, /* force_edge */ false)?;
+        ecx.update_fd_readiness(peer_fd, /* force_edge */ true)?;
 
         return finish.call(ecx, Ok(write_size));
     }
@@ -366,8 +413,8 @@ fn virtual_socket_read<'tcx>(
         // implementation. For optimization reasons, the kernel will only mark the file description
         // as "writable" when it can write more than a certain number of bytes. Since we
         // don't know what that *certain number* is, we will provide a notification every time
-        // a read is successful. This might result in our epoll emulation providing more
-        // notifications than the real system.
+        // a read is successful. This might result in our readiness emulation providing more
+        // events than the real system.
         if let Some(peer_fd) = self_ref.peer_fd().upgrade() {
             // Unblock all threads that are currently blocked on peer_fd's write.
             let waiting_threads = std::mem::take(&mut *peer_fd.blocked_write_tid.borrow_mut());
@@ -375,66 +422,18 @@ fn virtual_socket_read<'tcx>(
             for thread_id in waiting_threads {
                 ecx.unblock_thread(thread_id, BlockReason::VirtualSocket)?;
             }
-            // Notify epoll waiters: peer is now writable.
+            // Notify readiness watchers: peer is now writable.
             // Linux seems to always notify the peer if the read buffer is now empty.
             // (Linux also does that if this was a "big" read, but to avoid some arbitrary
             // threshold, we do not match that.)
-            ecx.update_epoll_active_events(peer_fd, /* force_edge */ readbuf_now_empty)?;
+            ecx.update_fd_readiness(peer_fd, /* force_edge */ readbuf_now_empty)?;
         };
-        // Notify epoll waiters: we might be no longer readable.
-        ecx.update_epoll_active_events(self_ref, /* force_edge */ false)?;
+        // Notify readiness watchers: we might be no longer readable.
+        ecx.update_fd_readiness(self_ref, /* force_edge */ false)?;
 
         return finish.call(ecx, Ok(read_size));
     }
     interp_ok(())
-}
-
-impl UnixFileDescription for VirtualSocket {
-    fn epoll_active_events<'tcx>(&self) -> InterpResult<'tcx, EpollReadiness> {
-        // We only check the status of EPOLLIN, EPOLLOUT, EPOLLHUP and EPOLLRDHUP flags.
-        // If other event flags need to be supported in the future, the check should be added here.
-
-        let mut epoll_readiness = EpollReadiness::empty();
-
-        // Check if it is readable.
-        if let Some(readbuf) = &self.readbuf {
-            if !readbuf.borrow().buf.is_empty() {
-                epoll_readiness.epollin = true;
-            }
-        } else {
-            // Without a read buffer, reading never blocks, so we are always ready.
-            epoll_readiness.epollin = true;
-        }
-
-        // Check if is writable.
-        if let Some(peer_fd) = self.peer_fd().upgrade() {
-            if let Some(writebuf) = &peer_fd.readbuf {
-                let data_size = writebuf.borrow().buf.len();
-                let available_space = MAX_SOCKETPAIR_BUFFER_CAPACITY.strict_sub(data_size);
-                if available_space != 0 {
-                    epoll_readiness.epollout = true;
-                }
-            } else {
-                // Without a write buffer, writing never blocks.
-                epoll_readiness.epollout = true;
-            }
-        } else {
-            // Peer FD has been closed. This always sets both the RDHUP and HUP flags
-            // as we do not support `shutdown` that could be used to partially close the stream.
-            epoll_readiness.epollrdhup = true;
-            epoll_readiness.epollhup = true;
-            // Since the peer is closed, even if no data is available reads will return EOF and
-            // writes will return EPIPE. In other words, they won't block, so we mark this as ready
-            // for read and write.
-            epoll_readiness.epollin = true;
-            epoll_readiness.epollout = true;
-            // If there is data lost in peer_fd, set EPOLLERR.
-            if self.peer_lost_data.get() {
-                epoll_readiness.epollerr = true;
-            }
-        }
-        interp_ok(epoll_readiness)
-    }
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
