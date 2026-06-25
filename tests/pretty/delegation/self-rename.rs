@@ -1,6 +1,6 @@
 //@ pretty-compare-only
 //@ pretty-mode:hir
-//@ pp-exact:delegation-self-rename.pp
+//@ pp-exact:self-rename.pp
 
 #![feature(fn_delegation)]
 
