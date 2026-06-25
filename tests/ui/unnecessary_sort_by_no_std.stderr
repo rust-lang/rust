@@ -21,7 +21,7 @@ LL |     vec.sort_by(|a, b| (b + 1).cmp(&(a + 1)));
 help: try
    |
 LL -     vec.sort_by(|a, b| (b + 1).cmp(&(a + 1)));
-LL +     vec.sort_by_key(|b| core::cmp::Reverse(b + 1));
+LL +     vec.sort_by_key(|a| core::cmp::Reverse(a + 1));
    |
 
 error: aborting due to 2 previous errors

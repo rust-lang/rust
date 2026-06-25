@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::SpanExt;
 use rustc_ast::ast::{Item, VisibilityKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
@@ -152,5 +152,5 @@ impl EarlyLintPass for Visibility {
 }
 
 fn is_from_proc_macro(cx: &EarlyContext<'_>, span: Span) -> bool {
-    !span.check_source_text(cx, |src| src.starts_with("pub"))
+    !span.check_text(cx, |src| src.starts_with("pub"))
 }

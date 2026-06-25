@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::SpanExt;
 use rustc_ast::token::LitKind;
 use rustc_ast::{Expr, ExprKind};
 use rustc_errors::Applicability;
@@ -86,7 +86,7 @@ impl EarlyLintPass for OctalEscapes {
 
                     // Last check to make sure the source text matches what we read from the string.
                     // Macros are involved somehow if this doesn't match.
-                    if span.check_source_text(cx, |src| match *src.as_bytes() {
+                    if span.check_text(cx, |src| match *src.as_bytes() {
                         [b'\\', b'0', lo] => lo == c_lo,
                         [b'\\', b'0', hi, lo] => hi == c_hi && lo == c_lo,
                         _ => false,

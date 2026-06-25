@@ -67,7 +67,7 @@ pub(super) fn check_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'_>) 
     }
 }
 fn last_statement_borrows<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
-    for_each_expr(cx, expr, |e| {
+    for_each_expr(cx.tcx, expr, |e| {
         if let Some(def_id) = fn_def_id(cx, e)
             && cx
                 .tcx

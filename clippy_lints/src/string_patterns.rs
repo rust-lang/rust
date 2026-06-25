@@ -147,7 +147,7 @@ fn check_manual_pattern_char_comparison(cx: &LateContext<'_>, method_arg: &Expr<
 
         // We want to retrieve all the comparisons done.
         // They are ordered in a nested way and so we need to traverse the AST to collect them all.
-        if for_each_expr(cx, body.value, |sub_expr| -> ControlFlow<(), Descend> {
+        if for_each_expr(cx.tcx, body.value, |sub_expr| -> ControlFlow<(), Descend> {
             match sub_expr.kind {
                 ExprKind::Binary(op, left, right) if op.node == BinOpKind::Eq => {
                     if left.res_local_id() == Some(binding)
@@ -230,13 +230,13 @@ impl<'tcx> LateLintPass<'tcx> for StringPatterns {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if !expr.span.from_expansion()
             && let ExprKind::MethodCall(method, receiver, args, _) = expr.kind
-            && let ty::Ref(_, ty, _) = cx.typeck_results().expr_ty_adjusted(receiver).kind()
-            && ty.is_str()
             && let method_name = method.ident.name
             && let Some(&(_, pos)) = PATTERN_METHODS
                 .iter()
                 .find(|(array_method_name, _)| *array_method_name == method_name)
             && let Some(arg) = args.get(pos)
+            && let ty::Ref(_, ty, _) = cx.typeck_results().expr_ty_adjusted(receiver).kind()
+            && ty.is_str()
         {
             check_single_char_pattern_lint(cx, arg);
 

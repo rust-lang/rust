@@ -1,6 +1,6 @@
 use crate::get_enclosing_block;
 use crate::msrvs::Msrv;
-use crate::qualify_min_const_fn::is_stable_const_fn;
+use crate::qualify_min_const_fn::is_stable_const_fn_at;
 use crate::res::MaybeResPath;
 use crate::ty::needs_ordered_drop;
 use core::ops::ControlFlow;
@@ -8,8 +8,8 @@ use rustc_ast::visit::{VisitorResult, try_visit};
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::intravisit::{self, Visitor, walk_block, walk_expr};
 use rustc_hir::{
-    self as hir, AmbigArg, AnonConst, Arm, Block, BlockCheckMode, Body, BodyId, Expr, ExprKind, HirId, ItemId,
-    ItemKind, LetExpr, Pat, QPath, Stmt, StructTailExpr, UnOp, UnsafeSource,
+    self as hir, AmbigArg, AnonConst, Arm, Block, BlockCheckMode, Body, BodyId, CRATE_HIR_ID, Expr, ExprKind, HirId,
+    ItemId, ItemKind, LetExpr, Pat, QPath, Stmt, StructTailExpr, UnOp, UnsafeSource,
 };
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
@@ -145,7 +145,7 @@ pub fn for_each_expr_without_closures<'tcx, B, C: Continue>(
 /// Calls the given function once for each expression contained. This will enter bodies, but not
 /// nested items.
 pub fn for_each_expr<'tcx, B, C: Continue>(
-    cx: &LateContext<'tcx>,
+    tcx: TyCtxt<'tcx>,
     node: impl Visitable<'tcx>,
     f: impl FnMut(&'tcx Expr<'tcx>) -> ControlFlow<B, C>,
 ) -> Option<B> {
@@ -188,7 +188,7 @@ pub fn for_each_expr<'tcx, B, C: Continue>(
             ControlFlow::Continue(())
         }
     }
-    let mut v = V { tcx: cx.tcx, f };
+    let mut v = V { tcx, f };
     node.visit(&mut v).break_value()
 }
 
@@ -299,7 +299,7 @@ where
 
 /// Checks if the given resolved path is used in the given body.
 pub fn is_res_used(cx: &LateContext<'_>, res: Res, body: BodyId) -> bool {
-    for_each_expr(cx, cx.tcx.hir_body(body).value, |e| {
+    for_each_expr(cx.tcx, cx.tcx.hir_body(body).value, |e| {
         if let ExprKind::Path(p) = &e.kind
             && cx.qpath_res(p, e.hir_id) == res
         {
@@ -312,7 +312,7 @@ pub fn is_res_used(cx: &LateContext<'_>, res: Res, body: BodyId) -> bool {
 
 /// Checks if the given local is used.
 pub fn is_local_used<'tcx>(cx: &LateContext<'tcx>, visitable: impl Visitable<'tcx>, id: HirId) -> bool {
-    for_each_expr(cx, visitable, |e| {
+    for_each_expr(cx.tcx, visitable, |e| {
         if e.res_local_id() == Some(id) {
             ControlFlow::Break(())
         } else {
@@ -322,89 +322,69 @@ pub fn is_local_used<'tcx>(cx: &LateContext<'tcx>, visitable: impl Visitable<'tc
     .is_some()
 }
 
-/// Checks if the given expression is a constant.
-pub fn is_const_evaluatable<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
-    struct V<'a, 'tcx> {
-        cx: &'a LateContext<'tcx>,
-    }
-
-    impl<'tcx> Visitor<'tcx> for V<'_, 'tcx> {
-        type Result = ControlFlow<()>;
-        type NestedFilter = intravisit::nested_filter::None;
-
-        fn visit_expr(&mut self, e: &'tcx Expr<'_>) -> Self::Result {
-            match e.kind {
-                ExprKind::ConstBlock(_) => return ControlFlow::Continue(()),
-                ExprKind::Call(
-                    &Expr {
-                        kind: ExprKind::Path(ref p),
-                        hir_id,
-                        ..
-                    },
-                    _,
-                ) if self
-                    .cx
-                    .qpath_res(p, hir_id)
-                    .opt_def_id()
-                    .is_some_and(|id| is_stable_const_fn(self.cx, id, Msrv::default())) => {},
-                ExprKind::MethodCall(..)
-                    if self
-                        .cx
-                        .typeck_results()
-                        .type_dependent_def_id(e.hir_id)
-                        .is_some_and(|id| is_stable_const_fn(self.cx, id, Msrv::default())) => {},
-                ExprKind::Binary(_, lhs, rhs)
-                    if self.cx.typeck_results().expr_ty(lhs).peel_refs().is_primitive_ty()
-                        && self.cx.typeck_results().expr_ty(rhs).peel_refs().is_primitive_ty() => {},
-                ExprKind::Unary(UnOp::Deref, e) if self.cx.typeck_results().expr_ty(e).is_raw_ptr() => (),
-                ExprKind::Unary(_, e) if self.cx.typeck_results().expr_ty(e).peel_refs().is_primitive_ty() => (),
-                ExprKind::Index(base, _, _)
-                    if matches!(
-                        self.cx.typeck_results().expr_ty(base).peel_refs().kind(),
-                        ty::Slice(_) | ty::Array(..)
-                    ) => {},
-                ExprKind::Path(ref p)
-                    if matches!(
-                        self.cx.qpath_res(p, e.hir_id),
-                        Res::Def(
-                            DefKind::Const { .. }
-                                | DefKind::AssocConst { .. }
-                                | DefKind::AnonConst
-                                | DefKind::ConstParam
-                                | DefKind::Ctor(..)
-                                | DefKind::Fn
-                                | DefKind::AssocFn,
-                            _
-                        ) | Res::SelfCtor(_)
-                    ) => {},
-
-                ExprKind::AddrOf(..)
-                | ExprKind::Array(_)
-                | ExprKind::Block(..)
-                | ExprKind::Cast(..)
-                | ExprKind::DropTemps(_)
-                | ExprKind::Field(..)
-                | ExprKind::If(..)
-                | ExprKind::Let(..)
-                | ExprKind::Lit(_)
-                | ExprKind::Match(..)
-                | ExprKind::Repeat(..)
-                | ExprKind::Struct(..)
-                | ExprKind::Tup(_)
-                | ExprKind::Type(..)
-                | ExprKind::UnsafeBinderCast(..) => (),
-
-                _ => {
-                    return ControlFlow::Break(());
+/// Checks if the given expression can be evaluated as a constant at the specified node
+pub fn is_const_evaluatable<'tcx>(tcx: TyCtxt<'tcx>, typeck: &'tcx TypeckResults<'tcx>, e: &'tcx Expr<'_>) -> bool {
+    for_each_expr(tcx, e, move |e| {
+        match e.kind {
+            ExprKind::ConstBlock(_) => return ControlFlow::Continue(Descend::No),
+            ExprKind::Call(
+                &Expr {
+                    kind: ExprKind::Path(ref p),
+                    hir_id,
+                    ..
                 },
-            }
+                _,
+            ) if typeck
+                .qpath_res(p, hir_id)
+                .opt_def_id()
+                .is_some_and(|id| is_stable_const_fn_at(tcx, CRATE_HIR_ID, id, Msrv::default())) => {},
+            ExprKind::MethodCall(..)
+                if typeck
+                    .type_dependent_def_id(e.hir_id)
+                    .is_some_and(|id| is_stable_const_fn_at(tcx, CRATE_HIR_ID, id, Msrv::default())) => {},
+            ExprKind::Binary(_, lhs, rhs)
+                if typeck.expr_ty(lhs).peel_refs().is_primitive_ty()
+                    && typeck.expr_ty(rhs).peel_refs().is_primitive_ty() => {},
+            ExprKind::Unary(UnOp::Deref, e) if typeck.expr_ty(e).is_raw_ptr() => (),
+            ExprKind::Unary(_, e) if typeck.expr_ty(e).peel_refs().is_primitive_ty() => (),
+            ExprKind::Index(base, _, _)
+                if matches!(typeck.expr_ty(base).peel_refs().kind(), ty::Slice(_) | ty::Array(..)) => {},
+            ExprKind::Path(ref p)
+                if matches!(
+                    typeck.qpath_res(p, e.hir_id),
+                    Res::Def(
+                        DefKind::Const { .. }
+                            | DefKind::AssocConst { .. }
+                            | DefKind::AnonConst
+                            | DefKind::ConstParam
+                            | DefKind::Ctor(..)
+                            | DefKind::Fn
+                            | DefKind::AssocFn,
+                        _
+                    ) | Res::SelfCtor(_)
+                ) => {},
 
-            walk_expr(self, e)
+            ExprKind::AddrOf(..)
+            | ExprKind::Array(_)
+            | ExprKind::Block(..)
+            | ExprKind::Cast(..)
+            | ExprKind::DropTemps(_)
+            | ExprKind::Field(..)
+            | ExprKind::If(..)
+            | ExprKind::Let(..)
+            | ExprKind::Lit(_)
+            | ExprKind::Match(..)
+            | ExprKind::Repeat(..)
+            | ExprKind::Struct(..)
+            | ExprKind::Tup(_)
+            | ExprKind::Type(..)
+            | ExprKind::UnsafeBinderCast(..) => {},
+
+            _ => return ControlFlow::Break(()),
         }
-    }
-
-    let mut v = V { cx };
-    v.visit_expr(e).is_continue()
+        ControlFlow::Continue(Descend::Yes)
+    })
+    .is_none()
 }
 
 /// Checks if the given expression performs an unsafe operation outside of an unsafe block.
@@ -785,7 +765,7 @@ pub fn local_used_once<'tcx>(
 ) -> Option<&'tcx Expr<'tcx>> {
     let mut expr = None;
 
-    let cf = for_each_expr(cx, visitable, |e| {
+    let cf = for_each_expr(cx.tcx, visitable, |e| {
         if e.res_local_id() == Some(id) && expr.replace(e).is_some() {
             ControlFlow::Break(())
         } else {

@@ -161,3 +161,10 @@ fn issue15752() {
     x.map(|y| y.0).unwrap_or(&[]);
     //~^ map_unwrap_or
 }
+
+fn issue16901() {
+    let raw = String::from("scope:value");
+    let after_scope = raw.split_once(':').map(|(_, v)| v).unwrap_or(&raw);
+    //~^ map_unwrap_or
+    let _: &str = after_scope;
+}
