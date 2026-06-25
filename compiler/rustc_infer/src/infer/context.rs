@@ -134,9 +134,9 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
 
     fn is_changed_var(&self, var: TyOrConstInferVar) -> bool {
         match var {
-            TyOrConstInferVar::Ty(vid) => {
-                !self.try_resolve_ty_var(vid).is_err_and(|_| self.root_var(vid) == vid)
-            }
+            TyOrConstInferVar::Ty(vid) => !self
+                .try_resolve_ty_var_with_root_vid(vid)
+                .is_err_and(|(root_vid, _)| root_vid == vid),
             TyOrConstInferVar::TyInt(vid) => {
                 let mut inner = self.inner.borrow_mut();
                 !matches!(

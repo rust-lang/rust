@@ -991,7 +991,7 @@ pub enum ComputeGoalFastPathOutcome<I: Interner> {
     TriviallyStalled { stalled_on: GoalStalledOn<I> },
 }
 
-/// Helper for [InferCtxt::ty_or_const_infer_var_changed] (see comment on that), currently
+/// Helper for `InferCtxt::ty_or_const_infer_var_changed` (see comment on that), currently
 /// used only for `traits::fulfill`'s list of `stalled_on` inference variables.
 #[derive(Copy, Clone, Debug)]
 pub enum TyOrConstInferVar {
