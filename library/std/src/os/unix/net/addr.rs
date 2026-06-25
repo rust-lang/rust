@@ -58,7 +58,7 @@ pub(super) fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, libc::s
             // macro in its libc does not include the null byte in the count so
             // don't add it here to match what a C program passes to bind(2) and
             // similar functions
-            if cfg!(not(any(target_env = "nto80", target_env = "nto71"))) {
+            if cfg!(not(any(target_os = "qnx", target_env = "nto71"))) {
                 len += 1
             }
         }
@@ -260,7 +260,7 @@ impl SocketAddr {
             // which matches the behavior of the SUN_LEN macro in libc, but
             // other OSes do count the NUL byte so adjust accordingly
             let end =
-                if cfg!(any(target_env = "nto80", target_env = "nto71")) { len } else { len - 1 };
+                if cfg!(any(target_os = "qnx", target_env = "nto71")) { len } else { len - 1 };
             AddressKind::Pathname(OsStr::from_bytes(&path[..end]).as_ref())
         }
     }

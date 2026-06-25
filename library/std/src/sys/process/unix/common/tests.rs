@@ -137,7 +137,7 @@ fn test_process_group_no_posix_spawn() {
         assert_ne!(-1, pgid, "getpgid failed");
         assert_eq!(pid, pgid, "child process ID does not match its process group ID");
 
-        if cfg!(target_env = "nto80") {
+        if cfg!(target_os = "qnx") {
             // kill(-pgid) appears to be unable to terminate the child process on QNX8
             return;
         }
@@ -174,7 +174,7 @@ fn test_setsid_posix_spawn() {
         assert_ne!(-1, pgid, "getpgid failed");
         assert_eq!(pid, pgid, "child process ID does not match its process group ID");
 
-        if cfg!(target_env = "nto80") {
+        if cfg!(target_os = "qnx") {
             // kill(-pgid) appears to be unable to terminate the child process on QNX8
             return;
         }
@@ -214,7 +214,7 @@ fn test_setsid_no_posix_spawn() {
         assert_ne!(-1, pgid, "getpgid failed");
         assert_eq!(pid, pgid, "child process ID does not match its process group ID");
 
-        if cfg!(target_env = "nto80") {
+        if cfg!(target_os = "qnx") {
             // kill(-pgid) appears to be unable to terminate the child process on QNX8
             return;
         }
