@@ -7,36 +7,34 @@ use proc_macro::*;
 use self::Mode::*;
 
 // FIXME: all cases should become `NormalOk` or `NormalErr`
+//
+// And .stderr should be empty (no diagnostics should get emitted from fallible parsing in the proc
+// macro).
 #[derive(PartialEq, Clone, Copy)]
 enum Mode {
     NormalOk,
     NormalErr,
     OtherError,
-    OtherWithPanic,
 }
 
 fn parse<T>(s: &str, mode: Mode)
 where
     T: FromStr<Err = LexError> + Debug,
 {
+    let t = T::from_str(s);
+    println!("{s:?} as {}: {:?}", std::any::type_name::<T>(), t);
     match mode {
         NormalOk => {
-            let t = T::from_str(s);
-            println!("{:?}", t);
             assert!(t.is_ok());
         }
         NormalErr => {
-            let t = T::from_str(s);
-            println!("{:?}", t);
             assert!(t.is_err());
         }
         OtherError => {
-            println!("{:?}", T::from_str(s));
-        }
-        OtherWithPanic => {
-            if catch_unwind(|| println!("{:?}", T::from_str(s))).is_ok() {
-                eprintln!("{s} did not panic");
-            }
+            // For now we assert OK here, but in the future this should all move to NormalErr.
+            // Any case that's failing this should go to NormalErr, probably after verifying that a
+            // diagnostic did get emitted.
+            assert!(t.is_ok());
         }
     }
 }
@@ -117,16 +115,16 @@ pub fn run() {
     // FIXME: all of the cases below should return an Err and emit no diagnostics, but don't yet.
 
     // emits diagnostics and returns LexError
-    lit("r'r'", OtherError);
-    lit("c'r'", OtherError);
+    lit("r'r'", NormalErr);
+    lit("c'r'", NormalErr);
 
     // emits diagnostic and returns a seemingly valid tokenstream
     stream("r'r'", OtherError);
     stream("c'r'", OtherError);
 
     for parse in [stream as fn(&str, Mode), lit] {
-        // emits diagnostic(s), then panics
-        parse("r#", OtherWithPanic);
+        // emits diagnostic(s), then returns LexError
+        parse("r#", NormalErr);
 
         // emits diagnostic(s), then returns Ok(Literal { kind: ErrWithGuar, .. })
         parse("0b2", OtherError);
@@ -137,9 +135,10 @@ pub fn run() {
             "'
 '", OtherError,
         );
-        parse(&format!("r{0}\"a\"{0}", "#".repeat(256)), OtherWithPanic);
-
-        // emits diagnostic, then, when parsing as a lit, returns LexError, otherwise ErrWithGuar
-        parse("/*a*/ 0b2 //", OtherError);
+        parse(&format!("r{0}\"a\"{0}", "#".repeat(256)), NormalErr);
     }
+
+    // emits diagnostic, then, when parsing as a lit, returns LexError, otherwise ErrWithGuar
+    lit("/*a*/ 0b2 //", NormalErr);
+    stream("/*a*/ 0b2 //", OtherError);
 }
