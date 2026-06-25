@@ -34,6 +34,7 @@ use crate::resolve::eager_resolve_vars;
 use crate::solve::eval_ctxt::fast_path::{
     RerunStalled, compute_goal_fast_path, rerunning_stalled_goal_may_make_progress,
 };
+use crate::solve::fast_path::compute_goal_fast_path_cold;
 use crate::solve::search_graph::SearchGraph;
 use crate::solve::ty::may_use_unstable_feature;
 use crate::solve::{
@@ -43,7 +44,7 @@ use crate::solve::{
     VisibleForLeakCheck, inspect,
 };
 
-mod fast_path;
+pub mod fast_path;
 mod probe;
 mod solver_region_constraints;
 
@@ -236,7 +237,13 @@ where
             });
         }
 
-        if let Some(res) = compute_goal_fast_path(self, goal, span) {
+        if
+        // No need to try the fast path if stalled_on is `None`, since we already try the fast path
+        // immediately when adding new goals. If we didn't check `stalled_on` here we'd be trying
+        // the fast path twice for some goals.
+        stalled_on.is_some()
+            && let Some(res) = compute_goal_fast_path_cold(self, goal, span)
+        {
             return Ok(res);
         }
 
@@ -503,7 +510,13 @@ where
             });
         }
 
-        if let Some(res) = compute_goal_fast_path(self.delegate, goal, self.origin_span) {
+        if
+        // No need to try the fast path if stalled_on is `None`, since we already try the fast path
+        // immediately when adding new goals. If we didn't check `stalled_on` here we'd be trying
+        // the fast path twice for some goals.
+        stalled_on.is_some()
+            && let Some(res) = compute_goal_fast_path_cold(self.delegate, goal, self.origin_span)
+        {
             return Ok(res);
         }
 
@@ -519,7 +532,8 @@ where
         goal: Goal<I, I::Predicate>,
     ) -> Result<GoalEvaluation<I>, NoSolutionOrRerunNonErased> {
         let (normalization_nested_goals, goal_evaluation) =
-            self.evaluate_goal_raw(source, goal,  LowerAvailableDepth::Yes)?;
+            self.evaluate_goal_raw(source, goal, LowerAvailableDepth::Yes)?;
+        assert!(normalization_nested_goals.is_empty());
         Ok(goal_evaluation)
     }
 
@@ -536,40 +550,31 @@ where
         goal: Goal<I, I::Predicate>,
         increase_depth_for_nested: LowerAvailableDepth,
     ) -> Result<(NestedNormalizationGoals<I>, GoalEvaluation<I>), NoSolutionOrRerunNonErased> {
-         if let RerunStalled::WontMakeProgress(stalled_certainty) =
-             self.rerunning_stalled_goal_may_make_progress(stalled_on.as_ref())
-         {
-             return Ok((
-                 NestedNormalizationGoals::empty(),
-                 GoalEvaluation {
-                     goal,
-                     certainty: stalled_certainty,
-                     has_changed: HasChanged::No,
-                     stalled_on,
-                 },
-             ));
-         }
+        if let RerunStalled::WontMakeProgress(stalled_certainty) =
+            self.rerunning_stalled_goal_may_make_progress(stalled_on.as_ref())
+        {
+            return Ok((
+                NestedNormalizationGoals::empty(),
+                GoalEvaluation {
+                    goal,
+                    certainty: stalled_certainty,
+                    has_changed: HasChanged::No,
+                    stalled_on,
+                },
+            ));
+        }
 
-         self.evaluate_goal_cold(source, goal, increase_depth_for_nested)
-     }
+        self.evaluate_goal_cold(source, goal, increase_depth_for_nested)
+    }
 
-     #[cold]
-     #[inline(never)]
-     pub(super) fn evaluate_goal_cold(
-         &mut self,
-         source: GoalSource,
-         goal: Goal<I, I::Predicate>,
--        increase_depth_for_nested: IncreaseDepthForNested,
-+        increase_depth_for_nested: LowerAvailableDepth,
-     ) -> Result<(NestedNormalizationGoals<I>, GoalEvaluation<I>), NoSolutionOrRerunNonErased> {
-         if let Some(res) = self.compute_goal_fast_path(goal) {
-             return Ok(res);
-         }
-
-+++++++ ktlxysvk c626102e "shuffle fastpaths around to before creating an evalctxt" (rebased revision)
-        increase_depth_for_nested: IncreaseDepthForNested,
+    #[cold]
+    #[inline(never)]
+    pub(super) fn evaluate_goal_cold(
+        &mut self,
+        source: GoalSource,
+        goal: Goal<I, I::Predicate>,
+        increase_depth_for_nested: LowerAvailableDepth,
     ) -> Result<(NestedNormalizationGoals<I>, GoalEvaluation<I>), NoSolutionOrRerunNonErased> {
->>>>>>> conflict 2 of 2 ends
         // We only care about one entry per `OpaqueTypeKey` here,
         // so we only canonicalize the lookup table and ignore
         // duplicate entries.
@@ -915,7 +920,20 @@ where
             ty::Unnormalized::new_wip(goal.predicate),
         )?;
         self.inspect.add_goal(self.delegate, self.max_input_universe, source, goal);
-        self.nested_goals.push((source, goal, None));
+
+        if let Some(GoalEvaluation { goal, certainty, has_changed: _, stalled_on }) =
+            compute_goal_fast_path(self.delegate, goal, self.origin_span)
+        {
+            match certainty {
+                // We're done here
+                Certainty::Yes => {}
+                Certainty::Maybe(_) => {
+                    self.nested_goals.push((source, goal, stalled_on));
+                }
+            }
+        } else {
+            self.nested_goals.push((source, goal, None));
+        }
         Ok(())
     }
 
