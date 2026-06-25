@@ -1476,6 +1476,12 @@ fn add_sanitizer_libraries(
     if sanitizer.contains(SanitizerSet::REALTIME) {
         link_sanitizer_runtime(sess, flavor, linker, "rtsan");
     }
+    if sanitizer.contains(SanitizerSet::CFI)
+        && (sess.opts.unstable_opts.sanitizer_cfi_diag.unwrap_or(false)
+            || sess.opts.unstable_opts.sanitizer_cfi_recover.unwrap_or(false))
+    {
+        link_sanitizer_runtime(sess, flavor, linker, "ubsan");
+    }
 }
 
 fn link_sanitizer_runtime(

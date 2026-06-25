@@ -84,6 +84,8 @@ pub struct ModuleConfig {
     pub instrument_coverage: bool,
 
     pub sanitizer: SanitizerSet,
+    pub sanitizer_cfi_diag: Option<bool>,
+    pub sanitizer_cfi_recover: Option<bool>,
     pub sanitizer_recover: SanitizerSet,
     pub sanitizer_dataflow_abilist: Vec<String>,
     pub sanitizer_memory_track_origins: usize,
@@ -183,6 +185,8 @@ impl ModuleConfig {
             instrument_coverage: if_regular!(sess.instrument_coverage(), false),
 
             sanitizer: if_regular!(sess.sanitizers(), SanitizerSet::empty()),
+            sanitizer_cfi_diag: if_regular!(sess.opts.unstable_opts.sanitizer_cfi_diag, None),
+            sanitizer_cfi_recover: if_regular!(sess.opts.unstable_opts.sanitizer_cfi_recover, None),
             sanitizer_dataflow_abilist: if_regular!(
                 sess.opts.unstable_opts.sanitizer_dataflow_abilist.clone(),
                 Vec::new()
