@@ -563,6 +563,108 @@ where
         WontMakeProgress(stalled_certainty)
     }
 
+    /// This is a fast path optimization:
+    /// If *all* the self types of all the where clauses in the goals `ParamEnv` are a
+    /// generic arg (this is common if for example the `ParamEnv` only contains `T: Clone`
+    /// for some generic function `fn foo<T: Clone>(t: T)`)
+    /// And the goal does not mention any generic args, then we already know for certain that
+    /// the evaluation of the goal doesn't depend on the `ParamEnv` in any way. That means that
+    /// it's equivalent to evaluating the goal with an *empty* `ParamEnv`.
+    ///
+    /// This is desirable because the `ParamEnv` is part of the cache key, so more cache keys will
+    /// match if they all mention the same empty `ParamEnv`.
+    fn try_strip_param_env(&self, goal: Goal<I, I::Predicate>) -> Goal<I, I::Predicate> {
+        let goal_may_mention_any_params =
+            goal.predicate.has_any_type_params() || goal.predicate.has_any_const_params();
+
+        let is_clause_relevant_for_goal = |clause: ClauseKind<I>| -> bool {
+            match clause {
+                ClauseKind::Trait(trait_predicate) => {
+                    let irrelevant =
+                        // If the self type of this clause mentions a generic parameter
+                        // i.e. T: Clone as opposed to i32: Clone
+                        trait_predicate.self_ty().has_any_type_params() &&
+                        // And the goal can never in any way use this clause because it
+                        // doesn't mention generic args, or variables that could unify with
+                        // the generic arg because of the one impl rule
+                        !goal_may_mention_any_params
+                        // then the clause is irrelevant to the outcome of the goal
+                    ;
+
+                    !irrelevant
+                }
+                // FIXME: atm never relevant for goal evaluation, but might be in the future so `true`
+                // to avoid future performance cliffs
+                ClauseKind::RegionOutlives(_) => true,
+                ClauseKind::TypeOutlives(_) => true,
+                ClauseKind::Projection(projection_predicate) => {
+                    let irrelevant =
+                        // If the self type of this clause mentions a generic parameter,
+                        // i.e. T: Clone as opposed to i32: Clone
+                        projection_predicate.self_ty().has_any_type_params() &&
+                        // And the goal can never in any way use this clause because it
+                        // doesn't mention generic args, or variables that could unify with
+                        // the generic arg because of the one impl rule
+                        !goal_may_mention_any_params
+                        // then the clause is irrelevant to the outcome of the goal
+                    ;
+
+                    !irrelevant
+                }
+                ClauseKind::ConstArgHasType(c, _) => {
+                    let irrelevant =
+                        // If the const this clause bounds, mentions a generic parameter,
+                        // i.e. N: usize as opposed to 4: usize
+                        c.has_any_const_params() &&
+                        // and the goal can never in any way use this clause because it
+                        // doesn't mention const generic args, or variables that could unify with
+                        // the generic arg because of the one impl rule
+                        !goal_may_mention_any_params
+                        // then the clause is irrelevant to the outcome of the goal
+                    ;
+
+                    !irrelevant
+                }
+                ClauseKind::WellFormed(_) => true,
+                ClauseKind::ConstEvaluatable(c) => {
+                    let irrelevant =
+                        // If the const this clause bounds, mentions a generic parameter,
+                        // i.e. N is evaluatable as opposed to 3 is evaluatable
+                        c.has_any_const_params() &&
+                        // and the goal can never in any way use this clause because it
+                        // doesn't mention const generic args, or variables that could unify with
+                        // the generic arg because of the one impl rule
+                        !goal_may_mention_any_params
+                        // then the clause is irrelevant to the outcome of the goal
+                    ;
+
+                    !irrelevant
+                }
+                ClauseKind::HostEffect(_) => true,
+                ClauseKind::UnstableFeature(_) => true,
+            }
+        };
+
+        let any_clause_relevant_for_goal = goal
+            .param_env
+            .caller_bounds()
+            .iter()
+            .any(|i| is_clause_relevant_for_goal(i.kind().skip_binder()));
+
+        if !any_clause_relevant_for_goal {
+            if !goal.param_env.caller_bounds().is_empty() {
+                tracing::debug!(
+                    "stripping param env {:?} because it is irrelevant to prove {:?}",
+                    goal.param_env,
+                    goal.predicate
+                );
+            }
+            Goal { param_env: ParamEnv::empty(), predicate: goal.predicate }
+        } else {
+            goal
+        }
+    }
+
     /// Recursively evaluates `goal`, returning the nested goals in case
     /// the nested goal is a `NormalizesTo` goal.
     ///
@@ -605,6 +707,7 @@ where
         // duplicate entries.
         let opaque_types = self.delegate.clone_opaque_types_lookup_table();
         let (goal, opaque_types) = eager_resolve_vars(self.delegate, (goal, opaque_types));
+        let goal = self.try_strip_param_env(goal);
         let typing_mode = self.typing_mode();
         let step_kind = self.step_kind_for_source(source);
 
