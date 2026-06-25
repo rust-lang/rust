@@ -716,6 +716,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             generic_args: &'a GenericArgs<'tcx>,
             span: Span,
             infer_args: bool,
+            create_synth_args: bool,
             incorrect_args: &'a Result<(), GenericArgCountMismatch>,
         }
 
@@ -828,7 +829,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 .instantiate(tcx, preceding_args)
                                 .skip_norm_wip()
                                 .into()
-                        } else if synthetic {
+                        } else if self.create_synth_args && synthetic {
                             Ty::new_param(tcx, param.index, param.name).into()
                         } else if infer_args {
                             self.lowerer.ty_infer(Some(param), self.span).into()
@@ -868,6 +869,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             span,
             generic_args: segment.args(),
             infer_args: segment.infer_args,
+            create_synth_args: tcx.hir_is_delegation_child_segment(segment),
             incorrect_args: &arg_count.correct,
         };
 
