@@ -4,7 +4,7 @@
 
 #![warn(clippy::pub_underscore_fields)]
 
-use std::marker::PhantomData;
+use std::marker::{PhantomData, PhantomPinned};
 
 pub mod inner {
     use std::marker;
@@ -15,6 +15,7 @@ pub mod inner {
         //~^ pub_underscore_fields
         _c: i32,
         pub _mark: marker::PhantomData<u8>,
+        pub _pinned: marker::PhantomPinned,
     }
 
     mod inner2 {
@@ -68,6 +69,7 @@ fn main() {
         r#pub: bool,
         _pub: String,
         pub(crate) _mark: PhantomData<u8>,
+        pub(crate) _pinned: PhantomPinned,
     }
 
     // shouldn't warn when `#[allow]` is used on field level

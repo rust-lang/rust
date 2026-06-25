@@ -757,7 +757,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
-        if let TraitItemKind::Const(_, ct_rhs_opt, _) = item.kind
+        if let TraitItemKind::Const(_, ct_rhs_opt) = item.kind
             && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip()
             && match self.is_ty_freeze(cx.tcx, cx.typing_env(), ty) {
                 IsFreeze::No => true,
@@ -958,7 +958,7 @@ fn get_const_hir_value<'tcx>(
         {
             match tcx.hir_node(tcx.local_def_id_to_hir_id(did)) {
                 Node::ImplItem(item) if let ImplItemKind::Const(.., ct_rhs) = item.kind => (did, ct_rhs),
-                Node::TraitItem(item) if let TraitItemKind::Const(_, Some(ct_rhs), _) = item.kind => (did, ct_rhs),
+                Node::TraitItem(item) if let TraitItemKind::Const(_, Some(ct_rhs)) = item.kind => (did, ct_rhs),
                 _ => return None,
             }
         },

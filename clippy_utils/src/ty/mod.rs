@@ -20,8 +20,9 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{
     self, AdtDef, AliasTy, AssocItem, AssocTag, Binder, BoundRegion, BoundVarIndexKind, FnSig, GenericArg,
-    GenericArgKind, GenericArgsRef, IntTy, Region, RegionKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, UintTy, Unnormalized, Upcast, VariantDef, VariantDiscr,
+    GenericArgKind, GenericArgsRef, IntTy, ProjectionAliasTy, Region, RegionKind, TraitRef, Ty, TyCtxt,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, Unnormalized, Upcast, VariantDef,
+    VariantDiscr,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{DUMMY_SP, Span, Symbol};
@@ -746,12 +747,7 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
                 _ => None,
             }
         },
-        ty::Alias(
-            proj @ AliasTy {
-                kind: ty::Projection { .. },
-                ..
-            },
-        ) => match cx
+        ty::Alias(alias) if let Some(proj) = alias.try_to_projection() => match cx
             .tcx
             .try_normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(ty))
         {
@@ -789,7 +785,7 @@ fn sig_from_bounds<'tcx>(
                 inputs = Some(i);
             },
             ty::ClauseKind::Projection(p)
-                if Some(p.projection_term.def_id()) == lang_items.fn_once_output()
+                if Some(p.projection_term.expect_projection_def_id()) == lang_items.fn_once_output()
                     && p.projection_term.self_ty() == ty =>
             {
                 if output.is_some() {
@@ -805,14 +801,14 @@ fn sig_from_bounds<'tcx>(
     inputs.map(|ty| ExprFnSig::Trait(ty, output, predicates_id))
 }
 
-fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: AliasTy<'tcx>) -> Option<ExprFnSig<'tcx>> {
+fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: ProjectionAliasTy<'tcx>) -> Option<ExprFnSig<'tcx>> {
     let mut inputs = None;
     let mut output = None;
     let lang_items = cx.tcx.lang_items();
 
     for (pred, _) in cx
         .tcx
-        .explicit_item_bounds(ty.kind.def_id())
+        .explicit_item_bounds(ty.kind)
         .iter_instantiated_copied(cx.tcx, ty.args)
         .map(Unnormalized::skip_norm_wip)
     {
@@ -830,7 +826,9 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: AliasTy<'tcx>) -> Option
                 }
                 inputs = Some(i);
             },
-            ty::ClauseKind::Projection(p) if Some(p.projection_term.def_id()) == lang_items.fn_once_output() => {
+            ty::ClauseKind::Projection(p)
+                if Some(p.projection_term.expect_projection_def_id()) == lang_items.fn_once_output() =>
+            {
                 if output.is_some() {
                     // Multiple different fn trait impls. Is this even allowed?
                     return None;
@@ -1127,11 +1125,17 @@ pub fn make_projection<'tcx>(
         #[cfg(debug_assertions)]
         assert_generic_args_match(tcx, assoc_item.def_id, args);
 
-        Some(AliasTy::new_from_args(
-            tcx,
-            ty::AliasTyKind::new_from_def_id(tcx, assoc_item.def_id),
-            args,
-        ))
+        let kind = if let DefKind::Impl { of_trait: false } = tcx.def_kind(tcx.parent(assoc_item.def_id)) {
+            ty::AliasTyKind::Inherent {
+                def_id: assoc_item.def_id,
+            }
+        } else {
+            ty::AliasTyKind::Projection {
+                def_id: assoc_item.def_id,
+            }
+        };
+
+        Some(AliasTy::new_from_args(tcx, kind, args))
     }
     helper(
         tcx,
@@ -1170,10 +1174,7 @@ pub fn make_normalized_projection<'tcx>(
             );
             return None;
         }
-        match tcx.try_normalize_erasing_regions(
-            typing_env,
-            Unnormalized::new_wip(Ty::new_projection_from_args(tcx, ty.kind.def_id(), ty.args)),
-        ) {
+        match tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(Ty::new_alias(tcx, ty))) {
             Ok(ty) => Some(ty),
             Err(e) => {
                 debug_assert!(false, "failed to normalize type `{ty}`: {e:#?}");
@@ -1327,10 +1328,7 @@ pub fn make_normalized_projection_with_regions<'tcx>(
         }
         let cause = ObligationCause::dummy();
         let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
-        match infcx
-            .at(&cause, param_env)
-            .query_normalize(Ty::new_projection_from_args(tcx, ty.kind.def_id(), ty.args))
-        {
+        match infcx.at(&cause, param_env).query_normalize(Ty::new_alias(tcx, ty)) {
             Ok(ty) => Some(ty.value),
             Err(e) => {
                 debug_assert!(false, "failed to normalize type `{ty}`: {e:#?}");
