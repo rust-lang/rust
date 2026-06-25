@@ -54,6 +54,10 @@ pub(crate) struct MixedBinCrate;
 pub(crate) struct MixedProcMacroCrate;
 
 #[derive(Diagnostic)]
+#[diag("cannot compile `proc-macro` crate to wasm targets without -Zwasm-proc-macros")]
+pub(crate) struct UnstableWasmProcMacro;
+
+#[derive(Diagnostic)]
 #[diag("error writing dependencies to `{$path}`: {$error}")]
 pub(crate) struct ErrorWritingDependencies<'a> {
     pub path: &'a Path,

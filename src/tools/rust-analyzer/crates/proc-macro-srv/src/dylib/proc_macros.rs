@@ -2,6 +2,7 @@
 use crate::{
     ProcMacroClientHandle, ProcMacroKind, ProcMacroSrvSpan, TrackedEnv, token_stream::TokenStream,
 };
+use rustc_expand::wasm_proc_macro::RustcProcMacro;
 use rustc_proc_macro::bridge;
 
 impl From<bridge::PanicMessage> for crate::PanicMessage {
@@ -10,12 +11,10 @@ impl From<bridge::PanicMessage> for crate::PanicMessage {
     }
 }
 
-pub(crate) struct ProcMacros(Vec<(bridge::client::Client, rustc_metadata::ProcMacroKind)>);
+pub(crate) struct ProcMacros(Vec<(RustcProcMacro, rustc_metadata::ProcMacroKind)>);
 
 impl ProcMacros {
-    pub(super) fn new(
-        macros: Vec<(bridge::client::Client, rustc_metadata::ProcMacroKind)>,
-    ) -> Self {
+    pub(super) fn new(macros: Vec<(RustcProcMacro, rustc_metadata::ProcMacroKind)>) -> Self {
         ProcMacros(macros)
     }
 
@@ -33,6 +32,9 @@ impl ProcMacros {
         let parsed_attributes = attribute.unwrap_or_default();
 
         for (client, kind) in &self.0 {
+            let RustcProcMacro::Dylib { client } = client else {
+                panic!("not yet implemented support for wasm proc macro, should reuse rustc impl");
+            };
             match kind {
                 rustc_metadata::ProcMacroKind::CustomDerive { trait_name, .. }
                     if trait_name.as_str() == macro_name =>

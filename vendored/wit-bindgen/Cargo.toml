@@ -1,0 +1,20 @@
+[package]
+name = "wasmtime-internal-wit-bindgen"
+version = "46.0.0"
+description = "INTERNAL: `*.wit` support for the `wasmtime` crate's macros"
+license = "Apache-2.0 WITH LLVM-exception"
+repository = "https://github.com/bytecodealliance/wasmtime"
+documentation = "https://docs.rs/wasmtime-wit-bindgen/"
+edition = "2024"
+rust-version = "1.94.0"
+
+[dependencies]
+anyhow = "1"
+heck = "0.5.0"
+wit-parser = "0.251.0"
+indexmap = { version = "2.14.0", default-features = false, features = ['std'] }
+bitflags = "2.9.4"
+
+[features]
+async = []
+component-model-async = []
