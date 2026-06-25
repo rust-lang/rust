@@ -3,7 +3,7 @@
 
 #![allow(incomplete_features, internal_features)]
 #![feature(sized_hierarchy)]
-#![feature(coroutines, extern_types, f16, never_type, unsized_fn_params)]
+#![feature(coroutines, extern_types, f16, unsized_fn_params)]
 
 use std::fmt::Debug;
 use std::marker::{MetaSized, PointeeSized};

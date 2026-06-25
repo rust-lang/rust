@@ -4,7 +4,6 @@
 //@ dont-require-annotations: NOTE
 
 #![feature(core_intrinsics)]
-#![feature(never_type)]
 
 use std::{intrinsics, mem};
 

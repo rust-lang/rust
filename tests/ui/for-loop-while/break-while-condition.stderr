@@ -1,20 +1,23 @@
 error[E0308]: mismatched types
-  --> $DIR/break-while-condition.rs:9:20
+  --> $DIR/break-while-condition.rs:8:13
    |
-LL |           let _: ! = {
-   |  ____________________^
-LL | |             'a: while break 'a {};
-LL | |         };
-   | |_________^ expected `!`, found `()`
+LL |             'a: while break 'a {}
+   |             ^^^^^^^^^^^^^^^^^^^^^ expected `!`, found `()`
    |
    = note:   expected type `!`
            found unit type `()`
+   = note: `while` loops evaluate to unit type `()`
+help: consider adding a diverging expression here
+   |
+LL |             'a: while break 'a {} /* `loop {}` or `panic!("...")` */
+   |                                   ++++++++++++++++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/break-while-condition.rs:16:13
+  --> $DIR/break-while-condition.rs:15:13
    |
 LL | /             while false {
-LL | |                 break
+LL | |
+LL | |                 break;
 LL | |             }
    | |_____________^ expected `!`, found `()`
    |
@@ -31,7 +34,8 @@ error[E0308]: mismatched types
   --> $DIR/break-while-condition.rs:24:13
    |
 LL | /             while false {
-LL | |                 return
+LL | |
+LL | |                 return;
 LL | |             }
    | |_____________^ expected `!`, found `()`
    |

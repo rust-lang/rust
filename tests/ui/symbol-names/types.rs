@@ -7,7 +7,6 @@
 //@ normalize-stderr: "h[[:xdigit:]]{16}" -> "h[HASH]"
 //@ [v0] normalize-stderr: "\[[[:xdigit:]]{16}\]" -> "[HASH]"
 
-#![feature(never_type)]
 #![feature(rustc_attrs)]
 #![feature(f128)]
 #![feature(f16)]

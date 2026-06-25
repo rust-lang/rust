@@ -1,11 +1,11 @@
 error[E0277]: the trait bound `!: Bar` is not satisfied
-  --> $DIR/fallback-closure-ret.rs:18:5
+  --> $DIR/fallback-closure-ret.rs:17:5
    |
 LL |     foo(|| panic!());
    |     ^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `!`
    |
 help: the following other types implement trait `Bar`
-  --> $DIR/fallback-closure-ret.rs:12:1
+  --> $DIR/fallback-closure-ret.rs:11:1
    |
 LL | impl Bar for () {}
    | ^^^^^^^^^^^^^^^ `()`
@@ -14,7 +14,7 @@ LL | impl Bar for u32 {}
    = note: this error might have been caused by changes to Rust's type-inference algorithm (see issue #148922 <https://github.com/rust-lang/rust/issues/148922> for more information)
    = help: you might have intended to use the type `()` here instead
 note: required by a bound in `foo`
-  --> $DIR/fallback-closure-ret.rs:15:11
+  --> $DIR/fallback-closure-ret.rs:14:11
    |
 LL | fn foo<R: Bar>(_: impl Fn() -> R) {}
    |           ^^^ required by this bound in `foo`

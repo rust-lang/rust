@@ -14,7 +14,11 @@ error: expression with side effects as the initial value in a zero-sized array i
 LL |     let _data = [panic!(); 0];
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: consider performing the side effect separately
+help: consider performing the side effect separately
+   |
+LL ~     panic!();
+LL +     let _data: [!; 0] = [];
+   |
 
 error: aborting due to 2 previous errors
 

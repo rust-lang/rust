@@ -1,11 +1,11 @@
 error: this function has a `#[must_use]` attribute with no message, but returns a type already marked as `#[must_use]`
-  --> tests/ui/double_must_use_unfixable.rs:6:1
+  --> tests/ui/double_must_use_unfixable.rs:5:1
    |
 LL | pub fn issue_12320() -> Result<(), ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: remove `must_use`
-  --> tests/ui/double_must_use_unfixable.rs:5:19
+  --> tests/ui/double_must_use_unfixable.rs:4:19
    |
 LL | #[cfg_attr(all(), must_use, deprecated)]
    |                   ^^^^^^^^
@@ -14,13 +14,13 @@ LL | #[cfg_attr(all(), must_use, deprecated)]
    = help: to override `-D warnings` add `#[allow(clippy::double_must_use)]`
 
 error: this function has a `#[must_use]` attribute with no message, but returns a type already marked as `#[must_use]`
-  --> tests/ui/double_must_use_unfixable.rs:12:1
+  --> tests/ui/double_must_use_unfixable.rs:11:1
    |
 LL | pub fn issue_12320_2() -> Result<(), ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: remove `must_use`
-  --> tests/ui/double_must_use_unfixable.rs:11:31
+  --> tests/ui/double_must_use_unfixable.rs:10:31
    |
 LL | #[cfg_attr(all(), deprecated, must_use)]
    |                               ^^^^^^^^

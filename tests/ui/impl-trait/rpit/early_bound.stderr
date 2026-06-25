@@ -2,7 +2,7 @@ error: concrete type differs from previous defining opaque type use
   --> $DIR/early_bound.rs:6:36
    |
 LL |         let _ = identity::<&'a ()>(test(false));
-   |                                    ^^^^^^^^^^^ expected `()`, got `&()`
+   |                                    ^^^^^^^^^^^ expected `!`, got `&()`
    |
 note: previous use here
   --> $DIR/early_bound.rs:3:29

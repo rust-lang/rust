@@ -1,5 +1,5 @@
 error: unreachable pattern
-  --> $DIR/uninhabited-unstable-field.rs:24:9
+  --> $DIR/uninhabited-unstable-field.rs:23:9
    |
 LL |         Foo { .. } => {}
    |         ^^^^^^^^^^------
@@ -9,13 +9,13 @@ LL |         Foo { .. } => {}
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 note: the lint level is defined here
-  --> $DIR/uninhabited-unstable-field.rs:9:9
+  --> $DIR/uninhabited-unstable-field.rs:8:9
    |
 LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/uninhabited-unstable-field.rs:31:9
+  --> $DIR/uninhabited-unstable-field.rs:30:9
    |
 LL |         _ => {}
    |         ^------
@@ -26,7 +26,7 @@ LL |         _ => {}
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/uninhabited-unstable-field.rs:41:9
+  --> $DIR/uninhabited-unstable-field.rs:40:9
    |
 LL |         MyCoroutineState::Complete(_) => {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^------

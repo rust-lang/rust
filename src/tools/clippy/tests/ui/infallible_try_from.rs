@@ -1,4 +1,3 @@
-#![feature(never_type)]
 #![warn(clippy::infallible_try_from)]
 
 use std::convert::Infallible;

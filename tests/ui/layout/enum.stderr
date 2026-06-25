@@ -1,5 +1,5 @@
 error: align: Align(2 bytes)
-  --> $DIR/enum.rs:9:1
+  --> $DIR/enum.rs:8:1
    |
 LL | enum UninhabitedVariantAlign {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -11,13 +11,13 @@ LL | enum UninhabitedVariantSpace {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: backend_repr: ScalarPair(Initialized { value: Int(I8, false), valid_range: 0..=1 }, Initialized { value: Int(I8, false), valid_range: 0..=255 })
-  --> $DIR/enum.rs:21:1
+  --> $DIR/enum.rs:22:1
    |
 LL | enum ScalarPairDifferingSign {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: size: Size(4 bytes)
-  --> $DIR/enum.rs:31:1
+  --> $DIR/enum.rs:33:1
    |
 LL | enum DefinedLayoutAllUninhabited {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
