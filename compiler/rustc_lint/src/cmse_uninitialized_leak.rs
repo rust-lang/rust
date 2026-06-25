@@ -1,7 +1,6 @@
 use rustc_abi::ExternAbi;
 use rustc_hir::{self as hir, Expr, ExprKind};
-use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, TypeVisitableExt};
 use rustc_session::{declare_lint, declare_lint_pass};
 
 use crate::{LateContext, LateLintPass, LintContext, lints};
@@ -86,7 +85,7 @@ fn check_cmse_call_call<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
             continue;
         };
 
-        if !is_transmutable_to_array_u8(cx.tcx, ty.clone(), layout) {
+        if !layout.value_dependent_padding_ranges(cx).is_empty() {
             // Some part of the source type may be uninitialized.
             cx.emit_span_lint(
                 CMSE_UNINITIALIZED_LEAK,
@@ -132,7 +131,7 @@ fn check_cmse_entry_return<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>)
         return;
     };
 
-    if !is_transmutable_to_array_u8(cx.tcx, return_type.clone(), ret_layout) {
+    if !ret_layout.value_dependent_padding_ranges(cx).is_empty() {
         let return_expr_span = if is_implicit_return {
             match expr.kind {
                 ExprKind::Block(block, _) => match block.expr {
@@ -151,31 +150,5 @@ fn check_cmse_entry_return<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>)
             return_expr_span,
             lints::CmseUninitializedMayLeakInformation,
         );
-    }
-}
-
-/// Check whether the source type `T` can be safely transmuted to `[u8; size_of::<T>()]`.
-///
-/// If the transmute is valid, `T` must be fully initialized. Otherwise, parts of it may be
-/// uninitialized, which should trigger the lint defined by this module.
-fn is_transmutable_to_array_u8<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    ty: Ty<'tcx>,
-    layout: TyAndLayout<'tcx>,
-) -> bool {
-    use rustc_transmute::{Answer, Assume, TransmuteTypeEnv};
-
-    let mut transmute_env = TransmuteTypeEnv::new(tcx);
-    let assume = Assume { alignment: true, lifetimes: true, safety: false, validity: false };
-
-    let array_u8_ty = Ty::new_array_with_const_len(
-        tcx,
-        tcx.types.u8,
-        ty::Const::from_target_usize(tcx, layout.size.bytes()),
-    );
-
-    match transmute_env.is_transmutable(ty, array_u8_ty, assume) {
-        Answer::Yes => true,
-        Answer::No(_) | Answer::If(_) => false,
     }
 }

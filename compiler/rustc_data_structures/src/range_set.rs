@@ -56,4 +56,73 @@ where
             v.insert(idx, (offset, size));
         }
     }
+
+    pub fn intersection(&self, other: &Self) -> Self {
+        let (a, b) = (self, other);
+        let mut out = RangeSet::new();
+
+        let (mut i, mut j) = (0, 0);
+        while let (Some(&(a_offset, a_size)), Some(&(b_offset, b_size))) = (a.0.get(i), b.0.get(j))
+        {
+            let (a_end, b_end) = (a_offset + a_size, b_offset + b_size);
+
+            let start = Ord::max(a_offset, b_offset);
+            let end = Ord::min(a_end, b_end);
+
+            // Add the intersection if nonempty.
+            if start < end {
+                out.add_range(start, end - start);
+            }
+
+            // Advance past whichever range ends first.
+            // The other may still overlap a later range.
+            if a_end < b_end {
+                i += 1;
+            } else {
+                j += 1;
+            }
+        }
+
+        out
+    }
+
+    /// The ranges from `self` with any intersection with `other` removed.
+    pub fn difference(&self, other: &Self) -> Self {
+        let (a, b) = (self, other);
+        let mut out = Vec::new();
+
+        let mut j = 0;
+        for &(a_offset, a_size) in a.0.iter() {
+            let mut cursor = a_offset;
+            let a_end = a_offset + a_size;
+
+            // Skip ranges of `b` that end before this range of `a` begins.
+            // both sequences are sorted they cannot overlap any later range of `a` either.
+            while let Some(&(b_offset, b_size)) = b.0.get(j)
+                && b_offset + b_size <= cursor
+            {
+                j += 1;
+            }
+
+            // Carve out each range of `b` that overlaps this range of `a`. A range of `b` may extend
+            // past `a_end` and overlap the next range of `a`, so leave `j` pointing at it.
+            let mut k = j;
+            while let Some(&(b_offset, b_size)) = b.0.get(k)
+                && b_offset < a_end
+            {
+                if b_offset > cursor {
+                    out.push((cursor, b_offset));
+                }
+                cursor = Ord::max(cursor, b_offset + b_size);
+                k += 1;
+            }
+
+            // Keep the remainder of the `a`'s range.
+            if cursor < a_end {
+                out.push((cursor, a_end));
+            }
+        }
+
+        Self(out)
+    }
 }

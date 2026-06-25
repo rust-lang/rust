@@ -2,6 +2,7 @@
 //@ compile-flags: --target thumbv8m.main-none-eabi --crate-type lib
 //@ needs-llvm-components: arm
 //@ check-pass
+//@ ignore-backends: gcc
 
 #![feature(cmse_nonsecure_entry, no_core, lang_items)]
 #![no_core]
@@ -71,6 +72,44 @@ struct PaddedStruct {
 
 #[no_mangle]
 extern "cmse-nonsecure-entry" fn padded_struct() -> PaddedStruct {
+    // This struct only has no value-dependent padding, the guaranteed padding is zeroed.
     PaddedStruct { a: 0, b: 1 }
+}
+
+#[repr(C)]
+enum VariantsSameSize {
+    A(u16),
+    B(u16),
+}
+
+#[no_mangle]
+extern "cmse-nonsecure-entry" fn variants_same_size() -> VariantsSameSize {
+    // This enum only has no value-dependent padding, the guaranteed padding is zeroed.
+    VariantsSameSize::A(0)
+}
+
+#[repr(C)]
+enum VariantsDifferentSize {
+    A(u8),
+    B(u16),
+}
+
+#[no_mangle]
+extern "cmse-nonsecure-entry" fn variants_different_size() -> VariantsDifferentSize {
+    VariantsDifferentSize::A(0)
+    //~^ WARN passing a (partially) uninitialized value across the security boundary may leak information
+}
+
+enum Void {}
+
+#[repr(C)]
+enum UninhabitedVariant {
+    A(Void),
+    B(u16),
+}
+
+#[no_mangle]
+extern "cmse-nonsecure-entry" fn uninhabited_variant() -> UninhabitedVariant {
+    UninhabitedVariant::B(0)
     //~^ WARN passing a (partially) uninitialized value across the security boundary may leak information
 }

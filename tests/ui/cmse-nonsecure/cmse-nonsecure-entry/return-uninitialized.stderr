@@ -44,12 +44,20 @@ LL | |     }
    = note: padding or fields not used by the current variant of a union may contain stale secure data
 
 warning: passing a (partially) uninitialized value across the security boundary may leak information
-  --> $DIR/return-uninitialized.rs:74:5
+  --> $DIR/return-uninitialized.rs:98:5
    |
-LL |     PaddedStruct { a: 0, b: 1 }
+LL |     VariantsDifferentSize::A(0)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: padding or fields not used by the current variant of a union may contain stale secure data
 
-warning: 6 warnings emitted
+warning: passing a (partially) uninitialized value across the security boundary may leak information
+  --> $DIR/return-uninitialized.rs:112:5
+   |
+LL |     UninhabitedVariant::B(0)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: padding or fields not used by the current variant of a union may contain stale secure data
+
+warning: 7 warnings emitted
 
