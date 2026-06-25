@@ -4,7 +4,7 @@ extern crate std;
 use ::std::prelude::rust_2015::*;
 //@ pretty-compare-only
 //@ pretty-mode:hir
-//@ pp-exact:delegation-self-rename.pp
+//@ pp-exact:self-rename.pp
 
 
 trait Trait<'a, A, const B: bool> {
