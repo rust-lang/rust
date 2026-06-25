@@ -1,4 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/26997>.
 //@ build-pass
+
 #![allow(dead_code)]
 pub struct Foo {
     x: isize,
