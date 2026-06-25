@@ -40,6 +40,20 @@ cfg_select! {
             sqrtf16,
         };
     }
+    any(target_arch = "loongarch32", target_arch = "loongarch64") => {
+        mod loongarch;
+
+        #[cfg(target_feature = "d")]
+        pub use loongarch::fma;
+        #[cfg(target_feature = "f")]
+        pub use loongarch::fmaf;
+        #[cfg(target_feature = "lsx")]
+        pub use loongarch::{rint, rintf};
+        #[cfg(target_feature = "d")]
+        pub use loongarch::sqrt;
+        #[cfg(target_feature = "f")]
+        pub use loongarch::sqrtf;
+    }
     _ => {}
 }
 
