@@ -10,10 +10,9 @@ use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::search_graph::{CandidateHeadUsages, LowerAvailableDepth, PathKind};
 use rustc_type_ir::solve::{
-    AccessedOpaques, ComputeGoalFastPathOutcome, ExternalRegionConstraints,
-    FetchEligibleAssocItemResponse, MaybeInfo, NoSolutionOrRerunNonErased, OpaqueTypesJank,
-    QueryResultOrRerunNonErased, RerunCondition, RerunNonErased, RerunReason, RerunResultExt,
-    SmallCopyList,
+    AccessedOpaques, ExternalRegionConstraints, FetchEligibleAssocItemResponse, MaybeInfo,
+    NoSolutionOrRerunNonErased, OpaqueTypesJank, QueryResultOrRerunNonErased, RerunCondition,
+    RerunNonErased, RerunReason, RerunResultExt, SmallCopyList,
 };
 use rustc_type_ir::{
     self as ty, CanonicalVarValues, ClauseKind, InferCtxtLike, Interner, MayBeErased,
@@ -32,6 +31,9 @@ use crate::delegate::SolverDelegate;
 use crate::normalize::{NormalizationFolder, NormalizationWasAmbiguous};
 use crate::placeholder::BoundVarReplacer;
 use crate::resolve::eager_resolve_vars;
+use crate::solve::eval_ctxt::fast_path::{
+    RerunStalled, compute_goal_fast_path, rerunning_stalled_goal_may_make_progress,
+};
 use crate::solve::search_graph::SearchGraph;
 use crate::solve::ty::may_use_unstable_feature;
 use crate::solve::{
@@ -41,6 +43,7 @@ use crate::solve::{
     VisibleForLeakCheck, inspect,
 };
 
+mod fast_path;
 mod probe;
 mod solver_region_constraints;
 
@@ -90,12 +93,6 @@ impl CurrentGoalKind {
     }
 }
 
-#[derive(Debug)]
-enum RerunDecision {
-    Yes,
-    No,
-    EagerlyPropagateToParent,
-}
 pub struct EvalCtxt<'a, D, I = <D as SolverDelegate>::Interner>
 where
     D: SolverDelegate<Interner = I>,
@@ -227,8 +224,25 @@ where
         span: I::Span,
         stalled_on: Option<GoalStalledOn<I>>,
     ) -> Result<GoalEvaluation<I>, NoSolution> {
+        // Run fast paths *before* building an `EvalCtxt`, saving a little bit of time.
+        if let RerunStalled::WontMakeProgress(stalled_certainty) =
+            rerunning_stalled_goal_may_make_progress(self, stalled_on.as_ref())
+        {
+            return Ok(GoalEvaluation {
+                goal,
+                certainty: stalled_certainty,
+                has_changed: HasChanged::No,
+                stalled_on,
+            });
+        }
+
+        if let Some(res) = compute_goal_fast_path(self, goal, span) {
+            return Ok(res);
+        }
+
         let result = EvalCtxt::enter_root(self, self.cx().recursion_limit(), span, |ecx| {
-            ecx.evaluate_goal(GoalSource::Misc, goal, stalled_on)
+            // Fast paths handled above
+            ecx.evaluate_goal_no_fast_paths(GoalSource::Misc, goal)
         });
 
         match result {
@@ -284,12 +298,6 @@ where
     ) -> (Result<NestedNormalizationGoals<I>, NoSolution>, inspect::GoalEvaluation<I>) {
         evaluate_root_goal_for_proof_tree(self, goal, span)
     }
-}
-
-#[derive(Debug, Clone, Copy)]
-enum RerunStalled {
-    WontMakeProgress(Certainty),
-    MayMakeProgress,
 }
 
 impl<'a, D, I> EvalCtxt<'a, D>
@@ -484,125 +492,35 @@ where
         goal: Goal<I, I::Predicate>,
         stalled_on: Option<GoalStalledOn<I>>,
     ) -> Result<GoalEvaluation<I>, NoSolutionOrRerunNonErased> {
-        let (normalization_nested_goals, goal_evaluation) =
-            self.evaluate_goal_raw(source, goal, stalled_on, LowerAvailableDepth::Yes)?;
-        assert!(normalization_nested_goals.is_empty());
-        Ok(goal_evaluation)
+        if let RerunStalled::WontMakeProgress(stalled_certainty) =
+            rerunning_stalled_goal_may_make_progress(self.delegate, stalled_on.as_ref())
+        {
+            return Ok(GoalEvaluation {
+                goal,
+                certainty: stalled_certainty,
+                has_changed: HasChanged::No,
+                stalled_on,
+            });
+        }
+
+        if let Some(res) = compute_goal_fast_path(self.delegate, goal, self.origin_span) {
+            return Ok(res);
+        }
+
+        self.evaluate_goal_no_fast_paths(source, goal)
     }
 
-    /// This is a fast path optimization:
-    /// If we have run this goal before, and it was stalled, check that any of the goal's
-    /// args have changed. This is a cheap way to determine that if we were to rerun this goal now,
-    /// it will remain stalled since it'll canonicalize the same way and evaluation is pure.
-    /// Therefore, we can skip this rerun
-    fn rerunning_stalled_goal_may_make_progress(
-        &self,
-        stalled_on: Option<&GoalStalledOn<I>>,
-    ) -> RerunStalled {
-        use RerunStalled::*;
-
-        // If fast paths are turned off, then we assume all goals can always make progress
-        if self.delegate.disable_trait_solver_fast_paths() {
-            return MayMakeProgress;
-        }
-
-        // If the goal isn't stalled, we should definitely run it.
-        let Some(&GoalStalledOn { ref reason, ref stalled_vars, ref sub_roots, stalled_certainty }) =
-            stalled_on
-        else {
-            return MayMakeProgress;
-        };
-
-        // If any of the stalled goal's generic arguments changed,
-        // rerunning might make progress so we should rerun.
-        if stalled_vars.iter().any(|value| self.delegate.is_changed_arg(*value)) {
-            return MayMakeProgress;
-        }
-
-        // If some inference took place in any of the sub roots,
-        // rerunning might make progress so we should rerun.
-        if sub_roots.iter().any(|&vid| self.delegate.sub_unification_table_root_var(vid) != vid) {
-            return MayMakeProgress;
-        }
-
-        match reason {
-            GoalStalledOnReason::FastPath => {
-                // fastpath is never because of opaques, we can skip this check
-            }
-            &GoalStalledOnReason::Other { num_opaques, ref previously_succeeded_in_erased } => {
-                // If any opaques changed in the opaque type storage,
-                // rerunning might make progress so we should rerun.
-                if self.delegate.opaque_types_storage_num_entries().needs_reevaluation(num_opaques)
-                {
-                    // Unless this goal previously succeeded in erased mode.
-                    // If the stalled goal successfully evaluated while erasing opaque types,
-                    // and the current state of the opaque type storage is not different in a way that is
-                    // relevant, this stalled goal cannot make any progress and we set this variable to true.
-                    let mut previous_erased_run_is_still_valid = false;
-
-                    if let &SucceededInErased::Yes { accessed_opaques } =
-                        previously_succeeded_in_erased
-                    {
-                        match self.should_rerun_after_erased_canonicalization(
-                            accessed_opaques,
-                            self.typing_mode(),
-                            &self.delegate.clone_opaque_types_lookup_table(),
-                        ) {
-                            RerunDecision::Yes => {}
-                            RerunDecision::EagerlyPropagateToParent => {
-                                unreachable!(
-                                    "we never retry stalled queries if the parent was erased"
-                                )
-                            }
-                            RerunDecision::No => {
-                                previous_erased_run_is_still_valid = true;
-                            }
-                        }
-                    }
-
-                    if !previous_erased_run_is_still_valid {
-                        return MayMakeProgress;
-                    }
-                }
-            }
-        }
-
-        // Otherwise, we can be sure that this stalled goal cannot make any progress
-        // and we can exit early.
-        WontMakeProgress(stalled_certainty)
-    }
-
-    /// This is a fast path optimization:
-    /// See the docs on [`ComputeGoalFastPathOutcome`]
-    pub fn compute_goal_fast_path(
-        &self,
+    // Outlining and `#[cold]` matter here because fast paths make it less likely to get here.
+    #[cold]
+    #[inline(never)]
+    fn evaluate_goal_no_fast_paths(
+        &mut self,
+        source: GoalSource,
         goal: Goal<I, I::Predicate>,
-    ) -> Option<(NestedNormalizationGoals<I>, GoalEvaluation<I>)> {
-        if self.delegate.disable_trait_solver_fast_paths() {
-            return None;
-        }
-
-        match self.delegate.compute_goal_fast_path(goal, self.origin_span) {
-            ComputeGoalFastPathOutcome::NoFastPath => None,
-            ComputeGoalFastPathOutcome::TriviallyHolds => Some((
-                NestedNormalizationGoals::empty(),
-                GoalEvaluation {
-                    goal,
-                    certainty: Certainty::Yes,
-                    has_changed: HasChanged::No,
-                    stalled_on: None,
-                },
-            )),
-            ComputeGoalFastPathOutcome::TriviallyStalled { stalled_on } => Some((
-                NestedNormalizationGoals::empty(),
-                GoalEvaluation {
-                    goal,
-                    certainty: Certainty::AMBIGUOUS,
-                    has_changed: HasChanged::No,
-                    stalled_on: Some(stalled_on),
-                },
-            )),
-        }
+    ) -> Result<GoalEvaluation<I>, NoSolutionOrRerunNonErased> {
+        let (normalization_nested_goals, goal_evaluation) =
+            self.evaluate_goal_raw(source, goal,  LowerAvailableDepth::Yes)?;
+        Ok(goal_evaluation)
     }
 
     /// Recursively evaluates `goal`, returning the nested goals in case
@@ -616,38 +534,42 @@ where
         &mut self,
         source: GoalSource,
         goal: Goal<I, I::Predicate>,
-        stalled_on: Option<GoalStalledOn<I>>,
         increase_depth_for_nested: LowerAvailableDepth,
     ) -> Result<(NestedNormalizationGoals<I>, GoalEvaluation<I>), NoSolutionOrRerunNonErased> {
-        if let RerunStalled::WontMakeProgress(stalled_certainty) =
-            self.rerunning_stalled_goal_may_make_progress(stalled_on.as_ref())
-        {
-            return Ok((
-                NestedNormalizationGoals::empty(),
-                GoalEvaluation {
-                    goal,
-                    certainty: stalled_certainty,
-                    has_changed: HasChanged::No,
-                    stalled_on,
-                },
-            ));
-        }
+         if let RerunStalled::WontMakeProgress(stalled_certainty) =
+             self.rerunning_stalled_goal_may_make_progress(stalled_on.as_ref())
+         {
+             return Ok((
+                 NestedNormalizationGoals::empty(),
+                 GoalEvaluation {
+                     goal,
+                     certainty: stalled_certainty,
+                     has_changed: HasChanged::No,
+                     stalled_on,
+                 },
+             ));
+         }
 
-        self.evaluate_goal_cold(source, goal, increase_depth_for_nested)
-    }
+         self.evaluate_goal_cold(source, goal, increase_depth_for_nested)
+     }
 
-    #[cold]
-    #[inline(never)]
-    pub(super) fn evaluate_goal_cold(
-        &mut self,
-        source: GoalSource,
-        goal: Goal<I, I::Predicate>,
-        increase_depth_for_nested: LowerAvailableDepth,
+     #[cold]
+     #[inline(never)]
+     pub(super) fn evaluate_goal_cold(
+         &mut self,
+         source: GoalSource,
+         goal: Goal<I, I::Predicate>,
+-        increase_depth_for_nested: IncreaseDepthForNested,
++        increase_depth_for_nested: LowerAvailableDepth,
+     ) -> Result<(NestedNormalizationGoals<I>, GoalEvaluation<I>), NoSolutionOrRerunNonErased> {
+         if let Some(res) = self.compute_goal_fast_path(goal) {
+             return Ok(res);
+         }
+
++++++++ ktlxysvk c626102e "shuffle fastpaths around to before creating an evalctxt" (rebased revision)
+        increase_depth_for_nested: IncreaseDepthForNested,
     ) -> Result<(NestedNormalizationGoals<I>, GoalEvaluation<I>), NoSolutionOrRerunNonErased> {
-        if let Some(res) = self.compute_goal_fast_path(goal) {
-            return Ok(res);
-        }
-
+>>>>>>> conflict 2 of 2 ends
         // We only care about one entry per `OpaqueTypeKey` here,
         // so we only canonicalize the lookup table and ignore
         // duplicate entries.
@@ -714,7 +636,7 @@ where
                     &mut inspect::ProofTreeBuilder::new_noop(),
                 );
 
-                let should_rerun = self.should_rerun_after_erased_canonicalization(
+                let should_rerun = should_rerun_after_erased_canonicalization(
                     accessed_opaques,
                     self.typing_mode(),
                     &opaque_types,
@@ -856,100 +778,6 @@ where
                 previously_succeeded_in_erased,
             },
         }
-    }
-
-    fn should_rerun_after_erased_canonicalization(
-        &self,
-        AccessedOpaques { reason: _, rerun }: AccessedOpaques<I>,
-        original_typing_mode: TypingMode<I>,
-        parent_opaque_types: &[(OpaqueTypeKey<I>, I::Ty)],
-    ) -> RerunDecision {
-        let parent_opaque_defids = parent_opaque_types.iter().map(|(key, _)| key.def_id.into());
-        let opaque_in_storage = |opaques: I::LocalDefIds, defids: SmallCopyList<_>| {
-            if defids.as_ref().is_empty() {
-                RerunDecision::No
-            } else if opaques
-                .iter()
-                .chain(parent_opaque_defids)
-                .any(|opaque| defids.as_ref().contains(&opaque))
-            {
-                RerunDecision::Yes
-            } else {
-                RerunDecision::No
-            }
-        };
-        let any_opaque_has_infer_as_hidden = || {
-            if parent_opaque_types.iter().any(|(_, ty)| ty.is_ty_var()) {
-                RerunDecision::Yes
-            } else {
-                RerunDecision::No
-            }
-        };
-
-        let res = match (rerun, original_typing_mode) {
-            // =============================
-            (RerunCondition::Never, _) => RerunDecision::No,
-            // =============================
-            (_, TypingMode::ErasedNotCoherence(MayBeErased)) => {
-                RerunDecision::EagerlyPropagateToParent
-            }
-            // =============================
-            // In coherence, we never switch to erased mode, so we will never register anything
-            // in the rerun state, so we should've taken the first branch of this match
-            (_, TypingMode::Coherence) => unreachable!(),
-            // =============================
-            (RerunCondition::Always, _) => RerunDecision::Yes,
-            // =============================
-            (
-                RerunCondition::OpaqueInStorage(..),
-                TypingMode::PostAnalysis | TypingMode::Codegen,
-            ) => RerunDecision::Yes,
-            (
-                RerunCondition::OpaqueInStorage(defids),
-                TypingMode::PostBorrowck { defined_opaque_types: opaques }
-                | TypingMode::Typeck { defining_opaque_types_and_generators: opaques }
-                | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: opaques },
-            ) => opaque_in_storage(opaques, defids),
-            // =============================
-            (RerunCondition::AnyOpaqueHasInferAsHidden, TypingMode::Typeck { .. }) => {
-                any_opaque_has_infer_as_hidden()
-            }
-            (
-                RerunCondition::AnyOpaqueHasInferAsHidden,
-                TypingMode::PostBorrowck { .. }
-                | TypingMode::PostAnalysis
-                | TypingMode::Codegen
-                | TypingMode::PostTypeckUntilBorrowck { .. },
-            ) => RerunDecision::No,
-            // =============================
-            (
-                RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(_),
-                TypingMode::PostAnalysis | TypingMode::Codegen,
-            ) => RerunDecision::No,
-            (
-                RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(defids),
-                TypingMode::Typeck { defining_opaque_types_and_generators: opaques },
-            ) => {
-                if let RerunDecision::Yes = any_opaque_has_infer_as_hidden() {
-                    RerunDecision::Yes
-                } else if let RerunDecision::Yes = opaque_in_storage(opaques, defids) {
-                    RerunDecision::Yes
-                } else {
-                    RerunDecision::No
-                }
-            }
-            (
-                RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(defids),
-                TypingMode::PostBorrowck { defined_opaque_types: opaques }
-                | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: opaques },
-            ) => opaque_in_storage(opaques, defids),
-        };
-
-        debug!(
-            "checking whether to rerun {rerun:?} in outer typing mode {original_typing_mode:?} and opaques {parent_opaque_types:?}: {res:?}"
-        );
-
-        res
     }
 
     pub(super) fn compute_goal(
@@ -1777,6 +1605,103 @@ where
         });
         value.try_fold_with(&mut folder)
     }
+}
+
+#[derive(Debug)]
+enum RerunDecision {
+    Yes,
+    No,
+    EagerlyPropagateToParent,
+}
+
+fn should_rerun_after_erased_canonicalization<I: Interner>(
+    AccessedOpaques { reason: _, rerun }: AccessedOpaques<I>,
+    original_typing_mode: TypingMode<I>,
+    parent_opaque_types: &[(OpaqueTypeKey<I>, I::Ty)],
+) -> RerunDecision {
+    let parent_opaque_defids = parent_opaque_types.iter().map(|(key, _)| key.def_id.into());
+    let opaque_in_storage = |opaques: I::LocalDefIds, defids: SmallCopyList<_>| {
+        if defids.as_ref().is_empty() {
+            RerunDecision::No
+        } else if opaques
+            .iter()
+            .chain(parent_opaque_defids)
+            .any(|opaque| defids.as_ref().contains(&opaque))
+        {
+            RerunDecision::Yes
+        } else {
+            RerunDecision::No
+        }
+    };
+    let any_opaque_has_infer_as_hidden = || {
+        if parent_opaque_types.iter().any(|(_, ty)| ty.is_ty_var()) {
+            RerunDecision::Yes
+        } else {
+            RerunDecision::No
+        }
+    };
+
+    let res = match (rerun, original_typing_mode) {
+        // =============================
+        (RerunCondition::Never, _) => RerunDecision::No,
+        // =============================
+        (_, TypingMode::ErasedNotCoherence(MayBeErased)) => RerunDecision::EagerlyPropagateToParent,
+        // =============================
+        // In coherence, we never switch to erased mode, so we will never register anything
+        // in the rerun state, so we should've taken the first branch of this match
+        (_, TypingMode::Coherence) => unreachable!(),
+        // =============================
+        (RerunCondition::Always, _) => RerunDecision::Yes,
+        // =============================
+        (RerunCondition::OpaqueInStorage(..), TypingMode::PostAnalysis | TypingMode::Codegen) => {
+            RerunDecision::Yes
+        }
+        (
+            RerunCondition::OpaqueInStorage(defids),
+            TypingMode::PostBorrowck { defined_opaque_types: opaques }
+            | TypingMode::Typeck { defining_opaque_types_and_generators: opaques }
+            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: opaques },
+        ) => opaque_in_storage(opaques, defids),
+        // =============================
+        (RerunCondition::AnyOpaqueHasInferAsHidden, TypingMode::Typeck { .. }) => {
+            any_opaque_has_infer_as_hidden()
+        }
+        (
+            RerunCondition::AnyOpaqueHasInferAsHidden,
+            TypingMode::PostBorrowck { .. }
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen
+            | TypingMode::PostTypeckUntilBorrowck { .. },
+        ) => RerunDecision::No,
+        // =============================
+        (
+            RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(_),
+            TypingMode::PostAnalysis | TypingMode::Codegen,
+        ) => RerunDecision::No,
+        (
+            RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(defids),
+            TypingMode::Typeck { defining_opaque_types_and_generators: opaques },
+        ) => {
+            if let RerunDecision::Yes = any_opaque_has_infer_as_hidden() {
+                RerunDecision::Yes
+            } else if let RerunDecision::Yes = opaque_in_storage(opaques, defids) {
+                RerunDecision::Yes
+            } else {
+                RerunDecision::No
+            }
+        }
+        (
+            RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(defids),
+            TypingMode::PostBorrowck { defined_opaque_types: opaques }
+            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: opaques },
+        ) => opaque_in_storage(opaques, defids),
+    };
+
+    debug!(
+        "checking whether to rerun {rerun:?} in outer typing mode {original_typing_mode:?} and opaques {parent_opaque_types:?}: {res:?}"
+    );
+
+    res
 }
 
 /// Do not call this directly, use the `tcx` query instead.
