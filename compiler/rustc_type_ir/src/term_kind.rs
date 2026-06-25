@@ -60,9 +60,9 @@ pub enum AliasTermKind<I: Interner> {
     /// Can always be normalized away.
     FreeTy { def_id: I::FreeTyAliasId },
 
-    /// An unevaluated anonymous constants.
-    AnonConst { def_id: I::UnevaluatedConstId },
-    /// An unevaluated const coming from an associated const.
+    /// An anonymous constant.
+    AnonConst { def_id: I::AnonConstId },
+    /// A const alias coming from an associated const.
     ProjectionConst { def_id: I::TraitAssocConstId },
     /// A top level const item not part of a trait or impl.
     FreeConst { def_id: I::FreeConstAliasId },
@@ -79,8 +79,8 @@ impl<I: Interner> AliasTermKind<I> {
             AliasTermKind::InherentConst { .. } => "inherent associated const",
             AliasTermKind::OpaqueTy { .. } => "opaque type",
             AliasTermKind::FreeTy { .. } => "type alias",
-            AliasTermKind::FreeConst { .. } => "unevaluated constant",
-            AliasTermKind::AnonConst { .. } => "unevaluated constant",
+            AliasTermKind::FreeConst { .. } => "const alias",
+            AliasTermKind::AnonConst { .. } => "anonymous constant",
         }
     }
 
@@ -125,12 +125,8 @@ impl<I: Interner> From<ty::AliasTyKind<I>> for AliasTermKind<I> {
 impl<I: Interner> From<ty::AliasConstKind<I>> for AliasTermKind<I> {
     fn from(value: ty::AliasConstKind<I>) -> Self {
         match value {
-            ty::AliasConstKind::Projection { def_id } => {
-                AliasTermKind::ProjectionConst { def_id }
-            }
-            ty::AliasConstKind::Inherent { def_id } => {
-                AliasTermKind::InherentConst { def_id }
-            }
+            ty::AliasConstKind::Projection { def_id } => AliasTermKind::ProjectionConst { def_id },
+            ty::AliasConstKind::Inherent { def_id } => AliasTermKind::InherentConst { def_id },
             ty::AliasConstKind::Free { def_id } => AliasTermKind::FreeConst { def_id },
             ty::AliasConstKind::Anon { def_id } => AliasTermKind::AnonConst { def_id },
         }
@@ -191,14 +187,10 @@ impl<I: Interner> AliasTerm<I> {
 
     pub fn expect_ct(self) -> ty::AliasConst<I> {
         let kind = match self.kind {
-            AliasTermKind::InherentConst { def_id } => {
-                ty::AliasConstKind::Inherent { def_id }
-            }
+            AliasTermKind::InherentConst { def_id } => ty::AliasConstKind::Inherent { def_id },
             AliasTermKind::FreeConst { def_id } => ty::AliasConstKind::Free { def_id },
             AliasTermKind::AnonConst { def_id } => ty::AliasConstKind::Anon { def_id },
-            AliasTermKind::ProjectionConst { def_id } => {
-                ty::AliasConstKind::Projection { def_id }
-            }
+            AliasTermKind::ProjectionConst { def_id } => ty::AliasConstKind::Projection { def_id },
             kind @ (AliasTermKind::ProjectionTy { .. }
             | AliasTermKind::InherentTy { .. }
             | AliasTermKind::OpaqueTy { .. }
@@ -215,7 +207,7 @@ impl<I: Interner> AliasTerm<I> {
                 .into()
         };
         let unevaluated_const = |kind| {
-            I::Const::new_unevaluated(
+            I::Const::new_alias(
                 interner,
                 is_rigid,
                 ty::AliasConst::new(interner, kind, self.args),
@@ -223,17 +215,13 @@ impl<I: Interner> AliasTerm<I> {
             .into()
         };
         match self.kind {
-            AliasTermKind::FreeConst { def_id } => {
-                unevaluated_const(ty::AliasConstKind::Free { def_id })
-            }
+            AliasTermKind::FreeConst { def_id } => alias_const(ty::AliasConstKind::Free { def_id }),
             AliasTermKind::InherentConst { def_id } => {
-                unevaluated_const(ty::AliasConstKind::Inherent { def_id })
+                alias_const(ty::AliasConstKind::Inherent { def_id })
             }
-            AliasTermKind::AnonConst { def_id } => {
-                unevaluated_const(ty::AliasConstKind::Anon { def_id })
-            }
+            AliasTermKind::AnonConst { def_id } => alias_const(ty::AliasConstKind::Anon { def_id }),
             AliasTermKind::ProjectionConst { def_id } => {
-                unevaluated_const(ty::AliasConstKind::Projection { def_id })
+                alias_const(ty::AliasConstKind::Projection { def_id })
             }
             AliasTermKind::ProjectionTy { def_id } => alias_ty(ty::Projection { def_id }),
             AliasTermKind::InherentTy { def_id } => alias_ty(ty::Inherent { def_id }),
