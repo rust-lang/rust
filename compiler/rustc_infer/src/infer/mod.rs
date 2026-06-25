@@ -1209,6 +1209,20 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
+    /// If `TyVar(vid)` resolves to a type, return that type. Else, return the
+    /// universe index of `TyVar(vid)`.
+    pub fn try_resolve_ty_var_with_root_vid(
+        &self,
+        vid: TyVid,
+    ) -> Result<Ty<'tcx>, (TyVid, ty::UniverseIndex)> {
+        use self::type_variable::TypeVariableValue;
+        let (root_vid, res) = self.inner.borrow_mut().type_variables().probe_with_root_vid(vid);
+        match res {
+            TypeVariableValue::Known { value } => Ok(value),
+            TypeVariableValue::Unknown { universe } => Err((root_vid, universe)),
+        }
+    }
+
     pub fn shallow_resolve(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
         if let ty::Infer(v) = *ty.kind() {
             match v {
