@@ -18,6 +18,7 @@
     target_os = "netbsd",
     target_os = "openbsd",
     target_os = "nto",
+    target_os = "qnx",
     target_vendor = "apple",
     target_os = "cygwin"
 )))]
@@ -36,6 +37,7 @@ pub fn foo() {}
     target_os = "netbsd",
     target_os = "openbsd",
     target_os = "nto",
+    target_os = "qnx",
     target_vendor = "apple",
     target_os = "cygwin"
 ))]

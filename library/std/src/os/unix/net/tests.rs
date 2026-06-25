@@ -176,7 +176,7 @@ fn long_path() {
 }
 
 #[test]
-#[cfg(not(target_os = "nto"))]
+#[cfg(not(any(target_os = "nto", target_os = "qnx")))]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 #[cfg_attr(target_os = "cygwin", ignore)] // Cygwin connect needs handshake
 #[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]

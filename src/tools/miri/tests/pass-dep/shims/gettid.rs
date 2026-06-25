@@ -9,7 +9,7 @@ fn gettid() -> u64 {
         any(target_os = "android", target_os = "linux") => {
             gettid_linux_like()
         }
-        target_os = "nto" => {
+        any(target_os = "nto", target_os = "qnx") => {
             unsafe { libc::gettid() as u64 }
         }
         target_os = "openbsd" => {
