@@ -23,10 +23,7 @@ use rustc_middle::ty::data_structures::IndexSet;
 use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
 use rustc_proc_macro::bridge::client::Client as ProcMacroClient;
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigationLevel;
-use rustc_session::config::{
-    CrateType, ExtendedTargetModifierInfo, ExternLocation, Externs, OptionsTargetModifiers,
-    TargetModifier,
-};
+use rustc_session::config::{CrateType, ExternLocation, Externs};
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Session, lint};
@@ -38,9 +35,7 @@ use tracing::{debug, info};
 
 use crate::diagnostics;
 use crate::locator::{CrateError, CrateLocator, CratePaths, CrateRejections};
-use crate::rmeta::{
-    CrateDep, CrateMetadata, CrateNumMap, CrateRoot, MetadataBlob, TargetModifiers,
-};
+use crate::rmeta::{CrateDep, CrateMetadata, CrateNumMap, CrateRoot, MetadataBlob};
 
 /// The backend's way to give the crate store access to the metadata in a library.
 /// Note that it returns the raw metadata bytes stored in the library file, whether
@@ -342,135 +337,9 @@ impl CStore {
         }
     }
 
-    fn report_target_modifiers_extended(
-        tcx: TyCtxt<'_>,
-        mods: &TargetModifiers,
-        dep_mods: &TargetModifiers,
-        data: &CrateMetadata,
-    ) {
-        let allowed_flag_mismatches = &tcx.sess.opts.cg.unsafe_allow_abi_mismatch;
-        let local_crate = tcx.crate_name(LOCAL_CRATE);
-        let tmod_extender = |tmod: &TargetModifier| (tmod.extend(), tmod.clone());
-        let report_diff = |prefix: &String,
-                           opt_name: &String,
-                           flag_local_value: Option<&String>,
-                           flag_extern_value: Option<&String>| {
-            if allowed_flag_mismatches.contains(&opt_name) {
-                return;
-            }
-            let extern_crate = data.name();
-            let flag_name = opt_name.clone();
-            let flag_name_prefixed = format!("-{}{}", prefix, opt_name);
-
-            match (flag_local_value, flag_extern_value) {
-                (Some(local_value), Some(extern_value)) => {
-                    tcx.dcx().emit_err(diagnostics::IncompatibleTargetModifiers {
-                        extern_crate,
-                        local_crate,
-                        flag_name,
-                        flag_name_prefixed,
-                        local_value: local_value.to_string(),
-                        extern_value: extern_value.to_string(),
-                    })
-                }
-                (None, Some(extern_value)) => {
-                    tcx.dcx().emit_err(diagnostics::IncompatibleTargetModifiersLMissed {
-                        extern_crate,
-                        local_crate,
-                        flag_name,
-                        flag_name_prefixed,
-                        extern_value: extern_value.to_string(),
-                        has_extern_value: !extern_value.is_empty(),
-                    })
-                }
-                (Some(local_value), None) => {
-                    tcx.dcx().emit_err(diagnostics::IncompatibleTargetModifiersRMissed {
-                        extern_crate,
-                        local_crate,
-                        flag_name,
-                        flag_name_prefixed,
-                        local_value: local_value.to_string(),
-                        has_local_value: !local_value.is_empty(),
-                    })
-                }
-                (None, None) => panic!("Incorrect target modifiers report_diff(None, None)"),
-            };
-        };
-        let mut it1 = mods.iter().map(tmod_extender);
-        let mut it2 = dep_mods.iter().map(tmod_extender);
-        let mut left_name_val: Option<(ExtendedTargetModifierInfo, TargetModifier)> = None;
-        let mut right_name_val: Option<(ExtendedTargetModifierInfo, TargetModifier)> = None;
-        loop {
-            left_name_val = left_name_val.or_else(|| it1.next());
-            right_name_val = right_name_val.or_else(|| it2.next());
-            match (&left_name_val, &right_name_val) {
-                (Some(l), Some(r)) => match l.1.opt.cmp(&r.1.opt) {
-                    cmp::Ordering::Equal => {
-                        if !l.1.consistent(&tcx.sess, Some(&r.1)) {
-                            report_diff(
-                                &l.0.prefix,
-                                &l.0.name,
-                                Some(&l.1.value_name),
-                                Some(&r.1.value_name),
-                            );
-                        }
-                        left_name_val = None;
-                        right_name_val = None;
-                    }
-                    cmp::Ordering::Greater => {
-                        if !r.1.consistent(&tcx.sess, None) {
-                            report_diff(&r.0.prefix, &r.0.name, None, Some(&r.1.value_name));
-                        }
-                        right_name_val = None;
-                    }
-                    cmp::Ordering::Less => {
-                        if !l.1.consistent(&tcx.sess, None) {
-                            report_diff(&l.0.prefix, &l.0.name, Some(&l.1.value_name), None);
-                        }
-                        left_name_val = None;
-                    }
-                },
-                (Some(l), None) => {
-                    if !l.1.consistent(&tcx.sess, None) {
-                        report_diff(&l.0.prefix, &l.0.name, Some(&l.1.value_name), None);
-                    }
-                    left_name_val = None;
-                }
-                (None, Some(r)) => {
-                    if !r.1.consistent(&tcx.sess, None) {
-                        report_diff(&r.0.prefix, &r.0.name, None, Some(&r.1.value_name));
-                    }
-                    right_name_val = None;
-                }
-                (None, None) => break,
-            }
-        }
-    }
-
     pub fn report_session_incompatibilities(&self, tcx: TyCtxt<'_>, krate: &Crate) {
-        self.report_incompatible_target_modifiers(tcx);
         self.report_incompatible_partial_mitigations(tcx, krate);
         self.report_incompatible_async_drop_feature(tcx, krate);
-    }
-
-    pub fn report_incompatible_target_modifiers(&self, tcx: TyCtxt<'_>) {
-        for flag_name in &tcx.sess.opts.cg.unsafe_allow_abi_mismatch {
-            if !OptionsTargetModifiers::is_target_modifier(flag_name) {
-                tcx.dcx().emit_err(diagnostics::UnknownTargetModifierUnsafeAllowed {
-                    flag_name: flag_name.clone(),
-                });
-            }
-        }
-        let mods = tcx.sess.opts.gather_target_modifiers();
-        for (_cnum, data) in self.iter_crate_data() {
-            if data.is_proc_macro_crate() {
-                continue;
-            }
-            let dep_mods = data.target_modifiers();
-            if mods != dep_mods {
-                Self::report_target_modifiers_extended(tcx, &mods, &dep_mods, data);
-            }
-        }
     }
 
     pub fn report_incompatible_partial_mitigations(&self, tcx: TyCtxt<'_>, krate: &Crate) {

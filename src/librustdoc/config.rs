@@ -9,8 +9,8 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::DiagCtxtHandle;
 use rustc_session::config::{
     self, CodegenOptions, CrateType, ErrorOutputType, Externs, Input, JsonUnusedExterns,
-    OptionsTargetModifiers, OutFileName, Sysroot, UnstableOptions, get_cmd_lint_options,
-    nightly_options, parse_crate_types_from_list, parse_externs, parse_target_triple,
+    OutFileName, Sysroot, UnstableOptions, get_cmd_lint_options, nightly_options,
+    parse_crate_types_from_list, parse_externs, parse_target_triple,
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
@@ -166,9 +166,6 @@ pub(crate) struct Options {
 
     /// Arguments to be used when compiling doctests.
     pub(crate) doctest_build_args: Vec<String>,
-
-    /// Target modifiers.
-    pub(crate) target_modifiers: BTreeMap<OptionsTargetModifiers, String>,
 }
 
 impl fmt::Debug for Options {
@@ -961,7 +958,6 @@ impl Options {
             scrape_examples_options,
             unstable_features,
             doctest_build_args,
-            target_modifiers: collected_options.target_modifiers,
         };
         let render_options = RenderOptions {
             output,

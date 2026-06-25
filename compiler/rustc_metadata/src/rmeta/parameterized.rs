@@ -133,7 +133,6 @@ trivially_parameterized_over_tcx! {
     rustc_middle::ty::Visibility<DefIndex>,
     rustc_middle::ty::adjustment::CoerceUnsizedInfo,
     rustc_middle::ty::fast_reject::SimplifiedType,
-    rustc_session::config::TargetModifier,
     rustc_session::config::mitigation_coverage::DeniedPartialMitigation,
     rustc_span::ExpnData,
     rustc_span::ExpnHash,

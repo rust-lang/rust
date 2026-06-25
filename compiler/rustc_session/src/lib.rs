@@ -5,7 +5,6 @@
 #![feature(default_field_values)]
 #![feature(iter_intersperse)]
 #![feature(macro_derive)]
-#![feature(macro_metavar_expr)]
 #![feature(option_into_flat_iter)]
 #![feature(rustc_attrs)]
 // To generate CodegenOptionsTargetModifiers and UnstableOptionsTargetModifiers enums

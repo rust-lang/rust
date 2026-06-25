@@ -31,7 +31,6 @@ use rustc_middle::{bug, implement_ty_decoder};
 use rustc_proc_macro::bridge::client::Client as ProcMacroClient;
 use rustc_serialize::opaque::MemDecoder;
 use rustc_serialize::{Decodable, Decoder};
-use rustc_session::config::TargetModifier;
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_span::def_id::ModId;
 use rustc_span::hygiene::HygieneDecodeContext;
@@ -80,10 +79,6 @@ impl MetadataBlob {
 /// crate may refer to types in other external crates, and each has their
 /// own crate numbers.
 pub(crate) type CrateNumMap = IndexVec<CrateNum, CrateNum>;
-
-/// Target modifiers - abi or exploit mitigations options that may cause unsoundness when mixed or
-/// partially enabled.
-pub(crate) type TargetModifiers = Vec<TargetModifier>;
 
 /// The set of mitigations that cannot be partially enabled (see
 /// [RFC 3855](https://github.com/rust-lang/rfcs/pull/3855)), but are currently enabled for this
@@ -755,7 +750,6 @@ impl MetadataBlob {
             "lang_items".to_owned(),
             "features".to_owned(),
             "items".to_owned(),
-            "target_modifiers".to_owned(),
         ];
         let ls_kinds = if ls_kinds.contains(&"all".to_owned()) { &all_ls_kinds } else { ls_kinds };
 
@@ -925,28 +919,11 @@ impl MetadataBlob {
 
                     write!(out, "\n")?;
                 }
-                "target_modifiers" => {
-                    writeln!(out, "=Target modifiers=")?;
-
-                    for modifier in root.decode_target_modifiers(self) {
-                        let extended = modifier.extend();
-
-                        writeln!(
-                            out,
-                            "-{}{}={} [{}]",
-                            extended.prefix,
-                            extended.name,
-                            modifier.value_name,
-                            extended.tech_value,
-                        )?;
-                    }
-                }
 
                 _ => {
                     writeln!(
                         out,
-                        "unknown -Zls kind. allowed values are: all, root, lang_items, features, items, \
-                            target_modifiers"
+                        "unknown -Zls kind. allowed values are: all, root, lang_items, features, items"
                     )?;
                 }
             }
@@ -988,13 +965,6 @@ impl CrateRoot {
         metadata: &'a MetadataBlob,
     ) -> impl ExactSizeIterator<Item = CrateDep> {
         self.crate_deps.decode(metadata)
-    }
-
-    pub(crate) fn decode_target_modifiers<'a>(
-        &self,
-        metadata: &'a MetadataBlob,
-    ) -> impl ExactSizeIterator<Item = TargetModifier> {
-        self.target_modifiers.decode(metadata)
     }
 
     pub(crate) fn decode_denied_partial_mitigations<'a>(
@@ -2000,10 +1970,6 @@ impl CrateMetadata {
 
     pub(crate) fn dependencies(&self) -> impl Iterator<Item = CrateNum> {
         self.cnum_map.iter().copied()
-    }
-
-    pub(crate) fn target_modifiers(&self) -> TargetModifiers {
-        self.root.decode_target_modifiers(&self.blob).collect()
     }
 
     pub(crate) fn enabled_denied_partial_mitigations(&self) -> DeniedPartialMitigations {

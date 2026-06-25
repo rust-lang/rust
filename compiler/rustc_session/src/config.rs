@@ -1488,7 +1488,6 @@ impl Default for Options {
             color: ColorConfig::Auto,
             logical_env: FxIndexMap::default(),
             verbose: false,
-            target_modifiers: BTreeMap::default(),
             mitigation_coverage_map: Default::default(),
             jobs: Jobs { frontend: None, backend: None, linker: LinkerJobs::Default },
         }
@@ -2892,10 +2891,6 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     // -Zretpoline-external-thunk also requires -Zretpoline
     if unstable_opts.retpoline_external_thunk {
         unstable_opts.retpoline = true;
-        collected_options.target_modifiers.insert(
-            OptionsTargetModifiers::UnstableOptions(UnstableOptionsTargetModifiers::Retpoline),
-            "true".to_string(),
-        );
     }
 
     let cg = cg;
@@ -3063,7 +3058,6 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         color,
         logical_env,
         verbose,
-        target_modifiers: collected_options.target_modifiers,
         mitigation_coverage_map: collected_options.mitigations,
         jobs,
     }
