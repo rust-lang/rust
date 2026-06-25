@@ -1,5 +1,5 @@
 //
-//@ compile-flags: -Z instrument-mcount -Copt-level=0
+//@ compile-flags: -C instrument-mcount=yes -Copt-level=0
 
 #![crate_type = "lib"]
 
