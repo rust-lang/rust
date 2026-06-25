@@ -34,6 +34,7 @@ fn errors_on_missing_links() {
                 attrs: vec![],
                 deprecation: None,
                 stability: None,
+                const_stability: None,
                 inner: ItemEnum::Module(Module {
                     is_crate: true,
                     items: vec![],
@@ -83,6 +84,7 @@ fn errors_on_local_in_paths_and_not_index() {
                     attrs: Vec::new(),
                     deprecation: None,
                     stability: None,
+                    const_stability: None,
                     inner: ItemEnum::Module(Module {
                         is_crate: true,
                         items: vec![Id(1)],
@@ -103,6 +105,7 @@ fn errors_on_local_in_paths_and_not_index() {
                     attrs: Vec::new(),
                     deprecation: None,
                     stability: None,
+                    const_stability: None,
                     inner: ItemEnum::Primitive(Primitive { name: "i32".to_owned(), impls: vec![] }),
                 },
             ),
@@ -157,6 +160,7 @@ fn errors_on_missing_path() {
                     attrs: Vec::new(),
                     deprecation: None,
                     stability: None,
+                    const_stability: None,
                     inner: ItemEnum::Module(Module {
                         is_crate: true,
                         items: vec![Id(1), Id(2)],
@@ -177,6 +181,7 @@ fn errors_on_missing_path() {
                     attrs: Vec::new(),
                     deprecation: None,
                     stability: None,
+                    const_stability: None,
                     inner: ItemEnum::Struct(Struct {
                         kind: StructKind::Unit,
                         generics: generics.clone(),
@@ -197,6 +202,7 @@ fn errors_on_missing_path() {
                     attrs: Vec::new(),
                     deprecation: None,
                     stability: None,
+                    const_stability: None,
                     inner: ItemEnum::Function(Function {
                         sig: FunctionSignature {
                             inputs: vec![],
@@ -260,6 +266,7 @@ fn checks_local_crate_id_is_correct() {
                 attrs: Vec::new(),
                 deprecation: None,
                 stability: None,
+                const_stability: None,
                 inner: ItemEnum::Module(Module {
                     is_crate: true,
                     items: vec![],
