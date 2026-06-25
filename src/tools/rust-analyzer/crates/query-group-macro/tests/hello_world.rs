@@ -4,13 +4,13 @@ use query_group_macro::query_group;
 mod logger_db;
 use logger_db::LoggerDb;
 
+#[salsa::input(singleton)]
+struct InputString {
+    inner: String,
+}
+
 #[query_group]
 pub trait HelloWorldDatabase: salsa::Database {
-    // input
-    // // input with no params
-    #[salsa::input]
-    fn input_string(&self) -> String;
-
     // unadorned query
     #[salsa::invoke_interned(length_query)]
     fn length_query(&self, key: ()) -> usize;
@@ -32,98 +32,83 @@ pub trait HelloWorldDatabase: salsa::Database {
 }
 
 fn length_query(db: &dyn HelloWorldDatabase, _key: ()) -> usize {
-    db.input_string().len()
+    InputString::get(db).inner(db).len()
 }
 
 fn length_query_with_no_params(db: &dyn HelloWorldDatabase) -> usize {
-    db.input_string().len()
+    InputString::get(db).inner(db).len()
 }
 
 fn invoke_length_query_actual(db: &dyn HelloWorldDatabase, _key: ()) -> usize {
-    db.input_string().len()
+    InputString::get(db).inner(db).len()
 }
 
 fn transparent_length(db: &dyn HelloWorldDatabase, _key: ()) -> usize {
-    db.input_string().len()
+    InputString::get(db).inner(db).len()
 }
 
 fn transparent_and_invoke_length_actual(db: &dyn HelloWorldDatabase, _key: ()) -> usize {
-    db.input_string().len()
+    InputString::get(db).inner(db).len()
 }
 
 #[test]
 fn unadorned_query() {
-    let mut db = LoggerDb::default();
+    let db = LoggerDb::default();
 
-    db.set_input_string(String::from("Hello, world!"));
+    InputString::new(&db, String::from("Hello, world!"));
     let len = db.length_query(());
 
     assert_eq!(len, 13);
     db.assert_logs(expect![[r#"
         [
             "salsa_event(WillCheckCancellation)",
-            "salsa_event(WillExecute { database_key: create_data_HelloWorldDatabase(Id(0)) })",
+            "salsa_event(WillExecute { database_key: create_data_HelloWorldDatabase(Id(400)) })",
             "salsa_event(WillCheckCancellation)",
-            "salsa_event(DidValidateMemoizedValue { database_key: create_data_HelloWorldDatabase(Id(0)) })",
-            "salsa_event(WillCheckCancellation)",
-            "salsa_event(WillExecute { database_key: length_query_shim(Id(800)) })",
-            "salsa_event(WillCheckCancellation)",
+            "salsa_event(WillExecute { database_key: length_query_shim(Id(c00)) })",
         ]"#]]);
 }
 
 #[test]
 fn invoke_query() {
-    let mut db = LoggerDb::default();
+    let db = LoggerDb::default();
 
-    db.set_input_string(String::from("Hello, world!"));
+    InputString::new(&db, String::from("Hello, world!"));
     let len = db.invoke_length_query(());
 
     assert_eq!(len, 13);
     db.assert_logs(expect![[r#"
         [
             "salsa_event(WillCheckCancellation)",
-            "salsa_event(WillExecute { database_key: create_data_HelloWorldDatabase(Id(0)) })",
+            "salsa_event(WillExecute { database_key: create_data_HelloWorldDatabase(Id(400)) })",
             "salsa_event(WillCheckCancellation)",
-            "salsa_event(DidValidateMemoizedValue { database_key: create_data_HelloWorldDatabase(Id(0)) })",
-            "salsa_event(WillCheckCancellation)",
-            "salsa_event(WillExecute { database_key: invoke_length_query_shim(Id(800)) })",
-            "salsa_event(WillCheckCancellation)",
+            "salsa_event(WillExecute { database_key: invoke_length_query_shim(Id(c00)) })",
         ]"#]]);
 }
 
 #[test]
 fn transparent() {
-    let mut db = LoggerDb::default();
+    let db = LoggerDb::default();
 
-    db.set_input_string(String::from("Hello, world!"));
+    InputString::new(&db, String::from("Hello, world!"));
     let len = db.transparent_length(());
 
     assert_eq!(len, 13);
-    db.assert_logs(expect![[r#"
-        [
-            "salsa_event(WillCheckCancellation)",
-            "salsa_event(WillExecute { database_key: create_data_HelloWorldDatabase(Id(0)) })",
-            "salsa_event(WillCheckCancellation)",
-            "salsa_event(DidValidateMemoizedValue { database_key: create_data_HelloWorldDatabase(Id(0)) })",
-        ]"#]]);
+    db.assert_logs(expect!["[]"]);
 }
 
 #[test]
 fn transparent_invoke() {
-    let mut db = LoggerDb::default();
+    let db = LoggerDb::default();
 
-    db.set_input_string(String::from("Hello, world!"));
+    InputString::new(&db, String::from("Hello, world!"));
     let len = db.transparent_and_invoke_length(());
 
     assert_eq!(len, 13);
     db.assert_logs(expect![[r#"
         [
             "salsa_event(WillCheckCancellation)",
-            "salsa_event(WillExecute { database_key: create_data_HelloWorldDatabase(Id(0)) })",
+            "salsa_event(WillExecute { database_key: create_data_HelloWorldDatabase(Id(400)) })",
             "salsa_event(WillCheckCancellation)",
-            "salsa_event(DidValidateMemoizedValue { database_key: create_data_HelloWorldDatabase(Id(0)) })",
-            "salsa_event(WillCheckCancellation)",
-            "salsa_event(WillExecute { database_key: transparent_and_invoke_length_shim(Id(800)) })",
-            "salsa_event(WillCheckCancellation)",
+            "salsa_event(WillExecute { database_key: transparent_and_invoke_length_shim(Id(c00)) })",
         ]"#]]);
 }
