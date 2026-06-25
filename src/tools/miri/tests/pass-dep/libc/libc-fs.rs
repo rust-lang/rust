@@ -272,7 +272,7 @@ fn test_dup() {
     let name = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
 
     unsafe {
-        let fd = libc::open(name.as_ptr(), libc::O_RDONLY);
+        let fd = errno_result(libc::open(name.as_ptr(), libc::O_RDONLY)).unwrap();
         let new_fd = libc::dup(fd);
         let new_fd2 = libc::dup2(fd, 8);
 

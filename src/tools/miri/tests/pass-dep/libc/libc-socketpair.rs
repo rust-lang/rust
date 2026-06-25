@@ -34,7 +34,7 @@ fn test_socketpair() {
     let data = b"abc";
     write_all(fds[0], data).unwrap();
     let mut buf2: [u8; 5] = [0; 5];
-    let (read, rest) = read_split_slice(fds[1], &mut buf2).unwrap();
+    let (read, rest) = read_partial(fds[1], &mut buf2).unwrap();
     assert_eq!(read[..], data[..read.len()]);
     // Write 2 more bytes so we can exactly fill the `rest`.
     write_all(fds[0], b"12").unwrap();
@@ -52,7 +52,7 @@ fn test_socketpair() {
     let data = b"abc";
     write_all(fds[1], data).unwrap();
     let mut buf4: [u8; 5] = [0; 5];
-    let (read, rest) = read_split_slice(fds[0], &mut buf4).unwrap();
+    let (read, rest) = read_partial(fds[0], &mut buf4).unwrap();
     assert_eq!(read[..], data[..read.len()]);
     // Write 2 more bytes so we can exactly fill the `rest`.
     write_all(fds[1], b"12").unwrap();
@@ -64,9 +64,9 @@ fn test_socketpair() {
     errno_check(unsafe { libc::close(fds[0]) });
     // Reading the other end should return that data, then EOF.
     let mut buf: [u8; 5] = [0; 5];
-    let (read, _tail) = read_split_slice(fds[1], &mut buf).unwrap();
+    let (read, _tail) = read_partial(fds[1], &mut buf).unwrap();
     assert_eq!(read, data);
-    let (read, _tail) = read_split_slice(fds[1], &mut buf).unwrap();
+    let (read, _tail) = read_partial(fds[1], &mut buf).unwrap();
     assert_eq!(read, &[]);
     // Writing the other end should emit EPIPE.
     let err = write_all(fds[1], &mut buf).unwrap_err();
