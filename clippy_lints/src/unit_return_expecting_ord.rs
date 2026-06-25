@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
+use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Closure, Expr, ExprKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -180,32 +180,21 @@ impl<'tcx> LateLintPass<'tcx> for UnitReturnExpectingOrd {
             let args = std::iter::once(receiver).chain(args.iter()).collect::<Vec<_>>();
             let arg_indices = get_args_to_check(cx, expr, args.len(), fn_mut_trait, ord_trait, partial_ord_trait);
             for (i, trait_name) in arg_indices {
-                match check_arg(cx, args[i]) {
-                    Some((span, None)) => {
-                        span_lint(
-                            cx,
-                            UNIT_RETURN_EXPECTING_ORD,
-                            span,
-                            format!(
-                                "this closure returns \
+                if let Some((span, last_semi)) = check_arg(cx, args[i]) {
+                    span_lint_and_then(
+                        cx,
+                        UNIT_RETURN_EXPECTING_ORD,
+                        span,
+                        format!(
+                            "this closure returns \
                                    the unit type which also implements {trait_name}"
-                            ),
-                        );
-                    },
-                    Some((span, Some(last_semi))) => {
-                        span_lint_and_help(
-                            cx,
-                            UNIT_RETURN_EXPECTING_ORD,
-                            span,
-                            format!(
-                                "this closure returns \
-                                   the unit type which also implements {trait_name}"
-                            ),
-                            Some(last_semi),
-                            "probably caused by this trailing semicolon",
-                        );
-                    },
-                    None => {},
+                        ),
+                        |diag| {
+                            if let Some(last_semi) = last_semi {
+                                diag.span_help(last_semi, "probably caused by this trailing semicolon");
+                            }
+                        },
+                    );
                 }
             }
         }

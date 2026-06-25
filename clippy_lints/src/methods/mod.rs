@@ -1,4 +1,5 @@
 mod bind_instead_of_map;
+mod by_ref_peekable_peek;
 mod bytecount;
 mod bytes_count_to_len;
 mod bytes_nth;
@@ -9,6 +10,7 @@ mod chars_last_cmp;
 mod chars_last_cmp_with_unwrap;
 mod chars_next_cmp;
 mod chars_next_cmp_with_unwrap;
+mod chunks_exact_to_as_chunks;
 mod clear_with_drain;
 mod clone_on_copy;
 mod clone_on_ref_ptr;
@@ -141,6 +143,7 @@ mod unnecessary_map_or_else;
 mod unnecessary_min_or_max;
 mod unnecessary_sort_by;
 mod unnecessary_to_owned;
+mod unnecessary_unwrap_unchecked;
 mod unwrap_expect_used;
 mod useless_asref;
 mod useless_nonzero_new_unchecked;
@@ -199,6 +202,39 @@ declare_clippy_lint! {
     pub BIND_INSTEAD_OF_MAP,
     complexity,
     "using `Option.and_then(|x| Some(y))`, which is more succinctly expressed as `map(|x| y)`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usages of `Iterator::by_ref().peekable().peek()`.
+    ///
+    /// ### Why is this bad?
+    /// While it might look like this will allow peeking on the first
+    /// element of an iterator without consuming it and without consuming
+    /// the iterator itself, it will in practice consume the first element.
+    ///
+    /// The implementation of `Peekable::peek()` produces the first element
+    /// of the underlying iterator, and stores it internally so that it can
+    /// be later produced. As a consequence, it advances the underlying
+    /// iterator, whose `.next()` method will now produce its second element.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let mut iter = [1, 2, 3].into_iter();
+    /// let x = iter.by_ref().peekable().peek();  // 1
+    /// let y = iter.by_ref().peekable().peek();  // 2
+    /// ```
+    /// If this does what you intended, use the following instead, which is
+    /// shorter and clearer:
+    /// ```no_run
+    /// let mut iter = [1, 2, 3].into_iter();
+    /// let x = iter.next().as_ref();  // 1
+    /// let y = iter.next().as_ref();  // 2
+    /// ```
+    #[clippy::version = "1.98.0"]
+    pub BY_REF_PEEKABLE_PEEK,
+    suspicious,
+    "Using `.by_ref().peekable().peek()` on an iterator"
 }
 
 declare_clippy_lint! {
@@ -327,6 +363,32 @@ declare_clippy_lint! {
     pub CHARS_NEXT_CMP,
     style,
     "using `.chars().next()` to check if a string starts with a char"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `chunks_exact` or `chunks_exact_mut` with a constant chunk size.
+    ///
+    /// ### Why is this bad?
+    /// `as_chunks` provides better ergonomics and type safety by returning arrays instead of slices.
+    /// It was stabilized in Rust 1.88.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let slice = [1, 2, 3, 4, 5, 6];
+    /// let mut it = slice.chunks_exact(2);
+    /// for chunk in it {}
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let slice = [1, 2, 3, 4, 5, 6];
+    /// let (chunks, remainder) = slice.as_chunks::<2>();
+    /// for chunk in chunks {}
+    /// ```
+    #[clippy::version = "1.93.0"]
+    pub CHUNKS_EXACT_TO_AS_CHUNKS,
+    style,
+    "using `chunks_exact` with constant when `as_chunks` is more ergonomic"
 }
 
 declare_clippy_lint! {
@@ -4543,6 +4605,34 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for calls to `unwrap_unchecked` when an `_unchecked` variant of the function exists.
+    ///
+    /// ### Why is this bad?
+    /// Calling the non-unchecked variant may result in checking that is then discarded
+    /// if `unwrap_unchecked` is called directly afterwards, whereas the unchecked
+    /// variant most likely avoids performing the check completely.
+    ///
+    /// ### Known problems
+    ///
+    /// The unchecked variant is only suggested if it's defined in the same `impl` block
+    /// as the non-unchecked one
+    ///
+    /// ### Example
+    /// ```rust
+    /// let s = unsafe { std::str::from_utf8(&[]).unwrap_unchecked() };
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let s = unsafe { std::str::from_utf8_unchecked(&[]) };
+    /// ```
+    #[clippy::version = "1.98.0"]
+    pub UNNECESSARY_UNWRAP_UNCHECKED,
+    complexity,
+    "calling `unwrap_unchecked` on a function which has an `_unchecked` variant"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for usages of the following functions with an argument that constructs a default value
     /// (e.g., `Default::default` or `String::new`):
     /// - `unwrap_or`
@@ -4835,9 +4925,11 @@ impl_lint_pass!(Methods => [
     BIND_INSTEAD_OF_MAP,
     BYTES_COUNT_TO_LEN,
     BYTES_NTH,
+    BY_REF_PEEKABLE_PEEK,
     CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS,
     CHARS_LAST_CMP,
     CHARS_NEXT_CMP,
+    CHUNKS_EXACT_TO_AS_CHUNKS,
     CLEAR_WITH_DRAIN,
     CLONED_INSTEAD_OF_COPIED,
     CLONE_ON_COPY,
@@ -4979,6 +5071,7 @@ impl_lint_pass!(Methods => [
     UNNECESSARY_RESULT_MAP_OR_ELSE,
     UNNECESSARY_SORT_BY,
     UNNECESSARY_TO_OWNED,
+    UNNECESSARY_UNWRAP_UNCHECKED,
     UNWRAP_OR_DEFAULT,
     UNWRAP_USED,
     USELESS_ASREF,
@@ -5198,12 +5291,15 @@ impl Methods {
                         _ => {},
                     }
                 },
+                (name @ (sym::chunks_exact | sym::chunks_exact_mut), [arg]) => {
+                    chunks_exact_to_as_chunks::check(cx, recv, arg, expr, call_span, name, self.msrv);
+                },
                 (sym::and_then, [arg]) => {
                     manual_option_zip::check(cx, expr, recv, arg, self.msrv);
                     let biom_option_linted = bind_instead_of_map::check_and_then_some(cx, expr, recv, arg);
                     let biom_result_linted = bind_instead_of_map::check_and_then_ok(cx, expr, recv, arg);
                     if !biom_option_linted && !biom_result_linted {
-                        let ule_and_linted = unnecessary_lazy_eval::check(cx, expr, recv, arg, "and");
+                        let ule_and_linted = unnecessary_lazy_eval::check(cx, expr, recv, arg, "and", true);
                         if !ule_and_linted {
                             return_and_then::check(cx, expr, recv, arg);
                         }
@@ -5277,8 +5373,10 @@ impl Methods {
                                 manual_str_repeat::check(cx, expr, recv, take_self_arg, take_arg);
                             }
                         },
-                        Some((sym::drain, recv, args, ..)) => {
-                            drain_collect::check(cx, args, expr, recv);
+                        Some((sym::drain, recv, args, ..)) => match args {
+                            [arg] => drain_collect::check(cx, Some(arg), expr, recv),
+                            [] => drain_collect::check(cx, None, expr, recv),
+                            _ => {},
                         },
                         _ => {},
                     }
@@ -5333,7 +5431,11 @@ impl Methods {
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
-                (sym::expect_err, [_]) | (sym::unwrap_err | sym::unwrap_unchecked | sym::unwrap_err_unchecked, []) => {
+                (sym::unwrap_unchecked, []) => {
+                    unnecessary_unwrap_unchecked::check(cx, expr, recv, call_span);
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
+                },
+                (sym::expect_err, [_]) | (sym::unwrap_err | sym::unwrap_err_unchecked, []) => {
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
                 (sym::extend, [arg]) => {
@@ -5439,7 +5541,7 @@ impl Methods {
                     get_last_with_len::check(cx, expr, recv, arg);
                 },
                 (sym::get_or_insert_with, [arg]) => {
-                    unnecessary_lazy_eval::check(cx, expr, recv, arg, "get_or_insert");
+                    unnecessary_lazy_eval::check(cx, expr, recv, arg, "get_or_insert", false);
                 },
                 (sym::hash, [arg]) => {
                     unit_hash::check(cx, expr, recv, arg);
@@ -5594,15 +5696,18 @@ impl Methods {
                     ptr_offset_by_literal::check(cx, expr, self.msrv);
                 },
                 (sym::ok_or_else, [arg]) => {
-                    unnecessary_lazy_eval::check(cx, expr, recv, arg, "ok_or");
+                    unnecessary_lazy_eval::check(cx, expr, recv, arg, "ok_or", true);
                 },
                 (sym::open, [_]) => {
                     open_options::check(cx, expr, recv);
                 },
                 (sym::or_else, [arg]) => {
                     if !bind_instead_of_map::check_or_else_err(cx, expr, recv, arg) {
-                        unnecessary_lazy_eval::check(cx, expr, recv, arg, "or");
+                        unnecessary_lazy_eval::check(cx, expr, recv, arg, "or", false);
                     }
+                },
+                (sym::peek, []) => {
+                    by_ref_peekable_peek::check(cx, expr, recv);
                 },
                 (sym::push, [arg]) => {
                     path_buf_push_overwrite::check(cx, expr, arg);
@@ -5699,7 +5804,7 @@ impl Methods {
                     if !self.msrv.meets(cx, msrvs::BOOL_THEN_SOME) {
                         return;
                     }
-                    unnecessary_lazy_eval::check(cx, expr, recv, arg, "then_some");
+                    unnecessary_lazy_eval::check(cx, expr, recv, arg, "then_some", true);
                 },
                 (sym::try_into, []) if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::TryInto) => {
                     unnecessary_fallible_conversions::check_method(cx, expr);
@@ -5789,7 +5894,7 @@ impl Methods {
                             );
                         },
                         _ => {
-                            unnecessary_lazy_eval::check(cx, expr, recv, u_arg, "unwrap_or");
+                            unnecessary_lazy_eval::check(cx, expr, recv, u_arg, "unwrap_or", false);
                         },
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);

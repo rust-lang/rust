@@ -1,4 +1,3 @@
-#![allow(unused)]
 #![warn(clippy::missing_asserts_for_indexing)]
 
 fn sum(v: &[u8]) -> u8 {

@@ -1,6 +1,6 @@
 use super::{Attribute, UNNECESSARY_CLIPPY_CFG};
 use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_sugg};
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::SpanExt;
 use itertools::Itertools;
 use rustc_ast::AttrStyle;
 use rustc_errors::Applicability;
@@ -32,7 +32,7 @@ pub(super) fn check(
             return;
         }
         if nb_items == clippy_lints.len() {
-            if let Some(snippet) = behind_cfg_attr.span.get_source_text(cx) {
+            if let Some(snippet) = behind_cfg_attr.span.get_text(cx) {
                 span_lint_and_sugg(
                     cx,
                     UNNECESSARY_CLIPPY_CFG,
@@ -48,7 +48,7 @@ pub(super) fn check(
                 );
             }
         } else {
-            let snippet = clippy_lints.iter().filter_map(|sp| sp.get_source_text(cx)).join(",");
+            let snippet = clippy_lints.iter().filter_map(|sp| sp.get_text(cx)).join(",");
             span_lint_and_note(
                 cx,
                 UNNECESSARY_CLIPPY_CFG,

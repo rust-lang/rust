@@ -13,6 +13,7 @@ use rustc_hir::QPath::Resolved;
 use rustc_hir::def::Res;
 use rustc_hir::{Expr, ExprKind, Pat};
 use rustc_lint::LateContext;
+use rustc_middle::ty;
 use rustc_span::{Spanned, sym};
 
 use super::MANUAL_SLICE_FILL;
@@ -83,6 +84,24 @@ pub(super) fn check<'tcx>(
         && msrv.meets(cx, msrvs::SLICE_FILL)
     {
         sugg(cx, body, expr, recv_path.span, assignval.span);
+    }
+    // `for slot in s { *slot = value; }` where `s` is already `&mut [T; N]`
+    else if let ExprKind::Assign(assignee, assignval, _) = peel_blocks_with_stmt(body).kind
+        && let ExprKind::Unary(UnOp::Deref, slice_iter) = assignee.kind
+        && let ExprKind::Path(Resolved(_, slice_path)) = slice_iter.kind
+        && let Res::Local(local) = slice_path.res
+        && local == pat.hir_id
+        && !assignval.span.from_expansion()
+        && switch_to_eager_eval(cx, assignval)
+        && !is_local_used(cx, assignval, local)
+        && let arg_ty = cx.typeck_results().expr_ty(arg)
+        && let ty::Ref(_, inner_ty, rustc_ast::Mutability::Mut) = arg_ty.kind()
+        && is_slice_like(cx, *inner_ty)
+        && let Some(clone_trait) = cx.tcx.lang_items().clone_trait()
+        && implements_trait(cx, *inner_ty, clone_trait, &[])
+        && msrv.meets(cx, msrvs::SLICE_FILL)
+    {
+        sugg(cx, body, expr, arg.span, assignval.span);
     }
 }
 
