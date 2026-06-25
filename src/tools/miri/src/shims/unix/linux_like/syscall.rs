@@ -7,7 +7,7 @@ use crate::shims::sig::check_min_vararg_count;
 use crate::shims::unix::env::EvalContextExt;
 use crate::shims::unix::linux_like::eventfd::EvalContextExt as _;
 use crate::shims::unix::linux_like::sync::futex;
-use crate::shims::unix::socket::EvalContextExt as _;
+use crate::shims::unix::tcp_socket::EvalContextExt as _;
 use crate::*;
 
 pub fn syscall<'tcx>(
