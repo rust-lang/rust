@@ -1622,7 +1622,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                         from = downcast_ty;
                         value = downcast_value;
                         was_updated_this_iteration = true;
-                        if projected_layout.ty == to {
+                        if from == to {
                             return Some(value);
                         }
                     }
@@ -1633,7 +1633,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                     from = self.ty(aggregate_value);
                     value = aggregate_value;
                     was_updated_this_iteration = true;
-                    if field_ty == to {
+                    if from == to {
                         return Some(value);
                     }
                 }
@@ -1649,7 +1649,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 from = field_ty;
                 value = field_values[field_idx.as_usize()];
                 was_updated_this_iteration = true;
-                if field_ty == to {
+                if from == to {
                     return Some(value);
                 }
             }
