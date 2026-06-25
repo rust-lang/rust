@@ -1,11 +1,11 @@
 error[E0060]: this function takes at least 1 argument but 0 arguments were supplied
-  --> $DIR/mismatch-args-vargs-issue-130372.rs:9:9
+  --> $DIR/mismatch-args-vargs-issue-130372.rs:7:9
    |
 LL |         test_va_copy();
    |         ^^^^^^^^^^^^-- argument #1 of type `u64` is missing
    |
 note: function defined here
-  --> $DIR/mismatch-args-vargs-issue-130372.rs:5:22
+  --> $DIR/mismatch-args-vargs-issue-130372.rs:3:22
    |
 LL | unsafe extern "C" fn test_va_copy(_: u64, mut ap: ...) {}
    |                      ^^^^^^^^^^^^ ------

@@ -17,7 +17,7 @@
 //
 //@[msp430] compile-flags: --target msp430-none-elf -Ctarget-cpu=msp430
 //@[msp430] needs-llvm-components: msp430
-#![feature(no_core, lang_items, rustc_attrs, c_variadic)]
+#![feature(no_core, lang_items, rustc_attrs)]
 #![crate_type = "rlib"]
 #![no_core]
 
