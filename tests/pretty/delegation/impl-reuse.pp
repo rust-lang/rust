@@ -2,7 +2,7 @@
 #![no_std]
 //@ pretty-compare-only
 //@ pretty-mode:expanded
-//@ pp-exact:delegation-impl-reuse.pp
+//@ pp-exact:impl-reuse.pp
 
 #![allow(incomplete_features)]
 #![feature(fn_delegation)]
