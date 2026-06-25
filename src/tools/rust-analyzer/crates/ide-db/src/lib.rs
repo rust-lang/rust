@@ -65,7 +65,7 @@ use base_db::{
 };
 use hir::{
     FilePositionWrapper, FileRangeWrapper,
-    db::{DefDatabase, ExpandDatabase, HirDatabase},
+    db::{ExpandDatabase, HirDatabase},
 };
 use triomphe::Arc;
 
@@ -210,13 +210,13 @@ impl RootDatabase {
         _ = base_db::LocalRoots::builder(Default::default())
             .durability(Durability::MEDIUM)
             .new(&db);
-        db.set_expand_proc_attr_macros_with_durability(false, Durability::HIGH);
+        hir::db::set_expand_proc_attr_macros(&mut db, false);
         db.update_base_query_lru_capacities(lru_capacity);
         db
     }
 
     pub fn enable_proc_attr_macros(&mut self) {
-        self.set_expand_proc_attr_macros_with_durability(true, Durability::HIGH);
+        hir::db::set_expand_proc_attr_macros(self, true);
     }
 
     pub fn update_base_query_lru_capacities(&mut self, _lru_capacity: Option<u16>) {

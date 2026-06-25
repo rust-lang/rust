@@ -616,7 +616,7 @@ impl<'db> DefCollector<'db> {
         let (expander, kind) = match self.proc_macros.iter().find(|(n, _, _)| n == &def.name) {
             Some(_)
                 if kind == hir_expand::proc_macro::ProcMacroKind::Attr
-                    && !self.db.expand_proc_attr_macros() =>
+                    && !crate::db::ExpandProcAttrMacros::get(self.db).enabled(self.db) =>
             {
                 (CustomProcMacroExpander::disabled_proc_attr(), kind)
             }
