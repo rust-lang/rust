@@ -163,6 +163,7 @@ where
                     Ok(a)
                 }
                 TypingMode::Typeck { .. }
+                | TypingMode::Reflection
                 | TypingMode::PostTypeckUntilBorrowck { .. }
                 | TypingMode::PostBorrowck { .. }
                 | TypingMode::PostAnalysis
