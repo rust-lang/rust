@@ -1459,6 +1459,10 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         );
     }
 
+    fn vscale(&mut self, _: Self::Type) -> Self::Value {
+        unimplemented!("`rustc_codegen_gcc` doesn't support scalable vectors yet")
+    }
+
     fn select(
         &mut self,
         cond: RValue<'gcc>,
