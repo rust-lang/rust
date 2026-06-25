@@ -764,7 +764,7 @@ rustc_lint::late_lint_methods!(
         BoolToIntWithIf: bool_to_int_with_if::BoolToIntWithIf = bool_to_int_with_if::BoolToIntWithIf,
         BoxDefault: box_default::BoxDefault = box_default::BoxDefault,
         ImplicitSaturatingAdd: implicit_saturating_add::ImplicitSaturatingAdd = implicit_saturating_add::ImplicitSaturatingAdd,
-        MissingTraitMethods: missing_trait_methods::MissingTraitMethods = missing_trait_methods::MissingTraitMethods,
+        MissingTraitMethods: missing_trait_methods::MissingTraitMethods = missing_trait_methods::MissingTraitMethods::new(conf),
         FromRawWithVoidPtr: from_raw_with_void_ptr::FromRawWithVoidPtr = from_raw_with_void_ptr::FromRawWithVoidPtr,
         ConfusingXorAndPow: suspicious_xor_used_as_pow::ConfusingXorAndPow = suspicious_xor_used_as_pow::ConfusingXorAndPow,
         ManualIsAsciiCheck: manual_is_ascii_check::ManualIsAsciiCheck = manual_is_ascii_check::ManualIsAsciiCheck::new(conf),
