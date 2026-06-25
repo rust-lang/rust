@@ -30,4 +30,18 @@ extern "C" {
     fn bar_2(#[splat] _: (u32, i8));
 }
 
+trait FooTrait {
+    fn has_splat(#[splat] _: ());
+
+    fn no_splat(_: (u32, f64));
+}
+
+struct Foo;
+
+impl FooTrait for Foo {
+    fn has_splat(_: ()) {} //~ ERROR method `has_splat` has an incompatible type for trait
+
+    fn no_splat(#[splat] _: (u32, f64)) {} //~ ERROR method `no_splat` has an incompatible type for trait
+}
+
 fn main() {}
