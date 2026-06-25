@@ -17,7 +17,7 @@ use crate::{
     declarative::DeclarativeMacroExpander,
     fixup::{self, SyntaxFixupUndoInfo},
     hygiene::{span_with_call_site_ctxt, span_with_def_site_ctxt, span_with_mixed_site_ctxt},
-    proc_macro::{CrateProcMacros, CustomProcMacroExpander, ProcMacros},
+    proc_macro::CustomProcMacroExpander,
     span_map::{ExpansionSpanMap, RealSpanMap, SpanMap},
     tt,
 };
@@ -50,14 +50,6 @@ pub enum TokenExpander<'db> {
 
 #[query_group::query_group]
 pub trait ExpandDatabase: SourceDatabase {
-    /// The proc macros. Do not use this! Use `proc_macros_for_crate()` instead.
-    #[salsa::input]
-    fn proc_macros(&self) -> Arc<ProcMacros>;
-
-    /// Incrementality query to prevent queries from directly depending on `ExpandDatabase::proc_macros`.
-    #[salsa::invoke(crate::proc_macro::proc_macros_for_crate)]
-    fn proc_macros_for_crate(&self, krate: Crate) -> Option<Arc<CrateProcMacros>>;
-
     #[salsa::invoke(ast_id_map)]
     #[salsa::transparent]
     fn ast_id_map(&self, file_id: HirFileId) -> &AstIdMap;

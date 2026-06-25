@@ -63,10 +63,7 @@ use base_db::{
     CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, Files, Nonce, SourceDatabase,
     SourceRoot, SourceRootId, SourceRootInput, set_all_crates_with_durability,
 };
-use hir::{
-    FilePositionWrapper, FileRangeWrapper,
-    db::{ExpandDatabase, HirDatabase},
-};
+use hir::{FilePositionWrapper, FileRangeWrapper, db::HirDatabase};
 use triomphe::Arc;
 
 use crate::line_index::LineIndex;
@@ -203,7 +200,7 @@ impl RootDatabase {
         // This needs to be here otherwise `CrateGraphBuilder` will panic.
         set_all_crates_with_durability(&mut db, std::iter::empty(), Durability::HIGH);
         CrateGraphBuilder::default().set_in_db(&mut db);
-        db.set_proc_macros_with_durability(Default::default(), Durability::MEDIUM);
+        hir::ProcMacros::init_default(&db, Durability::MEDIUM);
         _ = base_db::LibraryRoots::builder(Default::default())
             .durability(Durability::MEDIUM)
             .new(&db);

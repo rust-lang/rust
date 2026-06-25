@@ -15,7 +15,7 @@ use hir_expand::{
     builtin::{BuiltinDeriveExpander, find_builtin_attr, find_builtin_derive, find_builtin_macro},
     mod_path::{ModPath, PathKind},
     name::{AsName, Name},
-    proc_macro::CustomProcMacroExpander,
+    proc_macro::{CustomProcMacroExpander, ProcMacros},
 };
 use intern::{Interned, Symbol, sym};
 use itertools::izip;
@@ -79,7 +79,7 @@ pub(super) fn collect_defs(
     }
 
     let proc_macros = if krate.is_proc_macro {
-        db.proc_macros_for_crate(def_map.krate)
+        ProcMacros::get_for_crate(db, def_map.krate)
             .and_then(|proc_macros| {
                 proc_macros.list(db.syntax_context(tree_id.file_id(), krate.edition))
             })
