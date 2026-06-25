@@ -198,7 +198,7 @@ impl LazyInfo {
 
             // visit body to collect `Lazy::new` calls
             let mut new_fn_calls = FxIndexMap::default();
-            for_each_expr::<(), ()>(cx, body, |ex| {
+            for_each_expr::<(), ()>(cx.tcx, body, |ex| {
                 if let Some((fn_did, call_span)) = fn_def_id_and_span_from_body(cx, ex, body_id)
                     && paths::ONCE_CELL_SYNC_LAZY_NEW.matches(cx, fn_did)
                 {

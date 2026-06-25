@@ -1,6 +1,6 @@
 use crate::consts::ConstEvalCtxt;
 use crate::macros::macro_backtrace;
-use crate::source::{SpanRange, SpanRangeExt, walk_span_to_context};
+use crate::source::{SpanExt, SpanRange, walk_span_to_context};
 use crate::{sym, tokenize_with_text};
 use core::mem;
 use rustc_ast::ast;
@@ -1036,7 +1036,7 @@ fn reduce_exprkind<'hir>(
             // `{}` => `()`
             ([], None)
                 if block.span.ctxt() != eval_ctxt
-                    || block.span.check_source_text(cx, |src| {
+                    || block.span.check_text(cx, |src| {
                         tokenize(src, FrontmatterAllowed::No)
                             .map(|t| t.kind)
                             .filter(|t| {

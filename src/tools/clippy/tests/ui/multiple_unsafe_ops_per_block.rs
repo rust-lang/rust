@@ -1,11 +1,11 @@
 //@needs-asm-support
 //@aux-build:proc_macros.rs
+#![warn(clippy::multiple_unsafe_ops_per_block)]
 #![expect(
     dropping_copy_types,
-    clippy::unnecessary_operation,
-    clippy::unnecessary_literal_unwrap
+    clippy::unnecessary_literal_unwrap,
+    clippy::unnecessary_operation
 )]
-#![warn(clippy::multiple_unsafe_ops_per_block)]
 
 extern crate proc_macros;
 use proc_macros::external;

@@ -211,4 +211,18 @@ mod proc_macro_generated {
     }
 }
 
+mod issue17255 {
+
+    trait AnotherSimpleTrait<'a> {}
+
+    macro_rules! mac {
+        ($lt:lifetime, $t:ident, $tr:path) => {
+            impl<$t: for<'lt> $tr> AnotherSimpleTrait<'_> for $t {}
+        };
+    }
+
+    // Do not lint code expanded from macros
+    mac!('a, T, super::SimplerTrait);
+}
+
 fn main() {}

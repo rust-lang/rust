@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
-use clippy_utils::source::{SpanRangeExt as _, snippet_with_applicability};
+use clippy_utils::source::{SpanExt as _, snippet_with_applicability};
 use clippy_utils::{SpanlessEq, get_parent_expr, higher, is_integer_literal, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Node, Pat, PatKind, QPath};
@@ -49,8 +49,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, recv: &'
                     ),
                 )];
                 if let Some((left, right)) = invert_bindings
-                    && let Some(snip_left) = left.get_source_text(cx)
-                    && let Some(snip_right) = right.get_source_text(cx)
+                    && let Some(snip_left) = left.get_text(cx)
+                    && let Some(snip_right) = right.get_text(cx)
                 {
                     suggestions.extend([(left, snip_right.to_string()), (right, snip_left.to_string())]);
                 } else {

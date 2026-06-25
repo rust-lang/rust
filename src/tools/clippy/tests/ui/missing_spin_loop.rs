@@ -1,6 +1,5 @@
 #![warn(clippy::missing_spin_loop)]
-#![allow(clippy::bool_comparison)]
-#![allow(unused_braces)]
+#![expect(clippy::bool_comparison)]
 
 use core::sync::atomic::{AtomicBool, Ordering};
 
