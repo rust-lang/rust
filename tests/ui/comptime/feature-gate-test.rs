@@ -1,5 +1,5 @@
-#[rustc_comptime]
-//~^ ERROR use of an internal attribute
+#[comptime]
+//~^ ERROR use of unstable library feature `comptime`
 fn foo() {}
 
 fn main() {}

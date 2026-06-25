@@ -244,7 +244,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         method: MethodCallee<'tcx>,
     ) {
         self.enforce_context_effects(Some(hir_id), span, method.def_id, method.args);
-        self.write_resolution(hir_id, Ok((DefKind::AssocFn, method.def_id)));
+        self.write_resolution(hir_id, Ok((self.tcx.def_kind(method.def_id), method.def_id)));
         self.write_args(hir_id, method.args);
     }
 

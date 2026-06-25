@@ -374,7 +374,7 @@ impl TypeId {
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    #[rustc_comptime]
+    #[comptime]
     pub fn size(self) -> Option<usize> {
         intrinsics::size_of_type_id(self)
     }
@@ -400,7 +400,7 @@ impl TypeId {
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    #[rustc_comptime]
+    #[comptime]
     pub fn variants(self) -> usize {
         intrinsics::type_id_variants(self)
     }
@@ -463,7 +463,7 @@ impl TypeId {
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    #[rustc_comptime]
+    #[comptime]
     pub fn fields(self, variant_index: usize) -> usize {
         intrinsics::type_id_fields(self, variant_index)
     }
@@ -530,7 +530,7 @@ impl TypeId {
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    #[rustc_comptime]
+    #[comptime]
     pub fn field(self, variant_index: usize, field_index: usize) -> FieldId {
         FieldId {
             frt_type_id: intrinsics::type_id_field_representing_type(
@@ -575,7 +575,7 @@ impl FieldId {
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    #[rustc_comptime]
+    #[comptime]
     pub fn type_id(self) -> TypeId {
         intrinsics::field_representing_type_actual_type_id(self.frt_type_id)
     }

@@ -1750,6 +1750,57 @@ pub(crate) struct UnusedImports {
     pub num_snippets: usize,
 }
 
+#[derive(Diagnostic)]
+#[diag("functions in {$in_impl ->
+        [true] trait impls
+        *[false] traits
+    } cannot be declared {$constness}", code = E0379)]
+pub(crate) struct TraitFnConst {
+    #[primary_span]
+    #[label(
+        "functions in {$in_impl ->
+            [true] trait impls
+            *[false] traits
+        } cannot be {$constness}"
+    )]
+    pub span: Span,
+    pub in_impl: bool,
+    #[label("this declares all associated functions implicitly {$constness}")]
+    pub const_context_label: Option<Span>,
+    #[suggestion(
+        "remove the `{$constness}`{$requires_multiple_changes ->
+            [true] {\" ...\"}
+            *[false] {\"\"}
+        }",
+        code = ""
+    )]
+    pub remove_const_sugg: (Span, Applicability),
+    pub requires_multiple_changes: bool,
+    #[suggestion(
+        "... and declare the impl to be {$constness} instead",
+        code = "{constness} ",
+        applicability = "maybe-incorrect"
+    )]
+    pub make_impl_const_sugg: Option<Span>,
+    #[suggestion(
+        "... and declare the trait to be {$constness} instead",
+        code = "{constness} ",
+        applicability = "maybe-incorrect"
+    )]
+    pub make_trait_const_sugg: Option<Span>,
+    pub constness: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag("redundant `const` fn marker in const impl")]
+pub(crate) struct ImplFnConst {
+    #[primary_span]
+    #[suggestion("remove the `const`", code = "", applicability = "machine-applicable")]
+    pub span: Span,
+    #[label("this declares all associated functions implicitly const")]
+    pub parent_constness: Span,
+}
+
 #[derive(Subdiagnostic)]
 pub(crate) enum UnusedImportsSugg {
     #[suggestion(

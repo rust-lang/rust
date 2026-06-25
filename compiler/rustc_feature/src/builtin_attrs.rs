@@ -351,7 +351,6 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::rustc_no_implicit_autorefs,
     sym::rustc_coherence_is_core,
     sym::rustc_coinductive,
-    sym::rustc_comptime,
     sym::rustc_allow_incoherent_impl,
     sym::rustc_preserve_ub_checks,
     sym::rustc_deny_explicit_impl,

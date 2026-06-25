@@ -1,25 +1,25 @@
-#![feature(rustc_attrs)]
+#![feature(comptime)]
 
 trait Foo {
-    #[rustc_comptime]
-    //~^ ERROR: cannot be used on required trait methods
+    #[comptime]
+    //~^ ERROR: functions in traits cannot be declared #[comptime]
     fn foo();
 
-    #[rustc_comptime]
-    //~^ ERROR: cannot be used on provided trait methods
+    #[comptime]
+    //~^ ERROR: functions in traits cannot be declared #[comptime]
     fn bar() {}
 }
 
 struct Bar;
 
 impl Bar {
-    #[rustc_comptime]
+    #[comptime]
     fn foo() {}
 }
 
 impl Foo for Bar {
-    #[rustc_comptime]
-    //~^ ERROR: cannot be used on trait methods
+    #[comptime]
+    //~^ ERROR: functions in trait impls cannot be declared #[comptime]
     fn foo() {}
 }
 

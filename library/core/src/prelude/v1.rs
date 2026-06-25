@@ -165,6 +165,13 @@ pub use crate::macros::builtin::deref;
 )]
 pub use crate::macros::builtin::define_opaque;
 
+#[unstable(
+    feature = "comptime",
+    issue = "146922",
+    reason = "`comptime` has open design concerns"
+)]
+pub use crate::macros::builtin::comptime;
+
 #[unstable(feature = "extern_item_impls", issue = "125418")]
 pub use crate::macros::builtin::{eii, unsafe_eii};
 

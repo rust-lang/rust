@@ -1,26 +1,36 @@
-error: `#[rustc_comptime]` attribute cannot be used on required trait methods
+error[E0379]: functions in traits cannot be declared #[comptime]
   --> $DIR/trait_comptime.rs:4:5
    |
-LL |     #[rustc_comptime]
-   |     ^^^^^^^^^^^^^^^^^
-   |
-   = help: `#[rustc_comptime]` can only be applied to functions with a body
+LL |       #[comptime]
+   |       -^^^^^^^^^^
+   |       |
+   |  _____functions in traits cannot be #[comptime]
+   | |
+LL | |
+   | |____- help: remove the `#[comptime]`
 
-error: `#[rustc_comptime]` attribute cannot be used on provided trait methods
+error[E0379]: functions in traits cannot be declared #[comptime]
   --> $DIR/trait_comptime.rs:8:5
    |
-LL |     #[rustc_comptime]
-   |     ^^^^^^^^^^^^^^^^^
-   |
-   = help: `#[rustc_comptime]` can be applied to functions and inherent methods
+LL |       #[comptime]
+   |       -^^^^^^^^^^
+   |       |
+   |  _____functions in traits cannot be #[comptime]
+   | |
+LL | |
+   | |____- help: remove the `#[comptime]`
 
-error: `#[rustc_comptime]` attribute cannot be used on trait methods in impl blocks
+error[E0379]: functions in trait impls cannot be declared #[comptime]
   --> $DIR/trait_comptime.rs:21:5
    |
-LL |     #[rustc_comptime]
-   |     ^^^^^^^^^^^^^^^^^
-   |
-   = help: `#[rustc_comptime]` can be applied to functions and inherent methods
+LL |       #[comptime]
+   |       -^^^^^^^^^^
+   |       |
+   |  _____functions in trait impls cannot be #[comptime]
+   | |
+LL | |
+   | |____- help: remove the `#[comptime]`
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0379`.

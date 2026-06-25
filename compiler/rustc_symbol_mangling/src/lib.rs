@@ -87,7 +87,6 @@
 //! virtually impossible. Thus, symbol hash generation exclusively relies on
 //! DefPaths which are much more robust in the face of changes to the code base.
 
-use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mono::{InstantiationMode, MonoItem};
@@ -240,17 +239,11 @@ fn compute_symbol_name<'tcx>(
     // codegen units) then this symbol may become an exported (but hidden
     // visibility) symbol. This means that multiple crates may do the same
     // and we want to be sure to avoid any symbol conflicts here.
-    let is_globally_shared_function = matches!(
-        tcx.def_kind(instance.def_id()),
-        DefKind::Fn
-            | DefKind::AssocFn
-            | DefKind::Closure
-            | DefKind::SyntheticCoroutineBody
-            | DefKind::Ctor(..)
-    ) && matches!(
-        MonoItem::Fn(instance).instantiation_mode(tcx),
-        InstantiationMode::GloballyShared { may_conflict: true }
-    );
+    let is_globally_shared_function = tcx.def_kind(instance.def_id()).is_fn_like()
+        && matches!(
+            MonoItem::Fn(instance).instantiation_mode(tcx),
+            InstantiationMode::GloballyShared { may_conflict: true }
+        );
 
     // If this is an instance of a generic function, we also hash in
     // the ID of the instantiating crate. This avoids symbol conflicts

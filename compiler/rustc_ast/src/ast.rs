@@ -3155,8 +3155,19 @@ impl CoroutineKind {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable, Debug)]
 #[derive(StableHash, Walkable)]
 pub enum Const {
+    Always(Span),
     Yes(Span),
     No,
+}
+
+impl Const {
+    pub fn descr(&self) -> &'static str {
+        match self {
+            Const::Always(_) => "#[comptime]",
+            Const::Yes(_) => "const",
+            Const::No => "",
+        }
+    }
 }
 
 /// Item defaultness.
