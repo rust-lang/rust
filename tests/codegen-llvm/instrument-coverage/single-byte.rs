@@ -1,7 +1,7 @@
 //@ compile-flags: -Zno-profiler-runtime -Zunstable-options
-//@ compile-flags: -Cinstrument-coverage=single-byte -Copt-level=0
+//@ compile-flags: -Cinstrument-coverage=presence-only -Copt-level=0
 
-// Verify that single-byte coverage selects LLVM's byte-counter ABI and that
+// Verify that presence-only coverage selects LLVM's byte-counter ABI and that
 // the instrumentation pass lowers each probe to a one-byte covered store.
 
 pub fn covered() -> bool {

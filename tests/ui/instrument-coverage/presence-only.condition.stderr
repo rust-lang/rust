@@ -1,0 +1,2 @@
+error: `-C instrument-coverage=presence-only` is not compatible with branch or condition coverage
+

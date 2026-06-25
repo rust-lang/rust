@@ -146,9 +146,10 @@ pub enum LtoCli {
 pub enum InstrumentCoverage {
     /// `-C instrument-coverage=no` (or `off`, `false` etc.)
     No,
-    /// `-C instrument-coverage` or `-C instrument-coverage=yes`
+    /// `-C instrument-coverage`, `-C instrument-coverage=yes`, or
+    /// `-C instrument-coverage=counter`
     Yes,
-    /// `-C instrument-coverage=single-byte`
+    /// `-C instrument-coverage=presence-only`
     SingleByte,
 }
 
@@ -2559,12 +2560,12 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         if cg.instrument_coverage == InstrumentCoverage::SingleByte {
             if !unstable_opts.unstable_options {
                 early_dcx.early_fatal(
-                    "`-C instrument-coverage=single-byte` requires `-Z unstable-options`",
+                    "`-C instrument-coverage=presence-only` requires `-Z unstable-options`",
                 );
             }
             if unstable_opts.coverage_options.level >= CoverageLevel::Branch {
                 early_dcx.early_fatal(
-                    "`-C instrument-coverage=single-byte` is not compatible with branch or \
+                    "`-C instrument-coverage=presence-only` is not compatible with branch or \
                      condition coverage",
                 );
             }

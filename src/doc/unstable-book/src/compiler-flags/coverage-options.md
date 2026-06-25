@@ -17,4 +17,4 @@ Multiple options can be passed, separated by commas. Valid options are:
     as branches, even if they are not directly used as branch conditions.
 
 The `branch` and `condition` levels cannot be combined with
-`-C instrument-coverage=single-byte`.
+`-C instrument-coverage=presence-only`.

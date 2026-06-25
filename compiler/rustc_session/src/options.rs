@@ -800,7 +800,7 @@ mod desc {
     pub(crate) const parse_strip: &str = "either `none`, `debuginfo`, or `symbols`";
     pub(crate) const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavorCli::one_of();
     pub(crate) const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
-    pub(crate) const parse_instrument_coverage: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or (with `-Z unstable-options`) `single-byte`";
+    pub(crate) const parse_instrument_coverage: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), `counter`, or (with `-Z unstable-options`) `presence-only`";
     pub(crate) const parse_coverage_options: &str = "`block` | `branch` | `condition`";
     pub(crate) const parse_codegen_retag_options: &str =
         "either no value or a comma-separated list of settings: `no-precise-im`, `no-precise-pin`";
@@ -1537,10 +1537,11 @@ pub mod parse {
 
         // `all` and `0` have historically been accepted by stable compilers,
         // even though they are currently just aliases for boolean values.
+        // `counter` is an explicit name for the default counter-based mode.
         *slot = match v {
-            "all" => InstrumentCoverage::Yes,
+            "all" | "counter" => InstrumentCoverage::Yes,
             "0" => InstrumentCoverage::No,
-            "single-byte" => InstrumentCoverage::SingleByte,
+            "presence-only" => InstrumentCoverage::SingleByte,
             _ => return false,
         };
         true
@@ -2142,7 +2143,7 @@ options! {
     instrument_coverage: InstrumentCoverage = (InstrumentCoverage::No, parse_instrument_coverage, [TRACKED],
         "instrument the generated code to support LLVM source-based code coverage reports \
         (note, the compiler build config must include `profiler = true`); \
-        `single-byte` mode requires `-Z unstable-options`; \
+        `presence-only` mode requires `-Z unstable-options`; \
         implies `-C symbol-mangling-version=v0`"),
     jump_tables: bool = (true, parse_bool, [TRACKED],
         "allow jump table and lookup table generation from switch case lowering (default: yes)"),

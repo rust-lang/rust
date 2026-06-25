@@ -1,4 +1,4 @@
-   LL|       |//@ compile-flags: -Cinstrument-coverage=single-byte -Zunstable-options -Copt-level=0
+   LL|       |//@ compile-flags: -Cinstrument-coverage=presence-only -Zunstable-options -Copt-level=0
    LL|       |
    LL|       |use std::hint::black_box;
    LL|       |

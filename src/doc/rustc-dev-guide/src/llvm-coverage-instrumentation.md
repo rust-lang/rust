@@ -6,7 +6,7 @@ libraries and binaries with additional instructions and data, at compile time.
 
 The coverage instrumentation injects calls to LLVM intrinsic instructions
 ([`llvm.instrprof.increment`][llvm-instrprof-increment], or
-[`llvm.instrprof.cover`][llvm-instrprof-cover] in single-byte mode) at code branches
+[`llvm.instrprof.cover`][llvm-instrprof-cover] in presence-only mode) at code branches
 (based on a MIR-based control flow analysis), and LLVM converts these to
 instructions that update static counters when executed.
 The LLVM coverage instrumentation also requires a [Coverage Map] that encodes source metadata,

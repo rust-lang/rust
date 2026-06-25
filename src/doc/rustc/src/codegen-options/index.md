@@ -195,10 +195,11 @@ Using incremental compilation inhibits certain optimizations (for example by inc
 This option enables instrumentation-based code coverage support. See the
 chapter on [instrumentation-based code coverage] for more information.
 
-The unstable value `single-byte`, which requires `-Z unstable-options`, records
-whether each covered region executed instead of counting executions. It cannot
-be combined with branch or condition coverage, or mixed with ordinary coverage
-or PGO objects in the same linked image.
+The value `counter` is an alias for the default counter-based coverage mode.
+The unstable value `presence-only`, which requires `-Z unstable-options`,
+records whether each covered region executed instead of counting executions.
+It cannot be combined with branch or condition coverage, or mixed with ordinary
+coverage or PGO objects in the same linked image.
 
 Note that while the `-C instrument-coverage` option is stable, the profile data
 format produced by the resulting instrumentation may change, and may not work

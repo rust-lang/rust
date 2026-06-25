@@ -1,2 +1,0 @@
-error: `-C instrument-coverage=single-byte` is not compatible with branch or condition coverage
-

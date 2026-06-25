@@ -2017,7 +2017,8 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         kcfi_bundle
     }
 
-    /// Emits a call to `llvm.instrprof.increment`. Used by coverage instrumentation.
+    /// Emits a call to `llvm.instrprof.increment`. Used by counter-style coverage
+    /// instrumentation, i.e. the default mode.
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn instrprof_increment(
         &mut self,
@@ -2029,7 +2030,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         self.call_intrinsic("llvm.instrprof.increment", &[], &[fn_name, hash, num_counters, index]);
     }
 
-    /// Emits a call to `llvm.instrprof.cover`. Used by single-byte coverage
+    /// Emits a call to `llvm.instrprof.cover`. Used by presence-only coverage
     /// instrumentation.
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn instrprof_cover(

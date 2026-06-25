@@ -1,2 +1,0 @@
-error: `-C instrument-coverage=single-byte` requires `-Z unstable-options`
-

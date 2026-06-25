@@ -127,7 +127,7 @@ pub(crate) fn transcribe_counters(
 /// Assigns a physical counter directly to every mapped BCB that survived MIR optimization.
 ///
 /// Unlike [`transcribe_counters`], this does not create derived counter expressions. This is used
-/// for single-byte coverage, where counters only record whether their BCB was ever executed and
+/// for presence-only coverage, where counters only record whether their BCB was ever executed and
 /// therefore cannot be combined with arithmetic expressions to recover execution counts.
 pub(crate) fn make_direct_counters(
     bcb_needs_counter: &DenseBitSet<BasicCoverageBlock>,

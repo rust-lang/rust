@@ -1,4 +1,4 @@
-//@ compile-flags: -Cinstrument-coverage=single-byte -Zunstable-options -Copt-level=0
+//@ compile-flags: -Cinstrument-coverage=presence-only -Zunstable-options -Copt-level=0
 
 use std::hint::black_box;
 
