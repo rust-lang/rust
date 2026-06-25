@@ -391,7 +391,7 @@ fn def_id_of_type_cached<'a>(ty: Ty<'a>, visited: &mut SsoHashSet<Ty<'a>>) -> Op
         | ty::CoroutineWitness(def_id, _)
         | ty::Foreign(def_id) => Some(def_id),
 
-        ty::Alias(alias) => match alias.kind {
+        ty::Alias(_, alias) => match alias.kind {
             ty::AliasTyKind::Projection { def_id }
             | ty::AliasTyKind::Inherent { def_id }
             | ty::AliasTyKind::Opaque { def_id }

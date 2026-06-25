@@ -1,11 +1,16 @@
-error[E0271]: type mismatch resolving `<fn() -> impl Sized {foo} as FnOnce<()>>::Output == {integer}`
+error[E0271]: expected `foo` to return `{integer}`, but it returns `impl Sized`
   --> $DIR/normalize-assoc-ty-expected-int-var-no-ice-2.rs:13:10
    |
+LL | fn foo() -> impl Sized {}
+   |             ---------- the found opaque type
+...
 LL |     proj(x, 1);
-   |     ---- ^ types differ
+   |     ---- ^ expected integer, found opaque type
    |     |
    |     required by a bound introduced by this call
    |
+   = note:     expected type `{integer}`
+           found opaque type `impl Sized`
 note: required by a bound in `proj`
   --> $DIR/normalize-assoc-ty-expected-int-var-no-ice-2.rs:9:24
    |

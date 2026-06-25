@@ -56,7 +56,7 @@ LL |     fn ret(&self) -> Self::AssocType {
    |                      --------------- expected `Windows<for<'a> fn(&'a ())>::AssocType` because of return type
 LL |
 LL |         ()
-   |         ^^ types differ
+   |         ^^ expected opaque type, found `()`
    |
    = note: expected opaque type `Windows<for<'a> fn(&'a ())>::AssocType`
                 found unit type `()`

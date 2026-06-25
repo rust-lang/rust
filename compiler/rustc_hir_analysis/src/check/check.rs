@@ -337,7 +337,7 @@ fn check_opaque_meets_bounds<'tcx>(
         }),
     };
 
-    let opaque_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
+    let opaque_ty = Ty::new_opaque(tcx, ty::IsRigid::No, def_id.to_def_id(), args);
 
     // `ReErased` regions appear in the "parent_args" of closures/coroutines.
     // We're ignoring them here and replacing them with fresh region variables.
@@ -534,7 +534,7 @@ fn sanity_check_found_hidden_type<'tcx>(
         // Nothing was actually constrained.
         return Ok(());
     }
-    if let &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = ty.ty.kind() {
+    if let &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = ty.ty.kind() {
         if def_id == key.def_id.to_def_id() && args == key.args {
             // Nothing was actually constrained, this is an opaque usage that was
             // only discovered to be opaque after inference vars resolved.
@@ -778,7 +778,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                 if has_default {
                     // need to store default and type of default
                     let ct = tcx.const_param_default(param.def_id).skip_binder();
-                    if let ty::ConstKind::Unevaluated(uv) = ct.kind()
+                    if let ty::ConstKind::Unevaluated(_, uv) = ct.kind()
                         && let Some(def_id) = uv.kind.opt_def_id()
                     {
                         tcx.ensure_ok().type_of(def_id);
@@ -2191,7 +2191,7 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'_>, opaque_def_id: LocalDefId) -> ErrorG
                 impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector {
                     fn visit_ty(&mut self, t: Ty<'tcx>) {
                         match *t.kind() {
-                            ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: def }, .. }) => {
+                            ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: def }, .. }) => {
                                 self.opaques.push(def);
                             }
                             ty::Closure(def_id, ..) | ty::Coroutine(def_id, ..) => {
@@ -2224,10 +2224,13 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'_>, opaque_def_id: LocalDefId) -> ErrorG
                     let mut label_match = |ty: Ty<'_>, span| {
                         for arg in ty.walk() {
                             if let ty::GenericArgKind::Type(ty) = arg.kind()
-                                && let ty::Alias(ty::AliasTy {
-                                    kind: ty::Opaque { def_id: captured_def_id },
-                                    ..
-                                }) = *ty.kind()
+                                && let ty::Alias(
+                                    _,
+                                    ty::AliasTy {
+                                        kind: ty::Opaque { def_id: captured_def_id },
+                                        ..
+                                    },
+                                ) = *ty.kind()
                                 && captured_def_id == opaque_def_id.to_def_id()
                             {
                                 err.span_label(

@@ -738,7 +738,7 @@ fn project<'cx, 'tcx>(
         }
         ProjectionCandidateSet::None => {
             let tcx = selcx.tcx();
-            let term = obligation.predicate.to_term(tcx);
+            let term = obligation.predicate.to_term(tcx, ty::IsRigid::No);
             Ok(Projected::NoProgress(term))
         }
         // Error occurred while trying to processing impls.
@@ -1583,7 +1583,7 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
             } else {
                 // We know that `self_ty` has the same metadata as `tail`. This allows us
                 // to prove predicates like `Wrapper<Tail>::Metadata == Tail::Metadata`.
-                Ty::new_projection(tcx, metadata_def_id, [tail])
+                Ty::new_projection(tcx, ty::IsRigid::No, metadata_def_id, [tail])
             }
         });
         (metadata_ty.into(), obligations)
@@ -1678,6 +1678,7 @@ fn confirm_closure_candidate<'cx, 'tcx>(
                         tcx.require_lang_item(LangItem::AsyncFnKindUpvars, obligation.cause.span);
                     let tupled_upvars_ty = Ty::new_projection(
                         tcx,
+                        ty::IsRigid::No,
                         upvars_projection_def_id,
                         [
                             ty::GenericArg::from(kind_ty),
@@ -1807,6 +1808,7 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
                         // N.B. No need to register a `AsyncFnKindHelper` goal here, it's already in `nested`.
                         let tupled_upvars_ty = Ty::new_projection(
                             tcx,
+                            ty::IsRigid::No,
                             upvars_projection_def_id,
                             [
                                 ty::GenericArg::from(kind_ty),
@@ -1855,7 +1857,7 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
                 sym::Output => {
                     let future_output_def_id =
                         tcx.require_lang_item(LangItem::FutureOutput, obligation.cause.span);
-                    Ty::new_projection(tcx, future_output_def_id, [sig.output()])
+                    Ty::new_projection(tcx, ty::IsRigid::No, future_output_def_id, [sig.output()])
                 }
                 name => bug!("no such associated type: {name}"),
             };
@@ -1889,7 +1891,7 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
                 sym::Output => {
                     let future_output_def_id =
                         tcx.require_lang_item(LangItem::FutureOutput, obligation.cause.span);
-                    Ty::new_projection(tcx, future_output_def_id, [sig.output()])
+                    Ty::new_projection(tcx, ty::IsRigid::No, future_output_def_id, [sig.output()])
                 }
                 name => bug!("no such associated type: {name}"),
             };
@@ -2058,7 +2060,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
             // `Projected::NoProgress`. This will ensure that the projection is
             // checked for well-formedness, and it's either satisfied by a trivial
             // where clause in its env or it results in an error.
-            return Ok(Projected::NoProgress(obligation.predicate.to_term(tcx)));
+            return Ok(Projected::NoProgress(obligation.predicate.to_term(tcx, ty::IsRigid::No)));
         } else {
             return Ok(Projected::Progress(Progress {
                 term: if obligation.predicate.kind.is_type() {

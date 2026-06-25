@@ -688,12 +688,25 @@ impl<'tcx> Term<'tcx> {
     pub fn to_alias_term(self) -> Option<AliasTerm<'tcx>> {
         match self.kind() {
             TermKind::Ty(ty) => match *ty.kind() {
-                ty::Alias(alias_ty) => Some(alias_ty.into()),
+                ty::Alias(_, alias_ty) => Some(alias_ty.into()),
                 _ => None,
             },
             TermKind::Const(ct) => match ct.kind() {
-                ConstKind::Unevaluated(uv) => Some(uv.into()),
+                ConstKind::Unevaluated(_, uv) => Some(uv.into()),
                 _ => None,
+            },
+        }
+    }
+
+    pub fn is_non_rigid_alias(self) -> bool {
+        match self.kind() {
+            ty::TermKind::Ty(ty) => match ty.kind() {
+                ty::Alias(ty::IsRigid::No, _) => true,
+                _ => false,
+            },
+            ty::TermKind::Const(ct) => match ct.kind() {
+                ty::ConstKind::Unevaluated(ty::IsRigid::No, _) => true,
+                _ => false,
             },
         }
     }
@@ -926,7 +939,7 @@ impl<'tcx> ProvisionalHiddenType<'tcx> {
         if cfg!(debug_assertions) && matches!(defining_scope_kind, DefiningScopeKind::HirTypeck) {
             assert_eq!(result_ty, fold_regions(tcx, result_ty, |_, _| tcx.lifetimes.re_erased));
         }
-        DefinitionSiteHiddenType { span: self.span, ty: ty::EarlyBinder::bind(result_ty) }
+        DefinitionSiteHiddenType { span: self.span, ty: ty::EarlyBinder::bind(tcx, result_ty) }
     }
 }
 
@@ -954,7 +967,7 @@ impl<'tcx> DefinitionSiteHiddenType<'tcx> {
     pub fn new_error(tcx: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> DefinitionSiteHiddenType<'tcx> {
         DefinitionSiteHiddenType {
             span: DUMMY_SP,
-            ty: ty::EarlyBinder::bind(Ty::new_error(tcx, guar)),
+            ty: ty::EarlyBinder::bind(tcx, Ty::new_error(tcx, guar)),
         }
     }
 

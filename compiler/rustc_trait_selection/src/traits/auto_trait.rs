@@ -552,7 +552,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     pub fn is_of_param(&self, ty: Ty<'tcx>) -> bool {
         match ty.kind() {
             ty::Param(_) => true,
-            ty::Alias(p @ ty::AliasTy { kind: ty::Projection { .. }, .. }) => {
+            ty::Alias(_, p @ ty::AliasTy { kind: ty::Projection { .. }, .. }) => {
                 self.is_of_param(p.self_ty())
             }
             _ => false,
@@ -561,7 +561,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
     fn is_self_referential_projection(&self, p: ty::PolyProjectionPredicate<'tcx>) -> bool {
         if let Some(ty) = p.term().skip_binder().as_type() {
-            matches!(ty.kind(), ty::Alias(proj @ ty::AliasTy { kind: ty::Projection { .. }, .. }) if proj == &p.skip_binder().projection_term.expect_ty())
+            matches!(ty.kind(), ty::Alias(_, proj @ ty::AliasTy { kind: ty::Projection { .. }, .. }) if proj == &p.skip_binder().projection_term.expect_ty())
         } else {
             false
         }
@@ -768,7 +768,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 }
                 ty::PredicateKind::ConstEquate(c1, c2) => {
                     let evaluate = |c: ty::Const<'tcx>| {
-                        if let ty::ConstKind::Unevaluated(unevaluated) = c.kind() {
+                        if let ty::ConstKind::Unevaluated(_, unevaluated) = c.kind() {
                             let ct =
                                 super::try_evaluate_const(selcx.infcx, c, obligation.param_env);
 

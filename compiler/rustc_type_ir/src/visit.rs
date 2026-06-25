@@ -167,6 +167,12 @@ impl<I: Interner, T: TypeVisitable<I>, E: TypeVisitable<I>> TypeVisitable<I> for
     }
 }
 
+impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for &T {
+    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
+        (**self).visit_with(visitor)
+    }
+}
+
 impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Arc<T> {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         (**self).visit_with(visitor)
@@ -362,6 +368,16 @@ pub trait TypeVisitableExt<I: Interner>: TypeVisitable<I> {
     /// True if a type or const error is reachable
     fn has_non_region_error(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_NON_REGION_ERROR)
+    }
+
+    /// True if an alias has `IsRigid::Yes`. Used for skipping normalization.
+    fn has_rigid_aliases(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_RIGID_ALIAS)
+    }
+
+    /// True if an alias has `IsRigid::No`.
+    fn has_non_rigid_aliases(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_NON_RIGID_ALIAS)
     }
 }
 

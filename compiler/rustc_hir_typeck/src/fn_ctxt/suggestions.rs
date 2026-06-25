@@ -294,7 +294,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         };
 
-        let item_type = Ty::new_projection(tcx, iterator_item_id, [found]);
+        let item_type = Ty::new_projection(tcx, ty::IsRigid::No, iterator_item_id, [found]);
         let item_type =
             self.normalize(expr.span, rustc_middle::ty::Unnormalized::new_wip(item_type));
 

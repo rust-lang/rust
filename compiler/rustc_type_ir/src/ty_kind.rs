@@ -107,6 +107,34 @@ impl<I: Interner> AliasTyKind<I> {
     }
 }
 
+/// Whether an alias type is rigid or potentially normalizeable.
+///
+/// This is not used by the old solver and is always `IsRigid::No` there. In the new solver,
+/// aliases which cannot be further normalized in their current scope normalize to themselves
+/// with `IsRigid::Yes`. At this point we no longer have to try and renormalize this alias
+/// later on.
+///
+/// FIXME(#155345): Alias handling is currently still in flux for the new trait
+/// solver and this is currently somewhat messy. Please reach out on
+/// #t-types/trait-system-refactor-initiative if you encounter this and it isn't
+/// immediately clear what to do.
+#[derive(Debug, Clone, Copy, Hash, PartialEq)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
+)]
+pub enum IsRigid {
+    Yes,
+    No,
+}
+
+impl IsRigid {
+    pub fn yes_if_next_solver<I: Interner>(interner: I) -> IsRigid {
+        if interner.next_trait_solver_globally() { IsRigid::Yes } else { IsRigid::No }
+    }
+}
+
 /// Defines the kinds of types used by the type system.
 ///
 /// Types written by the user start out as `hir::TyKind` and get
@@ -273,7 +301,7 @@ pub enum TyKind<I: Interner> {
     ///
     /// All of these types are represented as pairs of def-id and args, and can
     /// be normalized, so they are grouped conceptually.
-    Alias(AliasTy<I>),
+    Alias(IsRigid, AliasTy<I>),
 
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}`.
     Param(I::ParamTy),
@@ -375,7 +403,7 @@ impl<I: Interner> TyKind<I> {
 
             ty::Error(_)
             | ty::Infer(_)
-            | ty::Alias(_)
+            | ty::Alias(ty::IsRigid::No | ty::IsRigid::Yes, _)
             | ty::Param(_)
             | ty::Bound(_, _)
             | ty::Placeholder(_) => false,
@@ -440,7 +468,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
                 }
                 write!(f, ")")
             }
-            Alias(a) => f.debug_tuple("Alias").field(&a).finish(),
+            Alias(is_rigid, a) => f.debug_tuple("Alias").field(&is_rigid).field(&a).finish(),
             Param(p) => write!(f, "{p:?}"),
             Bound(d, b) => crate::debug_bound_var(f, *d, b),
             Placeholder(p) => write!(f, "{p:?}"),
@@ -478,8 +506,8 @@ impl<I: Interner> AliasTy<I> {
         matches!(self.kind, AliasTyKind::Opaque { .. })
     }
 
-    pub fn to_ty(self, interner: I) -> I::Ty {
-        Ty::new_alias(interner, self)
+    pub fn to_ty(self, interner: I, is_rigid: ty::IsRigid) -> I::Ty {
+        Ty::new_alias(interner, is_rigid, self)
     }
 
     pub fn try_to_projection(self) -> Option<ProjectionAliasTy<I>> {

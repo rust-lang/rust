@@ -32,12 +32,12 @@ where
                     opaque_ty.args,
                     goal.param_env,
                     expected,
-                );
+                )?;
                 // Trying to normalize an opaque type during coherence is always ambiguous.
                 // We add a nested ambiguous goal here instead of using `Certainty::AMBIGUOUS`.
                 // This allows us to return the nested goals to the parent `AliasRelate` goal.
                 // This can then allow nested goals to fail after we've constrained the `term`.
-                self.add_goal(GoalSource::Misc, goal.with(cx, ty::PredicateKind::Ambiguous));
+                self.add_goal(GoalSource::Misc, goal.with(cx, ty::PredicateKind::Ambiguous))?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                     .map_err(Into::into)
             }
@@ -48,10 +48,9 @@ where
                     .filter(|&def_id| defining_opaque_types.contains(&def_id.into()))
                 else {
                     // If we're not in the defining scope, treat the alias as rigid.
-                    self.relate_rigid_alias_non_alias(
+                    self.eq(
                         goal.param_env,
-                        opaque_ty,
-                        ty::Invariant,
+                        opaque_ty.to_term(cx, ty::IsRigid::Yes),
                         goal.predicate.term,
                     )?;
                     return self
@@ -93,12 +92,15 @@ where
                         TypingMode::PostTypeckUntilBorrowck { .. } => {
                             let actual = cx
                                 .type_of_opaque_hir_typeck(def_id)
-                                .instantiate(cx, opaque_ty.args)
-                                .skip_norm_wip();
-                            let actual = fold_regions(cx, actual, |re, _dbi| match re.kind() {
-                                ty::ReErased => self.next_region_var(),
-                                _ => re,
+                                .instantiate(cx, opaque_ty.args);
+                            let actual = actual.map(|v| {
+                                fold_regions(cx, v, |re, _dbi| match re.kind() {
+                                    ty::ReErased => self.next_region_var(),
+                                    _ => re,
+                                })
                             });
+                            let actual =
+                                self.normalize(GoalSource::Misc, goal.param_env, actual)?;
                             self.eq(goal.param_env, expected, actual)?;
                         }
                         TypingMode::Coherence
@@ -113,7 +115,7 @@ where
                     normalized_args,
                     goal.param_env,
                     expected,
-                );
+                )?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                     .map_err(Into::into)
             }
@@ -122,10 +124,9 @@ where
                     .as_local()
                     .filter(|&def_id| defined_opaque_types.contains(&def_id.into()))
                 else {
-                    self.relate_rigid_alias_non_alias(
+                    self.eq(
                         goal.param_env,
-                        opaque_ty,
-                        ty::Invariant,
+                        opaque_ty.to_term(cx, ty::IsRigid::Yes),
                         goal.predicate.term,
                     )?;
                     return self
@@ -133,23 +134,25 @@ where
                         .map_err(Into::into);
                 };
 
-                let actual =
-                    cx.type_of(def_id.into()).instantiate(cx, opaque_ty.args).skip_norm_wip();
+                let actual = cx.type_of(def_id.into()).instantiate(cx, opaque_ty.args);
                 // FIXME: Actually use a proper binder here instead of relying on `ReErased`.
                 //
                 // This is also probably unsound or sth :shrug:
-                let actual = fold_regions(cx, actual, |re, _dbi| match re.kind() {
-                    ty::ReErased => self.next_region_var(),
-                    _ => re,
+                let actual = actual.map(|v| {
+                    fold_regions(cx, v, |re, _dbi| match re.kind() {
+                        ty::ReErased => self.next_region_var(),
+                        _ => re,
+                    })
                 });
+                let actual = self.normalize(GoalSource::Misc, goal.param_env, actual)?;
                 self.eq(goal.param_env, expected, actual)?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                     .map_err(Into::into)
             }
             TypingMode::PostAnalysis | TypingMode::Codegen => {
                 // FIXME: Add an assertion that opaque type storage is empty.
-                let actual =
-                    cx.type_of(def_id.into()).instantiate(cx, opaque_ty.args).skip_norm_wip();
+                let actual = cx.type_of(def_id.into()).instantiate(cx, opaque_ty.args);
+                let actual = self.normalize(GoalSource::Misc, goal.param_env, actual)?;
                 self.eq(goal.param_env, expected, actual)?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                     .map_err(Into::into)
@@ -172,10 +175,9 @@ where
                 }
 
                 // Always treat the opaque type as rigid.
-                self.relate_rigid_alias_non_alias(
+                self.eq(
                     goal.param_env,
-                    opaque_ty,
-                    ty::Invariant,
+                    opaque_ty.to_term(cx, ty::IsRigid::Yes),
                     goal.predicate.term,
                 )?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)

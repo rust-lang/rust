@@ -1780,7 +1780,7 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
             let self_type = clean_ty(qself, cx);
 
             let (trait_, should_fully_qualify) = match ty.kind() {
-                ty::Alias(proj @ ty::AliasTy { kind: ty::Projection { .. }, .. }) => {
+                ty::Alias(_, proj @ ty::AliasTy { kind: ty::Projection { .. }, .. }) => {
                     let res = Res::Def(DefKind::Trait, proj.trait_ref(cx.tcx).def_id);
                     let trait_ = clean_path(&hir::Path { span, res, segments: &[] }, cx);
                     register_res(cx, trait_.res);
@@ -1790,7 +1790,7 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
 
                     (Some(trait_), should_fully_qualify)
                 }
-                ty::Alias(ty::AliasTy { kind: ty::Inherent { .. }, .. }) => (None, false),
+                ty::Alias(_, ty::AliasTy { kind: ty::Inherent { .. }, .. }) => (None, false),
                 // Rustdoc handles `ty::Error`s by turning them into `Type::Infer`s.
                 ty::Error(_) => return Type::Infer,
                 _ => bug!("clean: expected associated type, found `{ty:?}`"),
@@ -2282,7 +2282,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             Tuple(t.iter().map(|t| clean_middle_ty(bound_ty.rebind(t), cx, None, None)).collect())
         }
 
-        ty::Alias(alias_ty @ ty::AliasTy { kind: ty::Projection { def_id }, args, .. }) => {
+        ty::Alias(_, alias_ty @ ty::AliasTy { kind: ty::Projection { def_id }, args, .. }) => {
             if cx.tcx.is_impl_trait_in_trait(def_id) {
                 clean_middle_opaque_bounds(cx, def_id, args)
             } else {
@@ -2294,7 +2294,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             }
         }
 
-        ty::Alias(alias_ty @ ty::AliasTy { kind: ty::Inherent { def_id }, .. }) => {
+        ty::Alias(_, alias_ty @ ty::AliasTy { kind: ty::Inherent { def_id }, .. }) => {
             let alias_ty = bound_ty.rebind(alias_ty);
             let self_type = clean_middle_ty(alias_ty.map_bound(|ty| ty.self_ty()), cx, None, None);
 
@@ -2317,7 +2317,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             }))
         }
 
-        ty::Alias(ty::AliasTy { kind: ty::Free { def_id }, args, .. }) => {
+        ty::Alias(_, ty::AliasTy { kind: ty::Free { def_id }, args, .. }) => {
             if cx.tcx.features().lazy_type_alias() {
                 // Free type alias `data` represents the `type X` in `type X = Y`. If we need `Y`,
                 // we need to use `type_of`.
@@ -2345,7 +2345,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             ty::BoundTyKind::Anon => panic!("unexpected anonymous bound type variable"),
         },
 
-        ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
+        ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
             // If it's already in the same alias, don't get an infinite loop.
             if cx.current_type_aliases.contains_key(&def_id) {
                 let path =

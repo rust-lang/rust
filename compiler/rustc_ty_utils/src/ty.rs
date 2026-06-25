@@ -144,7 +144,7 @@ fn adt_sizedness_constraint<'tcx>(
         return None;
     }
 
-    Some(ty::EarlyBinder::bind(constraint_ty))
+    Some(ty::EarlyBinder::bind(tcx, constraint_ty))
 }
 
 /// See `ParamEnv` struct definition for details.
@@ -223,7 +223,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
     }
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) {
-        if let ty::Alias(unshifted_alias_ty) = *ty.kind()
+        if let ty::Alias(_, unshifted_alias_ty) = *ty.kind()
             && let Some(unshifted_alias_ty) = unshifted_alias_ty.try_to_projection()
             && let Some(
                 ty::ImplTraitInTraitData::Trait { fn_def_id, .. }
@@ -387,7 +387,7 @@ fn impl_self_is_guaranteed_unsized<'tcx>(tcx: TyCtxt<'tcx>, impl_def_id: DefId) 
         | ty::CoroutineWitness(_, _)
         | ty::Never
         | ty::Tuple(_)
-        | ty::Alias(_)
+        | ty::Alias(_, _)
         | ty::Param(_)
         | ty::Bound(_, _)
         | ty::Placeholder(_)

@@ -107,7 +107,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
                 };
 
                 let mut body =
-                    EarlyBinder::bind(body.clone()).instantiate(tcx, args).skip_norm_wip();
+                    EarlyBinder::bind(tcx, body.clone()).instantiate(tcx, args).skip_norm_wip();
                 debug!("make_shim({:?}) = {:?}", shim, body);
 
                 pm::run_passes(

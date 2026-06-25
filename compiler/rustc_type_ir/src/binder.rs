@@ -369,11 +369,33 @@ generate!(
     impl<I: Interner, T> !TypeVisitable<I> for ty::EarlyBinder<I, T> {}
 );
 
-impl<I: Interner, T> EarlyBinder<I, T> {
-    pub fn bind(value: T) -> EarlyBinder<I, T> {
+impl<I: Interner, T: TypeFoldable<I>> EarlyBinder<I, T> {
+    pub fn bind(cx: I, value: T) -> EarlyBinder<I, T> {
+        // Instantiation will require normalization.
+        let value = ty::set_aliases_to_non_rigid(cx, value).skip_normalization();
         EarlyBinder { value, _tcx: PhantomData }
     }
+}
 
+impl<I: Interner, T: IntoIterator<Item: TypeVisitable<I>> + Clone> EarlyBinder<I, T> {
+    pub fn bind_iter(value: T) -> EarlyBinder<I, T> {
+        #[cfg(debug_assertions)]
+        {
+            value.clone().into_iter().for_each(|v| assert!(!v.has_rigid_aliases()));
+        }
+
+        EarlyBinder { value, _tcx: PhantomData }
+    }
+}
+
+impl<I: Interner, T: TypeVisitable<I>> EarlyBinder<I, T> {
+    pub fn bind_no_rigid_aliases(value: T) -> EarlyBinder<I, T> {
+        debug_assert!(!value.has_rigid_aliases());
+        EarlyBinder { value, _tcx: PhantomData }
+    }
+}
+
+impl<I: Interner, T> EarlyBinder<I, T> {
     pub fn as_ref(&self) -> EarlyBinder<I, &T> {
         EarlyBinder { value: &self.value, _tcx: PhantomData }
     }
@@ -523,6 +545,14 @@ pub struct IterInstantiatedCopied<'a, I: Interner, Iter: IntoIterator> {
     args: &'a [I::GenericArg],
 }
 
+impl<'a, I: Interner, Iter: IntoIterator<IntoIter: Clone>> Clone
+    for IterInstantiatedCopied<'a, I, Iter>
+{
+    fn clone(&self) -> IterInstantiatedCopied<'a, I, Iter> {
+        IterInstantiatedCopied { it: self.it.clone(), cx: self.cx, args: self.args }
+    }
+}
+
 impl<I: Interner, Iter: IntoIterator> Iterator for IterInstantiatedCopied<'_, I, Iter>
 where
     Iter::Item: Deref,
@@ -565,6 +595,12 @@ where
 pub struct IterIdentityCopied<I: Interner, Iter: IntoIterator> {
     it: Iter::IntoIter,
     _tcx: PhantomData<fn() -> I>,
+}
+
+impl<I: Interner, Iter: IntoIterator<IntoIter: Clone>> Clone for IterIdentityCopied<I, Iter> {
+    fn clone(&self) -> IterIdentityCopied<I, Iter> {
+        IterIdentityCopied { it: self.it.clone(), _tcx: self._tcx }
+    }
 }
 
 impl<I: Interner, Iter: IntoIterator> Iterator for IterIdentityCopied<I, Iter>

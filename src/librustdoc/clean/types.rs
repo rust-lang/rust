@@ -1770,7 +1770,7 @@ impl PrimitiveType {
             ty::Tuple(elems) if elems.is_empty() => Some(Self::Unit),
             ty::Tuple(_) => Some(Self::Tuple),
             ty::Adt(..)
-            | ty::Alias(..)
+            | ty::Alias(_, ..)
             | ty::Bound(..)
             | ty::Closure(..)
             | ty::Coroutine(..)
