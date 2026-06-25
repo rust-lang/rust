@@ -416,6 +416,7 @@ pub(crate) fn allowed_targets_applied(
 
     // ensure a consistent order
     target_strings.sort();
+    target_strings.dedup();
 
     // If there is now only 1 target left, show that as the only possible target
     let only_target = target_strings.len() == 1;
