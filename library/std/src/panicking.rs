@@ -415,6 +415,7 @@ pub mod panic_count {
     //
     // This also updates thread-local state to keep track of whether a panic
     // hook is currently executing.
+    #[must_use = "MustAbort may not be ignored"]
     pub fn increase(run_panic_hook: bool) -> Option<MustAbort> {
         let global_count = GLOBAL_PANIC_COUNT.fetch_add(1, Ordering::Relaxed);
         if global_count & ALWAYS_ABORT_FLAG != 0 {
@@ -843,7 +844,18 @@ fn panic_with_hook(
 /// It just forwards the payload to the panic runtime.
 #[cfg_attr(panic = "immediate-abort", inline)]
 pub fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
-    panic_count::increase(false);
+    if let Some(must_abort) = panic_count::increase(false) {
+        match must_abort {
+            panic_count::MustAbort::PanicInHook => {
+                rtprintpanic!("thread panicked while processing panic. aborting.\n");
+            }
+            panic_count::MustAbort::AlwaysAbort => {
+                rtprintpanic!("aborting due to panic\n");
+            }
+        }
+
+        crate::process::abort();
+    }
 
     struct RewrapBox(Box<dyn Any + Send>);
 
