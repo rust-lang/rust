@@ -139,6 +139,8 @@ pub impl(crate) const unsafe trait SliceIndex<T: ?Sized> {
     /// Returns a pointer to the output at this location, without
     /// performing any bounds checking.
     ///
+    /// # Safety
+    ///
     /// Calling this method with an out-of-bounds index or a dangling `slice` pointer
     /// is *[undefined behavior]* even if the resulting pointer is not used.
     ///
@@ -148,6 +150,8 @@ pub impl(crate) const unsafe trait SliceIndex<T: ?Sized> {
 
     /// Returns a mutable pointer to the output at this location, without
     /// performing any bounds checking.
+    ///
+    /// # Safety
     ///
     /// Calling this method with an out-of-bounds index or a dangling `slice` pointer
     /// is *[undefined behavior]* even if the resulting pointer is not used.
