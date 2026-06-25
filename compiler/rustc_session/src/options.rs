@@ -307,11 +307,11 @@ macro_rules! setter_for {
 /// hand-written parsers for parsing specific types of values in this module.
 macro_rules! options {
     (
-        $struct_name:ident,
-        $stat:ident,
-        $optmod:ident,
-        $prefix:expr,
-        $outputname:expr,
+        $struct_name:ident, // e.g. `UnstableOptions`
+        $opt_descs_var:ident, // e.g. `Z_OPTIONS`
+        $opt_mod_name:ident, // e.g. `dbopts`
+        $prefix:expr, // e.g. `-Z`
+        $group_name:expr, // e.g. "unstable"
 
         $(
             $(#[$attr:meta])*
@@ -351,7 +351,8 @@ macro_rules! options {
                 matches: &getopts::Matches,
                 collected_options: &mut CollectedOptions,
             ) -> $struct_name {
-                build_options(early_dcx, matches, collected_options, $stat, $prefix, $outputname)
+                build_options(
+                    early_dcx, matches, collected_options, $opt_descs_var, $prefix, $group_name)
             }
 
             fn dep_tracking_hash(
@@ -380,11 +381,11 @@ macro_rules! options {
             }
         }
 
-        pub const $stat: OptionDescrs<$struct_name> = &[
+        pub const $opt_descs_var: OptionDescrs<$struct_name> = &[
             $(
                 OptionDesc {
                     name: stringify!($opt),
-                    setter: $optmod::$opt,
+                    setter: $opt_mod_name::$opt,
                     type_desc: desc::$parse,
                     desc: $desc,
                     removed: None $( .or(Some(RemovedOption::$removed)) )?,
@@ -395,7 +396,7 @@ macro_rules! options {
             )*
         ];
 
-        mod $optmod {
+        mod $opt_mod_name {
             $(
                 setter_for!($opt, $struct_name, $parse);
             )*
