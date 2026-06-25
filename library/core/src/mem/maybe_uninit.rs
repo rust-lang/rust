@@ -1,7 +1,7 @@
 use crate::any::type_name;
 use crate::clone::TrivialClone;
 use crate::marker::Destruct;
-use crate::mem::ManuallyDrop;
+use crate::mem::{ManuallyDrop, transmute_neo};
 use crate::{fmt, intrinsics, ptr, slice};
 
 /// A wrapper type to construct uninitialized instances of `T`.
@@ -724,9 +724,9 @@ impl<T> MaybeUninit<T> {
         // This also means that `self` must be a `value` variant.
         unsafe {
             intrinsics::assert_inhabited::<T>();
-            // We do this via a raw ptr read instead of `ManuallyDrop::into_inner` so that there's
+            // We do this via a transmute instead of `ManuallyDrop::into_inner` so that there's
             // no trace of `ManuallyDrop` in Miri's error messages here.
-            (&raw const self.value).cast::<T>().read()
+            transmute_neo(self)
         }
     }
 
