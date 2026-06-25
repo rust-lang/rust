@@ -5,19 +5,16 @@
 //!
 //! For debugging, fast paths can be disabled using `-Zdisable-fast-paths`.
 
-use rustc_type_ir::InferCtxtLike;
-use rustc_type_ir::Interner;
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::solve::Goal;
 use rustc_type_ir::solve::{
-    Certainty, ComputeGoalFastPathOutcome, GoalStalledOn, GoalStalledOnReason, SucceededInErased,
+    Certainty, ComputeGoalFastPathOutcome, Goal, GoalStalledOn, GoalStalledOnReason,
+    SucceededInErased,
 };
+use rustc_type_ir::{InferCtxtLike, Interner};
 
 use crate::delegate::SolverDelegate;
-use crate::solve::GoalEvaluation;
-use crate::solve::HasChanged;
-use crate::solve::eval_ctxt::RerunDecision;
-use crate::solve::eval_ctxt::should_rerun_after_erased_canonicalization;
+use crate::solve::eval_ctxt::{RerunDecision, should_rerun_after_erased_canonicalization};
+use crate::solve::{GoalEvaluation, HasChanged};
 
 #[derive(Debug, Clone, Copy)]
 pub(super) enum RerunStalled {
@@ -29,6 +26,7 @@ pub(super) enum RerunStalled {
 /// args have changed. This is a cheap way to determine that if we were to rerun this goal now,
 /// it will remain stalled since it'll canonicalize the same way and evaluation is pure.
 /// Therefore, we can skip this rerun
+#[inline]
 pub(super) fn rerunning_stalled_goal_may_make_progress<D, I>(
     delegate: &D,
     stalled_on: Option<&GoalStalledOn<I>>,
@@ -106,9 +104,23 @@ where
     WontMakeProgress(stalled_certainty)
 }
 
+#[cold]
+#[inline(never)]
+pub(super) fn compute_goal_fast_path_cold<D, I>(
+    delegate: &D,
+    goal: Goal<I, I::Predicate>,
+    origin_span: I::Span,
+) -> Option<GoalEvaluation<I>>
+where
+    D: SolverDelegate<Interner = I>,
+    I: Interner,
+{
+    compute_goal_fast_path(delegate, goal, origin_span)
+}
+
 /// This is a fast path optimization:
 /// See the docs on [`ComputeGoalFastPathOutcome`]
-pub(super) fn compute_goal_fast_path<D, I>(
+pub fn compute_goal_fast_path<D, I>(
     delegate: &D,
     goal: Goal<I, I::Predicate>,
     origin_span: I::Span,
