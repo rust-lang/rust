@@ -7,6 +7,7 @@ use rustc_infer::traits::{
     FromSolverError, PredicateObligation, PredicateObligations, TraitEngine,
 };
 use rustc_middle::ty::{self, TyCtxt, TyVid, TypeVisitableExt, TypingMode};
+use rustc_next_trait_solver::solve::fast_path::compute_goal_fast_path;
 use rustc_next_trait_solver::solve::{
     GoalEvaluation, GoalStalledOn, HasChanged, MaybeInfo, SolverDelegateEvalExt as _,
     StalledOnCoroutines,
@@ -184,7 +185,22 @@ where
         obligation: PredicateObligation<'tcx>,
     ) {
         assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
-        self.obligations.register(obligation, None);
+
+        let delegate = <&SolverDelegate<'tcx>>::from(infcx);
+        if let Some(GoalEvaluation { goal: _, certainty, has_changed: _, stalled_on }) =
+            compute_goal_fast_path(delegate, obligation.as_goal(), obligation.cause.span)
+        {
+            // If we can take the fast path, don't even bother adding the goal to obligations,
+            // or if `Certainty::Maybe`, add it with precise stalled_on information.
+            match certainty {
+                Certainty::Yes => {}
+                Certainty::Maybe(_) => {
+                    self.obligations.register(obligation, stalled_on);
+                }
+            }
+        } else {
+            self.obligations.register(obligation, None);
+        }
     }
 
     fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
