@@ -856,8 +856,8 @@ fn test_readdir() {
         assert!(!dirp.is_null());
         let mut entries = Vec::new();
         loop {
-            cfg_if::cfg_if! {
-                if #[cfg(target_os = "macos")] {
+            cfg_select! {
+                target_os = "macos" => {
                     // On macos we only support readdir_r as that's what std uses there.
                     use std::mem::MaybeUninit;
                     use libc::dirent;
@@ -866,7 +866,8 @@ fn test_readdir() {
                     let ret = libc::readdir_r(dirp, entry.as_mut_ptr(), &mut result);
                     assert_eq!(ret, 0);
                     let entry_ptr = result;
-                } else {
+                }
+                _ => {
                     let entry_ptr = libc::readdir(dirp);
                 }
             }
