@@ -2,7 +2,7 @@
 //@ aux-crate:to_reuse_functions=to-reuse-functions.rs
 //@ pretty-mode:hir
 //@ pretty-compare-only
-//@ pp-exact:delegation-inherit-attributes.pp
+//@ pp-exact:inherit-attributes.pp
 
 #![allow(incomplete_features)]
 #![feature(fn_delegation)]

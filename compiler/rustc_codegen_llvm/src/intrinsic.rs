@@ -114,17 +114,17 @@ fn call_simple_intrinsic<'ll, 'tcx>(
         sym::fmuladdf64 => ("llvm.fmuladd", &[bx.type_f64()]),
         sym::fmuladdf128 => ("llvm.fmuladd", &[bx.type_f128()]),
 
+        sym::minimumf16 => ("llvm.minimum", &[bx.type_f16()]),
+        sym::minimumf32 => ("llvm.minimum", &[bx.type_f32()]),
         // FIXME: LLVM currently mis-compile those intrinsics, re-enable them
         // when llvm/llvm-project#{139380,139381,140445} are fixed.
-        //sym::minimumf16 => ("llvm.minimum", &[bx.type_f16()]),
-        //sym::minimumf32 => ("llvm.minimum", &[bx.type_f32()]),
         //sym::minimumf64 => ("llvm.minimum", &[bx.type_f64()]),
         //sym::minimumf128 => ("llvm.minimum", &[cx.type_f128()]),
         //
+        sym::maximumf16 => ("llvm.maximum", &[bx.type_f16()]),
+        sym::maximumf32 => ("llvm.maximum", &[bx.type_f32()]),
         // FIXME: LLVM currently mis-compile those intrinsics, re-enable them
         // when llvm/llvm-project#{139380,139381,140445} are fixed.
-        //sym::maximumf16 => ("llvm.maximum", &[bx.type_f16()]),
-        //sym::maximumf32 => ("llvm.maximum", &[bx.type_f32()]),
         //sym::maximumf64 => ("llvm.maximum", &[bx.type_f64()]),
         //sym::maximumf128 => ("llvm.maximum", &[cx.type_f128()]),
         //

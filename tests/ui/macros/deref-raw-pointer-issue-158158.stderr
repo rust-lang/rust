@@ -1,0 +1,14 @@
+error[E0609]: no field `val` on type `*mut Demo`
+  --> $DIR/deref-raw-pointer-issue-158158.rs:13:21
+   |
+LL |         as_ptr!($d).val
+   |                     ^^^ unknown field
+...
+LL |     let _ = get_value!(d);
+   |             ------------- in this macro invocation
+   |
+   = note: this error originates in the macro `get_value` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0609`.

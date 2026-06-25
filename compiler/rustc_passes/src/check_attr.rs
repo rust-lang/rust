@@ -24,8 +24,9 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
-    self as hir, Attribute, CRATE_HIR_ID, Constness, FnSig, ForeignItem, GenericParamKind, HirId,
-    Item, ItemKind, MethodKind, Node, ParamName, Target, TraitItem, find_attr,
+    self as hir, Attribute, CRATE_HIR_ID, Constness, FnSig, ForeignItem, GenericParam,
+    GenericParamKind, HirId, Item, ItemKind, MethodKind, Node, ParamName, Target, TraitItem,
+    find_attr,
 };
 use rustc_macros::Diagnostic;
 use rustc_middle::hir::nested_filter;
@@ -1121,12 +1122,18 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
     /// Checks if `#[may_dangle]` is applied to a lifetime or type generic parameter in `Drop` impl.
     fn check_may_dangle(&self, hir_id: HirId, attr_span: Span) {
-        if let hir::Node::GenericParam(param) = self.tcx.hir_node(hir_id)
-            && matches!(
-                param.kind,
-                hir::GenericParamKind::Lifetime { .. } | hir::GenericParamKind::Type { .. }
-            )
-            && matches!(param.source, hir::GenericParamSource::Generics)
+        let hir::Node::GenericParam(
+            param @ GenericParam {
+                kind: hir::GenericParamKind::Lifetime { .. } | hir::GenericParamKind::Type { .. },
+                ..
+            },
+        ) = self.tcx.hir_node(hir_id)
+        else {
+            self.dcx().delayed_bug("Checked in attr parser");
+            return;
+        };
+
+        if matches!(param.source, hir::GenericParamSource::Generics)
             && let parent_hir_id = self.tcx.parent_hir_id(hir_id)
             && let hir::Node::Item(item) = self.tcx.hir_node(parent_hir_id)
             && let hir::ItemKind::Impl(impl_) = item.kind
