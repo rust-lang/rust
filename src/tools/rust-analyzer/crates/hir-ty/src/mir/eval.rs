@@ -1935,25 +1935,37 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                 Ok(Interval::new(addr, 4))
             }
             TyKind::Int(int_ty) => {
-                let size = int_ty.bit_width().unwrap_or(self.ptr_size() as u64);
-                let value = valtree.inner().to_leaf().to_int(Size::from_bytes(size));
-                let addr = self.heap_allocate(size as usize, size as usize)?;
-                self.write_memory(addr, &value.to_le_bytes()[..size as usize])?;
-                Ok(Interval::new(addr, size as usize))
+                let size = int_ty
+                    .bit_width()
+                    .map(Size::from_bits)
+                    .unwrap_or_else(|| Size::from_bytes(self.ptr_size() as u64));
+                let bytes = size.bytes_usize();
+
+                let value = valtree.inner().to_leaf().to_int(size);
+                let addr = self.heap_allocate(bytes, bytes)?;
+                self.write_memory(addr, &value.to_le_bytes()[..bytes])?;
+                Ok(Interval::new(addr, bytes))
             }
             TyKind::Uint(uint_ty) => {
-                let size = uint_ty.bit_width().unwrap_or(self.ptr_size() as u64);
-                let value = valtree.inner().to_leaf().to_uint(Size::from_bytes(size));
-                let addr = self.heap_allocate(size as usize, size as usize)?;
-                self.write_memory(addr, &value.to_le_bytes()[..size as usize])?;
-                Ok(Interval::new(addr, size as usize))
+                let size = uint_ty
+                    .bit_width()
+                    .map(Size::from_bits)
+                    .unwrap_or_else(|| Size::from_bytes(self.ptr_size() as u64));
+                let bytes = size.bytes_usize();
+
+                let value = valtree.inner().to_leaf().to_uint(size);
+                let addr = self.heap_allocate(bytes, bytes)?;
+                self.write_memory(addr, &value.to_le_bytes()[..bytes])?;
+                Ok(Interval::new(addr, bytes))
             }
             TyKind::Float(float_ty) => {
-                let size = float_ty.bit_width();
-                let value = valtree.inner().to_leaf().to_uint(Size::from_bytes(size));
-                let addr = self.heap_allocate(size as usize, size as usize)?;
-                self.write_memory(addr, &value.to_le_bytes()[..size as usize])?;
-                Ok(Interval::new(addr, size as usize))
+                let size = Size::from_bits(float_ty.bit_width());
+                let bytes = size.bytes_usize();
+
+                let value = valtree.inner().to_leaf().to_uint(size);
+                let addr = self.heap_allocate(bytes, bytes)?;
+                self.write_memory(addr, &value.to_le_bytes()[..bytes])?;
+                Ok(Interval::new(addr, bytes))
             }
             TyKind::RawPtr(..) => {
                 let size = self.ptr_size();
@@ -1995,15 +2007,13 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                             _ => not_supported!("unsupported const"),
                         })
                         .collect::<Result<'_, Vec<_>>>()?;
+                    let item_size = item_layout.size.bytes_usize();
                     let items_addr = self.heap_allocate(
-                        items.len() * (item_layout.size.bits() as usize),
-                        item_layout.align.bits_usize(),
+                        items.len() * item_size,
+                        item_layout.align.bytes() as usize,
                     )?;
                     for (i, item) in items.iter().enumerate() {
-                        self.copy_from_interval(
-                            items_addr.offset(i * (item_layout.size.bits() as usize)),
-                            *item,
-                        )?;
+                        self.copy_from_interval(items_addr.offset(i * item_size), *item)?;
                     }
                     let ref_addr = self.heap_allocate(self.ptr_size() * 2, self.ptr_size())?;
                     self.write_memory(ref_addr, &items_addr.to_bytes())?;

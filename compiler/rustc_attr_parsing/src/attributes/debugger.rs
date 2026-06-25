@@ -7,7 +7,7 @@ pub(crate) struct DebuggerVisualizerParser;
 
 impl CombineAttributeParser for DebuggerVisualizerParser {
     const PATH: &[Symbol] = &[sym::debugger_visualizer];
-    const ALLOWED_TARGETS: AllowedTargets =
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowList(&[Allow(Target::Mod), Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(
         List: &[r#"natvis_file = "...", gdb_script_file = "...""#],

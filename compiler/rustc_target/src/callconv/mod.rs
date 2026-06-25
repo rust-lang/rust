@@ -827,6 +827,9 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                             ArgAttribute::default()
                         };
                         arg.cast_to_with_attrs(Reg { kind: RegKind::Integer, size }, attr.into());
+                    } else if self.conv == CanonAbi::RustTail {
+                        assert!(arg.layout.is_sized(), "extern \"tail\" arguments must be sized");
+                        arg.pass_by_stack_offset(None);
                     }
                 }
 

@@ -612,7 +612,7 @@ fn map_fresult(fresult: vex_sdk::FRESULT) -> io::Result<()> {
             Err(io::const_error!(io::ErrorKind::OutOfMemory, "not enough memory for the operation"))
         }
         vex_sdk::FRESULT::FR_TOO_MANY_OPEN_FILES => Err(io::const_error!(
-            io::ErrorKind::Uncategorized,
+            io::ErrorKind::TooManyOpenFiles,
             "maximum number of open files has been reached",
         )),
         vex_sdk::FRESULT::FR_INVALID_PARAMETER => {

@@ -688,3 +688,31 @@ fn foo() {
         }"#]],
     );
 }
+
+#[test]
+fn foo() {
+    pretty_print(
+        r#"
+macro_rules! foo {
+    () => {
+        1
+    };
+}
+
+fn foo() -> i64 {
+    #[cfg(true)]
+    {
+        5
+    }
+    #[cfg(false)]
+    foo!()
+}
+    "#,
+        expect![[r#"
+            fn foo() {
+                {
+                    5
+                }
+            }"#]],
+    );
+}

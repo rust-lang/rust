@@ -37,7 +37,7 @@ impl AttributeParser for OnConstParser {
 
     // "Allowed" on all targets; noop on anything but non-const trait impls;
     // this linted on in parser.
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
         // FIXME(mejrs) no constness field on `Target`,
         // so non-constness is still checked in check_attr.rs
         Allow(Target::Impl { of_trait: true }),
