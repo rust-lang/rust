@@ -548,7 +548,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 _ => bug!("C-variadic function must have a `VaList` place"),
             }
         }
-
         if self.fn_abi.ret.layout.is_uninhabited() {
             // Functions with uninhabited return values are marked `noreturn`,
             // so we should make sure that we never actually do.
@@ -560,7 +559,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx.unreachable();
             return;
         }
-
         let llval = match &self.fn_abi.ret.mode {
             PassMode::Ignore | PassMode::Indirect { .. } => {
                 bx.ret_void();
@@ -604,10 +602,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 };
 
                 if self.fn_abi.conv == CanonAbi::Arm(ArmCall::CCmseNonSecureEntry) {
-                    // The return value of an `extern "cmse-nonsecure-entry"` function crosses the secure
-                    // boundary. Zero padding and uninitialized bytes so information does not leak.
+                    // The return value of an `extern "cmse-nonsecure-entry"` function crosses the
+                    // secure boundary. Zero padding bytes so information does not leak.
+                    //
+                    // This only zeroes "guaranteed" padding. There may be more bytes that are
+                    // padding for some but not all variants of this type; those are not zeroed.
+                    //
+                    // Returning a value with value-dependent padding will instead trigger a lint.
                     let ret_layout = self.fn_abi.ret.layout;
-                    let uninit_ranges = ret_layout.uninit_ranges(bx.cx());
+                    let uninit_ranges = ret_layout.padding_ranges(bx.cx());
                     self.zero_byte_ranges(bx, llslot, ret_layout.size, &uninit_ranges);
                 }
 
@@ -1874,7 +1877,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         bx,
                         llscratch,
                         Size::from_bytes(copy_bytes),
-                        &arg.layout.uninit_ranges(bx.cx()),
+                        &arg.layout.padding_ranges(bx.cx()),
                     );
                 }
 
