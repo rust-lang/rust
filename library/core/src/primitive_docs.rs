@@ -72,10 +72,10 @@ mod prim_bool {}
 ///
 /// For example, the [`exit`] function is defined as returning `!`, to signify that it doesn't
 /// return normally and exits the process instead. Thus, any code following a call to [`exit`] is
-/// unreachable. (`panic!` works the same way)
+/// unreachable. ([`panic!`] works the same way.)
 ///
 /// Similarly, [`return`], [`break`], [`continue`], [`become`], and infinite [`loop`] expressions
-/// all have type `!`, as the code following them in unreachable.
+/// all have type `!`, as the code following them is unreachable.
 ///
 /// ```
 /// #![feature(never_type)]
@@ -95,7 +95,7 @@ mod prim_bool {}
 /// [`loop`]: ../std/keyword.loop.html
 /// [`exit`]: ../std/process/fn.exit.html
 ///
-/// # Never to any coercion
+/// # Never-to-any coercion
 ///
 /// The never type can be coerced to any type:
 ///
@@ -150,7 +150,7 @@ mod prim_bool {}
 /// }
 /// ```
 ///
-/// When implementing this trait for [`String`] we need to pick a type for [`Err`][str::FromStr::Err]. And since
+/// When implementing this trait for [`String`], we need to pick a type for [`Err`][str::FromStr::Err]. And since
 /// converting a string into a string will never result in an error, we would like to guarantee to
 /// the caller that we never return [`Err(_)`][Err].
 ///
@@ -158,7 +158,7 @@ mod prim_bool {}
 /// variant of a [`Result<T, !>`] cannot be created either. Thus the caller knows that
 /// [`Result<T, !>`] is always [`Ok(_)`].
 ///
-/// Moreover, compiler can recognise that the [`Err`] variant cannot be created, and doesn't
+/// Moreover, the compiler can recognise that the [`Err`] variant cannot be created, and doesn't
 /// require you to handle it:
 ///
 /// ```
