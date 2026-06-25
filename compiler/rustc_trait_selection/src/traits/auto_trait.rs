@@ -33,6 +33,7 @@ pub struct RegionDeps<'tcx> {
 }
 
 pub enum AutoTraitResult<A> {
+    NoImpl,
     ExplicitImpl,
     PositiveImpl(A),
     NegativeImpl,
@@ -79,6 +80,15 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         mut auto_trait_callback: impl FnMut(AutoTraitInfo<'tcx>) -> A,
     ) -> AutoTraitResult<A> {
         let tcx = self.tcx;
+
+        if tcx.next_trait_solver_globally() {
+            return self.find_auto_trait_generics_next_solver(
+                ty,
+                typing_env,
+                trait_did,
+                auto_trait_callback,
+            );
+        }
 
         let trait_ref = ty::TraitRef::new(tcx, trait_did, [ty]);
 
@@ -172,6 +182,80 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
         let info = AutoTraitInfo { full_user_env, region_data, vid_to_region };
 
+        AutoTraitResult::PositiveImpl(auto_trait_callback(info))
+    }
+
+    fn find_auto_trait_generics_next_solver<A>(
+        &self,
+        ty: Ty<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+        trait_did: DefId,
+        mut auto_trait_callback: impl FnMut(AutoTraitInfo<'tcx>) -> A,
+    ) -> AutoTraitResult<A> {
+        // When the new solver is enabled globally we keep things deliberately
+        // simple. The precise auto-trait synthesis depends on old-solver
+        // internals, so here we only synthesize a simple field-based auto-trait
+        // impl for ADTs.
+        //
+        // If the self type is not an ADT we return `NoImpl` instead of trying
+        // to do anything fancy. If proving the coarse impl gives a true error,
+        // return `NegativeImpl`. If it is otherwise non-definitive, return
+        // `NoImpl`. This keeps rustdoc from ICEing while
+        // `-Znext-solver=globally` is used for testing, even if the generated
+        // synthetic impls are less precise.
+        let tcx = self.tcx;
+        let trait_ref = ty::TraitRef::new(tcx, trait_did, [ty]);
+
+        let (infcx, orig_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
+        let mut selcx = SelectionContext::new(&infcx);
+        for polarity in [ty::PredicatePolarity::Positive, ty::PredicatePolarity::Negative] {
+            let result = selcx.select(&Obligation::new(
+                tcx,
+                ObligationCause::dummy(),
+                orig_env,
+                ty::TraitPredicate { trait_ref, polarity },
+            ));
+            if let Ok(Some(ImplSource::UserDefined(_))) = result {
+                debug!("find_auto_trait_generics({trait_ref:?}): manual impl found, bailing out");
+                return AutoTraitResult::ExplicitImpl;
+            }
+        }
+
+        let ty::Adt(adt_def, args) = *ty.kind() else {
+            return AutoTraitResult::NoImpl;
+        };
+
+        let field_clauses = adt_def
+            .all_fields()
+            .map(|field| field.ty(tcx, args).skip_norm_wip())
+            .filter(|field_ty| field_ty.has_non_region_param())
+            .map(|field_ty| {
+                ty::TraitPredicate {
+                    trait_ref: ty::TraitRef::new(tcx, trait_did, [field_ty]),
+                    polarity: ty::PredicatePolarity::Positive,
+                }
+                .upcast(tcx)
+            })
+            .collect::<Vec<ty::Clause<'tcx>>>();
+        let full_user_env = ty::ParamEnv::new(
+            tcx.mk_clauses_from_iter(orig_env.caller_bounds().iter().chain(field_clauses)),
+        );
+
+        let ocx = ObligationCtxt::new(&infcx);
+        ocx.register_bound(ObligationCause::dummy(), full_user_env, ty, trait_did);
+        let errors = ocx.evaluate_obligations_error_on_ambiguity();
+        if errors.iter().any(|error| error.is_true_error()) {
+            return AutoTraitResult::NegativeImpl;
+        }
+        if !errors.is_empty() {
+            return AutoTraitResult::NoImpl;
+        }
+
+        let info = AutoTraitInfo {
+            full_user_env,
+            region_data: RegionConstraintData::default(),
+            vid_to_region: FxIndexMap::default(),
+        };
         AutoTraitResult::PositiveImpl(auto_trait_callback(info))
     }
 
