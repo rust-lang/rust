@@ -879,6 +879,13 @@ impl<'tcx> TyCtxt<'tcx> {
         self.hir_opt_delegation_info(delegation_id).expect("processing delegation")
     }
 
+    pub fn hir_is_delegation_child_segment(self, segment: &PathSegment<'_>) -> bool {
+        let parent_def = self.hir_get_parent_item(segment.hir_id).def_id;
+
+        self.hir_opt_delegation_info(parent_def)
+            .is_some_and(|info| info.child_seg_id == segment.hir_id)
+    }
+
     #[inline]
     fn hir_opt_ident(self, id: HirId) -> Option<Ident> {
         match self.hir_node(id) {

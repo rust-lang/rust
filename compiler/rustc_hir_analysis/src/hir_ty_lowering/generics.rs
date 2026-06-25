@@ -6,7 +6,7 @@ use rustc_errors::{
 };
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, DelegationInfo, GenericArg};
+use rustc_hir::{self as hir, GenericArg};
 use rustc_middle::ty::{
     self, GenericArgsRef, GenericParamDef, GenericParamDefKind, IsSuggestable, Ty,
 };
@@ -431,15 +431,12 @@ pub(crate) fn check_generic_arg_count(
     }
 
     let tcx = cx.tcx();
-    let parent_def = tcx.hir_get_parent_item(seg.hir_id).def_id;
 
     // Suppress this warning for delegations as it is compiler generated and lifetimes are
     // propagated while late-bound lifetimes may be present.
-    let explicit_late_bound = match tcx.hir_opt_delegation_info(parent_def) {
-        Some(DelegationInfo { child_seg_id, .. }) if seg.hir_id == *child_seg_id => {
-            ExplicitLateBound::No
-        }
-        _ => prohibit_explicit_late_bound_lifetimes(cx, gen_params, gen_args, gen_pos),
+    let explicit_late_bound = match tcx.hir_is_delegation_child_segment(seg) {
+        true => ExplicitLateBound::No,
+        false => prohibit_explicit_late_bound_lifetimes(cx, gen_params, gen_args, gen_pos),
     };
 
     let mut invalid_args = vec![];
