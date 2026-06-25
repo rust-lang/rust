@@ -1649,7 +1649,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 from = field_ty;
                 value = field_values[field_idx.as_usize()];
                 was_updated_this_iteration = true;
-                if field_ty == to {
+                if from == to {
                     return Some(value);
                 }
             }
