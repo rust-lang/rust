@@ -2,7 +2,10 @@ error: implementing `CoerceShared` requires every target field to have a corresp
   --> $DIR/coerce-shared-field-relations.rs:26:5
    |
 LL |     target: &'a T,
-   |     ^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^ target field `target` has no corresponding source field
+...
+LL | impl<'a, T> CoerceShared<RenamedRef<'a, T>> for RenamedMut<'a, T> {}
+   |                                                 ----------------- source type `RenamedMut` does not contain field `target`
 
 error: implementing `CoerceShared` requires corresponding fields to match, be reborrowable with `CoerceShared`, or coerce a mutable reference field to a shared reference field
   --> $DIR/coerce-shared-field-relations.rs:40:5
@@ -12,6 +15,9 @@ LL |     value: &'a mut T,
 ...
 LL |     value: &'a u32,
    |     ^^^^^^^^^^^^^^ target field `value` has type `&'a u32`
+...
+LL | impl<'a, T> CoerceShared<BadRef<'a, T>> for BadMut<'a, T> {}
+   | ------------------------------------------------------------ required by this `CoerceShared` implementation
 
 error: aborting due to 2 previous errors
 

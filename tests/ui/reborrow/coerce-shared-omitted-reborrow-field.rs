@@ -18,7 +18,6 @@ impl<'a, T> Reborrow for OmitMut<'a, T> {}
 
 struct OmitRef<'a, T> {
     value: &'a T,
-    //~^ ERROR
 }
 
 impl<'a, T> Clone for OmitRef<'a, T> {
@@ -30,6 +29,7 @@ impl<'a, T> Clone for OmitRef<'a, T> {
 impl<'a, T> Copy for OmitRef<'a, T> {}
 
 impl<'a, T> CoerceShared<OmitRef<'a, T>> for OmitMut<'a, T> {}
+//~^ ERROR
 
 fn get<'a>(value: OmitRef<'a, i32>) -> &'a i32 {
     value.value

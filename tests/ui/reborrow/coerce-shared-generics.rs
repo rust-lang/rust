@@ -13,7 +13,6 @@ impl<'a, T, U: Copy, const N: usize> Reborrow for BufferMut<'a, T, U, N> {}
 struct BufferRef<'a, T, U, const N: usize> {
     data: &'a [T; N],
     meta: U,
-    //~^ ERROR
 }
 
 impl<'a, T, U: Copy, const N: usize> Clone for BufferRef<'a, T, U, N> {
@@ -25,6 +24,7 @@ impl<'a, T, U: Copy, const N: usize> Clone for BufferRef<'a, T, U, N> {
 impl<'a, T, U: Copy, const N: usize> Copy for BufferRef<'a, T, U, N> {}
 
 impl<'a, T, U: Copy, const N: usize> CoerceShared<BufferRef<'a, T, U, N>>
+//~^ ERROR
     for BufferMut<'a, T, U, N>
 {
 }

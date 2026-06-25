@@ -20,11 +20,11 @@ struct MyMut<'a> {
 struct MyRef<'a> {
     x: &'a (),
     y: <i32 as Trait>::Assoc,
-    //~^ ERROR
 }
 
 impl Reborrow for MyMut<'_> {}
 
 impl<'a> CoerceShared<MyRef<'a>> for MyMut<'a> {}
+//~^ ERROR
 
 fn main() {}

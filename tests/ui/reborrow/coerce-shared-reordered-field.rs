@@ -14,10 +14,10 @@ impl<'a> Reborrow for ReorderMut<'a> {}
 struct ReorderRef<'a> {
     b: &'a u16,
     a: &'a u8,
-    //~^ ERROR
 }
 
 impl<'a> CoerceShared<ReorderRef<'a>> for ReorderMut<'a> {}
+//~^ ERROR
 
 fn read(value: ReorderRef<'_>) -> (u16, u8) {
     (*value.b, *value.a)

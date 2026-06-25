@@ -6,6 +6,9 @@ LL |     value: &'a mut T,
 ...
 LL |     value: &'a U,
    |     ^^^^^^^^^^^^ target field `value` has type `&'a U`
+...
+LL | impl<'a, T, U> CoerceShared<GenericRef<'a, T, U>> for GenericMut<'a, T, U> {}
+   | ----------------------------------------------------------------------------- required by this `CoerceShared` implementation
 
 error: aborting due to 1 previous error
 

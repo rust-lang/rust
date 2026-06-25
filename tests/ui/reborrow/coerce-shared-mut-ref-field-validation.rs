@@ -35,9 +35,22 @@ impl Reborrow for InnerLifetimeMut<'_> {}
 #[derive(Copy, Clone)]
 struct InnerLifetimeRef<'a> {
     value: &'a &'a (),
-    //~^ ERROR
 }
 
 impl<'a> CoerceShared<InnerLifetimeRef<'a>> for InnerLifetimeMut<'a> {}
+
+struct RejectedInnerLifetimeMut<'a> {
+    value: &'a mut &'a (),
+}
+
+impl Reborrow for RejectedInnerLifetimeMut<'_> {}
+
+#[derive(Copy, Clone)]
+struct RejectedInnerLifetimeRef<'a> {
+    value: &'a &'static (),
+    //~^ ERROR
+}
+
+impl<'a> CoerceShared<RejectedInnerLifetimeRef<'a>> for RejectedInnerLifetimeMut<'a> {}
 
 fn main() {}

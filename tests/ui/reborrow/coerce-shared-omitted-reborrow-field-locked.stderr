@@ -1,11 +1,14 @@
-error: implementing `CoerceShared` requires corresponding fields to match, be reborrowable with `CoerceShared`, or coerce a mutable reference field to a shared reference field
-  --> $DIR/coerce-shared-omitted-reborrow-field-locked.rs:19:5
+error: implementing `CoerceShared` currently requires source and target to have at most one non-ZST reborrow data field
+  --> $DIR/coerce-shared-omitted-reborrow-field-locked.rs:30:1
    |
-LL |     extra: ExtraMut<'a, T>,
-   |     ---------------------- source field `extra` has type `ExtraMut<'a, T>`
-...
-LL |     value: &'a T,
-   |     ^^^^^^^^^^^^ target field `value` has type `&'a T`
+LL | impl<'a, T> CoerceShared<OmitRef<'a, T>> for OmitMut<'a, T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^--------------^^^^^^--------------^^^
+   | |                        |                   |
+   | |                        |                   source type has 2 non-ZST reborrow data fields
+   | |                        target type has 1 non-ZST reborrow data fields
+   | in this `CoerceShared` implementation
+   |
+   = note: this is a temporary restriction until `CoerceShared` lowering supports non-trivially memcpy-compatible field layouts
 
 error[E0506]: cannot assign to `*wrapped.extra.value` because it is borrowed
   --> $DIR/coerce-shared-omitted-reborrow-field-locked.rs:49:5

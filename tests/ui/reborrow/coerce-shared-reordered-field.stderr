@@ -1,11 +1,14 @@
-error: implementing `CoerceShared` requires corresponding fields to match, be reborrowable with `CoerceShared`, or coerce a mutable reference field to a shared reference field
-  --> $DIR/coerce-shared-reordered-field.rs:16:5
+error: implementing `CoerceShared` currently requires source and target to have at most one non-ZST reborrow data field
+  --> $DIR/coerce-shared-reordered-field.rs:19:1
    |
-LL |     b: &'a mut u16,
-   |     -------------- source field `b` has type `&'a mut u16`
-...
-LL |     a: &'a u8,
-   |     ^^^^^^^^^ target field `a` has type `&'a u8`
+LL | impl<'a> CoerceShared<ReorderRef<'a>> for ReorderMut<'a> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^--------------^^^^^^--------------^^^
+   | |                     |                   |
+   | |                     |                   source type has 2 non-ZST reborrow data fields
+   | |                     target type has 2 non-ZST reborrow data fields
+   | in this `CoerceShared` implementation
+   |
+   = note: this is a temporary restriction until `CoerceShared` lowering supports non-trivially memcpy-compatible field layouts
 
 error: aborting due to 1 previous error
 

@@ -600,6 +600,218 @@ fn assert_field_type_is_reborrow<'tcx>(
     if !errors.is_empty() { Err(errors) } else { Ok(()) }
 }
 
+#[derive(Clone, Copy)]
+struct CoerceSharedDiagnosticContext {
+    impl_span: Span,
+    trait_span: Span,
+    source_ty_span: Span,
+    target_ty_span: Span,
+    source_lifetime_span: Option<Span>,
+    target_lifetime_span: Option<Span>,
+}
+
+#[derive(Clone, Copy)]
+enum CoerceSharedTypeRole {
+    Source,
+    Target,
+}
+
+impl CoerceSharedTypeRole {
+    fn as_str(self) -> &'static str {
+        match self {
+            CoerceSharedTypeRole::Source => "source",
+            CoerceSharedTypeRole::Target => "target",
+        }
+    }
+
+    fn type_span(self, diagnostic_context: CoerceSharedDiagnosticContext) -> Span {
+        match self {
+            CoerceSharedTypeRole::Source => diagnostic_context.source_ty_span,
+            CoerceSharedTypeRole::Target => diagnostic_context.target_ty_span,
+        }
+    }
+}
+
+fn coerce_shared_diagnostic_context(
+    tcx: TyCtxt<'_>,
+    impl_did: LocalDefId,
+) -> CoerceSharedDiagnosticContext {
+    let item = tcx.hir_expect_item(impl_did);
+    let fallback_span = tcx.def_span(impl_did);
+    let mut diagnostic_context = CoerceSharedDiagnosticContext {
+        impl_span: item.span,
+        trait_span: fallback_span,
+        source_ty_span: fallback_span,
+        target_ty_span: fallback_span,
+        source_lifetime_span: None,
+        target_lifetime_span: None,
+    };
+
+    let ItemKind::Impl(impl_) = &item.kind else {
+        return diagnostic_context;
+    };
+    let Some(of_trait) = impl_.of_trait else {
+        return diagnostic_context;
+    };
+
+    diagnostic_context.trait_span = of_trait.trait_ref.path.span;
+    diagnostic_context.source_ty_span = impl_.self_ty.span;
+    diagnostic_context.source_lifetime_span = first_explicit_lifetime_span_in_ty(impl_.self_ty)
+        .or_else(|| first_explicit_impl_lifetime_param_span(impl_.generics));
+
+    if let Some(target_ty) = coerce_shared_target_ty_from_path(of_trait.trait_ref.path) {
+        diagnostic_context.target_ty_span = target_ty.span;
+        diagnostic_context.target_lifetime_span =
+            first_explicit_lifetime_span_in_ambig_ty(target_ty);
+    } else {
+        diagnostic_context.target_ty_span = diagnostic_context.trait_span;
+    }
+
+    diagnostic_context
+}
+
+fn coerce_shared_target_ty_from_path<'hir>(
+    path: &'hir hir::Path<'hir>,
+) -> Option<&'hir hir::Ty<'hir, hir::AmbigArg>> {
+    path.segments.last()?.args().args.iter().find_map(|arg| match arg {
+        hir::GenericArg::Type(ty) => Some(*ty),
+        hir::GenericArg::Lifetime(_) | hir::GenericArg::Const(_) | hir::GenericArg::Infer(_) => {
+            None
+        }
+    })
+}
+
+fn first_explicit_impl_lifetime_param_span(generics: &hir::Generics<'_>) -> Option<Span> {
+    generics.params.iter().find_map(|param| match param.kind {
+        hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Explicit } => {
+            Some(param.span)
+        }
+        hir::GenericParamKind::Lifetime { .. }
+        | hir::GenericParamKind::Type { .. }
+        | hir::GenericParamKind::Const { .. } => None,
+    })
+}
+
+fn first_explicit_lifetime_span(lifetime: &hir::Lifetime) -> Option<Span> {
+    match lifetime.kind {
+        hir::LifetimeKind::Param(_) | hir::LifetimeKind::Static
+            if !lifetime.ident.span.is_dummy() =>
+        {
+            Some(lifetime.ident.span)
+        }
+        hir::LifetimeKind::Param(_)
+        | hir::LifetimeKind::Static
+        | hir::LifetimeKind::ImplicitObjectLifetimeDefault
+        | hir::LifetimeKind::Error(_)
+        | hir::LifetimeKind::Infer => None,
+    }
+}
+
+fn first_explicit_lifetime_span_in_ambig_ty(
+    ty: &hir::Ty<'_, hir::AmbigArg>,
+) -> Option<Span> {
+    first_explicit_lifetime_span_in_ty(ty.as_unambig_ty())
+}
+
+fn first_explicit_lifetime_span_in_ty(ty: &hir::Ty<'_>) -> Option<Span> {
+    match ty.kind {
+        hir::TyKind::Ref(lifetime, mut_ty) => first_explicit_lifetime_span(lifetime)
+            .or_else(|| first_explicit_lifetime_span_in_ty(mut_ty.ty)),
+        hir::TyKind::Slice(ty)
+        | hir::TyKind::Array(ty, _)
+        | hir::TyKind::Pat(ty, _)
+        | hir::TyKind::FieldOf(ty, _) => first_explicit_lifetime_span_in_ty(ty),
+        hir::TyKind::Ptr(mut_ty) => first_explicit_lifetime_span_in_ty(mut_ty.ty),
+        hir::TyKind::Tup(tys) => tys.iter().find_map(first_explicit_lifetime_span_in_ty),
+        hir::TyKind::Path(qpath) => first_explicit_lifetime_span_in_qpath(qpath),
+        hir::TyKind::TraitObject(bounds, lifetime) => bounds
+            .iter()
+            .find_map(|bound| first_explicit_lifetime_span_in_path(bound.trait_ref.path))
+            .or_else(|| first_explicit_lifetime_span(&lifetime)),
+        hir::TyKind::OpaqueDef(opaque) => first_explicit_lifetime_span_in_bounds(opaque.bounds),
+        hir::TyKind::TraitAscription(bounds) => first_explicit_lifetime_span_in_bounds(bounds),
+        hir::TyKind::FnPtr(fn_ptr) => fn_ptr
+            .generic_params
+            .iter()
+            .find_map(|param| match param.kind {
+                hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Explicit } => {
+                    Some(param.span)
+                }
+                hir::GenericParamKind::Lifetime { .. }
+                | hir::GenericParamKind::Type { .. }
+                | hir::GenericParamKind::Const { .. } => None,
+            }),
+        hir::TyKind::UnsafeBinder(binder) => binder
+            .generic_params
+            .iter()
+            .find_map(|param| match param.kind {
+                hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Explicit } => {
+                    Some(param.span)
+                }
+                hir::GenericParamKind::Lifetime { .. }
+                | hir::GenericParamKind::Type { .. }
+                | hir::GenericParamKind::Const { .. } => None,
+            })
+            .or_else(|| first_explicit_lifetime_span_in_ty(binder.inner_ty)),
+        hir::TyKind::InferDelegation(_)
+        | hir::TyKind::Never
+        | hir::TyKind::Infer(())
+        | hir::TyKind::Err(_) => None,
+    }
+}
+
+fn first_explicit_lifetime_span_in_bounds(bounds: hir::GenericBounds<'_>) -> Option<Span> {
+    bounds.iter().find_map(|bound| match bound {
+        hir::GenericBound::Trait(poly_trait_ref) => {
+            first_explicit_lifetime_span_in_path(poly_trait_ref.trait_ref.path)
+        }
+        hir::GenericBound::Outlives(lifetime) => first_explicit_lifetime_span(lifetime),
+        hir::GenericBound::Use(args, _) => args.iter().find_map(|arg| match arg {
+            hir::PreciseCapturingArgKind::Lifetime(lifetime) => {
+                first_explicit_lifetime_span(lifetime)
+            }
+            hir::PreciseCapturingArgKind::Param(_) => None,
+        }),
+    })
+}
+
+fn first_explicit_lifetime_span_in_qpath(qpath: hir::QPath<'_>) -> Option<Span> {
+    match qpath {
+        hir::QPath::Resolved(qself, path) => qself
+            .and_then(first_explicit_lifetime_span_in_ty)
+            .or_else(|| first_explicit_lifetime_span_in_path(path)),
+        hir::QPath::TypeRelative(qself, segment) => first_explicit_lifetime_span_in_ty(qself)
+            .or_else(|| first_explicit_lifetime_span_in_path_segment(segment)),
+    }
+}
+
+fn first_explicit_lifetime_span_in_path(path: &hir::Path<'_>) -> Option<Span> {
+    path.segments.iter().find_map(first_explicit_lifetime_span_in_path_segment)
+}
+
+fn first_explicit_lifetime_span_in_path_segment(
+    segment: &hir::PathSegment<'_>,
+) -> Option<Span> {
+    first_explicit_lifetime_span_in_generic_args(segment.args())
+}
+
+fn first_explicit_lifetime_span_in_generic_args(args: &hir::GenericArgs<'_>) -> Option<Span> {
+    args.args
+        .iter()
+        .find_map(|arg| match arg {
+            hir::GenericArg::Lifetime(lifetime) => first_explicit_lifetime_span(lifetime),
+            hir::GenericArg::Type(ty) => first_explicit_lifetime_span_in_ambig_ty(ty),
+            hir::GenericArg::Const(_) | hir::GenericArg::Infer(_) => None,
+        })
+        .or_else(|| {
+            args.constraints.iter().find_map(|constraint| {
+                first_explicit_lifetime_span_in_generic_args(constraint.gen_args).or_else(|| {
+                    constraint.ty().and_then(first_explicit_lifetime_span_in_ty)
+                })
+            })
+        })
+}
+
 pub(crate) fn coerce_shared_info<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_did: LocalDefId,
@@ -607,6 +819,7 @@ pub(crate) fn coerce_shared_info<'tcx>(
     debug!("compute_coerce_shared_info(impl_did={:?})", impl_did);
     let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let span = tcx.def_span(impl_did);
+    let diagnostic_context = coerce_shared_diagnostic_context(tcx, impl_did);
     let trait_name = "CoerceShared";
 
     let coerce_shared_trait = tcx.require_lang_item(LangItem::CoerceShared, span);
@@ -642,37 +855,37 @@ pub(crate) fn coerce_shared_info<'tcx>(
             let b_lifetime = single_region_arg(args_b);
 
             if a_lifetime.is_none() || b_lifetime.is_none() {
-                let item = tcx.hir_expect_item(impl_did);
-                let span = if let ItemKind::Impl(hir::Impl { of_trait: Some(of_trait), .. }) =
-                    &item.kind
-                {
-                    of_trait.trait_ref.path.span
-                } else {
-                    tcx.def_span(impl_did)
-                };
-
-                return Err(tcx
-                    .dcx()
-                    .emit_err(diagnostics::CoerceSharedMulti { span, trait_name }));
+                return Err(tcx.dcx().emit_err(diagnostics::CoerceSharedMulti {
+                    span: diagnostic_context.trait_span,
+                    trait_name,
+                }));
             }
 
             if a_lifetime != b_lifetime {
-                let item = tcx.hir_expect_item(impl_did);
-                let span = if let ItemKind::Impl(hir::Impl { of_trait: Some(of_trait), .. }) =
-                    &item.kind
-                {
-                    of_trait.trait_ref.path.span
-                } else {
-                    tcx.def_span(impl_did)
-                };
-
-                return Err(tcx
-                    .dcx()
-                    .emit_err(diagnostics::CoerceSharedLifetimeMismatch { span, trait_name }));
+                return Err(tcx.dcx().emit_err(diagnostics::CoerceSharedLifetimeMismatch {
+                    span: diagnostic_context.trait_span,
+                    source_lifetime_span: diagnostic_context.source_lifetime_span,
+                    target_lifetime_span: diagnostic_context.target_lifetime_span,
+                    trait_name,
+                }));
             }
 
-            validate_reborrow_field_access(tcx, impl_did, def_a, trait_name, span)?;
-            validate_reborrow_field_access(tcx, impl_did, def_b, trait_name, span)?;
+            validate_reborrow_field_access(
+                tcx,
+                impl_did,
+                def_a,
+                trait_name,
+                diagnostic_context,
+                CoerceSharedTypeRole::Source,
+            )?;
+            validate_reborrow_field_access(
+                tcx,
+                impl_did,
+                def_b,
+                trait_name,
+                diagnostic_context,
+                CoerceSharedTypeRole::Target,
+            )?;
 
             validate_coerce_shared_fields(
                 tcx,
@@ -682,6 +895,7 @@ pub(crate) fn coerce_shared_info<'tcx>(
                 coerce_shared_trait,
                 trait_name,
                 span,
+                diagnostic_context,
                 def_a,
                 args_a,
                 def_b,
@@ -806,21 +1020,30 @@ fn validate_reborrow_field_access(
     impl_did: LocalDefId,
     def: ty::AdtDef<'_>,
     trait_name: &'static str,
-    span: Span,
+    diagnostic_context: CoerceSharedDiagnosticContext,
+    role: CoerceSharedTypeRole,
 ) -> Result<(), ErrorGuaranteed> {
     let module = tcx.parent_module_from_def_id(impl_did);
     let variant = def.non_enum_variant();
     if variant.field_list_has_applicable_non_exhaustive() {
-        return Err(tcx
-            .dcx()
-            .emit_err(diagnostics::CoerceSharedInaccessibleField { span, trait_name }));
+        return Err(tcx.dcx().emit_err(diagnostics::CoerceSharedInaccessibleField {
+            span: diagnostic_context.impl_span,
+            type_span: role.type_span(diagnostic_context),
+            trait_name,
+            role: role.as_str(),
+            type_name: tcx.item_name(def.did()),
+        }));
     }
 
     for field in &variant.fields {
         if !field.vis.is_accessible_from(module, tcx) {
-            return Err(tcx
-                .dcx()
-                .emit_err(diagnostics::CoerceSharedInaccessibleField { span, trait_name }));
+            return Err(tcx.dcx().emit_err(diagnostics::CoerceSharedInaccessibleField {
+                span: diagnostic_context.impl_span,
+                type_span: role.type_span(diagnostic_context),
+                trait_name,
+                role: role.as_str(),
+                type_name: tcx.item_name(def.did()),
+            }));
         }
     }
 
@@ -835,6 +1058,7 @@ fn validate_coerce_shared_fields<'tcx>(
     coerce_shared_trait: DefId,
     trait_name: &'static str,
     span: Span,
+    diagnostic_context: CoerceSharedDiagnosticContext,
     source_def: ty::AdtDef<'tcx>,
     source_args: ty::GenericArgsRef<'tcx>,
     target_def: ty::AdtDef<'tcx>,
@@ -856,10 +1080,28 @@ fn validate_coerce_shared_fields<'tcx>(
         Err(CoerceSharedFieldPairError::MissingSourceField { target }) => {
             return Err(tcx.dcx().emit_err(diagnostics::CoerceSharedMissingField {
                 span: target.span,
+                source_ty_span: diagnostic_context.source_ty_span,
                 trait_name,
+                source_ty_name: tcx.item_name(source_def.did()),
+                field_name: target.name,
             }));
         }
     };
+
+    for field_pair in field_pairs {
+        validate_coerce_shared_field(
+            tcx,
+            infcx,
+            impl_did,
+            param_env,
+            coerce_shared_trait,
+            trait_name,
+            span,
+            diagnostic_context,
+            field_pair.source,
+            field_pair.target,
+        )?;
+    }
 
     // FIXME(Reborrow): remove this temporary WF-side memcpy-ability guard once
     // the downstream CoerceShared implementation can correctly handle source and
@@ -872,25 +1114,12 @@ fn validate_coerce_shared_fields<'tcx>(
         coerce_shared_trait,
         trait_name,
         span,
+        diagnostic_context,
         source_def,
         source_args,
         target_def,
         target_args,
     )?;
-
-    for field_pair in field_pairs {
-        validate_coerce_shared_field(
-            tcx,
-            infcx,
-            impl_did,
-            param_env,
-            coerce_shared_trait,
-            trait_name,
-            span,
-            field_pair.source,
-            field_pair.target,
-        )?;
-    }
 
     Ok(())
 }
@@ -903,6 +1132,7 @@ fn validate_coerce_shared_fields_are_memcpy_compatible<'tcx>(
     coerce_shared_trait: DefId,
     trait_name: &'static str,
     span: Span,
+    diagnostic_context: CoerceSharedDiagnosticContext,
     source_def: ty::AdtDef<'tcx>,
     source_args: ty::GenericArgsRef<'tcx>,
     target_def: ty::AdtDef<'tcx>,
@@ -953,24 +1183,20 @@ fn validate_coerce_shared_fields_are_memcpy_compatible<'tcx>(
                 coerce_shared_trait,
                 trait_name,
                 span,
+                diagnostic_context,
                 *source,
                 *target,
             )
         }
         _ => {
-            let source = source_non_zst_fields
-                .get(1)
-                .or_else(|| source_non_zst_fields.first())
-                .or_else(|| target_non_zst_fields.first())
-                .copied()
-                .expect("at least one non-ZST field");
-            let target = target_non_zst_fields
-                .get(1)
-                .or_else(|| target_non_zst_fields.first())
-                .or_else(|| source_non_zst_fields.first())
-                .copied()
-                .expect("at least one non-ZST field");
-            Err(emit_coerce_shared_field_mismatch(tcx, trait_name, source, target))
+            Err(tcx.dcx().emit_err(diagnostics::CoerceSharedMultipleNonZstFields {
+                span: diagnostic_context.impl_span,
+                source_ty_span: diagnostic_context.source_ty_span,
+                target_ty_span: diagnostic_context.target_ty_span,
+                trait_name,
+                source_count: source_non_zst_fields.len(),
+                target_count: target_non_zst_fields.len(),
+            }))
         }
     }
 }
@@ -1001,6 +1227,7 @@ fn validate_coerce_shared_field<'tcx>(
     coerce_shared_trait: DefId,
     trait_name: &'static str,
     span: Span,
+    diagnostic_context: CoerceSharedDiagnosticContext,
     source: ReborrowDataField<'tcx>,
     target: ReborrowDataField<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
@@ -1041,6 +1268,7 @@ fn validate_coerce_shared_field<'tcx>(
         coerce_shared_trait,
         trait_name,
         span,
+        diagnostic_context,
         source,
         target,
     )
@@ -1054,6 +1282,7 @@ fn validate_field_tys_satisfy_coerce_shared_relation<'tcx>(
     coerce_shared_trait: DefId,
     trait_name: &'static str,
     span: Span,
+    diagnostic_context: CoerceSharedDiagnosticContext,
     source: ReborrowDataField<'tcx>,
     target: ReborrowDataField<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
@@ -1068,7 +1297,13 @@ fn validate_field_tys_satisfy_coerce_shared_relation<'tcx>(
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
 
     if !errors.is_empty() {
-        return Err(emit_coerce_shared_field_mismatch(tcx, trait_name, source, target));
+        return Err(emit_coerce_shared_field_mismatch(
+            tcx,
+            trait_name,
+            diagnostic_context,
+            source,
+            target,
+        ));
     }
 
     ocx.resolve_regions_and_report_errors(impl_did, param_env, [])
@@ -1077,12 +1312,14 @@ fn validate_field_tys_satisfy_coerce_shared_relation<'tcx>(
 fn emit_coerce_shared_field_mismatch<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_name: &'static str,
+    diagnostic_context: CoerceSharedDiagnosticContext,
     source: ReborrowDataField<'tcx>,
     target: ReborrowDataField<'tcx>,
 ) -> ErrorGuaranteed {
     tcx.dcx().emit_err(diagnostics::CoerceSharedFieldMismatch {
         span: target.span,
         source_span: source.span,
+        impl_span: diagnostic_context.impl_span,
         source_name: source.name,
         source_ty: source.ty,
         target_name: target.name,
@@ -1124,8 +1361,18 @@ fn field_tys_satisfy_relation_after_normalization_and_resolution<'tcx>(
         return false;
     }
 
-    let (source_ty, target_ty) = match relation {
-        FieldRelation::Equal => (source_ty, target_ty),
+    match relation {
+        FieldRelation::Equal => {
+            let Ok(goals) =
+                infcx.eq_structurally_relating_aliases(param_env, source_ty, target_ty, span)
+            else {
+                return false;
+            };
+
+            ocx.register_obligations(goals.into_iter().map(|goal| {
+                Obligation::new(tcx, cause.clone(), goal.param_env, goal.predicate)
+            }));
+        }
         FieldRelation::MutRefToSharedRef => {
             let (
                 &ty::Ref(source_region, source_referent_ty, ty::Mutability::Mut),
@@ -1137,20 +1384,11 @@ fn field_tys_satisfy_relation_after_normalization_and_resolution<'tcx>(
             if source_region != target_region {
                 return false;
             }
-            (source_referent_ty, target_referent_ty)
+            if ocx.sup(&cause, param_env, target_referent_ty, source_referent_ty).is_err() {
+                return false;
+            }
         }
     };
-
-    let Ok(goals) = infcx.eq_structurally_relating_aliases(param_env, source_ty, target_ty, span)
-    else {
-        return false;
-    };
-
-    ocx.register_obligations(
-        goals
-            .into_iter()
-            .map(|goal| Obligation::new(tcx, cause.clone(), goal.param_env, goal.predicate)),
-    );
 
     ocx.evaluate_obligations_error_on_ambiguity().is_empty()
         && ocx.resolve_regions(impl_did, param_env, []).is_empty()

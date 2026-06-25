@@ -13,12 +13,12 @@ macro my_macro($field:ident) {
     pub struct MyRef<'a> {
         $field: &'a i32,
         field: &'a i64,
-        //~^ ERROR
     }
 
     impl Reborrow for MyMut<'_> {}
 
     impl<'a> CoerceShared<MyRef<'a>> for MyMut<'a> {}
+    //~^ ERROR
 }
 
 my_macro!(field);

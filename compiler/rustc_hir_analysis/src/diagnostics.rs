@@ -1364,6 +1364,10 @@ pub(crate) struct CoerceSharedMulti {
 pub(crate) struct CoerceSharedLifetimeMismatch {
     #[primary_span]
     pub span: Span,
+    #[label("source reborrow lifetime")]
+    pub source_lifetime_span: Option<Span>,
+    #[label("target reborrow lifetime")]
+    pub target_lifetime_span: Option<Span>,
     pub trait_name: &'static str,
 }
 
@@ -1379,6 +1383,8 @@ pub(crate) struct CoerceSharedFieldMismatch<'tcx> {
     pub span: Span,
     #[label("source field `{$source_name}` has type `{$source_ty}`")]
     pub source_span: Span,
+    #[label("required by this `CoerceShared` implementation")]
+    pub impl_span: Span,
     pub source_name: Symbol,
     pub source_ty: Ty<'tcx>,
     pub target_name: Symbol,
@@ -1392,8 +1398,13 @@ pub(crate) struct CoerceSharedFieldMismatch<'tcx> {
 )]
 pub(crate) struct CoerceSharedMissingField {
     #[primary_span]
+    #[label("target field `{$field_name}` has no corresponding source field")]
     pub span: Span,
+    #[label("source type `{$source_ty_name}` does not contain field `{$field_name}`")]
+    pub source_ty_span: Span,
     pub trait_name: &'static str,
+    pub source_ty_name: Symbol,
+    pub field_name: Symbol,
 }
 
 #[derive(Diagnostic)]
@@ -1408,12 +1419,38 @@ pub(crate) struct CoerceSharedFieldStyleMismatch {
 
 #[derive(Diagnostic)]
 #[diag(
-    "implementing `{$trait_name}` requires all source and target fields to be accessible from the impl"
+    "implementing `{$trait_name}` requires all {$role} type fields to be accessible from the impl"
 )]
 pub(crate) struct CoerceSharedInaccessibleField {
     #[primary_span]
     pub span: Span,
+    #[label("{$role} type `{$type_name}` has inaccessible reborrow data fields")]
+    pub type_span: Span,
     pub trait_name: &'static str,
+    pub role: &'static str,
+    pub type_name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "implementing `{$trait_name}` currently requires source and target to have at most one \
+     non-ZST reborrow data field"
+)]
+#[note(
+    "this is a temporary restriction until `CoerceShared` lowering supports non-trivially \
+     memcpy-compatible field layouts"
+)]
+pub(crate) struct CoerceSharedMultipleNonZstFields {
+    #[primary_span]
+    #[label("in this `CoerceShared` implementation")]
+    pub span: Span,
+    #[label("source type has {$source_count} non-ZST reborrow data fields")]
+    pub source_ty_span: Span,
+    #[label("target type has {$target_count} non-ZST reborrow data fields")]
+    pub target_ty_span: Span,
+    pub trait_name: &'static str,
+    pub source_count: usize,
+    pub target_count: usize,
 }
 
 #[derive(Diagnostic)]

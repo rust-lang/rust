@@ -12,8 +12,8 @@ impl Reborrow for MyMut<'_> {}
 #[derive(Copy, Clone)]
 struct MyRef<'a> {
     x: &'a (),
-    y: &'static (),
     //~^ ERROR
+    y: &'static (),
 }
 
 impl<'a> CoerceShared<MyRef<'a>> for MyMut<'a> {}

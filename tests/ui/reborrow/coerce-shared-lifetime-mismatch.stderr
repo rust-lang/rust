@@ -2,7 +2,9 @@ error: implementing `CoerceShared` requires source and target to use the same re
   --> $DIR/coerce-shared-lifetime-mismatch.rs:15:10
    |
 LL | impl<'a> CoerceShared<StaticMarkerRef<'static>> for CustomMarker<'a> {}
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------^^                  -- source reborrow lifetime
+   |                                       |
+   |                                       target reborrow lifetime
 
 error[E0597]: `a` does not live long enough
   --> $DIR/coerce-shared-lifetime-mismatch.rs:22:12

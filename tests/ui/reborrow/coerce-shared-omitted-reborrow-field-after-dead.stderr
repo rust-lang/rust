@@ -1,11 +1,14 @@
-error: implementing `CoerceShared` requires corresponding fields to match, be reborrowable with `CoerceShared`, or coerce a mutable reference field to a shared reference field
-  --> $DIR/coerce-shared-omitted-reborrow-field-after-dead.rs:20:5
+error: implementing `CoerceShared` currently requires source and target to have at most one non-ZST reborrow data field
+  --> $DIR/coerce-shared-omitted-reborrow-field-after-dead.rs:31:1
    |
-LL |     extra: ExtraMut<'a, T>,
-   |     ---------------------- source field `extra` has type `ExtraMut<'a, T>`
-...
-LL |     value: &'a T,
-   |     ^^^^^^^^^^^^ target field `value` has type `&'a T`
+LL | impl<'a, T> CoerceShared<OmitRef<'a, T>> for OmitMut<'a, T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^--------------^^^^^^--------------^^^
+   | |                        |                   |
+   | |                        |                   source type has 2 non-ZST reborrow data fields
+   | |                        target type has 1 non-ZST reborrow data fields
+   | in this `CoerceShared` implementation
+   |
+   = note: this is a temporary restriction until `CoerceShared` lowering supports non-trivially memcpy-compatible field layouts
 
 error: aborting due to 1 previous error
 

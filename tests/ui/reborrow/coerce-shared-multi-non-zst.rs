@@ -8,14 +8,15 @@ struct Source<'a> {
     b: u8,
 }
 
+#[derive(Copy, Clone)]
 struct Target<'a> {
     a: &'a u8,
     b: u8,
-    //~^ ERROR
 }
 
 impl Reborrow for Source<'_> {}
 
 impl<'a> CoerceShared<Target<'a>> for Source<'a> {}
+//~^ ERROR
 
 fn main() {}
