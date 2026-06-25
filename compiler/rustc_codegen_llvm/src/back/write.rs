@@ -32,7 +32,7 @@ use crate::back::profiling::{
     LlvmSelfProfiler, selfprofile_after_pass_callback, selfprofile_before_pass_callback,
 };
 use crate::builder::SBuilder;
-use crate::builder::gpu_offload::scalar_width;
+use crate::builder::gpu_helper::scalar_width;
 use crate::common::AsCCharPtr;
 use crate::errors::{
     CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, ParseTargetMachineConfig,

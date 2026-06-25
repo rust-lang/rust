@@ -164,6 +164,8 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::mul_with_overflow
         | sym::needs_drop
         | sym::offload
+        | sym::offload_preload
+        | sym::offload_preload_end
         | sym::offset_of
         | sym::overflow_checks
         | sym::powf16
@@ -361,6 +363,9 @@ pub(crate) fn check_intrinsic_type(
             ],
             param(2),
         ),
+        sym::offload_preload | sym::offload_preload_end => {
+            (1, 0, vec![Ty::new_imm_ptr(tcx, param(0)), tcx.types.bool], tcx.types.unit)
+        }
         sym::offset => (2, 0, vec![param(0), param(1)], param(0)),
         sym::arith_offset => (
             1,

@@ -325,6 +325,12 @@ language_item_table! {
     DropGlue,                sym::drop_glue,           drop_glue_fn,               Target::Fn,             GenericRequirement::Exact(1);
     AllocLayout,             sym::alloc_layout,        alloc_layout,               Target::Struct,         GenericRequirement::None;
 
+    // Compiler-generated mapper functions for gpu offloading
+    PreloadStruct,        sym::preload_type,        preload_type,        Target::Struct, GenericRequirement::None;
+    PreloadMutStruct,     sym::preload_mut_type,    preload_mut_type,    Target::Struct, GenericRequirement::None;
+    PreloadFn,            sym::preload,             preload_fn,          Target::Fn,     GenericRequirement::None;
+    PreloadMutFn,         sym::preload_mut,         preload_mut_fn,      Target::Fn,     GenericRequirement::None;
+
     /// For all binary crates without `#![no_main]`, Rust will generate a "main" function.
     /// The exact name and signature are target-dependent. The "main" function will invoke
     /// this lang item, passing it the `argc` and `argv` (or null, if those don't exist
