@@ -19,6 +19,7 @@ use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{Arch, Os, TlsModel};
 use tracing::debug;
 
+use crate::SymbolExport;
 use crate::back::symbol_export;
 use crate::base::allocator_shim_contents;
 
@@ -713,7 +714,7 @@ pub(crate) fn exporting_symbol_name_for_instance_in_crate<'tcx>(
 /// Add it to the symbols list for all kernel functions, so that it is exported in the linked
 /// object.
 pub(crate) fn extend_exported_symbols<'tcx>(
-    symbols: &mut Vec<(String, SymbolExportKind)>,
+    symbols: &mut Vec<SymbolExport>,
     tcx: TyCtxt<'tcx>,
     symbol: ExportedSymbol<'tcx>,
     instantiating_crate: CrateNum,
@@ -729,7 +730,7 @@ pub(crate) fn extend_exported_symbols<'tcx>(
     // Add the symbol for the kernel descriptor (with .kd suffix)
     // Per https://llvm.org/docs/AMDGPUUsage.html#symbols these will always be `STT_OBJECT` so
     // export as data.
-    symbols.push((format!("{undecorated}.kd"), SymbolExportKind::Data));
+    symbols.push(SymbolExport::new(format!("{undecorated}.kd"), SymbolExportKind::Data));
 }
 
 fn maybe_emutls_symbol_name<'tcx>(

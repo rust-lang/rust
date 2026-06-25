@@ -21,6 +21,7 @@ extend-exclude = [
 # right now. Entries should look like `mipsel = "mipsel"`.
 #
 # tidy-alphabetical-start
+EXPORTAS = "EXPORTAS" # MSVC linker keyword used with /EXPORT directives
 anser = "anser" # an ANSI parsing package used by rust-analyzer
 arange = "arange" # short for A-range
 childs = "childs"
