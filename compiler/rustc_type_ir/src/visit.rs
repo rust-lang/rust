@@ -317,6 +317,14 @@ pub trait TypeVisitableExt<I: Interner>: TypeVisitable<I> {
         self.has_type_flags(TypeFlags::HAS_PARAM)
     }
 
+    fn has_type_param(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_TY_PARAM)
+    }
+
+    fn has_const_param(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_CT_PARAM)
+    }
+
     /// "Free" regions in this context means that it has any region
     /// that is not (a) erased or (b) late-bound.
     fn has_free_regions(&self) -> bool {
