@@ -1,4 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/26802>.
 //@ run-pass
+
 trait Foo<'a> {
     fn bar<'b>(&self, x: &'b u8) -> u8 where 'a: 'b { *x+7 }
 }
