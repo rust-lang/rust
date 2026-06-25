@@ -1,6 +1,7 @@
 //@ignore-target: windows # No libc socketpair on Windows
 // test_race depends on a deterministic schedule.
 //@compile-flags: -Zmiri-deterministic-concurrency
+//@run-native
 
 // FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
 #![allow(static_mut_refs)]
@@ -132,6 +133,11 @@ fn test_blocking_read() {
 
 // Test the behaviour of a socketpair getting blocked on write and subsequently unblocked.
 fn test_blocking_write() {
+    // The test uses Miri's exact buffer size.
+    if !cfg!(miri) {
+        return;
+    }
+
     let mut fds = [-1, -1];
     errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
     let arr1: [u8; 0x34000] = [1; 0x34000];
