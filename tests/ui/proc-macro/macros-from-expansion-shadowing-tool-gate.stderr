@@ -1,0 +1,22 @@
+error[E0659]: `rustfmt` is ambiguous
+  --> $DIR/macros-from-expansion-shadowing-tool-gate.rs:2:4
+   |
+LL | #![rustfmt::skip]
+   |    ^^^^^^^ ambiguous name
+   |
+   = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
+   = note: `rustfmt` could refer to a tool module
+note: `rustfmt` could also refer to the crate imported here
+  --> $DIR/macros-from-expansion-shadowing-tool-gate.rs:8:17
+   |
+LL |     () => { use rustfmt_2 as rustfmt; };
+   |                 ^^^^^^^^^^^^^^^^^^^^
+...
+LL | x!();
+   | ---- in this macro invocation
+   = help: use `crate::rustfmt` to refer to this crate unambiguously
+   = note: this error originates in the macro `x` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0659`.
