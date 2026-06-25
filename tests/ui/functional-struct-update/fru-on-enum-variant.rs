@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/26948>.
+
 fn main() {
     enum Foo { A { x: u32 } }
     let orig = Foo::A { x: 5 };

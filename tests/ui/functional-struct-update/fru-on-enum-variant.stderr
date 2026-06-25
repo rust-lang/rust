@@ -1,5 +1,5 @@
 error[E0436]: functional record update syntax requires a struct
-  --> $DIR/issue-26948.rs:4:22
+  --> $DIR/fru-on-enum-variant.rs:6:22
    |
 LL |     Foo::A { x: 6, ..orig };
    |                      ^^^^
