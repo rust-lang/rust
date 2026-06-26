@@ -76,30 +76,24 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
                 _ => unreachable!(),
             }
 
-            // delete comparison statement if it the value being switched on was moved, which means
-            // it can not be used later on
-            if opt.can_remove_bin_op_stmt {
-                bb.statements[opt.bin_op_stmt_idx].make_nop(true);
-            } else {
-                // if the integer being compared to a const integral is being moved into the
-                // comparison, e.g `_2 = Eq(move _3, const 'x');`
-                // we want to avoid making a double move later on in the switchInt on _3.
-                // So to avoid `switchInt(move _3) -> ['x': bb2, otherwise: bb1];`,
-                // we convert the move in the comparison statement to a copy.
+            // if the integer being compared to a const integral is being moved into the
+            // comparison, e.g `_2 = Eq(move _3, const 'x');`
+            // we want to avoid making a double move later on in the switchInt on _3.
+            // So to avoid `switchInt(move _3) -> ['x': bb2, otherwise: bb1];`,
+            // we convert the move in the comparison statement to a copy.
 
-                // unwrap is safe as we know this statement is an assign
-                let (_, rhs) = bb.statements[opt.bin_op_stmt_idx].kind.as_assign_mut().unwrap();
+            // unwrap is safe as we know this statement is an assign
+            let (_, rhs) = bb.statements[opt.bin_op_stmt_idx].kind.as_assign_mut().unwrap();
 
-                use Operand::*;
-                match rhs {
-                    Rvalue::BinaryOp(_, (left @ Move(_), Constant(_))) => {
-                        *left = Copy(opt.to_switch_on);
-                    }
-                    Rvalue::BinaryOp(_, (Constant(_), right @ Move(_))) => {
-                        *right = Copy(opt.to_switch_on);
-                    }
-                    _ => (),
+            use Operand::*;
+            match rhs {
+                Rvalue::BinaryOp(_, (left @ Move(_), Constant(_))) => {
+                    *left = Copy(opt.to_switch_on);
                 }
+                Rvalue::BinaryOp(_, (Constant(_), right @ Move(_))) => {
+                    *right = Copy(opt.to_switch_on);
+                }
+                _ => (),
             }
 
             let terminator = bb.terminator();
@@ -184,7 +178,6 @@ impl<'tcx> OptimizationFinder<'_, 'tcx> {
                                     Some(OptimizationInfo {
                                         bin_op_stmt_idx: stmt_idx,
                                         bb_idx,
-                                        can_remove_bin_op_stmt: discr.is_move(),
                                         to_switch_on,
                                         branch_value_scalar,
                                         branch_value_ty,
@@ -235,11 +228,8 @@ fn find_branch_value_info<'tcx>(
 struct OptimizationInfo<'tcx> {
     /// Basic block to apply the optimization
     bb_idx: BasicBlock,
-    /// Statement index of Eq/Ne assignment that can be removed. None if the assignment can not be
-    /// removed - i.e the statement is used later on
+    /// Statement index of Eq/Ne assignment
     bin_op_stmt_idx: usize,
-    /// Can remove Eq/Ne assignment
-    can_remove_bin_op_stmt: bool,
     /// Place that needs to be switched on. This place is of type integral
     to_switch_on: Place<'tcx>,
     /// Constant to use in switch target value
