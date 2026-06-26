@@ -294,7 +294,7 @@ pub(crate) enum SourceKindSubdiag<'a> {
         x_kind: &'static str,
         prefix_kind: UnderspecifiedArgKind,
         prefix: &'a str,
-        arg_name: String,
+        arg_name: &'a str,
     },
     #[label(
         "cannot infer {$is_type ->

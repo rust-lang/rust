@@ -564,7 +564,67 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let mut infer_subdiags = Vec::new();
         let mut multi_suggestions = Vec::new();
-        match kind {
+        self.suggestion(
+            body_def_id,
+            term,
+            &arg_data,
+            typeck_results,
+            span,
+            &kind,
+            &mut infer_subdiags,
+            &mut multi_suggestions,
+        );
+        let mut err = match error_code {
+            TypeAnnotationNeeded::E0282 => self.dcx().create_err(AnnotationRequired {
+                span,
+                source_kind,
+                source_name: &name,
+                failure_span,
+                infer_subdiags,
+                multi_suggestions,
+                bad_label: None,
+            }),
+            TypeAnnotationNeeded::E0283 => self.dcx().create_err(AmbiguousImpl {
+                span,
+                source_kind,
+                source_name: &name,
+                failure_span,
+                infer_subdiags,
+                multi_suggestions,
+                bad_label: None,
+            }),
+            TypeAnnotationNeeded::E0284 => self.dcx().create_err(AmbiguousReturn {
+                span,
+                source_kind,
+                source_name: &name,
+                failure_span,
+                infer_subdiags,
+                multi_suggestions,
+                bad_label: None,
+            }),
+        };
+        *err.long_ty_path() = long_ty_path;
+        if let InferSourceKind::ClosureArg { kind: PatKind::Err(_), .. } = kind {
+            // We will have already emitted an error about this pattern.
+            err.downgrade_to_delayed_bug();
+        }
+        err
+    }
+
+    fn suggestion<'local>(
+        &self,
+        body_def_id: LocalDefId,
+        term: Term<'tcx>,
+        arg_data: &'local InferenceDiagnosticsData,
+        typeck_results: &TypeckResults<'tcx>,
+        span: Span,
+        kind: &InferSourceKind<'tcx>,
+        infer_subdiags: &mut Vec<SourceKindSubdiag<'local>>,
+        multi_suggestions: &mut Vec<SourceKindMultiSuggestion<'local>>,
+    ) where
+        'tcx: 'local,
+    {
+        match *kind {
             InferSourceKind::LetBinding { insert_span, pattern_name, ty, def_id } => {
                 infer_subdiags.push(SourceKindSubdiag::LetLike {
                     span: insert_span,
@@ -572,7 +632,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     x_kind: arg_data.where_x_is_kind(self.infcx, ty),
                     prefix_kind: arg_data.kind.clone(),
                     prefix: arg_data.kind.try_get_prefix().unwrap_or_default(),
-                    arg_name: arg_data.name,
+                    arg_name: &arg_data.name,
                     kind: if pattern_name.is_some() { "with_pattern" } else { "other" },
                     type_name: ty_to_string(self, ty, def_id),
                 });
@@ -584,7 +644,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     x_kind: arg_data.where_x_is_kind(self.infcx, ty),
                     prefix_kind: arg_data.kind.clone(),
                     prefix: arg_data.kind.try_get_prefix().unwrap_or_default(),
-                    arg_name: arg_data.name,
+                    arg_name: &arg_data.name,
                     kind: "closure",
                     type_name: ty_to_string(self, ty, None),
                 });
@@ -737,41 +797,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
             }
         }
-        let mut err = match error_code {
-            TypeAnnotationNeeded::E0282 => self.dcx().create_err(AnnotationRequired {
-                span,
-                source_kind,
-                source_name: &name,
-                failure_span,
-                infer_subdiags,
-                multi_suggestions,
-                bad_label: None,
-            }),
-            TypeAnnotationNeeded::E0283 => self.dcx().create_err(AmbiguousImpl {
-                span,
-                source_kind,
-                source_name: &name,
-                failure_span,
-                infer_subdiags,
-                multi_suggestions,
-                bad_label: None,
-            }),
-            TypeAnnotationNeeded::E0284 => self.dcx().create_err(AmbiguousReturn {
-                span,
-                source_kind,
-                source_name: &name,
-                failure_span,
-                infer_subdiags,
-                multi_suggestions,
-                bad_label: None,
-            }),
-        };
-        *err.long_ty_path() = long_ty_path;
-        if let InferSourceKind::ClosureArg { kind: PatKind::Err(_), .. } = kind {
-            // We will have already emitted an error about this pattern.
-            err.downgrade_to_delayed_bug();
-        }
-        err
     }
 }
 
