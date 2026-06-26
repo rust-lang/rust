@@ -535,6 +535,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return self.bad_inference_failure_err(failure_span, arg_data, error_code);
         };
 
+        // FIXME: use find_infer_source(tcx, infcx, typeck_results, target, body)
         let mut local_visitor =
             FindInferSourceVisitor::new(self.tcx, self.infcx, typeck_results, term, ty);
         if let Some(body) =
@@ -624,13 +625,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
 #[derive(Debug)]
 pub struct InferSource<'tcx> {
-    span: Span,
+    pub span: Span,
     pub hir_id: HirId,
-    kind: InferSourceKind<'tcx>,
+    pub kind: InferSourceKind<'tcx>,
 }
 
 #[derive(Debug)]
-enum InferSourceKind<'tcx> {
+pub enum InferSourceKind<'tcx> {
     LetBinding {
         insert_span: Span,
         pattern_name: Option<Ident>,
@@ -716,7 +717,7 @@ impl<'tcx> InferSourceKind<'tcx> {
         }
     }
 
-    fn suggestion<'local>(
+    pub fn suggestion<'local>(
         &self,
         tcx: TyCtxt<'tcx>,
         infcx: &InferCtxt<'tcx>,
