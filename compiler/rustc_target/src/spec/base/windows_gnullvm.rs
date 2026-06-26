@@ -42,7 +42,6 @@ pub(crate) fn opts() -> TargetOptions {
         late_link_args,
         abi_return_struct_as_int: true,
         emit_debug_gdb_scripts: false,
-        requires_uwtable: true,
         eh_frame_header: false,
         no_default_libraries: false,
         has_thread_local: true,

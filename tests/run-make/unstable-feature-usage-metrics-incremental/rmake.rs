@@ -11,7 +11,6 @@
 //! `i686-pc-windows-gnu`.
 
 //@ ignore-cross-compile (exercises metrics incremental on host)
-//@ ignore-i686-pc-windows-gnu (unwind mechanism produces unpredictable backtraces)
 
 use std::path::{Path, PathBuf};
 

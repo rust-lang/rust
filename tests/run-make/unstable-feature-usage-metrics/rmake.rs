@@ -10,7 +10,6 @@
 //! - Forked from `dump-ice-to-disk` test, where `i686-pc-windows-gnu` has unpredictable backtraces.
 
 //@ ignore-cross-compile (exercises metrics dump on host)
-//@ ignore-i686-pc-windows-gnu (unwind mechanism produces unpredictable backtraces)
 
 use std::path::{Path, PathBuf};
 
