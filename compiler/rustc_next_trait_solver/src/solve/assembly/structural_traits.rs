@@ -9,7 +9,7 @@ use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::solve::inspect::ProbeKind;
 use rustc_type_ir::{
     self as ty, Binder, FallibleTypeFolder, Interner, Movability, Mutability, TypeFoldable,
-    TypeSuperFoldable, Unnormalized, Upcast as _, elaborate,
+    TypeSuperFoldable, TypeVisitableExt, Unnormalized, Upcast as _, elaborate,
 };
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::instrument;
@@ -279,13 +279,14 @@ where
     }
 }
 
-// Returns a binder of the tupled inputs types and output type from a builtin callable type.
+/// Returns a binder of the tupled inputs types and output type from a builtin callable type.
 pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Interner>(
     cx: I,
     self_ty: I::Ty,
     goal_kind: ty::ClosureKind,
 ) -> Result<Option<ty::Binder<I, (I::Ty, I::Ty)>>, NoSolution> {
     match self_ty.kind() {
+        _ if self_ty.references_error() => Err(NoSolution),
         // keep this in sync with assemble_fn_pointer_candidates until the old solver is removed.
         ty::FnDef(def_id, args) => {
             let sig = cx.fn_sig(def_id);
