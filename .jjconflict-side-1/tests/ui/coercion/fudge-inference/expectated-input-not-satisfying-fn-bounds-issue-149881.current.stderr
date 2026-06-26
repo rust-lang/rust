@@ -1,0 +1,22 @@
+error[E0277]: the size for values of type `[{integer}]` cannot be known at compilation time
+  --> $DIR/expectated-input-not-satisfying-fn-bounds-issue-149881.rs:15:24
+   |
+LL |     <[_]>::into_vec(id(Box::new([0, 1, 2])));
+   |                     -- ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |                     |
+   |                     required by a bound introduced by this call
+   |
+   = help: the trait `Sized` is not implemented for `[{integer}]`
+note: required by an implicit `Sized` bound in `id`
+  --> $DIR/expectated-input-not-satisfying-fn-bounds-issue-149881.rs:10:7
+   |
+LL | fn id<T>(x: Box<T>) -> Box<T> {
+   |       ^ required by the implicit `Sized` requirement on this type parameter in `id`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn id<T: ?Sized>(x: Box<T>) -> Box<T> {
+   |        ++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

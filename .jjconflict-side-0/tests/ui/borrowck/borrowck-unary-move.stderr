@@ -1,0 +1,21 @@
+error[E0505]: cannot move out of `x` because it is borrowed
+  --> $DIR/borrowck-unary-move.rs:3:10
+   |
+LL | fn foo(x: Box<isize>) -> isize {
+   |        - binding `x` declared here
+LL |     let y = &*x;
+   |             --- borrow of `*x` occurs here
+LL |     free(x);
+   |          ^ move out of `x` occurs here
+LL |     *y
+   |     -- borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL -     let y = &*x;
+LL +     let y = &x.clone();
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0505`.

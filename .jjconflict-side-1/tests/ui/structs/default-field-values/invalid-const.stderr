@@ -1,0 +1,15 @@
+error[E0080]: evaluation panicked: asdf
+  --> $DIR/invalid-const.rs:5:19
+   |
+LL |     pub bax: u8 = panic!("asdf"),
+   |                   ^^^^^^^^^^^^^^ evaluation of `Bat::bax::{constant#0}` failed here
+
+error[E0080]: attempt to compute `130_u8 + 130_u8`, which would overflow
+  --> $DIR/invalid-const.rs:11:19
+   |
+LL |     pub bat: u8 = 130 + 130,
+   |                   ^^^^^^^^^ evaluation of `Baz::<C>::bat::{constant#0}` failed here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

@@ -1,0 +1,26 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/17746>.
+
+//@ check-pass
+#![allow(dead_code)]
+
+fn main() {}
+
+struct A;
+
+impl A {
+    fn b(&mut self) {
+        self.a()
+    }
+}
+
+trait Foo {
+    fn dummy(&self) {}
+}
+trait Bar {
+    fn a(&self);
+}
+
+impl Foo for A {}
+impl<T> Bar for T where T: Foo {
+    fn a(&self) {}
+}

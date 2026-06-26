@@ -1,0 +1,46 @@
+//@ check-pass
+
+#![feature(
+    adt_const_params,
+    const_param_ty_trait,
+    gca_adts,
+    gca_macroless_args,
+    gca_min_const_items,
+    generic_const_items,
+    generic_const_parameter_types
+)]
+
+use std::gca;
+use std::marker::{ConstParamTy, ConstParamTy_, PhantomData};
+
+#[derive(PartialEq, Eq, ConstParamTy)]
+struct Foo<T> {
+    field: T,
+}
+
+const WRAP<T: ConstParamTy_, const N: T>: Foo<T> = gca!(Foo::<T> { field: N });
+
+fn main() {
+    // What we're trying to accomplish here is winding up with an equality relation
+    // between two `ty::Const` that looks something like:
+    //
+    // ```
+    // Foo<u8> { field: const { 1 + 2 } }
+    // eq
+    // Foo<u8> { field: ?x }
+    // ```
+    //
+    // Note that the `field: _` here means a const argument `_` not a wildcard pattern.
+    // This tests that we are able to infer `?x=3` even though the first `ty::Const`
+    // may be a fully evaluated constant, and the latter is not fully evaluatable due
+    // to inference variables.
+    let _: PC<_, { WRAP::<u8, const { 1 + 1 }> }> = PC::<_, { Foo::<u8> { field: _ } }>;
+}
+
+// "PhantomConst" helper equivalent to "PhantomData" used for testing equalities
+// of arbitrarily typed const arguments.
+struct PC<T: ConstParamTy_, const N: T> {
+    _0: PhantomData<T>,
+}
+// FIXME(gca_min_const_items): this shouldn't have to do silly (expr,).0 hacks
+const PC<T: ConstParamTy_, const N: T>: PC<T, N> = (PC { _0: PhantomData::<T> },).0;

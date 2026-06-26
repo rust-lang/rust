@@ -1,0 +1,8 @@
+error: the trait `ConstParamTy` may not be implemented for this type
+  --> $DIR/trait_objects_as_a_const_generic.rs:8:24
+   |
+LL | impl ConstParamTy_ for dyn Trait {}
+   |                        ^^^^^^^^^ type is not a structure or enumeration
+
+error: aborting due to 1 previous error
+

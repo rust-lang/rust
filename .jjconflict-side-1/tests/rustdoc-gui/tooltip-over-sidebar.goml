@@ -1,0 +1,12 @@
+// Check that the doctest info tooltips are above the sidebar.
+go-to: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
+move-cursor-to: ".example-wrap.ignore .tooltip"
+wait-for: ".tooltip.popover"
+
+// Move cursor to top left corner of the tooltip and check that it doesn't fade.
+move-cursor-to: ".tooltip.popover"
+wait-for: 100
+assert: ".tooltip.popover:not(.fade-out)"
+
+move-cursor-to: (0, 0)
+wait-for: ".tooltip.popover.fade-out"

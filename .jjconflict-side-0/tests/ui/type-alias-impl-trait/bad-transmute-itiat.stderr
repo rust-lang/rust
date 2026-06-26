@@ -1,0 +1,10 @@
+error: unconstrained opaque type
+  --> $DIR/bad-transmute-itiat.rs:11:19
+   |
+LL |     type Assoc2 = impl std::fmt::Debug;
+   |                   ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Assoc2` must be used in combination with a concrete type within the same impl
+
+error: aborting due to 1 previous error
+

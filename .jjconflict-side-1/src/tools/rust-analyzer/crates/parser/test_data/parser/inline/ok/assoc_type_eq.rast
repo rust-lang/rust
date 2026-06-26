@@ -1,0 +1,41 @@
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "T"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "StreamingIterator"
+          GENERIC_ARG_LIST
+            L_ANGLE "<"
+            ASSOC_TYPE_ARG
+              NAME_REF
+                IDENT "Item"
+              GENERIC_ARG_LIST
+                L_ANGLE "<"
+                LIFETIME_ARG
+                  LIFETIME
+                    LIFETIME_IDENT "'a"
+                R_ANGLE ">"
+              WHITESPACE " "
+              EQ "="
+              WHITESPACE " "
+              REF_TYPE
+                AMP "&"
+                LIFETIME
+                  LIFETIME_IDENT "'a"
+                WHITESPACE " "
+                PATH_TYPE
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "T"
+            R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n"

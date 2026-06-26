@@ -1,0 +1,75 @@
+error[E0790]: cannot call associated function on trait without specifying the corresponding `impl` type
+  --> $DIR/E0790.rs:17:9
+   |
+LL |         fn my_fn();
+   |         ----------- `MyTrait::my_fn` defined here
+...
+LL |         MyTrait::my_fn();
+   |         ^^^^^^^^^^^^^^^^ cannot call associated function of trait
+   |
+help: use the fully-qualified path to the only available implementation
+   |
+LL |         <MyStruct as MyTrait>::my_fn();
+   |         ++++++++++++        +
+
+error[E0790]: cannot refer to the associated constant on trait without specifying the corresponding `impl` type
+  --> $DIR/E0790.rs:21:17
+   |
+LL |         const MY_ASSOC_CONST: ();
+   |         ------------------------ `MyTrait::MY_ASSOC_CONST` defined here
+...
+LL |         let _ = MyTrait::MY_ASSOC_CONST;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^ cannot refer to the associated constant of trait
+   |
+help: use the fully-qualified path to the only available implementation
+   |
+LL |         let _ = <MyStruct as MyTrait>::MY_ASSOC_CONST;
+   |                 ++++++++++++        +
+
+error[E0790]: cannot call associated function on trait without specifying the corresponding `impl` type
+  --> $DIR/E0790.rs:26:5
+   |
+LL |         fn my_fn();
+   |         ----------- `MyTrait::my_fn` defined here
+...
+LL |     inner::MyTrait::my_fn();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ cannot call associated function of trait
+   |
+help: use the fully-qualified path to the only available implementation
+   |
+LL |     <MyStruct as inner::MyTrait>::my_fn();
+   |     ++++++++++++               +
+
+error[E0790]: cannot refer to the associated constant on trait without specifying the corresponding `impl` type
+  --> $DIR/E0790.rs:30:13
+   |
+LL |         const MY_ASSOC_CONST: ();
+   |         ------------------------ `MyTrait::MY_ASSOC_CONST` defined here
+...
+LL |     let _ = inner::MyTrait::MY_ASSOC_CONST;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot refer to the associated constant of trait
+   |
+help: use the fully-qualified path to the only available implementation
+   |
+LL |     let _ = <MyStruct as inner::MyTrait>::MY_ASSOC_CONST;
+   |             ++++++++++++               +
+
+error[E0790]: cannot call associated function on trait without specifying the corresponding `impl` type
+  --> $DIR/E0790.rs:50:5
+   |
+LL |     fn my_fn();
+   |     ----------- `MyTrait2::my_fn` defined here
+...
+LL |     MyTrait2::my_fn();
+   |     ^^^^^^^^^^^^^^^^^ cannot call associated function of trait
+   |
+help: use a fully-qualified path to one of the available implementations
+   |
+LL |     <Impl1 as MyTrait2>::my_fn();
+   |     +++++++++         +
+LL |     <Impl2 as MyTrait2>::my_fn();
+   |     +++++++++         +
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0790`.

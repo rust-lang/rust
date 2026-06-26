@@ -1,0 +1,23 @@
+error[E0659]: `Error` is ambiguous
+  --> $DIR/ambiguous-7.rs:15:9
+   |
+LL | fn a<E: Error>(_: E) {}
+   |         ^^^^^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `Error` could refer to the trait imported here
+  --> $DIR/ambiguous-7.rs:14:5
+   |
+LL | use self::t3::*;
+   |     ^^^^^^^^^^^
+   = help: consider adding an explicit import of `Error` to disambiguate
+note: `Error` could also refer to the enum imported here
+  --> $DIR/ambiguous-7.rs:8:9
+   |
+LL | pub use t2::*;
+   |         ^^^^^
+   = help: consider adding an explicit import of `Error` to disambiguate
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0659`.

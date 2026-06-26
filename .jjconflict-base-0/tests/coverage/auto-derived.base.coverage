@@ -1,0 +1,54 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2024
+   LL|       |//@ revisions: base auto on
+   LL|       |
+   LL|       |// Tests for how `#[automatically_derived]` affects coverage instrumentation.
+   LL|       |//
+   LL|       |// The actual behaviour is an implementation detail, so this test mostly exists
+   LL|       |// to show when that behaviour has been accidentally or deliberately changed.
+   LL|       |//
+   LL|       |// Revision guide:
+   LL|       |// - base: Test baseline instrumentation behaviour without `#[automatically_derived]`
+   LL|       |// - auto: Test how `#[automatically_derived]` affects instrumentation
+   LL|       |// - on:   Test interaction between auto-derived and `#[coverage(on)]`
+   LL|       |
+   LL|       |struct MyStruct;
+   LL|       |
+   LL|       |trait MyTrait {
+   LL|       |    fn my_assoc_fn();
+   LL|       |}
+   LL|       |
+   LL|       |#[cfg_attr(auto, automatically_derived)]
+   LL|       |#[cfg_attr(on, automatically_derived)]
+   LL|       |#[cfg_attr(on, coverage(on))]
+   LL|       |impl MyTrait for MyStruct {
+   LL|      1|    fn my_assoc_fn() {
+   LL|      1|        fn inner_fn() {
+   LL|      1|            say("in inner fn");
+   LL|      1|        }
+   LL|       |
+   LL|       |        #[coverage(on)]
+   LL|      1|        fn inner_fn_on() {
+   LL|      1|            say("in inner fn (on)");
+   LL|      1|        }
+   LL|       |
+   LL|      1|        let closure = || {
+   LL|      1|            say("in closure");
+   LL|      1|        };
+   LL|       |
+   LL|      1|        closure();
+   LL|      1|        inner_fn();
+   LL|      1|        inner_fn_on();
+   LL|      1|    }
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |#[inline(never)]
+   LL|       |fn say(s: &str) {
+   LL|       |    println!("{s}");
+   LL|       |}
+   LL|       |
+   LL|      1|fn main() {
+   LL|      1|    MyStruct::my_assoc_fn();
+   LL|      1|}
+

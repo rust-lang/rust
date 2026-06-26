@@ -1,0 +1,88 @@
+error[E0057]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/exotic-calls.rs:6:5
+   |
+LL |     t(1i32);
+   |     ^ ---- unexpected argument of type `i32`
+   |
+note: callable defined here
+  --> $DIR/exotic-calls.rs:5:11
+   |
+LL | fn foo<T: Fn()>(t: T) {
+   |           ^^^^
+help: remove the extra argument
+   |
+LL -     t(1i32);
+LL +     t();
+   |
+
+error[E0057]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/exotic-calls.rs:12:9
+   |
+LL |     |t| f(t);
+   |         ^ - unexpected argument
+   |
+note: callable defined here
+  --> $DIR/exotic-calls.rs:11:12
+   |
+LL | fn foo2<T: Fn()>(f: T) {
+   |            ^^^^
+help: remove the extra argument
+   |
+LL -     |t| f(t);
+LL +     |t| f();
+   |
+
+error[E0057]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/exotic-calls.rs:17:5
+   |
+LL |     t(1i32);
+   |     ^ ---- unexpected argument of type `i32`
+   |
+note: type parameter defined here
+  --> $DIR/exotic-calls.rs:16:11
+   |
+LL | fn bar(t: impl Fn()) {
+   |           ^^^^^^^^^
+help: remove the extra argument
+   |
+LL -     t(1i32);
+LL +     t();
+   |
+
+error[E0057]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/exotic-calls.rs:26:5
+   |
+LL |     baz()(1i32)
+   |     ^^^^^ ---- unexpected argument of type `i32`
+   |
+note: opaque type defined here
+  --> $DIR/exotic-calls.rs:21:13
+   |
+LL | fn baz() -> impl Fn() {
+   |             ^^^^^^^^^
+help: remove the extra argument
+   |
+LL -     baz()(1i32)
+LL +     baz()()
+   |
+
+error[E0057]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/exotic-calls.rs:32:5
+   |
+LL |     x(1i32);
+   |     ^ ---- unexpected argument of type `i32`
+   |
+note: closure defined here
+  --> $DIR/exotic-calls.rs:31:13
+   |
+LL |     let x = || {};
+   |             ^^
+help: remove the extra argument
+   |
+LL -     x(1i32);
+LL +     x();
+   |
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0057`.

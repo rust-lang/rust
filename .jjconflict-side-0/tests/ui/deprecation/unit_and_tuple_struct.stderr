@@ -1,0 +1,80 @@
+error: use of deprecated unit struct `a::Foo`
+  --> $DIR/unit_and_tuple_struct.rs:17:8
+   |
+LL | use a::Foo;
+   |        ^^^
+   |
+note: the lint level is defined here
+  --> $DIR/unit_and_tuple_struct.rs:1:9
+   |
+LL | #![deny(deprecated)]
+   |         ^^^^^^^^^^
+
+error: use of deprecated tuple struct `a::Bar`
+  --> $DIR/unit_and_tuple_struct.rs:19:8
+   |
+LL | use a::Bar;
+   |        ^^^
+
+error: use of deprecated struct `a::Baz`
+  --> $DIR/unit_and_tuple_struct.rs:21:8
+   |
+LL | use a::Baz;
+   |        ^^^
+
+error: use of deprecated unit variant `a::Enum::VFoo`
+  --> $DIR/unit_and_tuple_struct.rs:24:14
+   |
+LL | use a::Enum::VFoo;
+   |              ^^^^
+
+error: use of deprecated tuple variant `a::Enum::VBar`
+  --> $DIR/unit_and_tuple_struct.rs:26:14
+   |
+LL | use a::Enum::VBar;
+   |              ^^^^
+
+error: use of deprecated variant `a::Enum::VBaz`
+  --> $DIR/unit_and_tuple_struct.rs:28:14
+   |
+LL | use a::Enum::VBaz;
+   |              ^^^^
+
+error: use of deprecated unit struct `a::Foo`
+  --> $DIR/unit_and_tuple_struct.rs:32:6
+   |
+LL |   a::Foo;
+   |      ^^^
+
+error: use of deprecated tuple struct `a::Bar`
+  --> $DIR/unit_and_tuple_struct.rs:34:6
+   |
+LL |   a::Bar();
+   |      ^^^
+
+error: use of deprecated struct `a::Baz`
+  --> $DIR/unit_and_tuple_struct.rs:36:6
+   |
+LL |   a::Baz {};
+   |      ^^^
+
+error: use of deprecated unit variant `a::Enum::VFoo`
+  --> $DIR/unit_and_tuple_struct.rs:39:12
+   |
+LL |   a::Enum::VFoo;
+   |            ^^^^
+
+error: use of deprecated tuple variant `a::Enum::VBar`
+  --> $DIR/unit_and_tuple_struct.rs:41:12
+   |
+LL |   a::Enum::VBar();
+   |            ^^^^
+
+error: use of deprecated variant `a::Enum::VBaz`
+  --> $DIR/unit_and_tuple_struct.rs:43:12
+   |
+LL |   a::Enum::VBaz{};
+   |            ^^^^
+
+error: aborting due to 12 previous errors
+

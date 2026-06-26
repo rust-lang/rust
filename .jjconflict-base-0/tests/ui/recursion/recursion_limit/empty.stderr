@@ -1,0 +1,10 @@
+error: `limit` must be a non-negative integer
+  --> $DIR/empty.rs:3:1
+   |
+LL | #![recursion_limit = ""]
+   | ^^^^^^^^^^^^^^^^^^^^^--^
+   |                      |
+   |                      `limit` must be a non-negative integer
+
+error: aborting due to 1 previous error
+

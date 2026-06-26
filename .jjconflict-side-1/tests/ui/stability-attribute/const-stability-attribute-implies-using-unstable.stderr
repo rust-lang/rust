@@ -1,0 +1,22 @@
+error: the feature `const_foo` has been partially stabilized since 1.62.0 and is succeeded by the feature `const_foobar`
+  --> $DIR/const-stability-attribute-implies-using-unstable.rs:4:12
+   |
+LL | #![feature(const_foo)]
+   |            ^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/const-stability-attribute-implies-using-unstable.rs:3:9
+   |
+LL | #![deny(stable_features)]
+   |         ^^^^^^^^^^^^^^^
+help: if you are using features which are still unstable, change to using `const_foobar`
+   |
+LL | #![feature(const_foobar)]
+   |                     +++
+help: if you are using features which are now stable, remove this line
+   |
+LL - #![feature(const_foo)]
+   |
+
+error: aborting due to 1 previous error
+

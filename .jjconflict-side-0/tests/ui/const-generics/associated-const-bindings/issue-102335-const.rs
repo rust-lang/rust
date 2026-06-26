@@ -1,0 +1,15 @@
+#![feature(gca_min_const_items)]
+#![allow(incomplete_features)]
+
+trait T {
+    type A: S<C<X = 0i32> = 34>;
+    //~^ ERROR associated item constraints are not allowed here
+    //~| ERROR associated item constraints are not allowed here
+}
+
+trait S {
+    #[rustc_always_gca]
+    const C: i32;
+}
+
+fn main() {}

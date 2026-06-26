@@ -1,0 +1,22 @@
+error[E0119]: conflicting implementations of trait `SizedTr` for type `X<_>`
+  --> $DIR/pretty-print-no-feat.rs:15:1
+   |
+LL | impl<T: Sized> SizedTr for X<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: conflicting implementation in crate `pretty_print_no_feat_dep`:
+           - impl<T> SizedTr for T;
+
+error[E0119]: conflicting implementations of trait `NegSizedTr` for type `X<_>`
+  --> $DIR/pretty-print-no-feat.rs:18:1
+   |
+LL | impl<T: ?Sized> NegSizedTr for X<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: conflicting implementation in crate `pretty_print_no_feat_dep`:
+           - impl<T> NegSizedTr for T
+             where T: ?Sized;
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0119`.

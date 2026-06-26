@@ -1,0 +1,15 @@
+error[E0574]: expected struct, variant or union type, found type parameter `Baz`
+  --> $DIR/point-at-type-parameter-shadowing-another-type.rs:16:13
+   |
+LL | struct Baz {
+   |        --- you might have meant to refer to this struct
+...
+LL | impl<Baz> Foo<Baz> for Bar {
+   |      --- found this type parameter
+...
+LL |             Baz { num } => num,
+   |             ^^^ not a struct, variant or union type
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0574`.

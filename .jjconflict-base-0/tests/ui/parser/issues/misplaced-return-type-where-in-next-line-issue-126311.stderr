@@ -1,0 +1,17 @@
+error: return type should be specified after the function parameters
+  --> $DIR/misplaced-return-type-where-in-next-line-issue-126311.rs:5:15
+   |
+LL |     K: Clone, -> Result<u8, String>
+   |               ^^ expected one of `#`, `{`, lifetime, or type
+   |
+help: place the return type after the function parameters
+   |
+LL ~ fn foo<T, K>() -> Result<u8, String>
+LL |
+LL | where
+LL |     T: Default,
+LL ~     K: Clone, 
+   |
+
+error: aborting due to 1 previous error
+
