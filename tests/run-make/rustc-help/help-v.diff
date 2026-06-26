@@ -1,5 +1,5 @@
-@@ -65,10 +65,31 @@
-                         Set a codegen option
+@@ -67,11 +67,32 @@
+                         Set a target modifier option
      -V, --version       Print version info and exit
      -v, --verbose       Use verbose output
 +        --extern <NAME>[=<PATH>]
@@ -27,6 +27,7 @@
  
  Additional help:
      -C help             Print codegen options
+     -T help             Print target modifier options
      -W help             Print 'lint' options and default settings
      -Z help             Print unstable compiler options
 -    --help -v           Print the full set of options rustc accepts

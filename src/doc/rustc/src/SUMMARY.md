@@ -4,6 +4,7 @@
 - [Command-line Arguments](command-line-arguments.md)
     - [Print Options](command-line-arguments/print-options.md)
     - [Codegen Options](codegen-options/index.md)
+    - [Target Options](target-options/index.md)
 - [Jobserver](jobserver.md)
 - [Lints](lints/index.md)
     - [Lint Levels](lints/levels.md)
