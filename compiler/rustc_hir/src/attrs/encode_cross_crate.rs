@@ -158,6 +158,7 @@ impl AttributeKind {
             RustcLintOptTy => Yes,
             RustcLintQueryInstability => Yes,
             RustcLintUntrackedQueryInformation => Yes,
+            RustcLowPriorityImpl => Yes,
             RustcMacroTransparency(..) => Yes,
             RustcMain => No,
             RustcMir(..) => Yes,
