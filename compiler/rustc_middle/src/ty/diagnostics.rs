@@ -398,15 +398,28 @@ pub fn suggest_constraining_type_params<'a>(
             }
         };
         let constraint = constraint.join(" + ");
-        let mut suggest_restrict = |span, bound_list_non_empty, open_paren_sp| {
-            let suggestion = if span_to_replace.is_some() {
-                constraint.clone()
-            } else if constraint.starts_with('<') {
-                constraint.clone()
+        let mut suggest_restrict = |span: Span, bound_list_non_empty, open_paren_sp| {
+            let (span, suggestion) = if span_to_replace.is_some() {
+                (span, constraint.clone())
+            } else if let Some(rest) = constraint.strip_prefix('<') {
+                // `constraint` adds generic args; check whether the bound already has some.
+                // Naively inserting `<B>` after `Foo<A>` yields invalid `Foo<A><B>`.
+                if span.lo() > BytePos(0)
+                    && tcx
+                        .sess
+                        .source_map()
+                        .span_to_snippet(span.with_lo(span.lo() - BytePos(1)))
+                        .as_deref()
+                        == Ok(">")
+                {
+                    (span.with_lo(span.lo() - BytePos(1)), format!(", {rest}"))
+                } else {
+                    (span, constraint.clone())
+                }
             } else if bound_list_non_empty {
-                format!(" + {constraint}")
+                (span, format!(" + {constraint}"))
             } else {
-                format!(" {constraint}")
+                (span, format!(" {constraint}"))
             };
 
             if let Some(open_paren_sp) = open_paren_sp {
