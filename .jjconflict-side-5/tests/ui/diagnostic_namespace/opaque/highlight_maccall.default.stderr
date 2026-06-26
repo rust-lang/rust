@@ -1,0 +1,8 @@
+error: oh no
+  --> $DIR/highlight_maccall.rs:16:5
+   |
+LL |     my_error!();
+   |     ^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

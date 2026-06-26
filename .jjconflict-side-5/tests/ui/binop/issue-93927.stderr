@@ -1,0 +1,16 @@
+error[E0369]: binary operation `==` cannot be applied to type `MyType<T>`
+  --> $DIR/issue-93927.rs:14:9
+   |
+LL |     val == val
+   |     --- ^^ --- MyType<T>
+   |     |
+   |     MyType<T>
+   |
+help: consider further restricting type parameter `T` with trait `Eq`
+   |
+LL | fn cond<T: PartialEq + std::cmp::Eq>(val: MyType<T>) -> bool {
+   |                      ++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0369`.

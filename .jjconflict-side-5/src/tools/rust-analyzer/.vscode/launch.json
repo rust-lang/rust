@@ -1,0 +1,135 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+
+  // NOTE: --disable-extensions
+  // Disable all installed extensions to increase performance of the debug instance
+  // and prevent potential conflicts with other installed extensions.
+
+  "version": "0.2.0",
+  "configurations": [
+    {
+      // Used for testing the extension with the installed LSP server.
+      "name": "Run Installed Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+        // "--user-data-dir=${workspaceFolder}/target/code",
+        "--disable-extensions",
+        "--extensionDevelopmentPath=${workspaceFolder}/editors/code",
+        "--log rust-lang.rust-analyzer:debug"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/editors/code/out/**/*.js"
+      ],
+      "preLaunchTask": "Build Extension",
+      "skipFiles": [
+        "<node_internals>/**/*.js"
+      ]
+    },
+    {
+      // Used for testing the extension with a local build of the LSP server (in `target/debug`).
+      "name": "Run Extension (Debug Build)",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+        "--disable-extensions",
+        "--extensionDevelopmentPath=${workspaceFolder}/editors/code",
+        "--log rust-lang.rust-analyzer:debug"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/editors/code/out/**/*.js"
+      ],
+      "preLaunchTask": "Build Server and Extension",
+      "skipFiles": [
+        "<node_internals>/**/*.js"
+      ],
+      "env": {
+        "__RA_LSP_SERVER_DEBUG": "${workspaceFolder}/target/debug/rust-analyzer"
+      }
+    },
+    {
+      // Used for testing the extension with a local build of the LSP server (in `target/release`).
+      "name": "Run Extension (Release Build)",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+        "--disable-extensions",
+        "--extensionDevelopmentPath=${workspaceFolder}/editors/code",
+        "--log rust-lang.rust-analyzer:debug"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/editors/code/out/**/*.js"
+      ],
+      "preLaunchTask": "Build Server (Release) and Extension",
+      "skipFiles": [
+        "<node_internals>/**/*.js"
+      ],
+      "env": {
+        "__RA_LSP_SERVER_DEBUG": "${workspaceFolder}/target/release/rust-analyzer"
+      }
+    },
+    {
+      // Used for testing the extension with a local build of the LSP server (in `target/release`)
+      // with all other extensions loaded.
+      "name": "Run With Extensions",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+        "--disable-extension", "rust-lang.rust-analyzer",
+        "--extensionDevelopmentPath=${workspaceFolder}/editors/code",
+        "--log rust-lang.rust-analyzer:debug"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/editors/code/out/**/*.js"
+      ],
+      "preLaunchTask": "Build Server (Release) and Extension",
+      "skipFiles": [
+        "<node_internals>/**/*.js"
+      ],
+      "env": {
+        "__RA_LSP_SERVER_DEBUG": "${workspaceFolder}/target/release/rust-analyzer"
+      }
+    },
+    {
+      // Used to attach LLDB to a running LSP server.
+      // NOTE: Might require root permissions. For this run:
+      //
+      // `echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope`
+      //
+      // Don't forget to set `debug = 2` in `Cargo.toml` before building the server
+
+      "name": "Attach To Server",
+      "type": "lldb",
+      "request": "attach",
+      "program": "${workspaceFolder}/target/debug/rust-analyzer",
+      "pid": "${command:pickMyProcess}",
+      "sourceLanguages": [
+        "rust"
+      ]
+    },
+    {
+      "name": "Run Unit Tests",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+          "--extensionDevelopmentPath=${workspaceFolder}/editors/code",
+          "--extensionTestsPath=${workspaceFolder}/editors/code/out/tests/unit" ],
+      "sourceMaps": true,
+      "outFiles": [ "${workspaceFolder}/editors/code/out/tests/unit/**/*.js" ],
+      "preLaunchTask": "Pretest"
+    },
+    {
+      "name": "Win Attach to Server",
+      "type": "cppvsdbg",
+      "processId":"${command:pickProcess}",
+      "request": "attach"
+    }
+  ]
+}

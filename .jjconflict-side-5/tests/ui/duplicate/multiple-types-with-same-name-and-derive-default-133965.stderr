@@ -1,0 +1,14 @@
+error[E0428]: the name `NonGeneric` is defined multiple times
+  --> $DIR/multiple-types-with-same-name-and-derive-default-133965.rs:6:1
+   |
+LL | struct NonGeneric {}
+   | ----------------- previous definition of the type `NonGeneric` here
+...
+LL | struct NonGeneric<'a, const N: usize> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `NonGeneric` redefined here
+   |
+   = note: `NonGeneric` must be defined only once in the type namespace of this module
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0428`.

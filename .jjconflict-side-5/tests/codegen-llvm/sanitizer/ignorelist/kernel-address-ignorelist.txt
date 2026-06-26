@@ -1,0 +1,5 @@
+[kernel-address]
+fun:test_kernel_address_ignored
+
+[address]
+fun:test_address_ignored

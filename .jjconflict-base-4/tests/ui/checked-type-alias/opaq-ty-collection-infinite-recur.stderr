@@ -1,0 +1,11 @@
+error[E0275]: overflow normalizing the type alias `Recur`
+  --> $DIR/opaq-ty-collection-infinite-recur.rs:16:20
+   |
+LL | struct Hold([(); { type Recur = Recur; 0 }]);
+   |                    ^^^^^^^^^^
+   |
+   = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

@@ -1,0 +1,5 @@
+// This tests that the "implementations" section on struct/enum pages
+// has all the implementations toggled open by default, so users can
+// find method names in those implementations with Ctrl-F.
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+assert-attribute: (".toggle.implementors-toggle", {"open": ""})

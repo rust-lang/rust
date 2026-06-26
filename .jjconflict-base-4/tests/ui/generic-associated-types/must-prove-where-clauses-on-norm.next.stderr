@@ -1,0 +1,10 @@
+error: higher-ranked lifetime error
+  --> $DIR/must-prove-where-clauses-on-norm.rs:23:61
+   |
+LL |     let func: for<'a, 'b> fn((), &'b str) -> &'static str = foo::<()>;
+   |                                                             ^^^^^^^^^
+   |
+   = note: could not normalize `for<'b> fn(<() as Trait>::Assoc<'_, 'b>, &'b str) -> &str`
+
+error: aborting due to 1 previous error
+

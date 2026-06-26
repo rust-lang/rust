@@ -1,0 +1,15 @@
+error[E0080]: encountered static that tried to access itself during initialization
+  --> $DIR/recursive-static-definition.rs:1:23
+   |
+LL | pub static FOO: u32 = FOO;
+   |                       ^^^ evaluation of `FOO` failed here
+
+error[E0080]: encountered static that tried to access itself during initialization
+  --> $DIR/recursive-static-definition.rs:9:23
+   |
+LL | pub static BAR: Foo = BAR;
+   |                       ^^^ evaluation of `BAR` failed here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

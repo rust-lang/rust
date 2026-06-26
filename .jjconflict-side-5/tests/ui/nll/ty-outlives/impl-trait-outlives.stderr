@@ -1,0 +1,31 @@
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/impl-trait-outlives.rs:11:5
+   |
+LL | fn no_region<'a, T>(x: Box<T>) -> impl Debug + 'a
+   |              -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+...
+LL |     x
+   |     ^ ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     T: Debug + 'a,
+   |              ++++
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/impl-trait-outlives.rs:26:5
+   |
+LL | fn wrong_region<'a, 'b, T>(x: Box<T>) -> impl Debug + 'a
+   |                 -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+...
+LL |     x
+   |     ^ ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     T: 'b + Debug + 'a,
+   |                   ++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0309`.
