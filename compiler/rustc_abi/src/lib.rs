@@ -65,7 +65,7 @@ mod layout;
 #[cfg(test)]
 mod tests;
 
-pub use callconv::{Heterogeneous, HomogeneousAggregate, Reg, RegKind, homogeneous_aggregate};
+pub use callconv::{Heterogeneous, HomogeneousAggregate, Reg, RegKind};
 pub use canon_abi::{ArmCall, CanonAbi, InterruptKind, X86Call};
 #[cfg(feature = "nightly")]
 pub use extern_abi::CVariadicStatus;

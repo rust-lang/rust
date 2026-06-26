@@ -1,9 +1,8 @@
 use rustc_abi::{
     AddressSpace, Align, BackendRepr, HasDataLayout, Primitive, Reg, RegKind, TyAndLayout,
-    homogeneous_aggregate,
 };
 
-use crate::callconv::{ArgAttribute, FnAbi, PassMode, TyAbiInterface};
+use crate::callconv::{ArgAttribute, FnAbi, PassMode, TyAbiInterface, homogeneous_aggregate};
 use crate::spec::{HasTargetSpec, RustcAbi};
 
 #[derive(PartialEq)]
