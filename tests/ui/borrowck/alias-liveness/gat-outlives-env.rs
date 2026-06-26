@@ -5,6 +5,9 @@
 //@ [polonius_alpha] edition: 2024
 //@ [polonius_alpha] compile-flags: -Zpolonius=next
 
+// Demonstrates that you can use a outlives bound on an associated type in a
+// where clause to restrict the lifetimes that may be contained within.
+
 trait Updater {
     type Changes<'a, 'b: 'a>
     where
@@ -12,6 +15,7 @@ trait Updater {
     fn changes<'a, 'b>(&'a mut self, _value: &'b u8) -> Self::Changes<'a, 'b>;
 }
 
+// Nothing can be captured.
 fn overlapping_mut<T>(mut t: T)
 where
     T: Updater,
@@ -22,6 +26,7 @@ where
     let b = t.changes(static_unit);
 }
 
+// Only `&mut self` is captured not `&'static u8`, and that borrow is killed on the next call.
 fn overlapping_mut2<T>(mut t: T)
 where
     T: Updater,
@@ -30,10 +35,10 @@ where
     let static_unit: &'static u8 = &0;
     let a = t.changes(static_unit);
     let b = t.changes(static_unit);
-    // ^ These don't error, because the underlying type can't capture `&self`:
-    // it would have to outlive `'b` for arbitrary `'a` and `'b`.
 }
 
+// Both `&mut self` and `&'static u8` are captured, because the `'static` lifetime
+// makes the associated type live for the entire function body.
 fn overlapping_mut3<'b, T>(mut t: T)
 where
     T: Updater,

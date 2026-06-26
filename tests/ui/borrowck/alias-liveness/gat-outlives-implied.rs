@@ -6,7 +6,6 @@
 // Tests that liveness for regions in associated types considers outlives
 // bounds, and the transitive implied outlives bounds from those.
 
-
 trait Updater {
     // Because `'b` is known to outlive `'a`, then we must consider that `'b`
     // may be live in `Self::Changes<'a, 'b>`.
