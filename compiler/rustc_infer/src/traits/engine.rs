@@ -127,6 +127,8 @@ pub trait TraitEngine<'tcx, E: 'tcx>: 'tcx {
         &mut self,
         infcx: &InferCtxt<'tcx>,
     ) -> PredicateObligations<'tcx>;
+
+    fn is_in_probe(&self, infcx: &InferCtxt<'_>) -> bool;
 }
 
 pub trait FromSolverError<'tcx, E>: Debug + 'tcx {
