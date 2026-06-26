@@ -1355,6 +1355,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     source: None,
                     parent_scope: *parent_scope,
                     single_nested: path_span != root_span,
+                    use_stmt_span: if path_span != root_span {
+                        // `root_span` spans the entire `use` tree, which is needed
+                        // to correctly generate a multipart suggestion for a grouped import.
+                        Some(root_span)
+                    } else {
+                        None
+                    },
                 });
             } else {
                 return Err(ControlFlow::Break(Determined));
