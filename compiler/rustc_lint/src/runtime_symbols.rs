@@ -11,7 +11,7 @@ use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
     /// The `invalid_runtime_symbol_definitions` lint checks the signature of items whose
-    /// symbol name is a runtime symbol expected by `core` differs significantly from the
+    /// symbol name is a runtime symbol expected by `core` or `std` differs significantly from the
     /// expected signature (like mismatch ABI, mismatch C variadics, mismatch argument count,
     /// missing return type, ...).
     ///
@@ -32,7 +32,8 @@ declare_lint! {
     /// standard-library facility or undefined behavior may occur.
     ///
     /// The symbols currently checked are `memcpy`, `memmove`, `memset`, `memcmp`,
-    /// `bcmp` and `strlen`.
+    /// `bcmp`, `strlen`, as well as the following POSIX symbols: `open`, `read`, `write`
+    /// `close`, `malloc`, `realloc`, `free` and `exit`.
     ///
     /// [^1]: https://doc.rust-lang.org/core/index.html#how-to-use-the-core-library
     pub INVALID_RUNTIME_SYMBOL_DEFINITIONS,
@@ -42,7 +43,7 @@ declare_lint! {
 
 declare_lint! {
     /// The `suspicious_runtime_symbol_definitions` lint checks the signature of items whose
-    /// symbol name is a runtime symbol expected by `core`.
+    /// symbol name is a runtime symbol expected by `core` or `std`.
     ///
     /// ### Example
     ///
@@ -62,7 +63,8 @@ declare_lint! {
     /// standard-library facility or undefined behavior may occur.
     ///
     /// The symbols currently checked are `memcpy`, `memmove`, `memset`, `memcmp`,
-    /// `bcmp` and `strlen`.
+    /// `bcmp`, `strlen`, as well as the following POSIX symbols: `open`, `read`, `write`
+    /// `close`, `malloc`, `realloc`, `free` and `exit`.
     ///
     /// [^1]: https://doc.rust-lang.org/core/index.html#how-to-use-the-core-library
     pub SUSPICIOUS_RUNTIME_SYMBOL_DEFINITIONS,
@@ -73,12 +75,22 @@ declare_lint! {
 declare_lint_pass!(RuntimeSymbols => [INVALID_RUNTIME_SYMBOL_DEFINITIONS, SUSPICIOUS_RUNTIME_SYMBOL_DEFINITIONS]);
 
 static EXPECTED_SYMBOLS: &[ExpectedSymbol] = &[
+    // `core` symbols
     ExpectedSymbol { symbol: "memcpy", lang: LanguageItems::memcpy_fn },
     ExpectedSymbol { symbol: "memmove", lang: LanguageItems::memmove_fn },
     ExpectedSymbol { symbol: "memset", lang: LanguageItems::memset_fn },
     ExpectedSymbol { symbol: "memcmp", lang: LanguageItems::memcmp_fn },
     ExpectedSymbol { symbol: "bcmp", lang: LanguageItems::bcmp_fn },
     ExpectedSymbol { symbol: "strlen", lang: LanguageItems::strlen_fn },
+    // POSIX symbols
+    ExpectedSymbol { symbol: "open", lang: LanguageItems::open_fn },
+    ExpectedSymbol { symbol: "read", lang: LanguageItems::read_fn },
+    ExpectedSymbol { symbol: "write", lang: LanguageItems::write_fn },
+    ExpectedSymbol { symbol: "close", lang: LanguageItems::close_fn },
+    ExpectedSymbol { symbol: "malloc", lang: LanguageItems::malloc_fn },
+    ExpectedSymbol { symbol: "realloc", lang: LanguageItems::realloc_fn },
+    ExpectedSymbol { symbol: "free", lang: LanguageItems::free_fn },
+    ExpectedSymbol { symbol: "exit", lang: LanguageItems::exit_fn },
 ];
 
 #[derive(Copy, Clone, Debug)]
