@@ -37,7 +37,7 @@ declare_lint! {
     /// return values that cross the secure boundary can contain stale secure data in their
     /// padding bytes.
     ///
-    /// The compiler zeroes all variant-independent padding: bytes that are padding for all valid
+    /// The compiler clears all variant-independent padding: bytes that are padding for all valid
     /// values of the type. But enum and union values can contain variant-dependent padding: bytes
     /// that are padding for some but not all valid values of the type. For instance, `Option<u8>`
     /// has no padding when `Some(_)` but does have padding when `None`.

@@ -202,3 +202,80 @@ extern "cmse-nonsecure-entry" fn cmse_ret_with_wide_u8_uninit_tuple(
 ) -> (MaybeUninit<WideU8>, MaybeUninit<WideU8>) {
     unsafe { (mem::transmute(a), mem::transmute(b)) }
 }
+
+// Check that the tag does not get cleared.
+enum Enum {
+    A(u16),
+    B(u16),
+}
+
+// CHECK-LABEL: cmse_ret_enum:
+// CHECK: .fnstart
+// CHECK-NEXT: .save   {r7, lr}
+// CHECK-NEXT: push    {r7, lr}
+// CHECK-NEXT: .setfp  r7, sp
+// CHECK-NEXT: mov r7, sp
+// CHECK-NEXT: pop.w   {r7, lr}
+// CHECK-NEXT: mov r1, lr
+// CHECK-NEXT: mov r2, lr
+// CHECK-NEXT: mov r3, lr
+// CHECK-NEXT: mov r12, lr
+// CHECK-NEXT: msr apsr_nzcvq, lr
+// CHECK-NEXT: bxns    lr
+#[no_mangle]
+extern "cmse-nonsecure-entry" fn cmse_ret_enum(x: Enum) -> Enum {
+    x
+}
+
+// Check that variant-dependent padding is left alone.
+enum VariantPadding {
+    A(u8),
+    B(u16),
+}
+
+// CHECK-LABEL: cmse_ret_enum_with_variant_padding:
+// CHECK: .fnstart
+// CHECK-NEXT: .save   {r7, lr}
+// CHECK-NEXT: push    {r7, lr}
+// CHECK-NEXT: .setfp  r7, sp
+// CHECK-NEXT: mov r7, sp
+// CHECK-NEXT: pop.w   {r7, lr}
+// CHECK-NEXT: mov r1, lr
+// CHECK-NEXT: mov r2, lr
+// CHECK-NEXT: mov r3, lr
+// CHECK-NEXT: mov r12, lr
+// CHECK-NEXT: msr apsr_nzcvq, lr
+// CHECK-NEXT: bxns    lr
+#[no_mangle]
+extern "cmse-nonsecure-entry" fn cmse_ret_enum_with_variant_padding(
+    x: VariantPadding,
+) -> VariantPadding {
+    x
+}
+
+// Check that variant-independent padding does get cleared.
+enum IndependentPadding {
+    A(WideU8),
+    B(WideU8),
+}
+
+// CHECK-LABEL: cmse_ret_enum_with_independent_padding:
+// CHECK: .fnstart
+// CHECK-NEXT: .save   {r7, lr}
+// CHECK-NEXT: push    {r7, lr}
+// CHECK-NEXT: .setfp  r7, sp
+// CHECK-NEXT: mov r7, sp
+// CHECK-NEXT: bic r0, r0, #-16777216
+// CHECK-NEXT: pop.w   {r7, lr}
+// CHECK-NEXT: mov r1, lr
+// CHECK-NEXT: mov r2, lr
+// CHECK-NEXT: mov r3, lr
+// CHECK-NEXT: mov r12, lr
+// CHECK-NEXT: msr apsr_nzcvq, lr
+// CHECK-NEXT: bxns    lr
+#[no_mangle]
+extern "cmse-nonsecure-entry" fn cmse_ret_enum_with_independent_padding(
+    x: IndependentPadding,
+) -> IndependentPadding {
+    x
+}

@@ -309,7 +309,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     /// These bytes contain data for at least one valid value, but are padding for at least one
     /// other valid value. In other words, whether such a byte is initialized depends on the
     /// concrete value, hence "value-dependent". This is exactly the padding that is *not*
-    /// already returned by [`Self::guaranteed_padding_ranges`].
+    /// already returned by [`Self::variant_independent_padding_ranges`].
     ///
     /// For example, `Option<i8>` has no guaranteed padding, but the byte holding the payload is
     /// value-dependent padding: it is data for `Some(_)` and padding for `None`.
@@ -374,6 +374,16 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                 }
             },
             Variants::Multiple { variants, .. } => {
+                // The variants do not contain e.g. the discriminant or coroutine upvars.
+                let FieldsShape::Arbitrary { offsets, in_memory_order: _ } = &self.fields else {
+                    unreachable!("a multi-variant layout should have `Arbitrary` fields")
+                };
+
+                for (field, &offset) in offsets.iter_enumerated() {
+                    let field = self.field(cx, field.as_usize());
+                    field.add_data_ranges(cx, base_offset + offset, out);
+                }
+
                 for variant in variants.indices() {
                     let variant = self.for_variant(cx, variant);
                     variant.add_data_ranges(cx, base_offset, out);
@@ -441,14 +451,31 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                 }
             },
             Variants::Multiple { variants, .. } => {
-                // A byte is data for every value only when it is data for every value of every
-                // variant.
-                out = variants
+                // The variants do not contain e.g. the discriminant or coroutine upvars.
+                let FieldsShape::Arbitrary { offsets, in_memory_order: _ } = &self.fields else {
+                    unreachable!("a multi-variant layout should have `Arbitrary` fields")
+                };
+
+                // The fields are variant-independent and always data.
+                for (field, &offset) in offsets.iter_enumerated() {
+                    let field = self.field(cx, field.as_usize());
+                    let field = field.always_data_ranges(cx, base_offset + offset);
+                    for &(offset, size) in field.0.iter() {
+                        out.add_range(offset, size);
+                    }
+                }
+
+                // Otherwise a byte is data for every value only when it is data for every variant.
+                if let Some(common) = variants
                     .indices()
                     .map(|variant| self.for_variant(cx, variant))
                     .map(|variant| variant.always_data_ranges(cx, base_offset))
                     .reduce(|acc, f| acc.intersection(&f))
-                    .unwrap_or(out);
+                {
+                    for &(offset, size) in common.0.iter() {
+                        out.add_range(offset, size);
+                    }
+                }
             }
         }
 
