@@ -120,6 +120,13 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             ty::Infer(ty::IntVar(_)) => self.tcx.types.i32,
             ty::Infer(ty::FloatVar(vid)) if fallback_to_f32.contains(vid) => self.tcx.types.f32,
             ty::Infer(ty::FloatVar(_)) => self.tcx.types.f64,
+
+            ty::Infer(ty::TyVar(_))
+                if let Ok(_) = self.try_low_priority_impl_fallback_and_fcw(DUMMY_SP, ty) =>
+            {
+                return true;
+            }
+
             _ if diverging_fallback.contains(&ty) => {
                 self.diverging_fallback_has_occurred.set(true);
                 diverging_fallback_ty

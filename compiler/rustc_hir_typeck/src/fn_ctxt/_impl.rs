@@ -1,6 +1,7 @@
 use std::collections::hash_map::Entry;
 use std::slice;
 
+use itertools::Itertools;
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
@@ -21,6 +22,8 @@ use rustc_hir_analysis::hir_ty_lowering::{
 };
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{DefineOpaqueTypes, InferResult};
+use rustc_infer::traits::ObligationCause;
+use rustc_infer::traits::util::Elaboratable;
 use rustc_lint::builtin::SELF_CONSTRUCTOR_FROM_OUTER_ITEM;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, DerefAdjustKind,
@@ -32,10 +35,16 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
-use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
-use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
+use rustc_span::{DUMMY_SP, Span};
+use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
+use rustc_trait_selection::error_reporting::infer::need_type_info::{
+    TypeAnnotationNeeded, find_infer_source,
+};
+use rustc_trait_selection::error_reporting::traits::ambiguity::{
+    CandidateSource, compute_applicable_impls_for_diagnostics,
+};
 use rustc_trait_selection::traits::{
     self, NormalizeExt, ObligationCauseCode, StructurallyNormalizeExt,
 };
@@ -1531,20 +1540,160 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     #[cold]
     pub(crate) fn type_must_be_known_at_this_point(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let guar = self.tainted_by_errors().unwrap_or_else(|| {
-            self.err_ctxt()
-                .emit_inference_failure_err(
-                    self.body_def_id,
-                    sp,
+        self.try_fallback_and_fcw_or_error(sp, ty)
+    }
+
+    #[cold]
+    pub(crate) fn try_fallback_and_fcw_or_error(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
+        self.try_low_priority_impl_fallback_and_fcw(sp, ty).unwrap_or_else(|()| {
+            let guar = self.tainted_by_errors().unwrap_or_else(|| {
+                self.err_ctxt()
+                    .emit_inference_failure_err(
+                        self.body_def_id,
+                        sp,
+                        ty.into(),
+                        TypeAnnotationNeeded::E0282,
+                        true,
+                    )
+                    .emit()
+            });
+            let err = Ty::new_error(self.tcx, guar);
+            self.demand_suptype(sp, err, ty);
+            err
+        })
+    }
+
+    /// Tries to apply low priority impl fallback and emit a FCW if fallback has been applied.
+    ///
+    /// Returns `Ok(new_ty)` if fallback happened and `ty` was unified with `new_ty`.
+    ///
+    /// Panics if called while in a probe.
+    pub(crate) fn try_low_priority_impl_fallback_and_fcw(
+        &self,
+        sp: Span,
+        ty: Ty<'tcx>,
+    ) -> Result<Ty<'tcx>, ()> {
+        assert!(!self.fulfillment_cx.borrow().is_in_probe(&self.infcx));
+
+        // On new solver `obligations_referencing_infer_var` calls `resolve_vars_if_possible`,
+        // which can lead to inference progress. Use a probe so that this doesn't leak...
+        let obligations =
+            self.infcx.probe(|_| self.obligations_referencing_infer_var(ty.ty_vid().unwrap()));
+
+        let fallback_opportunity = {
+            obligations
+                .into_iter()
+                .filter_map(|obligation| {
+                    let clause = obligation.predicate().as_trait_clause()?;
+                    let trait_obligation = obligation.with(self.tcx, clause);
+
+                    // `compute_applicable_impls_for_diagnostics` has a lot of side effects, put it in a probe.
+                    let impls = self.infcx.probe(|_| {
+                        compute_applicable_impls_for_diagnostics(
+                            &self.infcx,
+                            &trait_obligation,
+                            false,
+                        )
+                    });
+
+                    // Below, we check that there is exactly one low priority impl. In combination
+                    // with that, this checks that there is also at least one low priority impl.
+                    if impls.len() <= 1 {
+                        return None;
+                    }
+
+                    // Exactly one candidate is not low priority
+                    impls
+                        .into_iter()
+                        .filter(|candidate| !candidate.is_low_priority(self.tcx))
+                        .exactly_one()
+                        .ok()
+                        // ... and it's an impl rather than a param env candidate
+                        .and_then(|candidate| match candidate {
+                            CandidateSource::DefId(impl_def_id) => Some(impl_def_id),
+                            CandidateSource::ParamEnv(_) => None,
+                        })
+                        .map(|imp| (imp, obligation, trait_obligation))
+                })
+                .next()
+        };
+
+        let Some((impl_def_id, obligation, trait_obligation)) = fallback_opportunity else {
+            return Err(());
+        };
+
+        self.infcx.enter_forall(trait_obligation.predicate, |placeholder_obligation| {
+            let obligation_trait_ref =
+                self.normalize(DUMMY_SP, Unnormalized::new_wip(placeholder_obligation.trait_ref));
+
+            let impl_args = self.infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
+            let impl_trait_ref = self
+                .tcx
+                .impl_trait_ref(impl_def_id)
+                .instantiate(self.tcx, impl_args)
+                .skip_norm_wip();
+            let impl_trait_ref = self.normalize(DUMMY_SP, Unnormalized::new_wip(impl_trait_ref));
+
+            let cause = ObligationCause::dummy();
+
+            let extract_inference_diagnostics_data =
+                self.infcx.err_ctxt().extract_inference_diagnostics_data(
                     ty.into(),
-                    TypeAnnotationNeeded::E0282,
-                    true,
-                )
-                .emit()
+                    ty::print::RegionHighlightMode::default(),
+                );
+
+            let source =
+                self.tcx.hir_node_by_def_id(self.body_def_id).body_id().and_then(|body_id| {
+                    find_infer_source(
+                        self.tcx,
+                        &self.infcx,
+                        &self.typeck_results.borrow(),
+                        ty.into(),
+                        body_id,
+                    )
+                });
+
+            _ = self
+                .at(&cause, self.param_env)
+                .eq(DefineOpaqueTypes::Yes, obligation_trait_ref, impl_trait_ref)
+                .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
+                .map(|()| {
+                    let (hir_id, span) = source
+                        .as_ref()
+                        .map(|source| (source.hir_id, source.span))
+                        .unwrap_or_else(|| {
+                            (
+                                self.tcx.local_def_id_to_hir_id(self.body_def_id),
+                                trait_obligation.cause.span,
+                            )
+                        });
+
+                    let subdiagnostic = source.and_then(|source| {
+                        source.kind.suggestion(
+                            self.tcx,
+                            &self.infcx,
+                            self.body_def_id,
+                            ty.into(),
+                            &extract_inference_diagnostics_data,
+                            &self.typeck_results.borrow(),
+                            span,
+                        )
+                    });
+
+                    self.tcx.emit_node_span_lint(
+                        lint::builtin::TRAIT_IMPL_FALLBACK,
+                        hir_id,
+                        span,
+                        diagnostics::DependencyOnTraitImplFallback {
+                            obligation_span: trait_obligation.cause.span,
+                            obligation: obligation.predicate,
+                            subdiagnostic,
+                        },
+                    )
+                });
         });
-        let err = Ty::new_error(self.tcx, guar);
-        self.demand_suptype(sp, err, ty);
-        err
+
+        Ok(self.structurally_resolve_type(sp, ty))
     }
 
     pub(crate) fn structurally_resolve_const(
