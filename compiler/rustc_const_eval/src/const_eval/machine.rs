@@ -11,10 +11,9 @@ use rustc_middle::mir::AssertMessage;
 use rustc_middle::mir::interpret::ReportedErrorInfo;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{HasTypingEnv, TyAndLayout, ValidityRequirement};
-use rustc_middle::ty::{self, FieldInfo, ScalarInt, Ty, TyCtxt};
+use rustc_middle::ty::{self, FieldInfo, FnAbi, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::{Span, Symbol, sym};
-use rustc_target::callconv::FnAbi;
 use tracing::debug;
 
 use super::error::*;
@@ -424,7 +423,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
     fn find_mir_or_eval_fn(
         ecx: &mut InterpCx<'tcx, Self>,
         orig_instance: ty::Instance<'tcx>,
-        _abi: &FnAbi<'tcx, Ty<'tcx>>,
+        _abi: &FnAbi<'tcx>,
         args: &[FnArg<'tcx>],
         dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,

@@ -1,7 +1,6 @@
 use rustc_abi::CanonAbi;
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{FnAbi, Ty};
 use rustc_span::Symbol;
-use rustc_target::callconv::FnAbi;
 
 use super::{conditional_dot_product, mpsadbw, packusdw, round_all, round_first, test_bits_masked};
 use crate::*;
@@ -11,7 +10,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_x86_sse41_intrinsic(
         &mut self,
         link_name: Symbol,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        abi: &FnAbi<'tcx>,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {

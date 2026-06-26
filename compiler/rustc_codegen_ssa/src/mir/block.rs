@@ -13,11 +13,11 @@ use rustc_lint_defs::builtin::TAIL_CALL_TRACK_CALLER;
 use rustc_middle::mir::{self, AssertKind, InlineAsmMacro, SwitchTargets, UnwindTerminateReason};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
-use rustc_middle::ty::{self, Instance, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, FnAbi, Instance, Ty, TypeVisitableExt, ArgAbi};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::{Span, Spanned};
-use rustc_target::callconv::{ArgAbi, ArgAttributes, CastTarget, FnAbi, PassMode};
+use rustc_target::callconv::{ArgAttributes, CastTarget, PassMode};
 use tracing::{debug, info};
 
 use super::operand::OperandRef;
@@ -167,7 +167,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         &self,
         fx: &mut FunctionCx<'a, 'tcx, Bx>,
         bx: &mut Bx,
-        fn_abi: &'tcx FnAbi<'tcx, Ty<'tcx>>,
+        fn_abi: &'tcx FnAbi<'tcx>,
         fn_ptr: Bx::Value,
         llargs: &[Bx::Value],
         destination: Option<(ReturnDest<'tcx, Bx::Value>, mir::BasicBlock)>,
@@ -1745,7 +1745,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         op: OperandRef<'tcx, Bx::Value>,
         by_move: bool,
         llargs: &mut Vec<Bx::Value>,
-        arg: &ArgAbi<'tcx, Ty<'tcx>>,
+        arg: &ArgAbi<'tcx>,
         lifetime_ends_after_call: &mut Vec<(Bx::Value, Size)>,
     ) {
         match arg.mode {
@@ -1911,7 +1911,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         conv: CanonAbi,
         operand: &mir::Operand<'tcx>,
         llargs: &mut Vec<Bx::Value>,
-        args: &[ArgAbi<'tcx, Ty<'tcx>>],
+        args: &[ArgAbi<'tcx>],
         lifetime_ends_after_call: &mut Vec<(Bx::Value, Size)>,
     ) -> usize {
         let tuple = self.codegen_operand(bx, operand);
@@ -2213,7 +2213,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         bx: &mut Bx,
         dest: mir::Place<'tcx>,
-        fn_ret: &ArgAbi<'tcx, Ty<'tcx>>,
+        fn_ret: &ArgAbi<'tcx>,
         llargs: &mut Vec<Bx::Value>,
     ) -> ReturnDest<'tcx, Bx::Value> {
         // If the return is ignored, we can just return a do-nothing `ReturnDest`.
@@ -2267,7 +2267,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         bx: &mut Bx,
         dest: ReturnDest<'tcx, Bx::Value>,
-        ret_abi: &ArgAbi<'tcx, Ty<'tcx>>,
+        ret_abi: &ArgAbi<'tcx>,
         llval: Bx::Value,
     ) {
         use self::ReturnDest::*;

@@ -4,9 +4,8 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::find_attr;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::{FnAbiError, LayoutError};
-use rustc_middle::ty::{self, GenericArgs, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, FnAbi, GenericArgs, Instance, TyCtxt};
 use rustc_span::Span;
-use rustc_target::callconv::FnAbi;
 
 use super::layout_test::ensure_wf;
 use crate::diagnostics::{AbiInvalidAttribute, AbiNe, AbiOf, UnrecognizedArgument};
@@ -37,10 +36,10 @@ pub fn test_abi(tcx: TyCtxt<'_>) {
 }
 
 fn unwrap_fn_abi<'tcx>(
-    abi: Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>>,
+    abi: Result<&'tcx FnAbi<'tcx>, &'tcx FnAbiError<'tcx>>,
     tcx: TyCtxt<'tcx>,
     item_def_id: LocalDefId,
-) -> &'tcx FnAbi<'tcx, Ty<'tcx>> {
+) -> &'tcx FnAbi<'tcx> {
     match abi {
         Ok(abi) => abi,
         Err(FnAbiError::Layout(layout_error)) => {
@@ -92,7 +91,7 @@ fn dump_abi_of_fn_item(
     }
 }
 
-fn test_abi_eq<'tcx>(abi1: &'tcx FnAbi<'tcx, Ty<'tcx>>, abi2: &'tcx FnAbi<'tcx, Ty<'tcx>>) -> bool {
+fn test_abi_eq<'tcx>(abi1: &'tcx FnAbi<'tcx>, abi2: &'tcx FnAbi<'tcx>) -> bool {
     if abi1.conv != abi2.conv
         || abi1.args.len() != abi2.args.len()
         || abi1.c_variadic != abi2.c_variadic

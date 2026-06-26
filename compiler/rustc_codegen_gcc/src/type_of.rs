@@ -10,8 +10,8 @@ use rustc_codegen_ssa::traits::{
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, CoroutineArgsExt, Ty, TyAbiInterface, TypeVisitableExt};
-use rustc_target::callconv::{CastTarget, FnAbi};
+use rustc_middle::ty::{self, CoroutineArgsExt, FnAbi, TypeVisitableExt};
+use rustc_target::callconv::CastTarget;
 
 use crate::abi::{FnAbiGcc, FnAbiGccExt, GccType};
 use crate::context::CodegenCx;
@@ -332,7 +332,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
             return pointee;
         }
 
-        let result = Ty::ty_and_layout_pointee_info_at(*self, cx, offset);
+        let result = TyAndLayout::pointee_info_at(*self, cx, offset);
 
         cx.pointee_infos.borrow_mut().insert((self.ty, offset), result);
         result
@@ -369,7 +369,7 @@ impl<'gcc, 'tcx> LayoutTypeCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         ty.gcc_type(self)
     }
 
-    fn fn_ptr_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Type<'gcc> {
+    fn fn_ptr_backend_type(&self, fn_abi: &FnAbi<'tcx>) -> Type<'gcc> {
         fn_abi.ptr_to_gcc_type(self)
     }
 
@@ -377,7 +377,7 @@ impl<'gcc, 'tcx> LayoutTypeCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         unimplemented!();
     }
 
-    fn fn_decl_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Type<'gcc> {
+    fn fn_decl_backend_type(&self, fn_abi: &FnAbi<'tcx>) -> Type<'gcc> {
         // FIXME(antoyo): Should we do something with `FnAbiGcc::fn_attributes`?
         let FnAbiGcc { return_type, arguments_type, is_c_variadic, .. } = fn_abi.gcc_type(self);
         self.context.new_function_pointer_type(None, return_type, &arguments_type, is_c_variadic)

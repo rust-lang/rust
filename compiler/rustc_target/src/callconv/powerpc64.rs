@@ -3,7 +3,7 @@
 // need to be fixed when PowerPC vector support is added.
 
 use rustc_abi::HasDataLayout;
-use rustc_type_ir::TyAbiInterface;
+use rustc_type_ir::{Interner, TyAbiInterface};
 
 use crate::callconv::{Align, ArgAbi, FnAbi, Reg, RegKind, Uniform, homogeneous_aggregate};
 use crate::spec::{HasTargetSpec, LlvmAbi, Os};
@@ -16,13 +16,13 @@ enum ABI {
 }
 use ABI::*;
 
-fn is_homogeneous_aggregate<'a, Ty, C>(
+fn is_homogeneous_aggregate<'a, I: Interner, C>(
     cx: &C,
-    arg: &mut ArgAbi<'a, Ty>,
+    arg: &mut ArgAbi<'a, I>,
     abi: ABI,
 ) -> Option<Uniform>
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<'a, C>,
     C: HasDataLayout,
 {
     homogeneous_aggregate(cx, arg.layout).ok().and_then(|ha| ha.unit()).and_then(|unit| {
@@ -44,9 +44,9 @@ where
     })
 }
 
-fn classify<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>, abi: ABI, is_ret: bool)
+fn classify<'a, I: Interner, C>(cx: &C, arg: &mut ArgAbi<'a, I>, abi: ABI, is_ret: bool)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<'a, C>,
     C: HasDataLayout,
 {
     if arg.is_ignore() || !arg.layout.is_sized() {
@@ -102,9 +102,9 @@ where
     };
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) fn compute_abi_info<'a, I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<'a, I>)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<'a, C>,
     C: HasDataLayout + HasTargetSpec,
 {
     let abi = match cx.target_spec().options.llvm_abiname {

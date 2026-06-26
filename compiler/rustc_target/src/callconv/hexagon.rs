@@ -1,11 +1,11 @@
 use rustc_abi::{HasDataLayout, Reg};
-use rustc_type_ir::TyAbiInterface;
+use rustc_type_ir::{Interner, TyAbiInterface};
 
 use crate::callconv::{ArgAbi, FnAbi, Uniform};
 
-fn classify_ret<'a, Ty, C>(_cx: &C, ret: &mut ArgAbi<'a, Ty>)
+fn classify_ret<'a, I: Interner, C>(_cx: &C, ret: &mut ArgAbi<'a, I>)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<'a, C>,
     C: HasDataLayout,
 {
     if !ret.layout.is_sized() {
@@ -32,9 +32,9 @@ where
     }
 }
 
-fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
+fn classify_arg<'a, I: Interner, C>(cx: &C, arg: &mut ArgAbi<'a, I>)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<'a, C>,
     C: HasDataLayout,
 {
     if !arg.layout.is_sized() {
@@ -65,9 +65,9 @@ where
     }
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) fn compute_abi_info<'a, I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<'a, I>)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<'a, C>,
     C: HasDataLayout,
 {
     if !fn_abi.ret.is_ignore() {

@@ -7,8 +7,8 @@
 use rustc_abi::CanonAbi;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::bug;
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
-use rustc_target::callconv::{FnAbi, PassMode};
+use rustc_middle::ty::{self, FnAbi, Instance, TyCtxt, TypeFoldable, TypeVisitableExt};
+use rustc_target::callconv::PassMode;
 use tracing::instrument;
 
 mod encode;
@@ -24,7 +24,7 @@ use crate::cfi::typeid::itanium_cxx_abi::transform::{
 #[instrument(level = "trace", skip(tcx))]
 pub fn typeid_for_fnabi<'tcx>(
     tcx: TyCtxt<'tcx>,
-    fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+    fn_abi: &FnAbi<'tcx>,
     options: TypeIdOptions,
 ) -> String {
     // A name is mangled by prefixing "_Z" to an encoding of its name, and in the case of functions

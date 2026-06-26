@@ -5,9 +5,8 @@ use gccjit::{Function, Location, RValue};
 use rustc_abi::Size;
 use rustc_codegen_ssa::mir::debuginfo::VariableKind;
 use rustc_codegen_ssa::traits::{DebugInfoBuilderMethods, DebugInfoCodegenMethods};
-use rustc_middle::ty::{ExistentialTraitRef, Instance, Ty};
+use rustc_middle::ty::{ExistentialTraitRef, FnAbi, Instance, Ty};
 use rustc_span::{BytePos, Pos, SourceFile, SourceFileAndLine, Span, Symbol};
-use rustc_target::callconv::FnAbi;
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;
@@ -155,7 +154,7 @@ impl<'gcc, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn dbg_scope_fn(
         &self,
         _instance: Instance<'tcx>,
-        _fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        _fn_abi: &FnAbi<'tcx>,
         _maybe_definition_llfn: Option<Function<'gcc>>,
     ) -> Self::DIScope {
         // FIXME(antoyo): implement.

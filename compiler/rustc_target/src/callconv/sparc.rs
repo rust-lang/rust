@@ -1,9 +1,9 @@
 use rustc_abi::{HasDataLayout, Size};
-use rustc_type_ir::TyAbiInterface;
+use rustc_type_ir::{Interner, TyAbiInterface};
 
 use crate::callconv::{ArgAbi, FnAbi, Reg, Uniform};
 
-fn classify_ret<Ty, C>(cx: &C, ret: &mut ArgAbi<'_, Ty>, offset: &mut Size)
+fn classify_ret<I: Interner, C>(cx: &C, ret: &mut ArgAbi<'_, I>, offset: &mut Size)
 where
     C: HasDataLayout,
 {
@@ -15,9 +15,9 @@ where
     }
 }
 
-fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>, offset: &mut Size)
+fn classify_arg<'a, I: Interner, C>(cx: &C, arg: &mut ArgAbi<'a, I>, offset: &mut Size)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<'a, C>,
     C: HasDataLayout,
 {
     if !arg.layout.is_sized() {
@@ -44,9 +44,9 @@ where
     *offset = offset.align_to(align) + size.align_to(align);
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) fn compute_abi_info<'a, I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<'a, I>)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<'a, C>,
     C: HasDataLayout,
 {
     let mut offset = Size::ZERO;

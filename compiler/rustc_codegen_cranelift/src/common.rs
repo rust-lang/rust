@@ -2,12 +2,11 @@ use cranelift_codegen::isa::TargetFrontendConfig;
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Variable};
 use rustc_abi::{Float, Integer, Primitive};
 use rustc_index::IndexVec;
-use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::layout::{
     self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers,
 };
+use rustc_middle::ty::{FnAbi, TypeFoldable};
 use rustc_span::{Spanned, Symbol};
-use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{Arch, HasTargetSpec, Target};
 
 use crate::constant::ConstantCx;
@@ -280,7 +279,7 @@ pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
     pub(crate) instance: Instance<'tcx>,
     pub(crate) symbol_name: String,
     pub(crate) mir: &'tcx Body<'tcx>,
-    pub(crate) fn_abi: &'tcx FnAbi<'tcx, Ty<'tcx>>,
+    pub(crate) fn_abi: &'tcx FnAbi<'tcx>,
 
     pub(crate) bcx: FunctionBuilder<'clif>,
     pub(crate) block_map: IndexVec<BasicBlock, Block>,

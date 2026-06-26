@@ -6,8 +6,7 @@
 
 use std::hash::Hasher;
 
-use rustc_middle::ty::{Instance, InstanceKind, ReifyReason, ShimKind, Ty, TyCtxt};
-use rustc_target::callconv::FnAbi;
+use rustc_middle::ty::{FnAbi, Instance, InstanceKind, ReifyReason, ShimKind, TyCtxt};
 use twox_hash::XxHash64;
 
 pub use crate::cfi::typeid::{TypeIdOptions, itanium_cxx_abi};
@@ -15,7 +14,7 @@ pub use crate::cfi::typeid::{TypeIdOptions, itanium_cxx_abi};
 /// Returns a KCFI type metadata identifier for the specified FnAbi.
 pub fn typeid_for_fnabi<'tcx>(
     tcx: TyCtxt<'tcx>,
-    fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+    fn_abi: &FnAbi<'tcx>,
     options: TypeIdOptions,
 ) -> u32 {
     // A KCFI type metadata identifier is a 32-bit constant produced by taking the lower half of the

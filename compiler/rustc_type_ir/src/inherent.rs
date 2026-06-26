@@ -3,7 +3,7 @@
 //! scope when programming in interner-agnostic settings, and to avoid importing any of these
 //! directly elsewhere (i.e. specify the full path for an implementation downstream).
 
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::hash::Hash;
 
 use rustc_abi::{AbiAlign, Align, BackendRepr, Niche, Size};
@@ -22,6 +22,7 @@ use crate::{
 pub trait Ty<I: Interner<Ty = Self>>:
     Copy
     + Debug
+    + Display
     + Hash
     + Eq
     + Into<I::GenericArg>

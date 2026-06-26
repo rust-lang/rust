@@ -1,8 +1,8 @@
 use rustc_abi::{AddressSpace, Float, Integer, Primitive, Reg, Scalar};
 use rustc_middle::bug;
-use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, TyAndLayout};
-use rustc_target::callconv::{ArgAbi, CastTarget, FnAbi};
+use rustc_middle::ty::{ArgAbi, FnAbi, Ty};
+use rustc_target::callconv::CastTarget;
 
 use super::BackendTypes;
 use super::misc::MiscCodegenMethods;
@@ -114,8 +114,8 @@ pub trait LayoutTypeCodegenMethods<'tcx>: BackendTypes {
     /// such as when it's stack-allocated or when it's being loaded or stored.
     fn backend_type(&self, layout: TyAndLayout<'tcx>) -> Self::Type;
     fn cast_backend_type(&self, ty: &CastTarget) -> Self::Type;
-    fn fn_decl_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Self::FunctionSignature;
-    fn fn_ptr_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Self::Type;
+    fn fn_decl_backend_type(&self, fn_abi: &FnAbi<'tcx>) -> Self::FunctionSignature;
+    fn fn_ptr_backend_type(&self, fn_abi: &FnAbi<'tcx>) -> Self::Type;
     fn reg_backend_type(&self, ty: &Reg) -> Self::Type;
     /// The backend type used for a rust type when it's in an SSA register.
     ///
@@ -163,13 +163,13 @@ pub trait TypeMembershipCodegenMethods<'tcx>: BackendTypes {
 pub trait ArgAbiBuilderMethods<'tcx>: BackendTypes {
     fn store_fn_arg(
         &mut self,
-        arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
+        arg_abi: &ArgAbi<'tcx>,
         idx: &mut usize,
         dst: PlaceRef<'tcx, Self::Value>,
     );
     fn store_arg(
         &mut self,
-        arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
+        arg_abi: &ArgAbi<'tcx>,
         val: Self::Value,
         dst: PlaceRef<'tcx, Self::Value>,
     );

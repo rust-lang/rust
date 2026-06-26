@@ -21,11 +21,11 @@ use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv, LayoutError, LayoutOfHelpers,
     TyAndLayout,
 };
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, FnAbi, Instance, Ty, TyCtxt};
 use rustc_sanitizers::{cfi, kcfi};
 use rustc_session::config::OptLevel;
 use rustc_span::Span;
-use rustc_target::callconv::{FnAbi, PassMode};
+use rustc_target::callconv::PassMode;
 use rustc_target::spec::{Arch, HasTargetSpec, LlvmAbi, SanitizerSet, Target};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
@@ -449,7 +449,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         &mut self,
         llty: &'ll Type,
         fn_attrs: Option<&CodegenFnAttrs>,
-        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
+        fn_abi: Option<&FnAbi<'tcx>>,
         llfn: &'ll Value,
         args: &[&'ll Value],
         then: &'ll BasicBlock,
@@ -1453,7 +1453,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         &mut self,
         llty: &'ll Type,
         caller_attrs: Option<&CodegenFnAttrs>,
-        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
+        fn_abi: Option<&FnAbi<'tcx>>,
         llfn: &'ll Value,
         args: &[&'ll Value],
         funclet: Option<&Funclet<'ll>>,
@@ -1520,7 +1520,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         &mut self,
         llty: Self::Type,
         caller_attrs: Option<&CodegenFnAttrs>,
-        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        fn_abi: &FnAbi<'tcx>,
         llfn: Self::Value,
         args: &[Self::Value],
         funclet: Option<&Self::Funclet>,
@@ -1886,7 +1886,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         &mut self,
         llty: &'ll Type,
         fn_attrs: Option<&CodegenFnAttrs>,
-        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
+        fn_abi: Option<&FnAbi<'tcx>>,
         llfn: &'ll Value,
         args: &[&'ll Value],
         default_dest: &'ll BasicBlock,
@@ -1942,7 +1942,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     fn cfi_type_test(
         &mut self,
         fn_attrs: Option<&CodegenFnAttrs>,
-        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
+        fn_abi: Option<&FnAbi<'tcx>>,
         instance: Option<Instance<'tcx>>,
         llfn: &'ll Value,
     ) {
@@ -2000,7 +2000,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     fn kcfi_operand_bundle(
         &mut self,
         fn_attrs: Option<&CodegenFnAttrs>,
-        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
+        fn_abi: Option<&FnAbi<'tcx>>,
         instance: Option<Instance<'tcx>>,
         llfn: &'ll Value,
     ) -> Option<llvm::OperandBundleBox<'ll>> {
@@ -2040,7 +2040,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     fn ptrauth_operand_bundle(
         &mut self,
         llfn: &'ll Value,
-        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
+        fn_abi: Option<&FnAbi<'tcx>>,
     ) -> Option<llvm::OperandBundleBox<'ll>> {
         if self.sess().target.llvm_abiname != LlvmAbi::Pauthtest {
             return None;

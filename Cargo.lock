@@ -3902,7 +3902,6 @@ dependencies = [
  "rustc_mir_dataflow",
  "rustc_session",
  "rustc_span",
- "rustc_target",
  "rustc_trait_selection",
  "tracing",
 ]
@@ -4670,7 +4669,6 @@ dependencies = [
  "rustc_middle",
  "rustc_session",
  "rustc_span",
- "rustc_target",
 ]
 
 [[package]]
@@ -4813,6 +4811,7 @@ version = "0.0.0"
 dependencies = [
  "arrayvec",
  "bitflags",
+ "derive-where",
  "object 0.37.3",
  "rustc_abi",
  "rustc_data_structures",

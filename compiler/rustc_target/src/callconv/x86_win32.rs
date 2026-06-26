@@ -1,15 +1,15 @@
 use rustc_abi::{Align, HasDataLayout, Reg};
-use rustc_type_ir::TyAbiInterface;
+use rustc_type_ir::{Interner, TyAbiInterface};
 
 use crate::callconv::FnAbi;
 use crate::spec::HasTargetSpec;
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(
+pub(crate) fn compute_abi_info<'a, I: Interner, C>(
     cx: &C,
-    fn_abi: &mut FnAbi<'a, Ty>,
+    fn_abi: &mut FnAbi<'a, I>,
     opts: super::x86::X86Options,
 ) where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<'a, C>,
     C: HasDataLayout + HasTargetSpec,
 {
     if !fn_abi.ret.is_ignore() {

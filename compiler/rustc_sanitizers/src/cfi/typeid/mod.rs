@@ -5,8 +5,7 @@
 //! see design document in the tracking issue #89653.
 
 use bitflags::bitflags;
-use rustc_middle::ty::{Instance, Ty, TyCtxt};
-use rustc_target::callconv::FnAbi;
+use rustc_middle::ty::{FnAbi, Instance, TyCtxt};
 
 bitflags! {
     /// Options for typeid_for_fnabi.
@@ -39,7 +38,7 @@ pub mod itanium_cxx_abi;
 /// Returns a type metadata identifier for the specified FnAbi.
 pub fn typeid_for_fnabi<'tcx>(
     tcx: TyCtxt<'tcx>,
-    fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+    fn_abi: &FnAbi<'tcx>,
     options: TypeIdOptions,
 ) -> String {
     itanium_cxx_abi::typeid_for_fnabi(tcx, fn_abi, options)

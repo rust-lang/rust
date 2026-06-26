@@ -33,7 +33,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
 
 /// Implement error handling for extracting function ABI information.
 impl<'tcx, B: Bridge> FnAbiOfHelpers<'tcx> for CompilerCtxt<'tcx, B> {
-    type FnAbiOfResult = Result<&'tcx rustc_target::callconv::FnAbi<'tcx, Ty<'tcx>>, B::Error>;
+    type FnAbiOfResult = Result<&'tcx rustc_middle::ty::FnAbi<'tcx>, B::Error>;
 
     #[inline]
     fn handle_fn_abi_err(

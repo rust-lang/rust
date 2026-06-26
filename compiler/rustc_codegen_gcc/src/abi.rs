@@ -7,11 +7,11 @@ use rustc_abi::{Reg, RegKind};
 use rustc_codegen_ssa::traits::{AbiBuilderMethods, BaseTypeCodegenMethods};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
-use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::{FnAbi, Ty};
 #[cfg(feature = "master")]
 use rustc_session::{Session, config};
-use rustc_target::callconv::{ArgAttributes, CastTarget, FnAbi, PassMode};
+use rustc_target::callconv::{ArgAttributes, CastTarget, PassMode};
 #[cfg(feature = "master")]
 use rustc_target::spec::Arch;
 
@@ -114,7 +114,7 @@ pub trait FnAbiGccExt<'gcc, 'tcx> {
     fn gcc_cconv(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Option<FnAttribute<'gcc>>;
 }
 
-impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
+impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx> {
     fn gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> FnAbiGcc<'gcc> {
         let mut on_stack_param_indices = FxHashSet::default();
 

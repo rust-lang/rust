@@ -2,7 +2,7 @@ use rustc_abi::CanonAbi;
 use rustc_apfloat::ieee::Double;
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
-use rustc_target::callconv::FnAbi;
+use rustc_middle::ty::FnAbi;
 
 use super::{
     FloatBinOp, ShiftOp, bin_op_simd_float_all, bin_op_simd_float_first, convert_float_to_int,
@@ -15,7 +15,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_x86_sse2_intrinsic(
         &mut self,
         link_name: Symbol,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        abi: &FnAbi<'tcx>,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {

@@ -2,9 +2,8 @@
 use gccjit::{FnAttribute, ToRValue};
 use gccjit::{Function, FunctionType, GlobalKind, LValue, RValue, Type};
 use rustc_codegen_ssa::traits::BaseTypeCodegenMethods;
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::FnAbi;
 use rustc_span::Symbol;
-use rustc_target::callconv::FnAbi;
 
 use crate::abi::{FnAbiGcc, FnAbiGccExt};
 use crate::context::CodegenCx;
@@ -109,7 +108,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         )
     }
 
-    pub fn declare_fn(&self, name: &str, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Function<'gcc> {
+    pub fn declare_fn(&self, name: &str, fn_abi: &FnAbi<'tcx>) -> Function<'gcc> {
         let FnAbiGcc {
             return_type,
             arguments_type,

@@ -1,9 +1,9 @@
-use rustc_type_ir::TyAbiInterface;
+use rustc_type_ir::{Interner, TyAbiInterface};
 
 use crate::callconv::{ArgAbi, FnAbi};
 use crate::spec::{Env, HasTargetSpec, Os};
 
-fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
+fn classify_ret<I: Interner>(ret: &mut ArgAbi<'_, I>) {
     if ret.layout.is_aggregate() {
         ret.make_indirect();
     } else {
@@ -11,9 +11,9 @@ fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
     }
 }
 
-fn classify_arg<'a, Ty, C: HasTargetSpec>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
+fn classify_arg<'a, I: Interner, C: HasTargetSpec>(cx: &C, arg: &mut ArgAbi<'a, I>)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<'a, C>,
 {
     if arg.is_ignore() {
         // powerpc-unknown-linux-{gnu,musl,uclibc} doesn't ignore ZSTs.
@@ -32,9 +32,9 @@ where
     }
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C: HasTargetSpec>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) fn compute_abi_info<'a, I: Interner, C: HasTargetSpec>(cx: &C, fn_abi: &mut FnAbi<'a, I>)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<'a, C>,
 {
     if !fn_abi.ret.is_ignore() {
         classify_ret(&mut fn_abi.ret);

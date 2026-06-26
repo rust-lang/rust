@@ -14,7 +14,6 @@ use rustc_hir::def_id::DefId;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, extension};
 use rustc_session::config::OptLevel;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
-use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, X86Abi};
 use rustc_type_ir::TyAbiInterface;
 use tracing::debug;
@@ -705,8 +704,6 @@ impl<T, E> MaybeResult<T> for Result<T, E> {
     }
 }
 
-pub type TyAndLayout<'tcx> = rustc_type_ir::TyAndLayout<'tcx, Ty<'tcx>>;
-
 /// Trait for contexts that want to be able to compute layouts of types.
 /// This automatically gives access to `LayoutOf`, through a blanket `impl`.
 pub trait LayoutOfHelpers<'tcx>: HasDataLayout + HasTyCtxt<'tcx> + HasTypingEnv<'tcx> {
@@ -777,6 +774,10 @@ impl<'tcx> LayoutOfHelpers<'tcx> for LayoutCx<'tcx> {
     }
 }
 
+pub type TyAndLayout<'tcx> = rustc_type_ir::TyAndLayout<'tcx, TyCtxt<'tcx>>;
+pub type ArgAbi<'tcx> = rustc_target::callconv::ArgAbi<'tcx, TyCtxt<'tcx>>;
+pub type FnAbi<'tcx> = rustc_target::callconv::FnAbi<'tcx, TyCtxt<'tcx>>;
+
 impl<'tcx> rustc_type_ir::inherent::Layout<TyCtxt<'tcx>> for rustc_type_ir::Layout<'tcx> {
     fn fields(self) -> &'tcx FieldsShape<FieldIdx> {
         self.fields()
@@ -811,7 +812,7 @@ impl<'tcx> rustc_type_ir::inherent::Layout<TyCtxt<'tcx>> for rustc_type_ir::Layo
     }
 }
 
-impl<'tcx, C> TyAbiInterface<'tcx, C> for Ty<'tcx>
+impl<'tcx, C> TyAbiInterface<'tcx, C> for TyCtxt<'tcx>
 where
     C: HasTyCtxt<'tcx> + HasTypingEnv<'tcx>,
 {
@@ -1380,7 +1381,7 @@ pub enum FnAbiRequest<'tcx> {
 pub trait FnAbiOfHelpers<'tcx>: LayoutOfHelpers<'tcx> {
     /// The `&FnAbi`-wrapping type (or `&FnAbi` itself), which will be
     /// returned from `fn_abi_of_*` (see also `handle_fn_abi_err`).
-    type FnAbiOfResult: MaybeResult<&'tcx FnAbi<'tcx, Ty<'tcx>>> = &'tcx FnAbi<'tcx, Ty<'tcx>>;
+    type FnAbiOfResult: MaybeResult<&'tcx FnAbi<'tcx>> = &'tcx FnAbi<'tcx>;
 
     /// Helper used for `fn_abi_of_*`, to adapt `tcx.fn_abi_of_*(...)` into a
     /// `Self::FnAbiOfResult` (which does not need to be a `Result<...>`).
@@ -1394,7 +1395,7 @@ pub trait FnAbiOfHelpers<'tcx>: LayoutOfHelpers<'tcx> {
         err: FnAbiError<'tcx>,
         span: Span,
         fn_abi_request: FnAbiRequest<'tcx>,
-    ) -> <Self::FnAbiOfResult as MaybeResult<&'tcx FnAbi<'tcx, Ty<'tcx>>>>::Error;
+    ) -> <Self::FnAbiOfResult as MaybeResult<&'tcx FnAbi<'tcx>>>::Error;
 }
 
 /// Blanket extension trait for contexts that can compute `FnAbi`s.

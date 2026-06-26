@@ -10,12 +10,10 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
     FnAbiError, HasTyCtxt, HasTypingEnv, LayoutCx, LayoutOf, TyAndLayout, fn_can_unwind,
 };
-use rustc_middle::ty::{self, InstanceKind, ShimKind, Ty, TyCtxt, Unnormalized};
+use rustc_middle::ty::{self, ArgAbi, FnAbi, InstanceKind, ShimKind, Ty, TyCtxt, Unnormalized};
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::DefId;
-use rustc_target::callconv::{
-    AbiMap, ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, FnAbi, PassMode,
-};
+use rustc_target::callconv::{AbiMap, ArgAttribute, ArgAttributes, ArgExtension, PassMode};
 use tracing::debug;
 
 pub(crate) fn provide(providers: &mut Providers) {
@@ -291,7 +289,7 @@ impl<'tcx> FnAbiDesc<'tcx> {
 fn fn_abi_of_fn_ptr<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::PseudoCanonicalInput<'tcx, (ty::PolyFnSig<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
-) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
+) -> Result<&'tcx FnAbi<'tcx>, &'tcx FnAbiError<'tcx>> {
     let desc = FnAbiDesc::for_fn_ptr(tcx, query);
     fn_abi_new_uncached(desc)
 }
@@ -299,7 +297,7 @@ fn fn_abi_of_fn_ptr<'tcx>(
 fn fn_abi_of_instance_no_deduced_attrs<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::PseudoCanonicalInput<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
-) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
+) -> Result<&'tcx FnAbi<'tcx>, &'tcx FnAbiError<'tcx>> {
     let desc = FnAbiDesc::for_instance(tcx, query);
     fn_abi_new_uncached(desc)
 }
@@ -307,7 +305,7 @@ fn fn_abi_of_instance_no_deduced_attrs<'tcx>(
 fn fn_abi_of_instance_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::PseudoCanonicalInput<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
-) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
+) -> Result<&'tcx FnAbi<'tcx>, &'tcx FnAbiError<'tcx>> {
     // The `fn_abi_of_instance_no_deduced_attrs` query may have been called during CTFE, so we
     // delegate to it here in order to reuse (and, if necessary, augment) its result.
     tcx.fn_abi_of_instance_no_deduced_attrs(query).map(|fn_abi| {
@@ -434,11 +432,7 @@ fn arg_attrs_for_rust_scalar<'tcx>(
 }
 
 /// Ensure that the ABI makes basic sense.
-fn fn_abi_sanity_check<'tcx>(
-    cx: &LayoutCx<'tcx>,
-    fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
-    spec_abi: ExternAbi,
-) {
+fn fn_abi_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, fn_abi: &FnAbi<'tcx>, spec_abi: ExternAbi) {
     fn fn_arg_attrs_sanity_check(attrs: &ArgAttributes, is_ret: bool) {
         if attrs.regular.contains(ArgAttribute::NoFree) {
             assert!(!is_ret, "NoFree not valid on return values");
@@ -447,9 +441,9 @@ fn fn_abi_sanity_check<'tcx>(
 
     fn fn_arg_sanity_check<'tcx>(
         cx: &LayoutCx<'tcx>,
-        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        fn_abi: &FnAbi<'tcx>,
         spec_abi: ExternAbi,
-        arg: &ArgAbi<'tcx, Ty<'tcx>>,
+        arg: &ArgAbi<'tcx>,
         is_ret: bool,
     ) {
         let tcx = cx.tcx();
@@ -571,7 +565,7 @@ fn fn_abi_new_uncached<'tcx>(
         is_virtual_call,
         extra_args,
     }: FnAbiDesc<'tcx>,
-) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
+) -> Result<&'tcx FnAbi<'tcx>, &'tcx FnAbiError<'tcx>> {
     let tcx = cx.tcx();
 
     let abi_map = AbiMap::from_target(&tcx.sess.target);
@@ -645,15 +639,11 @@ fn fn_abi_new_uncached<'tcx>(
 }
 
 #[tracing::instrument(level = "trace", skip(cx))]
-fn fn_abi_adjust_for_abi<'tcx>(
-    cx: &LayoutCx<'tcx>,
-    fn_abi: &mut FnAbi<'tcx, Ty<'tcx>>,
-    abi: ExternAbi,
-) {
+fn fn_abi_adjust_for_abi<'tcx>(cx: &LayoutCx<'tcx>, fn_abi: &mut FnAbi<'tcx>, abi: ExternAbi) {
     if abi == ExternAbi::Unadjusted {
         // The "unadjusted" ABI passes aggregates in "direct" mode. That's fragile but needed for
         // some LLVM intrinsics.
-        fn unadjust<'tcx>(arg: &mut ArgAbi<'tcx, Ty<'tcx>>) {
+        fn unadjust<'tcx>(arg: &mut ArgAbi<'tcx>) {
             // This still uses `PassMode::Pair` for ScalarPair types. That's unlikely to be intended,
             // but who knows what breaks if we change this now.
             if matches!(arg.layout.backend_repr, BackendRepr::Memory { .. }) {
@@ -679,10 +669,10 @@ fn fn_abi_adjust_for_abi<'tcx>(
 #[tracing::instrument(level = "trace", skip(cx))]
 fn fn_abi_adjust_for_deduced_attrs<'tcx>(
     cx: &LayoutCx<'tcx>,
-    fn_abi: &'tcx FnAbi<'tcx, Ty<'tcx>>,
+    fn_abi: &'tcx FnAbi<'tcx>,
     abi: ExternAbi,
     fn_def_id: DefId,
-) -> &'tcx FnAbi<'tcx, Ty<'tcx>> {
+) -> &'tcx FnAbi<'tcx> {
     let tcx = cx.tcx();
     // Look up the deduced parameter attributes for this function, if we have its def ID.
     // We'll tag its parameters with those attributes as appropriate.
@@ -709,7 +699,7 @@ fn apply_deduced_attributes<'tcx>(
     cx: &LayoutCx<'tcx>,
     deduced: &[DeducedParamAttrs],
     idx: usize,
-    arg: &mut ArgAbi<'tcx, Ty<'tcx>>,
+    arg: &mut ArgAbi<'tcx>,
 ) {
     // Deduction is performed under the assumption of the indirection pass mode.
     let PassMode::Indirect { ref mut attrs, .. } = arg.mode else {

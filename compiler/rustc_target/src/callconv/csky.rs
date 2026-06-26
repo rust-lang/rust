@@ -5,11 +5,11 @@
 // https://github.com/llvm/llvm-project/blob/4a074f32a6914f2a8d7215d78758c24942dddc3d/clang/lib/CodeGen/Targets/CSKY.cpp#L76-L162
 
 use rustc_abi::Reg;
-use rustc_type_ir::TyAbiInterface;
+use rustc_type_ir::{Interner, TyAbiInterface};
 
 use crate::callconv::{ArgAbi, FnAbi, Uniform};
 
-fn classify_ret<Ty>(arg: &mut ArgAbi<'_, Ty>) {
+fn classify_ret<I: Interner>(arg: &mut ArgAbi<'_, I>) {
     if !arg.layout.is_sized() {
         // Not touching this...
         return;
@@ -30,9 +30,9 @@ fn classify_ret<Ty>(arg: &mut ArgAbi<'_, Ty>) {
     }
 }
 
-fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
+fn classify_arg<'a, I: Interner, C>(cx: &C, arg: &mut ArgAbi<'a, I>)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<'a, C>,
 {
     if !arg.layout.is_sized() {
         // Not touching this...
@@ -57,9 +57,9 @@ where
     }
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) fn compute_abi_info<'a, I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<'a, I>)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<'a, C>,
 {
     if !fn_abi.ret.is_ignore() {
         classify_ret(&mut fn_abi.ret);

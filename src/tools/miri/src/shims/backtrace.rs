@@ -1,7 +1,6 @@
 use rustc_abi::{CanonAbi, FieldIdx, Size};
-use rustc_middle::ty::{self, Instance, Ty};
+use rustc_middle::ty::{self, FnAbi, Instance};
 use rustc_span::{BytePos, Loc, Symbol, hygiene};
-use rustc_target::callconv::FnAbi;
 
 use crate::*;
 
@@ -9,7 +8,7 @@ impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn handle_miri_backtrace_size(
         &mut self,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        abi: &FnAbi<'tcx>,
         link_name: Symbol,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
@@ -29,7 +28,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn handle_miri_get_backtrace(
         &mut self,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        abi: &FnAbi<'tcx>,
         link_name: Symbol,
         args: &[OpTy<'tcx>],
     ) -> InterpResult<'tcx> {
@@ -108,7 +107,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn handle_miri_resolve_frame(
         &mut self,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        abi: &FnAbi<'tcx>,
         link_name: Symbol,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
@@ -185,7 +184,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn handle_miri_resolve_frame_names(
         &mut self,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        abi: &FnAbi<'tcx>,
         link_name: Symbol,
         args: &[OpTy<'tcx>],
     ) -> InterpResult<'tcx> {

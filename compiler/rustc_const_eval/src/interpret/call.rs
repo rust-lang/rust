@@ -9,9 +9,8 @@ use rustc_abi::{self as abi, ExternAbi, FieldIdx, Integer, VariantIdx};
 use rustc_hir::def_id::DefId;
 use rustc_hir::find_attr;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
-use rustc_middle::ty::{self, AdtDef, Instance, Ty, VariantDef};
+use rustc_middle::ty::{self, AdtDef, ArgAbi, FnAbi, Instance, Ty, VariantDef};
 use rustc_middle::{bug, mir, span_bug};
-use rustc_target::callconv::{ArgAbi, FnAbi};
 use tracing::field::Empty;
 use tracing::{info, instrument, trace};
 
@@ -247,8 +246,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Returns a `bool` saying whether the two arguments are ABI-compatible.
     pub fn check_argument_compat(
         &self,
-        caller_abi: &ArgAbi<'tcx, Ty<'tcx>>,
-        callee_abi: &ArgAbi<'tcx, Ty<'tcx>>,
+        caller_abi: &ArgAbi<'tcx>,
+        callee_abi: &ArgAbi<'tcx>,
     ) -> InterpResult<'tcx, bool> {
         // We do not want to accept things as ABI-compatible that just "happen to be" compatible on the current target,
         // so we implement a type-based check that reflects the guaranteed rules for ABI compatibility.
@@ -269,10 +268,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Initialize a single callee argument, checking the types for compatibility.
     fn pass_argument<'x, 'y>(
         &mut self,
-        caller_args: &mut impl Iterator<
-            Item = (&'x FnArg<'tcx, M::Provenance>, &'y ArgAbi<'tcx, Ty<'tcx>>),
-        >,
-        callee_args_abis: &mut impl Iterator<Item = (usize, &'y ArgAbi<'tcx, Ty<'tcx>>)>,
+        caller_args: &mut impl Iterator<Item = (&'x FnArg<'tcx, M::Provenance>, &'y ArgAbi<'tcx>)>,
+        callee_args_abis: &mut impl Iterator<Item = (usize, &'y ArgAbi<'tcx>)>,
         callee_arg: &mir::Place<'tcx>,
         callee_ty: Ty<'tcx>,
         already_live: bool,
@@ -335,7 +332,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         &mut self,
         instance: Instance<'tcx>,
         body: &'tcx mir::Body<'tcx>,
-        caller_fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        caller_fn_abi: &FnAbi<'tcx>,
         args: &[FnArg<'tcx, M::Provenance>],
         with_caller_location: bool,
         destination: &PlaceTy<'tcx, M::Provenance>,
@@ -599,7 +596,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub(super) fn init_fn_call(
         &mut self,
         fn_val: FnVal<'tcx, M::ExtraFnVal>,
-        (caller_abi, caller_fn_abi): (ExternAbi, &FnAbi<'tcx, Ty<'tcx>>),
+        (caller_abi, caller_fn_abi): (ExternAbi, &FnAbi<'tcx>),
         args: &[FnArg<'tcx, M::Provenance>],
         with_caller_location: bool,
         destination: &PlaceTy<'tcx, M::Provenance>,
@@ -839,7 +836,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub(super) fn init_fn_tail_call(
         &mut self,
         fn_val: FnVal<'tcx, M::ExtraFnVal>,
-        (caller_abi, caller_fn_abi): (ExternAbi, &FnAbi<'tcx, Ty<'tcx>>),
+        (caller_abi, caller_fn_abi): (ExternAbi, &FnAbi<'tcx>),
         args: &[FnArg<'tcx, M::Provenance>],
         with_caller_location: bool,
     ) -> InterpResult<'tcx> {

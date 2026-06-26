@@ -23,10 +23,10 @@ use rustc_data_structures::fx::FxHashSet;
 #[cfg(feature = "master")]
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::{self, Instance, Ty};
+use rustc_middle::ty::{self, ArgAbi, Instance, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol, sym};
-use rustc_target::callconv::{ArgAbi, PassMode};
+use rustc_target::callconv::PassMode;
 
 #[cfg(feature = "master")]
 use crate::abi::FnAbiGccExt;
@@ -718,7 +718,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
 impl<'a, 'gcc, 'tcx> ArgAbiBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn store_fn_arg(
         &mut self,
-        arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
+        arg_abi: &ArgAbi<'tcx>,
         idx: &mut usize,
         dst: PlaceRef<'tcx, Self::Value>,
     ) {
@@ -727,7 +727,7 @@ impl<'a, 'gcc, 'tcx> ArgAbiBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     fn store_arg(
         &mut self,
-        arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
+        arg_abi: &ArgAbi<'tcx>,
         val: RValue<'gcc>,
         dst: PlaceRef<'tcx, RValue<'gcc>>,
     ) {
@@ -750,7 +750,7 @@ pub trait ArgAbiExt<'gcc, 'tcx> {
     );
 }
 
-impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
+impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx> {
     /// Stores a direct/indirect value described by this ArgAbi into a
     /// place for the original Rust type of this argument/return.
     /// Can be used for both storing formal arguments into Rust variables

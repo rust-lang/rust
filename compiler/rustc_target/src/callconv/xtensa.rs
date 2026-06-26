@@ -6,7 +6,7 @@
 //! Section 2.3 from the Xtensa programmers guide.
 
 use rustc_abi::{BackendRepr, HasDataLayout, Size};
-use rustc_type_ir::TyAbiInterface;
+use rustc_type_ir::{Interner, TyAbiInterface};
 
 use crate::callconv::{ArgAbi, FnAbi, Reg, Uniform};
 use crate::spec::HasTargetSpec;
@@ -16,9 +16,9 @@ const NUM_RET_GPRS: u64 = 4;
 const MAX_ARG_IN_REGS_SIZE: u64 = NUM_ARG_GPRS * 32;
 const MAX_RET_IN_REGS_SIZE: u64 = NUM_RET_GPRS * 32;
 
-fn classify_ret_ty<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
+fn classify_ret_ty<'a, I: Interner, C>(cx: &C, arg: &mut ArgAbi<'a, I>)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<'a, C>,
 {
     if arg.is_ignore() {
         return;
@@ -37,13 +37,13 @@ where
     }
 }
 
-fn classify_arg_ty<'a, Ty, C>(
+fn classify_arg_ty<'a, I: Interner, C>(
     cx: &C,
-    arg: &mut ArgAbi<'a, Ty>,
+    arg: &mut ArgAbi<'a, I>,
     arg_gprs_left: &mut u64,
     is_ret: bool,
 ) where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<'a, C>,
 {
     assert!(*arg_gprs_left <= NUM_ARG_GPRS, "Arg GPR tracking underflow");
 
@@ -108,9 +108,9 @@ fn classify_arg_ty<'a, Ty, C>(
     }
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) fn compute_abi_info<'a, I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<'a, I>)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<'a, C>,
     C: HasDataLayout + HasTargetSpec,
 {
     if !fn_abi.ret.is_ignore() {
@@ -127,7 +127,7 @@ where
     }
 }
 
-fn is_xtensa_aggregate<'a, Ty>(arg: &ArgAbi<'a, Ty>) -> bool {
+fn is_xtensa_aggregate<'a, I: Interner>(arg: &ArgAbi<'a, I>) -> bool {
     match arg.layout.backend_repr {
         BackendRepr::SimdVector { .. } => true,
         _ => arg.layout.is_aggregate(),

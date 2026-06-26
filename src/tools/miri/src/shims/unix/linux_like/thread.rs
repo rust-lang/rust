@@ -1,7 +1,7 @@
 use rustc_abi::{CanonAbi, Size};
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
-use rustc_target::callconv::FnAbi;
+use rustc_middle::ty::FnAbi;
 
 use crate::shims::sig::check_min_vararg_count;
 use crate::shims::unix::thread::{EvalContextExt as _, ThreadNameResult};
@@ -12,7 +12,7 @@ const TASK_COMM_LEN: u64 = 16;
 pub fn prctl<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
     link_name: Symbol,
-    abi: &FnAbi<'tcx, Ty<'tcx>>,
+    abi: &FnAbi<'tcx>,
     args: &[OpTy<'tcx>],
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx> {

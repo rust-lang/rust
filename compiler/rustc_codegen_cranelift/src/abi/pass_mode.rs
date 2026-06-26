@@ -2,8 +2,9 @@
 
 use cranelift_codegen::ir::ArgumentPurpose;
 use rustc_abi::{Reg, RegKind};
+use rustc_middle::ty::ArgAbi;
 use rustc_target::callconv::{
-    ArgAbi, ArgAttributes, ArgExtension as RustcArgExtension, CastTarget, PassMode,
+    ArgAttributes, ArgExtension as RustcArgExtension, CastTarget, PassMode,
 };
 use smallvec::{SmallVec, smallvec};
 
@@ -96,7 +97,7 @@ fn cast_target_to_abi_params(cast: &CastTarget) -> SmallVec<[(Size, AbiParam); 2
     res
 }
 
-impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
+impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx> {
     fn get_abi_param(&self, tcx: TyCtxt<'tcx>) -> SmallVec<[AbiParam; 2]> {
         match self.mode {
             PassMode::Ignore => smallvec![],
@@ -248,7 +249,7 @@ pub(super) fn from_casted_value<'tcx>(
 pub(super) fn adjust_arg_for_abi<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     arg: CValue<'tcx>,
-    arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
+    arg_abi: &ArgAbi<'tcx>,
     is_owned: bool,
 ) -> SmallVec<[Value; 2]> {
     assert_assignable(fx, arg.layout().ty, arg_abi.layout.ty, 16);
@@ -284,7 +285,7 @@ pub(super) fn cvalue_for_param<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     local: Option<mir::Local>,
     local_field: Option<usize>,
-    arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
+    arg_abi: &ArgAbi<'tcx>,
     block_params_iter: &mut impl Iterator<Item = Value>,
 ) -> Option<ArgValue<'tcx>> {
     let block_params = arg_abi

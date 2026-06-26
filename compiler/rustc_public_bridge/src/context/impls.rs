@@ -16,15 +16,14 @@ use rustc_middle::ty::print::{
 use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{
     AdtDef, AdtKind, AssocItem, Binder, ClosureKind, CoroutineArgsExt, EarlyBinder,
-    ExistentialTraitRef, FnSig, GenericArgsRef, Instance, InstanceKind, IntrinsicDef, Layout, List,
-    PolyFnSig, ScalarInt, TraitDef, TraitRef, Ty, TyCtxt, TyKind, TypeVisitableExt, UintTy,
-    ValTree, VariantDef, VtblEntry,
+    ExistentialTraitRef, FnAbi, FnSig, GenericArgsRef, Instance, InstanceKind, IntrinsicDef,
+    Layout, List, PolyFnSig, ScalarInt, TraitDef, TraitRef, Ty, TyCtxt, TyKind, TypeVisitableExt,
+    UintTy, ValTree, VariantDef, VtblEntry,
 };
 use rustc_middle::{mir, ty};
 use rustc_session::cstore::ForeignModule;
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_span::{Span, Symbol};
-use rustc_target::callconv::FnAbi;
 
 use super::{AllocRangeHelpers, CompilerCtxt, TyHelpers, TypingEnvHelpers};
 use crate::builder::BodyBuilder;
@@ -616,15 +615,12 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
     }
 
     /// Get an instance ABI.
-    pub fn instance_abi(
-        &self,
-        instance: ty::Instance<'tcx>,
-    ) -> Result<&FnAbi<'tcx, Ty<'tcx>>, B::Error> {
+    pub fn instance_abi(&self, instance: ty::Instance<'tcx>) -> Result<&FnAbi<'tcx>, B::Error> {
         Ok(self.fn_abi_of_instance(instance, List::empty())?)
     }
 
     /// Get the ABI of a function pointer.
-    pub fn fn_ptr_abi(&self, sig: PolyFnSig<'tcx>) -> Result<&FnAbi<'tcx, Ty<'tcx>>, B::Error> {
+    pub fn fn_ptr_abi(&self, sig: PolyFnSig<'tcx>) -> Result<&FnAbi<'tcx>, B::Error> {
         Ok(self.fn_abi_of_fn_ptr(sig, List::empty())?)
     }
 

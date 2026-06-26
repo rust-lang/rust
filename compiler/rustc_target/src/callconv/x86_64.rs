@@ -2,7 +2,7 @@
 // https://github.com/jckarter/clay/blob/db0bd2702ab0b6e48965cd85f8859bbd5f60e48e/compiler/externals.cpp
 
 use rustc_abi::{BackendRepr, HasDataLayout, Primitive, Reg, RegKind, Size, Variants};
-use rustc_type_ir::{TyAbiInterface, TyAndLayout};
+use rustc_type_ir::{Interner, TyAbiInterface, TyAndLayout};
 
 use crate::callconv::{ArgAbi, CastTarget, FnAbi};
 use crate::spec::HasTargetSpec;
@@ -24,22 +24,22 @@ struct Memory;
 const LARGEST_VECTOR_SIZE: usize = 512;
 const MAX_EIGHTBYTES: usize = LARGEST_VECTOR_SIZE / 64;
 
-fn classify_arg<'a, Ty, C>(
+fn classify_arg<'a, I: Interner, C>(
     cx: &C,
-    arg: &ArgAbi<'a, Ty>,
+    arg: &ArgAbi<'a, I>,
 ) -> Result<[Option<Class>; MAX_EIGHTBYTES], Memory>
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<'a, C>,
     C: HasDataLayout,
 {
-    fn classify<'a, Ty, C>(
+    fn classify<'a, I: Interner, C>(
         cx: &C,
-        layout: TyAndLayout<'a, Ty>,
+        layout: TyAndLayout<'a, I>,
         cls: &mut [Option<Class>],
         off: Size,
     ) -> Result<(), Memory>
     where
-        Ty: TyAbiInterface<'a, C> + Copy,
+        I: TyAbiInterface<'a, C>,
         C: HasDataLayout,
     {
         if !off.is_aligned(layout.align.abi) {
@@ -173,15 +173,15 @@ fn cast_target(cls: &[Option<Class>], size: Size) -> CastTarget {
 const MAX_INT_REGS: usize = 6; // RDI, RSI, RDX, RCX, R8, R9
 const MAX_SSE_REGS: usize = 8; // XMM0-7
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) fn compute_abi_info<'a, I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<'a, I>)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<'a, C>,
     C: HasDataLayout + HasTargetSpec,
 {
     let mut int_regs = MAX_INT_REGS;
     let mut sse_regs = MAX_SSE_REGS;
 
-    let mut x86_64_arg_or_ret = |arg: &mut ArgAbi<'a, Ty>, is_arg: bool| {
+    let mut x86_64_arg_or_ret = |arg: &mut ArgAbi<'a, I>, is_arg: bool| {
         if !arg.layout.is_sized() {
             // FIXME: Update int_regs?
             // Not touching this...

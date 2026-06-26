@@ -15,13 +15,12 @@ use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
-use rustc_middle::ty::{self, GenericArgsRef, Instance, Ty, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::{self, FnAbi, GenericArgsRef, Instance, Ty, TypeVisitableExt, Unnormalized};
 use rustc_session::Session;
 use rustc_session::config::{self, DebugInfo};
 use rustc_span::{
     BytePos, Pos, SourceFile, SourceFileAndLine, SourceFileHash, Span, StableSourceFileId, Symbol,
 };
-use rustc_target::callconv::FnAbi;
 use rustc_target::spec::DebuginfoKind;
 use smallvec::SmallVec;
 use tracing::debug;
@@ -419,7 +418,7 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn dbg_scope_fn(
         &self,
         instance: Instance<'tcx>,
-        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        fn_abi: &FnAbi<'tcx>,
         maybe_definition_llfn: Option<&'ll Value>,
     ) -> &'ll DIScope {
         let tcx = self.tcx;
@@ -522,7 +521,7 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         fn get_function_signature<'ll, 'tcx>(
             cx: &CodegenCx<'ll, 'tcx>,
-            fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+            fn_abi: &FnAbi<'tcx>,
         ) -> Vec<Option<&'ll llvm::Metadata>> {
             if cx.sess().opts.debuginfo != DebugInfo::Full {
                 return vec![];

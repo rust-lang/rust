@@ -8,7 +8,7 @@ macro_rules! arena_types {
         $macro!([
             [] layout: rustc_abi::LayoutData<rustc_abi::FieldIdx, rustc_abi::VariantIdx>,
             [] proxy_coroutine_layout: rustc_middle::mir::CoroutineLayout<'tcx>,
-            [] fn_abi: rustc_target::callconv::FnAbi<'tcx, rustc_middle::ty::Ty<'tcx>>,
+            [] fn_abi: rustc_middle::ty::FnAbi<'tcx>,
             [] adt_def: rustc_middle::ty::AdtDefData,
             [] steal_thir: rustc_data_structures::steal::Steal<rustc_middle::thir::Thir<'tcx>>,
             [] steal_mir: rustc_data_structures::steal::Steal<rustc_middle::mir::Body<'tcx>>,

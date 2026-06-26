@@ -27,10 +27,9 @@ use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTyCtxt, HasTypingEnv, LayoutError,
     LayoutOfHelpers, TyAndLayout,
 };
-use rustc_middle::ty::{self, AtomicOrdering, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, AtomicOrdering, FnAbi, Instance, Ty, TyCtxt};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
-use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, X86Abi};
 
 use crate::abi::FnAbiGccExt;
@@ -348,7 +347,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     fn function_ptr_call(
         &mut self,
         typ: Type<'gcc>,
-        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
+        fn_abi: Option<&FnAbi<'tcx>>,
         mut func_ptr: RValue<'gcc>,
         args: &[RValue<'gcc>],
         _funclet: Option<&Funclet>,
@@ -601,7 +600,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         &mut self,
         typ: Type<'gcc>,
         fn_attrs: Option<&CodegenFnAttrs>,
-        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
+        fn_abi: Option<&FnAbi<'tcx>>,
         func: RValue<'gcc>,
         args: &[RValue<'gcc>],
         then: Block<'gcc>,
@@ -639,7 +638,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         &mut self,
         typ: Type<'gcc>,
         fn_attrs: Option<&CodegenFnAttrs>,
-        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
+        fn_abi: Option<&FnAbi<'tcx>>,
         func: RValue<'gcc>,
         args: &[RValue<'gcc>],
         then: Block<'gcc>,
@@ -1770,7 +1769,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         &mut self,
         typ: Type<'gcc>,
         _fn_attrs: Option<&CodegenFnAttrs>,
-        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
+        fn_abi: Option<&FnAbi<'tcx>>,
         func: RValue<'gcc>,
         args: &[RValue<'gcc>],
         funclet: Option<&Funclet>,
@@ -1796,7 +1795,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         &mut self,
         _llty: Self::Type,
         _fn_attrs: Option<&CodegenFnAttrs>,
-        _fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        _fn_abi: &FnAbi<'tcx>,
         _llfn: Self::Value,
         _args: &[Self::Value],
         _funclet: Option<&Self::Funclet>,

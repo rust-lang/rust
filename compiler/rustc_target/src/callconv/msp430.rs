@@ -1,7 +1,7 @@
 // Reference: MSP430 Embedded Application Binary Interface
 // https://www.ti.com/lit/an/slaa534a/slaa534a.pdf
 
-use rustc_type_ir::TyAbiInterface;
+use rustc_type_ir::{Interner, TyAbiInterface};
 
 use crate::callconv::{ArgAbi, FnAbi};
 
@@ -11,7 +11,7 @@ use crate::callconv::{ArgAbi, FnAbi};
 // returned by reference. To pass a structure or union by reference, the caller
 // places its address in the appropriate location: either in a register or on
 // the stack, according to its position in the argument list. (..)"
-fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
+fn classify_ret<I: Interner>(ret: &mut ArgAbi<'_, I>) {
     if ret.layout.is_aggregate() && ret.layout.size.bits() > 32 {
         ret.make_indirect();
     } else {
@@ -19,9 +19,9 @@ fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
     }
 }
 
-fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
+fn classify_arg<'a, I: Interner, C>(cx: &C, arg: &mut ArgAbi<'a, I>)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<'a, C>,
 {
     if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
         arg.make_indirect();
@@ -34,9 +34,9 @@ where
     }
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) fn compute_abi_info<'a, I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<'a, I>)
 where
-    Ty: TyAbiInterface<'a, C> + Copy,
+    I: TyAbiInterface<'a, C>,
 {
     if !fn_abi.ret.is_ignore() {
         classify_ret(&mut fn_abi.ret);

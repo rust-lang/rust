@@ -10,10 +10,9 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::AllocInit;
-use rustc_middle::ty::{Instance, Ty};
+use rustc_middle::ty::{FnAbi, Instance};
 use rustc_middle::{mir, ty};
 use rustc_span::Symbol;
-use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{Arch, Os};
 
 use super::alloc::EvalContextExt as _;
@@ -44,7 +43,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_foreign_item(
         &mut self,
         link_name: Symbol,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        abi: &FnAbi<'tcx>,
         args: &[OpTy<'tcx>],
         dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
@@ -111,7 +110,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_dyn_sym(
         &mut self,
         sym: DynSym,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        abi: &FnAbi<'tcx>,
         args: &[OpTy<'tcx>],
         dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
@@ -248,7 +247,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_foreign_item_inner(
         &mut self,
         link_name: Symbol,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        abi: &FnAbi<'tcx>,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {

@@ -52,7 +52,6 @@ use rustc_session::config::OptLevel;
 pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol};
-use rustc_target::callconv::FnAbi;
 pub use rustc_type_ir::data_structures::{DelayedMap, DelayedSet};
 pub use rustc_type_ir::fast_reject::DeepRejectCtxt;
 #[allow(
@@ -85,6 +84,7 @@ pub use self::context::{
 };
 pub use self::fold::*;
 pub use self::instance::{Instance, InstanceKind, ReifyReason, ShimKind};
+pub use self::layout::{ArgAbi, FnAbi, TyAndLayout};
 pub(crate) use self::list::RawList;
 pub use self::list::{List, ListWithCachedTypeInfo};
 pub use self::opaque_types::OpaqueTypeKey;
@@ -2291,7 +2291,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn fn_abi_of_instance(
         self,
         query: ty::PseudoCanonicalInput<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
-    ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
+    ) -> Result<&'tcx FnAbi<'tcx>, &'tcx FnAbiError<'tcx>> {
         // Only deduce attrs in full, optimized builds. Otherwise, avoid the query system overhead
         // of ever invoking the `fn_abi_of_instance_raw` query.
         if self.sess.opts.optimize != OptLevel::No && self.sess.opts.incremental.is_none() {

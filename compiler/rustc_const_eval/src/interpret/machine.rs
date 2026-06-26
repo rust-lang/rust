@@ -9,11 +9,10 @@ use std::hash::Hash;
 use rustc_abi::{Align, Size};
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_middle::query::TyCtxtAt;
-use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::{FnAbi, Ty};
 use rustc_middle::{mir, ty};
 use rustc_span::def_id::DefId;
-use rustc_target::callconv::FnAbi;
 
 use super::{
     AllocBytes, AllocId, AllocKind, AllocRange, Allocation, CTFE_ALLOC_SALT, ConstAllocation,
@@ -214,7 +213,7 @@ pub trait Machine<'tcx>: Sized {
     fn find_mir_or_eval_fn(
         ecx: &mut InterpCx<'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        abi: &FnAbi<'tcx>,
         args: &[FnArg<'tcx, Self::Provenance>],
         destination: &PlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
@@ -226,7 +225,7 @@ pub trait Machine<'tcx>: Sized {
     fn call_extra_fn(
         ecx: &mut InterpCx<'tcx, Self>,
         fn_val: Self::ExtraFnVal,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        abi: &FnAbi<'tcx>,
         args: &[FnArg<'tcx, Self::Provenance>],
         destination: &PlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
@@ -684,7 +683,7 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
     fn call_extra_fn(
         _ecx: &mut InterpCx<$tcx, Self>,
         fn_val: !,
-        _abi: &FnAbi<$tcx, Ty<$tcx>>,
+        _abi: &FnAbi<$tcx>,
         _args: &[FnArg<$tcx>],
         _destination: &PlaceTy<$tcx, Self::Provenance>,
         _target: Option<mir::BasicBlock>,

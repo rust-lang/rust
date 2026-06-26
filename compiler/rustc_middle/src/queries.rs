@@ -1748,7 +1748,7 @@ rustc_queries! {
     /// instead, where the instance is an `InstanceKind::Virtual`.
     query fn_abi_of_fn_ptr(
         key: ty::PseudoCanonicalInput<'tcx, (ty::PolyFnSig<'tcx>, &'tcx ty::List<Ty<'tcx>>)>
-    ) -> Result<&'tcx rustc_target::callconv::FnAbi<'tcx, Ty<'tcx>>, &'tcx ty::layout::FnAbiError<'tcx>> {
+    ) -> Result<&'tcx rustc_middle::ty::FnAbi<'tcx>, &'tcx ty::layout::FnAbiError<'tcx>> {
         desc { "computing call ABI of `{}` function pointers", key.value.0 }
     }
 
@@ -1765,7 +1765,7 @@ rustc_queries! {
     ///   `InstanceKind::Virtual` instance (of `<dyn Trait as Trait>::fn`).
     query fn_abi_of_instance_no_deduced_attrs(
         key: ty::PseudoCanonicalInput<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>
-    ) -> Result<&'tcx rustc_target::callconv::FnAbi<'tcx, Ty<'tcx>>, &'tcx ty::layout::FnAbiError<'tcx>> {
+    ) -> Result<&'tcx rustc_middle::ty::FnAbi<'tcx>, &'tcx ty::layout::FnAbiError<'tcx>> {
         desc { "computing unadjusted call ABI of `{}`", key.value.0 }
     }
 
@@ -1785,7 +1785,7 @@ rustc_queries! {
     ///   `InstanceKind::Virtual` instance (of `<dyn Trait as Trait>::fn`).
     query fn_abi_of_instance_raw(
         key: ty::PseudoCanonicalInput<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>
-    ) -> Result<&'tcx rustc_target::callconv::FnAbi<'tcx, Ty<'tcx>>, &'tcx ty::layout::FnAbiError<'tcx>> {
+    ) -> Result<&'tcx rustc_middle::ty::FnAbi<'tcx>, &'tcx ty::layout::FnAbiError<'tcx>> {
         desc { "computing call ABI of `{}`", key.value.0 }
     }
 

@@ -13,11 +13,10 @@ use rustc_middle::ty::layout::{
     LayoutOfHelpers, TyAndLayout,
 };
 use rustc_middle::ty::{
-    self, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingEnv, Variance,
+    self, FnAbi, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingEnv, Variance,
 };
 use rustc_middle::{mir, span_bug};
 use rustc_span::Span;
-use rustc_target::callconv::FnAbi;
 use tracing::{debug, trace};
 
 use super::{
@@ -119,7 +118,7 @@ impl<'tcx, M: Machine<'tcx>> LayoutOfHelpers<'tcx> for InterpCx<'tcx, M> {
 }
 
 impl<'tcx, M: Machine<'tcx>> FnAbiOfHelpers<'tcx> for InterpCx<'tcx, M> {
-    type FnAbiOfResult = Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, InterpErrorKind<'tcx>>;
+    type FnAbiOfResult = Result<&'tcx FnAbi<'tcx>, InterpErrorKind<'tcx>>;
 
     fn handle_fn_abi_err(
         &self,
