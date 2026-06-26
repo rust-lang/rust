@@ -1,8 +1,8 @@
 use arrayvec::ArrayVec;
 use rustc_abi::{
-    Align, BackendRepr, FieldsShape, Float, HasDataLayout, Primitive, Reg, Size, TyAbiInterface,
-    TyAndLayout, Variants,
+    Align, BackendRepr, FieldsShape, Float, HasDataLayout, Primitive, Reg, Size, Variants,
 };
+use rustc_type_ir::{TyAbiInterface, TyAndLayout};
 
 use crate::callconv::{ArgAbi, ArgAttribute, CastTarget, FnAbi, Uniform};
 use crate::spec::{HasTargetSpec, Os};

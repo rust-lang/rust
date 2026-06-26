@@ -1,10 +1,9 @@
 use std::{cmp, fmt};
 
-use rustc_abi as abi;
 use rustc_abi::{
-    AddressSpace, Align, ExternAbi, FieldIdx, FieldsShape, HasDataLayout, LayoutData, PointeeInfo,
-    PointerKind, Primitive, ReprFlags, ReprOptions, Scalar, Size, TagEncoding, TargetDataLayout,
-    TyAbiInterface, VariantIdx, Variants,
+    self as abi, AbiAlign, AddressSpace, Align, BackendRepr, ExternAbi, FieldIdx, FieldsShape,
+    HasDataLayout, LayoutData, Niche, PointeeInfo, PointerKind, Primitive, ReprFlags, ReprOptions,
+    Scalar, Size, TagEncoding, TargetDataLayout, VariantIdx, Variants,
 };
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
@@ -17,6 +16,7 @@ use rustc_session::config::OptLevel;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, X86Abi};
+use rustc_type_ir::TyAbiInterface;
 use tracing::debug;
 
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -705,7 +705,7 @@ impl<T, E> MaybeResult<T> for Result<T, E> {
     }
 }
 
-pub type TyAndLayout<'tcx> = rustc_abi::TyAndLayout<'tcx, Ty<'tcx>>;
+pub type TyAndLayout<'tcx> = rustc_type_ir::TyAndLayout<'tcx, Ty<'tcx>>;
 
 /// Trait for contexts that want to be able to compute layouts of types.
 /// This automatically gives access to `LayoutOf`, through a blanket `impl`.
@@ -774,6 +774,40 @@ impl<'tcx> LayoutOfHelpers<'tcx> for LayoutCx<'tcx> {
         _: Ty<'tcx>,
     ) -> &'tcx LayoutError<'tcx> {
         self.tcx().arena.alloc(err)
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::Layout<TyCtxt<'tcx>> for rustc_type_ir::Layout<'tcx> {
+    fn fields(self) -> &'tcx FieldsShape<FieldIdx> {
+        self.fields()
+    }
+
+    fn variants(self) -> &'tcx Variants<FieldIdx, VariantIdx> {
+        self.variants()
+    }
+
+    fn backend_repr(self) -> BackendRepr {
+        self.backend_repr()
+    }
+
+    fn largest_niche(self) -> Option<Niche> {
+        self.largest_niche()
+    }
+
+    fn align(self) -> AbiAlign {
+        self.align()
+    }
+
+    fn size(self) -> Size {
+        self.size()
+    }
+
+    fn max_repr_align(self) -> Option<Align> {
+        self.max_repr_align()
+    }
+
+    fn unadjusted_abi_align(self) -> Align {
+        self.unadjusted_abi_align()
     }
 }
 

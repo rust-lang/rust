@@ -1,19 +1,19 @@
 use std::fmt;
 use std::ops::{Deref, Range};
 
-use rustc_data_structures::intern::Interned;
-use rustc_data_structures::range_set::RangeSet;
-use rustc_macros::StableHash;
-
-use crate::layout::{FieldIdx, VariantIdx};
-use crate::{
-    AbiAlign, Align, BackendRepr, FieldsShape, Float, HasDataLayout, LayoutData, Niche,
-    PointeeInfo, Primitive, Size, Variants,
+use rustc_abi::{
+    AbiAlign, Align, BackendRepr, FieldIdx, FieldsShape, Float, HasDataLayout, LayoutData, Niche,
+    PointeeInfo, Primitive, Size, VariantIdx, Variants,
 };
+use rustc_data_structures::range_set::RangeSet;
+#[cfg(feature = "nightly")]
+use rustc_macros::StableHash;
 
 // Explicitly import `Float` to avoid ambiguity with `Primitive::Float`.
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, StableHash)]
+// TODO: this is temporary. I will be moving the definition of Layout from type_ir to middle
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "nightly", derive(StableHash))]
 #[rustc_pass_by_value]
 pub struct Layout<'a>(pub Interned<'a, LayoutData<FieldIdx, VariantIdx>>);
 
@@ -293,7 +293,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     /// (E.g. `Option<i8>` has no guaranteed padding so the empty range set is returned, but its `None` value still has padding).
     pub fn padding_ranges<C>(&self, cx: &C) -> Vec<Range<Size>>
     where
-        Ty: TyAbiInterface<'a, C> + Copy,
+        I: TyAbiInterface<C>,
     {
         let mut data = RangeSet::new();
         self.add_data_ranges(cx, Size::ZERO, &mut data);
@@ -321,7 +321,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     /// variants but not for others; those offset *will* get added to `out`.
     fn add_data_ranges<C>(self, cx: &C, base_offset: Size, out: &mut RangeSet<Size>)
     where
-        Ty: TyAbiInterface<'a, C> + Copy,
+        I: TyAbiInterface<C>,
     {
         if self.is_zst() {
             return;

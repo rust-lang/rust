@@ -6,6 +6,7 @@
 use std::fmt::Debug;
 use std::hash::Hash;
 
+use rustc_abi::{AbiAlign, Align, BackendRepr, Niche, Size};
 use rustc_ast_ir::Mutability;
 
 use crate::elaborate::Elaboratable;
@@ -226,6 +227,18 @@ pub trait Safety<I: Interner<Safety = Self>>: Copy + Debug + Hash + Eq {
 
     /// The string prefix for this safety mode.
     fn prefix_str(self) -> &'static str;
+}
+
+#[rust_analyzer::prefer_underscore_import]
+pub trait Layout<I: Interner<Layout = Self>>: Copy + Debug + Hash + Eq {
+    fn fields(self) -> I::FieldsShapeRef;
+    fn variants(self) -> I::VariantsRef;
+    fn backend_repr(self) -> BackendRepr;
+    fn largest_niche(self) -> Option<Niche>;
+    fn align(self) -> AbiAlign;
+    fn size(self) -> Size;
+    fn max_repr_align(self) -> Option<Align>;
+    fn unadjusted_abi_align(self) -> Align;
 }
 
 #[rust_analyzer::prefer_underscore_import]

@@ -1,10 +1,8 @@
 // The classification code for the x86_64 ABI is taken from the clay language
 // https://github.com/jckarter/clay/blob/db0bd2702ab0b6e48965cd85f8859bbd5f60e48e/compiler/externals.cpp
 
-use rustc_abi::{
-    BackendRepr, HasDataLayout, Primitive, Reg, RegKind, Size, TyAbiInterface, TyAndLayout,
-    Variants,
-};
+use rustc_abi::{BackendRepr, HasDataLayout, Primitive, Reg, RegKind, Size, Variants};
+use rustc_type_ir::{TyAbiInterface, TyAndLayout};
 
 use crate::callconv::{ArgAbi, CastTarget, FnAbi};
 use crate::spec::HasTargetSpec;

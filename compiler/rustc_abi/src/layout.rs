@@ -18,12 +18,6 @@ use crate::{
 mod coroutine;
 mod simple;
 
-#[cfg(feature = "nightly")]
-mod ty;
-
-#[cfg(feature = "nightly")]
-pub use ty::{Layout, TyAbiInterface, TyAndLayout};
-
 rustc_index::newtype_index! {
     /// The *source-order* index of a field in a variant.
     ///

@@ -4,7 +4,8 @@
 // Reference: Clang CSKY lowering code
 // https://github.com/llvm/llvm-project/blob/4a074f32a6914f2a8d7215d78758c24942dddc3d/clang/lib/CodeGen/Targets/CSKY.cpp#L76-L162
 
-use rustc_abi::{Reg, TyAbiInterface};
+use rustc_abi::Reg;
+use rustc_type_ir::TyAbiInterface;
 
 use crate::callconv::{ArgAbi, FnAbi, Uniform};
 

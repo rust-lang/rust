@@ -208,7 +208,7 @@ impl_erasable_for_types_with_no_type_params! {
     Result<bool, &ty::layout::LayoutError<'_>>,
     Result<mir::ConstAlloc<'_>, mir::interpret::ErrorHandled>,
     Result<mir::ConstValue, mir::interpret::ErrorHandled>,
-    Result<rustc_abi::TyAndLayout<'_, Ty<'_>>, &ty::layout::LayoutError<'_>>,
+    Result<rustc_type_ir::TyAndLayout<'_, Ty<'_>>, &ty::layout::LayoutError<'_>>,
     Result<rustc_middle::traits::EvaluationResult, rustc_middle::traits::OverflowError>,
     Result<rustc_middle::ty::adjustment::CoerceUnsizedInfo, ErrorGuaranteed>,
     Result<ty::GenericArg<'_>, traits::query::NoSolution>,

@@ -1,4 +1,5 @@
-use rustc_abi::{BackendRepr, Float, Integer, Primitive, Size, TyAbiInterface};
+use rustc_abi::{BackendRepr, Float, Integer, Primitive, Size};
+use rustc_type_ir::TyAbiInterface;
 
 use crate::callconv::{ArgAbi, FnAbi, Reg};
 use crate::spec::{HasTargetSpec, RustcAbi};

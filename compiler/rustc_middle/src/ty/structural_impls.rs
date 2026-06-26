@@ -5,11 +5,10 @@
 
 use std::fmt::{self, Debug};
 
-use rustc_abi::TyAndLayout;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::LocalDefId;
 use rustc_span::Spanned;
-use rustc_type_ir::{ConstKind, TypeFolder, VisitorResult, try_visit};
+use rustc_type_ir::{ConstKind, TyAndLayout, TypeFolder, VisitorResult, try_visit};
 
 use super::{GenericArg, GenericArgKind, Pattern, Region};
 use crate::mir::PlaceElem;

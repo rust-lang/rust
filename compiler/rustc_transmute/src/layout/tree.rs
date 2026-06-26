@@ -249,12 +249,11 @@ where
 
 #[cfg(feature = "rustc")]
 pub(crate) mod rustc {
-    use rustc_abi::{
-        FieldIdx, FieldsShape, Layout, Size, TagEncoding, TyAndLayout, VariantIdx, Variants,
-    };
+    use rustc_abi::{FieldIdx, FieldsShape, Size, TagEncoding, VariantIdx, Variants};
     use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, LayoutError};
     use rustc_middle::ty::{
-        self, AdtDef, AdtKind, List, Region, ScalarInt, Ty, TyCtxt, TypeVisitableExt,
+        self, AdtDef, AdtKind, Layout, List, Region, ScalarInt, Ty, TyAndLayout, TyCtxt,
+        TypeVisitableExt,
     };
     use rustc_span::ErrorGuaranteed;
 

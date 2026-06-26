@@ -38,7 +38,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Endian {
     }
 }
 
-impl<'tcx> Stable<'tcx> for rustc_abi::TyAndLayout<'tcx, ty::Ty<'tcx>> {
+impl<'tcx> Stable<'tcx> for ty::TyAndLayout<'tcx, ty::Ty<'tcx>> {
     type T = TyAndLayout;
 
     fn stable<'cx>(
@@ -50,7 +50,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::TyAndLayout<'tcx, ty::Ty<'tcx>> {
     }
 }
 
-impl<'tcx> Stable<'tcx> for rustc_abi::Layout<'tcx> {
+impl<'tcx> Stable<'tcx> for ty::Layout<'tcx> {
     type T = Layout;
 
     fn stable<'cx>(

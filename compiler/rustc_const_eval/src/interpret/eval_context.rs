@@ -43,7 +43,7 @@ pub struct InterpCx<'tcx, M: Machine<'tcx>> {
     pub(super) typing_env: ty::TypingEnv<'tcx>,
 
     /// The query cache is slow so we have our own cache in front of it.
-    pub(super) layout_cache: RefCell<FxHashMap<Ty<'tcx>, rustc_abi::Layout<'tcx>>>,
+    pub(super) layout_cache: RefCell<FxHashMap<Ty<'tcx>, ty::Layout<'tcx>>>,
 
     /// The virtual memory system.
     pub memory: Memory<'tcx, M>,

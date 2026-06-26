@@ -3,16 +3,14 @@ use std::fmt::Write;
 use gccjit::{Struct, Type};
 use rustc_abi as abi;
 use rustc_abi::Primitive::*;
-use rustc_abi::{
-    BackendRepr, FieldsShape, Integer, PointeeInfo, Reg, Size, TyAbiInterface, Variants,
-};
+use rustc_abi::{BackendRepr, FieldsShape, Integer, PointeeInfo, Reg, Size, Variants};
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, DerivedTypeCodegenMethods, LayoutTypeCodegenMethods,
 };
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, CoroutineArgsExt, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, CoroutineArgsExt, Ty, TyAbiInterface, TypeVisitableExt};
 use rustc_target::callconv::{CastTarget, FnAbi};
 
 use crate::abi::{FnAbiGcc, FnAbiGccExt, GccType};

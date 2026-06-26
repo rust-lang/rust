@@ -4,10 +4,8 @@
 // Reference: Clang RISC-V ELF psABI lowering code
 // https://github.com/llvm/llvm-project/blob/8e780252a7284be45cf1ba224cabd884847e8e92/clang/lib/CodeGen/TargetInfo.cpp#L9311-L9773
 
-use rustc_abi::{
-    BackendRepr, FieldsShape, HasDataLayout, Primitive, Reg, RegKind, Size, TyAbiInterface,
-    TyAndLayout, Variants,
-};
+use rustc_abi::{BackendRepr, FieldsShape, HasDataLayout, Primitive, Reg, RegKind, Size, Variants};
+use rustc_type_ir::{TyAbiInterface, TyAndLayout};
 
 use crate::callconv::{ArgAbi, ArgExtension, CastTarget, FnAbi, PassMode, Uniform};
 use crate::spec::{HasTargetSpec, LlvmAbi};

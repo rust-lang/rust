@@ -1,7 +1,7 @@
 // Reference: MSP430 Embedded Application Binary Interface
 // https://www.ti.com/lit/an/slaa534a/slaa534a.pdf
 
-use rustc_abi::TyAbiInterface;
+use rustc_type_ir::TyAbiInterface;
 
 use crate::callconv::{ArgAbi, FnAbi};
 

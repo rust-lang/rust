@@ -1,10 +1,14 @@
+#![allow(rustc::direct_use_of_rustc_type_ir)]
+
 use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
 use rustc_abi::{
-    AddressSpace, Align, BackendRepr, CanonAbi, ExternAbi, FieldsShape, HasDataLayout, Heterogeneous, HomogeneousAggregate, Primitive, Reg, RegKind, Scalar, Size, TyAbiInterface, TyAndLayout, Variants
+    AddressSpace, Align, BackendRepr, CanonAbi, ExternAbi, FieldsShape, HasDataLayout,
+    Heterogeneous, HomogeneousAggregate, Primitive, Reg, RegKind, Scalar, Size, Variants,
 };
 use rustc_macros::StableHash;
+use rustc_type_ir::{TyAbiInterface, TyAndLayout};
 
 pub use crate::spec::AbiMap;
 use crate::spec::{Arch, HasTargetSpec, HasX86AbiOpt};

@@ -1,6 +1,7 @@
 use bitflags::bitflags;
-use rustc_abi::{BackendRepr, TyAbiInterface};
+use rustc_abi::BackendRepr;
 use rustc_target::callconv::ArgAbi;
+use rustc_type_ir::TyAbiInterface;
 
 use crate::ty::{self, PseudoCanonicalInput, Ty, TyCtxt, TypingEnv};
 

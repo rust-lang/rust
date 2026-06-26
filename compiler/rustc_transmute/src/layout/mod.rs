@@ -132,9 +132,8 @@ impl Type for () {}
 
 #[cfg(feature = "rustc")]
 pub mod rustc {
-    use rustc_abi::Layout;
     use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, LayoutError};
-    use rustc_middle::ty::{self, Region, Ty};
+    use rustc_middle::ty::{self, Layout, Region, Ty};
 
     /// A visibility node in the layout.
     #[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]

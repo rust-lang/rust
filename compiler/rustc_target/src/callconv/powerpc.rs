@@ -1,4 +1,4 @@
-use rustc_abi::TyAbiInterface;
+use rustc_type_ir::TyAbiInterface;
 
 use crate::callconv::{ArgAbi, FnAbi};
 use crate::spec::{Env, HasTargetSpec, Os};

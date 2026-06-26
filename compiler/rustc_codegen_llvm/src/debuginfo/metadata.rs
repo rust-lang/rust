@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::{assert_matches, iter, ptr};
 
 use libc::{c_longlong, c_uint};
-use rustc_abi::{Align, Layout, NumScalableVectors, Size};
+use rustc_abi::{Align, NumScalableVectors, Size};
 use rustc_codegen_ssa::debuginfo::type_names::{VTableNameKind, cpp_like_debuginfo};
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def::{CtorKind, DefKind};
@@ -15,7 +15,7 @@ use rustc_middle::ty::layout::{
     HasTypingEnv, LayoutOf, TyAndLayout, WIDE_PTR_ADDR, WIDE_PTR_EXTRA,
 };
 use rustc_middle::ty::{
-    self, AdtDef, AdtKind, CoroutineArgsExt, ExistentialTraitRef, Instance, Ty, TyCtxt,
+    self, AdtDef, AdtKind, CoroutineArgsExt, ExistentialTraitRef, Instance, Layout, Ty, TyCtxt,
     Unnormalized, Visibility,
 };
 use rustc_session::config::{self, DebugInfo, Lto};

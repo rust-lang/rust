@@ -1,4 +1,5 @@
-use rustc_abi::{HasDataLayout, TyAbiInterface};
+use rustc_abi::HasDataLayout;
+use rustc_type_ir::TyAbiInterface;
 
 use crate::callconv::{ArgAbi, FnAbi};
 

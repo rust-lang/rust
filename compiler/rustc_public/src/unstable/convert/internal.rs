@@ -683,7 +683,7 @@ impl RustcInternal for Span {
 }
 
 impl RustcInternal for Layout {
-    type T<'tcx> = rustc_abi::Layout<'tcx>;
+    type T<'tcx> = rustc_middle::ty::Layout<'tcx>;
 
     fn internal<'tcx>(
         &self,

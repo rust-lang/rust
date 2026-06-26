@@ -1,4 +1,5 @@
-use rustc_abi::{ArmCall, CanonAbi, HasDataLayout, Reg, RegKind, TyAbiInterface};
+use rustc_abi::{ArmCall, CanonAbi, HasDataLayout, Reg, RegKind};
+use rustc_type_ir::TyAbiInterface;
 
 use crate::callconv::{ArgAbi, FnAbi, Uniform, homogeneous_aggregate};
 use crate::spec::HasTargetSpec;
