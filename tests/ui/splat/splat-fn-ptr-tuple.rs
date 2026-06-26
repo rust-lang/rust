@@ -1,13 +1,14 @@
 //@ failure-status: 101
 
-//@ normalize-stderr: "(.*)internal compiler error:([^:]+):\d{1,}:\d{1,}:(.*)" -> "$1internal compiler error:$2:LL:CC:$3"
-//@ normalize-stderr: "thread.*panicked at compiler.*" -> ""
+//@ normalize-stderr: ".*error:.*compiler/([^:]+):\d{1,}:\d{1,}:(.*)" -> "error: compiler/$1:LL:CC:$2"
+//@ normalize-stderr: "thread.*panicked at .*compiler.*" -> ""
 //@ normalize-stderr: "note: rustc.*running on.*" -> "note: rustc {version} running on {platform}"
 //@ normalize-stderr: "note: compiler flags.*\n\n" -> ""
 //@ normalize-stderr: " +\d{1,}: .*\n" -> ""
 //@ normalize-stderr: " + at .*\n" -> ""
 //@ normalize-stderr: ".*omitted \d{1,} frames?.*\n" -> ""
 //@ normalize-stderr: ".*note: Some details are omitted.*\n" -> ""
+//@ normalize-stderr: ".*--> .*/splat-fn-ptr-tuple.rs:\d{1,}:\d{1,}.*\n" -> ""
 
 //! Test using `#[splat]` on tuple arguments of simple functions.
 //! Currently ICEs, but if we fix it, we'll want to know and update this test to pass.

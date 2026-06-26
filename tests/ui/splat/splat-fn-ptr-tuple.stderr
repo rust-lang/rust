@@ -1,5 +1,4 @@
- compiler error: compiler/rustc_mir_build/src/thir/cx/expr.rs:LL:CC: no splatted def for function or method callee
-  --> $DIR/splat-fn-ptr-tuple.rs:29:5
+error: compiler/rustc_mir_build/src/thir/cx/expr.rs:LL:CC: no splatted def for function or method callee
    |
 LL |     fn_ptr(1, 2);
    |     ^^^^^^^^^^^^
