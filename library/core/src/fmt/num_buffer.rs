@@ -74,7 +74,6 @@ impl<T: NumBufferTrait> NumBuffer<T> {
     #[stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
     pub const fn new() -> Self {
-        // FIXME: Once const generics feature is working, use `T::BUF_SIZE` instead of 40.
         NumBuffer { buf: T::DEFAULT, phantom: core::marker::PhantomData }
     }
 }
