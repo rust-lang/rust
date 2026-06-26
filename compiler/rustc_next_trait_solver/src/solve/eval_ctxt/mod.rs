@@ -681,6 +681,7 @@ where
                 | TypingMode::PostBorrowck { .. }
                 | TypingMode::Codegen
                 | TypingMode::PostAnalysis
+                | TypingMode::IsolatedConst
                 | TypingMode::ErasedNotCoherence(_) => {
                     let mut skip = false;
                     if opaque_types.iter().any(|(_, ty)| ty.is_ty_var())
@@ -1866,7 +1867,10 @@ fn should_rerun_after_erased_canonicalization<I: Interner>(
         // =============================
         (
             RerunCondition::OpaqueInStorage(..),
-            TypingMode::PostAnalysis | TypingMode::Codegen | TypingMode::Reflection,
+            TypingMode::PostAnalysis
+            | TypingMode::Codegen
+            | TypingMode::Reflection
+            | TypingMode::IsolatedConst,
         ) => RerunDecision::Yes,
         (
             RerunCondition::OpaqueInStorage(defids),
@@ -1884,12 +1888,16 @@ fn should_rerun_after_erased_canonicalization<I: Interner>(
             | TypingMode::PostAnalysis
             | TypingMode::Codegen
             | TypingMode::Reflection
+            | TypingMode::IsolatedConst
             | TypingMode::PostTypeckUntilBorrowck { .. },
         ) => RerunDecision::No,
         // =============================
         (
             RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(_),
-            TypingMode::PostAnalysis | TypingMode::Codegen | TypingMode::Reflection,
+            TypingMode::PostAnalysis
+            | TypingMode::Codegen
+            | TypingMode::Reflection
+            | TypingMode::IsolatedConst,
         ) => RerunDecision::Yes,
         (
             RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(defids),

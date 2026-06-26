@@ -132,6 +132,7 @@ where
                 | TypingMode::PostTypeckUntilBorrowck { .. }
                 | TypingMode::PostBorrowck { .. }
                 | TypingMode::PostAnalysis
+                | TypingMode::IsolatedConst
                 | TypingMode::Codegen => structurally_relate_tys(relation, a, b),
             }
         }

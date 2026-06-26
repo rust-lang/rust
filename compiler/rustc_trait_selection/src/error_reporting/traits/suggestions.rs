@@ -4044,7 +4044,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     with_no_trimmed_paths!(tcx.def_path_str(def_id)),
                                 ));
                                 let mut types = tcx
-                                    .all_impls(def_id)
+                                    .all_impls(def_id, self.typing_mode_raw().include_local_impls())
                                     .map(|t| {
                                         with_no_trimmed_paths!(format!(
                                             "  {}",

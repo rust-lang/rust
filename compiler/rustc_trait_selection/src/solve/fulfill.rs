@@ -333,6 +333,7 @@ where
             | TypingMode::PostBorrowck { defined_opaque_types: _ }
             | TypingMode::Reflection
             | TypingMode::PostAnalysis
+            | TypingMode::IsolatedConst
             | TypingMode::Codegen => return Default::default(),
         };
 

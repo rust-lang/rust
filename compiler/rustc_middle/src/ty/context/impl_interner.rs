@@ -12,8 +12,8 @@ use rustc_span::{DUMMY_SP, Span, Symbol, bug};
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem};
 use rustc_type_ir::solve::CanonicalInputData;
 use rustc_type_ir::{
-    BoundVar, CollectAndApply, DebruijnIndex, Interner, RegionVid, TypeFoldable, Unnormalized,
-    VisitorResult, search_graph, try_visit,
+    BoundVar, CollectAndApply, DebruijnIndex, IncludeLocalImpls, Interner, RegionVid, TypeFoldable,
+    Unnormalized, VisitorResult, search_graph, try_visit,
 };
 
 use crate::dep_graph::{DepKind, DepNodeIndex};
@@ -194,6 +194,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             | ty::AliasConstKind::Free { def_id } => self.is_direct_const(def_id),
             ty::AliasConstKind::Anon { .. } => false,
         }
+    }
+    fn is_isolated_const(self, def_id: LocalDefId) -> bool {
+        matches!(self.def_kind(def_id), DefKind::Const { .. })
+            && rustc_hir::find_attr!(self, def_id, RustcIsolatedConst)
     }
     fn const_of_item(
         self,
@@ -526,6 +530,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn for_each_relevant_impl<R: VisitorResult>(
         self,
         trait_ref: ty::TraitRef<'tcx>,
+        include_local_impls: IncludeLocalImpls,
         f: impl FnMut(DefId) -> R,
     ) -> R {
         let self_ty = trait_ref.args.type_at(0);
@@ -533,14 +538,15 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             !matches!(self_ty.kind(), ty::Infer(ty::TyVar(_)) | ty::Param(_) | ty::Bound(_, _)),
             "we should not have them as self ty in the next solver"
         );
-        TyCtxt::for_each_relevant_impl(self, trait_ref.def_id, self_ty, f)
+        TyCtxt::for_each_relevant_impl(self, trait_ref.def_id, self_ty, include_local_impls, f)
     }
     fn for_each_blanket_impl<R: VisitorResult>(
         self,
         trait_def_id: DefId,
+        include_local_impls: IncludeLocalImpls,
         mut f: impl FnMut(DefId) -> R,
     ) -> R {
-        let trait_impls = self.trait_impls_of(trait_def_id);
+        let trait_impls = self.trait_impls_of((trait_def_id, include_local_impls));
         for &impl_def_id in trait_impls.blanket_impls() {
             try_visit!(f(impl_def_id));
         }

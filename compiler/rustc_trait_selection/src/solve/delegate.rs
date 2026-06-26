@@ -459,7 +459,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 | TypingMode::PostTypeckUntilBorrowck { .. }
                 | TypingMode::Reflection
                 | TypingMode::PostBorrowck { .. } => false,
-                TypingMode::PostAnalysis | TypingMode::Codegen => {
+                TypingMode::PostAnalysis | TypingMode::Codegen | TypingMode::IsolatedConst => {
                     let poly_trait_ref = self.deeply_resolve_ignoring_regions(goal_trait_ref);
                     !poly_trait_ref.still_further_specializable()
                 }

@@ -1042,6 +1042,7 @@ fn rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handl
         | TypingMode::PostTypeckUntilBorrowck { .. }
         | TypingMode::PostBorrowck { .. }
         | TypingMode::PostAnalysis
+        | TypingMode::IsolatedConst
         | TypingMode::Codegen => (),
     };
 

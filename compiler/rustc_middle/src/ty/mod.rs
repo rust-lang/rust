@@ -1173,6 +1173,13 @@ impl<'tcx> TypingEnv<'tcx> {
         TypingEnv::new(tcx.param_env_normalized_for_post_analysis(def_id), TypingMode::Codegen)
     }
 
+    pub fn isolated_const(tcx: TyCtxt<'tcx>, def_id: impl IntoQueryKey<DefId>) -> TypingEnv<'tcx> {
+        TypingEnv::new(
+            tcx.param_env_normalized_for_post_analysis(def_id),
+            TypingMode::IsolatedConst,
+        )
+    }
+
     /// Modify the `typing_mode` to `PostAnalysis` or `Codegen` and eagerly reveal all opaque types
     /// in the `param_env`.
     pub fn with_post_analysis_normalized(self, tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
@@ -1182,7 +1189,8 @@ impl<'tcx> TypingEnv<'tcx> {
             | TypingMode::Reflection
             | TypingMode::Typeck { .. }
             | TypingMode::PostTypeckUntilBorrowck { .. }
-            | TypingMode::PostBorrowck { .. } => {}
+            | TypingMode::PostBorrowck { .. }
+            | TypingMode::IsolatedConst => {}
             TypingMode::PostAnalysis | TypingMode::Codegen => return self,
         }
 
@@ -1200,7 +1208,8 @@ impl<'tcx> TypingEnv<'tcx> {
             | TypingMode::Typeck { .. }
             | TypingMode::PostTypeckUntilBorrowck { .. }
             | TypingMode::PostBorrowck { .. }
-            | TypingMode::PostAnalysis => {}
+            | TypingMode::PostAnalysis
+            | TypingMode::IsolatedConst => {}
             TypingMode::Codegen => return self,
         }
 

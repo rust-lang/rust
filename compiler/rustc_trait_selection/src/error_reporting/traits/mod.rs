@@ -21,6 +21,7 @@ use rustc_infer::traits::{
     PredicateObligation, SelectionError,
 };
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
+use rustc_middle::ty::trait_def::IncludeLocalImpls;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt as _};
 use rustc_next_trait_solver::solve::TyOrConstInferVar;
 use rustc_span::{DesugaringKind, ErrorGuaranteed, ExpnKind, Span};
@@ -778,7 +779,8 @@ fn attempt_dyn_to_enum_suggestion(
     trait_str: &str,
     err: &mut Diag<'_>,
 ) {
-    let impls_of = tcx.trait_impls_of(trait_def_id);
+    // FIXME(isolated_const): may cycle error in the diagnostic case
+    let impls_of = tcx.trait_impls_of((trait_def_id, IncludeLocalImpls::Yes));
 
     if !impls_of.blanket_impls().is_empty() {
         return;

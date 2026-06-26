@@ -3546,9 +3546,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let index_trait_output_def_id = self.tcx.get_diagnostic_item(sym::IndexOutput)?;
 
         let mut relevant_impls = vec![];
-        self.tcx.for_each_relevant_impl(index_trait_def_id, base_ty, |impl_def_id| {
-            relevant_impls.push(impl_def_id);
-        });
+        self.tcx.for_each_relevant_impl(
+            index_trait_def_id,
+            base_ty,
+            self.typing_mode().include_local_impls(),
+            |impl_def_id| {
+                relevant_impls.push(impl_def_id);
+            },
+        );
         let [impl_def_id] = relevant_impls[..] else {
             // Only report unsatisfied impl predicates if there's one impl
             return None;

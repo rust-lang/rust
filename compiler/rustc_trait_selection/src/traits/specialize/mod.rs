@@ -22,7 +22,7 @@ use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
-    self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized,
+    self, GenericArgsRef, IncludeLocalImpls, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized,
 };
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, bug, sym};
 use specialization_graph::GraphExt;
@@ -397,7 +397,7 @@ pub(super) fn specialization_graph_provider(
     //   `None`, is compared against every child, so then all buckets are kept;
     //   pruning them would change error recovery (see impl-unpin.rs, `tait`
     //   revision).
-    let all_impls = tcx.trait_impls_of(trait_id);
+    let all_impls = tcx.trait_impls_of((trait_id, IncludeLocalImpls::Yes));
     let mut trait_impls: Vec<DefId> = all_impls.blanket_impls().to_vec();
     let has_local_blanket_impl =
         all_impls.blanket_impls().iter().any(|impl_def_id| impl_def_id.is_local());

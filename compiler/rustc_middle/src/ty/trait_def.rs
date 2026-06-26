@@ -7,6 +7,7 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::{self as hir, find_attr};
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::{Span, bug};
+pub use rustc_type_ir::IncludeLocalImpls;
 use tracing::debug;
 
 use crate::query::LocalCrate;
@@ -139,10 +140,11 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
+        include_local_impls: IncludeLocalImpls,
         mut f: impl FnMut(DefId) -> R,
     ) -> R {
         let tcx = self;
-        let trait_impls = tcx.trait_impls_of(trait_def_id);
+        let trait_impls = tcx.trait_impls_of((trait_def_id, include_local_impls));
         let mut consider_impls_for_simplified_type = |simp| {
             if let Some(impls_for_type) = trait_impls.non_blanket_impls().get(&simp) {
                 for &impl_def_id in impls_for_type {
@@ -270,7 +272,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         #[allow(rustc::usage_of_type_ir_traits)]
-        self.for_each_blanket_impl(trait_def_id, f)
+        self.for_each_blanket_impl(trait_def_id, include_local_impls, f)
     }
 
     /// `trait_def_id` MUST BE the `DefId` of a trait.
@@ -279,7 +281,7 @@ impl<'tcx> TyCtxt<'tcx> {
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
     ) -> impl Iterator<Item = DefId> {
-        let impls = self.trait_impls_of(trait_def_id);
+        let impls = self.trait_impls_of((trait_def_id, IncludeLocalImpls::Yes));
         if let Some(simp) =
             fast_reject::simplify_type(self, self_ty, TreatParams::InstantiateWithInfer)
         {
@@ -294,15 +296,25 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns an iterator containing all impls for `trait_def_id`.
     ///
     /// `trait_def_id` MUST BE the `DefId` of a trait.
-    pub fn all_impls(self, trait_def_id: DefId) -> impl Iterator<Item = DefId> {
-        let TraitImpls { blanket_impls, non_blanket_impls } = self.trait_impls_of(trait_def_id);
+    pub fn all_impls(
+        self,
+        trait_def_id: DefId,
+        include_local_impls: IncludeLocalImpls,
+    ) -> impl Iterator<Item = DefId> {
+        let TraitImpls { blanket_impls, non_blanket_impls } =
+            self.trait_impls_of((trait_def_id, include_local_impls));
 
         blanket_impls.iter().chain(non_blanket_impls.iter().flat_map(|(_, v)| v)).cloned()
     }
 }
 
 /// Query provider for `trait_impls_of`.
-pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> TraitImpls {
+pub(super) fn trait_impls_of_provider(
+    tcx: TyCtxt<'_>,
+    key: (DefId, IncludeLocalImpls),
+) -> TraitImpls {
+    let (trait_id, include_local_impls) = key;
+
     let mut impls = TraitImpls::default();
 
     // Traits defined in the current crate can't have impls in upstream
@@ -325,17 +337,19 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
         }
     }
 
-    for &impl_def_id in tcx.local_trait_impls(trait_id) {
-        let impl_def_id = impl_def_id.to_def_id();
+    if matches!(include_local_impls, IncludeLocalImpls::Yes) {
+        for &impl_def_id in tcx.local_trait_impls(trait_id) {
+            let impl_def_id = impl_def_id.to_def_id();
 
-        let impl_self_ty = tcx.type_of(impl_def_id).instantiate_identity().skip_norm_wip();
+            let impl_self_ty = tcx.type_of(impl_def_id).instantiate_identity().skip_norm_wip();
 
-        if let Some(simplified_self_ty) =
-            fast_reject::simplify_type(tcx, impl_self_ty, TreatParams::InstantiateWithInfer)
-        {
-            impls.non_blanket_impls.entry(simplified_self_ty).or_default().push(impl_def_id);
-        } else {
-            impls.blanket_impls.push(impl_def_id);
+            if let Some(simplified_self_ty) =
+                fast_reject::simplify_type(tcx, impl_self_ty, TreatParams::InstantiateWithInfer)
+            {
+                impls.non_blanket_impls.entry(simplified_self_ty).or_default().push(impl_def_id);
+            } else {
+                impls.blanket_impls.push(impl_def_id);
+            }
         }
     }
 

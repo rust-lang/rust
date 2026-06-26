@@ -4696,7 +4696,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Check if there's a negative impl of `candidate` for `rcvr_ty`
                     if self
                         .tcx
-                        .all_impls(candidate.def_id)
+                        .all_impls(candidate.def_id, self.typing_mode().include_local_impls())
                         .map(|imp_did| self.tcx.impl_trait_header(imp_did))
                         .filter(|header| header.polarity != ty::ImplPolarity::Positive)
                         .any(|header| {

@@ -334,6 +334,7 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::rustc_const_stable_indirect,
     sym::rustc_intrinsic_const_stable_indirect,
     sym::rustc_allow_const_fn_unstable,
+    sym::rustc_isolated_const,
 
     // ==========================================================================
     // Internal attributes, Layout related:

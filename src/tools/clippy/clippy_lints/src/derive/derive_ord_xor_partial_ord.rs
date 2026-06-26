@@ -24,31 +24,36 @@ pub(super) fn check<'tcx>(
         && !fulfill_or_allowed(cx, DERIVE_ORD_XOR_PARTIAL_ORD, [adt_hir_id])
     {
         // Look for the PartialOrd implementations for `ty`
-        cx.tcx.for_each_relevant_impl(partial_ord_trait_def_id, ty, |impl_id| {
-            let partial_ord_is_automatically_derived = cx.tcx.is_automatically_derived(impl_id);
+        cx.tcx.for_each_relevant_impl(
+            partial_ord_trait_def_id,
+            ty,
+            cx.typing_mode().include_local_impls(),
+            |impl_id| {
+                let partial_ord_is_automatically_derived = cx.tcx.is_automatically_derived(impl_id);
 
-            if partial_ord_is_automatically_derived == ord_is_automatically_derived {
-                return;
-            }
+                if partial_ord_is_automatically_derived == ord_is_automatically_derived {
+                    return;
+                }
 
-            let trait_ref = cx.tcx.impl_trait_ref(impl_id);
+                let trait_ref = cx.tcx.impl_trait_ref(impl_id);
 
-            // Only care about `impl PartialOrd<Foo> for Foo`
-            // For `impl PartialOrd<B> for A, input_types is [A, B]
-            if trait_ref.instantiate_identity().skip_norm_wip().args.type_at(1) == ty {
-                let mess = if partial_ord_is_automatically_derived {
-                    "you are implementing `Ord` explicitly but have derived `PartialOrd`"
-                } else {
-                    "you are deriving `Ord` but have implemented `PartialOrd` explicitly"
-                };
+                // Only care about `impl PartialOrd<Foo> for Foo`
+                // For `impl PartialOrd<B> for A, input_types is [A, B]
+                if trait_ref.instantiate_identity().skip_norm_wip().args.type_at(1) == ty {
+                    let mess = if partial_ord_is_automatically_derived {
+                        "you are implementing `Ord` explicitly but have derived `PartialOrd`"
+                    } else {
+                        "you are deriving `Ord` but have implemented `PartialOrd` explicitly"
+                    };
 
-                span_lint_hir_and_then(cx, DERIVE_ORD_XOR_PARTIAL_ORD, item_hir_id, item.span, mess, |diag| {
-                    if let Some(local_def_id) = impl_id.as_local() {
-                        let hir_id = cx.tcx.local_def_id_to_hir_id(local_def_id);
-                        diag.span_note(cx.tcx.hir_span(hir_id), "`PartialOrd` implemented here");
-                    }
-                });
-            }
-        });
+                    span_lint_hir_and_then(cx, DERIVE_ORD_XOR_PARTIAL_ORD, item_hir_id, item.span, mess, |diag| {
+                        if let Some(local_def_id) = impl_id.as_local() {
+                            let hir_id = cx.tcx.local_def_id_to_hir_id(local_def_id);
+                            diag.span_note(cx.tcx.hir_span(hir_id), "`PartialOrd` implemented here");
+                        }
+                    });
+                }
+            },
+        );
     }
 }

@@ -180,7 +180,8 @@ where
             | TypingMode::PostBorrowck { defined_opaque_types: _ }
             | TypingMode::Reflection
             | TypingMode::PostAnalysis
-            | TypingMode::Codegen => return Default::default(),
+            | TypingMode::Codegen
+            | TypingMode::IsolatedConst => return Default::default(),
         };
 
         if stalled_coroutines.is_empty() {

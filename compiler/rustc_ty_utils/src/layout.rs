@@ -92,7 +92,8 @@ fn layout_of<'tcx>(
         | ty::TypingMode::PostBorrowck { .. }
         | ty::TypingMode::Reflection
         | ty::TypingMode::ErasedNotCoherence(_)
-        | ty::TypingMode::PostAnalysis => {}
+        | ty::TypingMode::PostAnalysis
+        | ty::TypingMode::IsolatedConst => {}
     }
 
     let cx = LayoutCx::new(tcx, typing_env);
@@ -558,7 +559,8 @@ fn layout_of_uncached<'tcx>(
                 | ty::TypingMode::PostBorrowck { .. }
                 | ty::TypingMode::Reflection
                 | ty::TypingMode::ErasedNotCoherence(_)
-                | ty::TypingMode::PostAnalysis => {
+                | ty::TypingMode::PostAnalysis
+                | ty::TypingMode::IsolatedConst => {
                     return Err(error(cx, LayoutError::TooGeneric(ty)));
                 }
             }
