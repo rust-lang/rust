@@ -206,13 +206,9 @@ impl<I: Interner> AliasTerm<I> {
             Ty::new_alias(interner, is_rigid, ty::AliasTy::new_from_args(interner, kind, self.args))
                 .into()
         };
-        let unevaluated_const = |kind| {
-            I::Const::new_alias(
-                interner,
-                is_rigid,
-                ty::AliasConst::new(interner, kind, self.args),
-            )
-            .into()
+        let alias_const = |kind| {
+            I::Const::new_alias(interner, is_rigid, ty::AliasConst::new(interner, kind, self.args))
+                .into()
         };
         match self.kind {
             AliasTermKind::FreeConst { def_id } => alias_const(ty::AliasConstKind::Free { def_id }),

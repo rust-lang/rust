@@ -559,7 +559,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                             return ProcessResult::Changed(PendingPredicateObligations::new());
                         }
                         ty::ConstKind::Value(cv) => cv.ty,
-                        ty::ConstKind::Alias(_, alias_const) => alias_const.type_of(infcx.tcx).skip_norm_wip(),
+                        ty::ConstKind::Alias(_, alias_const) => {
+                            alias_const.type_of(infcx.tcx).skip_norm_wip()
+                        }
                         // FIXME(generic_const_exprs): we should construct an alias like
                         // `<lhs_ty as Add<rhs_ty>>::Output` when this is an `Expr` representing
                         // `lhs + rhs`.
@@ -743,8 +745,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                     ));
                                 }
                             }
-                            (_, ty::ConstKind::Alias(_, _))
-                            | (ty::ConstKind::Alias(_, _), _) => (),
+                            (_, ty::ConstKind::Alias(_, _)) | (ty::ConstKind::Alias(_, _), _) => (),
                             (_, _) => {
                                 if let Ok(new_obligations) = infcx
                                     .at(&obligation.cause, obligation.param_env)
@@ -764,7 +765,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     let stalled_on = &mut pending_obligation.stalled_on;
 
                     let mut evaluate = |c: Const<'tcx>| {
-                        if let ty::ConstKind::Alias(_, unevaluated) = c.kind() {
+                        if let ty::ConstKind::Alias(_, alias_const) = c.kind() {
                             match super::try_evaluate_const(
                                 self.selcx.infcx,
                                 c,

@@ -705,7 +705,7 @@ impl<'tcx> Term<'tcx> {
                 _ => false,
             },
             ty::TermKind::Const(ct) => match ct.kind() {
-                ty::ConstKind::Unevaluated(ty::IsRigid::No, _) => true,
+                ty::ConstKind::Alias(ty::IsRigid::No, _) => true,
                 _ => false,
             },
         }

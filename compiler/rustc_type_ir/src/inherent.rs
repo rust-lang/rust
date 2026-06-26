@@ -424,7 +424,7 @@ pub trait Term<I: Interner<Term = Self>>:
                 _ => false,
             },
             ty::TermKind::Const(ct) => match ct.kind() {
-                ty::ConstKind::Unevaluated(is_rigid, _) => is_rigid == ty::IsRigid::No,
+                ty::ConstKind::Alias(is_rigid, _) => is_rigid == ty::IsRigid::No,
                 _ => false,
             },
         }

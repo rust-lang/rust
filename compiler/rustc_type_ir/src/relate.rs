@@ -614,10 +614,7 @@ pub fn structurally_relate_consts<I: Interner, R: TypeRelation<I>>(
         // While this is slightly incorrect, it shouldn't matter for `min_const_generics`
         // and is the better alternative to waiting until `generic_const_exprs` can
         // be stabilized.
-        (
-            ty::ConstKind::Alias(is_rigid_a, au),
-            ty::ConstKind::Alias(is_rigid_b, bu),
-        ) => {
+        (ty::ConstKind::Alias(is_rigid_a, au), ty::ConstKind::Alias(is_rigid_b, bu)) => {
             // Users shouldn't know about this so the mismatch should be caught
             // during development rather than presented as type error.
             debug_assert_eq!(is_rigid_a, is_rigid_b, "{a:?} != {b:?}");

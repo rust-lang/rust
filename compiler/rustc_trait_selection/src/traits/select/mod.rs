@@ -907,8 +907,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     );
                                 }
                             }
-                            (_, ty::ConstKind::Alias(_, _))
-                            | (ty::ConstKind::Alias(_, _), _) => (),
+                            (_, ty::ConstKind::Alias(_, _)) | (ty::ConstKind::Alias(_, _), _) => (),
                             (_, _) => {
                                 if let Ok(InferOk { obligations, value: () }) = self
                                     .infcx
@@ -987,7 +986,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                         ty::ConstKind::Error(_) => return Ok(EvaluatedToOk),
                         ty::ConstKind::Value(cv) => cv.ty,
-                        ty::ConstKind::Alias(_, alias_const) => alias_const.type_of(self.tcx()).skip_norm_wip(),
+                        ty::ConstKind::Alias(_, alias_const) => {
+                            alias_const.type_of(self.tcx()).skip_norm_wip()
+                        }
                         // FIXME(generic_const_exprs): See comment in `fulfill.rs`
                         ty::ConstKind::Expr(_) => return Ok(EvaluatedToOk),
                         ty::ConstKind::Placeholder(_) => {

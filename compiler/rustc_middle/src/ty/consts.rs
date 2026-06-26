@@ -194,17 +194,12 @@ impl<'tcx> rustc_type_ir::inherent::Const<TyCtxt<'tcx>> for Const<'tcx> {
         Const::new_placeholder(tcx, placeholder)
     }
 
-<<<<<<< HEAD
     fn new_alias(
         interner: TyCtxt<'tcx>,
         is_rigid: ty::IsRigid,
-        uv: ty::AliasConst<'tcx>,
+        alias_const: ty::AliasConst<'tcx>,
     ) -> Self {
-        Const::new_alias(interner, is_rigid, uv)
-=======
-    fn new_alias(interner: TyCtxt<'tcx>, alias_const: ty::AliasConst<'tcx>) -> Self {
-        Const::new_alias(interner, alias_const)
->>>>>>> ee149c4c59c (Rename uv to alias_const)
+        Const::new_alias(interner, is_rigid, alias_const)
     }
 
     fn new_expr(interner: TyCtxt<'tcx>, expr: ty::Expr<'tcx>) -> Self {

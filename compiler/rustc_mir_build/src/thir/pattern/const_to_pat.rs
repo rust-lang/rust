@@ -128,38 +128,26 @@ impl<'tcx> ConstToPat<'tcx> {
         } else {
             // try to resolve e.g. associated constants to their definition on an impl, and then
             // evaluate the const.
-            let valtree = match self.tcx.const_eval_resolve_for_typeck(typing_env, alias_const, self.span) {
-                Ok(Ok(c)) => c,
-                Err(ErrorHandled::Reported(_, _)) => {
-                    // Let's tell the use where this failing const occurs.
-                    let mut err =
-                        self.tcx.dcx().create_err(CouldNotEvalConstPattern { span: self.span });
-                    // We've emitted an error on the original const, it would be redundant to complain
-                    // on its use as well.
-                    if let ty::ConstKind::Alias(_, alias_const) = self.c.kind()
-                        && let ty::AliasConstKind::Projection { .. }
-                        | ty::AliasConstKind::Inherent { .. }
-                        | ty::AliasConstKind::Free { .. } = alias_const.kind
-                    {
-                        err.downgrade_to_delayed_bug();
-                    }
-                    return self.mk_err(err, ty);
-                }
-                Err(ErrorHandled::TooGeneric(_)) => {
-                    let mut e = self
-                        .tcx
-                        .dcx()
-                        .create_err(ConstPatternDependsOnGenericParameter { span: self.span });
-                    for arg in alias_const.args {
-                        if let ty::GenericArgKind::Type(ty) = arg.kind()
-                            && let ty::Param(param_ty) = ty.kind()
+            let valtree =
+                match self.tcx.const_eval_resolve_for_typeck(typing_env, alias_const, self.span) {
+                    Ok(Ok(c)) => c,
+                    Err(ErrorHandled::Reported(_, _)) => {
+                        // Let's tell the use where this failing const occurs.
+                        let mut err =
+                            self.tcx.dcx().create_err(CouldNotEvalConstPattern { span: self.span });
+                        // We've emitted an error on the original const, it would be redundant to complain
+                        // on its use as well.
+                        if let ty::ConstKind::Alias(_, alias_const) = self.c.kind()
+                            && let ty::AliasConstKind::Projection { .. }
+                            | ty::AliasConstKind::Inherent { .. }
+                            | ty::AliasConstKind::Free { .. } = alias_const.kind
                         {
                             err.downgrade_to_delayed_bug();
                         }
                         return self.mk_err(err, ty);
                     }
                     Err(ErrorHandled::TooGeneric(_)) => {
-                        let mut e = self
+                        let mut err = self
                             .tcx
                             .dcx()
                             .create_err(ConstPatternDependsOnGenericParameter { span: self.span });
@@ -171,17 +159,17 @@ impl<'tcx> ConstToPat<'tcx> {
                                 let generics = self.tcx.generics_of(def_id);
                                 let param = generics.type_param(*param_ty, self.tcx);
                                 let span = self.tcx.def_span(param.def_id);
-                                e.span_label(span, "constant depends on this generic parameter");
+                                err.span_label(span, "constant depends on this generic parameter");
                                 if let Some(ident) = self.tcx.def_ident_span(def_id)
                                     && self.tcx.sess.source_map().is_multiline(ident.between(span))
                                 {
                                     // Display the `fn` name as well in the diagnostic, as the generic isn't
                                     // in the same line and it could be confusing otherwise.
-                                    e.span_label(ident, "");
+                                    err.span_label(ident, "");
                                 }
                             }
                         }
-                        return self.mk_err(e, ty);
+                        return self.mk_err(err, ty);
                     }
                     Ok(Err(bad_ty)) => {
                         // The pattern cannot be turned into a valtree.

@@ -239,10 +239,9 @@ where
             Ok(a)
         }
 
-        (
-            ty::ConstKind::Alias(ty::IsRigid::Yes, _),
-            ty::ConstKind::Alias(ty::IsRigid::Yes, _),
-        ) if (infcx.cx().features().generic_const_exprs() || infcx.next_trait_solver()) => {
+        (ty::ConstKind::Alias(ty::IsRigid::Yes, _), ty::ConstKind::Alias(ty::IsRigid::Yes, _))
+            if (infcx.cx().features().generic_const_exprs() || infcx.next_trait_solver()) =>
+        {
             structurally_relate_consts(relation, a, b)
         }
 

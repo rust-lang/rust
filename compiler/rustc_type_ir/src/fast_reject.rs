@@ -500,9 +500,7 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
 
             // As we don't necessarily eagerly evaluate constants,
             // they might unify with any value.
-            ty::ConstKind::Expr(_) | ty::ConstKind::Alias(_, _) | ty::ConstKind::Error(_) => {
-                true
-            }
+            ty::ConstKind::Expr(_) | ty::ConstKind::Alias(_, _) | ty::ConstKind::Error(_) => true,
 
             ty::ConstKind::Infer(_) | ty::ConstKind::Bound(..) => true,
         }

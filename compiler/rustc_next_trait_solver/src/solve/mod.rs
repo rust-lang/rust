@@ -207,7 +207,7 @@ where
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
             }
 
-            ty::ConstKind::Unevaluated(ty::IsRigid::No, alias_const) => {
+            ty::ConstKind::Alias(ty::IsRigid::No, alias_const) => {
                 // We never return `NoSolution` here as `evaluate_const` emits an
                 // error itself when failing to evaluate, so emitting an additional fulfillment
                 // error in that case is unnecessary noise. This may change in the future once

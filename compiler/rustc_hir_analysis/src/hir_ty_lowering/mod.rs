@@ -2775,11 +2775,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ty::Const::new_alias(
                     tcx,
                     ty::IsRigid::No,
-                    ty::AliasConst::new(
-                        tcx,
-                        ty::AliasConstKind::new_from_def_id(tcx, did),
-                        args,
-                    ),
+                    ty::AliasConst::new(tcx, ty::AliasConstKind::new_from_def_id(tcx, did), args),
                 )
             }
             Res::Def(kind @ DefKind::Ctor(ctor_of, CtorKind::Const), did) => {

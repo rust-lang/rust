@@ -886,11 +886,10 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalSelfTypeVisitor<'tcx> {
         let ct = self.tcx.expand_abstract_consts(ct);
 
         match ct.kind() {
-            ty::ConstKind::Alias(_, ty::AliasConst {
-                kind: ty::AliasConstKind::Projection { def_id },
-                args,
-                ..
-            }) if self.tcx.features().min_generic_const_args() => {
+            ty::ConstKind::Alias(
+                _,
+                ty::AliasConst { kind: ty::AliasConstKind::Projection { def_id }, args, .. },
+            ) if self.tcx.features().min_generic_const_args() => {
                 match self.allow_self_projections {
                     AllowSelfProjections::Yes => {
                         let trait_def_id = self.tcx.parent(def_id);

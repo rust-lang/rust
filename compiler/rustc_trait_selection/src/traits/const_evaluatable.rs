@@ -44,10 +44,7 @@ pub fn is_const_evaluatable<'tcx>(
 
         let is_anon_ct = matches!(
             ct.kind(),
-            ty::ConstKind::Alias(_, ty::AliasConst {
-                kind: ty::AliasConstKind::Anon { .. },
-                ..
-            })
+            ty::ConstKind::Alias(_, ty::AliasConst { kind: ty::AliasConstKind::Anon { .. }, .. })
         );
 
         if !is_anon_ct {

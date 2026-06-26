@@ -601,9 +601,9 @@ impl<I: Interner> TypeFolder<I> for RigidnessFolder<I> {
         }
 
         match c.kind() {
-            ty::ConstKind::Unevaluated(ty::IsRigid::Yes, uv) => {
-                let uv = uv.fold_with(self);
-                I::Const::new_unevaluated(self.cx, ty::IsRigid::No, uv)
+            ty::ConstKind::Alias(ty::IsRigid::Yes, alias_const) => {
+                let alias_const = alias_const.fold_with(self);
+                I::Const::new_alias(self.cx, ty::IsRigid::No, alias_const)
             }
             _ => c.super_fold_with(self),
         }
