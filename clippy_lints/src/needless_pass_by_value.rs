@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::{MaybeDef, MaybeResPath};
-use clippy_utils::source::{SpanRangeExt, snippet};
+use clippy_utils::source::{SpanExt, snippet};
 use clippy_utils::ty::{implements_trait, implements_trait_with_env_from_iter, is_copy};
 use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
 use clippy_utils::{is_self, peel_hir_ty_options, strip_pat_refs, sym};
@@ -248,7 +248,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                         for (span, suggestion) in clone_spans {
                             diag.span_suggestion(
                                 span,
-                                span.get_source_text(cx).map_or_else(
+                                span.get_text(cx).map_or_else(
                                     || "change the call to".to_owned(),
                                     |src| format!("change `{src}` to"),
                                 ),
@@ -275,7 +275,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                         for (span, suggestion) in clone_spans {
                             diag.span_suggestion(
                                 span,
-                                span.get_source_text(cx).map_or_else(
+                                span.get_text(cx).map_or_else(
                                     || "change the call to".to_owned(),
                                     |src| format!("change `{src}` to"),
                                 ),

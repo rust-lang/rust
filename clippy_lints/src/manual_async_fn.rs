@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::{SpanRangeExt, position_before_rarrow, snippet_block};
+use clippy_utils::source::{SpanExt, position_before_rarrow, snippet_block};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
@@ -76,8 +76,8 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
                 "this function can be simplified using the `async fn` syntax",
                 |diag| {
                     if let Some(vis_span) = vis_span_opt
-                        && let Some(vis_snip) = vis_span.get_source_text(cx)
-                        && let Some(header_snip) = header_span.get_source_text(cx)
+                        && let Some(vis_snip) = vis_span.get_text(cx)
+                        && let Some(header_snip) = header_span.get_text(cx)
                         && let Some(ret_pos) = position_before_rarrow(&header_snip)
                         && let Some((_, ret_snip)) = suggested_ret(cx, output)
                     {
@@ -185,6 +185,6 @@ fn suggested_ret(cx: &LateContext<'_>, output: &Ty<'_>) -> Option<(&'static str,
         Some((sugg, String::new()))
     } else {
         let sugg = "return the output of the future directly";
-        output.span.get_source_text(cx).map(|src| (sugg, format!(" -> {src}")))
+        output.span.get_text(cx).map(|src| (sugg, format!(" -> {src}")))
     }
 }
