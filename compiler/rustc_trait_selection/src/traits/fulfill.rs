@@ -273,6 +273,10 @@ where
     fn pending_obligations(&self) -> PredicateObligations<'tcx> {
         self.predicates.map_pending_obligations(|o| o.obligation.clone())
     }
+
+    fn is_in_probe(&self, infcx: &InferCtxt<'_>) -> bool {
+        self.usable_in_snapshot != infcx.num_open_snapshots()
+    }
 }
 
 struct FulfillProcessor<'a, 'tcx> {
