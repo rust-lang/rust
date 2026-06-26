@@ -85,7 +85,7 @@ fn check_cmse_call_call<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
             continue;
         };
 
-        if !layout.value_dependent_padding_ranges(cx).is_empty() {
+        if !layout.variant_dependent_padding_ranges(cx).is_empty() {
             // Some part of the source type may be uninitialized.
             cx.emit_span_lint(
                 CMSE_UNINITIALIZED_LEAK,
@@ -131,7 +131,7 @@ fn check_cmse_entry_return<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>)
         return;
     };
 
-    if !ret_layout.value_dependent_padding_ranges(cx).is_empty() {
+    if !ret_layout.variant_dependent_padding_ranges(cx).is_empty() {
         let return_expr_span = if is_implicit_return {
             match expr.kind {
                 ExprKind::Block(block, _) => match block.expr {

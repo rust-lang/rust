@@ -291,29 +291,17 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     /// This is the "guaranteed" padding. There may be more bytes that are padding for some
     /// but not all variants of this type; those are not included.
     /// (E.g. `Option<i8>` has no guaranteed padding so the empty range set is returned, but its `None` value still has padding).
-    pub fn guaranteed_padding_ranges<C>(&self, cx: &C) -> Vec<Range<Size>>
+    pub fn variant_independent_padding_ranges<C>(&self, cx: &C) -> Vec<Range<Size>>
     where
         Ty: TyAbiInterface<'a, C> + Copy,
     {
         let mut data = RangeSet::new();
         self.add_data_ranges(cx, Size::ZERO, &mut data);
 
-        // Find gaps between the data ranges.
-        let mut uninit_ranges = Vec::new();
-        let mut covered_until = Size::ZERO;
-        for &(offset, size) in data.0.iter() {
-            if offset > covered_until {
-                uninit_ranges.push(covered_until..offset);
-            }
-            covered_until = Ord::max(covered_until, offset + size);
-        }
+        let mut full = RangeSet::new();
+        full.add_range(Size::ZERO, self.size);
 
-        // Add trailing padding.
-        if self.size > covered_until {
-            uninit_ranges.push(covered_until..self.size);
-        }
-
-        uninit_ranges
+        full.difference(&data).0.into_iter().map(|(a, b)| a..b).collect()
     }
 
     /// The ranges of bytes that are padding for *some, but not all*, valid values of this type.
@@ -325,7 +313,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     ///
     /// For example, `Option<i8>` has no guaranteed padding, but the byte holding the payload is
     /// value-dependent padding: it is data for `Some(_)` and padding for `None`.
-    pub fn value_dependent_padding_ranges<C>(&self, cx: &C) -> Vec<Range<Size>>
+    pub fn variant_dependent_padding_ranges<C>(&self, cx: &C) -> Vec<Range<Size>>
     where
         Ty: TyAbiInterface<'a, C> + Copy,
     {
