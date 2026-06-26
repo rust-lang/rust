@@ -1,0 +1,23 @@
+error[E0659]: `foo` is ambiguous
+  --> $DIR/E0659.rs:15:15
+   |
+LL |     collider::foo();
+   |               ^^^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `foo` could refer to the function imported here
+  --> $DIR/E0659.rs:10:13
+   |
+LL |     pub use crate::moon::*;
+   |             ^^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `foo` to disambiguate
+note: `foo` could also refer to the function imported here
+  --> $DIR/E0659.rs:11:13
+   |
+LL |     pub use crate::earth::*;
+   |             ^^^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `foo` to disambiguate
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0659`.

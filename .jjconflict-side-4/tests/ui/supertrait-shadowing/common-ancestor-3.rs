@@ -1,0 +1,79 @@
+//@ run-pass
+
+#![feature(supertrait_item_shadowing)]
+#![feature(gca_min_const_items)]
+#![warn(resolving_to_items_shadowing_supertrait_items)]
+#![warn(shadowing_supertrait_items)]
+#![allow(dead_code)]
+
+use std::gca;
+use std::mem::size_of;
+
+trait A {
+    fn hello(&self) -> &'static str {
+        "A"
+    }
+    type Assoc;
+    const CONST: i32;
+}
+impl<T> A for T {
+    type Assoc = i8;
+    const CONST: i32 = 1;
+}
+
+trait B {
+    fn hello(&self) -> &'static str {
+        "B"
+    }
+    type Assoc;
+    const CONST: i32;
+}
+impl<T> B for T {
+    type Assoc = i16;
+    const CONST: i32 = 2;
+}
+
+trait C: A + B {
+    fn hello(&self) -> &'static str {
+        //~^ WARN trait item `hello` from `C` shadows identically named item
+        "C"
+    }
+    type Assoc;
+    //~^ WARN trait item `Assoc` from `C` shadows identically named item
+    #[rustc_always_gca]
+    const CONST: i32;
+    //~^ WARN trait item `CONST` from `C` shadows identically named item
+}
+impl<T> C for T {
+    type Assoc = i32;
+    const CONST: i32 = gca!(3);
+}
+
+// `D` extends `C` which extends `B` and `A`
+
+trait D: C {
+    fn hello(&self) -> &'static str {
+        //~^ WARN trait item `hello` from `D` shadows identically named item
+        "D"
+    }
+    type Assoc;
+    //~^ WARN trait item `Assoc` from `D` shadows identically named item
+    #[rustc_always_gca]
+    const CONST: i32;
+    //~^ WARN trait item `CONST` from `D` shadows identically named item
+}
+impl<T> D for T {
+    type Assoc = i64;
+    const CONST: i32 = gca!(4);
+}
+
+fn main() {
+    assert_eq!(().hello(), "D");
+    //~^ WARN trait item `hello` from `D` shadows identically named item from supertrait
+    check::<()>();
+}
+
+fn check<T: D>() {
+    assert_eq!(size_of::<T::Assoc>(), 8);
+    assert_eq!(T::CONST, 4);
+}

@@ -1,0 +1,70 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n   "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "foo"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          CLOSURE_EXPR
+            PARAM_LIST
+              PIPE "|"
+              PARAM
+                IDENT_PAT
+                  NAME
+                    IDENT "bar"
+              COMMA ","
+              WHITESPACE " "
+              PARAM
+                IDENT_PAT
+                  NAME
+                    IDENT "baz"
+                COLON ":"
+                WHITESPACE " "
+                PATH_TYPE
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "Baz"
+              COMMA ","
+              WHITESPACE " "
+              PARAM
+                IDENT_PAT
+                  NAME
+                    IDENT "qux"
+                COLON ":"
+                WHITESPACE " "
+                PATH_TYPE
+                  PATH
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "Qux"
+                    COLON2 "::"
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "Quux"
+              PIPE "|"
+            WHITESPACE " "
+            TUPLE_EXPR
+              L_PAREN "("
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

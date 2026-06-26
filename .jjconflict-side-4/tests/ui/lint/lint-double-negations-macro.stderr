@@ -1,0 +1,21 @@
+warning: use of a double negation
+  --> $DIR/lint-double-negations-macro.rs:9:9
+   |
+LL | macro_rules! bad_macro {
+LL |     ($e: expr) => {
+LL |         --$e
+   |         ^^^^
+...
+LL |     bad_macro!(1);
+   |     ------------- in this macro invocation
+   |
+   = note: the prefix `--` could be misinterpreted as a decrement operator which exists in other languages
+   = note: use `-= 1` if you meant to decrement the value
+   = note: `#[warn(double_negations)]` on by default
+help: add parentheses for clarity
+   |
+LL |         -(-$e)
+   |          +   +
+
+warning: 1 warning emitted
+

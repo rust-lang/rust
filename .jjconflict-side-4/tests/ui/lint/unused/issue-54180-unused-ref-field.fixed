@@ -1,0 +1,34 @@
+//@ run-rustfix
+
+#![deny(unused)]
+
+pub struct S {
+    pub f1: i32,
+}
+
+pub struct Point {
+    pub x: i32,
+    pub y: i32,
+}
+
+pub enum E {
+    Variant { field: String }
+}
+
+pub fn foo(arg: &E) {
+    match arg {
+        E::Variant { field: _ } => (), //~ ERROR unused variable
+    }
+}
+
+fn main() {
+    let s = S { f1: 123 };
+    let S { f1: _ } = s; //~ ERROR unused variable
+
+    let points = vec![Point { x: 1, y: 2 }];
+    let _: i32 = points.iter().map(|Point { x: _, y }| y).sum(); //~ ERROR unused variable
+
+    match (Point { x: 1, y: 2 }) {
+        Point { y, x: _ } => y, //~ ERROR unused variable
+    };
+}

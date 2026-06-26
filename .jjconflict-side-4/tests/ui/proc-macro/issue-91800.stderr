@@ -1,0 +1,56 @@
+error: macros that expand to items must be delimited with braces or followed by a semicolon
+  --> $DIR/issue-91800.rs:7:10
+   |
+LL | #[derive(MyTrait)]
+   |          ^^^^^^^
+   |
+   = note: this error originates in the derive macro `MyTrait` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: proc-macro derive produced unparsable tokens
+  --> $DIR/issue-91800.rs:7:10
+   |
+LL | #[derive(MyTrait)]
+   |          ^^^^^^^
+
+error: 
+  --> $DIR/issue-91800.rs:7:10
+   |
+LL | #[derive(MyTrait)]
+   |          ^^^^^^^
+   |
+   = note: this error originates in the derive macro `MyTrait` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: macros that expand to items must be delimited with braces or followed by a semicolon
+  --> $DIR/issue-91800.rs:11:1
+   |
+LL | #[attribute_macro]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the attribute macro `attribute_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: 
+  --> $DIR/issue-91800.rs:11:1
+   |
+LL | #[attribute_macro]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the attribute macro `attribute_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: macros that expand to items must be delimited with braces or followed by a semicolon
+  --> $DIR/issue-91800.rs:16:1
+   |
+LL | fn_macro! {}
+   | ^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `fn_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: 
+  --> $DIR/issue-91800.rs:16:1
+   |
+LL | fn_macro! {}
+   | ^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `fn_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 7 previous errors
+

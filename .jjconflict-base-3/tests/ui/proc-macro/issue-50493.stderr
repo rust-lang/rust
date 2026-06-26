@@ -1,0 +1,9 @@
+error[E0742]: visibilities can only be restricted to ancestor modules
+  --> $DIR/issue-50493.rs:8:12
+   |
+LL |     pub(in crate::restricted) field: usize,
+   |            ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0742`.
