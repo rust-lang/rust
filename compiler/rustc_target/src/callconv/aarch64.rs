@@ -1,6 +1,6 @@
 use std::iter;
 
-use rustc_abi::{BackendRepr, HasDataLayout, Primitive, TyAbiInterface};
+use rustc_abi::{BackendRepr, HasDataLayout, Primitive, TyAbiInterface, homogeneous_aggregate};
 
 use crate::callconv::{ArgAbi, FnAbi, Reg, RegKind, Uniform};
 use crate::spec::{HasTargetSpec, RustcAbi, Target};
@@ -22,7 +22,7 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    arg.layout.homogeneous_aggregate(cx).ok().and_then(|ha| ha.unit()).and_then(|unit| {
+    homogeneous_aggregate(cx, arg.layout).ok().and_then(|ha| ha.unit()).and_then(|unit| {
         let size = arg.layout.size;
 
         // Ensure we have at most four uniquely addressable members.

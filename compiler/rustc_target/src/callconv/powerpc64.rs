@@ -2,7 +2,7 @@
 // Alignment of 128 bit types is not currently handled, this will
 // need to be fixed when PowerPC vector support is added.
 
-use rustc_abi::{HasDataLayout, TyAbiInterface};
+use rustc_abi::{HasDataLayout, TyAbiInterface, homogeneous_aggregate};
 
 use crate::callconv::{Align, ArgAbi, FnAbi, Reg, RegKind, Uniform};
 use crate::spec::{HasTargetSpec, LlvmAbi, Os};
@@ -24,7 +24,7 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    arg.layout.homogeneous_aggregate(cx).ok().and_then(|ha| ha.unit()).and_then(|unit| {
+    homogeneous_aggregate(cx, arg.layout).ok().and_then(|ha| ha.unit()).and_then(|unit| {
         // ELFv1 and AIX only passes one-member aggregates transparently.
         // ELFv2 passes up to eight uniquely addressable members.
         if ((abi == ELFv1 || abi == AIX) && arg.layout.size > unit.size)

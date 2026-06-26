@@ -1,4 +1,4 @@
-use rustc_abi::{HasDataLayout, TargetDataLayout};
+use rustc_abi::{HasDataLayout, TargetDataLayout, homogeneous_aggregate};
 use rustc_hir::attrs::RustcDumpLayoutKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
@@ -82,7 +82,7 @@ fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, kinds: &[RustcDumpLa
                     }
                     RustcDumpLayoutKind::HomogenousAggregate => {
                         let data =
-                            ty_layout.homogeneous_aggregate(&UnwrapLayoutCx { tcx, typing_env });
+                            homogeneous_aggregate(&UnwrapLayoutCx { tcx, typing_env }, ty_layout);
                         format!("homogeneous_aggregate: {data:?}")
                     }
                     RustcDumpLayoutKind::Size => format!("size: {:?}", ty_layout.size),

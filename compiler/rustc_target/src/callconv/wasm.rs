@@ -1,4 +1,6 @@
-use rustc_abi::{BackendRepr, Float, HasDataLayout, Integer, Primitive, TyAbiInterface};
+use rustc_abi::{
+    BackendRepr, Float, HasDataLayout, Integer, Primitive, TyAbiInterface, homogeneous_aggregate,
+};
 
 use crate::callconv::{ArgAbi, FnAbi};
 
@@ -8,7 +10,7 @@ where
     C: HasDataLayout,
 {
     if val.layout.is_aggregate() {
-        if let Some(unit) = val.layout.homogeneous_aggregate(cx).ok().and_then(|ha| ha.unit()) {
+        if let Some(unit) = homogeneous_aggregate(cx, val.layout).ok().and_then(|ha| ha.unit()) {
             let size = val.layout.size;
             // This size check also catches over-aligned scalars as `size` will be rounded up to a
             // multiple of the alignment, and the default alignment of all scalar types on wasm

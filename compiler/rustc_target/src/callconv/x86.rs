@@ -1,5 +1,6 @@
 use rustc_abi::{
     AddressSpace, Align, BackendRepr, HasDataLayout, Primitive, Reg, RegKind, TyAndLayout,
+    homogeneous_aggregate,
 };
 
 use crate::callconv::{ArgAttribute, FnAbi, PassMode, TyAbiInterface};
@@ -172,7 +173,7 @@ pub(crate) fn fill_inregs<'a, Ty, C>(
         };
 
         // At this point we know this must be a primitive of sorts.
-        let unit = arg.layout.homogeneous_aggregate(cx).unwrap().unit().unwrap();
+        let unit = homogeneous_aggregate(cx, arg.layout).unwrap().unit().unwrap();
         assert_eq!(unit.size, arg.layout.size);
         if matches!(unit.kind, RegKind::Float | RegKind::Vector { .. }) {
             continue;
