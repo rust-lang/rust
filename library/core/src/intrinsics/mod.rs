@@ -3679,3 +3679,30 @@ pub const unsafe fn va_end(ap: &mut VaList<'_>) {
 pub fn return_address() -> *const () {
     core::ptr::null()
 }
+
+/// Returns whether the named target feature is available at the current call site.
+///
+/// "Available" in this context means known to be enabled in the calling function.
+/// At a minimum, being enabled globally or in `#[target_features]` of the function containing
+/// this intrinsic is considered available. Depending on codegen options and backend, the features
+/// of the function the intrinsic call is inlined into may also be accounted for. This is intended
+/// to support negligible or zero overhead branching on feature availability, for scenarios where
+/// runtime detection has too much overhead and globally enabled features are not sufficient.
+///
+/// Callers should pass a string literal naming a Rust target feature, such as `"avx"` or `"neon"`.
+/// The compiler may accept a few additional simple constant forms, but this intrinsic should be
+/// treated as taking a string literal.
+///
+/// The LLVM backend implements this intrinsic by lowering to a marker that is resolved by a
+/// post-inlining pass.
+///
+/// # Safety
+///
+/// Code relying on the result of this intrinsic must be sound for both `true` and `false`.
+/// Even calling the same function multiple times can result in different return values,
+/// depending on how the function was inlined. In some cases, this intrinsic might still return
+/// `false` for features that are enabled in the inlined function.
+#[rustc_nounwind]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_intrinsic]
+pub fn target_feature_available_at_call_site(feature: &str) -> bool;

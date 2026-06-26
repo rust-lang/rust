@@ -51,6 +51,14 @@ pub(crate) fn RemoveStringAttrFromFn<'ll>(llfn: &'ll Value, name: &str) {
     unsafe { LLVMRustRemoveFnAttribute(llfn, name.as_c_char_ptr(), name.len()) }
 }
 
+pub(crate) fn FunctionHasTargetFeature<'ll>(
+    tm: &'ll TargetMachine,
+    llfn: &'ll Value,
+    feature: &str,
+) -> bool {
+    unsafe { LLVMRustFunctionHasTargetFeature(tm, llfn, feature.as_c_char_ptr(), feature.len()) }
+}
+
 pub(crate) fn AddCallSiteAttributes<'ll>(
     callsite: &'ll Value,
     idx: AttributePlace,

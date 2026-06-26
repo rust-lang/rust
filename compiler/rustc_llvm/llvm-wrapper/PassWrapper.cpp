@@ -12,6 +12,7 @@
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Bitcode/BitcodeWriterPass.h"
 #include "llvm/CodeGen/CommandFlags.h"
+#include "llvm/CodeGen/TargetSubtargetInfo.h"
 #include "llvm/IR/AssemblyAnnotationWriter.h"
 #include "llvm/IR/AutoUpgrade.h"
 #include "llvm/IR/LegacyPassManager.h"
@@ -49,6 +50,8 @@
 #include "llvm/Transforms/Instrumentation/RealtimeSanitizer.h"
 #include "llvm/Transforms/Instrumentation/ThreadSanitizer.h"
 #include "llvm/Transforms/Scalar/AnnotationRemarks.h"
+#include "llvm/Transforms/Scalar/InstSimplifyPass.h"
+#include "llvm/Transforms/Scalar/SimplifyCFG.h"
 #include "llvm/Transforms/Utils/CanonicalizeAliases.h"
 #include "llvm/Transforms/Utils/FunctionImportUtils.h"
 #include "llvm/Transforms/Utils/NameAnonGlobals.h"
@@ -117,6 +120,65 @@ extern "C" bool LLVMRustTargetHasMnemonic(LLVMTargetMachineRef TM,
   }
   return false;
 }
+
+static constexpr StringLiteral TargetFeatureAvailableAtCallSitePrefix(
+    "rust.target_feature_available_at_call_site.");
+
+class TargetFeatureAvailableAtCallSitePass
+    : public PassInfoMixin<TargetFeatureAvailableAtCallSitePass> {
+  TargetMachine *TM;
+
+public:
+  explicit TargetFeatureAvailableAtCallSitePass(TargetMachine *TM) : TM(TM) {}
+
+  PreservedAnalyses run(Module &M, ModuleAnalysisManager &MAM) {
+    SmallVector<CallInst *> CallsToErase;
+    DenseSet<Function *> ChangedFunctions;
+    for (Function &MarkerDecl : M.functions()) {
+      if (!MarkerDecl.getName().starts_with(
+              TargetFeatureAvailableAtCallSitePrefix))
+        continue;
+
+      StringRef Feature = MarkerDecl.getName().drop_front(
+          TargetFeatureAvailableAtCallSitePrefix.size());
+      SmallString<64> EnabledFeature("+");
+      EnabledFeature += Feature;
+
+      for (User *U : MarkerDecl.users()) {
+        auto *Call = dyn_cast<CallInst>(U);
+        if (!Call || Call->getCalledFunction() != &MarkerDecl)
+          continue;
+
+        Function *Caller = Call->getFunction();
+        const TargetSubtargetInfo *Subtarget = TM->getSubtargetImpl(*Caller);
+        bool Enabled =
+            Subtarget != nullptr && Subtarget->checkFeatures(EnabledFeature);
+
+        Call->replaceAllUsesWith(ConstantInt::getBool(M.getContext(), Enabled));
+        CallsToErase.push_back(Call);
+        ChangedFunctions.insert(Caller);
+      }
+    }
+
+    if (CallsToErase.empty())
+      return PreservedAnalyses::all();
+
+    for (CallInst *Call : CallsToErase)
+      Call->eraseFromParent();
+
+    auto &FAM =
+        MAM.getResult<FunctionAnalysisManagerModuleProxy>(M).getManager();
+    FunctionPassManager FPM;
+    FPM.addPass(InstSimplifyPass());
+    FPM.addPass(SimplifyCFGPass());
+    for (Function *F : ChangedFunctions)
+      FPM.run(*F, FAM);
+
+    PreservedAnalyses PA = PreservedAnalyses::none();
+    PA.preserve<FunctionAnalysisManagerModuleProxy>();
+    return PA;
+  }
+};
 
 enum class LLVMRustCodeModel {
   Tiny,
@@ -726,6 +788,12 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   std::vector<std::function<void(ModulePassManager &, OptimizationLevel,
                                  ThinOrFullLTOPhase)>>
       OptimizerLastEPCallbacks;
+
+  OptimizerLastEPCallbacks.push_back([TM](ModulePassManager &MPM,
+                                          OptimizationLevel Level,
+                                          ThinOrFullLTOPhase Phase) {
+    MPM.addPass(TargetFeatureAvailableAtCallSitePass(TM));
+  });
 
   if (!IsLinkerPluginLTO && SanitizerOptions && SanitizerOptions->SanitizeCFI &&
       !NoPrepopulatePasses) {

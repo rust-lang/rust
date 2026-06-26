@@ -1,0 +1,8 @@
+error: cannot call non-const intrinsic `target_feature_available_at_call_site` in constants
+  --> $DIR/target-feature-available-at-call-site-const.rs:3:23
+   |
+LL | const HAS_FMA: bool = std::intrinsics::target_feature_available_at_call_site("fma");
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

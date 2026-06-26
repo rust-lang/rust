@@ -130,7 +130,7 @@ pub(crate) fn from_target_feature_attr(
 
 /// Computes the set of target features used in a function for the purposes of
 /// inline assembly.
-fn asm_target_features(tcx: TyCtxt<'_>, did: DefId) -> &FxIndexSet<Symbol> {
+pub(crate) fn asm_target_features(tcx: TyCtxt<'_>, did: DefId) -> &FxIndexSet<Symbol> {
     let mut target_features = tcx.sess.unstable_target_features.clone();
     if tcx.def_kind(did).has_codegen_attrs() {
         let attrs = tcx.codegen_fn_attrs(did);

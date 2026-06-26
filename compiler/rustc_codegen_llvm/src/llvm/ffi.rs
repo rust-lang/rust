@@ -2406,6 +2406,12 @@ unsafe extern "C" {
 
     pub(crate) fn LLVMRustHasFeature(T: &TargetMachine, s: *const c_char) -> bool;
     pub(crate) fn LLVMRustTargetHasMnemonic(T: &TargetMachine, s: *const c_char) -> bool;
+    pub(crate) fn LLVMRustFunctionHasTargetFeature(
+        TM: &TargetMachine,
+        F: &Value,
+        Feature: *const c_char,
+        FeatureLen: size_t,
+    ) -> bool;
 
     pub(crate) fn LLVMRustPrintTargetCPUs(TM: &TargetMachine, OutStr: &RustString);
     pub(crate) fn LLVMRustGetTargetFeaturesCount(T: &TargetMachine) -> size_t;
