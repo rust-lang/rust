@@ -1472,6 +1472,7 @@ impl Default for Options {
             logical_env: FxIndexMap::default(),
             verbose: false,
             mitigation_coverage_map: Default::default(),
+            metadata: Default::default(),
         }
     }
 }
@@ -2866,6 +2867,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         logical_env,
         verbose,
         mitigation_coverage_map: collected_options.mitigations,
+        metadata: collected_options.metadata,
     }
 }
 
