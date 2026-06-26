@@ -149,25 +149,8 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.inner.borrow_mut().unwrap_region_constraints().opportunistic_resolve_var(self.tcx, vid)
     }
 
-    fn is_changed_var(&self, var: TyOrConstInferVar) -> bool {
-        match var {
-            TyOrConstInferVar::Ty(vid) => !matches!(
-                self.inner.borrow().try_type_variables_probe_ref(vid),
-                Some(TypeVariableValue::Unknown { .. })
-            ),
-            TyOrConstInferVar::TyInt(vid) => !matches!(
-                self.inner.borrow().int_unification_storage.try_probe_value(vid),
-                Some(ty::IntVarValue::Unknown)
-            ),
-            TyOrConstInferVar::TyFloat(vid) => !matches!(
-                self.inner.borrow().float_unification_storage.try_probe_value(vid),
-                Some(ty::FloatVarValue::Unknown)
-            ),
-            TyOrConstInferVar::Const(vid) => !matches!(
-                self.inner.borrow().const_unification_storage.try_probe_value(vid),
-                Some(ConstVariableValue::Unknown { .. })
-            ),
-        }
+    fn ty_or_const_infer_var_changed(&self, var: TyOrConstInferVar) -> bool {
+        self.ty_or_const_infer_var_changed(var)
     }
 
     fn next_region_infer(&self) -> ty::Region<'tcx> {

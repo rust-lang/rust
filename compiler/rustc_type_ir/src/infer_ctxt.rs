@@ -422,7 +422,7 @@ pub trait InferCtxtLike: Sized {
     ) -> <Self::Interner as Interner>::Const;
     fn opportunistic_resolve_lt_var(&self, vid: ty::RegionVid) -> Region<Self::Interner>;
 
-    fn is_changed_var(&self, var: TyOrConstInferVar) -> bool;
+    fn ty_or_const_infer_var_changed(&self, var: TyOrConstInferVar) -> bool;
 
     fn next_region_infer(&self) -> Region<Self::Interner>;
     fn next_ty_infer(&self) -> <Self::Interner as Interner>::Ty;
