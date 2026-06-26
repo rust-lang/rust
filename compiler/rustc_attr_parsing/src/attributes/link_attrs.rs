@@ -14,11 +14,11 @@ use super::util::parse_single_integer;
 use crate::attributes::AttributeSafety;
 use crate::attributes::cfg::parse_cfg_entry;
 use crate::session_diagnostics::{
-    AsNeededCompatibility, BundleNeedsStatic, EmptyLinkName, ExportSymbolsNeedsStatic,
-    ImportNameTypeRaw, ImportNameTypeX86, IncompatibleWasmLink, InvalidLinkModifier,
-    InvalidMachoSection, InvalidMachoSectionReason, LinkFrameworkApple, LinkOrdinalOutOfRange,
-    LinkRequiresName, MultipleModifiers, NullOnLinkName, NullOnLinkSection, RawDylibOnlyWindows,
-    WholeArchiveNeedsStatic,
+    AsNeededCompatibility, BothFfiConstAndPure, BundleNeedsStatic, EmptyLinkName,
+    ExportSymbolsNeedsStatic, ImportNameTypeRaw, ImportNameTypeX86, IncompatibleWasmLink,
+    InvalidLinkModifier, InvalidMachoSection, InvalidMachoSectionReason, LinkFrameworkApple,
+    LinkOrdinalOutOfRange, LinkRequiresName, MultipleModifiers, NullOnLinkName, NullOnLinkSection,
+    RawDylibOnlyWindows, WholeArchiveNeedsStatic,
 };
 
 pub(crate) struct LinkNameParser;
@@ -575,6 +575,13 @@ impl NoArgsAttributeParser for FfiPureParser {
         AllowedTargets::AllowList(&[Allow(Target::ForeignFn)]);
     const STABILITY: AttributeStability = unstable!(ffi_pure);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::FfiPure;
+
+    fn finalize_check(attr_span: Span, cx: &FinalizeContext<'_, '_>) {
+        // `#[ffi_const]` functions cannot be `#[ffi_pure]`.
+        if cx.all_attrs.iter().any(|a| a.word_is(sym::ffi_const)) {
+            cx.emit_err(BothFfiConstAndPure { attr_span });
+        }
+    }
 }
 
 pub(crate) struct RustcStdInternalSymbolParser;
