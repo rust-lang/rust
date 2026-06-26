@@ -745,51 +745,61 @@ pub(crate) enum Node<'tcx> {
 }
 
 impl From<AllocId> for Node<'_> {
+    #[inline(always)]
     fn from(value: AllocId) -> Self {
         Self::AllocId(value)
     }
 }
 impl From<Span> for Node<'_> {
+    #[inline(always)]
     fn from(value: Span) -> Self {
         Self::Span(value)
     }
 }
 impl<'tcx> From<Ty<'tcx>> for Node<'tcx> {
+    #[inline(always)]
     fn from(value: Ty<'tcx>) -> Self {
         Self::Ty(value)
     }
 }
 impl<'tcx> From<PredicateKind<'tcx>> for Node<'tcx> {
+    #[inline(always)]
     fn from(value: PredicateKind<'tcx>) -> Self {
         Self::Predicate(value)
     }
 }
 impl From<LocalDefId> for Node<'_> {
+    #[inline(always)]
     fn from(value: LocalDefId) -> Self {
         Self::DefId(value.into())
     }
 }
 impl From<DefId> for Node<'_> {
+    #[inline(always)]
     fn from(value: DefId) -> Self {
         Self::DefId(value)
     }
 }
 impl From<LocalExpnId> for Node<'_> {
+    #[inline(always)]
     fn from(value: LocalExpnId) -> Self {
         Self::ExpnId(value.to_expn_id())
     }
 }
 impl From<DefIndex> for Node<'_> {
+    #[inline(always)]
     fn from(local_def_index: DefIndex) -> Self {
         LocalDefId { local_def_index }.into()
     }
 }
 impl From<ExpnId> for Node<'_> {
+    #[inline(always)]
     fn from(value: ExpnId) -> Self {
         Self::ExpnId(value)
     }
 }
 impl From<SyntaxContext> for Node<'_> {
+    #[inline(always)]
     fn from(value: SyntaxContext) -> Self {
         Self::SyntaxContext(value)
     }

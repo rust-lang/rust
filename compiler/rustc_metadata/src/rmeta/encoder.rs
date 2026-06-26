@@ -138,6 +138,7 @@ pub(super) trait MetadataEncoder<'tcx>: Sized + Default {
 
     fn record_encoded_index(&mut self, _node: Node<'tcx>);
 
+    #[inline(always)]
     fn with_record_mode<'a, F, T>(
         ecx: &mut EncodeContext<'a, 'tcx, Self>,
         mode: RecordMode<'tcx>,
@@ -184,12 +185,18 @@ impl<'tcx> MetadataEncoder<'tcx> for DefPathHashDefIdEncoder<'tcx> {
     ) -> (CrateHashes, Option<ItemPublicHashes>) {
         public_api_hasher::crate_hashes(ecx, hcx, root)
     }
+
+    #[inline]
     fn record_encoded_index(&mut self, node: Node<'tcx>) {
         self.reachability_graph_builder.record(node);
     }
+
+    #[inline]
     fn push_record_mode(&mut self, mode: RecordMode<'tcx>) {
         self.reachability_graph_builder.record_mode.push(mode);
     }
+
+    #[inline]
     fn pop_record_mode(&mut self) {
         self.reachability_graph_builder.record_mode.pop();
     }
@@ -199,15 +206,21 @@ impl<'tcx> MetadataEncoder<'tcx> for DefPathHashDefIdEncoder<'tcx> {
 struct DefIndexDefIdEncoder;
 impl<'tcx> MetadataEncoder<'tcx> for DefIndexDefIdEncoder {
     type EncodedDefIndex = DefIndex;
+
+    #[inline(always)]
     fn encoded_def_index(_tcx: TyCtxt<'_>, def_id: DefId) -> Self::EncodedDefIndex {
         def_id.index
     }
+
+    #[inline(always)]
     fn into_raw_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> RawDefId {
         RawDefId {
             krate: def_id.krate.as_u32(),
             index: Self::encoded_def_index(tcx, def_id).as_u32() as u64,
         }
     }
+
+    #[inline(always)]
     fn public_api_hasher<'h>(hcx: StableHashState<'h>) -> impl PublicApiHashState<'h> {
         PublicApiHashingContext::<false>::new(hcx)
     }
@@ -219,8 +232,11 @@ impl<'tcx> MetadataEncoder<'tcx> for DefIndexDefIdEncoder {
         let hash = ecx.tcx.crate_hash(LOCAL_CRATE);
         (CrateHashes { public_hash: hash, private_hash: hash }, None)
     }
+    #[inline(always)]
     fn record_encoded_index(&mut self, _node: Node<'tcx>) {}
+    #[inline(always)]
     fn push_record_mode(&mut self, _mode: RecordMode<'tcx>) {}
+    #[inline(always)]
     fn pop_record_mode(&mut self) {}
 }
 
@@ -705,11 +721,13 @@ impl<'a, 'tcx, M: MetadataEncoder<'tcx>> EncodeContext<'a, 'tcx, M> {
         M::with_record_mode(self, mode, f)
     }
 
+    #[inline]
     fn record_raw_def_id(&mut self, def_id: DefId) -> RawDefId {
         self.record_encoded_index(def_id);
         M::into_raw_def_id(self.tcx, def_id)
     }
 
+    #[inline]
     fn record_encoded_index(&mut self, index: impl Into<Node<'tcx>>) {
         self.spec_encoder_data.record_encoded_index(index.into());
     }
