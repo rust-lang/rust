@@ -20,30 +20,32 @@ declare_lint! {
     /// This will produce:
     ///
     /// ```text
-    /// warning: passing a union across the security boundary may leak information
+    /// warning: this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
     ///   --> lint_example.rs:2:5
     ///    |
     ///  2 |     MaybeUninit::uninit()
     ///    |     ^^^^^^^^^^^^^^^^^^^^^
     ///    |
-    ///    = note: the bits not used by the current variant may contain stale secure data
+    ///    = note: enum and union values can have variant-dependent padding that may contain stale secure data
     ///    = note: `#[warn(cmse_uninitialized_leak)]` on by default
     /// ```
     ///
     /// ### Explanation
     ///
     /// The cmse calling conventions normally take care of clearing registers to make sure that
-    /// stale secure information is not observable from non-secure code. Uninitialized memory may
-    /// still contain secret information, so the programmer must be careful when (partially)
-    /// uninitialized values cross the secure boundary. This lint fires when a partially
-    /// uninitialized value (e.g. a `union` value or a type with a niche) crosses the secure
-    /// boundary, i.e.:
+    /// stale secure information is not observable from non-secure code. However, arguments and
+    /// return values that cross the secure boundary can contain stale secure data in their
+    /// padding bytes.
+    ///
+    /// The compiler zeroes all variant-independent padding: bytes that are padding for all valid
+    /// values of the type. But enum and union values can contain variant-dependent padding: bytes
+    /// that are padding for some but not all valid values of the type. For instance, `Option<u8>`
+    /// has no padding when `Some(_)` but does have padding when `None`.
+    ///
+    /// This lint fires when a type with variant-dependent padding crosses the secure boundary:
     ///
     /// - when returned from a `cmse-nonsecure-entry` function
     /// - when passed as an argument to a `cmse-nonsecure-call` function
-    ///
-    /// This lint is a best effort: not all cases of (partially) uninitialized data crossing the
-    /// secure boundary are caught.
     pub CMSE_UNINITIALIZED_LEAK,
     Warn,
     "(partially) uninitialized value may leak secure information"

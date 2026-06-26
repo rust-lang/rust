@@ -32,23 +32,23 @@ union ReprRustUnionPartiallyUninit {
 #[allow(improper_ctypes_definitions)]
 extern "cmse-nonsecure-entry" fn union_rust_partially_uninit() -> ReprRustUnionPartiallyUninit {
     ReprRustUnionPartiallyUninit { _unused1: 1 }
-    //~^ WARN passing a (partially) uninitialized value across the security boundary may leak information
+    //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
 }
 
 #[no_mangle]
 extern "cmse-nonsecure-entry" fn maybe_uninit_32bit() -> MaybeUninit<u32> {
     MaybeUninit::uninit()
-    //~^ WARN passing a (partially) uninitialized value across the security boundary may leak information
+    //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
 }
 
 #[no_mangle]
 extern "cmse-nonsecure-entry" fn maybe_uninit_64bit() -> MaybeUninit<f64> {
     if true {
         return MaybeUninit::new(6.28);
-        //~^ WARN passing a (partially) uninitialized value across the security boundary may leak information
+        //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
     }
     MaybeUninit::new(3.14)
-    //~^ WARN passing a (partially) uninitialized value across the security boundary may leak information
+    //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
 }
 
 #[repr(transparent)]
@@ -57,7 +57,7 @@ struct Wrapper(MaybeUninit<u64>);
 #[no_mangle]
 extern "cmse-nonsecure-entry" fn repr_transparent_union() -> Wrapper {
     match 0 {
-        //~^ WARN passing a (partially) uninitialized value across the security boundary may leak information
+        //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
         0 => Wrapper(MaybeUninit::new(0)),
         _ => Wrapper(MaybeUninit::new(1)),
     }
@@ -97,7 +97,7 @@ enum VariantsDifferentSize {
 #[no_mangle]
 extern "cmse-nonsecure-entry" fn variants_different_size() -> VariantsDifferentSize {
     VariantsDifferentSize::A(0)
-    //~^ WARN passing a (partially) uninitialized value across the security boundary may leak information
+    //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
 }
 
 enum Void {}
@@ -111,5 +111,5 @@ enum UninhabitedVariant {
 #[no_mangle]
 extern "cmse-nonsecure-entry" fn uninhabited_variant() -> UninhabitedVariant {
     UninhabitedVariant::B(0)
-    //~^ WARN passing a (partially) uninitialized value across the security boundary may leak information
+    //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
 }

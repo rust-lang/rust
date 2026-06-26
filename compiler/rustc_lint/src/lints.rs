@@ -1829,7 +1829,7 @@ pub(crate) struct NonLocalDefinitionsCargoUpdateNote {
 // cmse_uninitialized_leak.rs
 #[derive(Diagnostic)]
 #[diag(
-    "passing a (partially) uninitialized value across the security boundary may leak information"
+    "this value crossing a secure boundary may contain (partially) uninitialized data which can leak information"
 )]
 #[note(
     "enum and union values can have variant-dependent padding that may contain stale secure data"

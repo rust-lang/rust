@@ -78,22 +78,22 @@ fn test_uninitialized(
     f1(ReprRustUnionU64 { _unused: 1 });
 
     f2(ReprCUnionU64 { _unused: 1 });
-    //~^ WARN passing a (partially) uninitialized value across the security boundary may leak information
+    //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
 
     f3(MaybeUninit::uninit());
-    //~^ WARN passing a (partially) uninitialized value across the security boundary may leak information
+    //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
 
     f4(MaybeUninit::uninit());
-    //~^ WARN passing a (partially) uninitialized value across the security boundary may leak information
+    //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
 
     f5((0, MaybeUninit::uninit()));
-    //~^ WARN passing a (partially) uninitialized value across the security boundary may leak information
+    //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
 
     f6(ReprCAggregate { a: 0, b: ReprCUnionU64 { _unused: 1 } });
-    //~^ WARN passing a (partially) uninitialized value across the security boundary may leak information
+    //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
 
     f7(ReprRustUnionPartiallyUninit { _unused1: 0 });
-    //~^ WARN passing a (partially) uninitialized value across the security boundary may leak information
+    //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
 
     // This struct only has no value-dependent padding, the guaranteed padding is zeroed.
     f8(PaddedStruct { a: 0, b: 0 });
@@ -102,8 +102,8 @@ fn test_uninitialized(
     f9(VariantsSameSize::A(0));
 
     f10(VariantsDifferentSize::A(0));
-    //~^ WARN passing a (partially) uninitialized value across the security boundary may leak information
+    //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
 
     f11(UninhabitedVariant::B(0));
-    //~^ WARN passing a (partially) uninitialized value across the security boundary may leak information
+    //~^ WARN this value crossing a secure boundary may contain (partially) uninitialized data which can leak information
 }
