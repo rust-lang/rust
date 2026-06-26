@@ -34,7 +34,7 @@ pub enum ConstKind<I: Interner> {
     /// An unnormalized const item such as an anon const or assoc const or free const item.
     /// Right now anything other than anon consts does not actually work properly but this
     /// should
-    Unevaluated(ty::UnevaluatedConst<I>),
+    Unevaluated(ty::IsRigid, ty::UnevaluatedConst<I>),
 
     /// Used to hold computed value.
     Value(I::ValueConst),
@@ -59,7 +59,7 @@ impl<I: Interner> fmt::Debug for ConstKind<I> {
             Infer(var) => write!(f, "{var:?}"),
             Bound(debruijn, var) => crate::debug_bound_var(f, *debruijn, var),
             Placeholder(placeholder) => write!(f, "{placeholder:?}"),
-            Unevaluated(uv) => write!(f, "{uv:?}"),
+            Unevaluated(is_rigid, uv) => write!(f, "Unevaluated({is_rigid:?}, {uv:?})"),
             Value(val) => write!(f, "{val:?}"),
             Error(_) => write!(f, "{{const error}}"),
             Expr(expr) => write!(f, "{expr:?}"),

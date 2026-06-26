@@ -43,6 +43,7 @@ use crate::errors::{
     AutoDiffWithoutEnable, AutoDiffWithoutLto, IntrinsicSignatureMismatch, IntrinsicWrongArch,
     OffloadWithoutEnable, OffloadWithoutFatLTO, UnknownIntrinsic,
 };
+use crate::intrinsic::ty::typetree::fnc_typetrees;
 use crate::llvm::{self, Type, Value};
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
@@ -113,17 +114,17 @@ fn call_simple_intrinsic<'ll, 'tcx>(
         sym::fmuladdf64 => ("llvm.fmuladd", &[bx.type_f64()]),
         sym::fmuladdf128 => ("llvm.fmuladd", &[bx.type_f128()]),
 
+        sym::minimumf16 => ("llvm.minimum", &[bx.type_f16()]),
+        sym::minimumf32 => ("llvm.minimum", &[bx.type_f32()]),
         // FIXME: LLVM currently mis-compile those intrinsics, re-enable them
         // when llvm/llvm-project#{139380,139381,140445} are fixed.
-        //sym::minimumf16 => ("llvm.minimum", &[bx.type_f16()]),
-        //sym::minimumf32 => ("llvm.minimum", &[bx.type_f32()]),
         //sym::minimumf64 => ("llvm.minimum", &[bx.type_f64()]),
         //sym::minimumf128 => ("llvm.minimum", &[cx.type_f128()]),
         //
+        sym::maximumf16 => ("llvm.maximum", &[bx.type_f16()]),
+        sym::maximumf32 => ("llvm.maximum", &[bx.type_f32()]),
         // FIXME: LLVM currently mis-compile those intrinsics, re-enable them
         // when llvm/llvm-project#{139380,139381,140445} are fixed.
-        //sym::maximumf16 => ("llvm.maximum", &[bx.type_f16()]),
-        //sym::maximumf32 => ("llvm.maximum", &[bx.type_f32()]),
         //sym::maximumf64 => ("llvm.maximum", &[bx.type_f64()]),
         //sym::maximumf128 => ("llvm.maximum", &[cx.type_f128()]),
         //
@@ -223,12 +224,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 )
             }
             sym::autodiff => {
-                let result = PlaceRef {
-                    val: result_place.unwrap(),
-                    layout: result_layout,
-                };
-                codegen_autodiff(self, tcx, instance, args, result);
-                return IntrinsicResult::WroteIntoPlace;
+                return codegen_autodiff(self, tcx, instance, args, result_layout, result_place);
             }
             sym::offload => {
                 if tcx.sess.opts.unstable_opts.offload.is_empty() {
@@ -1728,8 +1724,9 @@ fn codegen_autodiff<'ll, 'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: ty::Instance<'tcx>,
     args: &[OperandRef<'tcx, &'ll Value>],
-    result: PlaceRef<'tcx, &'ll Value>,
-) {
+    result_layout: ty::layout::TyAndLayout<'tcx>,
+    result_place: Option<PlaceValue<&'ll Value>>,
+) -> IntrinsicResult<'tcx, &'ll Value> {
     if !tcx.sess.opts.unstable_opts.autodiff.contains(&rustc_session::config::AutoDiff::Enable) {
         let _ = tcx.dcx().emit_almost_fatal(AutoDiffWithoutEnable);
     }
@@ -1769,9 +1766,9 @@ fn codegen_autodiff<'ll, 'tcx>(
             diff_id,
             diff_args
         ),
-        Err(_) => {
+        Err(err) => {
             // An error has already been emitted
-            return;
+            return IntrinsicResult::Err(err);
         }
     };
 
@@ -1791,7 +1788,7 @@ fn codegen_autodiff<'ll, 'tcx>(
         &mut diff_attrs.input_activity,
     );
 
-    let fnc_tree = rustc_middle::ty::fnc_typetrees(tcx, source_fn_ptr_ty);
+    let fnc_tree = fnc_typetrees(tcx, source_fn_ptr_ty);
 
     // Build body
     generate_enzyme_call(
@@ -1802,9 +1799,10 @@ fn codegen_autodiff<'ll, 'tcx>(
         llret_ty,
         &val_arr,
         &diff_attrs,
-        result,
+        result_layout,
+        result_place,
         fnc_tree,
-    );
+    )
 }
 
 // Generates the LLVM code to offload a Rust function to a target device (e.g., GPU).

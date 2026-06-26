@@ -38,7 +38,7 @@ use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::{
     self, Cfg, CheckCfg, CoverageLevel, CoverageOptions, CrateType, DebugInfo, ErrorOutputType,
-    FunctionReturn, Input, InstrumentCoverage, OptLevel, OutFileName, OutputType,
+    FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, OptLevel, OutFileName, OutputType,
     SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
@@ -1338,6 +1338,12 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         if sess.opts.debuginfo == DebugInfo::None {
             sess.dcx().emit_warn(errors::EmbedSourceRequiresDebugInfo);
         }
+    }
+
+    if sess.opts.unstable_opts.instrument_mcount == InstrumentMcount::Fentry
+        && !sess.target.options.supports_fentry
+    {
+        sess.dcx().emit_err(errors::InstrumentationNotSupported { us: "fentry".to_string() });
     }
 
     if sess.opts.unstable_opts.instrument_xray.is_some() && !sess.target.options.supports_xray {

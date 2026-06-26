@@ -40,7 +40,7 @@ macro_rules! panic {
 #[rustc_diagnostic_item = "assert_eq_macro"]
 #[allow_internal_unstable(panic_internals)]
 macro_rules! assert_eq {
-    ($left:expr, $right:expr $(,)?) => {
+    ($left:expr, $right:expr $(,)?) => {{
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
@@ -52,8 +52,8 @@ macro_rules! assert_eq {
                 }
             }
         }
-    };
-    ($left:expr, $right:expr, $($arg:tt)+) => {
+    }};
+    ($left:expr, $right:expr, $($arg:tt)+) => {{
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
@@ -65,7 +65,7 @@ macro_rules! assert_eq {
                 }
             }
         }
-    };
+    }};
 }
 
 /// Asserts that two expressions are not equal to each other (using [`PartialEq`]).
@@ -96,7 +96,7 @@ macro_rules! assert_eq {
 #[rustc_diagnostic_item = "assert_ne_macro"]
 #[allow_internal_unstable(panic_internals)]
 macro_rules! assert_ne {
-    ($left:expr, $right:expr $(,)?) => {
+    ($left:expr, $right:expr $(,)?) => {{
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if *left_val == *right_val {
@@ -108,8 +108,8 @@ macro_rules! assert_ne {
                 }
             }
         }
-    };
-    ($left:expr, $right:expr, $($arg:tt)+) => {
+    }};
+    ($left:expr, $right:expr, $($arg:tt)+) => {{
         match (&($left), &($right)) {
             (left_val, right_val) => {
                 if *left_val == *right_val {
@@ -121,7 +121,7 @@ macro_rules! assert_ne {
                 }
             }
         }
-    };
+    }};
 }
 
 /// Asserts that an expression matches the provided pattern.

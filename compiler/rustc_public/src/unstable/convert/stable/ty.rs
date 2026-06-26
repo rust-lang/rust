@@ -32,10 +32,14 @@ impl<'tcx> Stable<'tcx> for ty::AliasTy<'tcx> {
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         let ty::AliasTy { args, kind, .. } = self;
-        crate::ty::AliasTy {
-            def_id: tables.alias_def(kind.def_id()),
-            args: args.stable(tables, cx),
-        }
+        // rustc_public must change its API once we introduce a variant without a def_id.
+        let def_id = match *kind {
+            ty::AliasTyKind::Projection { def_id }
+            | ty::AliasTyKind::Inherent { def_id }
+            | ty::AliasTyKind::Opaque { def_id }
+            | ty::AliasTyKind::Free { def_id } => def_id,
+        };
+        crate::ty::AliasTy { def_id: tables.alias_def(def_id), args: args.stable(tables, cx) }
     }
 }
 
@@ -483,7 +487,7 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
             ty::Tuple(fields) => TyKind::RigidTy(RigidTy::Tuple(
                 fields.iter().map(|ty| ty.stable(tables, cx)).collect(),
             )),
-            ty::Alias(alias_ty) => {
+            ty::Alias(_, alias_ty) => {
                 TyKind::Alias(alias_ty.kind.stable(tables, cx), alias_ty.stable(tables, cx))
             }
             ty::Param(param_ty) => TyKind::Param(param_ty.stable(tables, cx)),
@@ -548,7 +552,7 @@ impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
                 }
             }
             ty::ConstKind::Param(param) => crate::ty::TyConstKind::Param(param.stable(tables, cx)),
-            ty::ConstKind::Unevaluated(uv) => {
+            ty::ConstKind::Unevaluated(_, uv) => {
                 let Some(def_id) = uv.kind.opt_def_id() else {
                     // FIXME: implement (both AliasTy and UnevaluatedConst will be needing this soon)
                     panic!(
@@ -990,18 +994,7 @@ impl<'tcx> Stable<'tcx> for ty::Instance<'tcx> {
             ty::InstanceKind::Virtual(_def_id, idx) => {
                 crate::mir::mono::InstanceKind::Virtual { idx }
             }
-            ty::InstanceKind::VTableShim(..)
-            | ty::InstanceKind::ReifyShim(..)
-            | ty::InstanceKind::FnPtrAddrShim(..)
-            | ty::InstanceKind::ClosureOnceShim { .. }
-            | ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
-            | ty::InstanceKind::ThreadLocalShim(..)
-            | ty::InstanceKind::DropGlue(..)
-            | ty::InstanceKind::CloneShim(..)
-            | ty::InstanceKind::FnPtrShim(..)
-            | ty::InstanceKind::FutureDropPollShim(..)
-            | ty::InstanceKind::AsyncDropGlue(..)
-            | ty::InstanceKind::AsyncDropGlueCtorShim(..) => crate::mir::mono::InstanceKind::Shim,
+            ty::InstanceKind::Shim(..) => crate::mir::mono::InstanceKind::Shim,
         };
         crate::mir::mono::Instance { def, kind }
     }

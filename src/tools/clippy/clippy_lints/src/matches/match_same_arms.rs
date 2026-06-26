@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::MaybeResPath;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::SpanExt;
 use clippy_utils::{SpanlessEq, fulfill_or_allowed, hash_expr, is_lint_allowed, search_same};
 use core::cmp::Ordering;
 use core::{iter, slice};
@@ -152,7 +152,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
                     if let Some(((_, dest), src)) = split
                         && let Some(pat_snippets) = group
                             .iter()
-                            .map(|(_, arm)| arm.pat.span.get_source_text(cx))
+                            .map(|(_, arm)| arm.pat.span.get_text(cx))
                             .collect::<Option<Vec<_>>>()
                     {
                         let suggs = src

@@ -469,7 +469,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // Necessary for non-trivial patterns whose user-type annotation is an opaque type,
             // e.g. `let (_a,): Tait = whatever`, see #105897
             if !self.infcx.next_trait_solver()
-                && let ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }) =
+                && let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }) =
                     curr_projected_ty.ty.kind()
             {
                 // There is nothing that we can compare here if we go through an opaque type.
@@ -1760,7 +1760,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             let tcx = self.tcx();
             let maybe_uneval = match constant.const_ {
                 Const::Ty(_, ct) => match ct.kind() {
-                    ty::ConstKind::Unevaluated(uv) => match uv.kind {
+                    ty::ConstKind::Unevaluated(_, uv) => match uv.kind {
                         ty::UnevaluatedConstKind::Projection { def_id }
                         | ty::UnevaluatedConstKind::Inherent { def_id }
                         | ty::UnevaluatedConstKind::Free { def_id }

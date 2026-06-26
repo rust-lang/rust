@@ -805,7 +805,11 @@ impl<'tcx> GenericKind<'tcx> {
         match *self {
             GenericKind::Param(ref p) => p.to_ty(tcx),
             GenericKind::Placeholder(ref p) => Ty::new_placeholder(tcx, *p),
-            GenericKind::Alias(ref p) => p.to_ty(tcx),
+            // FIXME(#155345): Region handling should generally only
+            // deal with rigid aliases, making sure we do so correctly
+            // everywhere is effort, so we're just using `No` everywhere
+            // for now. This should change soon.
+            GenericKind::Alias(ref p) => p.to_ty(tcx, ty::IsRigid::No),
         }
     }
 }

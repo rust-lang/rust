@@ -20,7 +20,7 @@ use hir_expand::name::Name;
 use intern::sym;
 use rustc_type_ir::{
     TypeVisitableExt, TypingMode,
-    inherent::{BoundExistentialPredicates, IntoKind},
+    inherent::{BoundExistentialPredicates, IntoKind, Ty as _},
 };
 
 use crate::{
@@ -154,6 +154,9 @@ pub fn implements_trait_unique_with_infcx<'db>(
 
     let args = create_args(&infcx);
     let trait_ref = rustc_type_ir::TraitRef::new_from_args(interner, trait_.into(), args);
+    if trait_ref.self_ty().is_ty_error() {
+        return false;
+    }
 
     let obligation = Obligation::new(interner, ObligationCause::dummy(), env.param_env, trait_ref);
     infcx.predicate_must_hold_modulo_regions(&obligation)

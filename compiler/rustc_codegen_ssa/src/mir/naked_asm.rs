@@ -67,7 +67,7 @@ fn inline_to_global_operand<'a, 'tcx, Cx: LayoutOf<'tcx, LayoutOfResult = TyAndL
                 .instantiate_mir_and_normalize_erasing_regions(
                     cx.tcx(),
                     cx.typing_env(),
-                    ty::EarlyBinder::bind(value.const_),
+                    ty::EarlyBinder::bind(cx.tcx(), value.const_),
                 )
                 .eval(cx.tcx(), cx.typing_env(), value.span)
                 .expect("erroneous constant missed by mono item collection");
@@ -75,7 +75,7 @@ fn inline_to_global_operand<'a, 'tcx, Cx: LayoutOf<'tcx, LayoutOfResult = TyAndL
             let mono_type = instance.instantiate_mir_and_normalize_erasing_regions(
                 cx.tcx(),
                 cx.typing_env(),
-                ty::EarlyBinder::bind(value.ty()),
+                ty::EarlyBinder::bind(cx.tcx(), value.ty()),
             );
 
             let string = common::asm_const_to_str(
@@ -91,7 +91,7 @@ fn inline_to_global_operand<'a, 'tcx, Cx: LayoutOf<'tcx, LayoutOfResult = TyAndL
             let mono_type = instance.instantiate_mir_and_normalize_erasing_regions(
                 cx.tcx(),
                 cx.typing_env(),
-                ty::EarlyBinder::bind(value.ty()),
+                ty::EarlyBinder::bind(cx.tcx(), value.ty()),
             );
 
             let instance = match mono_type.kind() {

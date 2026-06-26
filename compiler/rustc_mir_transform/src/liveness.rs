@@ -235,6 +235,11 @@ fn maybe_drop_guard<'tcx>(
 ) -> bool {
     if ever_dropped.contains(index) {
         let ty = checked_places.places[index].ty(&body.local_decls, tcx).ty;
+        // FIXME(#155345): Liveness uses `TypingMode::PostAnalysis`
+        // even though it's run on `mir_promoted` which is still
+        // in an earlier `TypingMode`. This is odd and we have to
+        // manually mark aliases as non-rigid here.
+        let ty = ty::set_aliases_to_non_rigid(tcx, ty).skip_norm_wip();
         matches!(
             ty.kind(),
             ty::Closure(..)
@@ -244,7 +249,7 @@ fn maybe_drop_guard<'tcx>(
                 | ty::Dynamic(..)
                 | ty::Array(..)
                 | ty::Slice(..)
-                | ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. })
+                | ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. })
         ) && ty.needs_drop(tcx, typing_env)
     } else {
         false

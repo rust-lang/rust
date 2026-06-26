@@ -343,10 +343,16 @@ impl ExternAbi {
                 // This ABI does not support calls at all (except via assembly).
                 false
             }
+            Self::RustCall => {
+                // Argument untupling requires additional support for tail calls to be possible,
+                // see <https://github.com/rust-lang/rust/pull/158248>. There is no real uses of
+                // tail calling `extern "rust-call"` functions
+                false
+            }
+
             Self::C { .. }
             | Self::System { .. }
             | Self::Rust
-            | Self::RustCall
             | Self::RustCold
             | Self::RustInvalid
             | Self::Unadjusted

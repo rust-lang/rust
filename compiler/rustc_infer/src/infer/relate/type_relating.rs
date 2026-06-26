@@ -2,7 +2,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::relate::combine::{combine_ty_args, super_combine_consts, super_combine_tys};
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation, relate_args_invariantly};
-use rustc_middle::ty::{self, DelayedSet, Ty, TyCtxt, TyVar};
+use rustc_middle::ty::{self, DelayedSet, Ty, TyCtxt, TyVar, TypeVisitableExt};
 use rustc_span::Span;
 use tracing::{debug, instrument};
 
@@ -118,6 +118,10 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, 'tcx> {
 
     #[instrument(skip(self), level = "trace")]
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+        // We don't use the rigid marker in the old solver.
+        debug_assert!(!a.has_rigid_aliases());
+        debug_assert!(!b.has_rigid_aliases());
+
         if a == b {
             return Ok(a);
         }
@@ -184,14 +188,14 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, 'tcx> {
             }
 
             (
-                &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: a_def_id }, .. }),
-                &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: b_def_id }, .. }),
+                &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: a_def_id }, .. }),
+                &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: b_def_id }, .. }),
             ) if a_def_id == b_def_id => {
                 super_combine_tys(infcx, self, a, b)?;
             }
 
-            (&ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }), _)
-            | (_, &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }))
+            (&ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }), _)
+            | (_, &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }))
                 if self.define_opaque_types == DefineOpaqueTypes::Yes && def_id.is_local() =>
             {
                 self.register_goals(infcx.handle_opaque_type(
@@ -261,6 +265,10 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, 'tcx> {
         a: ty::Const<'tcx>,
         b: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
+        // We don't use the rigid marker in the old solver.
+        debug_assert!(!a.has_rigid_aliases());
+        debug_assert!(!b.has_rigid_aliases());
+
         super_combine_consts(self.infcx, self, a, b)
     }
 

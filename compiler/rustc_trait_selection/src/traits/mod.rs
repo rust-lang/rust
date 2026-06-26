@@ -280,6 +280,9 @@ fn do_normalize_predicates<'tcx>(
     let infcx = tcx.infer_ctxt().ignoring_regions().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
     let predicates = ocx.normalize(&cause, elaborated_env, Unnormalized::new_wip(predicates));
+    // FIXME: opaque types in param env might be in defining scope but we're
+    // using non body analysis for here. So the rigidness marker is wrong.
+    let predicates = ty::set_aliases_to_non_rigid(tcx, predicates).skip_norm_wip();
 
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
@@ -366,7 +369,7 @@ pub fn normalize_param_env_or_error<'tcx>(
                     // should actually be okay since without `feature(generic_const_exprs)` the only
                     // const arguments that have a non-empty param env are array repeat counts. These
                     // do not appear in the type system though.
-                    if let ty::ConstKind::Unevaluated(uv) = c.kind()
+                    if let ty::ConstKind::Unevaluated(_, uv) = c.kind()
                         && matches!(uv.kind, ty::UnevaluatedConstKind::Anon { .. })
                     {
                         let infcx = self.0.infer_ctxt().build(TypingMode::non_body_analysis());
@@ -605,7 +608,7 @@ pub fn try_evaluate_const<'tcx>(
         | ty::ConstKind::Bound(_, _)
         | ty::ConstKind::Placeholder(_)
         | ty::ConstKind::Expr(_) => Err(EvaluateConstErr::HasGenericsOrInfers),
-        ty::ConstKind::Unevaluated(uv) => {
+        ty::ConstKind::Unevaluated(_, uv) => {
             let opt_anon_const_kind = match uv.kind {
                 ty::UnevaluatedConstKind::Anon { def_id } => {
                     Some((def_id, tcx.anon_const_kind(def_id)))
@@ -923,7 +926,9 @@ fn is_impossible_associated_item(
                 tcx,
                 ObligationCause::dummy_with_span(*span),
                 param_env,
-                ty::EarlyBinder::bind(*pred).instantiate(tcx, impl_trait_ref.args).skip_norm_wip(),
+                ty::EarlyBinder::bind(tcx, *pred)
+                    .instantiate(tcx, impl_trait_ref.args)
+                    .skip_norm_wip(),
             )
         })
     });

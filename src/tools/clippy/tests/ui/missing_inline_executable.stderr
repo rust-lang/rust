@@ -1,4 +1,4 @@
-error: missing `#[inline]` for a function
+error: missing `#[inline]` on a publicly callable function
   --> tests/ui/missing_inline_executable.rs:3:1
    |
 LL | pub fn foo() {}

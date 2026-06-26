@@ -2,7 +2,7 @@ use rustc_feature::AttributeStability;
 use rustc_hir::attrs::{CrateType, WindowsSubsystemKind};
 use rustc_session::lint::builtin::UNKNOWN_CRATE_TYPES;
 use rustc_span::Symbol;
-use rustc_span::edit_distance::find_best_match_for_name;
+use rustc_span::edit_distance::find_best_match_for_name_with_substrings;
 
 use super::prelude::*;
 use crate::diagnostics::{UnknownCrateTypes, UnknownCrateTypesSuggestion};
@@ -13,7 +13,7 @@ impl SingleAttributeParser for CrateNameParser {
     const PATH: &[Symbol] = &[sym::crate_name];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
-    const ALLOWED_TARGETS: AllowedTargets =
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
@@ -32,7 +32,7 @@ impl CombineAttributeParser for CrateTypeParser {
     const PATH: &[Symbol] = &[sym::crate_type];
     type Item = CrateType;
     const CONVERT: ConvertFn<Self::Item> = |items, _| AttributeKind::CrateType(items);
-    const ALLOWED_TARGETS: AllowedTargets =
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate =
         template!(NameValueStr: "crate type", "https://doc.rust-lang.org/reference/linkage.html");
@@ -49,10 +49,10 @@ impl CombineAttributeParser for CrateTypeParser {
         let Ok(crate_type) = crate_type.try_into() else {
             // We don't error on invalid `#![crate_type]` when not applied to a crate
             if cx.shared.target == Target::Crate {
-                let candidate = find_best_match_for_name(
+                let candidate = find_best_match_for_name_with_substrings(
                     &CrateType::all_stable().iter().map(|(name, _)| *name).collect::<Vec<_>>(),
                     crate_type,
-                    None,
+                    Some(5),
                 );
                 let span = n.value_span;
                 cx.emit_lint(
@@ -76,7 +76,7 @@ impl SingleAttributeParser for RecursionLimitParser {
     const PATH: &[Symbol] = &[sym::recursion_limit];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N", "https://doc.rust-lang.org/reference/attributes/limits.html#the-recursion_limit-attribute");
-    const ALLOWED_TARGETS: AllowedTargets =
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
@@ -92,7 +92,7 @@ pub(crate) struct MoveSizeLimitParser;
 impl SingleAttributeParser for MoveSizeLimitParser {
     const PATH: &[Symbol] = &[sym::move_size_limit];
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = unstable!(large_assignments);
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
@@ -108,7 +108,7 @@ impl SingleAttributeParser for TypeLengthLimitParser {
     const PATH: &[Symbol] = &[sym::type_length_limit];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
-    const ALLOWED_TARGETS: AllowedTargets =
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
@@ -124,7 +124,7 @@ pub(crate) struct PatternComplexityLimitParser;
 impl SingleAttributeParser for PatternComplexityLimitParser {
     const PATH: &[Symbol] = &[sym::pattern_complexity_limit];
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = unstable!(
         rustc_attrs,
         "the `#[pattern_complexity_limit]` attribute is used for rustc unit tests"
@@ -141,7 +141,7 @@ pub(crate) struct NoCoreParser;
 
 impl NoArgsAttributeParser for NoCoreParser {
     const PATH: &[Symbol] = &[sym::no_core];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = unstable!(no_core);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NoCore;
 }
@@ -151,7 +151,7 @@ pub(crate) struct NoStdParser;
 impl NoArgsAttributeParser for NoStdParser {
     const PATH: &[Symbol] = &[sym::no_std];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets =
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NoStd;
@@ -162,7 +162,7 @@ pub(crate) struct NoMainParser;
 impl NoArgsAttributeParser for NoMainParser {
     const PATH: &[Symbol] = &[sym::no_main];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets =
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NoMain;
@@ -172,7 +172,7 @@ pub(crate) struct RustcCoherenceIsCoreParser;
 
 impl NoArgsAttributeParser for RustcCoherenceIsCoreParser {
     const PATH: &[Symbol] = &[sym::rustc_coherence_is_core];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcCoherenceIsCore;
 }
@@ -182,7 +182,7 @@ pub(crate) struct WindowsSubsystemParser;
 impl SingleAttributeParser for WindowsSubsystemParser {
     const PATH: &[Symbol] = &[sym::windows_subsystem];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
-    const ALLOWED_TARGETS: AllowedTargets =
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: ["windows", "console"], "https://doc.rust-lang.org/reference/runtime.html#the-windows_subsystem-attribute");
     const STABILITY: AttributeStability = AttributeStability::Stable;
@@ -210,7 +210,7 @@ pub(crate) struct PanicRuntimeParser;
 
 impl NoArgsAttributeParser for PanicRuntimeParser {
     const PATH: &[Symbol] = &[sym::panic_runtime];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = unstable!(panic_runtime);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::PanicRuntime;
 }
@@ -219,7 +219,7 @@ pub(crate) struct NeedsPanicRuntimeParser;
 
 impl NoArgsAttributeParser for NeedsPanicRuntimeParser {
     const PATH: &[Symbol] = &[sym::needs_panic_runtime];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = unstable!(needs_panic_runtime);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NeedsPanicRuntime;
 }
@@ -228,7 +228,7 @@ pub(crate) struct ProfilerRuntimeParser;
 
 impl NoArgsAttributeParser for ProfilerRuntimeParser {
     const PATH: &[Symbol] = &[sym::profiler_runtime];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = unstable!(profiler_runtime);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ProfilerRuntime;
 }
@@ -238,7 +238,7 @@ pub(crate) struct NoBuiltinsParser;
 impl NoArgsAttributeParser for NoBuiltinsParser {
     const PATH: &[Symbol] = &[sym::no_builtins];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets =
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NoBuiltins;
@@ -248,7 +248,7 @@ pub(crate) struct RustcPreserveUbChecksParser;
 
 impl NoArgsAttributeParser for RustcPreserveUbChecksParser {
     const PATH: &[Symbol] = &[sym::rustc_preserve_ub_checks];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcPreserveUbChecks;
 }
@@ -257,7 +257,7 @@ pub(crate) struct RustcNoImplicitBoundsParser;
 
 impl NoArgsAttributeParser for RustcNoImplicitBoundsParser {
     const PATH: &[Symbol] = &[sym::rustc_no_implicit_bounds];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNoImplicitBounds;
 }
@@ -266,7 +266,7 @@ pub(crate) struct DefaultLibAllocatorParser;
 
 impl NoArgsAttributeParser for DefaultLibAllocatorParser {
     const PATH: &[Symbol] = &[sym::default_lib_allocator];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = unstable!(allocator_internals);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::DefaultLibAllocator;
 }
@@ -277,7 +277,7 @@ impl CombineAttributeParser for FeatureParser {
     const PATH: &[Symbol] = &[sym::feature];
     type Item = Ident;
     const CONVERT: ConvertFn<Self::Item> = AttributeKind::Feature;
-    const ALLOWED_TARGETS: AllowedTargets =
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(List: &["feature1, feature2, ..."]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
@@ -323,7 +323,7 @@ impl CombineAttributeParser for RegisterToolParser {
     const PATH: &[Symbol] = &[sym::register_tool];
     type Item = Ident;
     const CONVERT: ConvertFn<Self::Item> = |tools, _span| AttributeKind::RegisterTool(tools);
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(List: &["tool1, tool2, ..."]);
     const STABILITY: AttributeStability = unstable!(register_tool);
 

@@ -16,9 +16,9 @@ use rustc_abi::{CanonAbi, ExternAbi, X86Call};
 use rustc_codegen_ssa::base::is_call_from_compiler_builtins_to_upstream_monomorphization;
 use rustc_codegen_ssa::errors::CompilerBuiltinsCannotCall;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::{ShimKind, TypeVisitableExt};
 use rustc_session::Session;
 use rustc_span::Spanned;
 use rustc_target::callconv::{FnAbi, PassMode};
@@ -467,7 +467,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             }
             // We don't need AsyncDropGlueCtorShim here because it is not `noop func`,
             // it is `func returning noop future`
-            InstanceKind::DropGlue(_, None) => {
+            InstanceKind::Shim(ShimKind::DropGlue(_, None)) => {
                 // empty drop glue - a nop.
                 let dest = target.expect("Non terminating drop_in_place_real???");
                 let ret_block = fx.get_block(dest);
@@ -725,7 +725,7 @@ pub(crate) fn codegen_drop<'tcx>(
     let ret_block = fx.get_block(target);
 
     // AsyncDropGlueCtorShim can't be here
-    if let ty::InstanceKind::DropGlue(_, None) = drop_instance.def {
+    if let ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, None)) = drop_instance.def {
         // we don't actually need to drop anything
         fx.bcx.ins().jump(ret_block, &[]);
     } else {

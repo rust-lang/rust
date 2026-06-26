@@ -72,6 +72,7 @@ mod precedence;
 mod ptr_nulls;
 mod redundant_semicolon;
 mod reference_casting;
+mod runtime_symbols;
 mod shadowed_into_iter;
 mod static_mut_refs;
 mod traits;
@@ -117,6 +118,8 @@ use precedence::*;
 use ptr_nulls::*;
 use redundant_semicolon::*;
 use reference_casting::*;
+use runtime_symbols::*;
+use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::LocalModDefId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
@@ -258,6 +261,7 @@ late_lint_methods!(
             AsyncFnInTrait: AsyncFnInTrait,
             NonLocalDefinitions: NonLocalDefinitions::default(),
             InteriorMutableConsts: InteriorMutableConsts,
+            RuntimeSymbols: RuntimeSymbols,
             ImplTraitOvercaptures: ImplTraitOvercaptures,
             IfLetRescope: IfLetRescope::default(),
             StaticMutRefs: StaticMutRefs,
@@ -740,6 +744,22 @@ fn register_internals(store: &mut LintStore) {
             LintId::of(RUSTC_MUST_MATCH_EXHAUSTIVELY),
         ],
     );
+}
+
+/// Is a pass (which contains `lints`) required to run? Maybe not, e.g. for dependencies built with
+/// `--cap-lints=allow`.
+///
+/// Note: this is a conservative estimate intended for optimization purposes. It might return
+/// `true` for a pass that need not run, but it will never return `false` for a pass that must run.
+pub fn is_lint_pass_required(skippable: &UnordSet<LintId>, lints: &LintVec) -> bool {
+    // A pass without any lints? Clippy sometimes does this, to collect things while traversing.
+    // Such a pass must always run.
+    if lints.is_empty() {
+        return true;
+    }
+
+    // Otherwise, the pass must run unless all lints within are skippable.
+    !lints.iter().all(|lint| skippable.contains(&LintId::of(lint)))
 }
 
 #[cfg(test)]

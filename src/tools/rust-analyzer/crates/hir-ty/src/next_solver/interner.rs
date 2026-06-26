@@ -1128,6 +1128,9 @@ impl<'db> Interner for DbInterner<'db> {
             SolverDefId::ConstId(def_id) => {
                 AliasTermKind::UnevaluatedConst { def_id: GeneralConstIdWrapper(def_id.into()) }
             }
+            SolverDefId::StaticId(def_id) => {
+                AliasTermKind::UnevaluatedConst { def_id: GeneralConstIdWrapper(def_id.into()) }
+            }
             SolverDefId::AnonConstId(def_id) => {
                 AliasTermKind::UnevaluatedConst { def_id: GeneralConstIdWrapper(def_id.into()) }
             }
@@ -2626,8 +2629,8 @@ macro_rules! impl_gc_visit_slice {
                 }
 
                 #[inline]
-                fn visit_slice(header: &[<Self as ::intern::SliceInternable>::SliceType], gc: &mut ::intern::GarbageCollector) {
-                    header.generic_visit_with(gc);
+                fn visit_slice(slice: &[<Self as ::intern::SliceInternable>::SliceType], gc: &mut ::intern::GarbageCollector) {
+                    slice.generic_visit_with(gc);
                 }
             }
         )*

@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeDef;
-use clippy_utils::source::{SpanRangeExt, indent_of, reindent_multiline};
+use clippy_utils::source::{SpanExt, indent_of, reindent_multiline};
 use clippy_utils::sym;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -51,7 +51,7 @@ pub(super) fn check<'tcx>(
             "case-sensitive file extension comparison",
             |diag| {
                 diag.help("consider using a case-insensitive comparison instead");
-                if let Some(recv_source) = recv.span.get_source_text(cx) {
+                if let Some(recv_source) = recv.span.get_text(cx) {
                     let recv_source = if cx.typeck_results().expr_ty(recv).is_ref() {
                         recv_source.to_owned()
                     } else {

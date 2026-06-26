@@ -30,7 +30,7 @@ pub fn is_const_evaluatable<'tcx>(
 ) -> Result<(), NotConstEvaluatable> {
     let tcx = infcx.tcx;
     match tcx.expand_abstract_consts(unexpanded_ct).kind() {
-        ty::ConstKind::Unevaluated(_) | ty::ConstKind::Expr(_) => (),
+        ty::ConstKind::Unevaluated(_, _) | ty::ConstKind::Expr(_) => (),
         ty::ConstKind::Param(_)
         | ty::ConstKind::Bound(_, _)
         | ty::ConstKind::Placeholder(_)
@@ -44,10 +44,10 @@ pub fn is_const_evaluatable<'tcx>(
 
         let is_anon_ct = matches!(
             ct.kind(),
-            ty::ConstKind::Unevaluated(ty::UnevaluatedConst {
-                kind: ty::UnevaluatedConstKind::Anon { .. },
-                ..
-            })
+            ty::ConstKind::Unevaluated(
+                _,
+                ty::UnevaluatedConst { kind: ty::UnevaluatedConstKind::Anon { .. }, .. }
+            )
         );
 
         if !is_anon_ct {
@@ -69,7 +69,7 @@ pub fn is_const_evaluatable<'tcx>(
                 // here.
                 tcx.dcx().span_bug(span, "evaluating `ConstKind::Expr` is not currently supported");
             }
-            ty::ConstKind::Unevaluated(_) => {
+            ty::ConstKind::Unevaluated(_, _) => {
                 match crate::traits::try_evaluate_const(infcx, unexpanded_ct, param_env) {
                     Err(EvaluateConstErr::HasGenericsOrInfers) => {
                         Err(NotConstEvaluatable::Error(infcx.dcx().span_delayed_bug(
@@ -94,7 +94,7 @@ pub fn is_const_evaluatable<'tcx>(
         Ok(())
     } else {
         let uv = match unexpanded_ct.kind() {
-            ty::ConstKind::Unevaluated(uv) => uv,
+            ty::ConstKind::Unevaluated(_, uv) => uv,
             ty::ConstKind::Expr(_) => {
                 bug!("`ConstKind::Expr` without `feature(generic_const_exprs)` enabled")
             }

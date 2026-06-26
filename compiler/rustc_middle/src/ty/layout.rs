@@ -408,11 +408,13 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 );
 
                 match tail.kind() {
+                    // FIXME(#155345): This should only handle rigid aliases if we're using
+                    // the new solver.
                     ty::Param(_)
-                    | ty::Alias(ty::AliasTy {
-                        kind: ty::Projection { .. } | ty::Inherent { .. },
-                        ..
-                    }) => {
+                    | ty::Alias(
+                        _,
+                        ty::AliasTy { kind: ty::Projection { .. } | ty::Inherent { .. }, .. },
+                    ) => {
                         debug_assert!(tail.has_non_region_param());
                         Ok(SizeSkeleton::Pointer {
                             non_zero,
@@ -915,7 +917,12 @@ where
                     {
                         let metadata = tcx.normalize_erasing_regions(
                             cx.typing_env(),
-                            Unnormalized::new(Ty::new_projection(tcx, metadata_def_id, [pointee])),
+                            Unnormalized::new(Ty::new_projection(
+                                tcx,
+                                ty::IsRigid::No,
+                                metadata_def_id,
+                                [pointee],
+                            )),
                         );
 
                         // Map `Metadata = DynMetadata<dyn Trait>` back to a vtable, since it

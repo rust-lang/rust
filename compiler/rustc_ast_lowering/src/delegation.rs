@@ -194,7 +194,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             return self.generate_delegation_error(span, delegation);
         }
 
-        let mut generics = self.uplift_delegation_generics(delegation, sig_id, is_method);
+        let mut generics = self.uplift_delegation_generics(delegation, sig_id);
 
         let (body_id, call_expr_id, unused_target_expr) = self.lower_delegation_body(
             delegation,
@@ -404,10 +404,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::InferDelegationSig::Output(self.arena.alloc(hir::DelegationInfo {
                     call_expr_id,
                     call_path_res: self.get_resolution_id(call_path_node_id),
-                    child_args_segment_id: generics.child.args_segment_id,
-                    parent_args_segment_id: generics.parent.args_segment_id,
-                    self_ty_id: generics.self_ty_id,
-                    propagate_self_ty: generics.propagate_self_ty,
+                    child_seg_id: generics.child.args_segment_id,
+                    child_seg_id_for_sig: generics.child.segment_id_for_sig(),
+                    parent_seg_id_for_sig: generics.parent.segment_id_for_sig(),
+                    self_ty_propagation_kind: generics.self_ty_propagation_kind,
                     group_id: {
                         let id = match source {
                             DelegationSource::Single => None,
@@ -625,20 +625,40 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     }),
                 );
 
+                // Explicitly create `Self` self-type in case of infers or static
+                // free-to-trait reuses.
+                let ty = match generics.self_ty_propagation_kind {
+                    Some(hir::DelegationSelfTyPropagationKind::SelfParam) => {
+                        let self_param = generics.parent.generics.find_self_param();
+                        let path = self.create_generic_arg_path(self_param);
+                        let kind = hir::TyKind::Path(path);
+
+                        let ty = match ty {
+                            Some(ty) => hir::Ty { kind, ..ty.clone() },
+                            None => hir::Ty { kind, hir_id: self.next_id(), span },
+                        };
+
+                        Some(&*self.arena.alloc(ty))
+                    }
+                    _ => ty,
+                };
+
                 hir::QPath::Resolved(ty, self.arena.alloc(new_path))
             }
-            hir::QPath::TypeRelative(ty, segment) => {
-                let segment = self.process_segment(span, segment, &mut generics.child);
-
-                hir::QPath::TypeRelative(ty, self.arena.alloc(segment))
-            }
+            hir::QPath::TypeRelative(..) => unreachable!("until inherent methods are supported"),
         };
 
-        generics.self_ty_id = match new_path {
-            hir::QPath::Resolved(ty, _) => ty,
-            hir::QPath::TypeRelative(ty, _) => Some(ty),
+        if let Some(hir::DelegationSelfTyPropagationKind::SelfTy(id)) =
+            generics.self_ty_propagation_kind.as_mut()
+        {
+            *id = match new_path {
+                hir::QPath::Resolved(ty, _) => {
+                    ty.expect("must contain self type as `SelfTy` propagation kind is specified")
+                }
+                hir::QPath::TypeRelative(ty, _) => ty,
+            }
+            .hir_id;
         }
-        .map(|ty| ty.hir_id);
 
         let callee_path = self.arena.alloc(self.mk_expr(hir::ExprKind::Path(new_path), span));
         let args = self.arena.alloc_from_iter(args);
@@ -662,25 +682,38 @@ impl<'hir> LoweringContext<'_, 'hir> {
         segment: &hir::PathSegment<'hir>,
         result: &mut GenericsGenerationResult<'hir>,
     ) -> hir::PathSegment<'hir> {
-        let details = result.generics.args_propagation_details();
+        let infer_indices = result.generics.infer_indices();
+        result.generics.into_hir_generics(self, span);
 
-        // Always uplift generic params, because if they are not empty then they
-        // should be generated in delegation.
-        let generics = result.generics.into_hir_generics(self, span);
-        let segment = if details.should_propagate {
-            let args = generics.into_generic_args(self, span);
+        let mut segment = segment.clone();
+        let mut args_iter = result.generics.create_args_iterator();
 
-            // Needed for better error messages (`trait-impl-wrong-args-count.rs` test).
-            let args = if args.is_empty() { None } else { Some(args) };
+        let new_args = segment
+            .args
+            .filter(|args| !args.is_empty())
+            .map(|args| {
+                self.arena.alloc_from_iter(args.args.iter().enumerate().map(|(idx, arg)| {
+                    if infer_indices.contains(&idx) {
+                        args_iter.next(self, |_| arg.hir_id()).expect("arg must exist for infer")
+                    } else {
+                        *arg
+                    }
+                }))
+            })
+            .unwrap_or_else(|| self.arena.alloc_from_iter(args_iter.consume_all(self)));
 
-            hir::PathSegment { args, ..segment.clone() }
-        } else {
-            segment.clone()
-        };
+        // Needed for better error messages (`trait-impl-wrong-args-count.rs` test).
+        segment.args = (!new_args.is_empty()).then(|| {
+            &*self.arena.alloc(hir::GenericArgs {
+                args: new_args,
+                constraints: &[],
+                parenthesized: hir::GenericArgsParentheses::No,
+                span_ext: segment.args.map_or(span, |args| args.span_ext),
+            })
+        });
 
-        if details.use_args_in_sig_inheritance {
-            result.args_segment_id = Some(segment.hir_id);
-        }
+        result.args_segment_id = segment.hir_id;
+        result.use_for_sig_inheritance = !result.generics.is_trait_impl();
 
         segment
     }

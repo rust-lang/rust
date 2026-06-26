@@ -169,7 +169,7 @@ pub fn prebuilt_llvm_config(
         generate_smart_stamp_hash(
             builder,
             &builder.config.src.join("src/llvm-project"),
-            &builder.llvm_cache_key(),
+            builder.in_tree_llvm_info.sha().unwrap_or_default(),
         )
     });
 
@@ -999,7 +999,7 @@ impl Step for OmpOffload {
             generate_smart_stamp_hash(
                 builder,
                 &builder.config.src.join("src/llvm-project/offload"),
-                &builder.llvm_cache_key(),
+                builder.in_tree_llvm_info.sha().unwrap_or_default(),
             )
         });
         let stamp = BuildStamp::new(&out_dir).with_prefix("offload").add_stamp(smart_stamp_hash);
@@ -1166,8 +1166,8 @@ impl Step for Enzyme {
         // Enzyme links against LLVM. If we update the LLVM submodule libLLVM might get a new
         // version number, in which case Enzyme will now fail to find LLVM. By including the LLVM
         // hash into the Enzyme hash we force a rebuild of Enzyme when updating LLVM.
-        let enzyme_hash_input =
-            builder.llvm_cache_key() + builder.enzyme_info.sha().unwrap_or_default();
+        let enzyme_hash_input = builder.in_tree_llvm_info.sha().unwrap_or_default().to_owned()
+            + builder.enzyme_info.sha().unwrap_or_default();
 
         static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
         let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
@@ -1430,7 +1430,7 @@ impl Step for Sanitizers {
             generate_smart_stamp_hash(
                 builder,
                 &builder.config.src.join("src/llvm-project/compiler-rt"),
-                &builder.llvm_cache_key(),
+                builder.in_tree_llvm_info.sha().unwrap_or_default(),
             )
         });
 

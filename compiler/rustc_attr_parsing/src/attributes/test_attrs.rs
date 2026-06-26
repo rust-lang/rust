@@ -9,7 +9,7 @@ pub(crate) struct IgnoreParser;
 impl SingleAttributeParser for IgnoreParser {
     const PATH: &[Symbol] = &[sym::ignore];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets =
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::Fn), Error(Target::WherePredicate)]);
     const TEMPLATE: AttributeTemplate = template!(
         Word, NameValueStr: "reason",
@@ -51,7 +51,7 @@ pub(crate) struct ShouldPanicParser;
 impl SingleAttributeParser for ShouldPanicParser {
     const PATH: &[Symbol] = &[sym::should_panic];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
-    const ALLOWED_TARGETS: AllowedTargets =
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::Fn), Error(Target::WherePredicate)]);
     const TEMPLATE: AttributeTemplate = template!(
         Word, List: &[r#"expected = "reason""#], NameValueStr: "reason",
@@ -83,7 +83,7 @@ pub(crate) struct ReexportTestHarnessMainParser;
 
 impl SingleAttributeParser for ReexportTestHarnessMainParser {
     const PATH: &[Symbol] = &[sym::reexport_test_harness_main];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
     const STABILITY: AttributeStability = unstable!(custom_test_frameworks);
 
@@ -105,7 +105,7 @@ pub(crate) struct RustcAbiParser;
 impl SingleAttributeParser for RustcAbiParser {
     const PATH: &[Symbol] = &[sym::rustc_abi];
     const TEMPLATE: AttributeTemplate = template!(OneOf: &[sym::debug, sym::assert_eq]);
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::TyAlias),
         Allow(Target::Fn),
         Allow(Target::ForeignFn),
@@ -150,7 +150,7 @@ pub(crate) struct RustcDelayedBugFromInsideQueryParser;
 
 impl NoArgsAttributeParser for RustcDelayedBugFromInsideQueryParser {
     const PATH: &[Symbol] = &[sym::rustc_delayed_bug_from_inside_query];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDelayedBugFromInsideQuery;
 }
@@ -159,7 +159,7 @@ pub(crate) struct RustcEvaluateWhereClausesParser;
 
 impl NoArgsAttributeParser for RustcEvaluateWhereClausesParser {
     const PATH: &[Symbol] = &[sym::rustc_evaluate_where_clauses];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
@@ -174,7 +174,7 @@ pub(crate) struct TestRunnerParser;
 
 impl SingleAttributeParser for TestRunnerParser {
     const PATH: &[Symbol] = &[sym::test_runner];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(List: &["path"]);
     const STABILITY: AttributeStability = unstable!(custom_test_frameworks);
 
@@ -194,7 +194,7 @@ pub(crate) struct RustcTestMarkerParser;
 
 impl SingleAttributeParser for RustcTestMarkerParser {
     const PATH: &[Symbol] = &[sym::rustc_test_marker];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Const),
         Allow(Target::Fn),
         Allow(Target::Static),

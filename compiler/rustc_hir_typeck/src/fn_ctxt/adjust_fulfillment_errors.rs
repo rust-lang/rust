@@ -4,8 +4,11 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::ObligationCauseCode;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
+use rustc_middle::ty::{
+    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+};
 use rustc_span::{Span, kw};
+use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits;
 
 use crate::FnCtxt;
@@ -37,6 +40,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         error: &mut traits::FulfillmentError<'tcx>,
     ) -> bool {
+        if self.adjust_binop_index_operand(error) {
+            return true;
+        }
+
         let (def_id, hir_id, idx, flavor) = match *error.obligation.cause.code().peel_derives() {
             ObligationCauseCode::WhereClauseInExpr(def_id, _, hir_id, idx) => {
                 (def_id, hir_id, idx, ClauseFlavor::Where)
@@ -162,6 +169,119 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             _ => false,
+        }
+    }
+
+    fn adjust_binop_index_operand(&self, error: &mut traits::FulfillmentError<'tcx>) -> bool {
+        let ObligationCauseCode::BinOp { lhs_hir_id, rhs_hir_id, .. } =
+            *error.obligation.cause.code().peel_derives()
+        else {
+            return false;
+        };
+        if !matches!(error.code, traits::FulfillmentErrorCode::Ambiguity { .. })
+            || !error.obligation.predicate.has_infer()
+        {
+            return false;
+        }
+
+        let hir::Node::Expr(lhs_expr) = self.tcx.hir_node(lhs_hir_id) else {
+            return false;
+        };
+        let hir::Node::Expr(rhs_expr) = self.tcx.hir_node(rhs_hir_id) else {
+            return false;
+        };
+        let Some(binop) = self.binop_for_operands(lhs_hir_id, rhs_hir_id) else {
+            return false;
+        };
+        let hir::ExprKind::Index(indexed_expr, idx, _) = rhs_expr.kind else {
+            return false;
+        };
+        if !self.resolve_vars_if_possible(self.node_ty(idx.hir_id)).is_ty_var() {
+            return false;
+        }
+        let lhs_ty = self.resolve_vars_if_possible(self.node_ty(lhs_expr.hir_id));
+        let indexed_ty = self.resolve_vars_if_possible(self.node_ty(indexed_expr.hir_id));
+        let rhs_ty = match *indexed_ty.kind() {
+            ty::Array(element_ty, _) | ty::Slice(element_ty) => element_ty,
+            ty::Ref(_, pointee_ty, _) => match *pointee_ty.kind() {
+                ty::Array(element_ty, _) | ty::Slice(element_ty) => element_ty,
+                _ => self.resolve_vars_if_possible(self.node_ty(rhs_expr.hir_id)),
+            },
+            _ => self.resolve_vars_if_possible(self.node_ty(rhs_expr.hir_id)),
+        };
+        if !self.binop_accepts_types(binop.node, lhs_ty, rhs_ty) {
+            return false;
+        }
+
+        error.obligation.cause.span = match idx.kind {
+            hir::ExprKind::MethodCall(segment, ..) => segment.ident.span,
+            _ => idx.span,
+        };
+        true
+    }
+
+    fn binop_for_operands(
+        &self,
+        lhs_hir_id: hir::HirId,
+        rhs_hir_id: hir::HirId,
+    ) -> Option<hir::BinOp> {
+        let hir::Node::Expr(parent_expr) = self.tcx.parent_hir_node(rhs_hir_id) else {
+            return None;
+        };
+        let hir::ExprKind::Binary(binop, lhs_expr, rhs_expr) = parent_expr.kind else {
+            return None;
+        };
+        (lhs_expr.hir_id == lhs_hir_id && rhs_expr.hir_id == rhs_hir_id).then_some(binop)
+    }
+
+    fn binop_accepts_types(
+        &self,
+        binop: hir::BinOpKind,
+        lhs_ty: Ty<'tcx>,
+        rhs_ty: Ty<'tcx>,
+    ) -> bool {
+        let lhs_ty = self.deref_ty_if_possible(lhs_ty);
+        let rhs_ty = self.deref_ty_if_possible(rhs_ty);
+        if lhs_ty.references_error() || rhs_ty.references_error() {
+            return true;
+        }
+
+        match binop {
+            hir::BinOpKind::Shl | hir::BinOpKind::Shr => {
+                lhs_ty.is_integral() && rhs_ty.is_integral()
+            }
+            hir::BinOpKind::Add
+            | hir::BinOpKind::Sub
+            | hir::BinOpKind::Mul
+            | hir::BinOpKind::Div
+            | hir::BinOpKind::Rem => {
+                self.can_eq(self.param_env, lhs_ty, rhs_ty)
+                    && (lhs_ty.is_integral() || lhs_ty.is_floating_point())
+                    && (rhs_ty.is_integral() || rhs_ty.is_floating_point())
+            }
+            hir::BinOpKind::BitXor | hir::BinOpKind::BitAnd | hir::BinOpKind::BitOr => {
+                self.can_eq(self.param_env, lhs_ty, rhs_ty)
+                    && ((lhs_ty.is_integral() && rhs_ty.is_integral())
+                        || (lhs_ty.is_bool() && rhs_ty.is_bool()))
+            }
+            hir::BinOpKind::Eq
+            | hir::BinOpKind::Ne
+            | hir::BinOpKind::Lt
+            | hir::BinOpKind::Le
+            | hir::BinOpKind::Ge
+            | hir::BinOpKind::Gt => {
+                self.can_eq(self.param_env, lhs_ty, rhs_ty)
+                    && lhs_ty.is_scalar()
+                    && rhs_ty.is_scalar()
+            }
+            hir::BinOpKind::And | hir::BinOpKind::Or => lhs_ty.is_bool() && rhs_ty.is_bool(),
+        }
+    }
+
+    fn deref_ty_if_possible(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        match ty.kind() {
+            ty::Ref(_, ty, hir::Mutability::Not) => *ty,
+            _ => ty,
         }
     }
 
@@ -1058,9 +1178,10 @@ fn find_param_in_ty<'tcx>(
             return true;
         }
         if let ty::GenericArgKind::Type(ty) = arg.kind()
-            && let ty::Alias(ty::AliasTy {
-                kind: ty::Projection { .. } | ty::Inherent { .. }, ..
-            }) = ty.kind()
+            && let ty::Alias(
+                _,
+                ty::AliasTy { kind: ty::Projection { .. } | ty::Inherent { .. }, .. },
+            ) = ty.kind()
         {
             // This logic may seem a bit strange, but typically when
             // we have a projection type in a function signature, the

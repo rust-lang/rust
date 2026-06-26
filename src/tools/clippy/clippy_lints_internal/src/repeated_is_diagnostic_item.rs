@@ -541,7 +541,7 @@ fn extract_nested_is_diag_item<'tcx>(
     cx: &LateContext<'tcx>,
     cond: &'tcx Expr<'_>,
 ) -> Option<(Span, (&'tcx Expr<'tcx>, &'tcx Expr<'tcx>, &'tcx Expr<'tcx>))> {
-    for_each_expr(cx, cond, |cond_part| {
+    for_each_expr(cx.tcx, cond, |cond_part| {
         if let Some(res) = extract_is_diag_item(cx, cond_part) {
             ControlFlow::Break((cond_part.span, res))
         } else {
@@ -554,7 +554,7 @@ fn extract_nested_is_diagnostic_item<'tcx>(
     cx: &LateContext<'tcx>,
     cond: &'tcx Expr<'_>,
 ) -> Option<(Span, (&'tcx Expr<'tcx>, &'tcx Expr<'tcx>, &'tcx Expr<'tcx>))> {
-    for_each_expr(cx, cond, |cond_part| {
+    for_each_expr(cx.tcx, cond, |cond_part| {
         if let Some(res) = extract_is_diagnostic_item(cx, cond_part) {
             ControlFlow::Break((cond_part.span, res))
         } else {

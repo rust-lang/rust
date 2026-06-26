@@ -38,10 +38,13 @@ pub(crate) fn coroutine_hidden_types<'tcx>(
 
     let assumptions = compute_assumptions(tcx, def_id, bound_tys);
 
-    ty::EarlyBinder::bind(ty::Binder::bind_with_vars(
-        ty::CoroutineWitnessTypes { types: bound_tys, assumptions },
-        tcx.mk_bound_variable_kinds(&vars),
-    ))
+    ty::EarlyBinder::bind(
+        tcx,
+        ty::Binder::bind_with_vars(
+            ty::CoroutineWitnessTypes { types: bound_tys, assumptions },
+            tcx.mk_bound_variable_kinds(&vars),
+        ),
+    )
 }
 
 fn compute_assumptions<'tcx>(

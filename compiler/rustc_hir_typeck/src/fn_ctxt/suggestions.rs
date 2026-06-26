@@ -294,7 +294,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         };
 
-        let item_type = Ty::new_projection(tcx, iterator_item_id, [found]);
+        let item_type = Ty::new_projection(tcx, ty::IsRigid::No, iterator_item_id, [found]);
         let item_type =
             self.normalize(expr.span, rustc_middle::ty::Unnormalized::new_wip(item_type));
 
@@ -1351,7 +1351,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .instantiate_bound_regions_with_erased(Binder::bind_with_vars(ty, bound_vars));
                 let ty = match self.tcx.asyncness(fn_id) {
                     ty::Asyncness::Yes => {
-                        self.err_ctxt().get_impl_future_output_ty(ty).unwrap_or_else(|| {
+                        self.tcx.get_impl_future_output_ty(ty).unwrap_or_else(|| {
                             span_bug!(
                                 fn_decl.output.span(),
                                 "failed to get output type of async function"

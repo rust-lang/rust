@@ -60,6 +60,7 @@ mod view_mir;
 mod view_syntax_tree;
 
 use std::panic::{AssertUnwindSafe, UnwindSafe};
+use std::time::Duration;
 
 use cfg::CfgOptions;
 use fetch_crates::CrateInfo;
@@ -197,8 +198,8 @@ impl AnalysisHost {
 
     /// Applies changes to the current state of the world. If there are
     /// outstanding snapshots, they will be canceled.
-    pub fn apply_change(&mut self, change: ChangeWithProcMacros) {
-        self.db.apply_change(change);
+    pub fn apply_change(&mut self, change: ChangeWithProcMacros) -> Duration {
+        self.db.apply_change(change)
     }
 
     /// NB: this clears the database
