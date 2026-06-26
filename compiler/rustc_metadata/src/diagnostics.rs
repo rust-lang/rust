@@ -537,6 +537,14 @@ pub(crate) struct WasmCAbi {
 
 #[derive(Diagnostic)]
 #[diag(
+    "unknown target modifier `{$flag_name}`, requested by `-Cunsafe-allow-abi-mismatch={$flag_name}`"
+)]
+pub(crate) struct UnknownTargetModifierUnsafeAllowed {
+    pub flag_name: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(
     "found async drop types in dependency `{$extern_crate}`, but async_drop feature is disabled for `{$local_crate}`"
 )]
 #[help(

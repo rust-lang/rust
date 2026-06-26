@@ -751,6 +751,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 panic_runtime: find_attr!(attrs, PanicRuntime),
                 profiler_runtime: find_attr!(attrs, ProfilerRuntime),
                 symbol_mangling_version: tcx.sess.opts.get_symbol_mangling_version(),
+                target_options: tcx.sess.opts.target_opts.clone(),
 
                 crate_deps,
                 dylib_dependency_formats,

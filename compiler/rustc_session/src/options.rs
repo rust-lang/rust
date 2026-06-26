@@ -12,6 +12,7 @@ use rustc_data_structures::stable_hash::StableHasher;
 use rustc_errors::{ColorConfig, TerminalUrl};
 use rustc_feature::UnstableFeatures;
 use rustc_hashes::Hash64;
+use rustc_macros::{BlobDecodable, Encodable};
 use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
 use rustc_span::{RealFileName, RemapPathScopeComponents, SourceFileHashAlgorithm};
@@ -74,6 +75,7 @@ pub struct OptionMetadata {
 #[derive(Clone, Default)]
 pub struct OptionsMetadata {
     codegen: CodegenOptionsMetadata,
+    target: TargetOptionsMetadata,
     unstable: UnstableOptionsMetadata,
 }
 
@@ -192,6 +194,7 @@ top_level_options!(
         /// directory to store intermediate results.
         incremental: Option<PathBuf> [UNTRACKED],
 
+        target_opts: TargetOptions [SUBSTRUCT],
         unstable_opts: UnstableOptions [SUBSTRUCT],
         prints: Vec<PrintRequest> [UNTRACKED],
         cg: CodegenOptions [SUBSTRUCT],
@@ -322,6 +325,7 @@ macro_rules! setter_for {
 /// hand-written parsers for parsing specific types of values in this module.
 macro_rules! options {
     (
+        $(#[$struct_attr:meta])*
         $struct_name:ident, // e.g. `UnstableOptions`
         $metadata_name: ident, // e.g. `UnstableOptionsMetadata`
         $opt_descs_var:ident, // e.g. `Z_OPTIONS`
@@ -342,6 +346,7 @@ macro_rules! options {
             ),
         )*
     ) => {
+        $(#[$struct_attr])*
         #[derive(Clone)]
         #[rustc_lint_opt_ty]
         pub struct $struct_name {
@@ -429,6 +434,134 @@ macro_rules! options {
             $(
                 setter_for!($opt, $struct_name, $group_name, $parse);
             )*
+        }
+    }
+}
+
+trait TargetModifierOptionValue {
+    fn to_string_for_diag(&self) -> String;
+}
+
+impl TargetModifierOptionValue for bool {
+    fn to_string_for_diag(&self) -> String {
+        self.to_string()
+    }
+}
+
+impl TargetModifierOptionValue for u32 {
+    fn to_string_for_diag(&self) -> String {
+        self.to_string()
+    }
+}
+
+impl<T: TargetModifierOptionValue> TargetModifierOptionValue for Option<T> {
+    fn to_string_for_diag(&self) -> String {
+        match self {
+            Some(v) => v.to_string_for_diag(),
+            None => "".to_string(),
+        }
+    }
+}
+
+macro_rules! target_modifier_options {
+    (
+        $struct_name:ident, // e.g. `UnstableOptions`
+        $metadata_name: ident, // e.g. `UnstableOptionsMetadata`
+        $opt_descs_var:ident, // e.g. `Z_OPTIONS`
+        $opt_mod_name:ident, // e.g. `dbopts`
+        $prefix:expr, // e.g. `-Z`
+        $group_name:ident, // e.g. `unstable`
+
+        $(
+            $(#[$attr:meta])*
+            $opt:ident : $t:ty = (
+                $init:expr,
+                $parse:ident,
+                [$dep_tracking_marker:ident],
+                $desc:literal
+                $(, removed: $removed:ident )?
+            ),
+        )*
+    ) => {
+        options! {
+            #[derive(Encodable, BlobDecodable)]
+            $struct_name,
+            $metadata_name,
+            $opt_descs_var,
+            $opt_mod_name,
+            $prefix,
+            $group_name,
+
+            $(
+                $(#[$attr])*
+                $opt : $t = (
+                    $init,
+                    $parse,
+                    [$dep_tracking_marker],
+                    $desc
+                    $(, removed: $removed )?
+                ),
+            )*
+        }
+
+        impl $struct_name {
+            pub fn ls(&self) -> String {
+                let mut out = Vec::new();
+                $(
+                  out.push(format!(
+                      "-{prefix}{opt}={val} [{val:?}]",
+                      prefix=$prefix,
+                      opt=stringify!($opt).replace('_', "-"),
+                      val=self.$opt.to_string_for_diag())
+                  );
+                )*
+                out.join("\n")
+            }
+
+            pub fn is_target_modifier(name: &str) -> bool {
+                let name = name.replace('-', "_");
+                match name.as_str() {
+                    $(stringify!($opt))|* => true,
+                    _ => false,
+                }
+            }
+
+            pub fn report_mismatched_flags_with_dep(
+                &self,
+                sess: &crate::Session,
+                local_crate: rustc_span::Symbol,
+                extern_opts: &Self,
+                extern_crate: rustc_span::Symbol
+            ) {
+                let allowed_flag_mismatches = &sess.opts.cg.unsafe_allow_abi_mismatch;
+                $(
+                    let flag_name = stringify!($opt).replace('_', "-").to_string();
+                    let allowed = allowed_flag_mismatches.contains(&flag_name);
+                    if !allowed && self.$opt != extern_opts.$opt {
+                        if sess.opts.metadata.$group_name.$opt.is_set {
+                            // If `self` set and not matching, `extern_opts` might have set `$opt`
+                            // or might not, but the guidance is the same regardless
+                            sess.dcx().emit_err(crate::diagnostics::IncompatibleFlags {
+                                local_crate,
+                                extern_crate,
+                                prefix: $prefix.to_string(),
+                                flag_name,
+                                local_value: self.$opt.to_string_for_diag(),
+                                extern_value: extern_opts.$opt.to_string_for_diag(),
+                            });
+                        } else {
+                            // If `self` unset and not matching, assume `extern_opts` set `$opt`
+                            sess.dcx().emit_err(crate::diagnostics::IncompatibleFlagsUnsetLocally {
+                                local_crate,
+                                extern_crate,
+                                prefix: $prefix.to_string(),
+                                flag_name,
+                                extern_value: extern_opts.$opt.to_string_for_diag(),
+                            });
+                        }
+                    }
+                )*
+            }
         }
     }
 }
@@ -2099,6 +2232,19 @@ options! {
     // If you add a new option, please update:
     // - compiler/rustc_interface/src/tests.rs
     // - src/doc/rustc/src/codegen-options/index.md
+}
+
+target_modifier_options! {
+    TargetOptions, TargetOptionsMetadata, T_OPTIONS, topts, "T", target,
+
+    // tidy-alphabetical-start
+    fixed_x18: bool = (false, parse_bool, [TRACKED],
+        "make the x18 register reserved on AArch64 (default: no)"),
+    // tidy-alphabetical-end
+
+    // If you add a new option, please update:
+    // - compiler/rustc_interface/src/tests.rs
+    // - src/doc/rustc/src/target-options/index.md (for stable options)
 }
 
 options! {

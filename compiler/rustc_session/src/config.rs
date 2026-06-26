@@ -1434,6 +1434,7 @@ fn file_path_mapping(
 
 impl Default for Options {
     fn default() -> Options {
+        let target_opts = TargetOptions::default();
         let unstable_opts = UnstableOptions::default();
 
         // FIXME(Urgau): This is a hack that ideally shouldn't exist, but rustdoc
@@ -1459,6 +1460,7 @@ impl Default for Options {
             target_triple: TargetTuple::from_tuple(host_tuple()),
             test: false,
             incremental: None,
+            target_opts,
             unstable_opts,
             prints: Vec::new(),
             cg: Default::default(),
@@ -2049,6 +2051,14 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "<LEVEL>",
         ),
         opt(Stable, Multi, "C", "codegen", "Set a codegen option", "<OPT>[=<VALUE>]"),
+        opt(
+            Stable,
+            Multi,
+            "T",
+            "target-modifier",
+            "Set a target modifier option",
+            "<OPT>[=<VALUE>]",
+        ),
         opt(Stable, Flag, "V", "version", "Print version info and exit", ""),
         opt(Stable, Flag, "v", "verbose", "Use verbose output", ""),
     ];
@@ -2702,6 +2712,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     let mut collected_options = Default::default();
 
+    let target_opts = TargetOptions::build(early_dcx, matches, &mut collected_options);
     let mut unstable_opts = UnstableOptions::build(early_dcx, matches, &mut collected_options);
 
     // `-Zassumptions-on-binders` requires the next trait solver globally. Normalize after
@@ -3030,6 +3041,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         target_triple,
         test,
         incremental,
+        target_opts,
         unstable_opts,
         prints,
         cg,

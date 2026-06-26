@@ -63,6 +63,8 @@ Options:
                         lints are capped at this level
     -C, --codegen <OPT>[=<VALUE>]
                         Set a codegen option
+    -T, --target-modifier <OPT>[=<VALUE>]
+                        Set a target modifier option
     -V, --version       Print version info and exit
     -v, --verbose       Use verbose output
         --extern <NAME>[=<PATH>]
@@ -90,6 +92,7 @@ Options:
 
 Additional help:
     -C help             Print codegen options
+    -T help             Print target modifier options
     -W help             Print 'lint' options and default settings
     -Z help             Print unstable compiler options
 

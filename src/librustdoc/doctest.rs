@@ -112,6 +112,9 @@ pub(crate) fn generate_args_file(file_path: &Path, options: &RustdocOptions) -> 
     for codegen_options_str in &options.codegen_options_strs {
         content.push(format!("-C{codegen_options_str}"));
     }
+    for target_option_str in &options.target_opts_strs {
+        content.push(format!("-T{target_option_str}"));
+    }
     for unstable_option_str in &options.unstable_opts_strs {
         content.push(format!("-Z{unstable_option_str}"));
     }
@@ -172,6 +175,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
         crate_name: options.crate_name.clone(),
         remap_path_prefix: options.remap_path_prefix.clone(),
         remap_path_scope: options.remap_path_scope.clone(),
+        target_opts: options.target_opts.clone(),
         unstable_opts: options.unstable_opts.clone(),
         error_format: options.error_format.clone(),
         ..config::Options::default()

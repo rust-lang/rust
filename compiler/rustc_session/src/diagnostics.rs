@@ -729,3 +729,48 @@ pub(crate) struct ResolveRelativePath {
     pub span: Span,
     pub path: String,
 }
+
+#[derive(Diagnostic)]
+#[diag("mixing `-{$prefix}{$flag_name}` will cause an ABI mismatch in crate `{$local_crate}`")]
+#[help(
+    "the `-{$prefix}{$flag_name}` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely"
+)]
+#[note(
+    "`-{$prefix}{$flag_name}={$local_value}` in this crate is incompatible with `-{$prefix}{$flag_name}={$extern_value}` in dependency `{$extern_crate}`"
+)]
+#[help(
+    "set `-{$prefix}{$flag_name}={$extern_value}` in this crate or `-{$prefix}{$flag_name}={$local_value}` in `{$extern_crate}`"
+)]
+#[help(
+    "if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error"
+)]
+pub(crate) struct IncompatibleFlags {
+    pub extern_crate: Symbol,
+    pub local_crate: Symbol,
+    pub prefix: String,
+    pub flag_name: String,
+    pub local_value: String,
+    pub extern_value: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("mixing `-{$prefix}{$flag_name}` will cause an ABI mismatch in crate `{$local_crate}`")]
+#[help(
+    "the `-{$prefix}{$flag_name}` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely"
+)]
+#[note(
+    "unset `-{$prefix}{$flag_name}` in this crate is incompatible with `-{$prefix}{$flag_name}={$extern_value}` in dependency `{$extern_crate}`"
+)]
+#[help(
+    "set `-{$prefix}{$flag_name}={$extern_value}` in this crate or unset `-{$prefix}{$flag_name}` in `{$extern_crate}`"
+)]
+#[help(
+    "if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error"
+)]
+pub(crate) struct IncompatibleFlagsUnsetLocally {
+    pub extern_crate: Symbol,
+    pub local_crate: Symbol,
+    pub prefix: String,
+    pub flag_name: String,
+    pub extern_value: String,
+}

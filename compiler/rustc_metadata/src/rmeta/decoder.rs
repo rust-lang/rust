@@ -750,6 +750,7 @@ impl MetadataBlob {
             "lang_items".to_owned(),
             "features".to_owned(),
             "items".to_owned(),
+            "target_modifiers".to_owned(),
         ];
         let ls_kinds = if ls_kinds.contains(&"all".to_owned()) { &all_ls_kinds } else { ls_kinds };
 
@@ -919,11 +920,16 @@ impl MetadataBlob {
 
                     write!(out, "\n")?;
                 }
+                "target_modifiers" => {
+                    writeln!(out, "=Target modifiers=")?;
+                    writeln!(out, "{}", root.target_options.ls())?;
+                }
 
                 _ => {
                     writeln!(
                         out,
-                        "unknown -Zls kind. allowed values are: all, root, lang_items, features, items"
+                        "unknown -Zls kind. allowed values are: all, root, lang_items, features, items, \
+                            target_modifiers"
                     )?;
                 }
             }
@@ -1974,6 +1980,10 @@ impl CrateMetadata {
 
     pub(crate) fn enabled_denied_partial_mitigations(&self) -> DeniedPartialMitigations {
         self.root.decode_denied_partial_mitigations(&self.blob).collect()
+    }
+
+    pub(crate) fn target_opts(&self) -> &TargetOptions {
+        &self.root.target_options
     }
 
     /// Keep `new_extern_crate` if it looks better in diagnostics
