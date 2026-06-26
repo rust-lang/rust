@@ -1,0 +1,461 @@
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "Plain"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "Foo"
+          GENERIC_ARG_LIST
+            L_ANGLE "<"
+            TYPE_ARG
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Item"
+            COMMA ","
+            WHITESPACE " "
+            TYPE_ARG
+              PATH_TYPE
+                PATH
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "Item"
+                  COLON2 "::"
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Item"
+            COMMA ","
+            WHITESPACE " "
+            ASSOC_TYPE_ARG
+              NAME_REF
+                IDENT "Item"
+              COLON ":"
+              WHITESPACE " "
+              TYPE_BOUND_LIST
+                TYPE_BOUND
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "Bound"
+            COMMA ","
+            WHITESPACE " "
+            ASSOC_TYPE_ARG
+              NAME_REF
+                IDENT "Item"
+              WHITESPACE " "
+              EQ "="
+              WHITESPACE " "
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Item"
+            R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "GenericArgs"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "Foo"
+          GENERIC_ARG_LIST
+            L_ANGLE "<"
+            TYPE_ARG
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Item"
+                    GENERIC_ARG_LIST
+                      L_ANGLE "<"
+                      TYPE_ARG
+                        PATH_TYPE
+                          PATH
+                            PATH_SEGMENT
+                              NAME_REF
+                                IDENT "T"
+                      R_ANGLE ">"
+            COMMA ","
+            WHITESPACE " "
+            TYPE_ARG
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Item"
+                    GENERIC_ARG_LIST
+                      COLON2 "::"
+                      L_ANGLE "<"
+                      TYPE_ARG
+                        PATH_TYPE
+                          PATH
+                            PATH_SEGMENT
+                              NAME_REF
+                                IDENT "T"
+                      R_ANGLE ">"
+            COMMA ","
+            WHITESPACE " "
+            ASSOC_TYPE_ARG
+              NAME_REF
+                IDENT "Item"
+              GENERIC_ARG_LIST
+                L_ANGLE "<"
+                TYPE_ARG
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "T"
+                R_ANGLE ">"
+              COLON ":"
+              WHITESPACE " "
+              TYPE_BOUND_LIST
+                TYPE_BOUND
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "Bound"
+            COMMA ","
+            WHITESPACE " "
+            ASSOC_TYPE_ARG
+              NAME_REF
+                IDENT "Item"
+              GENERIC_ARG_LIST
+                COLON2 "::"
+                L_ANGLE "<"
+                TYPE_ARG
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "T"
+                R_ANGLE ">"
+              COLON ":"
+              WHITESPACE " "
+              TYPE_BOUND_LIST
+                TYPE_BOUND
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "Bound"
+            COMMA ","
+            WHITESPACE " "
+            ASSOC_TYPE_ARG
+              NAME_REF
+                IDENT "Item"
+              GENERIC_ARG_LIST
+                L_ANGLE "<"
+                TYPE_ARG
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "T"
+                R_ANGLE ">"
+              WHITESPACE " "
+              EQ "="
+              WHITESPACE " "
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Item"
+            COMMA ","
+            WHITESPACE " "
+            ASSOC_TYPE_ARG
+              NAME_REF
+                IDENT "Item"
+              GENERIC_ARG_LIST
+                COLON2 "::"
+                L_ANGLE "<"
+                TYPE_ARG
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "T"
+                R_ANGLE ">"
+              WHITESPACE " "
+              EQ "="
+              WHITESPACE " "
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Item"
+            R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "ParenthesizedArgs"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "Foo"
+          GENERIC_ARG_LIST
+            L_ANGLE "<"
+            TYPE_ARG
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Item"
+                    PARENTHESIZED_ARG_LIST
+                      L_PAREN "("
+                      TYPE_ARG
+                        PATH_TYPE
+                          PATH
+                            PATH_SEGMENT
+                              NAME_REF
+                                IDENT "T"
+                      R_PAREN ")"
+            COMMA ","
+            WHITESPACE " "
+            TYPE_ARG
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Item"
+                    PARENTHESIZED_ARG_LIST
+                      COLON2 "::"
+                      L_PAREN "("
+                      TYPE_ARG
+                        PATH_TYPE
+                          PATH
+                            PATH_SEGMENT
+                              NAME_REF
+                                IDENT "T"
+                      R_PAREN ")"
+            COMMA ","
+            WHITESPACE " "
+            ASSOC_TYPE_ARG
+              NAME_REF
+                IDENT "Item"
+              PARENTHESIZED_ARG_LIST
+                L_PAREN "("
+                TYPE_ARG
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "T"
+                R_PAREN ")"
+              COLON ":"
+              WHITESPACE " "
+              TYPE_BOUND_LIST
+                TYPE_BOUND
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "Bound"
+            COMMA ","
+            WHITESPACE " "
+            ASSOC_TYPE_ARG
+              NAME_REF
+                IDENT "Item"
+              PARENTHESIZED_ARG_LIST
+                COLON2 "::"
+                L_PAREN "("
+                TYPE_ARG
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "T"
+                R_PAREN ")"
+              COLON ":"
+              WHITESPACE " "
+              TYPE_BOUND_LIST
+                TYPE_BOUND
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "Bound"
+            COMMA ","
+            WHITESPACE " "
+            ASSOC_TYPE_ARG
+              NAME_REF
+                IDENT "Item"
+              PARENTHESIZED_ARG_LIST
+                L_PAREN "("
+                TYPE_ARG
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "T"
+                R_PAREN ")"
+              WHITESPACE " "
+              EQ "="
+              WHITESPACE " "
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Item"
+            COMMA ","
+            WHITESPACE " "
+            ASSOC_TYPE_ARG
+              NAME_REF
+                IDENT "Item"
+              PARENTHESIZED_ARG_LIST
+                COLON2 "::"
+                L_PAREN "("
+                TYPE_ARG
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "T"
+                R_PAREN ")"
+              WHITESPACE " "
+              EQ "="
+              WHITESPACE " "
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Item"
+            R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "RTN"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "Foo"
+          GENERIC_ARG_LIST
+            L_ANGLE "<"
+            TYPE_ARG
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Item"
+                    RETURN_TYPE_SYNTAX
+                      L_PAREN "("
+                      DOT2 ".."
+                      R_PAREN ")"
+            COMMA ","
+            WHITESPACE " "
+            TYPE_ARG
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Item"
+                    RETURN_TYPE_SYNTAX
+                      L_PAREN "("
+                      DOT2 ".."
+                      R_PAREN ")"
+            COMMA ","
+            WHITESPACE " "
+            ASSOC_TYPE_ARG
+              NAME_REF
+                IDENT "Item"
+              RETURN_TYPE_SYNTAX
+                L_PAREN "("
+                DOT2 ".."
+                R_PAREN ")"
+              COLON ":"
+              WHITESPACE " "
+              TYPE_BOUND_LIST
+                TYPE_BOUND
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "Bound"
+            COMMA ","
+            WHITESPACE " "
+            ASSOC_TYPE_ARG
+              NAME_REF
+                IDENT "Item"
+              RETURN_TYPE_SYNTAX
+                L_PAREN "("
+                DOT2 ".."
+                R_PAREN ")"
+              COLON ":"
+              WHITESPACE " "
+              TYPE_BOUND_LIST
+                TYPE_BOUND
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "Bound"
+            COMMA ","
+            WHITESPACE " "
+            ASSOC_TYPE_ARG
+              NAME_REF
+                IDENT "Item"
+              RETURN_TYPE_SYNTAX
+                L_PAREN "("
+                DOT2 ".."
+                R_PAREN ")"
+              WHITESPACE " "
+              EQ "="
+              WHITESPACE " "
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Item"
+            COMMA ","
+            WHITESPACE " "
+            ASSOC_TYPE_ARG
+              NAME_REF
+                IDENT "Item"
+              RETURN_TYPE_SYNTAX
+                L_PAREN "("
+                DOT2 ".."
+                R_PAREN ")"
+              WHITESPACE " "
+              EQ "="
+              WHITESPACE " "
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Item"
+            R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n"

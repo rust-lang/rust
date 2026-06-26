@@ -1,0 +1,43 @@
+error[E0119]: conflicting implementations of trait `SizedTr` for type `X<_>`
+  --> $DIR/pretty-print.rs:18:1
+   |
+LL | impl<T: Sized> SizedTr for X<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: conflicting implementation in crate `pretty_print_dep`:
+           - impl<T> SizedTr for T
+             where T: Sized;
+
+error[E0119]: conflicting implementations of trait `NegSizedTr` for type `X<_>`
+  --> $DIR/pretty-print.rs:21:1
+   |
+LL | impl<T: ?Sized> pretty_print_dep::NegSizedTr for X<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: conflicting implementation in crate `pretty_print_dep`:
+           - impl<T> NegSizedTr for T
+             where T: MetaSized;
+
+error[E0119]: conflicting implementations of trait `MetaSizedTr` for type `X<_>`
+  --> $DIR/pretty-print.rs:24:1
+   |
+LL | impl<T: MetaSized> MetaSizedTr for X<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: conflicting implementation in crate `pretty_print_dep`:
+           - impl<T> MetaSizedTr for T
+             where T: MetaSized;
+
+error[E0119]: conflicting implementations of trait `PointeeSizedTr` for type `X<_>`
+  --> $DIR/pretty-print.rs:27:1
+   |
+LL | impl<T: PointeeSized> PointeeSizedTr for X<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: conflicting implementation in crate `pretty_print_dep`:
+           - impl<T> PointeeSizedTr for T
+             where T: PointeeSized;
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0119`.

@@ -1,0 +1,25 @@
+SOURCE_FILE@0..17
+  FN@0..17
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..4
+      IDENT@3..4 "f"
+    PARAM_LIST@4..14
+      L_PAREN@4..5 "("
+      PARAM@5..13
+        WILDCARD_PAT@5..6
+          UNDERSCORE@5..6 "_"
+        COLON@6..7 ":"
+        WHITESPACE@7..8 " "
+        REF_TYPE@8..13
+          AMP@8..9 "&"
+          IMPL_TRAIT_TYPE@9..13
+            IMPL_KW@9..13 "impl"
+            TYPE_BOUND_LIST@13..13
+      R_PAREN@13..14 ")"
+    WHITESPACE@14..15 " "
+    BLOCK_EXPR@15..17
+      STMT_LIST@15..17
+        L_CURLY@15..16 "{"
+        R_CURLY@16..17 "}"
+error 9..13: At least one trait is required for an object type

@@ -1,0 +1,8 @@
+error: expected a trait, found type
+  --> $DIR/trait-bounds-not-on-impl.rs:5:6
+   |
+LL | impl Foo + Owned for Bar {}
+   |      ^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

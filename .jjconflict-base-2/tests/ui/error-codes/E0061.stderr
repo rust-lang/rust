@@ -1,0 +1,35 @@
+error[E0061]: this function takes 2 arguments but 1 argument was supplied
+  --> $DIR/E0061.rs:6:5
+   |
+LL |     f(0);
+   |     ^--- argument #2 of type `&str` is missing
+   |
+note: function defined here
+  --> $DIR/E0061.rs:1:4
+   |
+LL | fn f(a: u16, b: &str) {}
+   |    ^         -------
+help: provide the argument
+   |
+LL |     f(0, /* &str */);
+   |        ++++++++++++
+
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> $DIR/E0061.rs:9:5
+   |
+LL |     f2();
+   |     ^^-- argument #1 of type `u16` is missing
+   |
+note: function defined here
+  --> $DIR/E0061.rs:3:4
+   |
+LL | fn f2(a: u16) {}
+   |    ^^ ------
+help: provide the argument
+   |
+LL |     f2(/* u16 */);
+   |        +++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0061`.

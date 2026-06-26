@@ -1,0 +1,40 @@
+- // MIR for `bar` before GVN
++ // MIR for `bar` after GVN
+  
+  fn bar() -> () {
+      let mut _0: ();
+      let mut _1: (i32,);
+      let _2: ();
+      let mut _3: *mut i32;
+      let mut _5: i32;
+      scope 1 {
+          debug v => _1;
+          let _4: bool;
+          scope 2 {
+              debug y => _4;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+-         _1 = (const 1_i32,);
++         _1 = const (1_i32,);
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = &raw mut (_1.0: i32);
+          (*_3) = const 5_i32;
+          StorageDead(_3);
+          _2 = const ();
+          StorageDead(_2);
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = copy (_1.0: i32);
+          _4 = Eq(move _5, const 5_i32);
+          StorageDead(_5);
+          _0 = const ();
+          StorageDead(_4);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

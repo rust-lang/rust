@@ -1,0 +1,13 @@
+error: expected identifier, found keyword `for`
+  --> $DIR/keyword-for-as-identifier.rs:4:9
+   |
+LL |     let for = "foo";
+   |         ^^^ expected identifier, found keyword
+   |
+help: escape `for` to use it as an identifier
+   |
+LL |     let r#for = "foo";
+   |         ++
+
+error: aborting due to 1 previous error
+

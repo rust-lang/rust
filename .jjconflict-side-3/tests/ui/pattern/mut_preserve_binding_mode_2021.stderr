@@ -1,0 +1,31 @@
+error[E0308]: mismatched types
+  --> $DIR/mut_preserve_binding_mode_2021.rs:10:9
+   |
+LL |     let Foo(mut a) = &Foo(0);
+   |             ----- expected due to the type of this binding
+LL |     a = &42;
+   |         ^^^ expected `u8`, found `&{integer}`
+   |
+help: consider removing the borrow
+   |
+LL -     a = &42;
+LL +     a = 42;
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/mut_preserve_binding_mode_2021.rs:14:9
+   |
+LL |     let Foo(mut a) = &mut Foo(0);
+   |             ----- expected due to the type of this binding
+LL |     a = &mut 42;
+   |         ^^^^^^^ expected `u8`, found `&mut {integer}`
+   |
+help: consider removing the borrow
+   |
+LL -     a = &mut 42;
+LL +     a = 42;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

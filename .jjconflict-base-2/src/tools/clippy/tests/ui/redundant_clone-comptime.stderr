@@ -1,0 +1,16 @@
+error: redundant clone
+  --> tests/ui/redundant_clone-comptime.rs:16:15
+   |
+LL |     let _a = a.clone();
+   |               ^^^^^^^^ help: remove this
+   |
+note: this value is dropped without further use
+  --> tests/ui/redundant_clone-comptime.rs:16:14
+   |
+LL |     let _a = a.clone();
+   |              ^
+   = note: `-D clippy::redundant-clone` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_clone)]`
+
+error: aborting due to 1 previous error
+

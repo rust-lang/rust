@@ -1,0 +1,15 @@
+error[E0621]: explicit lifetime required in the type of `foo`
+  --> $DIR/issue-63388-1.rs:14:9
+   |
+LL |         foo
+   |         ^^^ lifetime `'a` required
+   |
+help: add explicit lifetime `'a` to the type of `foo`
+   |
+LL -         &'a self, foo: &dyn Foo
+LL +         &'a self, foo: &'a (dyn Foo + 'a)
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0621`.

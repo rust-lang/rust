@@ -1,0 +1,88 @@
+error[E0310]: the parameter type `U` may not live long enough
+  --> $DIR/regions-close-object-into-object-4.rs:9:5
+   |
+LL |     Box::new(B(&*v)) as Box<dyn X>
+   |     ^^^^^^^^
+   |     |
+   |     the parameter type `U` must be valid for the static lifetime...
+   |     ...so that the type `U` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn i<'a, T, U: 'static>(v: Box<dyn A<U>+'a>) -> Box<dyn X + 'static> {
+   |              +++++++++
+
+error[E0310]: the parameter type `U` may not live long enough
+  --> $DIR/regions-close-object-into-object-4.rs:9:5
+   |
+LL |     Box::new(B(&*v)) as Box<dyn X>
+   |     ^^^^^^^^^^^^^^^^
+   |     |
+   |     the parameter type `U` must be valid for the static lifetime...
+   |     ...so that the type `U` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn i<'a, T, U: 'static>(v: Box<dyn A<U>+'a>) -> Box<dyn X + 'static> {
+   |              +++++++++
+
+error[E0310]: the parameter type `U` may not live long enough
+  --> $DIR/regions-close-object-into-object-4.rs:9:5
+   |
+LL |     Box::new(B(&*v)) as Box<dyn X>
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     the parameter type `U` must be valid for the static lifetime...
+   |     ...so that the type `U` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn i<'a, T, U: 'static>(v: Box<dyn A<U>+'a>) -> Box<dyn X + 'static> {
+   |              +++++++++
+
+error: lifetime may not live long enough
+  --> $DIR/regions-close-object-into-object-4.rs:9:5
+   |
+LL | fn i<'a, T, U>(v: Box<dyn A<U>+'a>) -> Box<dyn X + 'static> {
+   |      -- lifetime `'a` defined here
+LL |     Box::new(B(&*v)) as Box<dyn X>
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
+   |
+help: consider changing the trait object's explicit `'static` bound to the lifetime of argument `v`
+   |
+LL - fn i<'a, T, U>(v: Box<dyn A<U>+'a>) -> Box<dyn X + 'static> {
+LL + fn i<'a, T, U>(v: Box<dyn A<U>+'a>) -> Box<dyn X + 'a> {
+   |
+help: alternatively, add an explicit `'static` bound to this reference
+   |
+LL - fn i<'a, T, U>(v: Box<dyn A<U>+'a>) -> Box<dyn X + 'static> {
+LL + fn i<'a, T, U>(v: Box<(dyn A<U> + 'static)>) -> Box<dyn X + 'static> {
+   |
+
+error[E0515]: cannot return value referencing local data `*v`
+  --> $DIR/regions-close-object-into-object-4.rs:9:5
+   |
+LL |     Box::new(B(&*v)) as Box<dyn X>
+   |     ^^^^^^^^^^^---^^^^^^^^^^^^^^^^
+   |     |          |
+   |     |          `*v` is borrowed here
+   |     returns a value referencing data owned by the current function
+
+error[E0310]: the parameter type `U` may not live long enough
+  --> $DIR/regions-close-object-into-object-4.rs:9:14
+   |
+LL |     Box::new(B(&*v)) as Box<dyn X>
+   |              ^^^^^^
+   |              |
+   |              the parameter type `U` must be valid for the static lifetime...
+   |              ...so that the type `U` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn i<'a, T, U: 'static>(v: Box<dyn A<U>+'a>) -> Box<dyn X + 'static> {
+   |              +++++++++
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0310, E0515.
+For more information about an error, try `rustc --explain E0310`.

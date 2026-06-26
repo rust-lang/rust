@@ -1,0 +1,13 @@
+warning: method `foo` is never used
+  --> $DIR/issue-22536-copy-mustnt-zero.rs:8:8
+   |
+LL | trait Resources {
+   |       --------- method in this trait
+LL |     type Buffer: Copy;
+LL |     fn foo(&self) {}
+   |        ^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+
