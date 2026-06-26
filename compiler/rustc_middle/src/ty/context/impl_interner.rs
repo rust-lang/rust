@@ -340,6 +340,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.assumptions_on_binders()
     }
 
+    fn renormalize_rigid_aliases(self) -> bool {
+        self.renormalize_rigid_aliases()
+    }
+
     fn coroutine_hidden_types(
         self,
         def_id: DefId,
@@ -388,7 +392,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Clause<'tcx>>> {
-        ty::EarlyBinder::bind(
+        ty::EarlyBinder::bind_iter(
             self.predicates_of(def_id)
                 .instantiate_identity(self)
                 .predicates
@@ -401,7 +405,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Clause<'tcx>>> {
-        ty::EarlyBinder::bind(
+        ty::EarlyBinder::bind_iter(
             self.predicates_of(def_id)
                 .instantiate_own_identity()
                 .map(|(clause, _)| clause.skip_normalization()),
@@ -456,7 +460,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Binder<'tcx, ty::TraitRef<'tcx>>>> {
-        ty::EarlyBinder::bind(
+        ty::EarlyBinder::bind_iter(
             self.const_conditions(def_id)
                 .instantiate_identity(self)
                 .into_iter()
@@ -468,7 +472,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Binder<'tcx, ty::TraitRef<'tcx>>>> {
-        ty::EarlyBinder::bind(
+        ty::EarlyBinder::bind_iter(
             self.explicit_implied_const_bounds(def_id)
                 .iter_identity_copied()
                 .map(Unnormalized::skip_normalization)
@@ -645,7 +649,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             //
             // Impls which apply to an alias after normalization are handled by
             // `assemble_candidates_after_normalizing_self_ty`.
-            ty::Alias(_) | ty::Placeholder(..) | ty::Error(_) => (),
+            ty::Alias(ty::IsRigid::Yes, _) | ty::Placeholder(..) | ty::Error(_) => (),
+            // FIXME(-Znext-solver=no): Need to support aliases not marked as
+            // rigid for the old solver.
+            ty::Alias(ty::IsRigid::No, _) => (),
 
             // FIXME: These should ideally not exist as a self type. It would be nice for
             // the builtin auto trait impls of coroutines to instead directly recurse

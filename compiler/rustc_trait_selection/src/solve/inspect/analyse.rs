@@ -151,7 +151,7 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
                         self.final_state,
                     );
 
-                    return eager_resolve_vars(infcx, impl_args);
+                    return eager_resolve_vars(&**infcx, impl_args);
                 }
                 inspect::ProbeStep::AddGoal(..) => {}
                 inspect::ProbeStep::MakeCanonicalResponse { .. }
@@ -331,7 +331,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
             infcx,
             depth,
             orig_values,
-            goal: eager_resolve_vars(infcx, uncanonicalized_goal),
+            goal: eager_resolve_vars(&**infcx, uncanonicalized_goal),
             result,
             final_revision,
             source,

@@ -239,14 +239,17 @@ impl<'tcx> Const<'tcx> {
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
-        ty::EarlyBinder::bind(Const::Unevaluated(
-            UnevaluatedConst {
-                def: def_id,
-                args: ty::GenericArgs::identity_for_item(tcx, def_id),
-                promoted: None,
-            },
-            tcx.type_of(def_id).skip_binder(),
-        ))
+        ty::EarlyBinder::bind(
+            tcx,
+            Const::Unevaluated(
+                UnevaluatedConst {
+                    def: def_id,
+                    args: ty::GenericArgs::identity_for_item(tcx, def_id),
+                    promoted: None,
+                },
+                tcx.type_of(def_id).skip_binder(),
+            ),
+        )
     }
 
     #[inline(always)]
@@ -317,7 +320,9 @@ impl<'tcx> Const<'tcx> {
     ) -> Result<ConstValue, ErrorHandled> {
         match self {
             Const::Ty(_, c) => {
-                if c.has_non_region_param() {
+                // FIXME(generic_const_exprs): We shouldn't encounter placeholders here
+                // and could change this to ICE when encountering them instead.
+                if c.has_non_region_param() || c.has_non_region_placeholders() {
                     return Err(ErrorHandled::TooGeneric(span));
                 }
 

@@ -112,7 +112,7 @@ fn into_iter_bound<'tcx>(
                     }
                 }));
 
-                let predicate = EarlyBinder::bind(tr).instantiate(cx.tcx, args).skip_norm_wip();
+                let predicate = EarlyBinder::bind(cx.tcx, tr).instantiate(cx.tcx, args).skip_norm_wip();
                 let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
                 if !cx
                     .tcx
@@ -132,8 +132,8 @@ fn into_iter_bound<'tcx>(
 /// Extracts the receiver of a `.into_iter()` method call.
 fn into_iter_call<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>) -> Option<&'hir Expr<'hir>> {
     if let ExprKind::MethodCall(name, recv, [], _) = expr.kind
-        && cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::IntoIterator)
         && name.ident.name == sym::into_iter
+        && cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::IntoIterator)
     {
         Some(recv)
     } else {
@@ -208,7 +208,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
             },
 
             ExprKind::MethodCall(name, recv, [], _) => {
-                if cx.ty_based_def(e).opt_parent(cx).is_diag_item(cx, sym::Into) && name.ident.name == sym::into {
+                if name.ident.name == sym::into && cx.ty_based_def(e).opt_parent(cx).is_diag_item(cx, sym::Into) {
                     let a = cx.typeck_results().expr_ty(e);
                     let b = cx.typeck_results().expr_ty(recv);
                     if same_type_modulo_regions(a, b) {
@@ -393,8 +393,8 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         );
                     }
                 }
-                if cx.ty_based_def(e).opt_parent(cx).is_diag_item(cx, sym::TryInto)
-                    && name.ident.name == sym::try_into
+                if name.ident.name == sym::try_into
+                    && cx.ty_based_def(e).opt_parent(cx).is_diag_item(cx, sym::TryInto)
                     && let a = cx.typeck_results().expr_ty(e)
                     && let b = cx.typeck_results().expr_ty(recv)
                     && a.is_diag_item(cx, sym::Result)

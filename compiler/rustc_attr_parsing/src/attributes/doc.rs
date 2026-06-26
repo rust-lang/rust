@@ -706,8 +706,8 @@ impl AttributeParser for DocParser {
         },
     )];
     // FIXME: Currently emitted from 2 different places, generating duplicated warnings.
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
-    // const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(ALL_TARGETS);
+    // const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
     //     Allow(Target::ExternCrate),
     //     Allow(Target::Use),
     //     Allow(Target::Static),

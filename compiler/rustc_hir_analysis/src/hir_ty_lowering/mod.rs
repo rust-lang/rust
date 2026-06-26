@@ -716,6 +716,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             generic_args: &'a GenericArgs<'tcx>,
             span: Span,
             infer_args: bool,
+            create_synth_args: bool,
             incorrect_args: &'a Result<(), GenericArgCountMismatch>,
         }
 
@@ -828,7 +829,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 .instantiate(tcx, preceding_args)
                                 .skip_norm_wip()
                                 .into()
-                        } else if synthetic {
+                        } else if self.create_synth_args && synthetic {
                             Ty::new_param(tcx, param.index, param.name).into()
                         } else if infer_args {
                             self.lowerer.ty_infer(Some(param), self.span).into()
@@ -868,6 +869,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             span,
             generic_args: segment.args(),
             infer_args: segment.infer_args,
+            create_synth_args: tcx.hir_is_delegation_child_segment(segment),
             incorrect_args: &arg_count.correct,
         };
 
@@ -1216,7 +1218,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // feature `lazy_type_alias` enabled get encoded as a type alias that normalization will
             // then actually instantiate the where bounds of.
             let alias_ty = ty::AliasTy::new_from_args(tcx, ty::Free { def_id }, args);
-            Ty::new_alias(tcx, alias_ty)
+            Ty::new_alias(tcx, ty::IsRigid::No, alias_ty)
         } else {
             tcx.at(span).type_of(def_id).instantiate(tcx, args).skip_norm_wip()
         }
@@ -1356,8 +1358,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         )? {
             TypeRelativePath::AssocItem(alias_term) => {
                 let alias_ty = alias_term.expect_ty();
-                let def_id = alias_ty.kind.def_id();
-                let ty = alias_ty.to_ty(tcx);
+                let def_id = match alias_ty.kind {
+                    ty::AliasTyKind::Projection { def_id } => def_id,
+                    ty::AliasTyKind::Inherent { def_id } => def_id,
+                    kind => bug!("expected projection or inherent alias, got {kind:?}"),
+                };
+                let ty = alias_ty.to_ty(tcx, ty::IsRigid::No);
                 let ty = self.check_param_uses_if_mcg(ty, span, false);
                 Ok((ty, tcx.def_kind(def_id), def_id))
             }
@@ -1396,7 +1402,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 if let Some(def_id) = alias_ct.kind.opt_def_id() {
                     self.require_type_const_attribute(def_id, span)?;
                 }
-                let ct = Const::new_unevaluated(tcx, alias_ct);
+                let ct = Const::new_unevaluated(tcx, ty::IsRigid::No, alias_ct);
                 let ct = self.check_param_uses_if_mcg(ct, span, false);
                 Ok(ct)
             }
@@ -1833,7 +1839,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ty::AssocTag::Type,
         ) {
             Ok((item_def_id, item_args)) => {
-                Ty::new_projection_from_args(self.tcx(), item_def_id, item_args)
+                Ty::new_projection_from_args(self.tcx(), ty::IsRigid::No, item_def_id, item_args)
             }
             Err(guar) => Ty::new_error(self.tcx(), guar),
         }
@@ -1864,7 +1870,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ty::UnevaluatedConstKind::new_from_def_id(tcx, item_def_id),
             item_args,
         );
-        Ok(Const::new_unevaluated(tcx, uv))
+        Ok(Const::new_unevaluated(tcx, ty::IsRigid::No, uv))
     }
 
     /// Lower a [resolved][hir::QPath::Resolved] (type-level) associated item path.
@@ -2118,7 +2124,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     GenericsArgsErrExtend::OpaqueTy,
                 );
                 let args = self.lower_generic_args_of_path_segment(span, did, segment);
-                Ty::new_opaque(tcx, did, args)
+                Ty::new_opaque(tcx, ty::IsRigid::No, did, args)
             }
             Res::Def(
                 DefKind::Enum
@@ -2317,7 +2323,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     const_arg.span,
                     "anonymous constants with lifetimes in their type are not yet supported",
                 );
-                tcx.feed_anon_const_type(anon.def_id, ty::EarlyBinder::bind(Ty::new_error(tcx, e)));
+                tcx.feed_anon_const_type(
+                    anon.def_id,
+                    ty::EarlyBinder::bind(tcx, Ty::new_error(tcx, e)),
+                );
                 return ty::Const::new_error(tcx, e);
             }
             // We must error if the instantiated type has any inference variables as we will
@@ -2328,7 +2337,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     const_arg.span,
                     "anonymous constants with inferred types are not yet supported",
                 );
-                tcx.feed_anon_const_type(anon.def_id, ty::EarlyBinder::bind(Ty::new_error(tcx, e)));
+                tcx.feed_anon_const_type(
+                    anon.def_id,
+                    ty::EarlyBinder::bind(tcx, Ty::new_error(tcx, e)),
+                );
                 return ty::Const::new_error(tcx, e);
             }
             // We error when the type contains unsubstituted generics since we do not currently
@@ -2338,11 +2350,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     const_arg.span,
                     "anonymous constants referencing generics are not yet supported",
                 );
-                tcx.feed_anon_const_type(anon.def_id, ty::EarlyBinder::bind(Ty::new_error(tcx, e)));
+                tcx.feed_anon_const_type(
+                    anon.def_id,
+                    ty::EarlyBinder::bind(tcx, Ty::new_error(tcx, e)),
+                );
                 return ty::Const::new_error(tcx, e);
             }
 
-            tcx.feed_anon_const_type(anon.def_id, ty::EarlyBinder::bind(ty));
+            tcx.feed_anon_const_type(anon.def_id, ty::EarlyBinder::bind(tcx, ty));
         }
 
         let hir_id = const_arg.hir_id;
@@ -2518,14 +2533,28 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> Const<'tcx> {
         let tcx = self.tcx();
 
+        let found_tuple = || {
+            tcx.sess
+                .source_map()
+                .span_to_snippet(span)
+                .map(|snippet| format!("`{snippet}`"))
+                .unwrap_or_else(|_| "const tuple".to_string())
+        };
+
         let tys = match ty.kind() {
             ty::Tuple(tys) => tys,
             ty::Error(e) => return Const::new_error(tcx, *e),
             _ => {
-                let e = tcx.dcx().span_err(span, format!("expected `{}`, found const tuple", ty));
+                let e =
+                    tcx.dcx().span_err(span, format!("expected `{}`, found {}", ty, found_tuple()));
                 return Const::new_error(tcx, e);
             }
         };
+
+        if exprs.len() != tys.len() {
+            let e = tcx.dcx().span_err(span, format!("expected `{}`, found {}", ty, found_tuple()));
+            return Const::new_error(tcx, e);
+        }
 
         let exprs = exprs
             .iter()
@@ -2745,6 +2774,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let args = self.lower_generic_args_of_path_segment(span, did, segment);
                 ty::Const::new_unevaluated(
                     tcx,
+                    ty::IsRigid::No,
                     ty::UnevaluatedConst::new(
                         tcx,
                         ty::UnevaluatedConstKind::new_from_def_id(tcx, did),
@@ -2902,6 +2932,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             Some(v) => v,
             None => ty::Const::new_unevaluated(
                 tcx,
+                ty::IsRigid::No,
                 ty::UnevaluatedConst::new(
                     tcx,
                     ty::UnevaluatedConstKind::Anon { def_id: anon.def_id.to_def_id() },
@@ -3525,9 +3556,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         debug!(?args);
 
         if in_trait.is_some() {
-            Ty::new_projection_from_args(tcx, def_id, args)
+            Ty::new_projection_from_args(tcx, ty::IsRigid::No, def_id, args)
         } else {
-            Ty::new_opaque(tcx, def_id, args)
+            Ty::new_opaque(tcx, ty::IsRigid::No, def_id, args)
         }
     }
 

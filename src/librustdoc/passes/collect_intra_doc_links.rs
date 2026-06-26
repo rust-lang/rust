@@ -547,7 +547,7 @@ fn ty_to_res<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Res> {
         ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did, .. }, _)), _) | ty::Foreign(did) => {
             Res::from_def_id(tcx, did)
         }
-        ty::Alias(..)
+        ty::Alias(_, ..)
         | ty::Closure(..)
         | ty::CoroutineClosure(..)
         | ty::Coroutine(..)

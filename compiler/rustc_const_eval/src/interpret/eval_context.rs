@@ -362,7 +362,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             .try_instantiate_mir_and_normalize_erasing_regions(
                 *self.tcx,
                 self.typing_env,
-                ty::EarlyBinder::bind(value),
+                ty::EarlyBinder::bind(self.tcx.tcx, value),
             )
             .map_err(|_| ErrorHandled::TooGeneric(self.cur_span()))
     }

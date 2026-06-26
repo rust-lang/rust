@@ -136,7 +136,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         self.instance.instantiate_mir_and_normalize_erasing_regions(
             self.cx.tcx(),
             self.cx.typing_env(),
-            ty::EarlyBinder::bind(value),
+            ty::EarlyBinder::bind(self.cx.tcx(), value),
         )
     }
 }
@@ -219,7 +219,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let monomorphized_mir = instance.instantiate_mir_and_normalize_erasing_regions(
             tcx,
             ty::TypingEnv::fully_monomorphized(),
-            ty::EarlyBinder::bind(mir.clone()),
+            ty::EarlyBinder::bind(tcx, mir.clone()),
         );
         mir = tcx.arena.alloc(optimize_use_clone::<Bx>(cx, monomorphized_mir));
     }

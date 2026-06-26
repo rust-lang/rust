@@ -161,7 +161,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::ConstKind::Param(_)
                 | ty::ConstKind::Expr(_)
                 | ty::ConstKind::Placeholder(_)
-                | ty::ConstKind::Unevaluated(_) => enforce_copy_bound(element, element_ty),
+                | ty::ConstKind::Unevaluated(_, _) => enforce_copy_bound(element, element_ty),
 
                 ty::ConstKind::Bound(_, _) | ty::ConstKind::Infer(_) | ty::ConstKind::Error(_) => {
                     unreachable!()
@@ -1396,7 +1396,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: new_def_id }, .. })
+                ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: new_def_id }, .. })
                 | ty::Closure(new_def_id, _)
                 | ty::FnDef(new_def_id, _) => {
                     def_id = new_def_id;

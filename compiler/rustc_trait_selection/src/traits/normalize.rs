@@ -229,7 +229,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
             )
             .ok()
             .flatten()
-            .unwrap_or_else(|| proj.to_term(infcx.tcx));
+            .unwrap_or_else(|| proj.to_term(infcx.tcx, ty::IsRigid::No));
 
             PlaceholderReplacer::replace_placeholders(
                 infcx,
@@ -391,11 +391,14 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        // We don't use the rigid marker in old solver.
+        debug_assert!(!ty.has_rigid_aliases());
+
         if !needs_normalization(self.selcx.infcx, &ty) {
             return ty;
         }
 
-        let ty::Alias(data) = *ty.kind() else { return ty.super_fold_with(self) };
+        let ty::Alias(_, data) = *ty.kind() else { return ty.super_fold_with(self) };
 
         // We try to be a little clever here as a performance optimization in
         // cases where there are nested projections under binders.
@@ -459,18 +462,21 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
 
     #[instrument(skip(self), level = "debug")]
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        // We don't use the rigid marker in old solver.
+        debug_assert!(!ct.has_rigid_aliases());
+
         let tcx = self.selcx.tcx();
 
         if tcx.features().generic_const_exprs()
             // Normalize type_const items even with feature `generic_const_exprs`.
-            && !matches!(ct.kind(), ty::ConstKind::Unevaluated(uv) if uv.kind.is_type_const(tcx))
+            && !matches!(ct.kind(), ty::ConstKind::Unevaluated(_, uv) if uv.kind.is_type_const(tcx))
             || !needs_normalization(self.selcx.infcx, &ct)
         {
             return ct;
         }
 
         let uv = match ct.kind() {
-            ty::ConstKind::Unevaluated(uv) => uv,
+            ty::ConstKind::Unevaluated(_, uv) => uv,
             _ => return ct.super_fold_with(self),
         };
 

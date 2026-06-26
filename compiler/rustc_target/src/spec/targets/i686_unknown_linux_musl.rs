@@ -12,6 +12,7 @@ pub(crate) fn target() -> Target {
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m32", "-Wl,-melf_i386"]);
     base.stack_probes = StackProbeType::Inline;
+    base.supports_fentry = true;
     // FIXME(compiler-team#422): musl targets should be dynamically linked by default.
     base.crt_static_default = true;
 

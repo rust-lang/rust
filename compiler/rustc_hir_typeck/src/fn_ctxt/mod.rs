@@ -294,7 +294,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         // HACK(eddyb) should get the original `Span`.
         let span = tcx.def_span(def_id);
 
-        ty::EarlyBinder::bind(tcx.arena.alloc_from_iter(
+        ty::EarlyBinder::bind_iter(tcx.arena.alloc_from_iter(
             self.param_env.caller_bounds().iter().filter_map(|predicate| {
                 match predicate.kind().skip_binder() {
                     ty::ClauseKind::Trait(data) if data.self_ty().is_param(index) => {
@@ -399,10 +399,13 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         match ty.kind() {
             ty::Adt(adt_def, _) => Some(*adt_def),
             // FIXME(#104767): Should we handle bound regions here?
-            ty::Alias(ty::AliasTy {
-                kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
-                ..
-            }) if !ty.has_escaping_bound_vars() => {
+            ty::Alias(
+                _,
+                ty::AliasTy {
+                    kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
+                    ..
+                },
+            ) if !ty.has_escaping_bound_vars() => {
                 self.normalize(span, Unnormalized::new_wip(ty)).ty_adt_def()
             }
             _ => None,
@@ -416,11 +419,10 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
             // WF obligations that are registered elsewhere, but they have a
             // better cause code assigned to them in `add_required_obligations_for_hir`.
             // This means that they should shadow obligations with worse spans.
-            if let ty::Alias(ty::AliasTy {
-                kind: ty::Projection { def_id } | ty::Free { def_id },
-                args,
-                ..
-            }) = ty.kind()
+            if let ty::Alias(
+                _,
+                ty::AliasTy { kind: ty::Projection { def_id } | ty::Free { def_id }, args, .. },
+            ) = ty.kind()
             {
                 self.add_required_obligations_for_hir(span, *def_id, args, hir_id);
             }

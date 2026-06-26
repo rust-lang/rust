@@ -11,7 +11,6 @@ fn proj<T: FnOnce() -> U, U>(x: Option<T>, y: U) {}
 fn main() {
     let mut x = None;
     proj(x, 1);
-    //[current]~^ ERROR: expected `foo` to return `{integer}`, but it returns `impl Sized`
-    //[next]~^^ ERROR: type mismatch resolving `<fn() -> impl Sized {foo} as FnOnce<()>>::Output == {integer}`
+    //~^ ERROR: expected `foo` to return `{integer}`, but it returns `impl Sized`
     x = Some(foo);
 }

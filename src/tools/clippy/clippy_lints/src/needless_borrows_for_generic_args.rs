@@ -285,7 +285,7 @@ fn needless_borrow_count<'tcx>(
                 return false;
             }
 
-            let predicate = EarlyBinder::bind(predicate)
+            let predicate = EarlyBinder::bind(cx.tcx, predicate)
                 .instantiate(cx.tcx, &args_with_referent_ty[..])
                 .skip_norm_wip();
             let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
@@ -341,6 +341,7 @@ fn is_mixed_projection_predicate<'tcx>(
         loop {
             match *projection_term.self_ty().kind() {
                 ty::Alias(
+                    _,
                     inner_projection_ty @ ty::AliasTy {
                         kind: ty::Projection { .. },
                         ..
@@ -434,7 +435,7 @@ fn replace_types<'tcx>(
                         .projection_term
                         .with_replaced_self_ty(cx.tcx, new_ty)
                         .expect_ty()
-                        .to_ty(cx.tcx);
+                        .to_ty(cx.tcx, ty::IsRigid::No);
 
                     if let Ok(projected_ty) = cx
                         .tcx

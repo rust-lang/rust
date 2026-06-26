@@ -15,6 +15,12 @@ note: required by a bound in `A`
 LL | type A<T: Foo> = T;
    |           ^^^ required by this bound in `A`
 
+error: the type `W<A<usize>>` is not well-formed
+  --> $DIR/alias-bounds-when-not-wf.rs:15:13
+   |
+LL | fn hello(_: W<A<usize>>) {}
+   |             ^^^^^^^^^^^
+
 error[E0277]: the trait bound `usize: Foo` is not satisfied
   --> $DIR/alias-bounds-when-not-wf.rs:15:13
    |
@@ -27,6 +33,6 @@ help: this trait has no implementations, consider adding one
 LL | trait Foo {}
    | ^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

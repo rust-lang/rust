@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::paths::{PathNS, lookup_path_str};
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::SpanExt;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefIdMap;
@@ -78,7 +78,7 @@ impl LateLintPass<'_> for ImportRename {
                     && let Some(name) = self.renames.get(&id)
                     // Remove semicolon since it is not present for nested imports
                     && let span_without_semi = cx.sess().source_map().span_until_char(item.span, ';')
-                    && let Some(snip) = span_without_semi.get_source_text(cx)
+                    && let Some(snip) = span_without_semi.get_text(cx)
                     && let Some(import) = match snip.split_once(" as ") {
                         None => Some(snip.as_str()),
                         Some((import, rename)) => {

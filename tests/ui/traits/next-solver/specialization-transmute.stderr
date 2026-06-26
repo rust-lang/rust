@@ -1,22 +1,33 @@
 error[E0308]: mismatched types
   --> $DIR/specialization-transmute.rs:13:9
    |
+LL | impl<T> Default for T {
+   |      - found this type parameter
+LL |     default type Id = T;
 LL |     fn intu(&self) -> &Self::Id {
    |                       --------- expected `&<T as Default>::Id` because of return type
 LL |         self
-   |         ^^^^ types differ
+   |         ^^^^ expected `&<T as Default>::Id`, found `&T`
    |
    = note: expected reference `&<T as Default>::Id`
               found reference `&T`
+help: consider restricting type parameter `T` with  `<Id = T>`
+   |
+LL | impl<T: <Id = T>> Default for T {
+   |       ++++++++++
 
 error[E0271]: type mismatch resolving `<u8 as Default>::Id == Option<NonZero<u8>>`
   --> $DIR/specialization-transmute.rs:24:50
    |
 LL |     let s = transmute::<u8, Option<NonZero<u8>>>(0);
-   |             ------------------------------------ ^ types differ
+   |             ------------------------------------ ^ expected `Option<NonZero<u8>>`, found associated type
    |             |
    |             required by a bound introduced by this call
    |
+   = note:         expected enum `Option<NonZero<u8>>`
+           found associated type `<u8 as Default>::Id`
+   = help: consider constraining the associated type `<u8 as Default>::Id` to `Option<NonZero<u8>>`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 note: required by a bound in `transmute`
   --> $DIR/specialization-transmute.rs:17:25
    |

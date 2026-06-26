@@ -13,7 +13,7 @@
 //! project is currently loading and we don't have a full project model, we
 //! still want to respond to various  requests.
 // FIXME: This is a mess that needs some untangling work
-use std::{iter, mem, sync::atomic::AtomicUsize};
+use std::{iter, mem, sync::atomic::AtomicUsize, time::Duration};
 
 use hir::{ChangeWithProcMacros, ProcMacrosBuilder, db::DefDatabase};
 use ide_db::{
@@ -468,25 +468,22 @@ impl GlobalState {
         });
     }
 
-    pub(crate) fn switch_workspaces(&mut self, cause: Cause) {
+    pub(crate) fn switch_workspaces(&mut self, cause: Cause) -> Option<Duration> {
         let _p = tracing::info_span!("GlobalState::switch_workspaces").entered();
         tracing::info!(%cause, "will switch workspaces");
 
-        let Some(FetchWorkspaceResponse { workspaces, force_crate_graph_reload }) =
-            self.fetch_workspaces_queue.last_op_result()
-        else {
-            return;
-        };
+        let FetchWorkspaceResponse { workspaces, force_crate_graph_reload } =
+            self.fetch_workspaces_queue.last_op_result()?;
         let switching_from_empty_workspace = self.workspaces.is_empty();
 
         info!(%cause, ?force_crate_graph_reload, %switching_from_empty_workspace);
         if self.fetch_workspace_error().is_err() && !switching_from_empty_workspace {
             if *force_crate_graph_reload {
-                self.recreate_crate_graph(cause, false);
+                return self.recreate_crate_graph(cause, false);
             }
             // It only makes sense to switch to a partially broken workspace
             // if we don't have any workspace at all yet.
-            return;
+            return None;
         }
 
         let workspaces =
@@ -501,7 +498,7 @@ impl GlobalState {
         if same_workspaces {
             if switching_from_empty_workspace {
                 // Switching from empty to empty is a no-op
-                return;
+                return None;
             }
             if let Some(FetchBuildDataResponse { workspaces, build_scripts }) =
                 self.fetch_build_data_queue.last_op_result()
@@ -524,20 +521,20 @@ impl GlobalState {
                 } else {
                     info!("build scripts do not match the version of the active workspace");
                     if *force_crate_graph_reload {
-                        self.recreate_crate_graph(cause, switching_from_empty_workspace);
+                        return self.recreate_crate_graph(cause, switching_from_empty_workspace);
                     }
 
                     // Current build scripts do not match the version of the active
                     // workspace, so there's nothing for us to update.
-                    return;
+                    return None;
                 }
             } else {
                 if *force_crate_graph_reload {
-                    self.recreate_crate_graph(cause, switching_from_empty_workspace);
+                    return self.recreate_crate_graph(cause, switching_from_empty_workspace);
                 }
 
                 // No build scripts but unchanged workspaces, nothing to do here
-                return;
+                return None;
             }
         } else {
             info!("abandon build scripts for workspaces");
@@ -560,7 +557,7 @@ impl GlobalState {
                     // `switch_workspaces()` will be called again when build scripts already run, which should
                     // take a short time. If we update the workspace now we will invalidate proc macros and cfgs,
                     // and then when build scripts complete we will invalidate them again.
-                    return;
+                    return None;
                 }
             }
         }
@@ -733,13 +730,15 @@ impl GlobalState {
         self.local_roots_parent_map = Arc::new(self.source_root_config.source_root_parent_map());
 
         info!(?cause, "recreating the crate graph");
-        self.recreate_crate_graph(cause, switching_from_empty_workspace);
+        let cancellation_time = self.recreate_crate_graph(cause, switching_from_empty_workspace);
 
         info!("did switch workspaces");
+        cancellation_time
     }
 
-    fn recreate_crate_graph(&mut self, cause: String, initial_build: bool) {
+    fn recreate_crate_graph(&mut self, cause: String, initial_build: bool) -> Option<Duration> {
         info!(?cause, "Building Crate Graph");
+        let mut cancellation_time = None;
         self.report_progress(
             "Building CrateGraph",
             crate::lsp::utils::Progress::Begin,
@@ -795,9 +794,8 @@ impl GlobalState {
             }
 
             change.set_crate_graph(crate_graph);
-            self.analysis_host.apply_change(change);
-
-            self.finish_loading_crate_graph();
+            cancellation_time = Some(self.analysis_host.apply_change(change));
+            _ = self.finish_loading_crate_graph();
         } else {
             change.set_crate_graph(crate_graph);
             self.fetch_proc_macros_queue.request_op(cause, (change, proc_macro_paths));
@@ -810,11 +808,13 @@ impl GlobalState {
             None,
             None,
         );
+        cancellation_time
     }
 
-    pub(crate) fn finish_loading_crate_graph(&mut self) {
-        self.process_changes();
+    pub(crate) fn finish_loading_crate_graph(&mut self) -> Option<Duration> {
+        let (_, cancellation_time) = self.process_changes();
         self.reload_flycheck();
+        cancellation_time
     }
 
     pub(super) fn fetch_workspace_error(&self) -> Result<(), String> {
