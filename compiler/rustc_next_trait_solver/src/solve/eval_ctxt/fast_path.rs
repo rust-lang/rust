@@ -51,7 +51,7 @@ where
 
     // If any of the stalled goal's generic arguments changed,
     // rerunning might make progress so we should rerun.
-    if stalled_vars.iter().any(|value| delegate.is_changed_var(*value)) {
+    if stalled_vars.iter().any(|value| delegate.ty_or_const_infer_var_changed(*value)) {
         return MayMakeProgress;
     }
 

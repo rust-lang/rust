@@ -1210,7 +1210,8 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     /// If `TyVar(vid)` resolves to a type, return that type. Else, return the
-    /// universe index of `TyVar(vid)`.
+    /// universe index of `TyVar(vid)`, along with the root vid, which can be
+    /// cheaply found at the same time.
     pub fn try_resolve_ty_var_with_root_vid(
         &self,
         vid: TyVid,
@@ -1576,14 +1577,13 @@ impl<'tcx> InferCtxt<'tcx> {
     #[inline(always)]
     pub fn ty_or_const_infer_var_changed(&self, infer_var: TyOrConstInferVar) -> bool {
         match infer_var {
-            TyOrConstInferVar::Ty(v) => {
-                use self::type_variable::TypeVariableValue;
-
-                // If `inlined_probe` returns a `Known` value, it never equals
-                // `ty::Infer(ty::TyVar(v))`.
-                match self.inner.borrow_mut().type_variables().inlined_probe(v) {
-                    TypeVariableValue::Unknown { .. } => false,
-                    TypeVariableValue::Known { .. } => true,
+            TyOrConstInferVar::Ty(vid) => {
+                // If `try_resolve_ty_var` returns `Err`, *and* the `root_vid` is unchanged,
+                // it's definitely unchanged. The check against `root_vid` matters, see
+                // https://github.com/rust-lang/rust/issues/158441
+                match self.try_resolve_ty_var_with_root_vid(vid) {
+                    Ok(_) => true,
+                    Err((root_vid, _)) => root_vid != vid,
                 }
             }
 

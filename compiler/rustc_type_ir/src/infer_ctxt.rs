@@ -391,7 +391,7 @@ pub trait InferCtxtLike: Sized {
         vid: ty::RegionVid,
     ) -> <Self::Interner as Interner>::Region;
 
-    fn is_changed_var(&self, var: TyOrConstInferVar) -> bool;
+    fn ty_or_const_infer_var_changed(&self, var: TyOrConstInferVar) -> bool;
 
     fn next_region_infer(&self) -> <Self::Interner as Interner>::Region;
     fn next_ty_infer(&self) -> <Self::Interner as Interner>::Ty;
