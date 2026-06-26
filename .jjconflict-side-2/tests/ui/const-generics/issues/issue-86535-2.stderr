@@ -1,0 +1,10 @@
+warning: struct `Bar` is never constructed
+  --> $DIR/issue-86535-2.rs:12:8
+   |
+LL | struct Bar<const N: &'static ()>;
+   |        ^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

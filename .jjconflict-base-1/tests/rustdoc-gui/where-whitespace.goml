@@ -1,0 +1,27 @@
+// This test ensures that the where conditions are correctly displayed.
+go-to: "file://" + |DOC_PATH| + "/lib2/trait.Whitespace.html"
+show-text: true
+// First, we check in the trait definition if the where clause is "on its own" (not on the same
+// line than "pub trait Whitespace<Idx>").
+compare-elements-position-false: (".item-decl code", "div.where", ["y"])
+// And that the code following it isn't on the same line either.
+compare-elements-position-false: (".item-decl .fn", "div.where", ["y"])
+
+go-to: "file://" + |DOC_PATH| + "/lib2/struct.WhereWhitespace.html"
+// We make the screen a bit wider to ensure that the trait impl is on one line.
+set-window-size: (915, 915)
+
+compare-elements-position-false: ("#method\.new .fn", "#method\.new div.where", ["y"])
+// We ensure that both the trait name and the struct name are on the same line in
+// "impl<K, T> Whitespace<&K> for WhereWhitespace<T>".
+compare-elements-position: (
+    "#trait-implementations-list .impl h3 .trait",
+    "#trait-implementations-list .impl h3 .struct",
+    ["y"],
+)
+// And we now check that the where condition isn't on the same line.
+compare-elements-position-false: (
+    "#trait-implementations-list .impl h3 .trait",
+    "#trait-implementations-list .impl h3 div.where",
+    ["y"],
+)

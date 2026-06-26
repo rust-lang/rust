@@ -1,0 +1,18 @@
+   LL|       |// Regression test for #135235.
+   LL|       |trait Foo {
+   LL|       |    type Assoc;
+   LL|       |
+   LL|       |    fn from(s: Self::Assoc) -> Self;
+   LL|       |}
+   LL|       |
+   LL|       |struct W<T>(T);
+   LL|       |
+   LL|       |impl<T: Foo> From<[T::Assoc; 1]> for W<T> {
+   LL|      0|    fn from(from: [T::Assoc; 1]) -> Self {
+   LL|      0|        let [item] = from;
+   LL|      0|        W(Foo::from(item))
+   LL|      0|    }
+   LL|       |}
+   LL|       |
+   LL|      1|fn main() {}
+

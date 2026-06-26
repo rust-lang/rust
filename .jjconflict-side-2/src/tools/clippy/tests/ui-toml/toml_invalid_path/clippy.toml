@@ -1,0 +1,17 @@
+[[disallowed-macros]]
+path = "bool"
+
+[[disallowed-methods]]
+path = "std::process::current_exe"
+
+[[disallowed-methods]]
+path = ""
+
+[[disallowed-types]]
+path = "std::result::Result::Err"
+
+# negative test
+
+[[disallowed-methods]]
+path = "std::current_exe"
+allow-invalid = true

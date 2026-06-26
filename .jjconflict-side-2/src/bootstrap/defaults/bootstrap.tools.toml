@@ -1,0 +1,23 @@
+# These defaults are meant for contributors to tools which build on the
+# compiler, but do not modify it directly.
+[rust]
+# This greatly increases the speed of rebuilds, especially when there are only minor changes. However, it makes the initial build slightly slower.
+incremental = true
+# Most commonly, tools contributors do not need to modify the compiler, so
+# downloading a CI rustc is a good default for tools profile.
+download-rustc = "if-unchanged"
+
+[build]
+# cargo and clippy tests don't pass on stage 1
+test-stage = 2
+# Document with the in-tree rustdoc by default, since `download-rustc` makes it quick to compile.
+doc-stage = 2
+# Contributors working on tools will probably expect compiler docs to be generated, so they can figure out how to use the API.
+compiler-docs = true
+# Contributors working on tools are the most likely to change non-rust programs.
+tidy-extra-checks = "auto:js,auto:py,auto:cpp,auto:spellcheck"
+
+[llvm]
+# Will download LLVM from CI if available on your platform.
+# If you intend to modify `src/llvm-project`, use `"if-unchanged"` or `false` instead.
+download-ci-llvm = true

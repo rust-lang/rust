@@ -1,0 +1,16 @@
+error[E0423]: cannot find value `Foo` in module `Mod`
+  --> $DIR/assoc-const-as-field.rs:11:14
+   |
+LL |     foo(Mod::Foo.Bar);
+   |              ^^^
+   |
+   = note: a struct named `Mod::Foo` exists in another namespace
+help: use the path separator to refer to an item
+   |
+LL -     foo(Mod::Foo.Bar);
+LL +     foo(Mod::Foo::Bar);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0423`.

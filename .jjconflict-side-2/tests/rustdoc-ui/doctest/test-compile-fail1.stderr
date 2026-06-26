@@ -1,0 +1,14 @@
+error[E0428]: the name `f` is defined multiple times
+  --> $DIR/test-compile-fail1.rs:8:1
+   |
+LL | pub fn f() {}
+   | ---------- previous definition of the value `f` here
+LL |
+LL | pub fn f() {}
+   | ^^^^^^^^^^ `f` redefined here
+   |
+   = note: `f` must be defined only once in the value namespace of this module
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0428`.

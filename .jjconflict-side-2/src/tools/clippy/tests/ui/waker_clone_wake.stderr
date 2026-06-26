@@ -1,0 +1,17 @@
+error: cloning a `Waker` only to wake it
+  --> tests/ui/waker_clone_wake.rs:15:5
+   |
+LL |     cx.waker().clone().wake();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `cx.waker().wake_by_ref()`
+   |
+   = note: `-D clippy::waker-clone-wake` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::waker_clone_wake)]`
+
+error: cloning a `Waker` only to wake it
+  --> tests/ui/waker_clone_wake.rs:18:5
+   |
+LL |     mac!(cx).clone().wake();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `mac!(cx).wake_by_ref()`
+
+error: aborting due to 2 previous errors
+

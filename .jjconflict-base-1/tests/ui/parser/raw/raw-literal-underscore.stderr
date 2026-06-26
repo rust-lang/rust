@@ -1,0 +1,8 @@
+error: `_` cannot be a raw identifier
+  --> $DIR/raw-literal-underscore.rs:2:9
+   |
+LL |     let r#_: ();
+   |         ^^^
+
+error: aborting due to 1 previous error
+
