@@ -138,6 +138,7 @@ pub(super) trait MetadataEncoder<'tcx>: Sized + Default {
 
     fn record_encoded_index(&mut self, _node: Node<'tcx>);
 
+    #[inline(always)]
     fn with_record_mode<'a, 'h, 'b, 'c, F, T, H>(
         ecx: &mut MetadataBuilder<'a, 'tcx, 'h, 'b, 'c, H, Self>,
         mode: RecordMode<'tcx>,
@@ -153,6 +154,7 @@ pub(super) trait MetadataEncoder<'tcx>: Sized + Default {
         res
     }
 
+    #[inline(always)]
     fn encoder_with_record_mode<'a, F, T>(
         ecx: &mut EncodeContext<'a, 'tcx, Self>,
         mode: RecordMode<'tcx>,
@@ -214,12 +216,18 @@ impl<'tcx> MetadataEncoder<'tcx> for DefPathHashDefIdEncoder<'tcx> {
     ) -> Option<(Svh, ItemPublicHashes)> {
         public_api_hasher::crate_hashes(ecx, hcx, root)
     }
+
+    #[inline]
     fn record_encoded_index(&mut self, node: Node<'tcx>) {
         self.reachability_graph_builder.record(node);
     }
+
+    #[inline]
     fn push_record_mode(&mut self, mode: RecordMode<'tcx>) {
         self.reachability_graph_builder.record_mode.push(mode);
     }
+
+    #[inline]
     fn pop_record_mode(&mut self) {
         self.reachability_graph_builder.record_mode.pop();
     }
@@ -230,6 +238,7 @@ struct DefIndexDefIdEncoder;
 impl<'tcx> MetadataEncoder<'tcx> for DefIndexDefIdEncoder {
     type EncodedDefId = RemappedRawDefId;
     type EncodedLocalDefId = RemappedLocalDefId;
+    #[inline(always)]
     fn encoded_def_id(
         _tcx: TyCtxt<'_>,
         remapping: &LocalDefsRemapping,
@@ -241,6 +250,8 @@ impl<'tcx> MetadataEncoder<'tcx> for DefIndexDefIdEncoder {
     /// this crate is recompiled. However, for dependencies, we need the stable hash. The exact index
     /// can change without the public api changing, which would skip the recompile of this crate,
     /// leaving it with bad indices.
+
+    #[inline(always)]
     fn encoded_local_def_id(
         _tcx: TyCtxt<'_>,
         remapping: &LocalDefsRemapping,
@@ -249,6 +260,7 @@ impl<'tcx> MetadataEncoder<'tcx> for DefIndexDefIdEncoder {
         remapping.map_local_def_id(def_id)
     }
 
+    #[inline(always)]
     fn into_remapped_wide_raw_def_id(
         _tcx: TyCtxt<'_>,
         remapping: &LocalDefsRemapping,
@@ -257,6 +269,7 @@ impl<'tcx> MetadataEncoder<'tcx> for DefIndexDefIdEncoder {
         RemappedWideRawDefId::indexed(def_id, remapping)
     }
 
+    #[inline(always)]
     fn public_api_hasher<'h>(hcx: StableHashState<'h>) -> impl PublicApiHashState<'h> {
         PublicApiHashingContext::<false>::new(hcx)
     }
@@ -267,8 +280,11 @@ impl<'tcx> MetadataEncoder<'tcx> for DefIndexDefIdEncoder {
     ) -> Option<(Svh, ItemPublicHashes)> {
         None
     }
+    #[inline(always)]
     fn record_encoded_index(&mut self, _node: Node<'tcx>) {}
+    #[inline(always)]
     fn push_record_mode(&mut self, _mode: RecordMode<'tcx>) {}
+    #[inline(always)]
     fn pop_record_mode(&mut self) {}
 }
 pub(super) struct MetadataBuilder<'a, 'tcx, 'h, 'b, 'c, H, M>
@@ -739,6 +755,7 @@ where
         self.tcx
     }
 
+    #[inline]
     fn record_encoded_index(&mut self, index: impl Into<Node<'tcx>>) {
         self.spec_encoder_data.record_encoded_index(index.into());
     }
