@@ -1,5 +1,4 @@
 use rustc_abi::CanonAbi;
-use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_middle::ty::FnAbi;
 use rustc_target::spec::Arch;

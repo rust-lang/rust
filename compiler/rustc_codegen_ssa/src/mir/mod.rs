@@ -5,10 +5,10 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::{Body, Local, UnwindTerminateReason, traversal};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, TyAndLayout};
-use rustc_middle::ty::{self, Instance, FnAbi, TyCtxt, TypeFoldable, TypeVisitableExt};
+use rustc_middle::ty::{self, FnAbi, Instance, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::ErrorGuaranteed;
-use rustc_target::callconv::{ PassMode};
+use rustc_target::callconv::PassMode;
 use tracing::{debug, instrument};
 
 use crate::base;

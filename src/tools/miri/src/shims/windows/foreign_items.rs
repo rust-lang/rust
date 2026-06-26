@@ -3,7 +3,6 @@ use std::path::{self, Path, PathBuf};
 use std::{io, iter, str};
 
 use rustc_abi::{Align, Size};
-use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_middle::ty::FnAbi;
 use rustc_target::spec::Env;

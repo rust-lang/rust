@@ -1,6 +1,6 @@
 use rustc_abi::CanonAbi;
 use rustc_apfloat::Float;
-use rustc_middle::ty::{FnAbi, Ty};
+use rustc_middle::ty::FnAbi;
 use rustc_span::Symbol;
 
 use self::math::{ToHost, ToSoft};
