@@ -1461,15 +1461,19 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             let cause = ObligationCause::misc(expr.span, self.mir_def_id());
             ocx.register_bound(cause, self.infcx.param_env, ty, clone_trait);
             let errors = ocx.evaluate_obligations_error_on_ambiguity();
-            if errors.iter().all(|error| {
-                match error.obligation.predicate.as_clause().and_then(|c| c.as_trait_clause()) {
-                    Some(clause) => match clause.self_ty().skip_binder().kind() {
-                        ty::Adt(def, _) => def.did().is_local() && clause.def_id() == clone_trait,
-                        _ => false,
-                    },
-                    None => false,
-                }
-            }) {
+            if !errors.is_empty()
+                && errors.iter().all(|error| {
+                    match error.obligation.predicate.as_clause().and_then(|c| c.as_trait_clause()) {
+                        Some(clause) => match clause.self_ty().skip_binder().kind() {
+                            ty::Adt(def, _) => {
+                                def.did().is_local() && clause.def_id() == clone_trait
+                            }
+                            _ => false,
+                        },
+                        None => false,
+                    }
+                })
+            {
                 let mut type_spans = vec![];
                 let mut types = FxIndexSet::default();
                 for clause in errors
