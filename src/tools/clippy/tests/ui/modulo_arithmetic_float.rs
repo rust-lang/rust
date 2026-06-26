@@ -1,7 +1,7 @@
 #![feature(f128)]
 #![feature(f16)]
 #![warn(clippy::modulo_arithmetic)]
-#![allow(clippy::no_effect, clippy::unnecessary_operation, clippy::modulo_one)]
+#![expect(clippy::no_effect)]
 
 fn main() {
     // Lint when both sides are const and of the opposite sign

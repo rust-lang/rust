@@ -140,7 +140,13 @@ struct InputMinMax<'tcx> {
 
 impl<'tcx> LateLintPass<'tcx> for ManualClamp {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if !expr.span.from_expansion() && !is_in_const_context(cx) {
+        // Cheap kind check before the costlier const context query.
+        if matches!(
+            expr.kind,
+            ExprKind::If(..) | ExprKind::Match(..) | ExprKind::MethodCall(..) | ExprKind::Call(..)
+        ) && !expr.span.from_expansion()
+            && !is_in_const_context(cx)
+        {
             let suggestion = is_if_elseif_else_pattern(cx, expr)
                 .or_else(|| is_max_min_pattern(cx, expr))
                 .or_else(|| is_call_max_min_pattern(cx, expr))
@@ -155,6 +161,15 @@ impl<'tcx> LateLintPass<'tcx> for ManualClamp {
     }
 
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
+        // Cheap `if`-statement check before the costlier const context query.
+        if !block
+            .stmts
+            .iter()
+            .any(|stmt| matches!(stmt.kind, StmtKind::Expr(e) if matches!(e.kind, ExprKind::If(..))))
+        {
+            return;
+        }
+
         if is_in_const_context(cx) || !self.msrv.meets(cx, msrvs::CLAMP) {
             return;
         }
@@ -293,18 +308,19 @@ fn is_if_elseif_else_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx
 /// ```
 fn is_max_min_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<ClampSuggestion<'tcx>> {
     if let ExprKind::MethodCall(seg_second, receiver, [arg_second], _) = expr.kind
+        && let ExprKind::MethodCall(seg_first, input, [arg_first], _) = &receiver.kind
+        // Match method names before the costlier type queries.
+        && let Some((min, max)) = match (seg_first.ident.name, seg_second.ident.name) {
+            (sym::min, sym::max) => Some((arg_second, arg_first)),
+            (sym::max, sym::min) => Some((arg_first, arg_second)),
+            _ => None,
+        }
         && (cx.typeck_results().expr_ty_adjusted(receiver).is_floating_point()
             || cx.ty_based_def(expr).assoc_fn_parent(cx).is_diag_item(cx, sym::Ord))
-        && let ExprKind::MethodCall(seg_first, input, [arg_first], _) = &receiver.kind
         && (cx.typeck_results().expr_ty_adjusted(input).is_floating_point()
             || cx.ty_based_def(receiver).assoc_fn_parent(cx).is_diag_item(cx, sym::Ord))
     {
         let is_float = cx.typeck_results().expr_ty_adjusted(input).is_floating_point();
-        let (min, max) = match (seg_first.ident.name, seg_second.ident.name) {
-            (sym::min, sym::max) => (arg_second, arg_first),
-            (sym::max, sym::min) => (arg_first, arg_second),
-            _ => return None,
-        };
         Some(ClampSuggestion {
             params: InputMinMax {
                 input,
@@ -367,12 +383,16 @@ fn is_call_max_min_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>)
             && let Some(inner_seg) = segment(cx, inner_fn)
             && let Some(outer_seg) = segment(cx, outer_fn)
         {
-            let (input, inner_arg) = match (is_const_evaluatable(cx, first), is_const_evaluatable(cx, second)) {
+            let typeck = cx.typeck_results();
+            let (input, inner_arg) = match (
+                is_const_evaluatable(cx.tcx, typeck, first),
+                is_const_evaluatable(cx.tcx, typeck, second),
+            ) {
                 (true, false) => (second, first),
                 (false, true) => (first, second),
                 _ => return None,
             };
-            let is_float = cx.typeck_results().expr_ty_adjusted(input).is_floating_point();
+            let is_float = typeck.expr_ty_adjusted(input).is_floating_point();
             let (min, max) = match (inner_seg, outer_seg) {
                 (FunctionType::CmpMin, FunctionType::CmpMax) => (outer_arg, inner_arg),
                 (FunctionType::CmpMax, FunctionType::CmpMin) => (inner_arg, outer_arg),

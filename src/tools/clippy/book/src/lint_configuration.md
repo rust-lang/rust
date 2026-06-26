@@ -452,6 +452,37 @@ For internal testing only, ignores the current `publish` settings in the Cargo m
 * [`cargo_common_metadata`](https://rust-lang.github.io/rust-clippy/master/index.html#cargo_common_metadata)
 
 
+## `check-grouped-late-init`
+Whether to check for grouped late initializations from multiple `let` statements.
+
+#### Example
+```rust
+let a;
+let b;
+if true {
+    a = 1;
+    b = 2;
+} else {
+    a = 3;
+    b = 4;
+}
+```
+Use instead:
+```rust
+let (a, b) = if true {
+    (1, 2)
+} else {
+    (3, 4)
+};
+```
+
+**Default Value:** `true`
+
+---
+**Affected lints:**
+* [`needless_late_init`](https://rust-lang.github.io/rust-clippy/master/index.html#needless_late_init)
+
+
 ## `check-incompatible-msrv-in-tests`
 Whether to check MSRV compatibility in `#[test]` and `#[cfg(test)]` code.
 
@@ -984,28 +1015,6 @@ The minimum size (in bytes) to consider a type for passing by reference instead 
 ---
 **Affected lints:**
 * [`large_types_passed_by_value`](https://rust-lang.github.io/rust-clippy/master/index.html#large_types_passed_by_value)
-
-
-## `profiles`
-Named profiles of disallowed items (unrelated to Cargo build profiles).
-
-#### Example
-
-```toml
-[profiles.persistent]
-disallowed-methods = [{ path = "std::env::temp_dir" }]
-disallowed-types = [{ path = "std::time::Instant", reason = "use our custom time API" }]
-
-[profiles.single_threaded]
-disallowed-methods = [{ path = "std::thread::spawn" }]
-```
-
-**Default Value:** `{}`
-
----
-**Affected lints:**
-* [`disallowed_methods`](https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_methods)
-* [`disallowed_types`](https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_types)
 
 
 ## `pub-underscore-fields-behavior`

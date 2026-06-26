@@ -6,11 +6,11 @@ use rustc_ast::ast::{LitFloatType, LitKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{
-    self as hir, BindingMode, CaptureBy, Closure, ClosureKind, ConstArg, ConstArgKind, CoroutineKind, ExprKind,
+    self as hir, BindingMode, Body, CaptureBy, Closure, ClosureKind, ConstArg, ConstArgKind, CoroutineKind, ExprKind,
     FnRetTy, HirId, Lit, PatExprKind, PatKind, QPath, StmtKind, StructTailExpr,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{FloatTy, IntTy, UintTy};
+use rustc_middle::ty::{FloatTy, IntTy, TypeckResults, UintTy};
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::{Ident, Symbol};
 use std::cell::Cell;
@@ -137,15 +137,31 @@ impl<'tcx> LateLintPass<'tcx> for Author {
 
 fn check_item(cx: &LateContext<'_>, hir_id: HirId) {
     if let Some(body) = cx.tcx.hir_maybe_body_owned_by(hir_id.expect_owner().def_id) {
-        check_node(cx, hir_id, |v| {
-            v.expr(&v.bind("expr", body.value));
-        });
+        check_node_with_body(
+            cx,
+            hir_id,
+            |v| {
+                v.expr(&v.bind("expr", body.value));
+            },
+            Some(body),
+        );
     }
 }
 
 fn check_node(cx: &LateContext<'_>, hir_id: HirId, f: impl Fn(&PrintVisitor<'_, '_>)) {
+    check_node_with_body(cx, hir_id, f, None);
+}
+
+/// Check the node at `hir_id`, in the context of `body` or the default from `cx` if none is given.
+fn check_node_with_body(
+    cx: &LateContext<'_>,
+    hir_id: HirId,
+    f: impl Fn(&PrintVisitor<'_, '_>),
+    body: Option<&Body<'_>>,
+) {
     if has_attr(cx, hir_id) {
-        f(&PrintVisitor::new(cx));
+        let typeck_results = body.map_or_else(|| cx.typeck_results(), |body| cx.tcx.typeck_body(body.id()));
+        f(&PrintVisitor::new(cx, typeck_results));
         println!("{{");
         println!("    // report your lint here");
         println!("}}");
@@ -199,6 +215,7 @@ impl<T: Display> Display for OptionPat<T> {
 
 struct PrintVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
+    typeck_results: &'tcx TypeckResults<'tcx>,
     /// Fields are the current index that needs to be appended to pattern
     /// binding names
     ids: Cell<FxHashMap<&'static str, u32>>,
@@ -207,9 +224,10 @@ struct PrintVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
-    fn new(cx: &'a LateContext<'tcx>) -> Self {
+    fn new(cx: &'a LateContext<'tcx>, typeck_results: &'tcx TypeckResults<'tcx>) -> Self {
         Self {
             cx,
+            typeck_results,
             ids: Cell::default(),
             first: Cell::new(true),
         }
@@ -291,7 +309,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
     }
 
     fn maybe_path<'p>(&self, path: &Binding<impl MaybeQPath<'p>>) {
-        if let Some(id) = path.value.res(self.cx).opt_def_id()
+        if let Some(id) = path.value.res(self.typeck_results).opt_def_id()
             && !id.is_local()
         {
             if let Some(lang) = self.cx.tcx.lang_items().from_def_id(id) {
