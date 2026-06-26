@@ -36,6 +36,20 @@ fn via_argument() {
     //~^ ERROR interior mutable shared borrows of temporaries
 }
 
+// The `let` binding suggestion should still be offered alongside E0492.
+fn deferred_assignment() {
+    let r;
+    r = &const { Cell::new(0) };
+    //~^ ERROR interior mutable shared borrows of temporaries
+    r.set(1);
+}
+
+// A `&mut` borrow is not a shared borrow, so it keeps the E0716 diagnostic.
+fn mut_borrow() {
+    let _: &'static mut _ = &mut const { Cell::new(0) };
+    //~^ ERROR temporary value dropped while borrowed
+}
+
 fn main() {
     let _: &'static _ = &const { 0u32 };
 

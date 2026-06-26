@@ -263,6 +263,10 @@ pub(crate) struct UnallowedInlineAsm {
     pub kind: ConstContext,
 }
 
+// FIXME(#154810): this message is duplicated in
+// `rustc_borrowck::diagnostics::conflict_errors`
+// (`report_temporary_value_does_not_live_long_enough`). Keep the two in sync until the
+// diagnostic can be shared across the crate boundary.
 #[derive(Diagnostic)]
 #[diag("interior mutable shared borrows of temporaries that have their lifetime extended until the end of the program are not allowed", code = E0492)]
 #[note(

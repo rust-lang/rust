@@ -3352,10 +3352,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         proper_span: Span,
         explanation: BorrowExplanation<'tcx>,
     ) -> Diag<'infcx> {
-        // Emit E0492 for `&const { expr }` when `expr` has
+        // Emit E0492 for a shared `&const { expr }` borrow when `expr` has
         // interior mutability, since that's what actually prevents promotion.
-        if let Some(expr) = self.find_expr(proper_span)
+        let interior_mut_const_span = if let Some(expr) = self.find_expr(proper_span)
             && let hir::ExprKind::ConstBlock(const_block) = expr.kind
+            && matches!(borrow.kind(), BorrowKind::Shared)
         {
             let borrowed_ty = self.body.local_decls[borrow.borrowed_place.local].ty;
             let typing_env = self.infcx.typing_env(self.infcx.param_env);
@@ -3369,35 +3370,17 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 } else {
                     body_expr.span
                 };
-                let mut err = struct_span_code_err!(
-                    self.dcx(),
-                    inner_span,
-                    E0492,
-                    "interior mutable shared borrows of temporaries that have their \
-                    lifetime extended until the end of the program are not allowed"
-                );
-                err.span_label(
-                    inner_span,
-                    "this borrow of an interior mutable value refers to such a temporary",
-                );
-                err.note(
-                    "temporaries in constants and statics can have their lifetime \
-                    extended until the end of the program",
-                );
-                err.note(
-                    "to avoid accidentally creating global mutable state, such \
-                    temporaries must be immutable",
-                );
-                err.help(
-                    "if you really want global mutable state, try replacing the \
-                    temporary by an interior mutable `static` or a `static mut`",
-                );
-                return err;
+                Some(inner_span)
+            } else {
+                None
             }
-        }
+        } else {
+            None
+        };
 
-        if let BorrowExplanation::MustBeValidFor { category, span, from_closure: false, .. } =
-            explanation
+        if interior_mut_const_span.is_none()
+            && let BorrowExplanation::MustBeValidFor { category, span, from_closure: false, .. } =
+                explanation
         {
             if let Err(diag) = self.try_report_cannot_return_reference_to_local(
                 borrow,
@@ -3410,9 +3393,43 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
         }
 
-        let mut err = self.temporary_value_borrowed_for_too_long(proper_span);
-        err.span_label(proper_span, "creates a temporary value which is freed while still in use");
-        err.span_label(drop_span, "temporary value is freed at the end of this statement");
+        let mut err = if let Some(inner_span) = interior_mut_const_span {
+            // FIXME(#154810): this message is duplicated from
+            // `rustc_const_eval::errors::InteriorMutableBorrowEscaping`. Deduplicate once the
+            // diagnostic struct can be shared across the borrowck/const_eval crate boundary.
+            let mut err = struct_span_code_err!(
+                self.dcx(),
+                inner_span,
+                E0492,
+                "interior mutable shared borrows of temporaries that have their \
+                lifetime extended until the end of the program are not allowed"
+            );
+            err.span_label(
+                inner_span,
+                "this borrow of an interior mutable value refers to such a temporary",
+            );
+            err.note(
+                "temporaries in constants and statics can have their lifetime \
+                extended until the end of the program",
+            );
+            err.note(
+                "to avoid accidentally creating global mutable state, such \
+                temporaries must be immutable",
+            );
+            err.help(
+                "if you really want global mutable state, try replacing the \
+                temporary by an interior mutable `static` or a `static mut`",
+            );
+            err
+        } else {
+            let mut err = self.temporary_value_borrowed_for_too_long(proper_span);
+            err.span_label(
+                proper_span,
+                "creates a temporary value which is freed while still in use",
+            );
+            err.span_label(drop_span, "temporary value is freed at the end of this statement");
+            err
+        };
 
         match explanation {
             BorrowExplanation::UsedLater(..)
