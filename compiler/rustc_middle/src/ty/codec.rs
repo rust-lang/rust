@@ -32,15 +32,15 @@ pub trait TyEncoder<'tcx>: SpanEncoder {
 
     fn position(&self) -> usize;
 
-    #[inline]
+    #[inline(always)]
     fn type_encode_begin(&mut self, _ty: Ty<'tcx>) {}
-    #[inline]
+    #[inline(always)]
     fn type_encode_end(&mut self) {}
     fn type_shorthands(&mut self) -> &mut FxHashMap<Ty<'tcx>, usize>;
 
-    #[inline]
+    #[inline(always)]
     fn predicate_encode_begin(&mut self, _pred: ty::PredicateKind<'tcx>) {}
-    #[inline]
+    #[inline(always)]
     fn predicate_encode_end(&mut self) {}
     fn predicate_shorthands(&mut self) -> &mut FxHashMap<ty::PredicateKind<'tcx>, usize>;
 
@@ -92,6 +92,7 @@ impl<'tcx, E: TyEncoder<'tcx>> EncodableWithShorthand<'tcx, E> for ty::Predicate
 }
 
 /// Encode the given value or a previously cached shorthand.
+#[inline(always)]
 pub fn encode_with_shorthand<'tcx, E, T, M, Begin, End>(
     encoder: &mut E,
     value: &T,
