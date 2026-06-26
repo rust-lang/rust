@@ -21,7 +21,7 @@ also be compiled in thin LTO mode. To use fat LTO with linker-plugin-based LTO,
 the `rustc` compiler requires the additional `-C lto=fat` flag, and the
 interoperable language must likewise be compiled in fat LTO mode. Note that
 interoperable language must be compiled using the LLVM infrastructure
-(see more details in [toolchain compability](#toolchain-compatibility)).
+(see more details in [toolchain compatibility](#toolchain-compatibility)).
 
 The following table summarizes how to enable thin LTO and fat LTO in
 different compilers:
