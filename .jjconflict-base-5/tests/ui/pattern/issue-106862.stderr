@@ -1,0 +1,58 @@
+error[E0532]: cannot find tuple struct or tuple variant `FooB` in this scope
+  --> $DIR/issue-106862.rs:16:9
+   |
+LL |     FooB { x: i32, y: i32 }
+   |     ----------------------- `FooB` defined here
+...
+LL |         FooB(a, b) => println!("{} {}", a, b),
+   |         ^^^^^^^^^^ help: use struct pattern syntax instead: `FooB { x: a, y: b }`
+   |
+   = note: a variant named `FooB` exists in another namespace
+
+error[E0532]: cannot find tuple struct or tuple variant `FooB` in this scope
+  --> $DIR/issue-106862.rs:22:9
+   |
+LL |     FooB { x: i32, y: i32 }
+   |     ----------------------- `FooB` defined here
+...
+LL |         FooB(x, y) => println!("{} {}", x, y),
+   |         ^^^^^^^^^^ help: use struct pattern syntax instead: `FooB { x, y }`
+   |
+   = note: a variant named `FooB` exists in another namespace
+
+error[E0532]: cannot find tuple struct or tuple variant `FooA` in this scope
+  --> $DIR/issue-106862.rs:28:9
+   |
+LL |     FooA { opt_x: Option<i32>, y: i32 },
+   |     ----------------------------------- `FooA` defined here
+...
+LL |         FooA(Some(x), y) => println!("{} {}", x, y),
+   |         ^^^^^^^^^^^^^^^^ help: use struct pattern syntax instead: `FooA { opt_x: Some(x), y }`
+   |
+   = note: a variant named `FooA` exists in another namespace
+
+error[E0532]: cannot find tuple struct or tuple variant `FooB` in this scope
+  --> $DIR/issue-106862.rs:34:9
+   |
+LL |     FooB { x: i32, y: i32 }
+   |     ----------------------- `FooB` defined here
+...
+LL |         FooB(a, _, _) => println!("{}", a),
+   |         ^^^^^^^^^^^^^ help: use struct pattern syntax instead: `FooB { x: a, y: _ }`
+   |
+   = note: a variant named `FooB` exists in another namespace
+
+error[E0532]: cannot find tuple struct or tuple variant `FooB` in this scope
+  --> $DIR/issue-106862.rs:40:9
+   |
+LL |     FooB { x: i32, y: i32 }
+   |     ----------------------- `FooB` defined here
+...
+LL |         FooB() => (),
+   |         ^^^^^^ help: use struct pattern syntax instead: `FooB { x, y }`
+   |
+   = note: a variant named `FooB` exists in another namespace
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0532`.

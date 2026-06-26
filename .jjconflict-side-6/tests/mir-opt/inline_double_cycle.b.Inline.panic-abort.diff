@@ -1,0 +1,48 @@
+- // MIR for `b` before Inline
++ // MIR for `b` after Inline
+  
+  fn b() -> () {
+      let mut _0: ();
+      let _1: ();
+      let mut _2: ();
+      let _3: ();
+      let mut _4: ();
++     let mut _5: fn() {b};
++     let mut _6: fn() {a};
++     scope 1 (inlined <fn() {b} as FnOnce<()>>::call_once - shim(fn() {b})) {
++     }
++     scope 2 (inlined <fn() {a} as FnOnce<()>>::call_once - shim(fn() {a})) {
++     }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          _2 = ();
+-         _1 = <fn() {b} as FnOnce<()>>::call_once(b, move _2) -> [return: bb1, unwind unreachable];
++         StorageLive(_5);
++         _5 = b;
++         _1 = move _5() -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
++         StorageDead(_5);
+          StorageDead(_2);
+          StorageDead(_1);
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = ();
+-         _3 = <fn() {a} as FnOnce<()>>::call_once(a, move _4) -> [return: bb2, unwind unreachable];
++         StorageLive(_6);
++         _6 = a;
++         _3 = move _6() -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
++         StorageDead(_6);
+          StorageDead(_4);
+          StorageDead(_3);
+          _0 = const ();
+          return;
+      }
+  }
+  

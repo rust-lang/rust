@@ -1,0 +1,8 @@
+error: expected identifier, found `32`
+  --> $DIR/issue-81543-item-parse-err.rs:11:8
+   |
+LL |     fn 32() {}
+   |        ^^ expected identifier
+
+error: aborting due to 1 previous error
+

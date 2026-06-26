@@ -1,0 +1,27 @@
+error[E0747]: type provided when a constant was expected
+  --> $DIR/coherence-bikeshed-intrinsic-from.rs:7:37
+   |
+LL | impl<T: std::mem::TransmuteFrom<(), ()>> AnotherTrait for T {}
+   |                                     ^^
+
+error[E0119]: conflicting implementations of trait `AnotherTrait`
+  --> $DIR/coherence-bikeshed-intrinsic-from.rs:9:1
+   |
+LL | impl<T: std::mem::TransmuteFrom<(), ()>> AnotherTrait for T {}
+   | ----------------------------------------------------------- first implementation here
+LL |
+LL | impl AnotherTrait for OpaqueType {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
+
+error: unconstrained opaque type
+  --> $DIR/coherence-bikeshed-intrinsic-from.rs:4:19
+   |
+LL | type OpaqueType = impl OpaqueTrait;
+   |                   ^^^^^^^^^^^^^^^^
+   |
+   = note: `OpaqueType` must be used in combination with a concrete type within the same crate
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0119, E0747.
+For more information about an error, try `rustc --explain E0119`.

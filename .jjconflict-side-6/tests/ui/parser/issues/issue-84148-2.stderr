@@ -1,0 +1,10 @@
+error: this file contains an unclosed delimiter
+  --> $DIR/issue-84148-2.rs:2:16
+   |
+LL | fn f(t:for<>t?
+   |     -         ^
+   |     |
+   |     unclosed delimiter
+
+error: aborting due to 1 previous error
+

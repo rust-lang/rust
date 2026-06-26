@@ -1,0 +1,68 @@
+error[E0381]: used binding `x` isn't initialized
+  --> $DIR/assign-value-after-at-pattern-issue-145564.rs:6:5
+   |
+LL |     let ref mut x @ _v;
+   |         --------- binding declared here but left uninitialized
+LL |     *x = 1;
+   |     ^^^^^^ `x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let ref mut x @ _v = 42;
+   |                        ++++
+
+error[E0381]: used binding `a` isn't initialized
+  --> $DIR/assign-value-after-at-pattern-issue-145564.rs:9:20
+   |
+LL |     let a @ _b: i32;
+   |         - binding declared here but left uninitialized
+LL |     println!("{}", a);
+   |                    ^ `a` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let a @ _b: i32 = 42;
+   |                     ++++
+
+error[E0381]: used binding `c` isn't initialized
+  --> $DIR/assign-value-after-at-pattern-issue-145564.rs:12:22
+   |
+LL |     let ref c @ _d: i32;
+   |         ----- binding declared here but left uninitialized
+LL |     println!("{:?}", c);
+   |                      ^ `c` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let ref c @ _d: i32 = 42;
+   |                         ++++
+
+error[E0381]: used binding `e` isn't initialized
+  --> $DIR/assign-value-after-at-pattern-issue-145564.rs:15:22
+   |
+LL |     let ref e: i32;
+   |         ----- binding declared here but left uninitialized
+LL |     println!("{:?}", e);
+   |                      ^ `e` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let ref e: i32 = 42;
+   |                    ++++
+
+error[E0381]: used binding `y` isn't initialized
+  --> $DIR/assign-value-after-at-pattern-issue-145564.rs:18:5
+   |
+LL |     let ref mut y;
+   |         --------- binding declared here but left uninitialized
+LL |     *y = 1;
+   |     ^^^^^^ `y` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let ref mut y = 42;
+   |                   ++++
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0381`.

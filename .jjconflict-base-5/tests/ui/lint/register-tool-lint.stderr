@@ -1,0 +1,20 @@
+error[E0710]: unknown tool name `abc` found in scoped lint: `abc::my_lint`
+  --> $DIR/register-tool-lint.rs:5:9
+   |
+LL | #![warn(abc::my_lint)]
+   |         ^^^
+   |
+   = help: add `#![register_tool(abc)]` to the crate root
+
+error[E0710]: unknown tool name `abc` found in scoped lint: `abc::my_lint`
+  --> $DIR/register-tool-lint.rs:5:9
+   |
+LL | #![warn(abc::my_lint)]
+   |         ^^^
+   |
+   = help: add `#![register_tool(abc)]` to the crate root
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0710`.

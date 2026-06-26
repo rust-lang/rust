@@ -1,0 +1,15 @@
+error[E0277]: an array of type `[u8; 8]` cannot be built directly from an iterator
+  --> $DIR/use_self_no_underscore.rs:12:22
+   |
+LL |     let x: [u8; 8] = FromIterator::from_iter(iter);
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `FromIterator<{integer}>` is not implemented for `[u8; 8]`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/use_self_no_underscore.rs:7:1
+   |
+LL | pub trait FromIterator<A>: Sized {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

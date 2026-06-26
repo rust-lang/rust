@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="refresh" content="0;URL=sometarget">
+    <title>Redirection</title>
+</head>
+<body>
+    <p>Redirecting to <a href="sometarget">sometarget</a>...</p>
+    <script>location.replace("sometarget" + location.search + location.hash);</script>
+</body>
+</html>

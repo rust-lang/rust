@@ -1,0 +1,12 @@
+error[E0198]: negative impls cannot be unsafe
+  --> $DIR/coherence-negative-impls-safe.rs:7:13
+   |
+LL | unsafe impl !Send for TestType {}
+   | ------      -^^^^
+   | |           |
+   | |           negative because of this
+   | unsafe because of this
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0198`.

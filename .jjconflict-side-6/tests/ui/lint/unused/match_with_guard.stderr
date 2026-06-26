@@ -1,0 +1,15 @@
+warning: unused variable: `unused`
+  --> $DIR/match_with_guard.rs:7:14
+   |
+LL |         Some(unused) if true => (),
+   |              ^^^^^^ help: if this is intentional, prefix it with an underscore: `_unused`
+   |
+note: the lint level is defined here
+  --> $DIR/match_with_guard.rs:4:9
+   |
+LL | #![warn(unused)]
+   |         ^^^^^^
+   = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
+
+warning: 1 warning emitted
+

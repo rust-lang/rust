@@ -1,0 +1,8 @@
+error: expected identifier, found `]`
+  --> $DIR/syntax.rs:6:12
+   |
+LL | impl [const] T {}
+   |            ^ expected identifier
+
+error: aborting due to 1 previous error
+

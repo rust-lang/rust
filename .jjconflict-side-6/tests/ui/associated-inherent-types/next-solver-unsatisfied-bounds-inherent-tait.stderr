@@ -1,0 +1,22 @@
+error[E0277]: the size for values of type `[u32]` cannot be known at compilation time
+  --> $DIR/next-solver-unsatisfied-bounds-inherent-tait.rs:9:10
+   |
+LL | impl Foo<Vec<[u32]>> {
+   |          ^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u32]`
+note: required by an implicit `Sized` bound in `Vec`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+
+error: the associated type `Assoc` exists for `Foo<Tait>`, but its trait bounds were not satisfied
+  --> $DIR/next-solver-unsatisfied-bounds-inherent-tait.rs:18:23
+   |
+LL | struct Foo<T>(T);
+   | ------------- associated type `Assoc` not found for this struct
+...
+LL |     let _: Foo<Tait>::Assoc = 42;
+   |                       ^^^^^ associated type cannot be referenced on `Foo<Tait>` due to unsatisfied trait bounds
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

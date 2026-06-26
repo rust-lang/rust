@@ -1,0 +1,36 @@
+error[E0046]: not all trait items implemented, missing: `dummy`
+  --> $DIR/unsized7.rs:12:1
+   |
+LL |     fn dummy(&self) -> Z;
+   |     --------------------- `dummy` from trait
+...
+LL | impl<X: ?Sized + T> T1<X> for S3<X> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `dummy` in implementation
+
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized7.rs:12:21
+   |
+LL | impl<X: ?Sized + T> T1<X> for S3<X> {
+   |      -              ^^^^^ doesn't have a size known at compile-time
+   |      |
+   |      this type parameter needs to be `Sized`
+   |
+note: required by an implicit `Sized` bound in `T1`
+  --> $DIR/unsized7.rs:7:10
+   |
+LL | trait T1<Z: T> {
+   |          ^ required by the implicit `Sized` requirement on this type parameter in `T1`
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - impl<X: ?Sized + T> T1<X> for S3<X> {
+LL + impl<X: T> T1<X> for S3<X> {
+   |
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | trait T1<Z: T + ?Sized> {
+   |               ++++++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0046, E0277.
+For more information about an error, try `rustc --explain E0046`.
