@@ -779,8 +779,8 @@ PR #{number} "{title}" fixes a regression and has been nominated for backport.
 This topic will help T-compiler getting context about it.
 
 Tip: to approve or decline from this Zulip thread, use:
-@_**triagebot** backport approve beta #{number}
-@_**triagebot** backport decline beta #{number}
+@_**triagebot** backport approve beta {number}
+@_**triagebot** backport decline beta {number}
 """,
     """\
 /poll Should #{number} be beta backported?
@@ -1270,7 +1270,7 @@ message = "`src/tools/x` was changed. Bump version of Cargo.toml in `src/tools/x
 
 [mentions."src/tools/tidy/src/deps.rs"]
 message = "The list of allowed third-party dependencies may have been modified! You must ensure that any new dependencies have compatible licenses before merging."
-cc = ["@davidtwco", "@wesleywiser"]
+cc = ["@davidtwco", "@BoxyUwU"]
 
 [mentions."src/tools/tidy/src/extra_checks"]
 message = "`tidy` extra checks were modified."
