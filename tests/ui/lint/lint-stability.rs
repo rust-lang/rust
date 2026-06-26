@@ -9,10 +9,6 @@
 #![feature(extern_types)]
 #![stable(feature = "rust1", since = "1.0.0")]
 
-extern "C" {
-    #[unstable(feature = "fn_static", issue = "none")]
-    type Ty;
-}
 #[macro_use]
 extern crate lint_stability;
 
@@ -21,6 +17,9 @@ mod cross_crate {
     extern crate stability_cfg2; //~ ERROR use of unstable library feature
 
     use lint_stability::*;
+
+    fn test_foreign_type(_: &mut UnstableForeignType) { //~ ERROR use of unstable library feature
+    }
 
     fn test() {
         type Foo = MethodTester;
