@@ -1490,6 +1490,7 @@ impl Default for Options {
             verbose: false,
             mitigation_coverage_map: Default::default(),
             jobs: Jobs { frontend: None, backend: None, linker: LinkerJobs::Default },
+            metadata: Default::default(),
         }
     }
 }
@@ -3060,6 +3061,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         verbose,
         mitigation_coverage_map: collected_options.mitigations,
         jobs,
+        metadata: collected_options.metadata,
     }
 }
 

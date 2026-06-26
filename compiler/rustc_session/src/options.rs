@@ -64,6 +64,19 @@ macro_rules! hash_substruct {
 
 pub mod mitigation_coverage;
 
+/// Metadata associated with an option
+#[derive(Clone, Default)]
+pub struct OptionMetadata {
+    /// Was this option set by the user?
+    is_set: bool,
+}
+
+#[derive(Clone, Default)]
+pub struct OptionsMetadata {
+    codegen: CodegenOptionsMetadata,
+    unstable: UnstableOptionsMetadata,
+}
+
 macro_rules! top_level_options {
     (
         $(#[$top_level_attr:meta])*
@@ -84,6 +97,7 @@ macro_rules! top_level_options {
                 pub $opt: $t,
             )*
             pub mitigation_coverage_map: mitigation_coverage::MitigationCoverageMap,
+            pub metadata: OptionsMetadata,
         }
 
         impl Options {
@@ -259,12 +273,13 @@ top_level_options!(
 #[derive(Default)]
 pub struct CollectedOptions {
     pub mitigations: mitigation_coverage::MitigationCoverageMap,
+    pub metadata: OptionsMetadata,
 }
 
 macro_rules! setter_for {
     // the allow/deny-mitigations options use collected/index instead of the cg, since they
     // work across option groups
-    (allow_partial_mitigations, $struct_name:ident, $parse:ident) => {
+    (allow_partial_mitigations, $struct_name:ident, $group_name:ident, $parse:ident) => {
         pub(super) fn allow_partial_mitigations(
             _cg: &mut super::$struct_name,
             collected: &mut super::CollectedOptions,
@@ -274,7 +289,7 @@ macro_rules! setter_for {
             collected.mitigations.handle_allowdeny_mitigation_option(v, index, true)
         }
     };
-    (deny_partial_mitigations, $struct_name:ident, $parse:ident) => {
+    (deny_partial_mitigations, $struct_name:ident, $group_name:ident, $parse:ident) => {
         pub(super) fn deny_partial_mitigations(
             _cg: &mut super::$struct_name,
             collected: &mut super::CollectedOptions,
@@ -284,13 +299,14 @@ macro_rules! setter_for {
             collected.mitigations.handle_allowdeny_mitigation_option(v, index, false)
         }
     };
-    ($opt:ident, $struct_name:ident, $parse:ident) => {
+    ($opt:ident, $struct_name:ident, $group_name:ident, $parse:ident) => {
         pub(super) fn $opt(
             cg: &mut super::$struct_name,
-            _collected: &mut super::CollectedOptions,
+            collected: &mut super::CollectedOptions,
             v: Option<&str>,
             _index: usize,
         ) -> bool {
+            collected.metadata.$group_name.$opt.is_set = v.is_some();
             super::parse::$parse(&mut redirect_field!(cg.$opt), v)
         }
     };
@@ -307,10 +323,11 @@ macro_rules! setter_for {
 macro_rules! options {
     (
         $struct_name:ident, // e.g. `UnstableOptions`
+        $metadata_name: ident, // e.g. `UnstableOptionsMetadata`
         $opt_descs_var:ident, // e.g. `Z_OPTIONS`
         $opt_mod_name:ident, // e.g. `dbopts`
         $prefix:expr, // e.g. `-Z`
-        $group_name:expr, // e.g. "unstable"
+        $group_name:ident, // e.g. `unstable`
 
         $(
             $(#[$attr:meta])*
@@ -334,6 +351,13 @@ macro_rules! options {
             )*
         }
 
+        #[derive(Clone, Default)]
+        pub struct $metadata_name {
+            $(
+                pub $opt: OptionMetadata,
+            )*
+        }
+
         impl Default for $struct_name {
             fn default() -> $struct_name {
                 $struct_name {
@@ -351,7 +375,13 @@ macro_rules! options {
                 collected_options: &mut CollectedOptions,
             ) -> $struct_name {
                 build_options(
-                    early_dcx, matches, collected_options, $opt_descs_var, $prefix, $group_name)
+                    early_dcx,
+                    matches,
+                    collected_options,
+                    $opt_descs_var,
+                    $prefix,
+                    stringify!($group_name)
+                )
             }
 
             fn dep_tracking_hash(
@@ -397,7 +427,7 @@ macro_rules! options {
 
         mod $opt_mod_name {
             $(
-                setter_for!($opt, $struct_name, $parse);
+                setter_for!($opt, $struct_name, $group_name, $parse);
             )*
         }
     }
@@ -1922,7 +1952,7 @@ pub mod parse {
 }
 
 options! {
-    CodegenOptions, CG_OPTIONS, cgopts, "C", "codegen",
+    CodegenOptions, CodegenOptionsMetadata, CG_OPTIONS, cgopts, "C", codegen,
 
     // If you add a new option, please update:
     // - compiler/rustc_interface/src/tests.rs
@@ -2072,7 +2102,7 @@ options! {
 }
 
 options! {
-    UnstableOptions, Z_OPTIONS, dbopts, "Z", "unstable",
+    UnstableOptions, UnstableOptionsMetadata, Z_OPTIONS, dbopts, "Z", unstable,
 
     // If you add a new option, please update:
     // - compiler/rustc_interface/src/tests.rs
