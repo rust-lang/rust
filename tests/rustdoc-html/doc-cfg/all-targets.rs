@@ -3,9 +3,9 @@
 //@ has all_targets/fn.foo.html \
 //  '//*[@id="main-content"]/*[@class="item-info"]/*[@class="stab portability"]' \
 //  'Available on target_env=fake_env or Catalyst or GNU or Managarm C Library \
-//  or MSVC or musl or Neutrino 7.0 or Neutrino 7.1 or Neutrino 7.1 with io-sock \
-//  or Neutrino 8.0 or Newlib or OpenHarmony or relibc or SGX or Simulator or \
-//  uClibc or V5 or WASIp1 or WASIp2 or WASIp3 only.'
+//  or MSVC or musl or Newlib or OpenHarmony or QNX SDP 7.0 or QNX SDP 7.1 or \
+//  QNX SDP 7.1 with io-sock or relibc or SGX or Simulator or uClibc or V5 or WASIp1 \
+//  or WASIp2 or WASIp3 only.'
 #[doc(cfg(any(
     target_env = "gnu",
     target_env = "macabi",
@@ -80,7 +80,7 @@ pub fn bar() {}
 //  and HelenOS and Hermit and Horizon and illumos and iOS and L4Re and Linux \
 //  and LynxOS-178 and macOS and Managarm and Motor OS and NetBSD and NuttX \
 //  and OpenBSD and Play Station 1 and Play Station Portable and Play Station Vita \
-//  and QNX Neutrino and QuRT and Redox OS and RTEMS OS and Solaris and \
+//  and QNX SDP 7.x and QNX SDP 8.0+ and QuRT and Redox OS and RTEMS OS and Solaris and \
 //  SOLID ASP3 and TEEOS and Trusty and tvOS and UEFI and VEXos and visionOS \
 //  and VxWorks and WASI and watchOS and Windows and Xous and zero knowledge \
 //  Virtual Machine only.'
