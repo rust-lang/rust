@@ -29,9 +29,9 @@ impl<'a> fmt::Debug for Layout<'a> {
 }
 
 impl<'a> Deref for Layout<'a> {
-    type Target = &'a LayoutData<FieldIdx, VariantIdx>;
-    fn deref(&self) -> &&'a LayoutData<FieldIdx, VariantIdx> {
-        &self.0.0
+    type Target = LayoutData<FieldIdx, VariantIdx>;
+    fn deref(&self) -> &LayoutData<FieldIdx, VariantIdx> {
+        self.0.0
     }
 }
 
@@ -97,8 +97,8 @@ where
 }
 
 impl<'a, I: Interner> Deref for TyAndLayout<'a, I> {
-    type Target = &'a LayoutData<FieldIdx, VariantIdx>;
-    fn deref(&self) -> &&'a LayoutData<FieldIdx, VariantIdx> {
+    type Target = LayoutData<FieldIdx, VariantIdx>;
+    fn deref(&self) -> &LayoutData<FieldIdx, VariantIdx> {
         &self.layout.0.0
     }
 }

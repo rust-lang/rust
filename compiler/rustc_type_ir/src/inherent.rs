@@ -5,8 +5,9 @@
 
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
+use std::ops::Deref;
 
-use rustc_abi::{AbiAlign, Align, BackendRepr, Niche, Size};
+use rustc_abi::{AbiAlign, Align, BackendRepr, FieldIdx, LayoutData, Niche, Size, VariantIdx};
 use rustc_ast_ir::Mutability;
 
 use crate::elaborate::Elaboratable;
@@ -231,7 +232,9 @@ pub trait Safety<I: Interner<Safety = Self>>: Copy + Debug + Hash + Eq {
 }
 
 #[rust_analyzer::prefer_underscore_import]
-pub trait Layout<I: Interner<Layout = Self>>: Copy + Debug + Hash + Eq {
+pub trait Layout<I: Interner<Layout = Self>>:
+    Copy + Debug + Hash + Eq + Deref<Target = LayoutData<FieldIdx, VariantIdx>>
+{
     fn fields(self) -> I::FieldsShapeRef;
     fn variants(self) -> I::VariantsRef;
     fn backend_repr(self) -> BackendRepr;
