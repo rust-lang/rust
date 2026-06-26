@@ -1832,7 +1832,7 @@ pub(crate) struct NonLocalDefinitionsCargoUpdateNote {
     "passing a (partially) uninitialized value across the security boundary may leak information"
 )]
 #[note(
-    "padding or fields not used by the current variant of a union may contain stale secure data"
+    "enum and union values can have variant-dependent padding that may contain stale secure data"
 )]
 pub(crate) struct CmseUninitializedMayLeakInformation;
 
