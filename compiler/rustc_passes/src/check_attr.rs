@@ -364,6 +364,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcLintOptTy => (),
             AttributeKind::RustcLintQueryInstability => (),
             AttributeKind::RustcLintUntrackedQueryInformation => (),
+            AttributeKind::RustcLowPriorityImpl => (),
             AttributeKind::RustcMacroTransparency(_) => (),
             AttributeKind::RustcMain => (),
             AttributeKind::RustcMir(_) => (),

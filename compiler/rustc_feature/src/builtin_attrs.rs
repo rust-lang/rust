@@ -255,6 +255,7 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::may_dangle,
 
     sym::rustc_never_type_options,
+    sym::rustc_low_priority_impl,
 
     // ==========================================================================
     // Internal attributes: Runtime related:
