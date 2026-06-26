@@ -582,7 +582,7 @@ impl SingleAttributeParser for LangParser {
         // Only weak lang items may be applied to foreign items
         if [Target::ForeignFn, Target::ForeignStatic, Target::ForeignTy, Target::ForeignMod]
             .contains(&cx.target)
-            && !lang_item.is_weak()
+            && !(lang_item.is_weak() || lang_item.is_weak_only())
         {
             cx.emit_err(UnknownExternLangItem { span: cx.attr_span, lang_item: lang_item.name() });
             return None;
@@ -591,6 +591,8 @@ impl SingleAttributeParser for LangParser {
         // Check the target
         let allowed_targets: &[_] = if lang_item == LangItem::PanicImpl {
             &[Allow(Target::Fn), Allow(Target::ForeignFn)]
+        } else if lang_item.is_weak_only() {
+            &[Allow(Target::ForeignFn)]
         } else {
             &[Allow(lang_item.target())]
         };
