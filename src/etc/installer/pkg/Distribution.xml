@@ -11,21 +11,21 @@
         </allowed-os-versions>
     </volume-check>
     <choices-outline>
-      <line choice="install">
-      <line choice="rustc"/>
-      <line choice="rust-std"/>
-      <line choice="cargo"/>
-      <!-- tool-rust-docs-start -->
-      <line choice="rust-docs"/>
-      <!-- tool-rust-docs-end -->
-      </line>
-      <line choice="uninstall" />
+        <line choice="install">
+        <line choice="rustc"/>
+        <line choice="rust-std"/>
+        <line choice="cargo"/>
+        <!-- tool-rust-docs-start -->
+        <line choice="rust-docs"/>
+        <!-- tool-rust-docs-end -->
+        </line>
+        <line choice="uninstall" />
     </choices-outline>
     <!--
     These 'selected' scripts ensure that install and uninstall can never be selected at
     the same time. Exactly how they work is pretty mysterious, tied to the unspecified algorithm
     the installer uses to traverse the options after one is toggled.
-      -->
+    -->
     <choice id="install" visible="true"
         title="Install Rust" description="Install the Rust compiler, package manager and documentation."
         customLocation="/usr/local"
