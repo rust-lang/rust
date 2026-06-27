@@ -56,5 +56,12 @@ indent_size = 1
 [*.yml]
 indent_size = 2
 
+# You should NOT modify these files with your editor,
+# but if you do it anyway use the correct formatting.
+[Cargo.lock]
+indent_size = 1
+[yarn.lock]
+indent_size = 2
+
 [Makefile]
 indent_style = tab
