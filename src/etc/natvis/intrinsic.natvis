@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
   <Type Name="ref$&lt;str$&gt;">
     <AlternativeType Name="ref_mut$&lt;str$&gt;" />
@@ -189,8 +189,10 @@
     See `compiler\rustc_codegen_llvm\src\debuginfo\metadata\enums\cpp_like.rs` for more information.
   -->
   <Type Name="enum2$&lt;*&gt;">
-    <!-- NOTE: That tag ranges can wrap around, in which case `end` is less than `begin` and we
-               have to do a different check -->
+    <!--
+      NOTE: That tag ranges can wrap around, in which case `end` is less than `begin` and we
+            have to do a different check
+    -->
     <Intrinsic Name="in_range" Expression="(begin &lt;= end) ? ((x &gt;= begin) &amp;&amp; (x &lt;= end)) : ((x &gt;= begin) || (x &lt;= end))">
       <Parameter Name="x" Type="unsigned __int64" />
       <Parameter Name="begin" Type="unsigned __int64" />
@@ -218,8 +220,10 @@
       <Parameter Name="y_lo" Type="unsigned __int64" />
     </Intrinsic>
 
-    <!-- NOTE: That tag ranges can wrap around, in which case `end` is less than `begin` and we
-               have to do a different check -->
+    <!--
+      NOTE: That tag ranges can wrap around, in which case `end` is less than `begin` and we
+            have to do a different check
+    -->
     <Intrinsic Name="in_range128" Expression="(lt_or_eq128(begin_hi, begin_lo, end_hi, end_lo)) ?
                                               (lt_or_eq128(begin_hi, begin_lo, x_hi, x_lo) &amp;&amp; lt_or_eq128(x_hi, x_lo, end_hi, end_lo)) :
                                               (lt_or_eq128(begin_hi, begin_lo, x_hi, x_lo) || lt_or_eq128(x_hi, x_lo, end_hi, end_lo))">

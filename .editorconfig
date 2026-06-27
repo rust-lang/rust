@@ -53,7 +53,7 @@ trim_trailing_whitespace = false
 # Therefore, pressing tab should insert a single space to encourage situative accurate indentations.
 indent_size = 1
 
-[*.yml]
+[*.{yml,natvis}]
 indent_size = 2
 
 # You should NOT modify these files with your editor,
