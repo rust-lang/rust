@@ -219,7 +219,7 @@ opt() {
             op="$op=<$META>"
         fi
         printf "    --%-30s %s\n" "$flag-$op" "$doc"
-     fi
+    fi
 }
 
 flag() {
@@ -247,7 +247,7 @@ flag() {
             op="$op=<$META>"
         fi
         printf "    --%-30s %s\n" "$op" "$doc"
-     fi
+    fi
 }
 
 validate_opt () {
