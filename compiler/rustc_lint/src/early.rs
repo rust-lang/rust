@@ -329,11 +329,11 @@ pub fn check_ast_node<'a>(
 
     let context = if pre_expansion {
         let builtin_lints = crate::BuiltinCombinedPreExpansionLintPass::new();
-        let passes = &lint_store.pre_expansion_passes;
+        let passes = &lint_store.pre_expansion_lint_passes;
         run_passes(check_node, context, builtin_lints, passes)
     } else {
         let builtin_lints = crate::BuiltinCombinedEarlyLintPass::new();
-        let passes = &lint_store.early_passes;
+        let passes = &lint_store.early_lint_passes;
         run_passes(check_node, context, builtin_lints, passes)
     };
 
