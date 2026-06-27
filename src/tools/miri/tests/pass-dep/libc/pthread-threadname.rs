@@ -4,17 +4,21 @@ use std::ffi::{CStr, CString};
 use std::thread;
 
 const MAX_THREAD_NAME_LEN: usize = {
-    cfg_if::cfg_if! {
-        if #[cfg(any(target_os = "linux"))] {
+    cfg_select! {
+        target_os = "linux" => {
             16
-        } else if #[cfg(any(target_os = "illumos", target_os = "solaris"))] {
+        }
+        any(target_os = "illumos", target_os = "solaris") => {
             32
-        } else if #[cfg(target_os = "macos")] {
+        }
+        target_os = "macos" => {
             libc::MAXTHREADNAMESIZE // 64, at the time of writing
-        } else if #[cfg(target_os = "freebsd")] {
+        }
+        target_os = "freebsd" => {
             usize::MAX // as far as I can tell
-        } else {
-            panic!()
+        }
+        _ => {
+            compile_error!("unsupported OS");
         }
     }
 };
@@ -28,35 +32,38 @@ fn main() {
         .collect::<String>();
 
     fn set_thread_name(name: &CStr) -> i32 {
-        cfg_if::cfg_if! {
-            if #[cfg(any(
+        cfg_select! {
+            any(
                 target_os = "linux",
                 target_os = "freebsd",
                 target_os = "illumos",
                 target_os = "solaris"
-            ))] {
+            ) => {
                 unsafe { libc::pthread_setname_np(libc::pthread_self(), name.as_ptr().cast()) }
-            } else if #[cfg(target_os = "macos")] {
+            }
+            target_os = "macos" => {
                 unsafe { libc::pthread_setname_np(name.as_ptr().cast()) }
-            } else {
+            }
+            _ => {
                 compile_error!("set_thread_name not supported for this OS")
             }
         }
     }
 
     fn get_thread_name(name: &mut [u8]) -> i32 {
-        cfg_if::cfg_if! {
-            if #[cfg(any(
+        cfg_select! {
+            any(
                 target_os = "linux",
                 target_os = "freebsd",
                 target_os = "illumos",
                 target_os = "solaris",
                 target_os = "macos"
-            ))] {
+            ) => {
                 unsafe {
                     libc::pthread_getname_np(libc::pthread_self(), name.as_mut_ptr().cast(), name.len())
                 }
-            } else {
+            }
+            _ => {
                 compile_error!("get_thread_name not supported for this OS")
             }
         }
@@ -95,13 +102,14 @@ fn main() {
 
             // Test what happens when the buffer is shorter than 16, but still long enough.
             let res = get_thread_name(&mut buf[..15]);
-            cfg_if::cfg_if! {
-                if #[cfg(target_os = "linux")] {
+            cfg_select! {
+                target_os = "linux" => {
                     // For glibc used by linux-gnu there should be a failue,
                     // if a shorter than 16 bytes buffer is provided, even if that would be
                     // large enough for the thread name.
                     assert_eq!(res, libc::ERANGE);
-                } else {
+                }
+                _ => {
                     // Everywhere else, this should work.
                     assert_eq!(res, 0);
                     // POSIX seems to promise at least 15 chars excluding a null terminator.
@@ -112,15 +120,16 @@ fn main() {
 
             // Test what happens when the buffer is too short even for the short name.
             let res = get_thread_name(&mut buf[..4]);
-            cfg_if::cfg_if! {
-                if #[cfg(any(target_os = "freebsd", target_os = "macos"))] {
+            cfg_select! {
+                any(target_os = "freebsd", target_os = "macos") => {
                     // On macOS and FreeBSD it's not an error for the buffer to be
                     // too short for the thread name -- they truncate instead.
                     assert_eq!(res, 0);
                     let cstr = CStr::from_bytes_until_nul(&buf).unwrap();
                     assert_eq!(cstr.to_bytes_with_nul().len(), 4);
                     assert!(short_name.as_bytes().starts_with(cstr.to_bytes()));
-                } else {
+                }
+                _ => {
                     // The rest should give an error.
                     assert_eq!(res, libc::ERANGE);
                 }
@@ -128,12 +137,13 @@ fn main() {
 
             // Test zero-sized buffer.
             let res = get_thread_name(&mut []);
-            cfg_if::cfg_if! {
-                if #[cfg(any(target_os = "freebsd", target_os = "macos"))] {
+            cfg_select! {
+                any(target_os = "freebsd", target_os = "macos") => {
                     // On macOS and FreeBSD it's not an error for the buffer to be
                     // too short for the thread name -- even with size 0.
                     assert_eq!(res, 0);
-                } else {
+                }
+                _ => {
                     // The rest should give an error.
                     assert_eq!(res, libc::ERANGE);
                 }
@@ -149,16 +159,18 @@ fn main() {
             // Set full thread name.
             let cstr = CString::new(long_name.clone()).unwrap();
             let res = set_thread_name(&cstr);
-            cfg_if::cfg_if! {
-                if #[cfg(target_os = "freebsd")] {
+            cfg_select! {
+                target_os = "freebsd" => {
                     // Names of all size are supported.
                     assert!(cstr.to_bytes_with_nul().len() <= MAX_THREAD_NAME_LEN);
                     assert_eq!(res, 0);
-                } else if #[cfg(target_os = "macos")] {
+                }
+                target_os = "macos" => {
                     // Name is too long.
                     assert!(cstr.to_bytes_with_nul().len() > MAX_THREAD_NAME_LEN);
                     assert_eq!(res, libc::ENAMETOOLONG);
-                } else {
+                }
+                _ => {
                     // Name is too long.
                     assert!(cstr.to_bytes_with_nul().len() > MAX_THREAD_NAME_LEN);
                     assert_eq!(res, libc::ERANGE);
@@ -179,14 +191,15 @@ fn main() {
 
             // Test what happens when our buffer is just one byte too small.
             let res = get_thread_name(&mut buf[..truncated_name.len()]);
-            cfg_if::cfg_if! {
-                if #[cfg(any(target_os = "freebsd", target_os = "macos"))] {
+            cfg_select! {
+                any(target_os = "freebsd", target_os = "macos") => {
                     // On macOS and FreeBSD it's not an error for the buffer to be
                     // too short for the thread name -- they truncate instead.
                     assert_eq!(res, 0);
                     let cstr = CStr::from_bytes_until_nul(&buf).unwrap();
                     assert_eq!(cstr.to_bytes(), &truncated_name.as_bytes()[..(truncated_name.len() - 1)]);
-                } else {
+                }
+                _ => {
                     // The rest should give an error.
                     assert_eq!(res, libc::ERANGE);
                 }
@@ -199,10 +212,11 @@ fn main() {
     // Now set the name for a non-existing thread and verify error codes.
     let invalid_thread = 0xdeadbeef;
     let error = {
-        cfg_if::cfg_if! {
-            if #[cfg(target_os = "linux")] {
+        cfg_select! {
+            target_os = "linux" => {
                 libc::ENOENT
-            } else {
+            }
+            _ => {
                 libc::ESRCH
             }
         }
