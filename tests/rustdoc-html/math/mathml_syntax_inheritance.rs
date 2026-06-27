@@ -6,14 +6,14 @@
 #![doc(syntax="-tex_math_dollars")]
 
 //! disabled at crate level
-//! 
+//!
 //! $\sqrt{2}$
 //@ has 'foo/index.html'
 //@ count - '//math' 0
 
 #[doc(syntax="+tex_math_dollars")]
 /// enabled in this module
-/// 
+///
 /// $\sqrt{2}$
 //@ has 'foo/a/index.html'
 //@ count - '//math' 1
@@ -26,7 +26,7 @@ pub mod a {}
 pub mod b {
     #[doc(syntax="+tex_math_dollars")]
     /// enabled on this function
-    /// 
+    ///
     /// $\sqrt{2}$
     //@ has 'foo/b/fn.foo.html'
     //@ count - '//math' 1
@@ -119,7 +119,7 @@ pub mod j {
     #[doc(syntax="+tex_math_dollars")]
     pub fn j_2() {}
     /// foo
-    /// 
+    ///
     /// $\sqrt{2}$
     //@ has 'foo/j/fn.j_3.html'
     //@ count - '//math' 1
