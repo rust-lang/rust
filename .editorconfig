@@ -65,3 +65,14 @@ indent_size = 2
 
 [Makefile]
 indent_style = tab
+
+# The license texts should NEVER be modified.
+# Therefore disable everything to avoid accidental changes on save.
+[**{LICENSE,COPY{ING,RIGHT}}**]
+charset = unset
+indent_style = unset
+indent_size = unset
+tab_width = unset
+trim_trailing_whitespace = unset
+insert_final_newline = unset
+spelling_language = unset
