@@ -23,13 +23,11 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
         match event {
             Event::Text(text)
                 if &*text == "["
-                    && let Some((Event::Text(text), _)) = parser.peek()
-                    && text.trim_start().starts_with('^')
-                    && parser.next().is_some()
-                    && let Some((Event::Text(text), end_span)) = parser.peek()
-                    && &**text == "]" =>
+                    && (span.start == 0 || dox.as_bytes().get(span.start - 1) != Some(&b'\\'))
+                    && let Some(len) = scan_footnote_ref(&dox[span.start..]) =>
             {
-                missing_footnote_references.insert(Range { start: span.start, end: end_span.end });
+                missing_footnote_references
+                    .insert(Range { start: span.start, end: span.start + len });
             }
             Event::FootnoteReference(label) => {
                 footnote_references.insert(label);
@@ -84,4 +82,36 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
             }),
         );
     }
+}
+
+fn scan_footnote_ref(dox: &str) -> Option<usize> {
+    let dox = dox.as_bytes();
+    let mut i = 0;
+    if dox.get(i) != Some(&b'[') {
+        return None;
+    }
+    i += 1;
+    if dox.get(i) != Some(&b'^') {
+        return None;
+    }
+    i += 1;
+    while let Some(&c) = dox.get(i) {
+        if c == b']' {
+            i += 1;
+            return Some(i);
+        }
+        if c == b'\r' || c == b'\n' || c == b'[' {
+            // Can't nest things like this.
+            break;
+        }
+        if c == b'\\' {
+            i += 1;
+        }
+        if dox.get(i) == Some(&b'\r') || dox.get(i) == Some(&b'\n') {
+            // Can't have line breaks in footnote refs
+            break;
+        }
+        i += 1;
+    }
+    None
 }
