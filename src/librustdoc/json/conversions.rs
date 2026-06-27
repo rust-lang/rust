@@ -7,7 +7,9 @@ use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
-use rustc_hir::attrs::{self, DeprecatedSince, DocAttribute, DocInline, HideOrShow};
+use rustc_hir::attrs::{
+    self, DeprecatedSince, DocAttribute, DocCfgHideShow, DocInline, HideOrShow,
+};
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{HeaderSafety, Safety, find_attr};
@@ -1122,24 +1124,41 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
             for sub_cfg in cfg {
                 ret.push(Attribute::Other(format!("#[doc(cfg({sub_cfg}))]")));
             }
-            for (auto_cfg, _) in auto_cfg {
-                let kind = match auto_cfg.kind {
-                    HideOrShow::Hide => "hide",
-                    HideOrShow::Show => "show",
-                };
-                let mut out = format!("#[doc(auto_cfg({kind}(");
-                for (pos, value) in auto_cfg.values.iter().enumerate() {
-                    if pos > 0 {
+            if !auto_cfg.is_empty() {
+                let mut out = format!("#[doc(auto_cfg(");
+                for (index, (auto_cfg, _)) in auto_cfg.iter().enumerate() {
+                    let kind = match auto_cfg.kind {
+                        HideOrShow::Hide => "hide",
+                        HideOrShow::Show => "show",
+                    };
+                    if index > 0 {
                         out.push_str(", ");
                     }
-                    out.push_str(value.name.as_str());
-                    if let Some((value, _)) = value.value {
-                        // We use `as_str` and debug display to have characters escaped and `"`
-                        // characters surrounding the string.
-                        out.push_str(&format!(" = {:?}", value.as_str()));
+                    out.push_str(&format!("{kind}("));
+                    for (name, cfgs) in &auto_cfg.values {
+                        out.push_str(&format!("{name}, values("));
+                        match cfgs {
+                            DocCfgHideShow::Any(_) => {
+                                out.push_str("any()");
+                            }
+                            DocCfgHideShow::List(values) => {
+                                for (pos, value) in values.iter().enumerate() {
+                                    let separator = if pos > 0 { ", " } else { "" };
+                                    if let Some(value) = &value.value {
+                                        // We use `as_str` and debug display to have characters escaped
+                                        // and `"` characters surrounding the string.
+                                        out.push_str(&format!("{separator}{:?}", value.as_str()));
+                                    } else {
+                                        out.push_str(&format!("{separator}none()"));
+                                    }
+                                }
+                            }
+                        }
+                        out.push_str(")");
                     }
+                    out.push(')');
                 }
-                out.push_str(")))]");
+                out.push_str("))]");
                 ret.push(Attribute::Other(out));
             }
             for (change, _) in auto_cfg_change {
