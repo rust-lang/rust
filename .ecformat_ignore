@@ -28,6 +28,7 @@ src/gcc
 
 # Ignore binary files
 src/etc/installer/gfx/*
+*.auxv
 *.png
 *.ico
 *.woff
