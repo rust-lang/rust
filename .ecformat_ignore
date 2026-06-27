@@ -32,3 +32,7 @@ src/etc/installer/gfx/*
 *.ico
 *.woff
 *.woff2
+
+# Some special cases cannot be handled:
+# Markdown file (space indentation) with 'make' code (tab indentation)
+src/doc/rustc/src/jobserver.md
