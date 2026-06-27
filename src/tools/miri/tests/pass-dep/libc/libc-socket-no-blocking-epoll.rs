@@ -1,8 +1,5 @@
 //@only-target: linux android illumos
 //@compile-flags: -Zmiri-disable-isolation
-//@revisions: windows_host unix_host
-//@[unix_host] ignore-host: windows
-//@[windows_host] only-host: windows
 //@run-native
 
 #![feature(io_error_inprogress)]
@@ -646,63 +643,28 @@ fn test_readable_after_read_shutdown_and_short_read() {
 
         // Write `TEST_BYTES` into the stream.
         libc_utils::write_all(peerfd, TEST_BYTES).unwrap();
+
+        // Close the write end, so that the reader will get an EOF.
+        // (We could alternatively test this by closing the read end of the client socket,
+        // but Windows has some special behavior when closing a read end while there's still
+        // data coming in, so we avoid that.)
+        unsafe { errno_check(libc::shutdown(peerfd, libc::SHUT_WR)) };
     });
 
     net::connect_ipv4(client_sockfd, addr).unwrap();
 
-    unsafe {
-        // Change client socket to be non-blocking.
-        errno_check(libc::fcntl(client_sockfd, libc::F_SETFL, libc::O_NONBLOCK));
-    }
+    // Change client socket to be non-blocking.
+    unsafe { errno_check(libc::fcntl(client_sockfd, libc::F_SETFL, libc::O_NONBLOCK)) };
 
     server_thread.join().unwrap();
-
-    // Close the read end of the client socket.
-    unsafe {
-        errno_check(libc::shutdown(client_sockfd, libc::SHUT_RD));
-    }
 
     // Add client socket with "read closed" and "readable" interest to epoll.
     epoll_ctl_add(epfd, client_sockfd, EPOLLET | EPOLLIN | EPOLLRDHUP).unwrap();
 
-    let events = if cfg!(windows_host) {
-        // On Windows hosts, the TCP connection is reset when the read-end of the
-        // socket is closed whilst there still being some unread/incoming data.
-        // We thus also expect the EPOLLHUP readiness (we don't need to register it,
-        // as `epoll_wait` registers it implicitly).
-        // See <https://learn.microsoft.com/en-us/windows/win32/api/winsock/nf-winsock-shutdown>:
-        // "For TCP sockets, if there is still data queued on the socket waiting to
-        // be received, or data arrives subsequently, the connection is reset, since
-        // the data cannot be delivered to the user"
-        EPOLLIN | EPOLLRDHUP | EPOLLHUP
-    } else {
-        EPOLLIN | EPOLLRDHUP
-    };
-
     // Ensure that the socket is readable and that its read end is closed.
-    check_epoll_wait(epfd, &[Ev { events, data: client_sockfd }], -1);
+    check_epoll_wait(epfd, &[Ev { events: EPOLLIN | EPOLLRDHUP, data: client_sockfd }], -1);
 
     let mut buffer = [0u8; 1024];
-
-    if cfg!(windows_host) {
-        // Because the TCP connection has been reset on Windows hosts,
-        // we cannot read anything from the client socket anymore.
-        // We thus only test that the connection has indeed been reset
-        // and then we return from the test.
-        let err = unsafe {
-            errno_result(libc::read(
-                client_sockfd,
-                buffer.as_mut_ptr().cast(),
-                // Attempt to read a chunk of 16 bytes.
-                16,
-            ))
-            .unwrap_err()
-        };
-        assert_eq!(err.kind(), ErrorKind::ConnectionAborted);
-        return;
-    }
-
-    // We're not on a Windows host.
 
     // We want to read in chunks of 16 bytes. To ensure we get a short read, `TEST_BYTES.len()`
     // must not be dividable by 16.
@@ -741,11 +703,11 @@ fn test_readable_after_read_shutdown_and_short_read() {
         EPOLLIN | EPOLLRDHUP
     );
 
+    // A read should not block and return 0, indicating EOF.
     let mut buffer = [1u8; 16];
     let bytes_read = unsafe {
         errno_result(libc::read(client_sockfd, buffer.as_mut_ptr().cast(), buffer.len())).unwrap()
     };
-    // The read should not block and return 0, indicating EOF.
     assert_eq!(bytes_read, 0);
 }
 
@@ -810,4 +772,9 @@ fn test_writable_after_write_shutdown_with_full_buffer() {
 
     // The socket should no longer block on writes after its write end is closed.
     check_epoll_wait(epfd, &[Ev { events: EPOLLOUT, data: client_sockfd }], -1);
+
+    // A write should not block and return an error.
+    let result =
+        unsafe { errno_result(libc::write(client_sockfd, buffer.as_ptr().cast(), buffer.len())) };
+    assert_eq!(result.unwrap_err().kind(), ErrorKind::BrokenPipe);
 }
