@@ -24,6 +24,16 @@ trim_trailing_whitespace = true
 # these specific source files need to have trailing whitespace.
 [tests/ui/{frontmatter/frontmatter-whitespace-3.rs,parser/shebang/shebang-space.rs}]
 trim_trailing_whitespace = false
+# these specific files have an UTF-8 BOM to test with that charset
+[tests/ui/codemap_tests/utf8-bom.rs]
+charset = utf-8-bom
+# these specific files have CRLF line endings to test on them
+[tests/{rustdoc-ui/intra-doc/warning-crlf.rs,ui/{frontmatter/frontmatter-crlf.rs,lexer/lexer-crlf-*.rs}}]
+end_of_line = crlf
+# these specific files have an UTF-8 BOM and CRLF line endings to test on these
+[tests/ui/{include-macros/data.bin,json/json-bom-plus-crlf*.rs}]
+charset = utf-8-bom
+end_of_line = crlf
 
 [src/llvm-project]
 indent_style = unset
