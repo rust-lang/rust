@@ -103,7 +103,9 @@ void MiriGenmcInterface::handle_assume_block(ThreadId thread_id, AssumeType assu
     // FIXME(genmc): handle `HandleResult::Reset` return value.
     return std::visit(
         overloaded {
-            [](const VerificationError& err) { return LoadResultExt::from_error(format_error(err)); },
+            [](const VerificationError& err) {
+                return LoadResultExt::from_error(format_error(err));
+            },
             [](const Invalid&) { return LoadResultExt::from_invalid(); },
             [](const SVal& v) { return LoadResultExt::from_value(v); },
             [](const Reset&) {
@@ -167,7 +169,9 @@ MiriGenmcInterface::handle_non_atomic_load(ThreadId thread_id, uint64_t address,
     // FIXME(genmc): handle `HandleResult::Reset` return value.
     return std::visit(
         overloaded {
-            [](const VerificationError& err) { return StoreResultExt::from_error(format_error(err)); },
+            [](const VerificationError& err) {
+                return StoreResultExt::from_error(format_error(err));
+            },
             [](const Invalid&) { return StoreResultExt::from_invalid(); },
             [](bool is_co_max) { return StoreResultExt::ok(is_co_max); },
             [](const Reset&) {
@@ -347,7 +351,9 @@ void MiriGenmcInterface::handle_fence(ThreadId thread_id, MemOrdering ord) {
     // FIXME(genmc): handle `HandleResult::Reset` return values.
     return std::visit(
         overloaded {
-            [](const VerificationError& err) { return CompareExchangeResultExt::from_error(format_error(err)); },
+            [](const VerificationError& err) {
+                return CompareExchangeResultExt::from_error(format_error(err));
+            },
             [](const GenMCDriver::Invalid&) { return CompareExchangeResultExt::from_invalid(); },
             [&read_old_val](bool is_co_max) {
                 return CompareExchangeResultExt::success(read_old_val, is_co_max);
@@ -386,7 +392,9 @@ auto MiriGenmcInterface::handle_malloc(ThreadId thread_id, uint64_t size, uint64
     inc_pos(thread_id, ret.count);
     return std::visit(
         overloaded {
-            [](const VerificationError& err) { return MallocResultExt::from_error(format_error(err)); },
+            [](const VerificationError& err) {
+                return MallocResultExt::from_error(format_error(err));
+            },
             [](const SVal& addr) { return MallocResultExt::ok(addr); },
             [](const Invalid&) { return MallocResultExt::from_invalid(); },
             [](const Reset&) {
@@ -403,7 +411,9 @@ auto MiriGenmcInterface::handle_free(ThreadId thread_id, uint64_t address) -> Fr
     inc_pos(thread_id, ret.count);
     return std::visit(
         overloaded {
-            [](const VerificationError& err) { return FreeResultExt::from_error(format_error(err)); },
+            [](const VerificationError& err) {
+                return FreeResultExt::from_error(format_error(err));
+            },
             [](const std::monostate&) { return FreeResultExt::ok(); },
             [](const Invalid&) { return FreeResultExt::from_invalid(); },
             [](const Reset&) {
@@ -483,7 +493,7 @@ auto MiriGenmcInterface::handle_mutex_lock(ThreadId thread_id, uint64_t address,
         return MutexLockResultExt::reset();
 
     const auto* ret_val = std::get_if<SVal>(&load_ret.result);
-    ERROR_ON(!ret_val, "Unimplemented: mutex lock returned unexpected result.");
+    ERROR_ON(!ret_val, "Unimplemented: mutex lock load returned unexpected result.");
     ERROR_ON(
         !MutexState::isValid(*ret_val),
         "Mutex read value was neither 0 nor 1 ({})",
@@ -508,7 +518,10 @@ auto MiriGenmcInterface::handle_mutex_lock(ThreadId thread_id, uint64_t address,
                 return MutexLockResultExt::from_error(format_error(err));
             },
             [](const GenMCDriver::Invalid&) { return MutexLockResultExt::from_invalid(); },
-            [](bool) { return MutexLockResultExt::acquired(); },
+            [](bool is_co_max) {
+                VERIFY(is_co_max);
+                return MutexLockResultExt::acquired();
+            },
             [](const Reset&) {
                 UNREACHABLE();
                 return MutexLockResultExt::from_invalid();
@@ -561,7 +574,10 @@ auto MiriGenmcInterface::handle_mutex_try_lock(ThreadId thread_id, uint64_t addr
                 return MutexLockResultExt::from_error(format_error(err));
             },
             [](const GenMCDriver::Invalid&) { return MutexLockResultExt::from_invalid(); },
-            [](bool) { return MutexLockResultExt::acquired(); },
+            [](bool is_co_max) {
+                VERIFY(is_co_max);
+                return MutexLockResultExt::acquired();
+            },
             [](const Reset&) {
                 UNREACHABLE();
                 return MutexLockResultExt::from_invalid();
@@ -590,7 +606,9 @@ auto MiriGenmcInterface::handle_mutex_unlock(ThreadId thread_id, uint64_t addres
     inc_pos(thread_id, ret.count);
     return std::visit(
         overloaded {
-            [](const VerificationError& err) { return StoreResultExt::from_error(format_error(err)); },
+            [](const VerificationError& err) {
+                return StoreResultExt::from_error(format_error(err));
+            },
             [](const GenMCDriver::Invalid&) { return StoreResultExt::from_invalid(); },
             [](bool is_co_max) { return StoreResultExt::ok(is_co_max); },
             [](const Reset&) {
