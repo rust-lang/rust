@@ -332,9 +332,7 @@ mod flags {
 }
 
 impl FormattingOptions {
-    /// Construct a new `FormatterBuilder` with the supplied `Write` trait
-    /// object for output that is equivalent to the `{}` formatting
-    /// specifier:
+    /// Construct a new `FormattingOptions` representing the plain `{}` formatting specifier:
     ///
     /// - no flags,
     /// - filled with spaces,
