@@ -18,6 +18,8 @@ impl<A, B> Pair for (A, B) {
 
 fn frob<A, B>(pair: impl Pair<Left = A>) -> impl Pair<Left = A, Right = B> {
     //~^ ERROR type mismatch
+    //~| HELP consider further restricting this bound
+    //~| SUGGESTION , Right = B
     let (left, right) = pair.split();
     (left, right)
 }
