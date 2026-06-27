@@ -431,18 +431,6 @@ pub(crate) struct ParenthesizedFnTraitExpansion {
 }
 
 #[derive(Diagnostic)]
-#[diag("the value of the associated type `{$item_name}` in trait `{$def_path}` is already specified", code = E0719)]
-pub(crate) struct ValueOfAssociatedStructAlreadySpecified {
-    #[primary_span]
-    #[label("re-bound here")]
-    pub span: Span,
-    #[label("`{$item_name}` bound here first")]
-    pub prev_span: Span,
-    pub item_name: Ident,
-    pub def_path: String,
-}
-
-#[derive(Diagnostic)]
 #[diag("unconstrained opaque type")]
 #[note("`{$name}` must be used in combination with a concrete type within the same {$what}")]
 pub(crate) struct UnconstrainedOpaqueType {

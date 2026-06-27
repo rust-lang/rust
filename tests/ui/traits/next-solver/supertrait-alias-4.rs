@@ -1,5 +1,6 @@
+// TODO: What to do with this test?
+
 //@ compile-flags: -Znext-solver
-//@ check-pass
 
 // Exercises the ambiguity that comes from replacing the associated types within the bounds
 // that are required for a `impl Trait for dyn Trait` built-in object impl to hold.
@@ -19,6 +20,8 @@ fn foo<A, B>(x: &(impl Foo<A, B> + ?Sized)) {}
 
 fn main() {
     let x: &dyn Foo<_, _, Other = ()> = todo!();
+    //~^ ERROR conflicting associated type bindings for `Assoc`
     foo(x);
     let y: &dyn Foo<i32, u32, Other = ()> = x;
+    //~^ ERROR conflicting associated type bindings for `Assoc`
 }

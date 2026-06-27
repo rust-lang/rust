@@ -1,0 +1,20 @@
+error: conflicting associated type bindings for `Assoc`
+  --> $DIR/multiple-supers-should-work.rs:19:13
+   |
+LL |     let x: &dyn Trait<(), _> = &();
+   |             ^^^^^^^^^^^^^^^^
+   |
+   = note: `Assoc` (in `Sup<_>`) is specified to be `_`
+   = note: `Assoc` (in `Sup<()>`) is also specified to be `()`
+
+error: conflicting associated type bindings for `Assoc`
+  --> $DIR/multiple-supers-should-work.rs:21:13
+   |
+LL |     let y: &dyn Trait<_, ()> = x;
+   |             ^^^^^^^^^^^^^^^^
+   |
+   = note: `Assoc` (in `Sup<()>`) is specified to be `()`
+   = note: `Assoc` (in `Sup<_>`) is also specified to be `_`
+
+error: aborting due to 2 previous errors
+

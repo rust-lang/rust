@@ -18,11 +18,16 @@ impl Trait for dyn Dyn<(), ()> {
     type Assoc = &'static str;
 }
 impl<A, B> Trait for dyn Dyn<A, B> {
-//~^ ERROR conflicting implementations of trait `Trait` for type `(dyn Dyn<(), ()> + 'static)`
+    //~^ ERROR conflicting associated type bindings for `Assoc`
     type Assoc = usize;
 }
 
 fn call<A, B>(x: usize) -> <dyn Dyn<A, B> as Trait>::Assoc {
+    //~^ ERROR conflicting associated type bindings for `Assoc`
+    //~| ERROR conflicting associated type bindings for `Assoc`
+    //~| ERROR conflicting associated type bindings for `Assoc`
+    //~| ERROR the trait bound `(dyn Dyn<A, B> + 'static): Trait` is not satisfied
+    //~| ERROR the trait bound `(dyn Dyn<A, B> + 'static): Trait` is not satisfied
     x
 }
 
