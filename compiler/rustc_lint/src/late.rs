@@ -355,7 +355,7 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     // `builtin_lints` directly rather than bundling it up into the
     // `RuntimeCombinedLateLintPass`.
     let mut passes: Vec<_> = unerased_lint_store(tcx.sess)
-        .late_module_passes
+        .late_lint_mod_passes
         .iter()
         .map(|mk_pass| mk_pass(tcx))
         .filter(|pass| is_lint_pass_required(skippable_lints, &pass.get_lints()))
@@ -403,7 +403,7 @@ fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
 
     // Note: `passes` is often empty after filtering.
     let passes: Vec<_> = unerased_lint_store(tcx.sess)
-        .late_passes
+        .late_lint_passes
         .iter()
         .map(|mk_pass| mk_pass(tcx))
         .filter(|pass| is_lint_pass_required(skippable_lints, &pass.get_lints()))
