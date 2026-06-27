@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::higher::{Range, RangeIterability, VecArgs};
+use clippy_utils::higher::{Range, VecArgs};
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::source::{SpanExt, snippet_with_context};
 use clippy_utils::ty::implements_trait;
@@ -101,7 +101,7 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
         }
 
         let mut applicability = Applicability::MaybeIncorrect;
-        let suggestion = match (range.start, range.end, range.limits) {
+        let suggestion = match (range.start, range.end, range.ty.limits()) {
             (Some(start), Some(end), limits) => {
                 let element_ty = cx.typeck_results().expr_ty(start);
                 let (start_snippet, _) = snippet_with_context(cx, start.span, span.ctxt(), "..", &mut applicability);
@@ -109,11 +109,9 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
 
                 let should_emit_every_value = if let Some(step_def_id) = cx.tcx.get_diagnostic_item(sym::range_step)
                     && implements_trait(cx, element_ty, step_def_id, &[])
-                    && matches!(
-                        range.iterable,
-                        RangeIterability::IntoIterator | RangeIterability::Iterator
-                    ) {
-                    Some(range.iterable)
+                    && range.ty.implements_into_iterator()
+                {
+                    Some(range.ty)
                 } else {
                     None
                 };
@@ -134,7 +132,6 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
                         element_ty,
                         start_snippet,
                         end_snippet,
-                        limits,
                         should_emit_every_value,
                         should_emit_of_len,
                     ))
@@ -158,33 +155,23 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
                     .map_or(sym::Range, |adt_def| cx.tcx.item_name(adt_def.did()))
             ),
             |diag| {
-                if let Some((ty, start_snippet, end_snippet, limits, should_emit_every_value, should_emit_of_len)) =
-                    suggestion
+                if let Some((ty, start_snippet, end_snippet, should_emit_every_value, should_emit_of_len)) = suggestion
                 {
-                    if let Some(iterability) = should_emit_every_value
+                    if let Some(range_ty) = should_emit_every_value
                         && !is_no_std_crate(cx)
                     {
-                        let range_op = match limits {
+                        let range_op = match range_ty.limits() {
                             RangeLimits::HalfOpen => "..",
                             RangeLimits::Closed => "..=",
                         };
 
-                        // Old range types implement Iterator (and IntoIterator).
-                        // New range types implement IntoIterator only.
-                        // These have different optimal suggestions.
-                        let collect_code = match iterability {
-                            RangeIterability::Iterator => {
-                                format!("({start_snippet}{range_op}{end_snippet}).collect::<std::vec::Vec<{ty}>>()")
-                            },
-                            RangeIterability::IntoIterator => {
-                                // If the range type does not implement `Iterator` then we cannot just call
-                                // `.collect()`. In that case, we use `from_iter()` rather than
-                                // `.into_iter().collect::<...>()` because it is more concise.
-                                format!("std::vec::Vec::<{ty}>::from_iter({start_snippet}{range_op}{end_snippet})")
-                            },
-                            RangeIterability::None => {
-                                unreachable!("should not be trying to suggest collecting a non-iterable range")
-                            },
+                        let collect_code = if range_ty.implements_iterator() {
+                            format!("({start_snippet}{range_op}{end_snippet}).collect::<std::vec::Vec<{ty}>>()")
+                        } else {
+                            // If the range type does not implement `Iterator` then we cannot just call
+                            // `.collect()`. In that case, we use `from_iter()` rather than
+                            // `.into_iter().collect::<...>()` because it is more concise.
+                            format!("std::vec::Vec::<{ty}>::from_iter({start_snippet}{range_op}{end_snippet})")
                         };
 
                         diag.span_suggestion(

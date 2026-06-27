@@ -203,122 +203,152 @@ impl<'hir> IfOrIfLet<'hir> {
 /// Represent a range akin to `ast::ExprKind::Range`.
 #[derive(Debug, Copy, Clone)]
 pub struct Range<'a> {
+    /// Type of the range, as an enum of only range types.
+    pub ty: RangeTy,
     /// The lower bound of the range, or `None` for ranges such as `..X`.
     pub start: Option<&'a Expr<'a>>,
     /// The upper bound of the range, or `None` for ranges such as `X..`.
     pub end: Option<&'a Expr<'a>>,
-    /// Whether the interval is open or closed.
-    pub limits: ast::RangeLimits,
-    pub iterable: RangeIterability,
     pub span: Span,
-}
-
-/// Whether a range type is iterable (presuming that its element type implements the `Step` trait).
-///
-/// This is a component of [`Range`].
-#[derive(Debug, Copy, Clone)]
-pub enum RangeIterability {
-    /// Not iterable.
-    None,
-    /// Implements the [`Iterator`] trait (and [`IntoIterator`] by blanket impl).
-    Iterator,
-    /// Implements the [`IntoIterator`] trait, but not [`Iterator`].
-    IntoIterator,
 }
 
 impl<'a> Range<'a> {
     /// Higher a `hir` range to something similar to `ast::ExprKind::Range`.
     pub fn hir(cx: &LateContext<'_>, expr: &'a Expr<'_>) -> Option<Range<'a>> {
         let span = expr.range_span()?;
-        match expr.kind {
+        let (ty, start, end) = match expr.kind {
             ExprKind::Call(path, [arg1, arg2])
                 if let ExprKind::Path(qpath) = path.kind
                     && cx.tcx.qpath_is_lang_item(qpath, hir::LangItem::RangeInclusiveNew) =>
             {
-                Some(Range {
-                    start: Some(arg1),
-                    end: Some(arg2),
-                    limits: ast::RangeLimits::Closed,
-                    iterable: RangeIterability::Iterator,
-                    span,
-                })
+                (RangeTy::OpsInclusive, Some(arg1), Some(arg2))
             },
             ExprKind::Struct(&qpath, fields, StructTailExpr::None) => match (cx.tcx.qpath_lang_item(qpath)?, fields) {
-                (hir::LangItem::RangeFull, []) => Some(Range {
-                    start: None,
-                    end: None,
-                    limits: ast::RangeLimits::HalfOpen,
-                    iterable: RangeIterability::None,
-                    span,
-                }),
-                (hir::LangItem::RangeFrom, [start]) if start.ident.name == sym::start => Some(Range {
-                    start: Some(start.expr),
-                    end: None,
-                    limits: ast::RangeLimits::HalfOpen,
-                    iterable: RangeIterability::Iterator,
-                    span,
-                }),
-                (hir::LangItem::RangeFromCopy, [start]) if start.ident.name == sym::start => Some(Range {
-                    start: Some(start.expr),
-                    end: None,
-                    limits: ast::RangeLimits::HalfOpen,
-                    iterable: RangeIterability::IntoIterator,
-                    span,
-                }),
+                (hir::LangItem::RangeFull, []) => (RangeTy::OpsFull, None, None),
+                (hir::LangItem::RangeFrom, [start]) if start.ident.name == sym::start => {
+                    (RangeTy::OpsFrom, Some(start.expr), None)
+                },
+                (hir::LangItem::RangeFromCopy, [start]) if start.ident.name == sym::start => {
+                    (RangeTy::RangeFrom, Some(start.expr), None)
+                },
                 (hir::LangItem::Range, [start, end] | [end, start])
                     if start.ident.name == sym::start && end.ident.name == sym::end =>
                 {
-                    Some(Range {
-                        start: Some(start.expr),
-                        end: Some(end.expr),
-                        limits: ast::RangeLimits::HalfOpen,
-                        iterable: RangeIterability::Iterator,
-                        span,
-                    })
+                    (RangeTy::OpsRange, Some(start.expr), Some(end.expr))
                 },
                 (hir::LangItem::RangeCopy, [start, end] | [end, start])
                     if start.ident.name == sym::start && end.ident.name == sym::end =>
                 {
-                    Some(Range {
-                        start: Some(start.expr),
-                        end: Some(end.expr),
-                        limits: ast::RangeLimits::HalfOpen,
-                        iterable: RangeIterability::IntoIterator,
-                        span,
-                    })
+                    (RangeTy::RangeRange, Some(start.expr), Some(end.expr))
                 },
                 (hir::LangItem::RangeInclusiveCopy, [start, last] | [last, start])
                     if start.ident.name == sym::start && last.ident.name == sym::last =>
                 {
-                    Some(Range {
-                        start: Some(start.expr),
-                        end: Some(last.expr),
-                        limits: ast::RangeLimits::Closed,
-                        iterable: RangeIterability::IntoIterator,
-                        span,
-                    })
+                    (RangeTy::RangeInclusive, Some(start.expr), Some(last.expr))
                 },
-                (hir::LangItem::RangeToInclusive | hir::LangItem::RangeToInclusiveCopy, [end])
-                    if end.ident.name == sym::end =>
-                {
-                    Some(Range {
-                        start: None,
-                        end: Some(end.expr),
-                        limits: ast::RangeLimits::Closed,
-                        iterable: RangeIterability::None,
-                        span,
-                    })
+                (hir::LangItem::RangeToInclusive, [end]) if end.ident.name == sym::end => {
+                    (RangeTy::OpsToInclusive, None, Some(end.expr))
                 },
-                (hir::LangItem::RangeTo, [end]) if end.ident.name == sym::end => Some(Range {
-                    start: None,
-                    end: Some(end.expr),
-                    limits: ast::RangeLimits::HalfOpen,
-                    iterable: RangeIterability::None,
-                    span,
-                }),
-                _ => None,
+                (hir::LangItem::RangeToInclusiveCopy, [last]) if last.ident.name == sym::last => {
+                    (RangeTy::RangeToInclusive, None, Some(last.expr))
+                },
+                (hir::LangItem::RangeTo, [end]) if end.ident.name == sym::end => (RangeTy::OpsTo, None, Some(end.expr)),
+                _ => return None,
             },
-            _ => None,
+            _ => return None,
+        };
+
+        Some(Range { ty, start, end, span })
+    }
+}
+
+/// A type that can appear as the type of a range expression.
+///
+/// This is a component of [`Range`].
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum RangeTy {
+    /// [`core::ops::RangeFrom`]
+    OpsFrom,
+    /// [`core::range::RangeFrom`]
+    RangeFrom,
+
+    /// [`core::ops::RangeFull`]
+    OpsFull,
+
+    /// [`core::ops::Range`]
+    OpsRange,
+    /// [`core::range::Range`]
+    RangeRange,
+
+    /// [`core::ops::RangeInclusive`]
+    OpsInclusive,
+    /// [`core::range::RangeInclusive`]
+    RangeInclusive,
+
+    /// [`core::ops::RangeTo`]
+    OpsTo,
+
+    /// [`core::ops::RangeToInclusive`]
+    OpsToInclusive,
+    /// [`core::range::RangeToInclusive`]
+    RangeToInclusive,
+}
+
+#[expect(clippy::match_same_arms, reason = "regularity over density")]
+impl RangeTy {
+    /// Returns whether this type implements [`IntoIterator`] — that is, whether it is iterable —
+    /// presuming that its element type implements the `Step` trait.
+    pub fn implements_into_iterator(self) -> bool {
+        match self {
+            RangeTy::OpsFrom => true,
+            RangeTy::RangeFrom => true,
+            RangeTy::OpsRange => true,
+            RangeTy::RangeRange => true,
+            RangeTy::OpsInclusive => true,
+            RangeTy::RangeInclusive => true,
+
+            RangeTy::OpsFull => false,
+            RangeTy::OpsTo => false,
+            RangeTy::OpsToInclusive => false,
+            RangeTy::RangeToInclusive => false,
+        }
+    }
+
+    /// Returns whether this type implements [`Iterator`] directly, and [`IntoIterator`] via blanket
+    /// impl, presuming that its element type implements the `Step` trait.
+    pub fn implements_iterator(self) -> bool {
+        match self {
+            RangeTy::OpsFrom => true,
+            RangeTy::OpsRange => true,
+            RangeTy::OpsInclusive => true,
+
+            // New range types don’t implement Iterator, only IntoIterator
+            RangeTy::RangeFrom => false,
+            RangeTy::RangeRange => false,
+            RangeTy::RangeInclusive => false,
+
+            // Non-iterables
+            RangeTy::OpsFull => false,
+            RangeTy::OpsTo => false,
+            RangeTy::OpsToInclusive => false,
+            RangeTy::RangeToInclusive => false,
+        }
+    }
+
+    pub fn limits(self) -> ast::RangeLimits {
+        match self {
+            RangeTy::RangeFrom => ast::RangeLimits::HalfOpen,
+            RangeTy::OpsRange => ast::RangeLimits::HalfOpen,
+            RangeTy::RangeRange => ast::RangeLimits::HalfOpen,
+
+            RangeTy::OpsFrom => ast::RangeLimits::HalfOpen,
+            RangeTy::OpsTo => ast::RangeLimits::HalfOpen,
+            RangeTy::OpsFull => ast::RangeLimits::HalfOpen,
+
+            RangeTy::OpsInclusive => ast::RangeLimits::Closed,
+            RangeTy::RangeInclusive => ast::RangeLimits::Closed,
+            RangeTy::OpsToInclusive => ast::RangeLimits::Closed,
+            RangeTy::RangeToInclusive => ast::RangeLimits::Closed,
         }
     }
 }

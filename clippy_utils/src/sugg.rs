@@ -133,7 +133,7 @@ impl<'a> Sugg<'a> {
         mut get_snippet: impl FnMut(Span) -> Cow<'a, str>,
     ) -> Self {
         if let Some(range) = higher::Range::hir(cx, expr) {
-            let op = AssocOp::Range(range.limits);
+            let op = AssocOp::Range(range.ty.limits());
             let start = range.start.map_or("".into(), |expr| get_snippet(expr.span));
             let end = range.end.map_or("".into(), |expr| get_snippet(expr.span));
 
