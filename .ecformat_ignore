@@ -1,0 +1,27 @@
+# Ignore external repositories as checking for EditorConfig violations there
+# is their responsibility and out of scope for here. See also:
+# https://github.com/rust-lang/rustc-dev-guide/blob/main/src/external-repos.md
+# Subtrees
+src/tools/clippy
+src/tools/miri
+library/portable-simd
+src/tools/rustfmt
+src/tools/rust-analyzer
+compiler/rustc_codegen_cranelift
+compiler/rustc_codegen_gcc
+src/doc/rustc-dev-guide
+library/compiler-builtins
+library/stdarch
+# Submodules
+src/doc/nomicon
+src/tools/cargo
+src/doc/reference
+src/doc/book
+src/doc/rust-by-example
+src/doc/edition-guide
+src/llvm-project
+src/doc/embedded-book
+library/backtrace
+src/tools/rustc-perf
+src/tools/enzyme
+src/gcc
