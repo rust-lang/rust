@@ -1345,6 +1345,27 @@ struct FindParamInClause<'a, 'b, D: SolverDelegate<Interner = I>, I: Interner> {
     recursion_depth: usize,
 }
 
+impl<D, I> FindParamInClause<'_, '_, D, I>
+where
+    D: SolverDelegate<Interner = I>,
+    I: Interner,
+{
+    fn replace_bound_vars<T: TypeFoldable<I>>(&mut self, value: T) -> T {
+        let old_universes = self.universes.clone();
+        let value = self.ecx.replace_bound_vars(value, &mut self.universes);
+
+        for (old, new) in old_universes.into_iter().zip(&self.universes) {
+            if old.is_none()
+                && let Some(new) = new
+            {
+                self.ecx.insert_empty_placeholder_assumptions(*new);
+            }
+        }
+
+        value
+    }
+}
+
 impl<D, I> TypeVisitor<I> for FindParamInClause<'_, '_, D, I>
 where
     D: SolverDelegate<Interner = I>,
@@ -1364,7 +1385,7 @@ where
     }
 
     fn visit_ty(&mut self, ty: I::Ty) -> Self::Result {
-        let ty = self.ecx.replace_bound_vars(ty, &mut self.universes);
+        let ty = self.replace_bound_vars(ty);
         let Ok(ty) = self.ecx.structurally_normalize_ty(self.param_env, ty) else {
             return ControlFlow::Break(Err(NoSolution));
         };
@@ -1402,7 +1423,7 @@ where
     }
 
     fn visit_const(&mut self, ct: I::Const) -> Self::Result {
-        let ct = self.ecx.replace_bound_vars(ct, &mut self.universes);
+        let ct = self.replace_bound_vars(ct);
         let Ok(ct) = self.ecx.structurally_normalize_const(self.param_env, ct) else {
             return ControlFlow::Break(Err(NoSolution));
         };
