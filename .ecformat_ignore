@@ -32,7 +32,24 @@ src/etc/installer/gfx/*
 *.ico
 *.woff
 *.woff2
+tests/ui/macros/not-utf8.bin
 
 # Some special cases cannot be handled:
 # Markdown file (space indentation) with 'make' code (tab indentation)
 src/doc/rustc/src/jobserver.md
+# Test file with different line endings and indentations
+tests/pretty/block-comment-wchar.rs
+# Test file for normalize some CRFL line endings to LF
+tests/ui/asm/normalize-offsets-for-crlf.s
+# Test file with CR in frontmatter
+tests/ui/frontmatter/content-cr.rs
+# Test file which uses CRLF line endings but only inside strings
+tests/ui/lexer/crlf-in-byte-string-literal.rs
+# Test files with CR line ending but only in some doc comments
+tests/ui/lexer/lex-bare-cr-*
+tests/ui/parser/several-carriage-returns-in-doc-comment.rs
+# Test file with tab indentation and one CR line ending
+tests/ui/parser/bad-char-literals.rs
+# Test file with CR line ending inside string
+tests/ui/parser/raw/raw-byte-string-literals.rs
+tests/ui/parser/trailing-carriage-return-in-string.rs
