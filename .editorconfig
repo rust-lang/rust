@@ -36,6 +36,12 @@ max_line_length = 100
 # double whitespace at end of line
 # denotes a line break in Markdown
 trim_trailing_whitespace = false
+# Markdown has heavily context specific indentations.
+# For example, the indentation in lists depend on the length of the list marker
+# (such as '- ' or '100. '), at least in the GitHub Markdown flavor:
+# https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax#nested-lists
+# Therefore, pressing tab should insert a single space to encourage situative accurate indentations.
+indent_size = 1
 
 [*.yml]
 indent_size = 2
