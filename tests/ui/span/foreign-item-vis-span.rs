@@ -1,4 +1,5 @@
-// Check that the visibility modifier is included in the span of foreign items.
+//! Regression test for <https://github.com/rust-lang/rust/issues/28472>.
+//! Check that the visibility modifier is included in the span of foreign items.
 
 extern "C" {
   fn foo();

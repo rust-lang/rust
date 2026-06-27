@@ -1,4 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/28550>.
 //@ run-pass
+
 struct A<F: FnOnce()->T,T>(F::Output);
 struct B<F: FnOnce()->T,T>(A<F,T>);
 

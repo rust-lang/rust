@@ -1,4 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/28936>.
 //@ check-pass
+
 pub type Session = i32;
 pub struct StreamParser<'a, T> {
     _tokens: T,
