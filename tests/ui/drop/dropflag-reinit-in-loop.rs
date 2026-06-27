@@ -1,8 +1,8 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/27401>.
+//! Check that when a `let`-binding occurs in a loop, its associated
+//! drop-flag is reinitialized (to indicate "needs-drop" at the end of
+//! the owning variable's scope).
 //@ run-pass
-
-// Check that when a `let`-binding occurs in a loop, its associated
-// drop-flag is reinitialized (to indicate "needs-drop" at the end of
-// the owning variable's scope).
 
 struct A<'a>(&'a mut i32);
 

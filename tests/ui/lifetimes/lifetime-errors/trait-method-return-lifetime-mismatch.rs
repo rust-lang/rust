@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/27942>.
+//! Test internal compiler structs do not leak into error message.
 //@ dont-require-annotations: NOTE
 
 pub trait Resources<'a> {}

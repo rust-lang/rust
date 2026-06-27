@@ -1,5 +1,5 @@
 error[E0608]: cannot index into a value of type `({integer}, {integer}, {integer})`
-  --> $DIR/issue-27842.rs:4:16
+  --> $DIR/tuple-bracket-index-suggest-dot.rs:8:16
    |
 LL |     let _ = tup[0];
    |                ^^^ help: to access tuple element `0`, use: `.0`
@@ -7,7 +7,7 @@ LL |     let _ = tup[0];
    = help: tuples are indexed with a dot and a literal index: `tuple.0`, `tuple.1`, etc.
 
 error[E0608]: cannot index into a value of type `({integer}, {integer}, {integer})`
-  --> $DIR/issue-27842.rs:9:16
+  --> $DIR/tuple-bracket-index-suggest-dot.rs:13:16
    |
 LL |     let _ = tup[i];
    |                ^^^
@@ -15,7 +15,7 @@ LL |     let _ = tup[i];
    = help: tuples are indexed with a dot and a literal index: `tuple.0`, `tuple.1`, etc.
 
 error[E0608]: cannot index into a value of type `({integer},)`
-  --> $DIR/issue-27842.rs:14:16
+  --> $DIR/tuple-bracket-index-suggest-dot.rs:18:16
    |
 LL |     let _ = tup[3];
    |                ^^^
