@@ -683,16 +683,16 @@ auto:
   # SourceForge is notoriously flaky, so we mirror it on our own infrastructure.
 
   # x86_64-mingw is split into two jobs to run tests in parallel.
-  - name: x86_64-llvm-mingw-1
+  - name: i686-mingw-1
     env:
       SCRIPT: make ci-mingw-x
-      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnullvm
+      RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
     <<: *job-windows
 
-  - name: x86_64-llvm-mingw-2
+  - name: i686-mingw-2
     env:
       SCRIPT: make ci-mingw-bootstrap
-      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnullvm
+      RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
     <<: *job-windows
 
   - name: dist-x86_64-msvc
