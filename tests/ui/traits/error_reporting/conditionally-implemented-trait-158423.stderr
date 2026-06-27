@@ -11,11 +11,13 @@ help: the trait `Foo<'_>` is not implemented for `Test`
    |
 LL | struct Test(i32, i64);
    | ^^^^^^^^^^^
-help: the trait `Foo<'_>` is implemented for `Test`
+help: the trait `Foo<'_>` is conditionally implemented for `Test`
   --> $DIR/conditionally-implemented-trait-158423.rs:20:1
    |
 LL | impl<'a> Foo<'a> for Test where i32: Foo<'a, Assoc = i32>, i64: Foo<'a, Assoc = i64> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------^
+   |                                                                         |
+   |                                                                         unsatisfied requirement introduced here: `<i64 as Foo<'_>>::Assoc == i64`
 note: required by a bound in `process`
   --> $DIR/conditionally-implemented-trait-158423.rs:24:19
    |
