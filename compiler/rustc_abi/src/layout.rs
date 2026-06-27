@@ -680,11 +680,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
 
                                 return true;
                             }
-                            // Repacking is currently only on future edition. For editions where it is disabled,
-                            // fall back to the original niche-filling behaviour.
-                            if !repr.can_repack_variant_around_niche() {
-                                return false;
-                            }
+
                             // The ordinary niche-filling path can only move a non-largest variant as a
                             // whole before or after the chosen niche. If that fails, try placing the
                             // variant's fields individually while treating the niche bytes as reserved.
@@ -764,27 +760,20 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
 
                     Some(layout)
                 };
-            if repr.can_repack_variant_around_niche() {
-                let max_variant_size = variant_layouts.iter().map(|layout| layout.size).max()?;
-                // Chooses the first max-sized niche-providing variant whose layout succeeds.
-                for (largest_variant_index, _) in
-                    variant_layouts.iter_enumerated().filter(|&(_, layout)| {
-                        layout.size == max_variant_size && layout.largest_niche.is_some()
-                    })
-                {
-                    if let Some(layout) = try_niche_variant(largest_variant_index) {
-                        return Some(layout);
-                    }
-                }
 
-                None
-            } else {
-                let largest_variant_index = variant_layouts
-                    .iter_enumerated()
-                    .max_by_key(|(_i, layout)| layout.size.bytes())
-                    .map(|(i, _layout)| i)?;
-                try_niche_variant(largest_variant_index)
+            let max_variant_size = variant_layouts.iter().map(|layout| layout.size).max()?;
+            // Chooses the first max-sized niche-providing variant whose layout succeeds.
+            for (largest_variant_index, _) in
+                variant_layouts.iter_enumerated().filter(|&(_, layout)| {
+                    layout.size == max_variant_size && layout.largest_niche.is_some()
+                })
+            {
+                if let Some(layout) = try_niche_variant(largest_variant_index) {
+                    return Some(layout);
+                }
             }
+
+            None
         };
 
         let niche_filling_layout = calculate_niche_filling_layout();
