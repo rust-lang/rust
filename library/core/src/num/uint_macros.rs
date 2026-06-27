@@ -1721,8 +1721,8 @@ macro_rules! uint_impl {
         /// rounded down.
         ///
         /// This method might not be optimized owing to implementation details;
-        /// `ilog2` can produce results more efficiently for base 2, and `ilog10`
-        /// can produce results more efficiently for base 10.
+        /// [`ilog2`](Self::ilog2) can produce results more efficiently for base 2,
+        /// and [`ilog10`](Self::ilog10) can produce results more efficiently for base 10.
         ///
         /// # Panics
         ///
