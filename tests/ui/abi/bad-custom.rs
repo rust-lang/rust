@@ -1,7 +1,6 @@
 //@ edition: 2021
 //@ check-fail
 //@ needs-asm-support
-#![feature(abi_custom)]
 
 #[unsafe(naked)]
 extern "custom" fn must_be_unsafe(a: i64) -> i64 {
