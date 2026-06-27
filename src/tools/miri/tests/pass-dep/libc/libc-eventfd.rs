@@ -1,6 +1,7 @@
 //@only-target: linux android illumos
 // test_race, test_blocking_read and test_blocking_write depend on a deterministic schedule.
 //@compile-flags: -Zmiri-deterministic-concurrency
+//@run-native
 
 // FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
 #![allow(static_mut_refs)]
@@ -102,6 +103,11 @@ fn test_race() {
     let fd =
         errno_result(unsafe { libc::eventfd(0, libc::EFD_NONBLOCK | libc::EFD_CLOEXEC) }).unwrap();
     let thread1 = thread::spawn(move || {
+        if !cfg!(miri) {
+            // Make sure the write goes first.
+            thread::sleep(std::time::Duration::from_millis(10));
+        }
+
         let mut buf: [u8; 8] = [0; 8];
         let res = read_bytes(fd, &mut buf).unwrap();
         // read returns number of bytes has been read, which is always 8.

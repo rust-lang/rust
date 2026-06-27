@@ -1,6 +1,7 @@
 //@ignore-target: windows # No libc pipe on Windows
 // test_race depends on a deterministic schedule.
 //@compile-flags: -Zmiri-deterministic-concurrency
+//@run-native
 use std::thread;
 
 #[path = "../../utils/libc.rs"]
