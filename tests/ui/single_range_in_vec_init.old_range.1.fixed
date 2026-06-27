@@ -1,4 +1,10 @@
 //@aux-build:proc_macros.rs
+//@revisions: old_range new_range
+//@[new_range] compile-flags: --cfg=new_range
+
+// When feature(new_range) stabilizes, this should be converted to testing
+// old and new editions instead.
+#![cfg_attr(new_range, feature(new_range))]
 #![allow(clippy::no_effect, clippy::unnecessary_operation, clippy::useless_vec, unused)]
 #![warn(clippy::single_range_in_vec_init)]
 

@@ -1330,10 +1330,10 @@ pub fn is_else_clause_in_let_else(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
 
 /// Checks whether the given `Expr` is a range over the entire container.
 pub fn is_full_collection_range(cx: &LateContext<'_>, container: Option<HirId>, expr: &Expr<'_>) -> bool {
-    if let Some(Range { start, end, limits, .. }) = Range::hir(cx, expr) {
+    if let Some(Range { start, end, ty, .. }) = Range::hir(cx, expr) {
         start.is_none_or(|start| is_integer_literal(start, 0))
             && end.is_none_or(|end| {
-                if limits == RangeLimits::HalfOpen
+                if ty.limits() == RangeLimits::HalfOpen
                     && let Some(container) = container
                     && let ExprKind::MethodCall(seg, recv, [], _) = end.kind
                 {

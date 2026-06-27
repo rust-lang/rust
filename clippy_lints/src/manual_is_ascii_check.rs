@@ -117,9 +117,10 @@ impl<'tcx> LateLintPass<'tcx> for ManualIsAsciiCheck {
             && let Some(higher::Range {
                 start: Some(start),
                 end: Some(end),
-                limits: RangeLimits::Closed,
+                ty: range_ty,
                 span: _,
             }) = higher::Range::hir(cx, receiver)
+            && let RangeLimits::Closed = range_ty.limits()
             && !matches!(cx.typeck_results().expr_ty(arg).peel_refs().kind(), ty::Param(_))
         {
             let arg = peel_ref_operators(cx, arg);
