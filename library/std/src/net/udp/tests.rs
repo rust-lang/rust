@@ -1,5 +1,5 @@
 use crate::io::ErrorKind;
-use crate::net::test::{LOCALHOST_IP4, LOCALHOST_IP6, compare_ignore_zoneid};
+use crate::net::tests::{LOCALHOST_IP4, LOCALHOST_IP6, compare_ignore_zoneid};
 use crate::net::*;
 use crate::sync::mpsc::channel;
 use crate::thread;

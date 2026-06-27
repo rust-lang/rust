@@ -3,7 +3,7 @@ use rand::Rng;
 use crate::io::prelude::*;
 use crate::io::{BorrowedBuf, ErrorKind, IoSlice, IoSliceMut};
 use crate::mem::MaybeUninit;
-use crate::net::test::{LOCALHOST_IP4, LOCALHOST_IP6};
+use crate::net::tests::{LOCALHOST_IP4, LOCALHOST_IP6};
 use crate::net::*;
 use crate::sync::mpsc::channel;
 use crate::time::{Duration, Instant};
