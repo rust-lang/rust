@@ -2549,7 +2549,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let is_trivial_path = path.is_potential_trivial_const_arg()
             && matches!(res, Res::Def(DefKind::ConstParam, _));
-        let ct_kind = if is_trivial_path || tcx.features().min_generic_const_args() {
+        let ct_kind = if matches!(res, Res::Def(DefKind::Static { .. }, _)) {
+            let msg = "complex const arguments must be placed inside of a `const` block";
+            hir::ConstArgKind::Error(self.dcx().struct_span_err(span, msg).emit())
+        } else if is_trivial_path || tcx.features().min_generic_const_args() {
             let qpath = self.lower_qpath(
                 ty_id,
                 &None,
@@ -2677,6 +2680,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ConstArg { hir_id: self.next_id(), kind: hir::ConstArgKind::Tup(exprs), span }
             }
             ExprKind::Path(qself, path) => {
+                if let Some(Res::Def(DefKind::Static { .. }, _)) =
+                    self.get_partial_res(expr.id).and_then(|partial_res| partial_res.full_res())
+                {
+                    return overly_complex_const(self);
+                }
+
                 let qpath = self.lower_qpath(
                     expr.id,
                     qself,
