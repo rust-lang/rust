@@ -1,11 +1,12 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::source::{indent_of, reindent_multiline, snippet};
+use clippy_utils::is_from_proc_macro;
+use clippy_utils::source::{SpanExt, indent_of, reindent_multiline};
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TypeckResults;
 use rustc_session::declare_lint_pass;
-use rustc_span::{Span, SyntaxContext};
+use rustc_span::SyntaxContext;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -47,67 +48,62 @@ declare_clippy_lint! {
 declare_lint_pass!(RedundantElse => [REDUNDANT_ELSE]);
 
 impl<'tcx> LateLintPass<'tcx> for RedundantElse {
-    fn check_block_post(&mut self, cx: &LateContext<'tcx>, b: &Block<'_>) {
+    fn check_block_post(&mut self, cx: &LateContext<'tcx>, b: &'tcx Block<'_>) {
         if let Some(e) = b.expr {
             check(cx, b.span.ctxt(), e);
         }
     }
 
-    fn check_stmt(&mut self, cx: &LateContext<'tcx>, s: &Stmt<'_>) {
+    fn check_stmt(&mut self, cx: &LateContext<'tcx>, s: &'tcx Stmt<'_>) {
         if let StmtKind::Expr(e) | StmtKind::Semi(e) = s.kind {
             check(cx, s.span.ctxt(), e);
         }
     }
 }
 
-fn check(cx: &LateContext<'_>, ctxt: SyntaxContext, e: &Expr<'_>) {
-    if e.span.ctxt() != ctxt || ctxt.in_external_macro(cx.tcx.sess.source_map()) {
-        return;
-    }
-    // if else
-    let (mut then, mut els) = match e.kind {
-        ExprKind::If(_, then, Some(els)) => (then, els),
-        _ => return,
-    };
-    loop {
-        if then.span.ctxt() != ctxt || els.span.ctxt() != ctxt || !is_never(cx.typeck_results(), ctxt, then) {
-            // then block does not always break
-            return;
-        }
-        match &els.kind {
-            // else if else
-            ExprKind::If(_, next_then, Some(next_els)) => {
-                then = next_then;
-                els = next_els;
+fn check<'tcx>(cx: &LateContext<'tcx>, ctxt: SyntaxContext, e: &'tcx Expr<'_>) {
+    // Find the final `else` block in an `if` chain.
+    let mut prev_then = None;
+    let mut next = e;
+    let (then, else_) = loop {
+        match next.kind {
+            ExprKind::If(_, then, Some(else_))
+                if is_never(cx.typeck_results(), ctxt, then)
+                    && then.span.ctxt() == ctxt
+                    && else_.span.ctxt() == ctxt =>
+            {
+                prev_then = Some(then);
+                next = else_;
             },
-            // else if without else
-            ExprKind::If(..) => return,
-            // done
-            _ => break,
+            ExprKind::Block(b, _) if let Some(then) = prev_then => break (then, b),
+            _ => return,
         }
-    }
+    };
 
-    let mut app = Applicability::MachineApplicable;
-    if let ExprKind::Block(block, _) = &els.kind {
-        for stmt in block.stmts {
-            // If the `else` block contains a local binding, Clippy shouldn't auto-fix it
-            if matches!(&stmt.kind, StmtKind::Let(_)) {
-                app = Applicability::Unspecified;
-                break;
-            }
-        }
+    if e.span.ctxt() == ctxt
+        && !ctxt.in_external_macro(cx.tcx.sess.source_map())
+        && !is_from_proc_macro(cx, e)
+        && let Some(src) = else_.span.get_text(cx)
+        && let Some(src) = src.strip_prefix('{')
+        && let Some(src) = src.strip_suffix('}')
+        // FIXME(@Jarcho): `indent_of` walks to the root context before getting the indent
+        // which gives the wrong result here.
+        && let Some(indent) = indent_of(cx, e.span)
+    {
+        let sp = else_.span.with_lo(then.span.hi());
+        span_lint_hir_and_then(cx, REDUNDANT_ELSE, e.hir_id, sp, "redundant else block", |diag| {
+            diag.span_suggestion(
+                sp,
+                "remove the `else` block and move the contents out",
+                reindent_multiline(src.trim_end(), false, Some(indent)),
+                if ctxt.is_root() && else_.stmts.iter().all(|s| !matches!(s.kind, StmtKind::Let(_))) {
+                    Applicability::MachineApplicable
+                } else {
+                    Applicability::MaybeIncorrect
+                },
+            );
+        });
     }
-
-    // FIXME: The indentation of the suggestion would be the same as the one of the macro invocation in this implementation, see https://github.com/rust-lang/rust-clippy/pull/13936#issuecomment-2569548202
-    let sp = els.span.with_lo(then.span.hi());
-    span_lint_hir_and_then(cx, REDUNDANT_ELSE, e.hir_id, sp, "redundant else block", |diag| {
-        diag.span_suggestion(
-            sp,
-            "remove the `else` block and move the contents out",
-            make_sugg(cx, els.span, "..", Some(e.span)),
-            app,
-        );
-    });
 }
 
 fn is_never(typeck: &TypeckResults<'_>, ctxt: SyntaxContext, e: &Expr<'_>) -> bool {
@@ -174,19 +170,4 @@ fn is_never_mac(ctxt: SyntaxContext, mut e: &Expr<'_>) -> bool {
         }
         e = next;
     }
-}
-
-// Extract the inner contents of an `else` block str
-// e.g. `{ foo(); bar(); }` -> `foo(); bar();`
-fn extract_else_block(mut block: &str) -> String {
-    block = block.strip_prefix("{").unwrap_or(block);
-    block = block.strip_suffix("}").unwrap_or(block);
-    block.trim_end().to_string()
-}
-
-fn make_sugg(cx: &LateContext<'_>, els_span: Span, default: &str, indent_relative_to: Option<Span>) -> String {
-    let extracted = extract_else_block(&snippet(cx, els_span, default));
-    let indent = indent_relative_to.and_then(|s| indent_of(cx, s));
-
-    reindent_multiline(&extracted, false, indent)
 }
