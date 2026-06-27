@@ -318,7 +318,7 @@ jobs:
   # Check that the generated files agree with the checked-in versions.
   check-stdarch-gen:
     needs: [style]
-    name: Check stdarch-gen-{arm, loongarch, hexagon, hexagon-scalar} output
+    name: Check stdarch-gen-{arm, loongarch, hexagon} output
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
@@ -342,11 +342,7 @@ jobs:
       run: |
         cargo run -p stdarch-gen-hexagon --release
         git diff --exit-code
-    - name: Check hexagon scalar
-      run: |
-        cargo run -p stdarch-gen-hexagon-scalar --release
-        git diff --exit-code
-
+    
   # Run some tests with Miri. Most stdarch functions use platform-specific intrinsics
   # that Miri does not support. Also Miri is reltively slow.
   #
