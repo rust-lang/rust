@@ -20,8 +20,8 @@ pub const HAS_PREFIXES: bool = false;
 pub(crate) fn absolute(path: &Path) -> io::Result<PathBuf> {
     // This is mostly a wrapper around collecting `Path::components`, with
     // exceptions made where this conflicts with the POSIX specification.
-    // See 4.13 Pathname Resolution, IEEE Std 1003.1-2017
-    // https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap04.html#tag_04_13
+    // See 4.16 Pathname Resolution, IEEE Std 1003.1-2024
+    // https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap04.html#tag_04_16
 
     // Get the components, skipping the redundant leading "." component if it exists.
     let mut components = path.strip_prefix(".").unwrap_or(path).components();
