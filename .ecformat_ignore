@@ -25,3 +25,10 @@ library/backtrace
 src/tools/rustc-perf
 src/tools/enzyme
 src/gcc
+
+# Ignore binary files
+src/etc/installer/gfx/*
+*.png
+*.ico
+*.woff
+*.woff2
