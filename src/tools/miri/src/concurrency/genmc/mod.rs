@@ -590,7 +590,7 @@ impl GenmcCtx {
             .pin_mut()
             .handle_free(self.active_thread_genmc_tid(machine), address.bytes());
 
-        get_outcome(free_result.into_genmc_result())?;
+        let () = get_outcome(free_result.into_genmc_result())?;
         interp_ok(())
     }
 
@@ -734,7 +734,7 @@ impl GenmcCtx {
             size.bytes(),
         );
 
-        get_outcome(load_result.into_genmc_result())?;
+        let () = get_outcome(load_result.into_genmc_result())?;
         // `load_result.read_value` is just a dummy for non-atomic loads. And anyway Miri doesn't
         // give us a chance to change the value here, it'll always use the one from its memory.
         interp_ok(())
@@ -795,7 +795,7 @@ impl GenmcCtx {
             size.bytes(),
         );
 
-        get_outcome(store_result.into_genmc_result())?;
+        let () = get_outcome(store_result.into_genmc_result())?;
         interp_ok(())
     }
 

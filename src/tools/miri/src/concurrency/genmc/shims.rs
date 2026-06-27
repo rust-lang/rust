@@ -171,7 +171,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             mutex.ptr().addr().bytes(),
             mutex.layout.size.bytes(),
         );
-        get_outcome(result.into_genmc_result())?;
+        let _is_co_max = get_outcome(result.into_genmc_result())?;
         // NOTE: We don't write anything back to Miri's memory where the Mutex is located, that state is handled only by GenMC.
         interp_ok(())
     }

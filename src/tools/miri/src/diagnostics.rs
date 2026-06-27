@@ -32,7 +32,8 @@ pub enum TerminationInfo {
         history: tree_diagnostics::HistoryData,
     },
     Int2PtrWithStrictProvenance,
-    /// GenMC deemed this execution invalid, so Miri drops it (mirrors GenMC's `Invalid` result).
+    /// GenMC deemed this execution invalid, so Miri drops it, i.e., it skips to the next execution
+    /// (mirrors GenMC's `Invalid` result).
     GenmcInvalid,
     /// All threads are blocked.
     GlobalDeadlock,
