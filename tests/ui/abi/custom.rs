@@ -3,7 +3,6 @@
 //
 //@ run-pass
 //@ only-x86_64
-#![feature(abi_custom)]
 
 use std::arch::{asm, global_asm, naked_asm};
 

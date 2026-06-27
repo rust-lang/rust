@@ -46,6 +46,8 @@ declare_features! (
 
     /// Allows `#[target_feature(...)]` on aarch64 platforms
     (accepted, aarch64_target_feature, "1.61.0", Some(44839)),
+    /// Allows `extern "custom" fn()`.
+    (accepted, abi_custom, "CURRENT_RUSTC_VERSION", Some(140829)),
     /// Allows using the `efiapi` ABI.
     (accepted, abi_efiapi, "1.68.0", Some(65815)),
     /// Allows the sysV64 ABI to be specified on all platforms
