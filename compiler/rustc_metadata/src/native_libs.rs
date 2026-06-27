@@ -168,16 +168,16 @@ pub fn find_native_static_library(name: &str, verbatim: bool, sess: &Session) ->
     })
 }
 
-fn find_bundled_library(
+pub fn find_bundled_library(
     name: Symbol,
     verbatim: Option<bool>,
     kind: NativeLibKind,
     has_cfg: bool,
-    tcx: TyCtxt<'_>,
+    sess: &Session,
+    crate_types: &[CrateType],
 ) -> Option<Symbol> {
-    let sess = tcx.sess;
     if let NativeLibKind::Static { bundle: Some(true) | None, whole_archive, .. } = kind
-        && tcx.crate_types().iter().any(|t| matches!(t, &CrateType::Rlib | CrateType::StaticLib))
+        && crate_types.iter().any(|t| matches!(t, &CrateType::Rlib | CrateType::StaticLib))
         && (sess.opts.unstable_opts.packed_bundled_libs || has_cfg || whole_archive == Some(true))
     {
         let verbatim = verbatim.unwrap_or(false);
@@ -250,16 +250,8 @@ impl<'tcx> Collector<'tcx> {
                 }
             };
 
-            let filename = find_bundled_library(
-                attr.name,
-                attr.verbatim,
-                attr.kind,
-                attr.cfg.is_some(),
-                self.tcx,
-            );
             self.libs.push(NativeLib {
                 name: attr.name,
-                filename,
                 kind: attr.kind,
                 cfg: attr.cfg.clone(),
                 foreign_module: Some(def_id.to_def_id()),
@@ -341,16 +333,8 @@ impl<'tcx> Collector<'tcx> {
                 // Add if not found
                 let new_name: Option<&str> = passed_lib.new_name.as_deref();
                 let name = Symbol::intern(new_name.unwrap_or(&passed_lib.name));
-                let filename = find_bundled_library(
-                    name,
-                    passed_lib.verbatim,
-                    passed_lib.kind,
-                    false,
-                    self.tcx,
-                );
                 self.libs.push(NativeLib {
                     name,
-                    filename,
                     kind: passed_lib.kind,
                     cfg: None,
                     foreign_module: None,
