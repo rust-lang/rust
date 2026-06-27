@@ -392,6 +392,7 @@ pub fn current_os_id() -> Option<u64> {
     target_os = "vxworks",
     target_os = "cygwin",
     target_vendor = "apple",
+    target_os = "netbsd",
 ))]
 fn truncate_cstr<const MAX_WITH_NUL: usize>(cstr: &CStr) -> [libc::c_char; MAX_WITH_NUL] {
     let mut result = [0; MAX_WITH_NUL];
@@ -463,7 +464,12 @@ pub fn set_name(name: &CStr) {
 
 #[cfg(target_os = "netbsd")]
 pub fn set_name(name: &CStr) {
+    // See https://github.com/NetBSD/src/blob/8d40872b4c550a802379f3b9c22a40212d5e149d/lib/libpthread/pthread.h#L281
+    // FIXME: move to libc.
+    const PTHREAD_MAX_NAMELEN_NP: usize = 32;
+
     unsafe {
+        let name = truncate_cstr::<{ PTHREAD_MAX_NAMELEN_NP }>(name);
         let res = libc::pthread_setname_np(
             libc::pthread_self(),
             c"%s".as_ptr(),

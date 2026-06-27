@@ -95,7 +95,7 @@ mod relate_tys;
 /// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysis
 /// - `location_map` -- map between MIR `Location` and `PointIndex`
 pub(crate) fn type_check<'tcx>(
-    root_cx: &mut BorrowCheckRootCtxt<'tcx>,
+    root_cx: &BorrowCheckRootCtxt<'tcx>,
     infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
     promoted: &IndexSlice<Promoted, Body<'tcx>>,
@@ -198,7 +198,6 @@ pub(crate) fn type_check<'tcx>(
         debug!("encountered an error region; removing constraints!");
         constraints.outlives_constraints = Default::default();
         constraints.type_tests = Default::default();
-        root_cx.set_tainted_by_errors(guar);
         infcx.set_tainted_by_errors(guar);
     }
 
@@ -229,7 +228,7 @@ enum FieldAccessError {
 /// way, it accrues region constraints -- these can later be used by
 /// NLL region checking.
 struct TypeChecker<'a, 'tcx> {
-    root_cx: &'a mut BorrowCheckRootCtxt<'tcx>,
+    root_cx: &'a BorrowCheckRootCtxt<'tcx>,
     infcx: &'a BorrowckInferCtxt<'tcx>,
     last_span: Span,
     body: &'a Body<'tcx>,

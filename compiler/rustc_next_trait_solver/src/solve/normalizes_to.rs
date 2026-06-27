@@ -81,15 +81,10 @@ where
                 None
             },
             |ecx| {
-                ecx.probe(|&result| ProbeKind::RigidAlias { result })
-                    .enter(|this| {
-                        this.structurally_instantiate_normalizes_to_term(
-                            goal,
-                            goal.predicate.alias,
-                        );
-                        this.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                    })
-                    .map_err(Into::into)
+                ecx.probe(|&result| ProbeKind::RigidAlias { result }).enter(|this| {
+                    this.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
+                    this.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                })
             },
         )
     }
@@ -351,11 +346,9 @@ where
                                     GoalSource::Misc,
                                     goal.with(cx, PredicateKind::Ambiguous),
                                 )?;
-                                return ecx
-                                    .evaluate_added_goals_and_make_canonical_response(
-                                        Certainty::Yes,
-                                    )
-                                    .map_err(Into::into);
+                                return ecx.evaluate_added_goals_and_make_canonical_response(
+                                    Certainty::Yes,
+                                );
                             }
                             // Outside of coherence, we treat the associated item as rigid instead.
                             ty::TypingMode::Typeck { .. }
@@ -367,11 +360,9 @@ where
                                     goal,
                                     goal.predicate.alias,
                                 );
-                                return ecx
-                                    .evaluate_added_goals_and_make_canonical_response(
-                                        Certainty::Yes,
-                                    )
-                                    .map_err(Into::into);
+                                return ecx.evaluate_added_goals_and_make_canonical_response(
+                                    Certainty::Yes,
+                                );
                             }
                         };
                     }
@@ -401,10 +392,10 @@ where
                         // This is not the case here and we only prefer adding an ambiguous
                         // nested goal for consistency.
                         ecx.add_goal(GoalSource::Misc, goal.with(cx, PredicateKind::Ambiguous))?;
-                        return then(ecx, Certainty::Yes).map_err(Into::into);
+                        return then(ecx, Certainty::Yes);
                     } else {
                         ecx.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
-                        return then(ecx, Certainty::Yes).map_err(Into::into);
+                        return then(ecx, Certainty::Yes);
                     }
                 } else {
                     return error_response(ecx, cx.delay_bug("missing item"));
@@ -472,7 +463,7 @@ where
             };
 
             ecx.instantiate_normalizes_to_term(goal, term)?;
-            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes).map_err(Into::into)
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
 
@@ -572,7 +563,6 @@ where
             pred,
             [(GoalSource::ImplWhereBound, goal.with(cx, output_is_sized_pred))],
         )
-        .map_err(Into::into)
     }
 
     fn consider_builtin_async_fn_trait_candidates(
@@ -759,8 +749,9 @@ where
                 // and opaque types: If the `self_ty` is `Sized`, then the metadata is `()`.
                 // FIXME(ptr_metadata): This impl overlaps with the other impls and shouldn't
                 // exist. Instead, `Pointee<Metadata = ()>` should be a supertrait of `Sized`.
-                let alias_bound_result =
-                    ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+                let alias_bound_result = ecx
+                    .probe_builtin_trait_candidate(BuiltinImplSource::Misc)
+                    .enter(|ecx| {
                         let sized_predicate = ty::TraitRef::new(
                             cx,
                             cx.require_trait_lang_item(SolverTraitLangItem::Sized),
@@ -769,12 +760,8 @@ where
                         ecx.add_goal(GoalSource::Misc, goal.with(cx, sized_predicate))?;
                         ecx.instantiate_normalizes_to_term(goal, Ty::new_unit(cx).into())?;
                         ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                    });
-
-                let alias_bound_result = match alias_bound_result.map_err_to_rerun()? {
-                    Ok(i) => Ok(i),
-                    Err(NoSolution) => Err(NoSolution),
-                };
+                    })
+                    .map_err_to_rerun()?;
 
                 // In case the dummy alias-bound candidate does not apply, we instead treat this projection
                 // as rigid.
@@ -900,7 +887,6 @@ where
             // but that's already proven by the generator being WF.
             [],
         )
-        .map_err(Into::into)
     }
 
     fn consider_builtin_fused_iterator_candidate(
