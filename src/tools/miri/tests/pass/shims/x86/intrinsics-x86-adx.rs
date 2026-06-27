@@ -1,6 +1,7 @@
 // We're testing x86 target specific features
 //@only-target: x86_64 i686
 //@compile-flags: -C target-feature=+adx
+//@run-native
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 mod x86 {

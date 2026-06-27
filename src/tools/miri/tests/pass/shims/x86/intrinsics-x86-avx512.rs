@@ -1,6 +1,7 @@
 // We're testing x86 target specific features
 //@only-target: x86_64 i686
 //@compile-flags: -C target-feature=+avx512f,+avx512vl,+avx512bw,+avx512bitalg,+avx512vpopcntdq,+avx512vnni,+avx512vbmi
+//@run-native
 
 #[cfg(target_arch = "x86")]
 use std::arch::x86::*;
@@ -9,6 +10,13 @@ use std::arch::x86_64::*;
 use std::mem::transmute;
 
 fn main() {
+    if !is_x86_feature_detected!("avx512f") {
+        // GH runners don't have this, but we still want to run this natively if
+        // the machine happens to have gfni. So we bail out dynamically.
+        println!("warning: skipping AVX512 tests");
+        return;
+    }
+
     assert!(is_x86_feature_detected!("avx512f"));
     assert!(is_x86_feature_detected!("avx512vl"));
     assert!(is_x86_feature_detected!("avx512bw"));
