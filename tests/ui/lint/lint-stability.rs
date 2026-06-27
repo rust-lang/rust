@@ -6,7 +6,7 @@
 #![allow(deprecated)]
 #![allow(dead_code)]
 #![feature(staged_api)]
-
+#![feature(extern_types)]
 #![stable(feature = "rust1", since = "1.0.0")]
 
 #[macro_use]
@@ -17,6 +17,9 @@ mod cross_crate {
     extern crate stability_cfg2; //~ ERROR use of unstable library feature
 
     use lint_stability::*;
+
+    fn test_foreign_type(_: &mut UnstableForeignType) { //~ ERROR use of unstable library feature
+    }
 
     fn test() {
         type Foo = MethodTester;
