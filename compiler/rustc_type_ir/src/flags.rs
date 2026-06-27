@@ -79,10 +79,10 @@ bitflags::bitflags! {
         const HAS_TY_OPAQUE               = 1 << 12;
         /// Does this have `Inherent`?
         const HAS_TY_INHERENT             = 1 << 13;
-        /// Does this have `ConstKind::Unevaluated`?
+        /// Does this have `ConstKind::Alias`?
         const HAS_CT_PROJECTION           = 1 << 14;
 
-        /// Does this have `Alias` or `ConstKind::Unevaluated`?
+        /// Does this have `Alias` or `ConstKind::Alias`?
         ///
         /// Rephrased, could this term be normalized further?
         const HAS_ALIAS                   = TypeFlags::HAS_TY_PROJECTION.bits()
@@ -432,8 +432,8 @@ impl<I: Interner> FlagComputation<I> {
                 self.add_term(term);
             }
             ty::PredicateKind::DynCompatible(_def_id) => {}
-            ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(uv)) => {
-                self.add_const(uv);
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(alias_const)) => {
+                self.add_const(alias_const);
             }
             ty::PredicateKind::ConstEquate(expected, found) => {
                 self.add_const(expected);
@@ -477,9 +477,9 @@ impl<I: Interner> FlagComputation<I> {
 
     fn add_const_kind(&mut self, c: &ty::ConstKind<I>) {
         match *c {
-            ty::ConstKind::Unevaluated(is_rigid, uv) => {
+            ty::ConstKind::Alias(is_rigid, alias_const) => {
                 self.add_is_rigid(is_rigid);
-                self.add_args(uv.args.as_slice());
+                self.add_args(alias_const.args.as_slice());
                 self.add_flags(TypeFlags::HAS_CT_PROJECTION);
             }
             ty::ConstKind::Infer(infer) => match infer {

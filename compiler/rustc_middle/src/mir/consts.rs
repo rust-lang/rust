@@ -221,7 +221,7 @@ pub enum Const<'tcx> {
 
     /// An unevaluated mir constant which is not part of the type system.
     ///
-    /// Note that `Ty(ty::ConstKind::Unevaluated)` and this variant are *not* identical! `Ty` will
+    /// Note that `Ty(ty::ConstKind::Alias)` and this variant are *not* identical! `Ty` will
     /// always flow through a valtree, so all data not captured in the valtree is lost. This variant
     /// directly uses the evaluated result of the given constant, including e.g. data stored in
     /// padding.
@@ -472,13 +472,9 @@ pub struct UnevaluatedConst<'tcx> {
 
 impl<'tcx> UnevaluatedConst<'tcx> {
     #[inline]
-    pub fn shrink(self, tcx: TyCtxt<'tcx>) -> ty::UnevaluatedConst<'tcx> {
+    pub fn shrink(self, tcx: TyCtxt<'tcx>) -> ty::AliasConst<'tcx> {
         assert_eq!(self.promoted, None);
-        ty::UnevaluatedConst::new(
-            tcx,
-            ty::UnevaluatedConstKind::new_from_def_id(tcx, self.def),
-            self.args,
-        )
+        ty::AliasConst::new(tcx, ty::AliasConstKind::new_from_def_id(tcx, self.def), self.args)
     }
 }
 

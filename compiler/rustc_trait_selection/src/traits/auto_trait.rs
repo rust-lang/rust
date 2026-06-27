@@ -774,15 +774,15 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 }
                 ty::PredicateKind::ConstEquate(c1, c2) => {
                     let evaluate = |c: ty::Const<'tcx>| {
-                        if let ty::ConstKind::Unevaluated(_, unevaluated) = c.kind() {
+                        if let ty::ConstKind::Alias(_, alias_const) = c.kind() {
                             let ct =
                                 super::try_evaluate_const(selcx.infcx, c, obligation.param_env);
 
                             if let Err(EvaluateConstErr::InvalidConstParamTy(_)) = ct {
-                                let span = unevaluated.kind.def_span(self.tcx);
+                                let span = alias_const.kind.def_span(self.tcx);
                                 self.tcx
                                     .dcx()
-                                    .emit_err(UnableToConstructConstantValue { span, unevaluated });
+                                    .emit_err(UnableToConstructConstantValue { span, alias_const });
                             }
 
                             ct

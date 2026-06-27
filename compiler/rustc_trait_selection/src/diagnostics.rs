@@ -21,11 +21,11 @@ use crate::error_reporting::infer::nice_region_error::placeholder_error::Highlig
 pub(crate) mod note_and_explain;
 
 #[derive(Diagnostic)]
-#[diag("unable to construct a constant value for the unevaluated constant {$unevaluated}")]
+#[diag("unable to construct a constant value for the alias const {$alias_const}")]
 pub(crate) struct UnableToConstructConstantValue<'a> {
     #[primary_span]
     pub span: Span,
-    pub unevaluated: ty::UnevaluatedConst<'a>,
+    pub alias_const: ty::AliasConst<'a>,
 }
 
 pub(crate) struct NegativePositiveConflict<'tcx> {

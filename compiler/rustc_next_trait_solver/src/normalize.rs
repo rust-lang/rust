@@ -231,7 +231,7 @@ where
         // With eager normalization, we should normalize the args of alias before
         // normalizing the alias itself.
         let ct = ct.try_super_fold_with(self)?;
-        let ty::ConstKind::Unevaluated(orig_is_rigid, uv) = ct.kind() else { return Ok(ct) };
+        let ty::ConstKind::Alias(orig_is_rigid, alias_const) = ct.kind() else { return Ok(ct) };
         // We support ambiguous aliases inside rigid alias. So we still recognize
         // the rigidness of the outer alias.
         if !self.cx().renormalize_rigid_aliases() && orig_is_rigid == ty::IsRigid::Yes {
@@ -239,10 +239,10 @@ where
         }
 
         let normalized = if ct.has_escaping_bound_vars() {
-            let (uv, mapped_regions, mapped_types, mapped_consts) =
-                BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, uv);
+            let (alias_const, mapped_regions, mapped_types, mapped_consts) =
+                BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, alias_const);
             let Some(result) = ensure_sufficient_stack(|| {
-                self.normalize_alias_term(uv.into(), HasEscapingBoundVars::Yes)
+                self.normalize_alias_term(alias_const.into(), HasEscapingBoundVars::Yes)
             })?
             else {
                 return Ok(ct);
@@ -257,7 +257,7 @@ where
             )
         } else {
             ensure_sufficient_stack(|| {
-                self.normalize_alias_term(uv.into(), HasEscapingBoundVars::No)
+                self.normalize_alias_term(alias_const.into(), HasEscapingBoundVars::No)
             })?
             .map(|term| term.expect_const())
             .unwrap_or(ct)

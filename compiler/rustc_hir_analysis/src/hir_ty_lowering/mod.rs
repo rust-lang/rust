@@ -1402,7 +1402,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 if let Some(def_id) = alias_ct.kind.opt_def_id() {
                     self.require_type_const_attribute(def_id, span)?;
                 }
-                let ct = Const::new_unevaluated(tcx, ty::IsRigid::No, alias_ct);
+                let ct = Const::new_alias(tcx, ty::IsRigid::No, alias_ct);
                 let ct = self.check_param_uses_if_mcg(ct, span, false);
                 Ok(ct)
             }
@@ -1865,12 +1865,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ty::AssocTag::Const,
         )?;
         self.require_type_const_attribute(item_def_id, span)?;
-        let uv = ty::UnevaluatedConst::new(
+        let alias_const = ty::AliasConst::new(
             tcx,
-            ty::UnevaluatedConstKind::new_from_def_id(tcx, item_def_id),
+            ty::AliasConstKind::new_from_def_id(tcx, item_def_id),
             item_args,
         );
-        Ok(Const::new_unevaluated(tcx, ty::IsRigid::No, uv))
+        Ok(Const::new_alias(tcx, ty::IsRigid::No, alias_const))
     }
 
     /// Lower a [resolved][hir::QPath::Resolved] (type-level) associated item path.
@@ -2772,14 +2772,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let _ = self
                     .prohibit_generic_args(leading_segments.iter(), GenericsArgsErrExtend::None);
                 let args = self.lower_generic_args_of_path_segment(span, did, segment);
-                ty::Const::new_unevaluated(
+                ty::Const::new_alias(
                     tcx,
                     ty::IsRigid::No,
-                    ty::UnevaluatedConst::new(
-                        tcx,
-                        ty::UnevaluatedConstKind::new_from_def_id(tcx, did),
-                        args,
-                    ),
+                    ty::AliasConst::new(tcx, ty::AliasConstKind::new_from_def_id(tcx, did), args),
                 )
             }
             Res::Def(kind @ DefKind::Ctor(ctor_of, CtorKind::Const), did) => {
@@ -2915,7 +2911,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         self.check_param_uses_if_mcg(ct, span, false)
     }
 
-    /// Literals are eagerly converted to a constant, everything else becomes `Unevaluated`.
+    /// Literals are eagerly converted to a constant, everything else becomes `ConstKind::Alias`.
     #[instrument(skip(self), level = "debug")]
     fn lower_const_arg_anon(&self, anon: &AnonConst) -> Const<'tcx> {
         let tcx = self.tcx();
@@ -2930,12 +2926,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         match self.try_lower_anon_const_lit(ty, expr) {
             Some(v) => v,
-            None => ty::Const::new_unevaluated(
+            None => ty::Const::new_alias(
                 tcx,
                 ty::IsRigid::No,
-                ty::UnevaluatedConst::new(
+                ty::AliasConst::new(
                     tcx,
-                    ty::UnevaluatedConstKind::Anon { def_id: anon.def_id.to_def_id() },
+                    ty::AliasConstKind::Anon { def_id: anon.def_id.to_def_id() },
                     ty::GenericArgs::identity_for_item(tcx, anon.def_id.to_def_id()),
                 ),
             ),

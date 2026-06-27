@@ -469,14 +469,14 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
 
         if tcx.features().generic_const_exprs()
             // Normalize type_const items even with feature `generic_const_exprs`.
-            && !matches!(ct.kind(), ty::ConstKind::Unevaluated(_, uv) if uv.kind.is_type_const(tcx))
+            && !matches!(ct.kind(), ty::ConstKind::Alias(_, alias_const) if alias_const.kind.is_type_const(tcx))
             || !needs_normalization(self.selcx.infcx, &ct)
         {
             return ct;
         }
 
-        let uv = match ct.kind() {
-            ty::ConstKind::Unevaluated(_, uv) => uv,
+        let alias_const = match ct.kind() {
+            ty::ConstKind::Alias(_, alias_const) => alias_const,
             _ => return ct.super_fold_with(self),
         };
 
@@ -484,20 +484,20 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
         // unless a `min_generic_const_args` feature gate error has already
         // been emitted earlier in compilation.
         //
-        // That's because we can only end up with an Unevaluated ty::Const for a const item
+        // That's because we can only end up with an Alias ty::Const for a const item
         // if it was marked with `type const`. Using this attribute without the mgca
         // feature gate causes a parse error.
-        let ct = match uv.kind {
-            ty::UnevaluatedConstKind::Projection { .. } => {
-                self.normalize_trait_projection(uv.into()).expect_const()
+        let ct = match alias_const.kind {
+            ty::AliasConstKind::Projection { .. } => {
+                self.normalize_trait_projection(alias_const.into()).expect_const()
             }
-            ty::UnevaluatedConstKind::Inherent { .. } => {
-                self.normalize_inherent_projection(uv.into()).expect_const()
+            ty::AliasConstKind::Inherent { .. } => {
+                self.normalize_inherent_projection(alias_const.into()).expect_const()
             }
-            ty::UnevaluatedConstKind::Free { .. } => {
-                self.normalize_free_alias(uv.into()).expect_const()
+            ty::AliasConstKind::Free { .. } => {
+                self.normalize_free_alias(alias_const.into()).expect_const()
             }
-            ty::UnevaluatedConstKind::Anon { .. } => {
+            ty::AliasConstKind::Anon { .. } => {
                 let ct = ct.super_fold_with(self);
                 super::with_replaced_escaping_bound_vars(
                     self.selcx.infcx,
