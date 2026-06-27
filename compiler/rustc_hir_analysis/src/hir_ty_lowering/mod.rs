@@ -482,7 +482,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let tcx = self.tcx();
         let parent_def_id = self.item_def_id();
         if let Res::Def(DefKind::ConstParam, _) = res
-            && tcx.def_kind(parent_def_id) == DefKind::AnonConst
+            && matches!(tcx.def_kind(parent_def_id), DefKind::AnonConst | DefKind::InlineConst)
             && let ty::AnonConstKind::MCG = tcx.anon_const_kind(parent_def_id)
         {
             let folder = ForbidParamUsesFolder {
@@ -511,15 +511,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // Inline consts and closures can be nested inside anon consts that forbid generic
         // params (e.g. an enum discriminant). Walk up the def parent chain to find the
         // nearest enclosing AnonConst and use that to determine the context.
+        let parent_def_id = tcx.typeck_root_def_id(parent_def_id.into());
+
         let anon_const_def_id = match tcx.def_kind(parent_def_id) {
             DefKind::AnonConst => parent_def_id,
-            DefKind::InlineConst | DefKind::Closure => {
-                let root = tcx.typeck_root_def_id(parent_def_id.into());
-                match tcx.def_kind(root) {
-                    DefKind::AnonConst => root.expect_local(),
-                    _ => return None,
-                }
-            }
+            DefKind::InlineConst if tcx.is_type_system_inline_const(parent_def_id) => parent_def_id,
             _ => return None,
         };
 
