@@ -1,9 +1,7 @@
-use std::collections::HashSet;
-use std::env;
 use std::sync::Arc;
 use std::time::Instant;
 
-use gccjit::{CType, Context, FunctionType, GlobalKind};
+use gccjit::{CType, FunctionType, GlobalKind};
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
@@ -18,11 +16,11 @@ use rustc_session::config::DebugInfo;
 use rustc_span::Symbol;
 #[cfg(feature = "master")]
 use rustc_target::spec::SymbolVisibility;
-use rustc_target::spec::{Arch, RelocModel};
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;
-use crate::{GccContext, LockedTargetInfo, LtoMode, SyncContext, gcc_util, new_context};
+use crate::gcc_util::new_context;
+use crate::{GccContext, LockedTargetInfo, LtoMode, SyncContext};
 
 #[cfg(feature = "master")]
 pub fn visibility_to_gcc(visibility: Visibility) -> gccjit::Visibility {
@@ -102,41 +100,7 @@ pub fn compile_codegen_unit(
     ) -> ModuleCodegen<GccContext> {
         let cgu = tcx.codegen_unit(cgu_name);
         // Instantiate monomorphizations without filling out definitions yet...
-        let context = new_context(tcx);
-
-        if tcx.sess.panic_strategy().unwinds() {
-            context.add_command_line_option("-fexceptions");
-            context.add_driver_option("-fexceptions");
-        }
-
-        let disabled_features: HashSet<_> = tcx
-            .sess
-            .opts
-            .cg
-            .target_feature
-            .split(',')
-            .filter(|feature| feature.starts_with('-'))
-            .map(|string| &string[1..])
-            .collect();
-
-        if !disabled_features.contains("avx") && tcx.sess.target.arch == Arch::X86_64 {
-            // NOTE: we always enable AVX because the equivalent of llvm.x86.sse2.cmp.pd in GCC for
-            // SSE2 is multiple builtins, so we use the AVX __builtin_ia32_cmppd instead.
-            // FIXME(antoyo): use the proper builtins for llvm.x86.sse2.cmp.pd and similar.
-            context.add_command_line_option("-mavx");
-        }
-
-        for arg in &tcx.sess.opts.cg.llvm_args {
-            context.add_command_line_option(arg);
-        }
-        // NOTE: This is needed to compile the file src/intrinsic/archs.rs during a bootstrap of rustc.
-        context.add_command_line_option("-fno-var-tracking-assignments");
-        // NOTE: an optimization (https://github.com/rust-lang/rustc_codegen_gcc/issues/53).
-        context.add_command_line_option("-fno-semantic-interposition");
-        // NOTE: Rust relies on LLVM not doing TBAA (https://github.com/rust-lang/unsafe-code-guidelines/issues/292).
-        context.add_command_line_option("-fno-strict-aliasing");
-        // NOTE: Rust relies on LLVM doing wrapping on overflow.
-        context.add_command_line_option("-fwrapv");
+        let context = new_context(tcx.sess);
 
         // NOTE: We need to honor the `#![no_builtins]` attribute to prevent GCC from
         // replacing code patterns (like loops) with calls to builtins (like memset).
@@ -147,64 +111,6 @@ pub fn compile_codegen_unit(
         let crate_attrs = tcx.hir_attrs(rustc_hir::CRATE_HIR_ID);
         if find_attr!(crate_attrs, AttributeKind::NoBuiltins) {
             context.add_command_line_option("-fno-tree-loop-distribute-patterns");
-        }
-
-        if let Some(model) = tcx.sess.code_model() {
-            use rustc_target::spec::CodeModel;
-
-            context.add_command_line_option(match model {
-                CodeModel::Tiny => "-mcmodel=tiny",
-                CodeModel::Small => "-mcmodel=small",
-                CodeModel::Kernel => "-mcmodel=kernel",
-                CodeModel::Medium => "-mcmodel=medium",
-                CodeModel::Large => "-mcmodel=large",
-            });
-        }
-
-        add_pic_option(&context, tcx.sess.relocation_model());
-
-        let target_cpu = gcc_util::target_cpu(tcx.sess);
-        if target_cpu != "generic" {
-            context.add_command_line_option(format!("-march={}", target_cpu));
-        }
-
-        if tcx
-            .sess
-            .opts
-            .unstable_opts
-            .function_sections
-            .unwrap_or(tcx.sess.target.function_sections)
-        {
-            context.add_command_line_option("-ffunction-sections");
-            context.add_command_line_option("-fdata-sections");
-        }
-
-        if env::var("CG_GCCJIT_DUMP_RTL").as_deref() == Ok("1") {
-            context.add_command_line_option("-fdump-rtl-vregs");
-        }
-        if env::var("CG_GCCJIT_DUMP_RTL_ALL").as_deref() == Ok("1") {
-            context.add_command_line_option("-fdump-rtl-all");
-        }
-        if env::var("CG_GCCJIT_DUMP_TREE_ALL").as_deref() == Ok("1") {
-            context.add_command_line_option("-fdump-tree-all-eh");
-        }
-        if env::var("CG_GCCJIT_DUMP_IPA_ALL").as_deref() == Ok("1") {
-            context.add_command_line_option("-fdump-ipa-all-eh");
-        }
-        if env::var("CG_GCCJIT_DUMP_CODE").as_deref() == Ok("1") {
-            context.set_dump_code_on_compile(true);
-        }
-        if env::var("CG_GCCJIT_DUMP_GIMPLE").as_deref() == Ok("1") {
-            context.set_dump_initial_gimple(true);
-        }
-        if env::var("CG_GCCJIT_DUMP_EVERYTHING").as_deref() == Ok("1") {
-            context.set_dump_everything(true);
-        }
-        if env::var("CG_GCCJIT_KEEP_INTERMEDIATES").as_deref() == Ok("1") {
-            context.set_keep_intermediates(true);
-        }
-        if env::var("CG_GCCJIT_VERBOSE").as_deref() == Ok("1") {
-            context.add_driver_option("-v");
         }
 
         // NOTE: The codegen generates unreachable blocks.
@@ -269,25 +175,4 @@ pub fn compile_codegen_unit(
     }
 
     (module, cost)
-}
-
-pub fn add_pic_option<'gcc>(context: &Context<'gcc>, relocation_model: RelocModel) {
-    match relocation_model {
-        rustc_target::spec::RelocModel::Static => {
-            context.add_command_line_option("-fno-pie");
-            context.add_driver_option("-fno-pie");
-        }
-        rustc_target::spec::RelocModel::Pic => {
-            context.add_command_line_option("-fPIC");
-            // NOTE: we use both add_command_line_option and add_driver_option because the usage in
-            // this module (compile_codegen_unit) requires add_command_line_option while the usage
-            // in the back::write module (codegen) requires add_driver_option.
-            context.add_driver_option("-fPIC");
-        }
-        rustc_target::spec::RelocModel::Pie => {
-            context.add_command_line_option("-fPIE");
-            context.add_driver_option("-fPIE");
-        }
-        model => eprintln!("Unsupported relocation model: {:?}", model),
-    }
 }
