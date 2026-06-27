@@ -1066,7 +1066,7 @@ pub const trait Destruct: PointeeSized {}
 ///
 /// The implementation of this trait is built-in and cannot be implemented
 /// for any user type.
-#[unstable(feature = "tuple_trait", issue = "none")]
+#[unstable(feature = "tuple_trait", issue = "157987")]
 #[lang = "tuple_trait"]
 #[diagnostic::on_unimplemented(message = "`{Self}` is not a tuple")]
 #[rustc_deny_explicit_impl]
