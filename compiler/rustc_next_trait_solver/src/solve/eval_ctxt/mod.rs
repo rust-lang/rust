@@ -462,7 +462,7 @@ where
                 Ok(i) => Ok(i),
                 Err(NoSolutionOrRerunNonErased::NoSolution(NoSolution)) => Err(NoSolution),
                 Err(NoSolutionOrRerunNonErased::RerunNonErased(_)) => {
-                    // check th t the opaque_accesses state mirrors the result we got.
+                    // Check that the opaque_accesses state mirrors the result we got.
                     assert!(opaque_accesses.should_bail().is_err());
                     Err(NoSolution)
                 }
@@ -1442,7 +1442,7 @@ where
         uv: ty::UnevaluatedConst<I>,
     ) -> Result<Option<I::Const>, RerunNonErased> {
         if self.typing_mode().is_erased_not_coherence() {
-            self.opaque_accesses.rerun_always(RerunReason::EvaluateConst)?;
+            match self.opaque_accesses.rerun_always(RerunReason::EvaluateConst)? {}
         }
 
         Ok(self.delegate.evaluate_const(param_env, uv))
@@ -1515,7 +1515,7 @@ where
         symbol: I::Symbol,
     ) -> Result<bool, RerunNonErased> {
         if self.typing_mode().is_erased_not_coherence() {
-            self.opaque_accesses.rerun_always(RerunReason::MayUseUnstableFeature)?;
+            match self.opaque_accesses.rerun_always(RerunReason::MayUseUnstableFeature)? {}
         }
 
         Ok(may_use_unstable_feature(&**self.delegate, param_env, symbol))

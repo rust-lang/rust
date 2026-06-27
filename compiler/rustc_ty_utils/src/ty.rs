@@ -149,6 +149,9 @@ fn adt_sizedness_constraint<'tcx>(
 
 /// See `ParamEnv` struct definition for details.
 fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
+    if tcx.is_typeck_child(def_id) {
+        return tcx.param_env(tcx.typeck_root_def_id(def_id));
+    }
     // Compute the bounds on Self and the type parameters.
     let ty::InstantiatedPredicates { predicates, .. } =
         tcx.predicates_of(def_id).instantiate_identity(tcx);

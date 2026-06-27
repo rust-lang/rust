@@ -14,6 +14,13 @@ use crate::AttributeTemplate;
 use crate::context::Suggestion;
 
 #[derive(Diagnostic)]
+#[diag("`#[ffi_const]` function cannot be `#[ffi_pure]`", code = E0757)]
+pub(crate) struct BothFfiConstAndPure {
+    #[primary_span]
+    pub attr_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("{$attr_str} attribute cannot have empty value")]
 pub(crate) struct DocAliasEmpty<'a> {
     #[primary_span]

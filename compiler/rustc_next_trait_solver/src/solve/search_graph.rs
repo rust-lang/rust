@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 use rustc_type_ir::data_structures::ensure_sufficient_stack;
 use rustc_type_ir::search_graph::{self, PathKind};
 use rustc_type_ir::solve::{
-    AccessedOpaques, CanonicalInput, Certainty, NoSolution, NoSolutionOrRerunNonErased, QueryResult,
+    AccessedOpaques, CanonicalInput, Certainty, NoSolution, QueryResult, RerunResultExt,
 };
 use rustc_type_ir::{Interner, MayBeErased, TypingMode};
 
@@ -141,17 +141,8 @@ where
     ) -> (QueryResult<I>, AccessedOpaques<I>) {
         ensure_sufficient_stack(|| {
             EvalCtxt::enter_canonical(cx, search_graph, input, inspect, |ecx, goal| {
-                let result = ecx.compute_goal(goal);
-
-                // if we're in `RerunNonErased`, don't even bother with inspect,
-                // and immediately return
-                let result = match result {
-                    Ok(i) => Ok(i),
-                    Err(NoSolutionOrRerunNonErased::NoSolution(NoSolution)) => Err(NoSolution),
-                    Err(NoSolutionOrRerunNonErased::RerunNonErased(e)) => {
-                        return Err(e.into());
-                    }
-                };
+                // if we're in `RerunNonErased`, don't even bother with inspect, and immediately return
+                let result = ecx.compute_goal(goal).map_err_to_rerun()?;
 
                 ecx.inspect.query_result(result);
                 result.map_err(Into::into)

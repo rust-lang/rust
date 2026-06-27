@@ -3,6 +3,7 @@
 #![feature(iter_intersperse)]
 #![feature(iter_order_by)]
 #![feature(never_type)]
+#![feature(option_reference_flattening)]
 #![feature(trim_prefix_suffix)]
 // tidy-alphabetical-end
 
@@ -50,7 +51,7 @@ use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::traits::{ObligationCauseCode, ObligationInspector, WellFormedLoc};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized};
+use rustc_middle::ty::{self, FnSigKind, Ty, TyCtxt, Unnormalized};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config;
 use rustc_span::Span;
@@ -589,12 +590,10 @@ fn report_unexpected_variant_res(
     .emit()
 }
 
-/// Controls whether the arguments are tupled. This is used for the call
-/// operator.
+/// Controls whether all arguments are tupled. This is used for the call operator only.
 ///
-/// Tupling means that all call-side arguments are packed into a tuple and
-/// passed as a single parameter. For example, if tupling is enabled, this
-/// function:
+/// Tupling means that all call-side arguments are packed into a tuple and passed as a single
+/// parameter. For example, if tupling is enabled, this function:
 /// ```
 /// fn f(x: (isize, isize)) {}
 /// ```
@@ -608,10 +607,72 @@ fn report_unexpected_variant_res(
 /// # fn f(x: (isize, isize)) {}
 /// f((1, 2));
 /// ```
-#[derive(Copy, Clone, Eq, PartialEq)]
+///
+/// Note: splatted arguments are handled separately.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 enum TupleArgumentsFlag {
+    /// Arguments are typechecked unchanged.
     DontTupleArguments,
-    TupleArguments,
+    /// This is a call operator: all caller arguments are tupled before typechecking.
+    /// Set based on the "rust-call" ABI and Fn* traits.
+    TupleAllCallArgs,
+    /// The `self` method argument is splatted, so `Self` should be tupled before typechecking.
+    TupleSplattedSelfArg,
+    /// A non-self argument is splatted, so that argument should be tupled before typechecking.
+    TupleSplattedArg(u8),
+}
+
+impl TupleArgumentsFlag {
+    /// Returns the TupleArgumentsFlag for a known RustCall function.
+    fn rust_fn_trait_call() -> Self {
+        Self::TupleAllCallArgs
+    }
+
+    /// Returns the appropriate TupleArgumentsFlag for the given FnSigKind and method flag.
+    fn with_fn_sig_kind<'tcx>(fn_sig_kind: FnSigKind<'tcx>, is_method: bool) -> Self {
+        if let Some(splatted_arg_index) = fn_sig_kind.splatted() {
+            if is_method {
+                if let Some(splatted_arg_index) = splatted_arg_index.checked_sub(1) {
+                    return Self::TupleSplattedArg(splatted_arg_index);
+                } else {
+                    // In `check_argument_types`, this is effectively `TupleSplattedArg(-1)`
+                    return Self::TupleSplattedSelfArg;
+                }
+            }
+
+            return Self::TupleSplattedArg(splatted_arg_index);
+        }
+
+        Self::DontTupleArguments
+    }
+
+    /// Returns true if the arguments are tupled through "rust-call" or splatting.
+    fn is_tupled(self) -> bool {
+        match self {
+            Self::DontTupleArguments => false,
+            Self::TupleAllCallArgs | Self::TupleSplattedSelfArg | Self::TupleSplattedArg(_) => true,
+        }
+    }
+
+    /// Returns true if the arguments are tupled through splatting.
+    /// (But false if they are "rust-call" or not tupled.)
+    fn is_splatted(self) -> bool {
+        match self {
+            Self::TupleSplattedSelfArg | Self::TupleSplattedArg(_) => true,
+            Self::DontTupleArguments | Self::TupleAllCallArgs => false,
+        }
+    }
+
+    /// Returns the tupled argument index, and whether the `self` argument is splatted.
+    /// Returns `None` if the arguments are not tupled, or if the `self` argument is splatted.
+    fn tupled_arg_index(self) -> (Option<usize>, bool /* is_self_splatted */) {
+        match self {
+            Self::TupleSplattedArg(index) => (Some(usize::from(index)), false),
+            Self::TupleAllCallArgs => (Some(0), false),
+            Self::TupleSplattedSelfArg => (None, true),
+            Self::DontTupleArguments => (None, false),
+        }
+    }
 }
 
 fn fatally_break_rust(tcx: TyCtxt<'_>, span: Span) -> ! {

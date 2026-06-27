@@ -1760,7 +1760,11 @@ impl<T, A: Allocator> Vec<T, A> {
     #[must_use]
     pub fn into_array<const N: usize>(self) -> Result<Box<[T; N], A>, Self> {
         if self.len() == N {
-            Ok(self.into_boxed_slice().into_array().ok().unwrap())
+            // SAFETY: `Box::into_array` is guaranteed to return `Ok` if the
+            // length of the slice is equal to `N`.
+            // `self.into_boxed_slice().len()` is equal to `self.len()`,
+            // which we just checked.
+            Ok(unsafe { self.into_boxed_slice().into_array().unwrap_unchecked() })
         } else {
             Err(self)
         }

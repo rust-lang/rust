@@ -10,7 +10,7 @@ use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::ty::{self, RegionVid, Ty, TypeVisitableExt};
 use rustc_span::{ErrorGuaranteed, Span};
-use rustc_trait_selection::traits::query::type_op::{self, TypeOp};
+use rustc_trait_selection::traits::query::type_op;
 use tracing::{debug, instrument};
 use type_op::TypeOpOutput;
 
@@ -242,15 +242,14 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             if let Some(c) = constraints_unnorm {
                 constraints.push(c)
             }
-            let TypeOpOutput { output: norm_ty, constraints: constraints_normalize, .. } =
-                param_env
-                    .and(DeeplyNormalize { value: ty })
-                    .fully_perform(self.infcx, self.infcx.root_def_id, span)
-                    .unwrap_or_else(|guar| TypeOpOutput {
-                        output: Ty::new_error(self.infcx.tcx, guar),
-                        constraints: None,
-                        error_info: None,
-                    });
+            let TypeOpOutput { output: norm_ty, constraints: constraints_normalize, .. } = self
+                .infcx
+                .fully_perform(DeeplyNormalize { value: ty }, span)
+                .unwrap_or_else(|guar| TypeOpOutput {
+                    output: Ty::new_error(self.infcx.tcx, guar),
+                    constraints: None,
+                    error_info: None,
+                });
             if let Some(c) = constraints_normalize {
                 constraints.push(c)
             }
@@ -299,9 +298,8 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         if matches!(tcx.def_kind(defining_ty_def_id), DefKind::AssocFn | DefKind::AssocConst { .. })
         {
             for &(ty, _) in tcx.assumed_wf_types(tcx.local_parent(defining_ty_def_id)) {
-                let result: Result<_, ErrorGuaranteed> = param_env
-                    .and(DeeplyNormalize { value: ty })
-                    .fully_perform(self.infcx, self.infcx.root_def_id, span);
+                let result: Result<_, ErrorGuaranteed> =
+                    self.infcx.fully_perform(DeeplyNormalize { value: ty }, span);
                 let Ok(TypeOpOutput { output: norm_ty, constraints: c, .. }) = result else {
                     continue;
                 };
@@ -354,11 +352,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                 output: normalized_outlives,
                 constraints: constraints_normalize,
                 error_info: _,
-            }) = self.infcx.param_env.and(DeeplyNormalize { value: outlives }).fully_perform(
-                self.infcx,
-                self.infcx.root_def_id,
-                span,
-            )
+            }) = self.infcx.fully_perform(DeeplyNormalize { value: outlives }, span)
             else {
                 self.infcx.dcx().delayed_bug(format!("could not normalize {outlives:?}"));
                 return;
@@ -381,9 +375,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
     ) -> Option<&'tcx QueryRegionConstraints<'tcx>> {
         let TypeOpOutput { output: bounds, constraints, .. } = self
             .infcx
-            .param_env
-            .and(type_op::ImpliedOutlivesBounds { ty })
-            .fully_perform(self.infcx, self.infcx.root_def_id, span)
+            .fully_perform(type_op::ImpliedOutlivesBounds { ty }, span)
             .map_err(|_: ErrorGuaranteed| debug!("failed to compute implied bounds {:?}", ty))
             .ok()?;
         debug!(?bounds, ?constraints);
