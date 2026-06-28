@@ -22,7 +22,7 @@ trim_trailing_whitespace = false
 [tests/**.{rs,js}]
 trim_trailing_whitespace = true
 # these specific source files need to have trailing whitespace.
-[tests/ui/{frontmatter/frontmatter-whitespace-3.rs,parser/shebang/shebang-space.rs}]
+[tests/ui/{frontmatter/{fence-whitespace-trailing-1.rs,frontmatter-whitespace-3.rs},parser/shebang/shebang-space.rs}]
 trim_trailing_whitespace = false
 # these specific files have an UTF-8 BOM to test with that charset
 [tests/ui/codemap_tests/utf8-bom.rs]

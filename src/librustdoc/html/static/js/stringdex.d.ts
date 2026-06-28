@@ -101,10 +101,10 @@ declare namespace stringdex {
         loadRoot: function(Callbacks);
         /**
          * Load a subtree file from the search index.
-         * 
+         *
          * If this function succeeds, call `rn_` on the callbacks
          * object. If it fails, call `err_rn_(hashHex, error)`.
-         * 
+         *
          * @param {string} hashHex
          */
         loadTreeByHash: function(string);
