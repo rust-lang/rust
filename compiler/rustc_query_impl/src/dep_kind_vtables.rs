@@ -117,10 +117,12 @@ where
                 crate::execution::force_query_dep_node(tcx, query, dep_node)
             },
         ),
-        promote_from_disk_fn: (can_recover && is_cache_on_disk).then_some(|tcx, dep_node| {
-            let query = Q::query_vtable(tcx);
-            promote_from_disk_inner(tcx, query, dep_node)
-        }),
+        promote_from_disk_fn: (can_recover && is_cache_on_disk).then_some(
+            |tcx, dep_node, prev_index, dep_node_index| {
+                let query = Q::query_vtable(tcx);
+                promote_from_disk_inner(tcx, query, dep_node, prev_index, dep_node_index)
+            },
+        ),
     }
 }
 

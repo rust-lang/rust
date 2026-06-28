@@ -1,6 +1,7 @@
 use std::hash::Hash;
 use std::mem::ManuallyDrop;
 
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::hash_table::{Entry, HashTable};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::{DynSend, DynSync};
@@ -484,6 +485,20 @@ fn execute_job_incr<'tcx, C: QueryCache>(
     (result, dep_node_index)
 }
 
+/// Whether a value loaded from the on-disk cache should have its fingerprint
+/// verified with `incremental_verify_ich`. If `-Zincremental-verify-ich` is
+/// specified, re-hash results from the cache and make sure that they have the
+/// expected fingerprint.
+///
+/// If not, we still seek to verify a subset of fingerprints loaded from disk.
+/// Re-hashing results is fairly expensive, so we can't currently afford to
+/// verify every hash. This subset should still give us some coverage of
+/// potential bugs.
+pub(crate) fn should_verify_loaded_value(tcx: TyCtxt<'_>, prev_fingerprint: Fingerprint) -> bool {
+    prev_fingerprint.split().1.as_u64().is_multiple_of(32)
+        || tcx.sess.opts.unstable_opts.incremental_verify_ich
+}
+
 /// Given that the dep node for this query+key is green, obtain a value for it
 /// by loading one from disk if possible, or by invoking its query provider if
 /// necessary.
@@ -518,15 +533,7 @@ fn load_from_disk_or_invoke_provider_green<'tcx, C: QueryCache>(
             }
 
             let prev_fingerprint = dep_graph_data.prev_value_fingerprint_of(prev_index);
-            // If `-Zincremental-verify-ich` is specified, re-hash results from
-            // the cache and make sure that they have the expected fingerprint.
-            //
-            // If not, we still seek to verify a subset of fingerprints loaded
-            // from disk. Re-hashing results is fairly expensive, so we can't
-            // currently afford to verify every hash. This subset should still
-            // give us some coverage of potential bugs.
-            let verify = prev_fingerprint.split().1.as_u64().is_multiple_of(32)
-                || tcx.sess.opts.unstable_opts.incremental_verify_ich;
+            let verify = should_verify_loaded_value(tcx, prev_fingerprint);
 
             (value, verify)
         }

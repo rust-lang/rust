@@ -1064,12 +1064,12 @@ impl DepGraph {
         let data = self.data.as_ref().unwrap();
         for prev_index in data.colors.values.indices() {
             match data.colors.get(prev_index) {
-                DepNodeColor::Green(_) => {
+                DepNodeColor::Green(dep_node_index) => {
                     let dep_node = data.previous.index_to_node(prev_index);
                     if let Some(promote_fn) =
                         tcx.dep_kind_vtable(dep_node.kind).promote_from_disk_fn
                     {
-                        promote_fn(tcx, *dep_node)
+                        promote_fn(tcx, *dep_node, prev_index, dep_node_index)
                     };
                 }
                 DepNodeColor::Unknown | DepNodeColor::Red => {
