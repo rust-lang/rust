@@ -11,8 +11,9 @@ use serde::Deserialize;
 
 use super::flags::Flags;
 use super::toml::change_id::ChangeIdWrapper;
+use super::toml::rust::parse_codegen_backends;
 use super::{Config, RUSTC_IF_UNCHANGED_ALLOWED_PATHS};
-use crate::ChangeId;
+use crate::{ChangeId, CodegenBackendKind};
 use crate::core::build_steps::clippy::{LintConfig, get_clippy_rules_in_order};
 use crate::core::build_steps::llvm::LLVM_INVALIDATION_PATHS;
 use crate::core::build_steps::{llvm, test};
@@ -204,6 +205,25 @@ fn rust_optimize() {
     assert!(parse("rust.optimize = \"s\"").rust_optimize.is_release());
     assert_eq!(parse("rust.optimize = 1").rust_optimize.get_opt_level(), Some("1".to_string()));
     assert_eq!(parse("rust.optimize = \"s\"").rust_optimize.get_opt_level(), Some("s".to_string()));
+}
+
+#[test]
+fn deduplicates_codegen_backends() {
+    assert_eq!(
+        parse_codegen_backends(
+            vec!["llvm", "llvm", "cranelift", "llvm"].into_iter().map(str::to_owned).collect(),
+            "rust",
+        ),
+        [CodegenBackendKind::Llvm, CodegenBackendKind::Cranelift]
+    );
+
+    assert_eq!(
+        parse_codegen_backends(
+            vec!["cranelift", "llvm", "cranelift"].into_iter().map(str::to_owned).collect(),
+            "target.x86_64-unknown-linux-gnu",
+        ),
+        [CodegenBackendKind::Cranelift, CodegenBackendKind::Llvm]
+    );
 }
 
 #[test]
