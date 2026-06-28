@@ -1,11 +1,11 @@
 error: expected expression, found keyword `else`
-  --> $DIR/unused-doc-comments-edge-cases.rs:17:5
+  --> $DIR/unused-doc-comments-edge-cases.rs:18:5
    |
 LL |     else {
    |     ^^^^ expected expression
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/unused-doc-comments-edge-cases.rs:23:5
+  --> $DIR/unused-doc-comments-edge-cases.rs:24:5
    |
 LL |     /// useless doc comment
    |     ^^^^^^^^^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@ LL |     /// useless doc comment
    = help: `///` is used for outer documentation comments; for a plain comment, use `//`
 
 error: unused doc comment
-  --> $DIR/unused-doc-comments-edge-cases.rs:6:9
+  --> $DIR/unused-doc-comments-edge-cases.rs:7:9
    |
 LL |         /// useless doc comment
    |         ^^^^^^^^^^^^^^^^^^^^^^^
@@ -26,13 +26,13 @@ LL |         _ => false,
    |
    = help: use `//` for a plain comment
 note: the lint level is defined here
-  --> $DIR/unused-doc-comments-edge-cases.rs:1:9
+  --> $DIR/unused-doc-comments-edge-cases.rs:2:9
    |
 LL | #![deny(unused_doc_comments)]
    |         ^^^^^^^^^^^^^^^^^^^
 
 error: unused doc comment
-  --> $DIR/unused-doc-comments-edge-cases.rs:23:5
+  --> $DIR/unused-doc-comments-edge-cases.rs:24:5
    |
 LL |     /// useless doc comment
    |     ^^^^^^^^^^^^^^^^^^^^^^^
@@ -43,7 +43,7 @@ LL |     num == 3
    = help: use `//` for a plain comment
 
 error: unused doc comment
-  --> $DIR/unused-doc-comments-edge-cases.rs:33:9
+  --> $DIR/unused-doc-comments-edge-cases.rs:34:9
    |
 LL |         /// useless doc comment
    |         ^^^^^^^^^^^^^^^^^^^^^^^
@@ -54,7 +54,7 @@ LL |         foo: 3
    = help: use `//` for a plain comment
 
 error: unused doc comment
-  --> $DIR/unused-doc-comments-edge-cases.rs:45:9
+  --> $DIR/unused-doc-comments-edge-cases.rs:46:9
    |
 LL |         /// useless doc comment
    |         ^^^^^^^^^^^^^^^^^^^^^^^
@@ -65,7 +65,7 @@ LL |         foo
    = help: use `//` for a plain comment
 
 error: unused doc comment
-  --> $DIR/unused-doc-comments-edge-cases.rs:55:27
+  --> $DIR/unused-doc-comments-edge-cases.rs:56:27
    |
 LL | fn doc_comment_on_generic<#[doc = "x"] T>(val: T) {}
    |                           ^^^^^^^^^^^^ - rustdoc does not generate documentation for generic parameters
@@ -73,7 +73,7 @@ LL | fn doc_comment_on_generic<#[doc = "x"] T>(val: T) {}
    = help: use `//` for a plain comment
 
 error: unused doc comment
-  --> $DIR/unused-doc-comments-edge-cases.rs:59:5
+  --> $DIR/unused-doc-comments-edge-cases.rs:60:5
    |
 LL |       /// unused doc comment
    |       ^^^^^^^^^^^^^^^^^^^^^^
@@ -86,7 +86,7 @@ LL | |     }
    = help: use `//` for a plain comment
 
 error: unused doc comment
-  --> $DIR/unused-doc-comments-edge-cases.rs:66:1
+  --> $DIR/unused-doc-comments-edge-cases.rs:67:1
    |
 LL |   /// unused doc comment
    |   ^^^^^^^^^^^^^^^^^^^^^^
@@ -98,8 +98,115 @@ LL | | }
    |
    = help: use `//` for a plain comment
 
+error: unused doc comment
+  --> $DIR/unused-doc-comments-edge-cases.rs:74:5
+   |
+LL |       /// Check
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | /     struct Foo {
+LL | |         /// Check
+LL | |         f: i32,
+LL | |     }
+   | |_____- rustdoc does not generate documentation for items defined in functions
+   |
+   = help: use `//` for a plain comment
+
+error: unused doc comment
+  --> $DIR/unused-doc-comments-edge-cases.rs:76:9
+   |
+LL |         /// Check
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         f: i32,
+   |         ------ rustdoc does not generate documentation for fields defined nested in functions
+   |
+   = help: use `//` for a plain comment
+
+error: unused doc comment
+  --> $DIR/unused-doc-comments-edge-cases.rs:80:5
+   |
+LL |       /// Check
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | /     enum Bar {
+LL | |         /// Check
+LL | |         F {
+LL | |             /// Check
+...  |
+LL | |     }
+   | |_____- rustdoc does not generate documentation for items defined in functions
+   |
+   = help: use `//` for a plain comment
+
+error: unused doc comment
+  --> $DIR/unused-doc-comments-edge-cases.rs:82:9
+   |
+LL |           /// Check
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | /         F {
+LL | |             /// Check
+LL | |             f: i32,
+LL | |         }
+   | |_________- rustdoc does not generate documentation for variants defined nested in functions
+   |
+   = help: use `//` for a plain comment
+
+error: unused doc comment
+  --> $DIR/unused-doc-comments-edge-cases.rs:84:13
+   |
+LL |             /// Check
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |             f: i32,
+   |             ------ rustdoc does not generate documentation for fields defined nested in functions
+   |
+   = help: use `//` for a plain comment
+
+error: unused doc comment
+  --> $DIR/unused-doc-comments-edge-cases.rs:89:5
+   |
+LL |       /// Check
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | /     union Baz {
+LL | |         /// Check
+LL | |         f: i32,
+LL | |     }
+   | |_____- rustdoc does not generate documentation for items defined in functions
+   |
+   = help: use `//` for a plain comment
+
+error: unused doc comment
+  --> $DIR/unused-doc-comments-edge-cases.rs:91:9
+   |
+LL |         /// Check
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         f: i32,
+   |         ------ rustdoc does not generate documentation for fields defined nested in functions
+   |
+   = help: use `//` for a plain comment
+
+error: unused doc comment
+  --> $DIR/unused-doc-comments-edge-cases.rs:95:5
+   |
+LL |       /// Check
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | /     fn fn_1() {
+LL | |         /// Check
+LL | |         fn fn_2() {}
+LL | |     }
+   | |_____- rustdoc does not generate documentation for items defined in functions
+   |
+   = help: use `//` for a plain comment
+
+error: unused doc comment
+  --> $DIR/unused-doc-comments-edge-cases.rs:97:9
+   |
+LL |         /// Check
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         fn fn_2() {}
+   |         ------------ rustdoc does not generate documentation for items defined in functions
+   |
+   = help: use `//` for a plain comment
+
 error[E0308]: mismatched types
-  --> $DIR/unused-doc-comments-edge-cases.rs:14:9
+  --> $DIR/unused-doc-comments-edge-cases.rs:15:9
    |
 LL | /     if num == 3 {
 LL | |         true
@@ -112,7 +219,7 @@ help: you might have meant to return this value
 LL |         return true;
    |         ++++++     +
 
-error: aborting due to 10 previous errors
+error: aborting due to 19 previous errors
 
 Some errors have detailed explanations: E0308, E0658.
 For more information about an error, try `rustc --explain E0308`.

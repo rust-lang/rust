@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![deny(unused_doc_comments)]
 
 fn doc_comment_on_match_arms(num: u8) -> bool {
@@ -69,4 +70,31 @@ extern "C" {
     fn foo();
 }
 
-fn main() {}
+fn main() {
+    /// Check //~ ERROR: unused doc comment
+    struct Foo {
+        /// Check //~ ERROR: unused doc comment
+        f: i32,
+    }
+
+    /// Check //~ ERROR: unused doc comment
+    enum Bar {
+        /// Check //~ ERROR: unused doc comment
+        F {
+            /// Check //~ ERROR: unused doc comment
+            f: i32,
+        }
+    }
+
+    /// Check //~ ERROR: unused doc comment
+    union Baz {
+        /// Check //~ ERROR: unused doc comment
+        f: i32,
+    }
+
+    /// Check //~ ERROR: unused doc comment
+    fn fn_1() {
+        /// Check //~ ERROR: unused doc comment
+        fn fn_2() {}
+    }
+}
