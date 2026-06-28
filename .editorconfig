@@ -63,7 +63,7 @@ indent_size = 1
 [yarn.lock]
 indent_size = 2
 
-[Makefile]
+[{Makefile,.gitmodules}]
 indent_style = tab
 
 # The license texts should NEVER be modified.
