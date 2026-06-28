@@ -3253,6 +3253,7 @@ fn prepare_cargo_test(
     builder: &Builder<'_>,
 ) -> BootstrapCommand {
     let compiler = cargo.compiler();
+    let mode = cargo.mode();
     let mut cargo: BootstrapCommand = cargo.into();
 
     // Propagate `--bless` if it has not already been set/unset
@@ -3300,6 +3301,11 @@ fn prepare_cargo_test(
     if builder.kind != Kind::Miri {
         let mut dylib_paths = builder.rustc_lib_paths(compiler);
         dylib_paths.push(builder.sysroot_target_libdir(compiler, target));
+        if mode == Mode::Rustc {
+            dylib_paths.extend(tool::discover_out_dirs_with_dylibs(
+                builder.cargo_out(compiler, Mode::Rustc, target).join("build"),
+            ));
+        }
         helpers::add_dylib_path(dylib_paths, &mut cargo);
     }
 
@@ -3373,6 +3379,17 @@ impl Step for Crate {
         builder.ensure(Std::new(build_compiler, build_compiler.host).force_recompile(true));
         let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
+        let new_cargo = || {
+            builder::Cargo::new(
+                builder,
+                build_compiler,
+                mode,
+                SourceType::InTree,
+                target,
+                builder.kind,
+            )
+        };
+
         let mut cargo = if builder.kind == Kind::Miri {
             if builder.top_stage == 0 {
                 eprintln!("ERROR: `x.py miri` requires stage 1 or higher");
@@ -3425,14 +3442,7 @@ impl Step for Crate {
             }
 
             // Build `cargo test` command
-            builder::Cargo::new(
-                builder,
-                build_compiler,
-                mode,
-                SourceType::InTree,
-                target,
-                builder.kind,
-            )
+            new_cargo()
         };
 
         match mode {
@@ -3455,6 +3465,21 @@ impl Step for Crate {
             }
             _ => panic!("can only test libraries"),
         };
+
+        if mode == Mode::Rustc {
+            // Build the test binaries before preparing the command that runs them. Some rustc
+            // dylibs are emitted into Cargo's build directory, and the run command needs to add
+            // those freshly-created directories to the dynamic library lookup path.
+            let mut build_only = new_cargo();
+            compile::rustc_cargo(builder, &mut build_only, target, &build_compiler, &self.crates);
+            build_only.arg("--no-run");
+            for krate in &self.crates {
+                build_only.arg("-p").arg(krate);
+            }
+
+            let mut build_only: BootstrapCommand = build_only.into();
+            build_only.run(builder);
+        }
 
         let mut crates = self.crates.clone();
         // The core and alloc crates can't directly be tested. We

@@ -1660,8 +1660,9 @@ impl Builder<'_> {
     }
 }
 
-/// Gets all of the `out` dirs in a given Cargo `build-dir/<profile>/build` dir.
-fn discover_out_dirs_with_dylibs(dir: PathBuf) -> Vec<PathBuf> {
+/// Gets all of the `out` dirs containing dylibs in a given Cargo
+/// `build-dir/<profile>/build` dir.
+pub(super) fn discover_out_dirs_with_dylibs(dir: PathBuf) -> Vec<PathBuf> {
     if !dir.exists() {
         return Vec::new();
     }
