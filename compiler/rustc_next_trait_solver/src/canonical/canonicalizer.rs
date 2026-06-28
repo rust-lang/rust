@@ -565,7 +565,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
             },
             // FIXME: See comment above -- we could fold the region separately or something.
             ty::ConstKind::Bound(_, _)
-            | ty::ConstKind::Unevaluated(_, _)
+            | ty::ConstKind::Alias(_, _)
             | ty::ConstKind::Value(_)
             | ty::ConstKind::Error(_)
             | ty::ConstKind::Expr(_) => return c.super_fold_with(self),

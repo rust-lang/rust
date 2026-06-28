@@ -1266,7 +1266,7 @@ impl<'tcx> InferCtxt<'tcx> {
             ty::ConstKind::Param(_)
             | ty::ConstKind::Bound(_, _)
             | ty::ConstKind::Placeholder(_)
-            | ty::ConstKind::Unevaluated(_, _)
+            | ty::ConstKind::Alias(_, _)
             | ty::ConstKind::Value(_)
             | ty::ConstKind::Error(_)
             | ty::ConstKind::Expr(_) => ct,

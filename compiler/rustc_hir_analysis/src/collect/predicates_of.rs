@@ -415,8 +415,8 @@ fn const_evaluatable_predicates_of<'tcx>(
         preds: FxIndexSet<(ty::Clause<'tcx>, Span)>,
     }
 
-    fn is_const_param_default(tcx: TyCtxt<'_>, kind: ty::UnevaluatedConstKind<'_>) -> bool {
-        let ty::UnevaluatedConstKind::Anon { def_id } = kind else { return false };
+    fn is_const_param_default(tcx: TyCtxt<'_>, kind: ty::AliasConstKind<'_>) -> bool {
+        let ty::AliasConstKind::Anon { def_id } = kind else { return false };
         let Some(local) = def_id.as_local() else { return false };
 
         let hir_id = tcx.local_def_id_to_hir_id(local);
@@ -433,8 +433,8 @@ fn const_evaluatable_predicates_of<'tcx>(
 
     impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ConstCollector<'tcx> {
         fn visit_const(&mut self, c: ty::Const<'tcx>) {
-            if let ty::ConstKind::Unevaluated(_, uv) = c.kind() {
-                if is_const_param_default(self.tcx, uv.kind) {
+            if let ty::ConstKind::Alias(_, alias_const) = c.kind() {
+                if is_const_param_default(self.tcx, alias_const.kind) {
                     // Do not look into const param defaults,
                     // these get checked when they are actually instantiated.
                     //
@@ -446,11 +446,11 @@ fn const_evaluatable_predicates_of<'tcx>(
                 }
 
                 // Skip type consts as mGCA doesn't support evaluatable clauses.
-                if uv.kind.is_type_const(self.tcx) {
+                if alias_const.kind.is_type_const(self.tcx) {
                     return;
                 }
 
-                let span = uv.kind.def_span(self.tcx);
+                let span = alias_const.kind.def_span(self.tcx);
                 self.preds.insert((ty::ClauseKind::ConstEvaluatable(c).upcast(self.tcx), span));
             }
         }

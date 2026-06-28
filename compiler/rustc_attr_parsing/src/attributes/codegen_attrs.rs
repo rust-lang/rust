@@ -10,7 +10,7 @@ use crate::attributes::AttributeSafety;
 use crate::session_diagnostics::{
     EmptyExportName, NakedFunctionIncompatibleAttribute, NullOnExport, NullOnObjcClass,
     NullOnObjcSelector, ObjcClassExpectedStringLiteral, ObjcSelectorExpectedStringLiteral,
-    SanitizeInvalidStatic,
+    SanitizeInvalidStatic, TargetFeatureOnLangItem,
 };
 use crate::target_checking::Policy::AllowSilent;
 
@@ -524,15 +524,6 @@ impl CombineAttributeParser for TargetFeatureParser {
         was_forced: false,
     };
     const TEMPLATE: AttributeTemplate = template!(List: &["enable = \"feat1, feat2\""]);
-    const STABILITY: AttributeStability = AttributeStability::Stable;
-
-    fn extend(
-        cx: &mut AcceptContext<'_, '_>,
-        args: &ArgParser,
-    ) -> impl IntoIterator<Item = Self::Item> {
-        parse_tf_attribute(cx, args)
-    }
-
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -544,6 +535,29 @@ impl CombineAttributeParser for TargetFeatureParser {
         Warn(Target::MacroDef),
         Warn(Target::MacroCall),
     ]);
+    const STABILITY: AttributeStability = AttributeStability::Stable;
+
+    fn extend(
+        cx: &mut AcceptContext<'_, '_>,
+        args: &ArgParser,
+    ) -> impl IntoIterator<Item = Self::Item> {
+        parse_tf_attribute(cx, args)
+    }
+
+    fn finalize_check(cx: &FinalizeContext<'_, '_>, attr_span: Span) {
+        // `#[target_feature]` is incompatible with lang item functions,
+        // except on WASM where calling target-feature functions is safe (see #84988).
+        if !cx.sess().target.is_like_wasm && !cx.sess().opts.actually_rustdoc {
+            // `#[panic_handler]` is checked first so it takes priority in the diagnostic.
+            let lang_kind = cx
+                .all_attrs
+                .iter()
+                .find_map(|a| [sym::panic_handler, sym::lang].into_iter().find(|&s| a.word_is(s)));
+            if let Some(kind) = lang_kind {
+                cx.emit_err(TargetFeatureOnLangItem { attr_span, kind, item_span: cx.target_span });
+            }
+        }
+    }
 }
 
 pub(crate) struct ForceTargetFeatureParser;

@@ -10,9 +10,9 @@
 //
 // Checking for unused imports is split into three steps:
 //
-//  - `UnusedImportCheckVisitor` walks the AST to find all the unused imports
-//    inside of `UseTree`s, recording their `NodeId`s and grouping them by
-//    the parent `use` item
+//  - `UnusedImportCheckVisitor` visits the `use` items collected during late
+//    resolution to find all the unused imports inside of `UseTree`s, recording
+//    their `NodeId`s and grouping them by the parent `use` item
 //
 //  - `calc_unused_spans` then walks over all the `use` items marked in the
 //    previous step to collect the spans associated with the `NodeId`s and to
@@ -410,7 +410,7 @@ fn calc_unused_spans(
 }
 
 impl Resolver<'_, '_> {
-    pub(crate) fn check_unused(&mut self, krate: &ast::Crate) {
+    pub(crate) fn check_unused(&mut self, use_items: Vec<&ast::Item>) {
         let tcx = self.tcx;
         let mut maybe_unused_extern_crates = FxHashMap::default();
 
@@ -465,7 +465,10 @@ impl Resolver<'_, '_> {
             base_id: ast::DUMMY_NODE_ID,
             item_span: DUMMY_SP,
         };
-        visit::walk_crate(&mut visitor, krate);
+        // `use_items` is in crate DFS order, so diagnostics and side effects are unchanged.
+        for item in use_items {
+            visitor.visit_item(item);
+        }
 
         visitor.report_unused_extern_crate_items(maybe_unused_extern_crates);
 

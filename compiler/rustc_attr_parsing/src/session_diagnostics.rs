@@ -81,6 +81,26 @@ pub(crate) struct DocAttributeNotAttribute {
 }
 
 #[derive(Diagnostic)]
+#[diag(
+    "`#[target_feature]` cannot be applied to a {$kind ->
+        [panic_handler] `#[panic_handler]`
+        *[other] lang item
+    } function"
+)]
+pub(crate) struct TargetFeatureOnLangItem {
+    #[primary_span]
+    pub attr_span: Span,
+    pub kind: Symbol,
+    #[label(
+        "{$kind ->
+            [panic_handler] `#[panic_handler]`
+            *[other] lang item
+        } function is not allowed to have `#[target_feature]`"
+    )]
+    pub item_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("missing 'since'", code = E0542)]
 pub(crate) struct MissingSince {
     #[primary_span]

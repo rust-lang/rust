@@ -272,21 +272,19 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
             return Ok(constant);
         }
 
-        let uv = match constant.kind() {
-            ty::ConstKind::Unevaluated(_, uv) => uv,
+        let alias_const = match constant.kind() {
+            ty::ConstKind::Alias(_, alias_const) => alias_const,
             _ => return constant.try_super_fold_with(self),
         };
 
-        let constant = match uv.kind {
-            ty::UnevaluatedConstKind::Anon { .. } => {
-                crate::traits::with_replaced_escaping_bound_vars(
-                    self.infcx,
-                    &mut self.universes,
-                    constant,
-                    |constant| crate::traits::evaluate_const(&self.infcx, constant, self.param_env),
-                )
-            }
-            _ => self.try_fold_free_or_assoc(uv.into())?.expect_const(),
+        let constant = match alias_const.kind {
+            ty::AliasConstKind::Anon { .. } => crate::traits::with_replaced_escaping_bound_vars(
+                self.infcx,
+                &mut self.universes,
+                constant,
+                |constant| crate::traits::evaluate_const(&self.infcx, constant, self.param_env),
+            ),
+            _ => self.try_fold_free_or_assoc(alias_const.into())?.expect_const(),
         };
         debug!(?constant, ?self.param_env);
         constant.try_super_fold_with(self)
@@ -373,10 +371,10 @@ impl<'a, 'tcx> QueryNormalizer<'a, 'tcx> {
             result.normalized_term
         };
         // `tcx.normalize_canonicalized_projection` may normalize to a type that
-        // still has unevaluated consts, so keep normalizing here if that's the case.
+        // still has alias consts, so keep normalizing here if that's the case.
         // Similarly, `tcx.normalize_canonicalized_free_alias` will only unwrap one layer
         // of type/const and we need to continue folding it to reveal the TAIT behind it
-        // or further normalize nested unevaluated consts.
+        // or further normalize nested alias consts.
         if res != term.to_term(tcx, ty::IsRigid::No)
             && (res.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION)
                 || matches!(

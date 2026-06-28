@@ -154,7 +154,7 @@ pub(crate) trait SingleAttributeParser: 'static {
     /// reject incompatible combinations. `attr_span` is the span of this attribute.
     ///
     /// Defaults to a no-op.
-    fn finalize_check(_attr_span: Span, _cx: &FinalizeContext<'_, '_>) {}
+    fn finalize_check(_cx: &FinalizeContext<'_, '_>, _attr_span: Span) {}
 }
 
 /// Use in combination with [`SingleAttributeParser`].
@@ -187,7 +187,7 @@ impl<T: SingleAttributeParser> AttributeParser for Single<T> {
 
     fn finalize(self, cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
         let (kind, span) = self.1?;
-        T::finalize_check(span, cx);
+        T::finalize_check(cx, span);
         Some(kind)
     }
 }
@@ -275,7 +275,7 @@ pub(crate) trait NoArgsAttributeParser: 'static {
     /// `attr_span` is the span of this attribute.
     ///
     /// Defaults to a no-op.
-    fn finalize_check(_attr_span: Span, _cx: &FinalizeContext<'_, '_>) {}
+    fn finalize_check(_cx: &FinalizeContext<'_, '_>, _attr_span: Span) {}
 }
 
 pub(crate) struct WithoutArgs<T: NoArgsAttributeParser>(PhantomData<T>);
@@ -299,8 +299,8 @@ impl<T: NoArgsAttributeParser> SingleAttributeParser for WithoutArgs<T> {
         Some(T::CREATE(cx.attr_span))
     }
 
-    fn finalize_check(attr_span: Span, cx: &FinalizeContext<'_, '_>) {
-        T::finalize_check(attr_span, cx)
+    fn finalize_check(cx: &FinalizeContext<'_, '_>, attr_span: Span) {
+        T::finalize_check(cx, attr_span)
     }
 }
 
@@ -335,6 +335,14 @@ pub(crate) trait CombineAttributeParser: 'static {
         cx: &mut AcceptContext<'_, '_>,
         args: &ArgParser,
     ) -> impl IntoIterator<Item = Self::Item>;
+
+    /// Optional cross-attribute validation, run once during finalization after all
+    /// attributes on the item have been parsed. Has access to the sibling attributes via
+    /// [`FinalizeContext::all_attrs`], so it can reject incompatible combinations.
+    /// `attr_span` is the span of the first attribute that was encountered.
+    ///
+    /// Defaults to a no-op.
+    fn finalize_check(_cx: &FinalizeContext<'_, '_>, _attr_span: Span) {}
 }
 
 /// Use in combination with [`CombineAttributeParser`].
@@ -367,8 +375,9 @@ impl<T: CombineAttributeParser> AttributeParser for Combine<T> {
     const ALLOWED_TARGETS: AllowedTargets<'_> = T::ALLOWED_TARGETS;
     const SAFETY: AttributeSafety = T::SAFETY;
 
-    fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
+    fn finalize(self, cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
         if let Some(first_span) = self.first_span {
+            T::finalize_check(cx, first_span);
             Some(T::CONVERT(self.items, first_span))
         } else {
             None

@@ -445,9 +445,9 @@ where
                     c.into()
                 }
                 ty::AliasTermKind::ProjectionConst { .. } => {
-                    let uv = ty::UnevaluatedConst::new(
+                    let alias_const = ty::AliasConst::new(
                         cx,
-                        ty::UnevaluatedConstKind::Projection {
+                        ty::AliasConstKind::Projection {
                             def_id: target_item_def_id.into().try_into().unwrap(),
                         },
                         target_args,
@@ -456,7 +456,7 @@ where
                         goal.param_env,
                         goal.predicate.alias,
                         goal.predicate.term,
-                        uv,
+                        alias_const,
                     );
                 }
                 kind => panic!("expected projection, found {kind:?}"),
