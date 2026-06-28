@@ -58,10 +58,10 @@ trim_trailing_whitespace = false
 # Therefore, pressing tab should insert a single space to encourage situative accurate indentations.
 indent_size = 1
 
-[*.{json,json5,yml,yaml,natvis,nix}]
+[*.{json,json5,yml,yaml,askama,ll,natvis,nix}]
 indent_size = 2
 
-[{src/doc/full-toc.inc,src/tools/nix-dev-shell/envrc-flake}]
+[{src/doc/full-toc.inc,src/etc/xhelp,src/tools/nix-dev-shell/envrc-flake}]
 indent_size = 2
 
 # You should NOT modify these files with your editor,
@@ -75,7 +75,7 @@ indent_size = 2
 [src/etc/completions/*.fish]
 indent_style = tab
 
-[{Makefile,.gitmodules}]
+[{Makefile,Makefile.in,.gitmodules}]
 indent_style = tab
 
 # The license texts should NEVER be modified.

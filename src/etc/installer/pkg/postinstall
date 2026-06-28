@@ -16,7 +16,7 @@ fi
 
 if [ "$package_id" = "org.rust-lang.uninstall" ]; then
     if [ ! -e "$dest_dir/lib/rustlib/uninstall.sh" ]; then
-	exit 1
+        exit 1
     fi
     sh "$dest_dir/lib/rustlib/uninstall.sh"
 else
