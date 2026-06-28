@@ -11,20 +11,20 @@ dev=0
 
 while [[ $# -gt 0 ]]
 do
-  case "$1" in
-    --dev)
-      dev=1
-      ;;
-    *)
-      if [ -n "$image" ]
-      then
-        echo "expected single argument for the image name"
-        exit 1
-      fi
-      image="$1"
-      ;;
-  esac
-  shift
+    case "$1" in
+        --dev)
+            dev=1
+            ;;
+        *)
+            if [ -n "$image" ]
+            then
+                echo "expected single argument for the image name"
+                exit 1
+            fi
+            image="$1"
+            ;;
+    esac
+    shift
 done
 
 # MacOS reports "arm64" while Linux reports "aarch64". Commonize this.
@@ -62,7 +62,7 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
     copied_files=/tmp/.docker-copied-files.txt
     rm -f "$copied_files"
     for i in $(sed -n -e '/^COPY --from=/! s/^COPY \(.*\) .*$/\1/p' \
-      "$docker_dir/$image/Dockerfile"); do
+        "$docker_dir/$image/Dockerfile"); do
     # List the file names
     find "$script_dir/$i" -type f >> $copied_files
     done
@@ -134,14 +134,14 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
         # Enable a new Docker driver so that --cache-from works with a registry backend
         # Use a custom image to avoid DockerHub rate limits
         docker buildx create --use --driver docker-container \
-          --driver-opt image=${GHCR_BUILDKIT_IMAGE}
+            --driver-opt image=${GHCR_BUILDKIT_IMAGE}
 
         # Build the image using registry caching backend
         retry docker \
-          buildx \
-          "${build_args[@]}" \
-          --cache-from type=registry,ref=${CACHE_IMAGE_TAG} \
-          --output=type=docker
+            buildx \
+            "${build_args[@]}" \
+            --cache-from type=registry,ref=${CACHE_IMAGE_TAG} \
+            --output=type=docker
     # On auto/try builds, we can also write to the cache.
     else
         # Log into the Docker registry, so that we can read/write cache and the final image
@@ -152,15 +152,15 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
         # Enable a new Docker driver so that --cache-from/to works with a registry backend
         # Use a custom image to avoid DockerHub rate limits
         docker buildx create --use --driver docker-container \
-          --driver-opt image=${GHCR_BUILDKIT_IMAGE}
+            --driver-opt image=${GHCR_BUILDKIT_IMAGE}
 
         # Build the image using registry caching backend
         retry docker \
-          buildx \
-          "${build_args[@]}" \
-          --cache-from type=registry,ref=${CACHE_IMAGE_TAG} \
-          --cache-to type=registry,ref=${CACHE_IMAGE_TAG},compression=zstd \
-          --output=type=docker
+            buildx \
+            "${build_args[@]}" \
+            --cache-from type=registry,ref=${CACHE_IMAGE_TAG} \
+            --cache-to type=registry,ref=${CACHE_IMAGE_TAG},compression=zstd \
+            --output=type=docker
 
         # Print images for debugging purposes
         docker images
@@ -186,11 +186,11 @@ elif [ -f "$docker_dir/disabled/$image/Dockerfile" ]; then
     fi
     # Transform changes the context of disabled Dockerfiles to match the enabled ones
     tar --transform 's#disabled/#./#' -C $script_dir -c . | docker \
-      build \
-      --rm \
-      -t rust-ci \
-      -f "host-${machine}/$image/Dockerfile" \
-      -
+        build \
+        --rm \
+        -t rust-ci \
+        -f "host-${machine}/$image/Dockerfile" \
+        -
 else
     echo Invalid image: $image
 
@@ -231,10 +231,10 @@ if [ "$SCCACHE_BUCKET" != "" ]; then
 
     # Disable S3 authentication for PR builds, because the access keys are missing
     if [ "$PR_CI_JOB" != "" ]; then
-      args="$args --env SCCACHE_S3_NO_CREDENTIALS=1"
+        args="$args --env SCCACHE_S3_NO_CREDENTIALS=1"
     else
-      args="$args --env AWS_ACCESS_KEY_ID"
-      args="$args --env AWS_SECRET_ACCESS_KEY"
+        args="$args --env AWS_ACCESS_KEY_ID"
+        args="$args --env AWS_SECRET_ACCESS_KEY"
     fi
 else
     mkdir -p $HOME/.cache/sccache
@@ -279,37 +279,37 @@ args="$args --privileged"
 # `LOCAL_USER_ID` (recognized in `src/ci/run.sh`) to ensure that files are all
 # read/written as the same user as the bare-metal user.
 if [ -f /.dockerenv ]; then
-  docker create -v /checkout --name checkout ghcr.io/rust-lang/alpine:3.4 /bin/true
-  docker cp . checkout:/checkout
-  args="$args --volumes-from checkout"
+    docker create -v /checkout --name checkout ghcr.io/rust-lang/alpine:3.4 /bin/true
+    docker cp . checkout:/checkout
+    args="$args --volumes-from checkout"
 else
-  args="$args --volume $root_dir:/checkout$SRC_MOUNT_OPTION"
-  args="$args --volume $objdir:/checkout/obj"
-  args="$args --volume $HOME/.cargo:/cargo"
-  args="$args --volume /tmp/toolstate:/tmp/toolstate"
+    args="$args --volume $root_dir:/checkout$SRC_MOUNT_OPTION"
+    args="$args --volume $objdir:/checkout/obj"
+    args="$args --volume $HOME/.cargo:/cargo"
+    args="$args --volume /tmp/toolstate:/tmp/toolstate"
 
-  id=$(id -u)
-  if [[ "$id" != 0 && "$(docker version)" =~ Podman ]]; then
-    # Rootless podman creates a separate user namespace, where an inner
-    # LOCAL_USER_ID will map to a different subuid range on the host.
-    # The "keep-id" mode maps the current UID directly into the container.
-    args="$args --env NO_CHANGE_USER=1 --userns=keep-id"
-  else
-    args="$args --env LOCAL_USER_ID=$id"
-  fi
+    id=$(id -u)
+    if [[ "$id" != 0 && "$(docker version)" =~ Podman ]]; then
+        # Rootless podman creates a separate user namespace, where an inner
+        # LOCAL_USER_ID will map to a different subuid range on the host.
+        # The "keep-id" mode maps the current UID directly into the container.
+        args="$args --env NO_CHANGE_USER=1 --userns=keep-id"
+    else
+        args="$args --env LOCAL_USER_ID=$id"
+    fi
 fi
 
 if [ "$dev" = "1" ]
 then
-  # Interactive + TTY
-  args="$args -it"
-  if [ $IS_GIT_SOURCE -eq 1 ]; then
-    command=(/bin/bash -c 'git config --global --add safe.directory /checkout;bash')
-  else
-    command=(/bin/bash)
-  fi
+    # Interactive + TTY
+    args="$args -it"
+    if [ $IS_GIT_SOURCE -eq 1 ]; then
+        command=(/bin/bash -c 'git config --global --add safe.directory /checkout;bash')
+    else
+        command=(/bin/bash)
+    fi
 else
-  command=(/checkout/src/ci/run.sh)
+    command=(/checkout/src/ci/run.sh)
 fi
 
 SUMMARY_FILE=github-summary.md
@@ -317,52 +317,52 @@ touch $objdir/${SUMMARY_FILE}
 
 extra_env=""
 if [ "$ENABLE_GCC_CODEGEN" = "1" ]; then
-  extra_env="$extra_env --env ENABLE_GCC_CODEGEN=1"
-  # Fix rustc_codegen_gcc lto issues.
-  extra_env="$extra_env --env GCC_EXEC_PREFIX=/usr/lib/gcc/"
-  echo "Setting extra environment values for docker: $extra_env"
+    extra_env="$extra_env --env ENABLE_GCC_CODEGEN=1"
+    # Fix rustc_codegen_gcc lto issues.
+    extra_env="$extra_env --env GCC_EXEC_PREFIX=/usr/lib/gcc/"
+    echo "Setting extra environment values for docker: $extra_env"
 fi
 
 if [ -n "${DOCKER_SCRIPT}" ]; then
-  extra_env="$extra_env --env SCRIPT=\"/scripts/${DOCKER_SCRIPT}\""
+    extra_env="$extra_env --env SCRIPT=\"/scripts/${DOCKER_SCRIPT}\""
 fi
 
 docker \
-  run \
-  --workdir /checkout/obj \
-  --env SRC=/checkout \
-  $extra_env \
-  $args \
-  --env CARGO_HOME=/cargo \
-  --env DEPLOY \
-  --env DEPLOY_ALT \
-  --env CI \
-  --env GIT_DISCOVERY_ACROSS_FILESYSTEM=1 \
-  --env GITHUB_ACTIONS \
-  --env GITHUB_REF \
-  --env GITHUB_STEP_SUMMARY="/checkout/obj/${SUMMARY_FILE}" \
-  --env GITHUB_WORKFLOW_RUN_ID \
-  --env GITHUB_REPOSITORY \
-  --env RUST_BACKTRACE \
-  --env TOOLSTATE_REPO_ACCESS_TOKEN \
-  --env TOOLSTATE_REPO \
-  --env TOOLSTATE_PUBLISH \
-  --env RUST_CI_OVERRIDE_RELEASE_CHANNEL \
-  --env CI_JOB_NAME="${CI_JOB_NAME-$image}" \
-  --env CI_JOB_DOC_URL="${CI_JOB_DOC_URL}" \
-  --env DIST_TRY_BUILD \
-  --env PR_CI_JOB \
-  --env OBJDIR_ON_HOST="$objdir" \
-  --env CODEGEN_BACKENDS \
-  --env DISABLE_CI_RUSTC_IF_INCOMPATIBLE="$DISABLE_CI_RUSTC_IF_INCOMPATIBLE" \
-  --init \
-  --rm \
-  rust-ci \
-  "${command[@]}"
+    run \
+    --workdir /checkout/obj \
+    --env SRC=/checkout \
+    $extra_env \
+    $args \
+    --env CARGO_HOME=/cargo \
+    --env DEPLOY \
+    --env DEPLOY_ALT \
+    --env CI \
+    --env GIT_DISCOVERY_ACROSS_FILESYSTEM=1 \
+    --env GITHUB_ACTIONS \
+    --env GITHUB_REF \
+    --env GITHUB_STEP_SUMMARY="/checkout/obj/${SUMMARY_FILE}" \
+    --env GITHUB_WORKFLOW_RUN_ID \
+    --env GITHUB_REPOSITORY \
+    --env RUST_BACKTRACE \
+    --env TOOLSTATE_REPO_ACCESS_TOKEN \
+    --env TOOLSTATE_REPO \
+    --env TOOLSTATE_PUBLISH \
+    --env RUST_CI_OVERRIDE_RELEASE_CHANNEL \
+    --env CI_JOB_NAME="${CI_JOB_NAME-$image}" \
+    --env CI_JOB_DOC_URL="${CI_JOB_DOC_URL}" \
+    --env DIST_TRY_BUILD \
+    --env PR_CI_JOB \
+    --env OBJDIR_ON_HOST="$objdir" \
+    --env CODEGEN_BACKENDS \
+    --env DISABLE_CI_RUSTC_IF_INCOMPATIBLE="$DISABLE_CI_RUSTC_IF_INCOMPATIBLE" \
+    --init \
+    --rm \
+    rust-ci \
+    "${command[@]}"
 
 if [ -f /.dockerenv ]; then
-  rm -rf $objdir
-  docker cp checkout:/checkout/obj $objdir
+    rm -rf $objdir
+    docker cp checkout:/checkout/obj $objdir
 fi
 
 if isCI; then

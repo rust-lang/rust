@@ -84,3 +84,9 @@ tests/run-make/macos-deployment-target-warning/*.txt
 # Alignment and some test files without final newline
 *.html
 *.html.template
+# Shell scripts with the content of patches inlines
+src/ci/docker/scripts/musl.sh
+src/ci/docker/scripts/solaris-toolchain.sh
+# Shell scripts with alignments with previous line
+src/ci/docker/host-x86_64/disabled/dist-x86_64-haiku/llvm-config.sh
+src/etc/pre-push.sh

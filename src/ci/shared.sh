@@ -10,21 +10,21 @@ export MIRRORS_BASE="https://ci-mirrors.rust-lang.org/rustc"
 # See https://unix.stackexchange.com/questions/82598
 # Duplicated in docker/scripts/shared.sh
 function retry {
-  echo "Attempting with retry:" "$@"
-  local n=1
-  local max=5
-  while true; do
-    "$@" && break || {
-      if [[ $n -lt $max ]]; then
-        sleep $n  # don't retry immediately
-        ((n++))
-        echo "Command failed. Attempt $n/$max:"
-      else
-        echo "The command has failed after $n attempts."
-        return 1
-      fi
-    }
-  done
+    echo "Attempting with retry:" "$@"
+    local n=1
+    local max=5
+    while true; do
+        "$@" && break || {
+            if [[ $n -lt $max ]]; then
+                sleep $n  # don't retry immediately
+                ((n++))
+                echo "Command failed. Attempt $n/$max:"
+            else
+                echo "The command has failed after $n attempts."
+                return 1
+            fi
+        }
+    done
 }
 
 function isCI {

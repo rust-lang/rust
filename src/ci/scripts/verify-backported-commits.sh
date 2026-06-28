@@ -12,23 +12,23 @@ BETA_LIMIT="53fd98ca776cb875bc9e5514f56b52eb74f9e7a9"
 STABLE_LIMIT="a178d0322ce20e33eac124758e837cbd80a6f633"
 
 verify_backported_commits_main() {
-  ci_base_branch=$(ciBaseBranch)
+    ci_base_branch=$(ciBaseBranch)
 
-  if [[ "$ci_base_branch" != "beta" && "$ci_base_branch" != "stable" ]]; then
-    echo 'Skipping. This is only run when merging to the beta or stable branches.'
-    exit 0
-  fi
+    if [[ "$ci_base_branch" != "beta" && "$ci_base_branch" != "stable" ]]; then
+        echo 'Skipping. This is only run when merging to the beta or stable branches.'
+        exit 0
+    fi
 
-  if [[ $ci_base_branch == "beta" ]]; then
-    verify_cherries HEAD "$BETA_LIMIT" \
-      || exit 1
+    if [[ $ci_base_branch == "beta" ]]; then
+        verify_cherries HEAD "$BETA_LIMIT" \
+            || exit 1
 
-  elif [[ $ci_base_branch == "stable" ]]; then
-    (verify_cherries HEAD "$STABLE_LIMIT" \
-      & verify_cherries beta "$STABLE_LIMIT") \
-      || exit 1
+    elif [[ $ci_base_branch == "stable" ]]; then
+        (verify_cherries HEAD "$STABLE_LIMIT" \
+            & verify_cherries beta "$STABLE_LIMIT") \
+            || exit 1
 
-  fi
+    fi
 }
 
 # Verify all commits in `HEAD` are backports of a commit in <upstream>. See
@@ -37,52 +37,52 @@ verify_backported_commits_main() {
 # $1 = <upstream>
 # $2 = <limit>
 verify_cherries() {
-  # commits that lack a `backport-of` comment.
-  local no_backports=()
-  # commits with an incorrect `backport-of` comment.
-  local bad_backports=()
+    # commits that lack a `backport-of` comment.
+    local no_backports=()
+    # commits with an incorrect `backport-of` comment.
+    local bad_backports=()
 
-  commits=$(git cherry "origin/$1" HEAD "$2")
+    commits=$(git cherry "origin/$1" HEAD "$2")
 
-  if [[ -z "$commits" ]]; then
-    echo "All commits in \`HEAD\` are present in \`$1\`"
-    return 0
-  fi
-
-  commits=$(echo "$commits" | grep '^\+' | cut -c 3-)
-
-  while read sha; do
-    # Check each commit in <current>..<upstream>
-    backport_sha=$(get_backport "$sha")
-
-    if [[ "$backport_sha" == "nothing" ]]; then
-      echo "✓ \`$sha\` backports nothing"
-      continue
+    if [[ -z "$commits" ]]; then
+        echo "All commits in \`HEAD\` are present in \`$1\`"
+        return 0
     fi
 
-    if [[ -z "$backport_sha" ]]; then
-      no_backports+=("$sha")
-      continue
-    fi
+    commits=$(echo "$commits" | grep '^\+' | cut -c 3-)
 
-    if ! is_in_default_branch "$backport_sha"; then
-      bad_backports+=("$sha")
-      continue
-    fi
+    while read sha; do
+        # Check each commit in <current>..<upstream>
+        backport_sha=$(get_backport "$sha")
 
-    echo "✓ \`$sha\` backports \`$backport_sha\`"
-  done <<< "$commits"
+        if [[ "$backport_sha" == "nothing" ]]; then
+            echo "✓ \`$sha\` backports nothing"
+            continue
+        fi
 
-  failure=0
+        if [[ -z "$backport_sha" ]]; then
+            no_backports+=("$sha")
+            continue
+        fi
 
-  if [ ${#no_backports[@]} -ne 0 ]; then
+        if ! is_in_default_branch "$backport_sha"; then
+            bad_backports+=("$sha")
+            continue
+        fi
+
+        echo "✓ \`$sha\` backports \`$backport_sha\`"
+    done <<< "$commits"
+
+    failure=0
+
+    if [ ${#no_backports[@]} -ne 0 ]; then
         echo 'Error: Could not find backports for all commits.'
         echo
         echo 'All commits in \`HEAD\` are required to have a corresponding upstream commit.'
         echo 'It looks like the following commits:'
         echo
         for commit in "${no_backports[@]}"; do
-          echo "    $commit"
+            echo "    $commit"
         done
         echo
         echo "do not match any commits in \`$1\`. If this was intended, add the text"
@@ -90,24 +90,24 @@ verify_cherries() {
         echo 'somewhere in the message of each of these commits.'
         echo
         failure=1
-  fi
+    fi
 
-  if [ ${#bad_backports[@]} -ne 0 ]; then
+    if [ ${#bad_backports[@]} -ne 0 ]; then
         echo 'Error: Found incorrectly marked commits.'
         echo
         echo 'The following commits:'
         echo
         for commit in "${bad_backports[@]}"; do
-          echo "    $commit"
+            echo "    $commit"
         done
         echo
         echo 'have commit messages marked \`backport-of: <SHA>\`, but the SHA is not in'
         echo 'the default branch.'
         echo
         failure=1
-  fi
+    fi
 
-  return $failure
+    return $failure
 }
 
 # Get the backport of a commit. It echoes one of:
@@ -118,26 +118,26 @@ verify_cherries() {
 #
 # $1 = <sha>
 get_backport() {
-  # This regex is:
-  #
-  # ^.* - throw away any extra starting characters
-  # backport-of: - prefix
-  # \s\? - optional space
-  # \(\) - capture group
-  # [a-f0-9]\+\|nothing - a SHA or the text 'nothing'
-  # .* - throw away any extra ending characters
-  # \1 - replace it with the first match
-  # {s//\1/p;q} - print the first occurrence and quit
-  #
-  git show -s --format=%B "$1" \
-    | sed -n '/^.*backport-of:\s\?\([a-f0-9]\+\|nothing\).*/{s//\1/p;q}'
+    # This regex is:
+    #
+    # ^.* - throw away any extra starting characters
+    # backport-of: - prefix
+    # \s\? - optional space
+    # \(\) - capture group
+    # [a-f0-9]\+\|nothing - a SHA or the text 'nothing'
+    # .* - throw away any extra ending characters
+    # \1 - replace it with the first match
+    # {s//\1/p;q} - print the first occurrence and quit
+    #
+    git show -s --format=%B "$1" \
+        | sed -n '/^.*backport-of:\s\?\([a-f0-9]\+\|nothing\).*/{s//\1/p;q}'
 }
 
 # Check if a commit is in the default branch.
 #
 # $1 = <sha>
 is_in_default_branch() {
-  git merge-base --is-ancestor "$1" origin/HEAD 2> /dev/null
+    git merge-base --is-ancestor "$1" origin/HEAD 2> /dev/null
 }
 
 verify_backported_commits_main
