@@ -409,6 +409,10 @@ pub enum InferenceDiagnostic {
         expr: ExprId,
         found: StoredTy,
     },
+    MutRefInImmRefPat {
+        #[type_visitable(ignore)]
+        pat: PatId,
+    },
     CannotImplicitlyDerefTraitObject {
         #[type_visitable(ignore)]
         pat: PatId,

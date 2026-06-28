@@ -135,6 +135,7 @@ diagnostics![AnyDiagnostic<'db> ->
     MissingMatchArms,
     MissingUnsafe,
     MovedOutOfRef<'db>,
+    MutRefInImmRefPat,
     MutableRefBinding,
     NeedMut,
     NonExhaustiveLet,
@@ -335,6 +336,11 @@ pub struct ExpectedFunction<'db> {
 pub struct CannotBeDereferenced<'db> {
     pub expr: InFile<ExprOrPatPtr>,
     pub found: Type<'db>,
+}
+
+#[derive(Debug)]
+pub struct MutRefInImmRefPat {
+    pub pat: InFile<ExprOrPatPtr>,
 }
 
 #[derive(Debug)]
@@ -959,6 +965,10 @@ impl<'db> AnyDiagnostic<'db> {
             InferenceDiagnostic::CannotBeDereferenced { expr, found } => {
                 let expr = expr_syntax(*expr)?;
                 CannotBeDereferenced { expr, found: new_ty(found.as_ref()) }.into()
+            }
+            InferenceDiagnostic::MutRefInImmRefPat { pat } => {
+                let pat = pat_syntax(*pat)?.map(Into::into);
+                MutRefInImmRefPat { pat }.into()
             }
             InferenceDiagnostic::CannotImplicitlyDerefTraitObject { pat, found } => {
                 let pat = pat_syntax(*pat)?.map(Into::into);
