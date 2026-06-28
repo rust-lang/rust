@@ -44,7 +44,7 @@ pub(crate) fn has_impossible_predicates(tcx: TyCtxt<'_>, def_id: DefId) -> bool 
             !p.has_type_flags(
                 // Only consider global clauses to simplify.
                 TypeFlags::HAS_FREE_LOCAL_NAMES
-                // Clauses that refer to unevaluated constants as they cause cycles.
+                // Clauses that refer to alias constants as they cause cycles.
                 | TypeFlags::HAS_CT_PROJECTION,
             )
         });

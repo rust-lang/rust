@@ -24,6 +24,7 @@ use std::{assert_matches, slice};
 use rustc_abi::FIRST_VARIANT;
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::sso::SsoHashSet;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError, StashKey,
@@ -1262,6 +1263,74 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         )
     }
 
+    /// When there are multiple traits which contain an identically named
+    /// associated item, this function eliminates any traits which are a
+    /// supertrait of another candidate trait.
+    ///
+    /// This is the type-level analogue of
+    /// `rustc_hir_typeck::method::probe::ProbeContext::collapse_candidates_to_subtrait_pick`;
+    /// keep both implementations in sync.
+    ///
+    /// This implements RFC #3624.
+    fn collapse_candidates_to_subtrait_pick(
+        &self,
+        matching_candidates: &[ty::PolyTraitRef<'tcx>],
+    ) -> Option<ty::PolyTraitRef<'tcx>> {
+        if !self.tcx().features().supertrait_item_shadowing() {
+            return None;
+        }
+
+        let mut child_trait = matching_candidates[0];
+        let mut supertraits: SsoHashSet<_> =
+            traits::supertrait_def_ids(self.tcx(), child_trait.def_id()).collect();
+
+        let mut remaining_candidates: Vec<_> = matching_candidates[1..].iter().copied().collect();
+        while !remaining_candidates.is_empty() {
+            let mut made_progress = false;
+            let mut next_round = vec![];
+
+            for remaining_trait in remaining_candidates {
+                if supertraits.contains(&remaining_trait.def_id()) {
+                    made_progress = true;
+                    continue;
+                }
+
+                // This candidate is not a supertrait of the `child_trait`.
+                // Check if it's a subtrait of the `child_trait`, instead.
+                // If it is, then it must have been a subtrait of every
+                // other pick we've eliminated at this point. It will
+                // take over at this point.
+                let remaining_trait_supertraits: SsoHashSet<_> =
+                    traits::supertrait_def_ids(self.tcx(), remaining_trait.def_id()).collect();
+                if remaining_trait_supertraits.contains(&child_trait.def_id()) {
+                    child_trait = remaining_trait;
+                    supertraits = remaining_trait_supertraits;
+                    made_progress = true;
+                    continue;
+                }
+
+                // Neither `child_trait` or the current candidate are
+                // supertraits of each other.
+                // Don't bail here, since we may be comparing two supertraits
+                // of a common subtrait. These two supertraits won't be related
+                // at all, but we will pick them up next round when we find their
+                // child as we continue iterating in this round.
+                next_round.push(remaining_trait);
+            }
+
+            if made_progress {
+                // If we've made progress, iterate again.
+                remaining_candidates = next_round;
+            } else {
+                // Otherwise, we must have at least two candidates which
+                // are not related to each other at all.
+                return None;
+            }
+        }
+
+        Some(child_trait)
+    }
+
     /// Search for a single trait bound whose trait defines the associated item given by
     /// `assoc_ident`.
     ///
@@ -1296,10 +1365,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         };
 
         if let Some(bound2) = matching_candidates.next() {
+            let all_matching_candidates: Vec<_> =
+                [bound1, bound2].into_iter().chain(matching_candidates).collect();
+            if let Some(bound) = self.collapse_candidates_to_subtrait_pick(&all_matching_candidates)
+            {
+                return Ok(bound);
+            }
+
             return Err(self.report_ambiguous_assoc_item(
-                bound1,
-                bound2,
-                matching_candidates,
+                &all_matching_candidates,
                 qself,
                 assoc_tag,
                 assoc_ident,
@@ -1402,7 +1476,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 if let Some(def_id) = alias_ct.kind.opt_def_id() {
                     self.require_type_const_attribute(def_id, span)?;
                 }
-                let ct = Const::new_unevaluated(tcx, ty::IsRigid::No, alias_ct);
+                let ct = Const::new_alias(tcx, ty::IsRigid::No, alias_ct);
                 let ct = self.check_param_uses_if_mcg(ct, span, false);
                 Ok(ct)
             }
@@ -1865,12 +1939,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ty::AssocTag::Const,
         )?;
         self.require_type_const_attribute(item_def_id, span)?;
-        let uv = ty::UnevaluatedConst::new(
+        let alias_const = ty::AliasConst::new(
             tcx,
-            ty::UnevaluatedConstKind::new_from_def_id(tcx, item_def_id),
+            ty::AliasConstKind::new_from_def_id(tcx, item_def_id),
             item_args,
         );
-        Ok(Const::new_unevaluated(tcx, ty::IsRigid::No, uv))
+        Ok(Const::new_alias(tcx, ty::IsRigid::No, alias_const))
     }
 
     /// Lower a [resolved][hir::QPath::Resolved] (type-level) associated item path.
@@ -2772,14 +2846,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let _ = self
                     .prohibit_generic_args(leading_segments.iter(), GenericsArgsErrExtend::None);
                 let args = self.lower_generic_args_of_path_segment(span, did, segment);
-                ty::Const::new_unevaluated(
+                ty::Const::new_alias(
                     tcx,
                     ty::IsRigid::No,
-                    ty::UnevaluatedConst::new(
-                        tcx,
-                        ty::UnevaluatedConstKind::new_from_def_id(tcx, did),
-                        args,
-                    ),
+                    ty::AliasConst::new(tcx, ty::AliasConstKind::new_from_def_id(tcx, did), args),
                 )
             }
             Res::Def(kind @ DefKind::Ctor(ctor_of, CtorKind::Const), did) => {
@@ -2866,7 +2936,27 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     did,
                     path.segments.last().unwrap(),
                 );
-                ty::Const::zero_sized(tcx, Ty::new_fn_def(tcx, did, args))
+
+                if self.tcx().generics_of(did).own_synthetic_params_count() == 0 {
+                    ty::Const::zero_sized(tcx, Ty::new_fn_def(tcx, did, args))
+                } else {
+                    let tcx = self.tcx();
+                    let generics = tcx.generics_of(did);
+
+                    // Use infer tys for synthetic params; otherwise the impl header's trait ref may
+                    // contain callee-owned synthetic params and fail when instantiated with impl args.
+                    // See issue #155834
+                    let args = args.iter().enumerate().map(|(index, arg)| {
+                        let param = generics.param_at(index, tcx);
+                        if param.kind.is_synthetic() {
+                            self.ty_infer(Some(param), span).into()
+                        } else {
+                            arg
+                        }
+                    });
+
+                    ty::Const::zero_sized(tcx, Ty::new_fn_def(tcx, did, args))
+                }
             }
 
             // Exhaustive match to be clear about what exactly we're considering to be
@@ -2915,7 +3005,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         self.check_param_uses_if_mcg(ct, span, false)
     }
 
-    /// Literals are eagerly converted to a constant, everything else becomes `Unevaluated`.
+    /// Literals are eagerly converted to a constant, everything else becomes `ConstKind::Alias`.
     #[instrument(skip(self), level = "debug")]
     fn lower_const_arg_anon(&self, anon: &AnonConst) -> Const<'tcx> {
         let tcx = self.tcx();
@@ -2930,12 +3020,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         match self.try_lower_anon_const_lit(ty, expr) {
             Some(v) => v,
-            None => ty::Const::new_unevaluated(
+            None => ty::Const::new_alias(
                 tcx,
                 ty::IsRigid::No,
-                ty::UnevaluatedConst::new(
+                ty::AliasConst::new(
                     tcx,
-                    ty::UnevaluatedConstKind::Anon { def_id: anon.def_id.to_def_id() },
+                    ty::AliasConstKind::Anon { def_id: anon.def_id.to_def_id() },
                     ty::GenericArgs::identity_for_item(tcx, anon.def_id.to_def_id()),
                 ),
             ),

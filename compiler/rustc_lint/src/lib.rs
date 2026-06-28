@@ -154,7 +154,7 @@ pub fn provide(providers: &mut Providers) {
 }
 
 fn lint_mod(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
-    late_lint_mod(tcx, module_def_id, BuiltinCombinedModuleLateLintPass::new());
+    late_lint_mod(tcx, module_def_id, BuiltinCombinedLateLintModPass::new());
 }
 
 early_lint_methods!(
@@ -207,7 +207,7 @@ early_lint_methods!(
 late_lint_methods!(
     declare_combined_late_lint_pass,
     [
-        BuiltinCombinedModuleLateLintPass,
+        BuiltinCombinedLateLintModPass,
         [
             ForLoopsOverFallibles: ForLoopsOverFallibles,
             DefaultCouldBeDerived: DefaultCouldBeDerived,
@@ -279,7 +279,7 @@ late_lint_methods!(
 late_lint_methods!(
     declare_combined_late_lint_pass,
     [
-        InternalCombinedModuleLateLintPass,
+        InternalCombinedLateLintModPass,
         [
             DefaultHashTypes: DefaultHashTypes,
             QueryStability: QueryStability,
@@ -317,7 +317,7 @@ fn register_builtins(store: &mut LintStore) {
 
     store.register_lints(&BuiltinCombinedPreExpansionLintPass::lint_vec());
     store.register_lints(&BuiltinCombinedEarlyLintPass::lint_vec());
-    store.register_lints(&BuiltinCombinedModuleLateLintPass::lint_vec());
+    store.register_lints(&BuiltinCombinedLateLintModPass::lint_vec());
     store.register_lints(&foreign_modules::lint_vec());
     store.register_lints(&hardwired::lint_vec());
 
@@ -698,10 +698,12 @@ fn register_builtins(store: &mut LintStore) {
 
 fn register_internals(store: &mut LintStore) {
     store.register_lints(&InternalCombinedEarlyLintPass::lint_vec());
-    store.register_early_pass(Box::new(|| Box::new(InternalCombinedEarlyLintPass::new())));
+    store.register_early_lint_pass(Box::new(|| Box::new(InternalCombinedEarlyLintPass::new())));
 
-    store.register_lints(&InternalCombinedModuleLateLintPass::lint_vec());
-    store.register_late_mod_pass(Box::new(|_| Box::new(InternalCombinedModuleLateLintPass::new())));
+    store.register_lints(&InternalCombinedLateLintModPass::lint_vec());
+    store.register_late_lint_mod_pass(Box::new(|_| {
+        Box::new(InternalCombinedLateLintModPass::new())
+    }));
 
     store.register_group(
         false,
