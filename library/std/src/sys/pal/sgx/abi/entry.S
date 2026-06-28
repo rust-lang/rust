@@ -131,7 +131,7 @@ elf_entry:
     sub %rax,%rdx                     /* all chars written?     */
     jnz .Lelf_entry_call
 
-.Lelf_exit:    
+.Lelf_exit:
     movq $60,%rax                     /* exit() syscall         */
     movq $1,%rdi                      /* exit code 1            */
     syscall
