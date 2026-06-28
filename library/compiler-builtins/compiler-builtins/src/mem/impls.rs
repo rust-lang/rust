@@ -183,8 +183,8 @@ pub unsafe fn copy_forward(mut dest: *mut u8, mut src: *const u8, mut n: usize) 
         // dest_usize does not matter any more
     }
 
-    /// `n` is in units of bytes, but must be a multiple of the word size and must not be 0.
-    /// `src` *must not* be `usize`-aligned.
+    // `n` is in units of bytes, but must be a multiple of the word size and must not be 0.
+    // `src` *must not* be `usize`-aligned.
     #[cfg(mem_unaligned)]
     #[inline(always)]
     unsafe fn copy_forward_misaligned_words(dest: *mut u8, src: *const u8, n: usize) {
@@ -299,8 +299,8 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, mut n: usize) {
         *dest_usize = reassembled;
     }
 
-    /// `n` is in units of bytes, but must be a multiple of the word size and must not be 0.
-    /// `src` *must not* be `usize`-aligned.
+    // `n` is in units of bytes, but must be a multiple of the word size and must not be 0.
+    // `src` *must not* be `usize`-aligned.
     #[cfg(mem_unaligned)]
     #[inline(always)]
     unsafe fn copy_backward_misaligned_words(dest: *mut u8, src: *const u8, n: usize) {

@@ -80,13 +80,13 @@ const fn escape_ascii<const N: usize>(byte: u8) -> ([ascii::Char; N], Range<u8>)
 
     #[cfg(not(feature = "optimize_for_size"))]
     {
-        /// Lookup table helps us determine how to display character.
-        ///
-        /// Since ASCII characters will always be 7 bits, we can exploit this to store the 8th bit to
-        /// indicate whether the result is escaped or unescaped.
-        ///
-        /// We additionally use 0x80 (escaped NUL character) to indicate hex-escaped bytes, since
-        /// escaped NUL will not occur.
+        // Lookup table helps us determine how to display character.
+        //
+        // Since ASCII characters will always be 7 bits, we can exploit this to store the 8th bit to
+        // indicate whether the result is escaped or unescaped.
+        //
+        // We additionally use 0x80 (escaped NUL character) to indicate hex-escaped bytes, since
+        // escaped NUL will not occur.
         const LOOKUP: [u8; 256] = {
             let mut arr = [0; 256];
             let mut idx = 0;

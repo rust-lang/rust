@@ -916,7 +916,7 @@ fn count_repetitions<'dx>(
         }
     }
 
-    /// Maximum depth
+    // Maximum depth
     fn depth(counter: usize, matched: &NamedMatch) -> usize {
         match matched {
             MatchedSingle(_) => counter,

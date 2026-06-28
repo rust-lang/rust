@@ -1,4 +1,5 @@
 //@ run-pass
+#![allow(unused_doc_comments)]
 
 macro_rules! mtester {
     ($l:literal) => {

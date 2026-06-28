@@ -463,8 +463,8 @@ const fn is_ascii(s: &[u8]) -> bool {
         if const {
             is_ascii_simple(s)
         } else {
-            /// Returns `true` if any byte in the word `v` is nonascii (>= 128). Snarfed
-            /// from `../str/mod.rs`, which does something similar for utf8 validation.
+            // Returns `true` if any byte in the word `v` is nonascii (>= 128). Snarfed
+            // from `../str/mod.rs`, which does something similar for utf8 validation.
             const fn contains_nonascii(v: usize) -> bool {
                 const NONASCII_MASK: usize = usize::repeat_u8(0x80);
                 (NONASCII_MASK & v) != 0
