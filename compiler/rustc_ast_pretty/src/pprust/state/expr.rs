@@ -1,7 +1,7 @@
 use std::fmt::Write;
 
 use ast::{ForLoopKind, MatchKind};
-use itertools::{Itertools, Position};
+use itertools::Itertools;
 use rustc_ast::util::classify;
 use rustc_ast::util::literal::escape_byte_str_symbol;
 use rustc_ast::util::parser::{self, ExprPrecedence, Fixity};
@@ -170,8 +170,8 @@ impl<'a> State<'a> {
         }
         let cb = self.cbox(0);
         for (pos, field) in fields.iter().with_position() {
-            let is_first = matches!(pos, Position::First | Position::Only);
-            let is_last = matches!(pos, Position::Last | Position::Only);
+            let is_first = pos.is_first();
+            let is_last = pos.is_last();
             self.maybe_print_comment(field.span.hi());
             self.print_outer_attributes(&field.attrs);
             if is_first {
