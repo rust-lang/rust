@@ -1,23 +1,23 @@
 FROM ubuntu:26.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  clang \
-  make \
-  ninja-build \
-  file \
-  curl \
-  ca-certificates \
-  python3 \
-  git \
-  cmake \
-  sudo \
-  bzip2 \
-  xz-utils \
-  texinfo \
-  wget \
-  libssl-dev \
-  pkg-config \
-  && rm -rf /var/lib/apt/lists/*
+    clang \
+    make \
+    ninja-build \
+    file \
+    curl \
+    ca-certificates \
+    python3 \
+    git \
+    cmake \
+    sudo \
+    bzip2 \
+    xz-utils \
+    texinfo \
+    wget \
+    libssl-dev \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY scripts/freebsd-toolchain.sh /tmp/
 RUN /tmp/freebsd-toolchain.sh aarch64

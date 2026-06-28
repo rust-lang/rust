@@ -1,22 +1,22 @@
 FROM ubuntu:16.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  g++ \
-  make \
-  ninja-build \
-  file \
-  curl \
-  ca-certificates \
-  python3 \
-  git \
-  cmake \
-  sudo \
-  bzip2 \
-  xz-utils \
-  wget \
-  libssl-dev \
-  bsdtar \
-  pkg-config
+    g++ \
+    make \
+    ninja-build \
+    file \
+    curl \
+    ca-certificates \
+    python3 \
+    git \
+    cmake \
+    sudo \
+    bzip2 \
+    xz-utils \
+    wget \
+    libssl-dev \
+    bsdtar \
+    pkg-config
 
 
 COPY host-x86_64/dist-x86_64-dragonfly/build-toolchain.sh /tmp/

@@ -11,14 +11,14 @@ RUN . /scripts/android-ndk.sh && \
 RUN dpkg --add-architecture i386 && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
-  libgl1 \
-  libglx-mesa0 \
-  libpulse0 \
-  libstdc++6:i386 \
-  openjdk-8-jre-headless \
-  tzdata \
-  wget \
-  python3
+    libgl1 \
+    libglx-mesa0 \
+    libpulse0 \
+    libstdc++6:i386 \
+    openjdk-8-jre-headless \
+    tzdata \
+    wget \
+    python3
 
 COPY scripts/android-sdk.sh /scripts/
 COPY scripts/android-sdk-manager.py /scripts/

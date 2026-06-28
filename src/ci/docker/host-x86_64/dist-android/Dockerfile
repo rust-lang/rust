@@ -17,9 +17,9 @@ ENV TARGETS=$TARGETS,aarch64-linux-android
 ENV TARGETS=$TARGETS,x86_64-linux-android
 
 ENV RUST_CONFIGURE_ARGS="--enable-extended \
-      --enable-profiler \
-      --android-ndk=/android/ndk/ \
-      --disable-docs"
+    --enable-profiler \
+    --android-ndk=/android/ndk/ \
+    --disable-docs"
 
 ENV PATH=$PATH:/android/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin
 

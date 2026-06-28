@@ -2,25 +2,25 @@ FROM ubuntu:22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  g++ \
-  make \
-  ninja-build \
-  file \
-  wget \
-  curl \
-  ca-certificates \
-  python3 \
-  git \
-  cmake \
-  bzip2 \
-  xz-utils \
-  sudo \
-  gdb \
-  patch \
-  libssl-dev \
-  pkg-config \
-  zlib1g-dev \
-  && rm -rf /var/lib/apt/lists/*
+    g++ \
+    make \
+    ninja-build \
+    file \
+    wget \
+    curl \
+    ca-certificates \
+    python3 \
+    git \
+    cmake \
+    bzip2 \
+    xz-utils \
+    sudo \
+    gdb \
+    patch \
+    libssl-dev \
+    pkg-config \
+    zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build/
 
@@ -38,12 +38,12 @@ RUN sh /scripts/sccache.sh
 ENV HOSTS=x86_64-unknown-linux-musl
 
 ENV RUST_CONFIGURE_ARGS="--musl-root-x86_64=/usr/local/x86_64-linux-musl \
-      --enable-extended \
-      --enable-sanitizers \
-      --enable-profiler \
-      --enable-lld \
-      --set target.x86_64-unknown-linux-musl.crt-static=false \
-      --build $HOSTS"
+    --enable-extended \
+    --enable-sanitizers \
+    --enable-profiler \
+    --enable-lld \
+    --set target.x86_64-unknown-linux-musl.crt-static=false \
+    --build $HOSTS"
 
 # Newer binutils broke things on some vms/distros (i.e., linking against
 # unknown relocs disabled by the following flag), so we need to go out of our
