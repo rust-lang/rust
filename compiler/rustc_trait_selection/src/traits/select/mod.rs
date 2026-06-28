@@ -727,7 +727,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     match wf::obligations(
                         self.infcx,
                         obligation.param_env,
-                        obligation.cause.body_id,
+                        obligation.cause.body_def_id,
                         obligation.recursion_depth + 1,
                         term,
                         obligation.cause.span,
@@ -2557,7 +2557,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
         let cause = ObligationCause::new(
             obligation.cause.span,
-            obligation.cause.body_id,
+            obligation.cause.body_def_id,
             ObligationCauseCode::MatchImpl(obligation.cause.clone(), impl_def_id),
         );
 

@@ -1813,7 +1813,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         }
 
-        let body_owner_def_id = (cause.body_id != CRATE_DEF_ID).then(|| cause.body_id.to_def_id());
+        let body_owner_def_id =
+            (cause.body_def_id != CRATE_DEF_ID).then(|| cause.body_def_id.to_def_id());
         self.note_and_explain_type_err(diag, terr, cause, span, body_owner_def_id);
         if let Some(exp_found) = exp_found
             && let exp_found = TypeError::Sorts(exp_found)
@@ -1945,7 +1946,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let TypeError::ArraySize(sz) = terr else {
             return None;
         };
-        let tykind = match self.tcx.hir_node_by_def_id(trace.cause.body_id) {
+        let tykind = match self.tcx.hir_node_by_def_id(trace.cause.body_def_id) {
             hir::Node::Item(hir::Item {
                 kind: hir::ItemKind::Fn { body: body_id, .. }, ..
             }) => {
