@@ -68,18 +68,26 @@ src/ci/docker/host-x86_64/disabled/dist-x86_64-dragonfly/patch-toolchain
 *.coverage
 *.cpp
 *.css
+*.err
 *.fixed
 *.goml
 *.h
 *.js
 *.ld
 *.py
+*.rs
 *.stderr
 *.stdout
 *.ts
 *.wxs
 tests/run-make/linker-warning/*.txt
 tests/run-make/macos-deployment-target-warning/*.txt
+library/std/src/sys/pal/sgx/abi/entry.S
+tests/pretty/block-comment-wchar.pp
+tests/run-make-cargo/thumb-none-qemu/example/memory.x
+src/bootstrap/mk/Makefile.in
+src/etc/rust_analyzer_eglot.el
+src/librustdoc/html/static/fonts/README.txt
 # The first { in these files is always indented with one space
 *.mir
 # Alignment and some test files without final newline

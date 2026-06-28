@@ -5,9 +5,9 @@ set -e
 # Prefer rustc in the same directory as this script
 DIR="$(dirname "$0")"
 if [ -x "$DIR/rustc" ]; then
-  RUSTC="$DIR/rustc"
+    RUSTC="$DIR/rustc"
 else
-  RUSTC="rustc"
+    RUSTC="rustc"
 fi
 
 # Find out where the pretty printer Python module is
@@ -21,8 +21,8 @@ RUSTC_COMMIT_HASH="$("$RUSTC" -vV | sed -n 's/commit-hash: \([a-zA-Z0-9_]*\)/\1/
 # different/specific command (defaults to `gdb`).
 RUST_GDB="${RUST_GDB:-gdb}"
 PYTHONPATH="$PYTHONPATH:$GDB_PYTHON_MODULE_DIRECTORY" exec ${RUST_GDB} \
-  --directory="$GDB_PYTHON_MODULE_DIRECTORY" \
-  -iex "add-auto-load-safe-path $GDB_PYTHON_MODULE_DIRECTORY" \
-  -iex "set substitute-path /rustc/$RUSTC_COMMIT_HASH $RUSTC_SYSROOT/lib/rustlib/src/rust" \
-  "$@"
+    --directory="$GDB_PYTHON_MODULE_DIRECTORY" \
+    -iex "add-auto-load-safe-path $GDB_PYTHON_MODULE_DIRECTORY" \
+    -iex "set substitute-path /rustc/$RUSTC_COMMIT_HASH $RUSTC_SYSROOT/lib/rustlib/src/rust" \
+    "$@"
 
