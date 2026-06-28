@@ -43,6 +43,7 @@ path = [
     "x.ps1",
     "x.py",
     ".clang-format",
+    ".ecformat_ignore",
     ".editorconfig",
     ".git-blame-ignore-revs",
     ".gitattributes",
