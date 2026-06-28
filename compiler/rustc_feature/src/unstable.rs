@@ -370,8 +370,6 @@ declare_features! (
     (unstable, abi_avr_interrupt, "1.45.0", Some(69664)),
     /// Allows `extern "cmse-nonsecure-call" fn()`.
     (unstable, abi_cmse_nonsecure_call, "1.90.0", Some(81391)),
-    /// Allows `extern "custom" fn()`.
-    (unstable, abi_custom, "1.89.0", Some(140829)),
     /// Allows `extern "gpu-kernel" fn()`.
     (unstable, abi_gpu_kernel, "1.86.0", Some(135467)),
     /// Allows `extern "msp430-interrupt" fn()`.

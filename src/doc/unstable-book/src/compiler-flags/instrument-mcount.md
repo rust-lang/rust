@@ -38,7 +38,6 @@ The following example can be compiled with `-Zinstrument-mcount=yes` or `-Zinstr
 
 ```rust
 #![feature(instrument_fn)]
-#![feature(abi_custom)]
 
 fn main() {
     // Ensure all the early startup occurs before attempting to call this trivial, single-threaded
