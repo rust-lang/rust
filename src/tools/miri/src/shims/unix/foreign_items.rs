@@ -164,6 +164,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.getcwd(buf, size)?;
                 this.write_pointer(result, dest)?;
             }
+            "gethostname" => {
+                let [name, len] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*mut _, usize) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let result = this.gethostname(name, len)?;
+                this.write_scalar(result, dest)?;
+            }
             "chdir" => {
                 // FIXME: This does not have a direct test (#3179).
                 let [path] = this.check_shim_sig(
