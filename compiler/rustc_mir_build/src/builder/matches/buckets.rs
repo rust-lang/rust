@@ -133,6 +133,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // away.)
         let (match_pair_index, match_pair) = candidate
             .match_pairs
+            .testable_match_pairs
             .iter()
             .enumerate()
             .find(|&(_, mp)| mp.place == Some(test_place))?;
@@ -173,7 +174,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     })
                 };
                 let is_conflicting_candidate = |candidate: &&mut Candidate<'tcx>| {
-                    candidate.match_pairs.iter().any(|mp| {
+                    candidate.match_pairs.testable_match_pairs.iter().any(|mp| {
                         mp.place == Some(test_place) && is_covering_range(&mp.testable_case)
                     })
                 };
@@ -363,10 +364,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         if fully_matched {
             // Replace the match pair by its sub-pairs.
-            let match_pair = candidate.match_pairs.remove(match_pair_index);
-            candidate.match_pairs.extend(match_pair.subpairs);
-            // Move or-patterns to the end.
-            candidate.sort_match_pairs();
+            let match_pair = candidate.match_pairs.testable_match_pairs.remove(match_pair_index);
+            candidate.match_pairs.push_all(match_pair.subpairs);
         }
 
         ret

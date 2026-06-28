@@ -9,7 +9,6 @@ use std::sync::Arc;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::{LangItem, RangeEnd};
-use rustc_middle::bug;
 use rustc_middle::mir::*;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt};
@@ -19,16 +18,14 @@ use tracing::{debug, instrument};
 
 use crate::builder::Builder;
 use crate::builder::matches::{
-    MatchPairTree, PatConstKind, SliceLenOp, Test, TestBranch, TestKind, TestableCase,
+    PatConstKind, SliceLenOp, Test, TestBranch, TestKind, TestableCase, TestableMatchPairTree,
 };
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Identifies what test is needed to decide if `match_pair` is applicable.
-    ///
-    /// It is a bug to call this with a not-fully-simplified pattern.
     pub(super) fn pick_test_for_match_pair(
         &mut self,
-        match_pair: &MatchPairTree<'tcx>,
+        match_pair: &TestableMatchPairTree<'tcx>,
     ) -> Test<'tcx> {
         let kind = match match_pair.testable_case {
             TestableCase::Variant { adt_def, variant_index: _ } => TestKind::Switch { adt_def },
@@ -51,10 +48,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             TestableCase::Deref { temp, mutability } => TestKind::Deref { temp, mutability },
 
             TestableCase::Never => TestKind::Never,
-
-            // Or-patterns are not tested directly; instead they are expanded into subcandidates,
-            // which are then distinguished by testing whatever non-or patterns they contain.
-            TestableCase::Or { .. } => bug!("or-patterns should have already been handled"),
         };
 
         Test { span: match_pair.pattern_span, kind }
