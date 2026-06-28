@@ -5,7 +5,7 @@ use rustc_hir::{Block, Expr, ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TypeckResults;
 use rustc_session::declare_lint_pass;
-use rustc_span::Span;
+use rustc_span::{Span, SyntaxContext};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -49,19 +49,19 @@ declare_lint_pass!(RedundantElse => [REDUNDANT_ELSE]);
 impl<'tcx> LateLintPass<'tcx> for RedundantElse {
     fn check_block_post(&mut self, cx: &LateContext<'tcx>, b: &Block<'_>) {
         if let Some(e) = b.expr {
-            check(cx, e);
+            check(cx, b.span.ctxt(), e);
         }
     }
 
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, s: &Stmt<'_>) {
         if let StmtKind::Expr(e) | StmtKind::Semi(e) = s.kind {
-            check(cx, e);
+            check(cx, s.span.ctxt(), e);
         }
     }
 }
 
-fn check(cx: &LateContext<'_>, e: &Expr<'_>) {
-    if e.span.in_external_macro(cx.tcx.sess.source_map()) {
+fn check(cx: &LateContext<'_>, ctxt: SyntaxContext, e: &Expr<'_>) {
+    if e.span.ctxt() != ctxt || ctxt.in_external_macro(cx.tcx.sess.source_map()) {
         return;
     }
     // if else
@@ -70,7 +70,7 @@ fn check(cx: &LateContext<'_>, e: &Expr<'_>) {
         _ => return,
     };
     loop {
-        if !is_never(cx.typeck_results(), then) {
+        if then.span.ctxt() != ctxt || els.span.ctxt() != ctxt || !is_never(cx.typeck_results(), ctxt, then) {
             // then block does not always break
             return;
         }
@@ -110,22 +110,26 @@ fn check(cx: &LateContext<'_>, e: &Expr<'_>) {
     });
 }
 
-fn is_never(typeck: &TypeckResults<'_>, e: &Expr<'_>) -> bool {
+fn is_never(typeck: &TypeckResults<'_>, ctxt: SyntaxContext, e: &Expr<'_>) -> bool {
+    if ctxt.is_root() {
+        is_never_root(typeck, e)
+    } else {
+        is_never_mac(ctxt, e)
+    }
+}
+
+fn is_never_root(typeck: &TypeckResults<'_>, e: &Expr<'_>) -> bool {
     match e.kind {
-        ExprKind::Break(..) | ExprKind::Continue(_) | ExprKind::Ret(_) | ExprKind::Become(..) => return true,
-        ExprKind::DropTemps(e) => is_never(typeck, e),
+        ExprKind::Break(..) | ExprKind::Continue(_) | ExprKind::Ret(_) | ExprKind::Become(..) => true,
+        ExprKind::DropTemps(e) => is_never_root(typeck, e),
         ExprKind::Block(b, _)
-            if !b.targeted_by_break
-                && let Some(e) = match (b.expr, b.stmts) {
-                    (Some(e), _) => Some(e),
-                    (None, [.., s]) if let StmtKind::Expr(e) | StmtKind::Semi(e) = s.kind => Some(e),
-                    _ => None,
-                } =>
+            if let Some(e) = b.expr
+                && !b.targeted_by_break =>
         {
-            is_never(typeck, e)
+            is_never_root(typeck, e)
         },
-        ExprKind::Match(_, arms, _) => arms.iter().all(|a| is_never(typeck, a.body)),
-        ExprKind::If(_, then, Some(else_)) => is_never(typeck, then) && is_never(typeck, else_),
+        ExprKind::Match(_, arms, _) => arms.iter().all(|a| is_never_root(typeck, a.body)),
+        ExprKind::If(_, then, Some(else_)) => is_never_root(typeck, then) && is_never_root(typeck, else_),
         ExprKind::Call(..)
         | ExprKind::MethodCall(..)
         | ExprKind::Binary(..)
@@ -134,6 +138,41 @@ fn is_never(typeck: &TypeckResults<'_>, e: &Expr<'_>) -> bool {
         | ExprKind::Loop(..)
         | ExprKind::Path(_) => typeck.expr_ty(e).is_never(),
         _ => false,
+    }
+}
+
+fn is_never_mac(ctxt: SyntaxContext, mut e: &Expr<'_>) -> bool {
+    loop {
+        let next = match e.kind {
+            ExprKind::Break(..) | ExprKind::Continue(_) | ExprKind::Ret(_) | ExprKind::Become(..) => return true,
+            ExprKind::DropTemps(e) => e,
+            ExprKind::Block(b, _)
+                if !b.targeted_by_break
+                    && let Some(e) = match (b.expr, b.stmts) {
+                        (Some(e), _) => Some(e),
+                        (None, [.., s]) if let StmtKind::Expr(e) | StmtKind::Semi(e) = s.kind => Some(e),
+                        _ => None,
+                    }
+                    && ctxt == b.span.ctxt() =>
+            {
+                e
+            },
+            ExprKind::Match(_, arms, _) => {
+                return arms
+                    .iter()
+                    .all(|a| ctxt == a.span.ctxt() && ctxt == a.body.span.ctxt() && is_never_mac(ctxt, a.body));
+            },
+            ExprKind::If(_, then, Some(else_))
+                if ctxt == then.span.ctxt() && ctxt == else_.span.ctxt() && is_never_mac(ctxt, then) =>
+            {
+                else_
+            },
+            _ => return false,
+        };
+        if ctxt != next.span.ctxt() {
+            return false;
+        }
+        e = next;
     }
 }
 
