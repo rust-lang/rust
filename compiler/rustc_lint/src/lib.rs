@@ -184,7 +184,7 @@ early_lint_methods!(
             NonAsciiIdents: NonAsciiIdents,
             IncompleteInternalFeatures: IncompleteInternalFeatures,
             RedundantSemicolons: RedundantSemicolons,
-            UnusedDocComment: UnusedDocComment,
+            UnusedDocComment: UnusedDocComment::default(),
             Expr2024: Expr2024,
             Precedence: Precedence,
             DoubleNegations: DoubleNegations,
