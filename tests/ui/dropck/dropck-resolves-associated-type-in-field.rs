@@ -1,3 +1,4 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/48132
 // Regression test for #48132. This was failing due to problems around
 // the projection caching and dropck type enumeration.
 

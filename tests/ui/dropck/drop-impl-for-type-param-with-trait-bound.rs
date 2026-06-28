@@ -1,3 +1,4 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/41974
 #[derive(Copy, Clone)]
 struct Flags;
 
