@@ -1707,6 +1707,11 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         drop(state);
 
+        // A write should never succeed when the `write_closed` readiness is set for this socket.
+        if result.is_ok() {
+            assert!(!socket.io_readiness.borrow().write_closed, "successful write after close");
+        }
+
         match result {
             Err(IoError::HostError(e))
                 if matches!(e.kind(), io::ErrorKind::NotConnected | io::ErrorKind::WouldBlock) =>
@@ -1719,13 +1724,8 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // would be returned on UNIX-like systems. We thus remap this error to an EWOULDBLOCK.
                 interp_ok(Err(IoError::HostError(io::ErrorKind::WouldBlock.into())))
             }
-            Ok(bytes_written)
-                if bytes_written < length && !socket.io_readiness.borrow().write_closed =>
-            {
-                // We had a short write. (Note that we don't want to clear the writable readiness for
-                // sockets whose write end has already been closed as those never block a write, i.e.,
-                // they are always write-ready.)
-                // On Unix hosts using the `epoll` and `kqueue` backends, a
+            Ok(bytes_written) if bytes_written < length => {
+                // We had a short write. On Unix hosts using the `epoll` and `kqueue` backends, a
                 // short write means that the write buffer is full. We update the readiness
                 // accordingly, which means that next time we see "writable" we will report an epoll
                 // edge. Some applications (e.g. tokio) rely on this behavior; see
