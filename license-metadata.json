@@ -91,47 +91,19 @@
           {
             "children": [
               {
+                "directories": [],
+                "files": [
+                  "ModifiedNotoSansMath-LICENSE.txt",
+                  "ModifiedNotoSansMath-Regular.woff2",
+                  "README.txt"
+                ],
                 "license": {
                   "copyright": [
                     "The Rust Project Developers (see https://thanks.rust-lang.org)"
                   ],
                   "spdx": "Apache-2.0 OR MIT"
                 },
-                "name": "noscript.css",
-                "type": "file"
-              },
-              {
-                "license": {
-                  "copyright": [
-                    "Nicolas Gallagher and Jonathan Neal"
-                  ],
-                  "spdx": "MIT"
-                },
-                "name": "normalize.css",
-                "type": "file"
-              }
-            ],
-            "license": {
-              "copyright": [
-                "2016 Ike Ku, Jessica Stokes and Leon Guan",
-                "The Rust Project Developers (see https://thanks.rust-lang.org)"
-              ],
-              "spdx": "Apache-2.0 OR MIT"
-            },
-            "name": "src/librustdoc/html/static/css",
-            "type": "directory"
-          },
-          {
-            "children": [
-              {
-                "license": {
-                  "copyright": [
-                    "The Rust Project Developers (see https://thanks.rust-lang.org)"
-                  ],
-                  "spdx": "Apache-2.0 OR MIT"
-                },
-                "name": "README.txt",
-                "type": "file"
+                "type": "group"
               },
               {
                 "directories": [],
@@ -255,6 +227,27 @@
               "spdx": "MIT"
             },
             "name": "src/doc/rustc-dev-guide/mermaid.min.js",
+            "type": "file"
+          },
+          {
+            "license": {
+              "copyright": [
+                "Nicolas Gallagher and Jonathan Neal"
+              ],
+              "spdx": "MIT"
+            },
+            "name": "src/librustdoc/html/static/css/normalize.css",
+            "type": "file"
+          },
+          {
+            "license": {
+              "copyright": [
+                "2016 Ike Ku, Jessica Stokes and Leon Guan",
+                "The Rust Project Developers (see https://thanks.rust-lang.org)"
+              ],
+              "spdx": "Apache-2.0 OR MIT"
+            },
+            "name": "src/librustdoc/html/static/css/rustdoc.css",
             "type": "file"
           },
           {
