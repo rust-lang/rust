@@ -341,7 +341,7 @@ declare_features! (
     /// Allows using the `rustdoc::missing_doc_code_examples` lint
     (unstable, rustdoc_missing_doc_code_examples, "1.31.0", Some(101730)),
     /// Allows using the `#[doc(math_syntax)]` and `#[doc(no_math_syntax)]` crate attributes
-    (unstable, rustdoc_texmath, "CURRENT_RUSTC_VERSION", None),
+    (unstable, rustdoc_texmath, "CURRENT_RUSTC_VERSION", Some(34261)),
     /// Introduces a hierarchy of `Sized` traits (RFC 3729).
     (unstable, sized_hierarchy, "1.89.0", Some(144404)),
     /// Allows using `#[structural_match]` which indicates that a type is structurally matchable.
