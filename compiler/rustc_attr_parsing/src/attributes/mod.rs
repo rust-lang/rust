@@ -26,7 +26,7 @@ use rustc_span::edition::Edition;
 use rustc_span::{Span, Symbol};
 use thin_vec::ThinVec;
 
-use crate::context::{AcceptContext, FinalizeContext};
+use crate::context::{AcceptContext, FinalizeCheckFn, FinalizeContext};
 use crate::parser::ArgParser;
 use crate::session_diagnostics::UnusedMultiple;
 use crate::target_checking::AllowedTargets;
@@ -117,6 +117,20 @@ pub(crate) trait AttributeParser: Default + 'static {
     /// every single syntax item that could have attributes applied to it.
     /// Your accept mappings should determine whether this returns something.
     fn finalize(self, cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind>;
+
+    /// If this parser produced an attribute, optionally returns a cross-attribute check
+    /// to run once *all* attributes on the item have been finalized, together with the
+    /// span it should be reported at.
+    ///
+    /// Running after finalization means the check can inspect the fully parsed attributes
+    /// via [`FinalizeContext::parsed_attrs`], which are not yet all available during
+    /// [`finalize`](Self::finalize). This is queried right before `finalize` consumes the
+    /// parser state.
+    ///
+    /// Defaults to no check.
+    fn deferred_finalize_check(&self) -> Option<(FinalizeCheckFn, Span)> {
+        None
+    }
 }
 
 /// Alternative to [`AttributeParser`] that automatically handles state management.
@@ -185,10 +199,14 @@ impl<T: SingleAttributeParser> AttributeParser for Single<T> {
     const ALLOWED_TARGETS: AllowedTargets<'_> = T::ALLOWED_TARGETS;
     const SAFETY: AttributeSafety = T::SAFETY;
 
-    fn finalize(self, cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
-        let (kind, span) = self.1?;
-        T::finalize_check(cx, span);
+    fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
+        let (kind, _span) = self.1?;
         Some(kind)
+    }
+
+    fn deferred_finalize_check(&self) -> Option<(FinalizeCheckFn, Span)> {
+        let (_, span) = self.1.as_ref()?;
+        Some((<T as SingleAttributeParser>::finalize_check, *span))
     }
 }
 
@@ -375,12 +393,12 @@ impl<T: CombineAttributeParser> AttributeParser for Combine<T> {
     const ALLOWED_TARGETS: AllowedTargets<'_> = T::ALLOWED_TARGETS;
     const SAFETY: AttributeSafety = T::SAFETY;
 
-    fn finalize(self, cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
-        if let Some(first_span) = self.first_span {
-            T::finalize_check(cx, first_span);
-            Some(T::CONVERT(self.items, first_span))
-        } else {
-            None
-        }
+    fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
+        let first_span = self.first_span?;
+        Some(T::CONVERT(self.items, first_span))
+    }
+
+    fn deferred_finalize_check(&self) -> Option<(FinalizeCheckFn, Span)> {
+        Some((<T as CombineAttributeParser>::finalize_check, self.first_span?))
     }
 }
