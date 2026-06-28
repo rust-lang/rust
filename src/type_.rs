@@ -153,7 +153,7 @@ impl<'gcc, 'tcx> BaseTypeCodegenMethods for CodegenCx<'gcc, 'tcx> {
         if self.supports_f16_type {
             return self.context.new_c_type(CType::Float16);
         }
-        bug!("unsupported float width 16")
+        self.u16_type
     }
 
     fn type_f32(&self) -> Type<'gcc> {
