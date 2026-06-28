@@ -789,7 +789,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             // LLVM intrinsics
-            "llvm.prefetch" => {
+            "llvm.prefetch.p0" => {
                 let [p, rw, loc, ty] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
