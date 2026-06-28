@@ -690,7 +690,7 @@ fn foo() {
 }
 
 #[test]
-fn foo() {
+fn block_tail_cfg() {
     pretty_print(
         r#"
 macro_rules! foo {
