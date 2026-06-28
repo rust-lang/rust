@@ -304,7 +304,7 @@ struct ResolvedPat<'tcx> {
 
 #[derive(Clone, Copy, Debug)]
 enum ResolvedPatKind<'tcx> {
-    Path { res: Res, pat_res: Res, segments: &'tcx [hir::PathSegment<'tcx>] },
+    Path { res: Res, pat_res: Res, segments: &'tcx [hir::PathSegment<'tcx>], lone_ident: bool },
     Struct { variant: &'tcx VariantDef },
     TupleStruct { res: Res, variant: &'tcx VariantDef },
 }
@@ -1617,10 +1617,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => bug!("unexpected pattern resolution: {:?}", res),
         }
 
+        let lone_ident =
+            matches!(qpath, hir::QPath::Resolved(None, path) if path.segments.len() == 1);
+
         // Find the type of the path pattern, for later checking.
         let (pat_ty, pat_res) =
             self.instantiate_value_path(segments, opt_ty, res, span, span, path_id);
-        Ok(ResolvedPat { ty: pat_ty, kind: ResolvedPatKind::Path { res, pat_res, segments } })
+        Ok(ResolvedPat {
+            ty: pat_ty,
+            kind: ResolvedPatKind::Path { res, pat_res, segments, lone_ident },
+        })
     }
 
     fn check_pat_path(
@@ -1674,7 +1680,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat_span: Span,
         resolved_pat: &ResolvedPat<'tcx>,
     ) {
-        let ResolvedPatKind::Path { res, pat_res, segments } = resolved_pat.kind else {
+        let ResolvedPatKind::Path { res, pat_res, segments, lone_ident } = resolved_pat.kind else {
             span_bug!(pat_span, "unexpected resolution for path pattern: {resolved_pat:?}");
         };
 
@@ -1690,15 +1696,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && e.suggestions.len() == 0
         {
             e.span_label(span, format!("{} defined here", res.descr()));
-            e.span_label(
-                pat_span,
-                format!(
-                    "`{}` is interpreted as {} {}, not a new binding",
-                    ident,
-                    res.article(),
-                    res.descr(),
-                ),
-            );
+            if lone_ident {
+                e.span_label(
+                    pat_span,
+                    format!(
+                        "`{}` is interpreted as {} {}, not a new binding",
+                        ident,
+                        res.article(),
+                        res.descr(),
+                    ),
+                );
+            }
             match self.tcx.parent_hir_node(hir_id) {
                 hir::Node::PatField(..) => {
                     e.span_suggestion_verbose(
@@ -1737,7 +1745,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 consider using a range pattern like `min ..= max` in the match block";
                             e.note(msg);
                         }
-                    } else {
+                    } else if lone_ident {
                         let msg = "introduce a new binding instead";
                         let sugg = format!("other_{}", ident.as_str().to_lowercase());
                         e.span_suggestion_verbose(
