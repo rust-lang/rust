@@ -2,10 +2,11 @@
 #![feature(contracts)]
 
 extern crate core;
-use core::contracts::requires;
+use core::contracts::{ensures, requires};
 
 #[requires(*x = 0; true)]
 //~^ ERROR: the trait bound `&mut &mut u32: Copy` is not satisfied
+#[ensures(|_ret| true)]
 fn buggy_add(x: &mut u32, y: u32) {
     *x = *x + y;
 }
