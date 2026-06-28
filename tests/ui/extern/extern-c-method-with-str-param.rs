@@ -1,5 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/28600>.
+//! pub extern fn with parameter type &str inside struct impl caused ICE.
 //@ build-pass
-// #28600 ICE: pub extern fn with parameter type &str inside struct impl
 
 struct Test;
 

@@ -1,9 +1,7 @@
-// Example taken from RFC 1238 text
-
-// https://github.com/rust-lang/rfcs/blob/master/text/1238-nonparametric-dropck.md
-//     #examples-of-code-that-will-start-to-be-rejected
-
-// Compare against test/run-pass/issue28498-must-work-ex2.rs
+//! Test for <https://github.com/rust-lang/rust/issues/28498>.
+//! Example taken from RFC 1238 text
+//! <https://github.com/rust-lang/rfcs/blob/master/text/1238-nonparametric-dropck.md>.
+//! Compare against tests/ui/rfcs/rfc-1238-nonparametric-dropck/must-work-ex2.rs.
 
 use std::cell::Cell;
 

@@ -1,4 +1,7 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/28999>.
+//! `this.v` was not constrained and inferred `'a`.
 //@ check-pass
+
 pub struct Xyz<'a, V> {
     pub v: (V, &'a u32),
 }

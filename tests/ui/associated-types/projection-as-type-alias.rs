@@ -1,4 +1,7 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/28828>.
+//! This failed to compile as associated types aliases were not normalized.
 //@ run-pass
+
 pub trait Foo {
     type Out;
 }
