@@ -110,4 +110,8 @@ tests/ui/eii/static/cross_crate_decl.rs
 tests/ui/eii/static/cross_crate_def.rs
 tests/ui/eii/static/same_address.rs
 tests/ui/eii/static/simple.rs
+tests/ui/eii/static/default.rs
+tests/ui/eii/static/default_cross_crate.rs
+tests/ui/eii/static/default_explicit.rs
+tests/ui/eii/static/default_cross_crate_explicit.rs
 tests/ui/explicit-tail-calls/default-trait-method.rs

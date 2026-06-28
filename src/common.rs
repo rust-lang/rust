@@ -61,10 +61,11 @@ pub fn bytes_in_context<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, bytes: &[u8]) ->
             let context = &cx.context;
             let byte_type = context.new_type::<u64>();
             let typ = new_array_type(context, None, byte_type, bytes.len() as u64 / 8);
-            let elements: Vec<_> = bytes
-                .chunks_exact(8)
-                .map(|arr| {
-                    let arr: [u8; 8] = arr.try_into().unwrap();
+            let (arrays, remainder) = bytes.as_chunks::<8>();
+            debug_assert!(remainder.is_empty());
+            let elements: Vec<_> = arrays
+                .iter()
+                .map(|&arr| {
                     context.new_rvalue_from_long(
                         byte_type,
                         // Since we are representing arbitrary byte runs as integers, we need to follow the target
@@ -82,10 +83,11 @@ pub fn bytes_in_context<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, bytes: &[u8]) ->
             let context = &cx.context;
             let byte_type = context.new_type::<u32>();
             let typ = new_array_type(context, None, byte_type, bytes.len() as u64 / 4);
-            let elements: Vec<_> = bytes
-                .chunks_exact(4)
-                .map(|arr| {
-                    let arr: [u8; 4] = arr.try_into().unwrap();
+            let (arrays, remainder) = bytes.as_chunks::<4>();
+            debug_assert!(remainder.is_empty());
+            let elements: Vec<_> = arrays
+                .iter()
+                .map(|&arr| {
                     context.new_rvalue_from_int(
                         byte_type,
                         match cx.sess().target.options.endian {

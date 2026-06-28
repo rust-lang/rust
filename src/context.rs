@@ -486,10 +486,10 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn declare_c_main(&self, fn_type: Self::Type) -> Option<Self::Function> {
         let entry_name = self.sess().target.entry_name.as_ref();
         if !self.functions.borrow().contains_key(entry_name) {
-            #[cfg(feature = "master")]
-            let conv = conv_to_fn_attribute(self.sess().target.entry_abi, &self.sess().target.arch);
-            #[cfg(not(feature = "master"))]
-            let conv = None;
+            let conv = cfg_select! {
+                feature = "master" => conv_to_fn_attribute(self.sess(), self.sess().target.entry_abi),
+                _ => None,
+            };
             Some(self.declare_entry_fn(entry_name, fn_type, conv))
         } else {
             // If the symbol already exists, it is an error: for example, the user wrote

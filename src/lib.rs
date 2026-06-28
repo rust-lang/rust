@@ -30,7 +30,6 @@ extern crate rustc_data_structures;
 extern crate rustc_errors;
 extern crate rustc_fs_util;
 extern crate rustc_hir;
-extern crate rustc_index;
 #[cfg(feature = "master")]
 extern crate rustc_interface;
 extern crate rustc_log;
@@ -89,11 +88,10 @@ use rustc_codegen_ssa::base::codegen_crate;
 use rustc_codegen_ssa::target_features::cfg_target_feature;
 use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, WriteBackendMethods};
 use rustc_codegen_ssa::{CompiledModule, CompiledModules, CrateInfo, ModuleCodegen, TargetConfig};
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_errors::{DiagCtxt, DiagCtxtHandle};
-use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
+use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::Session;
@@ -301,7 +299,7 @@ impl CodegenBackend for GccCodegenBackend {
         sess: &Session,
         _outputs: &OutputFilenames,
         crate_info: &CrateInfo,
-    ) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>) {
+    ) -> (CompiledModules, WorkProductMap) {
         ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<GccCodegenBackend>>()
             .expect("Expected GccCodegenBackend's OngoingCodegen, found Box<Any>")
@@ -318,9 +316,7 @@ impl CodegenBackend for GccCodegenBackend {
 }
 
 impl ExtraBackendMethods for GccCodegenBackend {
-    fn supports_parallel(&self) -> bool {
-        false
-    }
+    type Module = GccContext;
 
     fn codegen_allocator(
         &self,
@@ -402,6 +398,10 @@ impl WriteBackendMethods for GccCodegenBackend {
     type TargetMachine = ();
     type ModuleBuffer = ModuleBuffer;
     type ThinData = ();
+
+    fn supports_parallel(&self) -> bool {
+        false
+    }
 
     fn target_machine_factory(
         &self,
