@@ -1,4 +1,8 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/28279>.
+//! Region variables escaped comparison for common supertype, which led
+//! `Rc<Fn(&T)>` and `*mut Fn(&T)` to break.
 //@ check-pass
+
 #![allow(dead_code)]
 use std::rc::Rc;
 

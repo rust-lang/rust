@@ -1,3 +1,7 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/27842>.
+//! Test we suggest the use of dot syntax when user is trying to index
+//! tuple via square brackets.
+
 fn main() {
     let tup = (0, 1, 2);
     // the case where we show a suggestion

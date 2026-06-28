@@ -1,10 +1,11 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/27949>.
+//!
+//! At one time, the `==` operator (and other binary operators) did not
+//! support subtyping during type checking, and would therefore require
+//! LHS and RHS to be exactly identical--i.e. to have the same lifetimes.
+//!
+//! This was fixed in 1a7fb7dc78439a704f024609ce3dc0beb1386552.
 //@ run-pass
-//
-// At one time, the `==` operator (and other binary operators) did not
-// support subtyping during type checking, and would therefore require
-// LHS and RHS to be exactly identical--i.e. to have the same lifetimes.
-//
-// This was fixed in 1a7fb7dc78439a704f024609ce3dc0beb1386552.
 
 #[derive(Copy, Clone)]
 struct Input<'a> {

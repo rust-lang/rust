@@ -1,4 +1,7 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/28344>.
+//! Test we don't ICE on item resolution when associated type is omitted.
 //@ edition:2015
+
 use std::ops::BitXor;
 
 fn main() {

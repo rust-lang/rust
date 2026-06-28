@@ -1,8 +1,9 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/27889>.
+//! Test that a field can have the same name in different variants
+//! of an enum, and borrowck won't treat them as the same value.
 //@ check-pass
 #![allow(unused_assignments)]
 #![allow(unused_variables)]
-// Test that a field can have the same name in different variants
-// of an enum
 
 pub enum Foo {
     X { foo: u32 },

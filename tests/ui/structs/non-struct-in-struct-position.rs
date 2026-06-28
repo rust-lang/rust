@@ -1,3 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/27815>.
+//! Test usage of struct literal syntax with non-structs doesn't ICE.
+
 mod A {}
 
 fn main() {
