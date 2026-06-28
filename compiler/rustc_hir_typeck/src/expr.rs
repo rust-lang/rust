@@ -965,7 +965,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return_expr_ty,
         );
 
-        if let Some(fn_sig) = self.body_fn_sig()
+        if let Some(fn_sig) = self.fn_sig()
             && fn_sig.output().has_opaque_types()
         {
             // Point any obligations that were registered due to opaque type
@@ -2765,7 +2765,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
 
                     let (ident, def_scope) =
-                        self.tcx.adjust_ident_and_get_scope(field, base_def.did(), self.body_id);
+                        self.tcx.adjust_ident_and_get_scope(field, base_def.did(), self.item_id);
 
                     if let Some((idx, field)) = self.find_adt_field(*base_def, ident) {
                         self.write_field_index(expr.hir_id, idx);
@@ -2938,7 +2938,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             field_ident.span,
             "field not available in `impl Future`, but it is available in its `Output`",
         );
-        match self.tcx.coroutine_kind(self.body_id) {
+        match self.tcx.coroutine_kind(self.item_id) {
             Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)) => {
                 err.span_suggestion_verbose(
                     base.span.shrink_to_hi(),
@@ -2949,7 +2949,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => {
                 let mut span: MultiSpan = base.span.into();
-                span.push_span_label(self.tcx.def_span(self.body_id), "this is not `async`");
+                span.push_span_label(self.tcx.def_span(self.item_id), "this is not `async`");
                 err.span_note(
                     span,
                     "this implements `Future` and its output type has the field, \
@@ -3119,7 +3119,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn point_at_param_definition(&self, err: &mut Diag<'_>, param: ty::ParamTy) {
-        let generics = self.tcx.generics_of(self.body_id);
+        let generics = self.tcx.generics_of(self.item_id);
         let generic_param = generics.type_param(param, self.tcx);
         if let ty::GenericParamDefKind::Type { synthetic: true, .. } = generic_param.kind {
             return;
@@ -3703,7 +3703,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_expr_asm(&self, asm: &'tcx hir::InlineAsm<'tcx>, span: Span) -> Ty<'tcx> {
         if let rustc_ast::AsmMacro::NakedAsm = asm.asm_macro {
-            if !find_attr!(self.tcx, self.body_id, Naked(..)) {
+            if !find_attr!(self.tcx, self.item_id, Naked(..)) {
                 self.tcx.dcx().emit_err(NakedAsmOutsideNakedFn { span });
             }
         }
@@ -3803,7 +3803,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         break;
                     };
                     let (subident, sub_def_scope) =
-                        self.tcx.adjust_ident_and_get_scope(subfield, variant.def_id, self.body_id);
+                        self.tcx.adjust_ident_and_get_scope(subfield, variant.def_id, self.item_id);
 
                     let Some((subindex, field)) = variant
                         .fields
@@ -3854,7 +3854,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let (ident, def_scope) = self.tcx.adjust_ident_and_get_scope(
                         field,
                         container_def.did(),
-                        self.body_id,
+                        self.item_id,
                     );
 
                     let fields = &container_def.non_enum_variant().fields;

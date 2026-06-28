@@ -42,7 +42,8 @@ use crate::{CoroutineTypes, Diverges, EnclosingBreakables, TypeckRootCtxt};
 ///
 /// [`InferCtxt`]: infer::InferCtxt
 pub(crate) struct FnCtxt<'a, 'tcx> {
-    pub(super) body_id: LocalDefId,
+    /// ID of the body-owning item
+    pub(super) item_id: LocalDefId,
 
     /// The parameter environment used for proving trait obligations
     /// in this function. This can change when we descend into
@@ -137,12 +138,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn new(
         root_ctxt: &'a TypeckRootCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        body_id: LocalDefId,
+        item_id: LocalDefId,
     ) -> FnCtxt<'a, 'tcx> {
         let (diverging_fallback_behavior, diverging_block_behavior) =
             never_type_behavior(root_ctxt.tcx);
         FnCtxt {
-            body_id,
+            item_id,
             param_env,
             ret_coercion: None,
             ret_coercion_span: Cell::new(None),
@@ -178,7 +179,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         code: ObligationCauseCode<'tcx>,
     ) -> ObligationCause<'tcx> {
-        ObligationCause::new(span, self.body_id, code)
+        ObligationCause::new(span, self.item_id, code)
     }
 
     pub(crate) fn misc(&self, span: Span) -> ObligationCause<'tcx> {
@@ -229,7 +230,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
     }
 
     fn item_def_id(&self) -> LocalDefId {
-        self.body_id
+        self.item_id
     }
 
     fn re_infer(&self, span: Span, reason: RegionInferReason<'_>) -> ty::Region<'tcx> {

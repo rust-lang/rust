@@ -485,14 +485,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     #[instrument(level = "debug", skip(self, error_code))]
     pub fn emit_inference_failure_err(
         &self,
-        body_def_id: LocalDefId,
+        item_id: LocalDefId,
         failure_span: Span,
         term: Term<'tcx>,
         error_code: TypeAnnotationNeeded,
         should_label_span: bool,
     ) -> Diag<'a> {
         self.emit_inference_failure_err_with_type_hint(
-            body_def_id,
+            item_id,
             failure_span,
             term,
             error_code,
@@ -503,7 +503,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     pub fn emit_inference_failure_err_with_type_hint(
         &self,
-        body_def_id: LocalDefId,
+        item_id: LocalDefId,
         failure_span: Span,
         term: Term<'tcx>,
         error_code: TypeAnnotationNeeded,
@@ -523,15 +523,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let mut local_visitor = FindInferSourceVisitor::new(self, typeck_results, term, ty);
         if let Some(body) =
-            self.tcx.hir_maybe_body_owned_by(self.tcx.typeck_root_def_id_local(body_def_id))
+            self.tcx.hir_maybe_body_owned_by(self.tcx.typeck_root_def_id_local(item_id))
         {
             let expr = body.value;
             local_visitor.visit_expr(expr);
         }
 
         let Some(InferSource { span, kind }) = local_visitor.infer_source else {
-            let silence = if let DefKind::AssocFn = self.tcx.def_kind(body_def_id)
-                && let parent = self.tcx.local_parent(body_def_id)
+            let silence = if let DefKind::AssocFn = self.tcx.def_kind(item_id)
+                && let parent = self.tcx.local_parent(item_id)
                 && self.tcx.is_automatically_derived(parent.to_def_id())
                 && let hir::Node::Item(item) = self.tcx.hir_node_by_def_id(parent)
                 && let hir::ItemKind::Impl(imp) = item.kind
@@ -630,10 +630,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         && let Some(try_trait) = self.tcx.lang_items().try_trait()
                         && try_trait == self.tcx.parent(def_id)
                         && let DefKind::Fn | DefKind::AssocFn =
-                            self.tcx.def_kind(body_def_id.to_def_id())
+                            self.tcx.def_kind(item_id.to_def_id())
                         && let ret = self
                             .tcx
-                            .fn_sig(body_def_id.to_def_id())
+                            .fn_sig(item_id.to_def_id())
                             .instantiate_identity()
                             .skip_binder()
                             .output()

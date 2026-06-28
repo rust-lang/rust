@@ -177,10 +177,10 @@ fn compare_method_predicate_entailment<'tcx>(
     trait_m: ty::AssocItem,
     impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    // This node-id should be used for the `body_id` field on each
+    // This node-id should be used for the `item_id` field on each
     // `ObligationCause` (and the `FnCtxt`).
     //
-    // FIXME(@lcnr): remove that after removing `cause.body_id` from
+    // FIXME(@lcnr): remove that after removing `cause.item_id` from
     // obligations.
     let impl_m_def_id = impl_m.def_id.expect_local();
     let impl_m_span = tcx.def_span(impl_m_def_id);
@@ -803,7 +803,7 @@ struct ImplTraitInTraitCollector<'a, 'tcx, E> {
     types: FxIndexMap<DefId, (Ty<'tcx>, ty::GenericArgsRef<'tcx>)>,
     span: Span,
     param_env: ty::ParamEnv<'tcx>,
-    body_id: LocalDefId,
+    item_id: LocalDefId,
 }
 
 impl<'a, 'tcx, E> ImplTraitInTraitCollector<'a, 'tcx, E>
@@ -814,9 +814,9 @@ where
         ocx: &'a ObligationCtxt<'a, 'tcx, E>,
         span: Span,
         param_env: ty::ParamEnv<'tcx>,
-        body_id: LocalDefId,
+        item_id: LocalDefId,
     ) -> Self {
-        ImplTraitInTraitCollector { ocx, types: FxIndexMap::default(), span, param_env, body_id }
+        ImplTraitInTraitCollector { ocx, types: FxIndexMap::default(), span, param_env, item_id }
     }
 }
 
@@ -852,7 +852,7 @@ where
             {
                 let pred = pred.fold_with(self);
                 let pred = self.ocx.normalize(
-                    &ObligationCause::misc(self.span, self.body_id),
+                    &ObligationCause::misc(self.span, self.item_id),
                     self.param_env,
                     Unnormalized::new_wip(pred),
                 );
@@ -861,7 +861,7 @@ where
                     self.cx(),
                     ObligationCause::new(
                         self.span,
-                        self.body_id,
+                        self.item_id,
                         ObligationCauseCode::WhereClause(def_id, pred_span),
                     ),
                     self.param_env,
@@ -2351,7 +2351,7 @@ fn compare_type_predicate_entailment<'tcx>(
         return Ok(());
     }
 
-    // This `DefId` should be used for the `body_id` field on each
+    // This `DefId` should be used for the `item_id` field on each
     // `ObligationCause` (and the `FnCtxt`). This is what
     // `regionck_item` expects.
     let impl_ty_def_id = impl_ty.def_id.expect_local();

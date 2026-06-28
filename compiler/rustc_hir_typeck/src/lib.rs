@@ -377,7 +377,7 @@ fn extend_err_with_const_context(
 
 fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Option<Ty<'tcx>> {
     let tcx = fcx.tcx;
-    let def_id = fcx.body_id;
+    let def_id = fcx.item_id;
     let expected_type = if let Some(&hir::Ty { kind: hir::TyKind::Infer(()), span, .. }) = node.ty()
     {
         if let Some(item) = tcx.opt_associated_item(def_id.into())
