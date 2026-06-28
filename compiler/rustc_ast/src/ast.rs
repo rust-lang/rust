@@ -4359,7 +4359,13 @@ mod size_asserts {
     static_assert_size!(GenericBound, 88);
     static_assert_size!(Generics, 40);
     static_assert_size!(Impl, 80);
+    #[cfg(not(bootstrap))]
+    static_assert_size!(Item, 144);
+    #[cfg(bootstrap)]
     static_assert_size!(Item, 152);
+    #[cfg(not(bootstrap))]
+    static_assert_size!(ItemKind, 80);
+    #[cfg(bootstrap)]
     static_assert_size!(ItemKind, 88);
     static_assert_size!(LitKind, 24);
     static_assert_size!(Local, 96);

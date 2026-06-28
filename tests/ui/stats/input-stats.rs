@@ -14,6 +14,7 @@
 // bump occurs, stage1 and stage2 will give different outputs for this test.
 // Add an `ignore-stage1` comment marker to work around that problem during
 // that time.
+//@ ignore-stage1
 
 
 // The aim here is to include at least one of every different type of top-level
