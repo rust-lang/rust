@@ -1,6 +1,7 @@
 // We're testing x86 target specific features
 //@only-target: x86_64 i686
 //@compile-flags: -C target-feature=+gfni,+avx512f
+//@run-native
 
 // The constants in the tests below are just bit patterns. They should not
 // be interpreted as integers; signedness does not make sense for them, but
@@ -20,8 +21,14 @@ const CONSTANT_BYTE: i32 = 0x63;
 fn main() {
     // Mostly copied from library/stdarch/crates/core_arch/src/x86/gfni.rs
 
-    assert!(is_x86_feature_detected!("avx512f"));
-    assert!(is_x86_feature_detected!("gfni"));
+    assert!(is_x86_feature_detected!("avx"));
+
+    if !is_x86_feature_detected!("gfni") {
+        // GH runners don't have this, but we still want to run this natively if
+        // the machine happens to have gfni. So we bail out dynamically.
+        println!("warning: skipping gfni tests");
+        return;
+    }
 
     unsafe {
         let byte_mul_test_data = generate_byte_mul_test_data();
@@ -29,15 +36,20 @@ fn main() {
         let affine_mul_test_data_constant = generate_affine_mul_test_data(CONSTANT_BYTE as u8);
         let inv_tests_data = generate_inv_tests_data();
 
-        test_mm512_gf2p8mul_epi8(&byte_mul_test_data);
         test_mm256_gf2p8mul_epi8(&byte_mul_test_data);
         test_mm_gf2p8mul_epi8(&byte_mul_test_data);
-        test_mm512_gf2p8affine_epi64_epi8(&byte_mul_test_data, &affine_mul_test_data_identity);
         test_mm256_gf2p8affine_epi64_epi8(&byte_mul_test_data, &affine_mul_test_data_identity);
         test_mm_gf2p8affine_epi64_epi8(&byte_mul_test_data, &affine_mul_test_data_identity);
-        test_mm512_gf2p8affineinv_epi64_epi8(&inv_tests_data, &affine_mul_test_data_constant);
         test_mm256_gf2p8affineinv_epi64_epi8(&inv_tests_data, &affine_mul_test_data_constant);
         test_mm_gf2p8affineinv_epi64_epi8(&inv_tests_data, &affine_mul_test_data_constant);
+
+        if is_x86_feature_detected!("avx512f") {
+            test_mm512_gf2p8mul_epi8(&byte_mul_test_data);
+            test_mm512_gf2p8affine_epi64_epi8(&byte_mul_test_data, &affine_mul_test_data_identity);
+            test_mm512_gf2p8affineinv_epi64_epi8(&inv_tests_data, &affine_mul_test_data_constant);
+        } else {
+            println!("warning: skipping avx512 tests");
+        }
     }
 }
 

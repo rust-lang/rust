@@ -14,13 +14,13 @@ LL |                 self.1.deallocate(From::from(ptr.cast()), layout);
            2: std::mem::drop::<std::boxed::Box<i32>>
                at RUSTLIB/core/src/mem/mod.rs:LL:CC
            3: main::{closure#0}
-               at tests/fail/stacked_borrows/deallocate_against_protector1.rs:LL:CC
-           4: <{closure@tests/fail/stacked_borrows/deallocate_against_protector1.rs:LL:CC} as std::ops::FnOnce<(&mut i32,)>>::call_once - shim
+               at tests/fail/both_borrows/deallocate_against_protector1.rs:LL:CC
+           4: <{closure@tests/fail/both_borrows/deallocate_against_protector1.rs:LL:CC} as std::ops::FnOnce<(&mut i32,)>>::call_once - shim
                at RUSTLIB/core/src/ops/function.rs:LL:CC
            5: inner
-               at tests/fail/stacked_borrows/deallocate_against_protector1.rs:LL:CC
+               at tests/fail/both_borrows/deallocate_against_protector1.rs:LL:CC
            6: main
-               at tests/fail/stacked_borrows/deallocate_against_protector1.rs:LL:CC
+               at tests/fail/both_borrows/deallocate_against_protector1.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
