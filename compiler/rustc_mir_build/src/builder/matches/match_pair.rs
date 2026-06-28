@@ -162,10 +162,9 @@ fn squash_inter_pat<'tcx>(
             // If this match is inside a closure, it's essential that the place
             // we're testing was actually captured! Be sure to keep `ExprUseVisitor`
             // in sync with the refutability checks in this module.
-            assert!(place.is_some());
             match_pairs.push(MatchPairTree::Testable {
                 testable_match_pair: TestableMatchPairTree {
-                    place,
+                    place: place.expect("non-or nodes always have a place"),
                     testable_case,
                     subpairs,
                     pattern_span,

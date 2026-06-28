@@ -136,7 +136,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .testable_match_pairs
             .iter()
             .enumerate()
-            .find(|&(_, mp)| mp.place == Some(test_place))?;
+            .find(|&(_, mp)| mp.place == test_place)?;
 
         // If true, the match pair is completely entailed by its corresponding test
         // branch, so it can be removed. If false, the match pair is _compatible_
@@ -173,11 +173,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         matches!(range.contains(value, self.tcx), None | Some(true))
                     })
                 };
-                let is_conflicting_candidate = |candidate: &&mut Candidate<'tcx>| {
-                    candidate.match_pairs.testable_match_pairs.iter().any(|mp| {
-                        mp.place == Some(test_place) && is_covering_range(&mp.testable_case)
-                    })
-                };
+                let is_conflicting_candidate =
+                    |candidate: &&mut Candidate<'tcx>| {
+                        candidate.match_pairs.testable_match_pairs.iter().any(|mp| {
+                            mp.place == test_place && is_covering_range(&mp.testable_case)
+                        })
+                    };
                 if prior_candidates
                     .get(&TestBranch::Failure)
                     .is_some_and(|candidates| candidates.iter().any(is_conflicting_candidate))

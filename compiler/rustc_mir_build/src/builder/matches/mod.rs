@@ -1285,7 +1285,7 @@ enum MatchPairTree<'tcx> {
 #[derive(Debug, Clone)]
 struct TestableMatchPairTree<'tcx> {
     /// Place to be tested.
-    place: Option<Place<'tcx>>,
+    place: Place<'tcx>,
     /// Test to perform, and the desired outcome.
     testable_case: TestableCase<'tcx>,
     /// Subpairs typically represent tests that can only be performed after their
@@ -2182,11 +2182,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Extract the match-pair from the highest priority candidate
         let match_pair = &candidates[0].match_pairs.testable_match_pairs[0];
         let test = self.pick_test_for_match_pair(match_pair);
-        // Unwrap is ok after simplification.
-        let match_place = match_pair.place.unwrap();
         debug!(?test, ?match_pair);
 
-        (match_place, test)
+        (match_pair.place, test)
     }
 
     /// This is the most subtle part of the match lowering algorithm. At this point, there are
