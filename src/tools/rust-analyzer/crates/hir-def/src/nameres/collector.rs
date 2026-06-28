@@ -81,7 +81,7 @@ pub(super) fn collect_defs(
     let proc_macros = if krate.is_proc_macro {
         db.proc_macros_for_crate(def_map.krate)
             .and_then(|proc_macros| {
-                proc_macros.list(db.syntax_context(tree_id.file_id(), krate.edition))
+                proc_macros.list(tree_id.file_id().syntax_context(db, krate.edition))
             })
             .unwrap_or_default()
     } else {

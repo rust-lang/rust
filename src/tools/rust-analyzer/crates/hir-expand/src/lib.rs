@@ -1128,6 +1128,16 @@ impl HirFileId {
             HirFileId::MacroFile(_) => None,
         }
     }
+
+    pub fn syntax_context(self, db: &dyn ExpandDatabase, edition: Edition) -> SyntaxContext {
+        match self {
+            HirFileId::FileId(_) => SyntaxContext::root(edition),
+            HirFileId::MacroFile(m) => {
+                let kind = &m.loc(db).kind;
+                db.macro_arg_considering_derives(m, kind).2.ctx
+            }
+        }
+    }
 }
 
 impl PartialEq<EditionedFileId> for HirFileId {
