@@ -485,3 +485,59 @@ where
         unsafe { (**self).shrink(ptr, old_layout, new_layout) }
     }
 }
+
+// # Allocation error handler
+
+#[cfg(not(no_global_oom_handling))]
+unsafe extern "Rust" {
+    // This is the magic symbol to call the global alloc error handler. rustc generates
+    // it to call `__rg_oom` if there is a `#[alloc_error_handler]`, or to call the
+    // default implementations below (`__rdl_alloc_error_handler`) otherwise.
+    #[rustc_std_internal_symbol]
+    fn __rust_alloc_error_handler(size: usize, align: usize) -> !;
+}
+
+/// This *should* be equivalent to `alloc::alloc::handle_alloc_error`,
+/// but function re-exports can't have stability changed.
+#[unstable(feature = "core_handle_alloc_error", issue = "none")]
+#[rustc_const_unstable(feature = "const_alloc_error", issue = "92523")]
+#[cfg(not(no_global_oom_handling))]
+#[cold]
+#[optimize(size)]
+pub const fn handle_alloc_error(layout: Layout) -> ! {
+    const fn ct_error(_: Layout) -> ! {
+        panic!("allocation failed");
+    }
+
+    #[inline]
+    fn rt_error(layout: Layout) -> ! {
+        // SAFETY: We call this with a valid layout.
+        unsafe {
+            __rust_alloc_error_handler(layout.size(), layout.align());
+        }
+    }
+
+    #[cfg(not(panic = "immediate-abort"))]
+    {
+        core::intrinsics::const_eval_select((layout,), ct_error, rt_error)
+    }
+
+    #[cfg(panic = "immediate-abort")]
+    ct_error(layout)
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[doc(hidden)]
+#[allow(unused_attributes)]
+#[unstable(feature = "alloc_internals", issue = "none")]
+pub mod __alloc_error_handler {
+    // called via generated `__rust_alloc_error_handler` if there is no
+    // `#[alloc_error_handler]`.
+    #[rustc_std_internal_symbol]
+    pub unsafe fn __rdl_alloc_error_handler(size: usize, _align: usize) -> ! {
+        core::panicking::panic_nounwind_fmt(
+            format_args!("memory allocation of {size} bytes failed"),
+            /* force_no_backtrace */ false,
+        )
+    }
+}
