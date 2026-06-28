@@ -334,7 +334,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return;
         }
 
-        let fn_body_hir_id = self.tcx.local_def_id_to_hir_id(typeck_results.hir_owner.def_id);
         let mut private_candidate: Option<(Ty<'tcx>, Ty<'tcx>, Span)> = None;
 
         for (deref_base_ty, _) in (self.autoderef_steps)(base_ty) {
@@ -346,8 +345,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 continue;
             }
 
-            let (adjusted_ident, def_scope) =
-                self.tcx.adjust_ident_and_get_scope(field_ident, base_def.did(), fn_body_hir_id);
+            let (adjusted_ident, def_scope) = self.tcx.adjust_ident_and_get_scope(
+                field_ident,
+                base_def.did(),
+                typeck_results.hir_owner.def_id,
+            );
 
             let Some((_, field_def)) =
                 base_def.non_enum_variant().fields.iter_enumerated().find(|(_, field)| {

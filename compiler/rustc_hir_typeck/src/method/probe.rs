@@ -810,9 +810,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     fn push_candidate(&mut self, candidate: Candidate<'tcx>, is_inherent: bool) {
         let is_accessible = if let Some(name) = self.method_name {
             let item = candidate.item;
-            let hir_id = self.tcx.local_def_id_to_hir_id(self.body_id);
-            let def_scope =
-                self.tcx.adjust_ident_and_get_scope(name, item.container_id(self.tcx), hir_id).1;
+            let container_id = item.container_id(self.tcx);
+            let def_scope = self.tcx.adjust_ident_and_get_scope(name, container_id, self.body_id).1;
             item.visibility(self.tcx).is_accessible_from(def_scope, self.tcx)
         } else {
             true
