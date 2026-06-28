@@ -51,21 +51,12 @@ fn process_typetree_recursive(
     }
 }
 
-#[cfg_attr(not(feature = "llvm_enzyme"), allow(unused))]
 pub(crate) fn add_tt<'ll>(
     llmod: &'ll llvm::Module,
     llcx: &'ll llvm::Context,
     fn_def: &'ll Value,
     tt: FncTree,
 ) {
-    // TypeTree processing uses functions from Enzyme, which we might not have available if we did
-    // not build this compiler with `llvm_enzyme`. This feature is not strictly necessary, but
-    // skipping this function increases the chance that Enzyme fails to compile some code.
-    // FIXME(autodiff): In the future we should conditionally run this function even without the
-    // `llvm_enzyme` feature, in case that libEnzyme was provided via rustup.
-    #[cfg(not(feature = "llvm_enzyme"))]
-    return;
-
     let inputs = tt.args;
     let ret_tt: RustTypeTree = tt.ret;
 
