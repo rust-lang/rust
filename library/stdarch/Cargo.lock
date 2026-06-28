@@ -869,7 +869,6 @@ version = "0.1.0"
 dependencies = [
  "assert-instr-macro",
  "cc",
- "cfg-if",
  "rustc-demangle",
  "simd-test-macro",
  "wasmprinter",
