@@ -1,0 +1,8 @@
+error: `Trait(...)` syntax does not support named parameters
+  --> $DIR/feature-gate-named-fn-trait-parameters.rs:3:18
+   |
+LL |     log: impl Fn(msg: String),
+   |                  ^^^ help: remove the parameter name
+
+error: aborting due to 1 previous error
+

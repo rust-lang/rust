@@ -1378,6 +1378,7 @@ symbols! {
         naked_functions_rustic_abi,
         naked_functions_target_feature,
         name,
+        named_fn_trait_parameters,
         names,
         native_link_modifiers,
         native_link_modifiers_as_needed,
