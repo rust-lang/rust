@@ -1708,7 +1708,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         drop(state);
 
         // A write should never succeed when the `write_closed` readiness is set for this socket.
-        assert!(result.is_err() || !socket.io_readiness.borrow().write_closed);
+        if result.is_ok() {
+            assert!(!socket.io_readiness.borrow().write_closed, "successful write after close");
+        }
 
         match result {
             Err(IoError::HostError(e))
