@@ -40,6 +40,7 @@ const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
     Allow(Target::Static),
     Allow(Target::ForeignFn),
     Allow(Target::ForeignStatic),
+    Allow(Target::ForeignTy),
     Allow(Target::ExternCrate),
 ]);
 

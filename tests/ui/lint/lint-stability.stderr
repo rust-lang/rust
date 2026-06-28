@@ -8,7 +8,16 @@ LL |     extern crate stability_cfg2;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:45:9
+  --> $DIR/lint-stability.rs:21:34
+   |
+LL |     fn test_foreign_type(_: &mut UnstableForeignType) {
+   |                                  ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `unstable_test_feature`
+  --> $DIR/lint-stability.rs:48:9
    |
 LL |         deprecated_unstable();
    |         ^^^^^^^^^^^^^^^^^^^
@@ -17,7 +26,7 @@ LL |         deprecated_unstable();
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:47:9
+  --> $DIR/lint-stability.rs:50:9
    |
 LL |         Trait::trait_deprecated_unstable(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -26,7 +35,7 @@ LL |         Trait::trait_deprecated_unstable(&foo);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:49:9
+  --> $DIR/lint-stability.rs:52:9
    |
 LL |         <Foo as Trait>::trait_deprecated_unstable(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -35,7 +44,7 @@ LL |         <Foo as Trait>::trait_deprecated_unstable(&foo);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:52:9
+  --> $DIR/lint-stability.rs:55:9
    |
 LL |         deprecated_unstable_text();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -44,7 +53,7 @@ LL |         deprecated_unstable_text();
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:54:9
+  --> $DIR/lint-stability.rs:57:9
    |
 LL |         Trait::trait_deprecated_unstable_text(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -53,7 +62,7 @@ LL |         Trait::trait_deprecated_unstable_text(&foo);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:56:9
+  --> $DIR/lint-stability.rs:59:9
    |
 LL |         <Foo as Trait>::trait_deprecated_unstable_text(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -62,7 +71,7 @@ LL |         <Foo as Trait>::trait_deprecated_unstable_text(&foo);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:59:9
+  --> $DIR/lint-stability.rs:62:9
    |
 LL |         unstable();
    |         ^^^^^^^^
@@ -71,7 +80,7 @@ LL |         unstable();
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:60:9
+  --> $DIR/lint-stability.rs:63:9
    |
 LL |         Trait::trait_unstable(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^
@@ -80,7 +89,7 @@ LL |         Trait::trait_unstable(&foo);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:61:9
+  --> $DIR/lint-stability.rs:64:9
    |
 LL |         <Foo as Trait>::trait_unstable(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -89,7 +98,7 @@ LL |         <Foo as Trait>::trait_unstable(&foo);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`: text
-  --> $DIR/lint-stability.rs:63:9
+  --> $DIR/lint-stability.rs:66:9
    |
 LL |         unstable_text();
    |         ^^^^^^^^^^^^^
@@ -98,7 +107,7 @@ LL |         unstable_text();
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`: text
-  --> $DIR/lint-stability.rs:65:9
+  --> $DIR/lint-stability.rs:68:9
    |
 LL |         Trait::trait_unstable_text(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -107,7 +116,7 @@ LL |         Trait::trait_unstable_text(&foo);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`: text
-  --> $DIR/lint-stability.rs:67:9
+  --> $DIR/lint-stability.rs:70:9
    |
 LL |         <Foo as Trait>::trait_unstable_text(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -116,7 +125,7 @@ LL |         <Foo as Trait>::trait_unstable_text(&foo);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:99:17
+  --> $DIR/lint-stability.rs:102:17
    |
 LL |         let _ = DeprecatedUnstableStruct {
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -125,7 +134,7 @@ LL |         let _ = DeprecatedUnstableStruct {
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:103:17
+  --> $DIR/lint-stability.rs:106:17
    |
 LL |         let _ = UnstableStruct { i: 0 };
    |                 ^^^^^^^^^^^^^^
@@ -134,7 +143,7 @@ LL |         let _ = UnstableStruct { i: 0 };
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:107:17
+  --> $DIR/lint-stability.rs:110:17
    |
 LL |         let _ = DeprecatedUnstableUnitStruct;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -143,7 +152,7 @@ LL |         let _ = DeprecatedUnstableUnitStruct;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:109:17
+  --> $DIR/lint-stability.rs:112:17
    |
 LL |         let _ = UnstableUnitStruct;
    |                 ^^^^^^^^^^^^^^^^^^
@@ -152,7 +161,7 @@ LL |         let _ = UnstableUnitStruct;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:113:17
+  --> $DIR/lint-stability.rs:116:17
    |
 LL |         let _ = Enum::DeprecatedUnstableVariant;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -161,7 +170,7 @@ LL |         let _ = Enum::DeprecatedUnstableVariant;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:115:17
+  --> $DIR/lint-stability.rs:118:17
    |
 LL |         let _ = Enum::UnstableVariant;
    |                 ^^^^^^^^^^^^^^^^^^^^^
@@ -170,7 +179,7 @@ LL |         let _ = Enum::UnstableVariant;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:119:17
+  --> $DIR/lint-stability.rs:122:17
    |
 LL |         let _ = DeprecatedUnstableTupleStruct (1);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -179,7 +188,7 @@ LL |         let _ = DeprecatedUnstableTupleStruct (1);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:121:17
+  --> $DIR/lint-stability.rs:124:17
    |
 LL |         let _ = UnstableTupleStruct (1);
    |                 ^^^^^^^^^^^^^^^^^^^
@@ -188,7 +197,7 @@ LL |         let _ = UnstableTupleStruct (1);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:130:25
+  --> $DIR/lint-stability.rs:133:25
    |
 LL |         macro_test_arg!(deprecated_unstable_text());
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -197,7 +206,7 @@ LL |         macro_test_arg!(deprecated_unstable_text());
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:144:9
+  --> $DIR/lint-stability.rs:147:9
    |
 LL |         Trait::trait_deprecated_unstable(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -206,7 +215,7 @@ LL |         Trait::trait_deprecated_unstable(&foo);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:146:9
+  --> $DIR/lint-stability.rs:149:9
    |
 LL |         <Foo as Trait>::trait_deprecated_unstable(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -215,7 +224,7 @@ LL |         <Foo as Trait>::trait_deprecated_unstable(&foo);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:148:9
+  --> $DIR/lint-stability.rs:151:9
    |
 LL |         Trait::trait_deprecated_unstable_text(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -224,7 +233,7 @@ LL |         Trait::trait_deprecated_unstable_text(&foo);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:150:9
+  --> $DIR/lint-stability.rs:153:9
    |
 LL |         <Foo as Trait>::trait_deprecated_unstable_text(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -233,7 +242,7 @@ LL |         <Foo as Trait>::trait_deprecated_unstable_text(&foo);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:152:9
+  --> $DIR/lint-stability.rs:155:9
    |
 LL |         Trait::trait_unstable(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^
@@ -242,7 +251,7 @@ LL |         Trait::trait_unstable(&foo);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:153:9
+  --> $DIR/lint-stability.rs:156:9
    |
 LL |         <Foo as Trait>::trait_unstable(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -251,7 +260,7 @@ LL |         <Foo as Trait>::trait_unstable(&foo);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`: text
-  --> $DIR/lint-stability.rs:154:9
+  --> $DIR/lint-stability.rs:157:9
    |
 LL |         Trait::trait_unstable_text(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -260,7 +269,7 @@ LL |         Trait::trait_unstable_text(&foo);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`: text
-  --> $DIR/lint-stability.rs:156:9
+  --> $DIR/lint-stability.rs:159:9
    |
 LL |         <Foo as Trait>::trait_unstable_text(&foo);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -269,7 +278,7 @@ LL |         <Foo as Trait>::trait_unstable_text(&foo);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:172:10
+  --> $DIR/lint-stability.rs:175:10
    |
 LL |     impl UnstableTrait for S { }
    |          ^^^^^^^^^^^^^
@@ -278,7 +287,7 @@ LL |     impl UnstableTrait for S { }
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:174:24
+  --> $DIR/lint-stability.rs:177:24
    |
 LL |     trait LocalTrait : UnstableTrait { }
    |                        ^^^^^^^^^^^^^
@@ -287,7 +296,7 @@ LL |     trait LocalTrait : UnstableTrait { }
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:179:9
+  --> $DIR/lint-stability.rs:182:9
    |
 LL |         fn trait_unstable(&self) {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -296,7 +305,7 @@ LL |         fn trait_unstable(&self) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:184:5
+  --> $DIR/lint-stability.rs:187:5
    |
 LL |     extern crate inherited_stability;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -305,7 +314,7 @@ LL |     extern crate inherited_stability;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:185:9
+  --> $DIR/lint-stability.rs:188:9
    |
 LL |     use self::inherited_stability::*;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -314,7 +323,7 @@ LL |     use self::inherited_stability::*;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:188:9
+  --> $DIR/lint-stability.rs:191:9
    |
 LL |         unstable();
    |         ^^^^^^^^
@@ -323,7 +332,7 @@ LL |         unstable();
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:191:9
+  --> $DIR/lint-stability.rs:194:9
    |
 LL |         stable_mod::unstable();
    |         ^^^^^^^^^^^^^^^^^^^^
@@ -332,7 +341,7 @@ LL |         stable_mod::unstable();
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:194:9
+  --> $DIR/lint-stability.rs:197:9
    |
 LL |         unstable_mod::deprecated();
    |         ^^^^^^^^^^^^
@@ -341,7 +350,7 @@ LL |         unstable_mod::deprecated();
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:195:9
+  --> $DIR/lint-stability.rs:198:9
    |
 LL |         unstable_mod::unstable();
    |         ^^^^^^^^^^^^^^^^^^^^^^
@@ -350,7 +359,7 @@ LL |         unstable_mod::unstable();
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:197:17
+  --> $DIR/lint-stability.rs:200:17
    |
 LL |         let _ = Unstable::UnstableVariant;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -359,7 +368,7 @@ LL |         let _ = Unstable::UnstableVariant;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:198:17
+  --> $DIR/lint-stability.rs:201:17
    |
 LL |         let _ = Unstable::StableVariant;
    |                 ^^^^^^^^
@@ -368,7 +377,7 @@ LL |         let _ = Unstable::StableVariant;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:88:48
+  --> $DIR/lint-stability.rs:91:48
    |
 LL |         struct S1<T: TraitWithAssociatedTypes>(T::TypeUnstable);
    |                                                ^^^^^^^^^^^^^^^
@@ -377,7 +386,7 @@ LL |         struct S1<T: TraitWithAssociatedTypes>(T::TypeUnstable);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/lint-stability.rs:92:13
+  --> $DIR/lint-stability.rs:95:13
    |
 LL |             TypeUnstable = u8,
    |             ^^^^^^^^^^^^^^^^^
@@ -385,6 +394,6 @@ LL |             TypeUnstable = u8,
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 43 previous errors
+error: aborting due to 44 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

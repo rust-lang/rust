@@ -13951,7 +13951,7 @@ intrinsics:
             - 'b: {neon_type[1]}'
             - 'n: i32'
           links:
-            - link: "llvm.aarch64.neon.vluti4q.lane.{neon_type[1]}"
+            - link: "llvm.aarch64.neon.vluti4q.lane.{neon_type[0]}"
               arch: aarch64,arm64ec
       - FnCall: ['_vluti4{neon_type[0].lane_nox}', [a, b, LANE]]
 
@@ -14002,7 +14002,7 @@ intrinsics:
             - 'b: {neon_type[1]}'
             - 'n: i32'
           links:
-            - link: "llvm.aarch64.neon.vluti4q.laneq.{neon_type[1]}"
+            - link: "llvm.aarch64.neon.vluti4q.laneq.{neon_type[0]}"
               arch: aarch64,arm64ec
       - FnCall: ['_vluti4{neon_type[0].laneq_nox}', [a, b, LANE]]
 

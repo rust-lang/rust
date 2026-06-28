@@ -1,6 +1,7 @@
 //@ignore-target: windows # No libc socketpair on Windows
 // test_race depends on a deterministic schedule.
 //@compile-flags: -Zmiri-deterministic-concurrency
+//@run-native
 
 // FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
 #![allow(static_mut_refs)]
@@ -34,7 +35,7 @@ fn test_socketpair() {
     let data = b"abc";
     write_all(fds[0], data).unwrap();
     let mut buf2: [u8; 5] = [0; 5];
-    let (read, rest) = read_split_slice(fds[1], &mut buf2).unwrap();
+    let (read, rest) = read_partial(fds[1], &mut buf2).unwrap();
     assert_eq!(read[..], data[..read.len()]);
     // Write 2 more bytes so we can exactly fill the `rest`.
     write_all(fds[0], b"12").unwrap();
@@ -52,7 +53,7 @@ fn test_socketpair() {
     let data = b"abc";
     write_all(fds[1], data).unwrap();
     let mut buf4: [u8; 5] = [0; 5];
-    let (read, rest) = read_split_slice(fds[0], &mut buf4).unwrap();
+    let (read, rest) = read_partial(fds[0], &mut buf4).unwrap();
     assert_eq!(read[..], data[..read.len()]);
     // Write 2 more bytes so we can exactly fill the `rest`.
     write_all(fds[1], b"12").unwrap();
@@ -64,9 +65,9 @@ fn test_socketpair() {
     errno_check(unsafe { libc::close(fds[0]) });
     // Reading the other end should return that data, then EOF.
     let mut buf: [u8; 5] = [0; 5];
-    let (read, _tail) = read_split_slice(fds[1], &mut buf).unwrap();
+    let (read, _tail) = read_partial(fds[1], &mut buf).unwrap();
     assert_eq!(read, data);
-    let (read, _tail) = read_split_slice(fds[1], &mut buf).unwrap();
+    let (read, _tail) = read_partial(fds[1], &mut buf).unwrap();
     assert_eq!(read, &[]);
     // Writing the other end should emit EPIPE.
     let err = write_all(fds[1], &mut buf).unwrap_err();
@@ -132,6 +133,11 @@ fn test_blocking_read() {
 
 // Test the behaviour of a socketpair getting blocked on write and subsequently unblocked.
 fn test_blocking_write() {
+    // The test uses Miri's exact buffer size.
+    if !cfg!(miri) {
+        return;
+    }
+
     let mut fds = [-1, -1];
     errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
     let arr1: [u8; 0x34000] = [1; 0x34000];
