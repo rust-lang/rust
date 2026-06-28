@@ -13,7 +13,7 @@ default-run = "hex"
 [dependencies]
 core_arch = { path = "../crates/core_arch" }
 quickcheck = "1.0"
-rand = "0.8"
+rand = "0.9.3"
 
 [[bin]]
 name = "hex"
