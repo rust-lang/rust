@@ -3,7 +3,7 @@
 //@[edition2021] edition:2021
 
 #![warn(clippy::manual_assert)]
-#![expect(clippy::useless_vec)]
+#![expect(clippy::useless_vec, todo_macro_calls)]
 
 macro_rules! one {
     () => {

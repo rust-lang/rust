@@ -1,5 +1,5 @@
 error[E0195]: lifetime parameters or bounds on method `foo` do not match the trait declaration
-  --> $DIR/impl-missing-where-clause-lifetimes-from-trait.rs:6:11
+  --> $DIR/impl-missing-where-clause-lifetimes-from-trait.rs:7:11
    |
 LL |     fn foo<'a, K>(self, _: T, _: K) where T: 'a, K: 'a;
    |           -------                            --     -- this bound might be missing in the impl
@@ -11,14 +11,14 @@ LL |     fn foo<'a, K>(self, _: (), _: K) where {
    |           ^^^^^^^ lifetimes do not match method in trait
 
 error[E0195]: lifetime parameters do not match the trait definition
-  --> $DIR/impl-missing-where-clause-lifetimes-from-trait.rs:23:12
+  --> $DIR/impl-missing-where-clause-lifetimes-from-trait.rs:24:12
    |
 LL |     fn foo<'a>(&self, state: &'a State) -> &'a T {
    |            ^^
    |
    = note: lifetime parameters differ in whether they are early- or late-bound
 note: `'a` differs between the trait and impl
-  --> $DIR/impl-missing-where-clause-lifetimes-from-trait.rs:14:12
+  --> $DIR/impl-missing-where-clause-lifetimes-from-trait.rs:15:12
    |
 LL |   trait Foo<T> {
    |   ------------ in this trait...
@@ -37,14 +37,14 @@ LL |       fn foo<'a>(&self, state: &'a State) -> &'a T {
    |              ^^ `'a` is late-bound
 
 error[E0195]: lifetime parameters do not match the trait definition
-  --> $DIR/impl-missing-where-clause-lifetimes-from-trait.rs:33:12
+  --> $DIR/impl-missing-where-clause-lifetimes-from-trait.rs:34:12
    |
 LL |     fn foo<'a: 'a>(&'a self) {}
    |            ^^
    |
    = note: lifetime parameters differ in whether they are early- or late-bound
 note: `'a` differs between the trait and impl
-  --> $DIR/impl-missing-where-clause-lifetimes-from-trait.rs:29:12
+  --> $DIR/impl-missing-where-clause-lifetimes-from-trait.rs:30:12
    |
 LL | trait Bar {
    | --------- in this trait...

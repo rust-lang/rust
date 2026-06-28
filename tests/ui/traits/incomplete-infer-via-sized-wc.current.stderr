@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/incomplete-infer-via-sized-wc.rs:15:5
+  --> $DIR/incomplete-infer-via-sized-wc.rs:16:5
    |
 LL |     is_sized::<MaybeSized<_>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `is_sized`

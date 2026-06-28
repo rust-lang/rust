@@ -1,4 +1,5 @@
 // Test against ICE in #118111
+#![allow(todo_macro_calls)]
 
 use std::ops::Index;
 

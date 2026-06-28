@@ -8,6 +8,7 @@
 //! - ICE bug report: <https://github.com/rust-lang/rust/issues/133272>.
 //! - Previous PR to change `delayed_bug` -> `span_bug`:
 //!   <https://github.com/rust-lang/rust/pull/121208>
+#![allow(todo_macro_calls)]
 #![crate_type = "lib"]
 
 struct Foo;

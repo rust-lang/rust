@@ -1,5 +1,5 @@
 error: expected identifier, found keyword `Self`
-  --> $DIR/self-ctor-133272.rs:17:21
+  --> $DIR/self-ctor-133272.rs:18:21
    |
 LL |         let S { ref Self } = todo!();
    |             -       ^^^^ expected identifier, found keyword
@@ -7,7 +7,7 @@ LL |         let S { ref Self } = todo!();
    |             while parsing the fields for this pattern
 
 error[E0422]: cannot find struct, variant or union type `S` in this scope
-  --> $DIR/self-ctor-133272.rs:17:13
+  --> $DIR/self-ctor-133272.rs:18:13
    |
 LL |         let S { ref Self } = todo!();
    |             ^ not found in this scope

@@ -1,5 +1,5 @@
 #![warn(clippy::match_like_matches_macro)]
-#![allow(irrefutable_let_patterns, clippy::redundant_guards)]
+#![allow(irrefutable_let_patterns, clippy::redundant_guards, todo_macro_calls)]
 #![expect(clippy::needless_borrowed_reference)]
 
 fn main() {

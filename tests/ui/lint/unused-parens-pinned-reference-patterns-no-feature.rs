@@ -1,5 +1,6 @@
 #![feature(mut_ref)]
 #![warn(unused_parens)]
+#![allow(todo_macro_calls)]
 
 fn main() {
     let pin_const: &pin const i32 = todo!();

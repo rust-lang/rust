@@ -1,5 +1,5 @@
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/unused-parens-pinned-reference-patterns-no-feature.rs:5:21
+  --> $DIR/unused-parens-pinned-reference-patterns-no-feature.rs:6:21
    |
 LL |     let pin_const: &pin const i32 = todo!();
    |                     ^^^
@@ -9,7 +9,7 @@ LL |     let pin_const: &pin const i32 = todo!();
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/unused-parens-pinned-reference-patterns-no-feature.rs:7:10
+  --> $DIR/unused-parens-pinned-reference-patterns-no-feature.rs:8:10
    |
 LL |     let &pin const (_x) = pin_const;
    |          ^^^

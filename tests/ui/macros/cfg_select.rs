@@ -1,5 +1,6 @@
 #![crate_type = "lib"]
 #![warn(unreachable_cfg_select_predicates)] // Unused warnings are disabled by default in UI tests.
+#![allow(todo_macro_calls)]
 
 fn print() {
     println!(cfg_select! {

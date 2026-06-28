@@ -1,5 +1,5 @@
 error[E0562]: `impl Trait` is not allowed in the type of variable bindings
-  --> $DIR/issue-87295.rs:16:31
+  --> $DIR/issue-87295.rs:17:31
    |
 LL |     let _do_not_waste: Struct<impl Trait<Output = i32>> = Struct::new(());
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^

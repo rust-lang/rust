@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 #![crate_type = "lib"]
 
 #[cfg(overflow_checks)] //~ ERROR `cfg(overflow_checks)` is experimental

@@ -1,4 +1,5 @@
 #![deny(clippy::branches_sharing_code, clippy::if_same_then_else)]
+#![allow(todo_macro_calls)]
 //@no-rustfix
 // This tests the branches_sharing_code lint at the start of blocks
 

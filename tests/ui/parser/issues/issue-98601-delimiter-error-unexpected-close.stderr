@@ -1,5 +1,5 @@
 error: unexpected closing delimiter: `)`
-  --> $DIR/issue-98601-delimiter-error-unexpected-close.rs:5:17
+  --> $DIR/issue-98601-delimiter-error-unexpected-close.rs:6:17
    |
 LL | fn main() {
    |           - this opening brace...

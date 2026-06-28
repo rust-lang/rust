@@ -8,8 +8,8 @@
     clippy::identity_op,
     clippy::no_effect,
     clippy::op_ref,
-    clippy::unnecessary_owned_empty_strings
-)]
+    clippy::unnecessary_owned_empty_strings,
+    todo_macro_calls)]
 #![warn(clippy::arithmetic_side_effects)]
 
 extern crate proc_macro_derive;

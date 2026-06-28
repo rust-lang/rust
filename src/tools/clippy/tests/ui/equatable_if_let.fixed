@@ -1,5 +1,5 @@
 //@aux-build:proc_macros.rs
-#![allow(clippy::needless_ifs)]
+#![allow(clippy::needless_ifs, todo_macro_calls)]
 #![warn(clippy::equatable_if_let)]
 use proc_macros::{external, inline_macros};
 

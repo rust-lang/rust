@@ -1,4 +1,5 @@
 //@ edition: 2021
+#![allow(todo_macro_calls)]
 
 use std::{
     future::Future,

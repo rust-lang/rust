@@ -1,5 +1,5 @@
 error[E0072]: recursive type `A` has infinite size
-  --> $DIR/recursive-struct-oncelock-issue-151226.rs:6:1
+  --> $DIR/recursive-struct-oncelock-issue-151226.rs:7:1
    |
 LL | struct A<T>(std::sync::OnceLock<Self>);
    | ^^^^^^^^^^^ ------------------------- recursive without indirection

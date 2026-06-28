@@ -2,6 +2,7 @@
 // doesn't ICE. Regression test for #80998.
 //
 //@ edition:2018
+#![allow(todo_macro_calls)]
 
 #![feature(type_alias_impl_trait)]
 use std::future::Future;

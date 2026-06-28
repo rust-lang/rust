@@ -1,5 +1,6 @@
 //@ check-pass
 // Regression test due to #123279
+#![allow(todo_macro_calls)]
 
 pub trait Job: AsJob {
     fn run_once(&self);

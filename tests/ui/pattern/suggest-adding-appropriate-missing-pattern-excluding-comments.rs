@@ -1,4 +1,5 @@
 //@ run-rustfix
+#[allow(todo_macro_calls)]
 
 fn main() {
     match Some(1) { //~ ERROR non-exhaustive patterns: `None` not covered

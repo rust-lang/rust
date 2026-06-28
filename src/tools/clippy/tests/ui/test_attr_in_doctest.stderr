@@ -1,5 +1,5 @@
 error: unit tests in doctest are not executed
-  --> tests/ui/test_attr_in_doctest.rs:6:5
+  --> tests/ui/test_attr_in_doctest.rs:8:5
    |
 LL | /// #[test]
    |     ^^^^^^^
@@ -8,7 +8,7 @@ LL | /// #[test]
    = help: to override `-D warnings` add `#[allow(clippy::test_attr_in_doctest)]`
 
 error: unit tests in doctest are not executed
-  --> tests/ui/test_attr_in_doctest.rs:16:5
+  --> tests/ui/test_attr_in_doctest.rs:18:5
    |
 LL | /// #[test]
    |     ^^^^^^^

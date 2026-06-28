@@ -2,6 +2,7 @@
 //
 //@ compile-flags: -Z threads=2
 //@ compare-output-by-lines
+#![allow(todo_macro_calls)]
 
 struct A<T>(std::sync::OnceLock<Self>);
 //~^ ERROR recursive type `A` has infinite size

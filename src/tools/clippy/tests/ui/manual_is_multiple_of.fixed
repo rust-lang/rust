@@ -1,4 +1,5 @@
 //@aux-build: proc_macros.rs
+#![allow(todo_macro_calls)]
 #![warn(clippy::manual_is_multiple_of)]
 
 fn main() {}

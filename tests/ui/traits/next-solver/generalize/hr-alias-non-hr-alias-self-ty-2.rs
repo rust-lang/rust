@@ -2,6 +2,7 @@
 //@[next] compile-flags: -Znext-solver
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@ check-pass
+#![allow(todo_macro_calls)]
 
 // A minimization of an ambiguity error in `icu_provider`.
 //

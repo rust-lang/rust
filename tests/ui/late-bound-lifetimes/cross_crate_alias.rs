@@ -1,5 +1,6 @@
 //@ aux-build:upstream_alias.rs
 //@ check-pass
+#![allow(todo_macro_calls)]
 
 extern crate upstream_alias;
 

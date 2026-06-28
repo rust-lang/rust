@@ -5,6 +5,7 @@
 //@ check-pass
 //@ compile-flags: -Copt-level=0
 //@ edition: 2021
+#![allow(todo_macro_calls)]
 
 use std::future::Future;
 trait Access {

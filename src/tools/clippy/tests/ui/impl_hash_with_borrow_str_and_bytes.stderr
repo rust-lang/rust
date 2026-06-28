@@ -1,5 +1,5 @@
 error: the semantics of `Borrow<T>` around `Hash` can't be satisfied when both `Borrow<str>` and `Borrow<[u8]>` are implemented
-  --> tests/ui/impl_hash_with_borrow_str_and_bytes.rs:10:6
+  --> tests/ui/impl_hash_with_borrow_str_and_bytes.rs:11:6
    |
 LL | impl Hash for ExampleType {
    |      ^^^^
@@ -13,7 +13,7 @@ LL | impl Hash for ExampleType {
    = help: to override `-D warnings` add `#[allow(clippy::impl_hash_borrow_with_str_and_bytes)]`
 
 error: the semantics of `Borrow<T>` around `Hash` can't be satisfied when both `Borrow<str>` and `Borrow<[u8]>` are implemented
-  --> tests/ui/impl_hash_with_borrow_str_and_bytes.rs:73:10
+  --> tests/ui/impl_hash_with_borrow_str_and_bytes.rs:74:10
    |
 LL | #[derive(Hash)]
    |          ^^^^
@@ -25,7 +25,7 @@ LL | #[derive(Hash)]
    = help: ... or not implementing `Hash` for this type
 
 error: the semantics of `Borrow<T>` around `Hash` can't be satisfied when both `Borrow<str>` and `Borrow<[u8]>` are implemented
-  --> tests/ui/impl_hash_with_borrow_str_and_bytes.rs:117:6
+  --> tests/ui/impl_hash_with_borrow_str_and_bytes.rs:118:6
    |
 LL | impl Hash for GenericExampleType2<String> {
    |      ^^^^

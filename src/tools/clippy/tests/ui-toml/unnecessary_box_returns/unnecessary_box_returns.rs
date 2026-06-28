@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 #![warn(clippy::unnecessary_box_returns)]
 
 fn f() -> Box<[u8; 64]> {

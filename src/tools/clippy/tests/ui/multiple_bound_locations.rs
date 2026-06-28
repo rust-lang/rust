@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 #![warn(clippy::multiple_bound_locations)]
 
 fn ty<F: std::fmt::Debug>(a: F)

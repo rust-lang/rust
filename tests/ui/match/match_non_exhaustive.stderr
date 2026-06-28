@@ -1,11 +1,11 @@
 error[E0004]: non-exhaustive patterns: `L::B` not covered
-  --> $DIR/match_non_exhaustive.rs:23:11
+  --> $DIR/match_non_exhaustive.rs:24:11
    |
 LL |     match l { L::A => () };
    |           ^ pattern `L::B` not covered
    |
 note: `L` defined here
-  --> $DIR/match_non_exhaustive.rs:10:6
+  --> $DIR/match_non_exhaustive.rs:11:6
    |
 LL | enum L { A, B }
    |      ^      - not covered
@@ -16,7 +16,7 @@ LL |     match l { L::A => (), L::B => todo!() };
    |                         +++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: type `E1` is non-empty
-  --> $DIR/match_non_exhaustive.rs:28:11
+  --> $DIR/match_non_exhaustive.rs:29:11
    |
 LL |     match e1 {};
    |           ^^
@@ -35,7 +35,7 @@ LL ~     };
    |
 
 error[E0004]: non-exhaustive patterns: `_` not covered
-  --> $DIR/match_non_exhaustive.rs:30:11
+  --> $DIR/match_non_exhaustive.rs:31:11
    |
 LL |     match e2 { E2::A => (), E2::B => () };
    |           ^^ pattern `_` not covered

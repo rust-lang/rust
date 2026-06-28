@@ -7,6 +7,7 @@ use crate::inline_asm::{CInlineAsmOperand, codegen_inline_asm_inner};
 use crate::intrinsics::*;
 use crate::prelude::*;
 
+#[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
 pub(super) fn codegen_x86_llvm_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     intrinsic: &str,

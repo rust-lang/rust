@@ -1,5 +1,5 @@
 #![warn(clippy::wrong_self_convention)]
-#![allow(dead_code)]
+#![allow(dead_code, todo_macro_calls)]
 
 fn main() {}
 

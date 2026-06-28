@@ -1,5 +1,6 @@
 //@ check-pass
 //@ edition: 2021
+#![allow(todo_macro_calls)]
 
 // regression test for #116242.
 use std::future;

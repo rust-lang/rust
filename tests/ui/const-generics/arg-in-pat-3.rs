@@ -1,4 +1,5 @@
 //@ check-pass
+#![allow(todo_macro_calls)]
 struct Foo<const N: usize>;
 
 fn bindingp() {

@@ -1,6 +1,6 @@
 //@no-rustfix
 
-#![allow(dead_code)]
+#![allow(dead_code, todo_macro_calls)]
 #![feature(allocator_api)]
 
 use std::alloc::{AllocError, Allocator, Layout};

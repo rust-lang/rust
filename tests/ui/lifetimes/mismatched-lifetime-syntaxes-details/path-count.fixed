@@ -1,7 +1,7 @@
 //! Regression test for <https://github.com/rust-lang/rust/issues/154493>
 //@ run-rustfix
 #![deny(mismatched_lifetime_syntaxes)]
-#![allow(unused)]
+#![allow(unused, todo_macro_calls)]
 
 struct Foo<'a, 'b> {
     ptr1: &'a str,

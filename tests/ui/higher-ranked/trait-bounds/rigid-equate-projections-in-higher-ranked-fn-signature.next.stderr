@@ -1,5 +1,5 @@
 error[E0284]: type annotations needed
-  --> $DIR/rigid-equate-projections-in-higher-ranked-fn-signature.rs:27:12
+  --> $DIR/rigid-equate-projections-in-higher-ranked-fn-signature.rs:28:12
    |
 LL |     let _: for<'a> fn(<_ as Trait<'a>>::Assoc) = foo::<T>();
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type

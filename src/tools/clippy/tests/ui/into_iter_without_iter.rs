@@ -1,5 +1,6 @@
 //@no-rustfix: suggestions reference out of scope lifetimes/types
 //@aux-build:proc_macros.rs
+#![allow(todo_macro_calls)]
 #![warn(clippy::into_iter_without_iter)]
 extern crate proc_macros;
 

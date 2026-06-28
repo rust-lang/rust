@@ -1,6 +1,7 @@
 //@ check-pass
 //@ compile-flags: -Z validate-mir
 //@ edition: 2024
+#![allow(todo_macro_calls)]
 
 fn lambda<T, U>() -> U
 where

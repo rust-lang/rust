@@ -8,7 +8,8 @@
     clippy::manual_unwrap_or_default,
     clippy::manual_unwrap_or,
     clippy::unnecessary_option_map_or_else,
-    clippy::map_or_identity
+    clippy::map_or_identity,
+    todo_macro_calls
 )]
 
 fn bad1(string: Option<&str>) -> (bool, &str) {

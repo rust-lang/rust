@@ -1,6 +1,7 @@
 //! Check that we consider `Bar<impl Sized>` to successfully unify
 //! with both `Bar<u32>` and `Bar<i32>` (in isolation), so we bail
 //! out with ambiguity.
+#![allow(todo_macro_calls)]
 
 //@ revisions: current next
 //@[next] compile-flags: -Znext-solver

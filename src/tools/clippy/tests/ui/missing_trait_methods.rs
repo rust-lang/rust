@@ -1,5 +1,5 @@
 #![warn(clippy::missing_trait_methods)]
-#![expect(clippy::needless_lifetimes)]
+#![expect(clippy::needless_lifetimes, todo_macro_calls)]
 
 trait A {
     fn provided() {}
