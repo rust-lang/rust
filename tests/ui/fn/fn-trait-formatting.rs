@@ -17,5 +17,5 @@ fn main() {
     //~| NOTE found struct `Box<dyn FnMut() -> isize>`
 
     needs_fn(1);
-    //~^ ERROR expected a `Fn(isize)` closure, found `{integer}`
+    //~^ ERROR expected an `Fn(isize)` closure, found `{integer}`
 }

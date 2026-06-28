@@ -1,4 +1,4 @@
-error[E0277]: expected a `FnOnce({integer})` closure, found `Option<usize>`
+error[E0277]: expected an `FnOnce({integer})` closure, found `Option<usize>`
   --> $DIR/ruby_style_closure_successful_parse.rs:3:31
    |
 LL |       let p = Some(45).and_then({|x|
