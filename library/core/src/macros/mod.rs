@@ -1440,6 +1440,14 @@ pub(crate) mod builtin {
     /// for instance, an invocation with a Windows path containing backslashes `\` would not
     /// compile correctly on Unix.
     ///
+    /// Module declarations (`mod foo;`) inside the included file are resolved relative to the
+    /// directory of the included file, not the directory of the file that contains the `include!`
+    /// invocation. For example, if `include!("a/b.rs")` includes a file that contains `mod c;`,
+    /// the compiler looks for `a/c.rs` or `a/c/mod.rs`. The [`#[path]` attribute][path-attribute]
+    /// can point a module declaration at a different file when this is not what you want.
+    ///
+    /// [path-attribute]: https://doc.rust-lang.org/reference/items/modules.html#the-path-attribute
+    ///
     /// # Uses
     ///
     /// The `include!` macro is primarily used for two purposes. It is used to include
