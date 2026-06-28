@@ -5,8 +5,9 @@ use itertools::Itertools;
 use super::intrinsic_helpers::TypeDefinition;
 use crate::common::cli::{CcArgStyle, ProcessedCli};
 use crate::common::intrinsic::Intrinsic;
+use crate::common::intrinsic_helpers::TypeKind;
 use crate::common::values::{test_values_array_name, test_values_array_static};
-use crate::common::{PASSES, SupportedArchitecture};
+use crate::common::{PASSES, PREDICATE_LOCAL, SupportedArchitecture};
 
 /// Rust definitions that are included verbatim in the generated source. In particular, defines
 /// a wrapper around float types that defines `NaN`s to be equal reflexively to enable
@@ -126,7 +127,10 @@ pub fn write_lib_rs<A: SupportedArchitecture>(
 
     for intrinsic in intrinsics {
         for arg in &intrinsic.arguments.args {
-            if !arg.has_constraint() {
+            // Skip arguments with constraints as these correspond to generic instantiatons, and
+            // predicates for scalable intrinsics as the same predicate is used for all intrinsics
+            // under test.
+            if !arg.has_constraint() && !arg.is_predicate {
                 let name = test_values_array_name(&arg.ty);
 
                 if seen.insert(name) {
@@ -168,38 +172,14 @@ fn generate_rust_test_loop<A: SupportedArchitecture>(
     coerce += ") -> _";
     c_coerce += ")";
 
-    if intrinsic
-        .arguments
-        .iter()
-        .filter(|arg| arg.has_constraint())
-        .count()
-        == 0
-    {
-        writeln!(
-            w,
-            "    let specializations = [(\"\", {intrinsic_name}, {intrinsic_name}_wrapper)];"
-        )?;
-    } else {
-        writeln!(w, "    let specializations = [")?;
-
-        intrinsic.iter_specializations(|imm_values| {
-            writeln!(
-                w,
-                "        (\"{const_args}\", {intrinsic_name}::<{const_args}> as unsafe {coerce}, {intrinsic_name}_wrapper_{c_const_args} as unsafe extern \"C\" {c_coerce}),",
-                const_args = imm_values.iter().join(","),
-                c_const_args = imm_values.iter().join("_"),
-            )
-        })?;
-
-        writeln!(w, "    ];")?;
-    }
-
     write!(
         w,
         r#"
+let specializations = [{specializations}];
 for (id, rust, c) in specializations {{
     for i in 0..{PASSES} {{
         unsafe {{
+            {predicate}
             {loaded_args}
             let __rust_return_value = rust({rust_args});
 
@@ -212,9 +192,50 @@ for (id, rust, c) in specializations {{
     }}
 }}
 "#,
+        specializations = intrinsic
+            .specializations()
+            .format_with(",", |imm_values, fmt| {
+                if imm_values.is_empty() {
+                    fmt(&format_args!(
+                        "(\"\", {intrinsic_name}, {intrinsic_name}_wrapper)"
+                    ))
+                } else {
+                    let constraint_args = intrinsic.arguments.iter().filter(|a| a.has_constraint());
+                    fmt(&format_args!(
+                        r#"
+                        (
+                            "{const_args}",
+                            {intrinsic_name}::<{const_args}> as unsafe {coerce},
+                            {intrinsic_name}_wrapper_{c_const_args} as unsafe extern "C" {c_coerce}
+                        )
+                        "#,
+                        const_args = imm_values
+                            .iter()
+                            .zip(constraint_args)
+                            .map(|(imm_val, arg)| {
+                                match arg.ty.kind() {
+                                    TypeKind::SvPattern | TypeKind::SvPrefetchOp => {
+                                        format!("{{ {}_from_i32({imm_val}) }}", arg.ty.kind())
+                                    }
+                                    _ => imm_val.to_string(),
+                                }
+                            })
+                            .join(","),
+                        c_const_args = imm_values.iter().join("_"),
+                    ))
+                }
+            }),
         loaded_args = intrinsic.arguments.load_values_rust(),
         rust_args = intrinsic.arguments.as_call_param_rust(),
         c_args = intrinsic.arguments.as_c_call_param_rust(),
+        predicate = if intrinsic.has_scalable_argument_or_result() {
+            format!(
+                "let {PREDICATE_LOCAL} = {pred};",
+                pred = A::predicate_function(intrinsic.results.inner_size()),
+            )
+        } else {
+            "".to_string()
+        },
         comparison = intrinsic.results.comparison_function(),
     )
 }
@@ -256,25 +277,25 @@ pub fn write_bindings_rust<A: SupportedArchitecture>(
 #[allow(improper_ctypes)]
 #[link(name = "wrapper_{i}")]
 unsafe extern "C" {{
+    {definitions}
+}}
 "#,
-    )?;
-
-    for intrinsic in intrinsics {
-        intrinsic.iter_specializations(|imm_values| {
-            writeln!(
-                w,
-                "fn {name}_wrapper{imm_arglist}(__dst: *mut {return_ty}{arglist});",
-                return_ty = intrinsic.results.rust_type(),
-                name = intrinsic.name,
-                imm_arglist = imm_values
-                    .iter()
-                    .format_with("", |i, fmt| fmt(&format_args!("_{i}"))),
-                arglist = intrinsic.arguments.as_non_imm_arglist_rust(),
-            )
-        })?;
-    }
-
-    writeln!(w, "}}")
+        definitions = intrinsics.iter().format_with("", |intrinsic, fmt| {
+            fmt(&intrinsic
+                .specializations()
+                .format_with("\n", |imm_values, fmt| {
+                    fmt(&format_args!(
+                        "fn {name}_wrapper{imm_arglist}(__dst: *mut {return_ty}{arglist});",
+                        return_ty = intrinsic.results.rust_type(),
+                        name = intrinsic.name,
+                        imm_arglist = imm_values
+                            .iter()
+                            .format_with("", |i, fmt| fmt(&format_args!("_{i}"))),
+                        arglist = intrinsic.arguments.as_non_imm_arglist_rust(),
+                    ))
+                }))
+        })
+    )
 }
 
 /// Writes a `build.rs` into `w` for each test crate that compiles the corresponding C source code
