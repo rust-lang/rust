@@ -34,6 +34,11 @@ end_of_line = crlf
 [tests/ui/{include-macros/data.bin,json/json-bom-plus-crlf*.rs}]
 charset = utf-8-bom
 end_of_line = crlf
+# these specific files have no trailing newline to test on these
+[tests/ui/{lint/unused_parens_multibyte_recovery.rs,parser/{macro/macro-missing-right-paren.rs,missing_right_paren.rs}}]
+insert_final_newline = false
+[tests/{pretty/issue-74745.rs,ui/{parser/issues/issue-{62524,68730,58094-missing-right-square-bracket}.rs,type/issue-91268.rs}}]
+insert_final_newline = false
 
 [src/llvm-project]
 indent_style = unset
@@ -54,6 +59,9 @@ trim_trailing_whitespace = false
 indent_size = 1
 
 [*.{json,json5,yml,yaml,natvis,nix}]
+indent_size = 2
+
+[{src/doc/full-toc.inc,src/tools/nix-dev-shell/envrc-flake}]
 indent_size = 2
 
 # You should NOT modify these files with your editor,
