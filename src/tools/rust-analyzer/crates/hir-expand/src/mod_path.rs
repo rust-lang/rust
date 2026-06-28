@@ -24,6 +24,8 @@ pub struct ModPath {
     segments: SmallVec<[Name; 1]>,
 }
 
+intern::impl_internable!(ModPath);
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum PathKind {
     Plain,

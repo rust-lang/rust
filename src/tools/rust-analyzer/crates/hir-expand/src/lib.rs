@@ -33,7 +33,7 @@ use thin_vec::ThinVec;
 use triomphe::Arc;
 
 use core::fmt;
-use std::{hash::Hash, ops};
+use std::ops;
 
 use base_db::Crate;
 use either::Either;
@@ -52,7 +52,6 @@ use crate::{
         include_input_to_file_id,
     },
     db::ExpandDatabase,
-    mod_path::ModPath,
     proc_macro::{CustomProcMacroExpander, ProcMacroKind, ProcMacros},
     span_map::{ExpansionSpanMap, SpanMap},
 };
@@ -375,75 +374,6 @@ impl MacroCallKind {
             MacroCallKind::Derive { .. } => MacroCallStyle::Derive,
             MacroCallKind::Attr { .. } => MacroCallStyle::Attr,
         }
-    }
-}
-
-impl HirFileId {
-    pub fn edition(self, db: &dyn ExpandDatabase) -> Edition {
-        match self {
-            HirFileId::FileId(file_id) => file_id.edition(db),
-            HirFileId::MacroFile(m) => m.loc(db).def.edition,
-        }
-    }
-    pub fn original_file(self, db: &dyn ExpandDatabase) -> EditionedFileId {
-        let mut file_id = self;
-        loop {
-            match file_id {
-                HirFileId::FileId(id) => break id,
-                HirFileId::MacroFile(macro_call_id) => {
-                    file_id = macro_call_id.loc(db).kind.file_id()
-                }
-            }
-        }
-    }
-
-    pub fn original_file_respecting_includes(mut self, db: &dyn ExpandDatabase) -> EditionedFileId {
-        loop {
-            match self {
-                HirFileId::FileId(id) => break id,
-                HirFileId::MacroFile(file) => {
-                    let loc = file.loc(db);
-                    if loc.def.is_include()
-                        && let MacroCallKind::FnLike { eager: Some(eager), .. } = &loc.kind
-                        && let Ok(it) = include_input_to_file_id(db, file, &eager.arg)
-                    {
-                        break it;
-                    }
-                    self = loc.kind.file_id();
-                }
-            }
-        }
-    }
-
-    pub fn original_call_node(self, db: &dyn ExpandDatabase) -> Option<InRealFile<SyntaxNode>> {
-        let mut call = self.macro_file()?.loc(db).to_node(db);
-        loop {
-            match call.file_id {
-                HirFileId::FileId(file_id) => {
-                    break Some(InRealFile { file_id, value: call.value });
-                }
-                HirFileId::MacroFile(macro_call_id) => {
-                    call = macro_call_id.loc(db).to_node(db);
-                }
-            }
-        }
-    }
-
-    pub fn call_node(self, db: &dyn ExpandDatabase) -> Option<InFile<SyntaxNode>> {
-        Some(self.macro_file()?.loc(db).to_node(db))
-    }
-
-    pub fn as_builtin_derive_attr_node(
-        &self,
-        db: &dyn ExpandDatabase,
-    ) -> Option<InFile<ast::Attr>> {
-        let macro_file = self.macro_file()?;
-        let loc = macro_file.loc(db);
-        let attr = match loc.def.kind {
-            MacroDefKind::BuiltInDerive(..) => loc.to_node(db),
-            _ => return None,
-        };
-        Some(attr.with_value(ast::Attr::cast(attr.value.clone())?))
     }
 }
 
@@ -1059,8 +989,6 @@ impl ExpandTo {
     }
 }
 
-intern::impl_internable!(ModPath);
-
 /// Macro ids. That's probably the tricksiest bit in rust-analyzer, and the
 /// reason why we use salsa at all.
 ///
@@ -1107,6 +1035,17 @@ impl From<MacroCallId> for HirFileId {
     }
 }
 
+impl PartialEq<EditionedFileId> for HirFileId {
+    fn eq(&self, &other: &EditionedFileId) -> bool {
+        *self == HirFileId::from(other)
+    }
+}
+impl PartialEq<HirFileId> for EditionedFileId {
+    fn eq(&self, &other: &HirFileId) -> bool {
+        other == HirFileId::from(*self)
+    }
+}
+
 impl HirFileId {
     #[inline]
     pub fn macro_file(self) -> Option<MacroCallId> {
@@ -1138,15 +1077,72 @@ impl HirFileId {
             }
         }
     }
-}
 
-impl PartialEq<EditionedFileId> for HirFileId {
-    fn eq(&self, &other: &EditionedFileId) -> bool {
-        *self == HirFileId::from(other)
+    pub fn edition(self, db: &dyn ExpandDatabase) -> Edition {
+        match self {
+            HirFileId::FileId(file_id) => file_id.edition(db),
+            HirFileId::MacroFile(m) => m.loc(db).def.edition,
+        }
     }
-}
-impl PartialEq<HirFileId> for EditionedFileId {
-    fn eq(&self, &other: &HirFileId) -> bool {
-        other == HirFileId::from(*self)
+
+    pub fn original_file(self, db: &dyn ExpandDatabase) -> EditionedFileId {
+        let mut file_id = self;
+        loop {
+            match file_id {
+                HirFileId::FileId(id) => break id,
+                HirFileId::MacroFile(macro_call_id) => {
+                    file_id = macro_call_id.loc(db).kind.file_id()
+                }
+            }
+        }
+    }
+
+    pub fn original_file_respecting_includes(mut self, db: &dyn ExpandDatabase) -> EditionedFileId {
+        loop {
+            match self {
+                HirFileId::FileId(id) => break id,
+                HirFileId::MacroFile(file) => {
+                    let loc = file.loc(db);
+                    if loc.def.is_include()
+                        && let MacroCallKind::FnLike { eager: Some(eager), .. } = &loc.kind
+                        && let Ok(it) = include_input_to_file_id(db, file, &eager.arg)
+                    {
+                        break it;
+                    }
+                    self = loc.kind.file_id();
+                }
+            }
+        }
+    }
+
+    pub fn original_call_node(self, db: &dyn ExpandDatabase) -> Option<InRealFile<SyntaxNode>> {
+        let mut call = self.macro_file()?.loc(db).to_node(db);
+        loop {
+            match call.file_id {
+                HirFileId::FileId(file_id) => {
+                    break Some(InRealFile { file_id, value: call.value });
+                }
+                HirFileId::MacroFile(macro_call_id) => {
+                    call = macro_call_id.loc(db).to_node(db);
+                }
+            }
+        }
+    }
+
+    pub fn call_node(self, db: &dyn ExpandDatabase) -> Option<InFile<SyntaxNode>> {
+        Some(self.macro_file()?.loc(db).to_node(db))
+    }
+
+    pub fn as_builtin_derive_attr_node(
+        &self,
+        db: &dyn ExpandDatabase,
+    ) -> Option<InFile<ast::Attr>> {
+        let macro_file = self.macro_file()?;
+        let loc = macro_file.loc(db);
+        let attr = match loc.def.kind {
+            MacroDefKind::BuiltInDerive(..) => loc.to_node(db),
+            _ => return None,
+        };
+        Some(attr.with_value(ast::Attr::cast(attr.value.clone())?))
     }
 }
