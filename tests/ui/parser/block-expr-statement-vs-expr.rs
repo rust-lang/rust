@@ -1,5 +1,19 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/29071>.
 //@ run-pass
-#![allow(dead_code)]
+
+#![allow(non_upper_case_globals, dead_code)]
+
+fn ret() -> u32 {
+    static x: u32 = 10;
+    x & if true { 10u32 } else { 20u32 } & x
+}
+
+fn ret2() -> &'static u32 {
+    static x: u32 = 10;
+    if true { 10u32; } else { 20u32; }
+    &x
+}
+
 fn t1() -> u32 {
     let x;
     x = if true { [1, 2, 3] } else { [2, 3, 4] }[0];

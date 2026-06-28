@@ -1,6 +1,7 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/29037>.
+//! This test ensures that each pointer type `P<X>` is covariant in `X`.
 //@ check-pass
 #![allow(dead_code)]
-// This test ensures that each pointer type `P<X>` is covariant in `X`.
 
 use std::rc::Rc;
 use std::sync::Arc;
