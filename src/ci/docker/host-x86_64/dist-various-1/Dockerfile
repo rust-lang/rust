@@ -2,44 +2,44 @@ FROM ubuntu:22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  g++ \
-  automake \
-  bison \
-  bzip2 \
-  flex \
-  help2man \
-  libtool-bin \
-  texinfo \
-  unzip \
-  wget \
-  xz-utils \
-  libncurses-dev \
-  gawk \
-  make \
-  ninja-build \
-  file \
-  curl \
-  ca-certificates \
-  python3 \
-  git \
-  cmake \
-  sudo \
-  xz-utils \
-  zlib1g-dev \
-  g++-arm-linux-gnueabi \
-  g++-arm-linux-gnueabihf \
-  g++-aarch64-linux-gnu \
-  gcc-arm-none-eabi \
-  gcc-sparc64-linux-gnu \
-  libc6-dev-sparc64-cross \
-  bzip2 \
-  patch \
-  libssl-dev \
-  pkg-config \
-  libnewlib-arm-none-eabi \
-  qemu-system-arm \
+    g++ \
+    automake \
+    bison \
+    bzip2 \
+    flex \
+    help2man \
+    libtool-bin \
+    texinfo \
+    unzip \
+    wget \
+    xz-utils \
+    libncurses-dev \
+    gawk \
+    make \
+    ninja-build \
+    file \
+    curl \
+    ca-certificates \
+    python3 \
+    git \
+    cmake \
+    sudo \
+    xz-utils \
+    zlib1g-dev \
+    g++-arm-linux-gnueabi \
+    g++-arm-linux-gnueabihf \
+    g++-aarch64-linux-gnu \
+    gcc-arm-none-eabi \
+    gcc-sparc64-linux-gnu \
+    libc6-dev-sparc64-cross \
+    bzip2 \
+    patch \
+    libssl-dev \
+    pkg-config \
+    libnewlib-arm-none-eabi \
+    qemu-system-arm \
 # software-properties-common for the add-apt-repository command
-  software-properties-common
+    software-properties-common
 
 WORKDIR /build
 
@@ -170,13 +170,13 @@ ENV CFLAGS_armv5te_unknown_linux_musleabi="-march=armv5te -marm -mfloat-abi=soft
     CFLAGS_riscv64gc_unknown_none_elf=-march=rv64gc -mabi=lp64
 
 ENV RUST_CONFIGURE_ARGS="--musl-root-armv5te=/musl-armv5te \
-      --musl-root-arm=/musl-arm \
-      --musl-root-armhf=/musl-armhf \
-      --musl-root-armv7hf=/musl-armv7hf \
-      --disable-docs"
+    --musl-root-arm=/musl-arm \
+    --musl-root-armhf=/musl-armhf \
+    --musl-root-armv7hf=/musl-armv7hf \
+    --disable-docs"
 
 ENV SCRIPT="python3 ../x.py --stage 2 test --host= --target $RUN_MAKE_TARGETS tests/run-make tests/run-make-cargo && \
-      python3 ../x.py dist --host= --target $TARGETS"
+    python3 ../x.py dist --host= --target $TARGETS"
 
 # sccache
 COPY scripts/sccache.sh /scripts/

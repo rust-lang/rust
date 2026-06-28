@@ -29,7 +29,7 @@ ENV CC_arm_unknown_linux_gnueabi=arm-unknown-linux-gnueabi-gcc \
 ENV HOSTS=arm-unknown-linux-gnueabi
 
 ENV RUST_CONFIGURE_ARGS="--enable-full-tools \
-      --disable-docs \
-      --enable-sanitizers \
-      --enable-profiler"
+    --disable-docs \
+    --enable-sanitizers \
+    --enable-profiler"
 ENV SCRIPT="python3 ../x.py dist --host $HOSTS --target $HOSTS"

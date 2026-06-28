@@ -2,29 +2,29 @@ FROM ghcr.io/rust-lang/ubuntu:24.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  g++ \
-  make \
-  ninja-build \
-  file \
-  curl \
-  ca-certificates \
-  python3 \
-  git \
-  cmake \
-  libssl-dev \
-  sudo \
-  xz-utils \
-  tidy \
-  \
-  libc6 \
-  wget \
-  # libgccjit dependencies
-  flex \
-  libmpfr-dev \
-  libgmp-dev \
-  libmpc3 \
-  libmpc-dev \
-  && rm -rf /var/lib/apt/lists/*
+    g++ \
+    make \
+    ninja-build \
+    file \
+    curl \
+    ca-certificates \
+    python3 \
+    git \
+    cmake \
+    libssl-dev \
+    sudo \
+    xz-utils \
+    tidy \
+    \
+    libc6 \
+    wget \
+    # libgccjit dependencies
+    flex \
+    libmpfr-dev \
+    libgmp-dev \
+    libmpc3 \
+    libmpc-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
@@ -35,7 +35,7 @@ ENV GCC_EXEC_PREFIX="/usr/lib/gcc/"
 COPY host-x86_64/x86_64-gnu-miri/check-miri.sh /tmp/
 
 ENV RUST_CONFIGURE_ARGS="--build=x86_64-unknown-linux-gnu \
-  --enable-new-symbol-mangling"
+    --enable-new-symbol-mangling"
 
 ENV HOST_TARGET="x86_64-unknown-linux-gnu"
 

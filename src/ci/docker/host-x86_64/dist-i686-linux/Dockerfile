@@ -8,37 +8,37 @@ WORKDIR /build
 
 # CentOS 7 EOL is June 30, 2024, but the repos remain in the vault.
 RUN sed -i /etc/yum.repos.d/*.repo -e 's!^mirrorlist!#mirrorlist!' \
-  -e 's!^#baseurl=http://mirror.centos.org/!baseurl=https://vault.centos.org/!'
+    -e 's!^#baseurl=http://mirror.centos.org/!baseurl=https://vault.centos.org/!'
 RUN sed -i 's/enabled=1/enabled=0/' /etc/yum/pluginconf.d/fastestmirror.conf
 
 RUN yum upgrade -y && \
     yum install -y \
-      automake \
-      bzip2 \
-      file \
-      gcc \
-      gcc-c++ \
-      git \
-      binutils.i686 \
-      glibc-devel.i686 \
-      glibc-devel.x86_64 \
-      libedit-devel \
-      libstdc++-devel.i686 \
-      libstdc++-devel.x86_64 \
-      make \
-      ncurses-devel \
-      openssl-devel \
-      patch \
-      perl \
-      perl-core \
-      pkgconfig \
-      python3 \
-      unzip \
-      wget \
-      xz \
-      zlib-devel.i686 \
-      zlib-devel.x86_64 \
-      && yum clean all
+        automake \
+        bzip2 \
+        file \
+        gcc \
+        gcc-c++ \
+        git \
+        binutils.i686 \
+        glibc-devel.i686 \
+        glibc-devel.x86_64 \
+        libedit-devel \
+        libstdc++-devel.i686 \
+        libstdc++-devel.x86_64 \
+        make \
+        ncurses-devel \
+        openssl-devel \
+        patch \
+        perl \
+        perl-core \
+        pkgconfig \
+        python3 \
+        unzip \
+        wget \
+        xz \
+        zlib-devel.i686 \
+        zlib-devel.x86_64 \
+        && yum clean all
 
 RUN mkdir -p /rustroot/bin
 
@@ -71,12 +71,12 @@ RUN sh /scripts/sccache.sh
 ENV HOSTS=i686-unknown-linux-gnu
 
 ENV RUST_CONFIGURE_ARGS="--enable-full-tools \
-      --enable-sanitizers \
-      --enable-profiler \
-      --set target.i686-unknown-linux-gnu.linker=clang \
-      --build=i686-unknown-linux-gnu \
-      --set llvm.ninja=false \
-      --set rust.jemalloc"
+    --enable-sanitizers \
+    --enable-profiler \
+    --set target.i686-unknown-linux-gnu.linker=clang \
+    --build=i686-unknown-linux-gnu \
+    --set llvm.ninja=false \
+    --set rust.jemalloc"
 ENV SCRIPT="python3 ../x.py dist --build $HOSTS --host $HOSTS --target $HOSTS"
 ENV CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=clang
 
