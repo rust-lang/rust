@@ -3229,7 +3229,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             "expected type, found associated function call",
                         )
                         .with_span_suggestion_verbose(
-                            stmt.pat.span.between(hir_ty.span),
+                            stmt.pat.span.between(hir_ty.span.source_callsite()),
                             "use `=` if you meant to assign",
                             " = ".to_string(),
                             Applicability::MaybeIncorrect,
@@ -3255,7 +3255,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             "expected type, found associated function call",
                         )
                         .with_span_suggestion_verbose(
-                            stmt.pat.span.between(hir_ty.span),
+                            stmt.pat.span.between(hir_ty.span.source_callsite()),
                             "use `=` if you meant to assign",
                             " = ".to_string(),
                             Applicability::MaybeIncorrect,

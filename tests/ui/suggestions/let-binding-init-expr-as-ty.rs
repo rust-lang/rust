@@ -27,6 +27,7 @@ fn main() {
     let x: S::new(..); //~ ERROR expected type, found associated function call
     //~^ ERROR return type notation is experimental
     let x: S::new(()); //~ ERROR expected type, found associated function call
+    let x: vec![]; //~ ERROR expected type, found associated function call
 
     // Literals
     let x: 42; //~ ERROR expected type, found `42`
