@@ -33,6 +33,7 @@ src/etc/installer/gfx/*
 *.ico
 *.woff
 *.woff2
+tests/run-make/checksum-freshness/binary_file
 tests/ui/macros/not-utf8.bin
 
 # Some special cases cannot be handled:
