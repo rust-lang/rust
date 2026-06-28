@@ -22,7 +22,7 @@ use rustc_target::spec::Arch;
 use tracing::trace;
 
 use super::metadata::{create_compressed_metadata_file, search_for_section};
-use super::rmeta_link;
+use super::rmeta_link::{self, RmetaLinkCache};
 use super::symbol_edit::{apply_edits, collect_internal_names};
 use crate::common;
 // Public for ArchiveBuilderBuilder::extract_bundled_libs
@@ -311,7 +311,7 @@ fn find_binutils_dlltool(sess: &Session) -> OsString {
 }
 
 pub enum AddArchiveKind<'a> {
-    Rlib(/*skip*/ &'a dyn Fn(&str, ArchiveEntryKind) -> bool),
+    Rlib(&'a mut RmetaLinkCache, /*skip*/ &'a dyn Fn(&str, ArchiveEntryKind) -> bool),
     Other,
 }
 
@@ -466,7 +466,11 @@ pub fn try_extract_macho_fat_archive(
 }
 
 impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
-    fn add_archive(&mut self, archive_path: &Path, ar_kind: AddArchiveKind<'_>) -> io::Result<()> {
+    fn add_archive(
+        &mut self,
+        archive_path: &Path,
+        mut ar_kind: AddArchiveKind<'_>,
+    ) -> io::Result<()> {
         let mut archive_path = archive_path.to_path_buf();
         if self.sess.target.llvm_target.contains("-apple-macosx")
             && let Some(new_archive_path) = try_extract_macho_fat_archive(self.sess, &archive_path)?
@@ -481,8 +485,14 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
         let archive_map = unsafe { Mmap::map(File::open(&archive_path)?)? };
         let archive = ArchiveFile::parse(&*archive_map)
             .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
-        let metadata_link = match ar_kind {
-            AddArchiveKind::Rlib(..) => rmeta_link::read(&archive, &archive_map, &archive_path),
+        let skip = match &ar_kind {
+            AddArchiveKind::Rlib(_, skip) => Some(*skip),
+            AddArchiveKind::Other => None,
+        };
+        let metadata_link = match &mut ar_kind {
+            AddArchiveKind::Rlib(cache, _) => cache.get_or_insert_with(&archive_path, || {
+                rmeta_link::read(&archive, &archive_map, &archive_path)
+            }),
             AddArchiveKind::Other => None,
         };
         let archive_index = self.src_archives.len();
@@ -512,9 +522,9 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
             } else {
                 ArchiveEntryKind::Other
             };
-            let drop = match ar_kind {
-                AddArchiveKind::Rlib(skip) => skip(&file_name, kind),
-                AddArchiveKind::Other => false,
+            let drop = match skip {
+                Some(skip) => skip(&file_name, kind),
+                None => false,
             };
             if !drop {
                 let source = if entry.is_thin() {
