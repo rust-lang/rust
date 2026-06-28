@@ -1487,9 +1487,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Only shutting down the write end doesn't cause an EPOLLHUP event
         // and thus we won't set the `write_closed` readiness for it here.
         readiness.write_closed |= is_read_write_shutdown;
-        // The Linux kernel also sets EPOLLIN when both ends of a socket are closed:
+        // The Linux kernel also sets EPOLLIN when the read end of a socket is closed:
         // <https://github.com/torvalds/linux/blob/HEAD/net/ipv4/tcp.c#L584-L588>
-        readiness.readable |= is_read_write_shutdown;
+        readiness.readable |= is_read_shutdown || is_read_write_shutdown;
 
         drop(readiness);
 
@@ -1697,12 +1697,16 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Result<usize, IoError>> {
         let this = self.eval_context_mut();
 
-        let SocketState::Connected(stream) = &mut *socket.state.borrow_mut() else {
+        let mut state = socket.state.borrow_mut();
+        let SocketState::Connected(stream) = &mut *state else {
             panic!("try_non_block_send must only be called when the socket is connected")
         };
 
         // This is a *non-blocking* write.
         let result = this.write_to_host(stream, length, buffer_ptr)?;
+
+        drop(state);
+
         match result {
             Err(IoError::HostError(e))
                 if matches!(e.kind(), io::ErrorKind::NotConnected | io::ErrorKind::WouldBlock) =>
@@ -1715,8 +1719,13 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // would be returned on UNIX-like systems. We thus remap this error to an EWOULDBLOCK.
                 interp_ok(Err(IoError::HostError(io::ErrorKind::WouldBlock.into())))
             }
-            Ok(bytes_written) if bytes_written < length => {
-                // We had a short write. On Unix hosts using the `epoll` and `kqueue` backends, a
+            Ok(bytes_written)
+                if bytes_written < length && !socket.io_readiness.borrow().write_closed =>
+            {
+                // We had a short write. (Note that we don't want to clear the writable readiness for
+                // sockets whose write end has already been closed as those never block a write, i.e.,
+                // they are always write-ready.)
+                // On Unix hosts using the `epoll` and `kqueue` backends, a
                 // short write means that the write buffer is full. We update the readiness
                 // accordingly, which means that next time we see "writable" we will report an epoll
                 // edge. Some applications (e.g. tokio) rely on this behavior; see
@@ -1820,7 +1829,8 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Result<usize, IoError>> {
         let this = self.eval_context_mut();
 
-        let SocketState::Connected(stream) = &mut *socket.state.borrow_mut() else {
+        let mut state = socket.state.borrow_mut();
+        let SocketState::Connected(stream) = &mut *state else {
             panic!("try_non_block_recv must only be called when the socket is connected")
         };
 
@@ -1832,6 +1842,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             length,
             buffer_ptr,
         )?;
+
+        drop(state);
+
         match result {
             Err(IoError::HostError(e))
                 if matches!(e.kind(), io::ErrorKind::NotConnected | io::ErrorKind::WouldBlock) =>
@@ -1844,9 +1857,16 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // would be returned on UNIX-like systems. We thus remap this error to an EWOULDBLOCK.
                 interp_ok(Err(IoError::HostError(io::ErrorKind::WouldBlock.into())))
             }
-            Ok(bytes_read) if !should_peek && bytes_read < length && bytes_read > 0 => {
+            Ok(bytes_read)
+                if !should_peek
+                    && bytes_read < length
+                    && bytes_read > 0
+                    && !socket.io_readiness.borrow().read_closed =>
+            {
                 // We had a short read (and were not peeking). (Note that reading 0 bytes is guaranteed
-                // to indicate EOF, and can never happen spuriously, so we have to exclude that case.)
+                // to indicate EOF, and can never happen spuriously, so we have to exclude that case.
+                // We also don't want to clear the readable readiness for sockets whose read end has
+                // already been closed as those never block a read, i.e., they are always read-ready.)
                 // On Unix hosts using the `epoll` and `kqueue` backends, a short read means that the
                 // read buffer is empty. We update the readiness accordingly, which means that next time
                 // we see "readable" we will report an epoll edge. Some applications (e.g. tokio) rely on

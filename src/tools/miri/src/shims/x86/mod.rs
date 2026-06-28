@@ -879,33 +879,39 @@ fn mpsadbw<'tcx>(
     assert_eq!(left.layout.size, dest.layout.size);
 
     let (num_chunks, op_items_per_chunk, left) = split_simd_to_128bit_chunks(ecx, left)?;
+    assert!(num_chunks <= 2);
+
     let (_, _, right) = split_simd_to_128bit_chunks(ecx, right)?;
     let (_, dest_items_per_chunk, dest) = split_simd_to_128bit_chunks(ecx, dest)?;
 
     assert_eq!(op_items_per_chunk, dest_items_per_chunk.strict_mul(2));
 
     let imm = ecx.read_scalar(imm)?.to_uint(imm.layout.size)?;
-    // Bit 2 of `imm` specifies the offset for indices of `left`.
-    // The offset is 0 when the bit is 0 or 4 when the bit is 1.
-    let left_offset = u64::try_from((imm >> 2) & 1).unwrap().strict_mul(4);
-    // Bits 0..=1 of `imm` specify the offset for indices of
-    // `right` in blocks of 4 elements.
-    let right_offset = u64::try_from(imm & 0b11).unwrap().strict_mul(4);
 
     for i in 0..num_chunks {
         let left = ecx.project_index(&left, i)?;
         let right = ecx.project_index(&right, i)?;
         let dest = ecx.project_index(&dest, i)?;
 
+        // The first 128-bit chunk uses the low 3 bits of IMM, the second chunk uses bits 3..6.
+        let lane_imm = imm.strict_shr(i.strict_mul(3).try_into().unwrap());
+
+        // Bit 2 of `lane_imm` specifies the offset for indices of `left`.
+        // The offset is 0 when the bit is 0 or 4 when the bit is 1.
+        let left_base = u64::try_from((lane_imm >> 2) & 1).unwrap().strict_mul(4);
+        // Bits 0..=1 of `lane_imm` specify the offset for indices of
+        // `right` in blocks of 4 elements.
+        let right_base = u64::try_from(lane_imm & 0b11).unwrap().strict_mul(4);
+
         for j in 0..dest_items_per_chunk {
-            let left_offset = left_offset.strict_add(j);
+            let left_offset = left_base.strict_add(j);
             let mut res: u16 = 0;
             for k in 0..4 {
                 let left = ecx
                     .read_scalar(&ecx.project_index(&left, left_offset.strict_add(k))?)?
                     .to_u8()?;
                 let right = ecx
-                    .read_scalar(&ecx.project_index(&right, right_offset.strict_add(k))?)?
+                    .read_scalar(&ecx.project_index(&right, right_base.strict_add(k))?)?
                     .to_u8()?;
                 res = res.strict_add(left.abs_diff(right).into());
             }

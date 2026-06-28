@@ -94,6 +94,78 @@ fn test_mmap<Offset: Default>(
     assert_eq!(Error::last_os_error().raw_os_error().unwrap(), libc::EINVAL);
 }
 
+fn test_mprotect() {
+    let page_size = page_size::get();
+    let ptr = unsafe {
+        libc::mmap(
+            ptr::null_mut(),
+            4 * page_size,
+            libc::PROT_READ | libc::PROT_WRITE,
+            libc::MAP_PRIVATE | libc::MAP_ANONYMOUS,
+            -1,
+            Default::default(),
+        )
+    };
+    assert!(!ptr.is_null());
+
+    // Protect part of it redundantly.
+    let res = unsafe {
+        libc::mprotect(ptr.byte_add(2 * page_size), 42, libc::PROT_READ | libc::PROT_WRITE)
+    };
+    assert_eq!(res, 0i32);
+
+    // Protect everything redundantly.
+    let res = unsafe { libc::mprotect(ptr, 4 * page_size, libc::PROT_READ | libc::PROT_WRITE) };
+    assert_eq!(res, 0i32);
+
+    // We report an error when the address is not a multiple of the page size.
+    let res =
+        unsafe { libc::mprotect(ptr.byte_add(11), page_size, libc::PROT_READ | libc::PROT_WRITE) };
+    assert_eq!(res, -1);
+    assert_eq!(Error::last_os_error().raw_os_error().unwrap(), libc::EINVAL);
+
+    // We report an error if the length cannot be rounded up to a multiple of the page size.
+    let res = unsafe { libc::mprotect(ptr, usize::MAX - 1, libc::PROT_READ | libc::PROT_WRITE) };
+    assert_eq!(res, -1);
+    assert_eq!(Error::last_os_error().raw_os_error().unwrap(), libc::ENOMEM);
+}
+
+fn test_madvise() {
+    let page_size = page_size::get();
+    let ptr = unsafe {
+        libc::mmap(
+            ptr::null_mut(),
+            4 * page_size,
+            libc::PROT_READ | libc::PROT_WRITE,
+            libc::MAP_PRIVATE | libc::MAP_ANONYMOUS,
+            -1,
+            Default::default(),
+        )
+    };
+    assert!(!ptr.is_null());
+
+    for advice in [libc::MADV_NORMAL, libc::MADV_RANDOM, libc::MADV_SEQUENTIAL, libc::MADV_WILLNEED]
+    {
+        // Advise part of it redundantly.
+        let res = unsafe { libc::madvise(ptr.byte_add(2 * page_size), 42, advice) };
+        assert_eq!(res, 0i32);
+
+        // Protect everything redundantly.
+        let res = unsafe { libc::madvise(ptr, 4 * page_size, advice) };
+        assert_eq!(res, 0i32);
+    }
+
+    // We report an error when the address is not a multiple of the page size.
+    let res = unsafe { libc::madvise(ptr.byte_add(11), page_size, libc::MADV_NORMAL) };
+    assert_eq!(res, -1);
+    assert_eq!(Error::last_os_error().raw_os_error().unwrap(), libc::EINVAL);
+
+    // We report an error if the length cannot be rounded up to a multiple of the page size.
+    let res = unsafe { libc::madvise(ptr, usize::MAX - 1, libc::MADV_NORMAL) };
+    assert_eq!(res, -1);
+    assert_eq!(Error::last_os_error().raw_os_error().unwrap(), libc::ENOMEM);
+}
+
 #[cfg(target_os = "linux")]
 fn test_mremap() {
     let page_size = page_size::get();
@@ -145,6 +217,8 @@ fn main() {
     test_mmap(libc::mmap);
     #[cfg(target_os = "linux")]
     test_mmap(libc::mmap64);
+    test_mprotect();
+    test_madvise();
     #[cfg(target_os = "linux")]
     test_mremap();
 }

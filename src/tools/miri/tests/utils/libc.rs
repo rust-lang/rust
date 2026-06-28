@@ -86,7 +86,7 @@ pub fn read_exact_array<const N: usize>(fd: libc::c_int) -> io::Result<[u8; N]> 
 /// Do a single read from `fd` and return the part of the buffer that was written into,
 /// and the rest.
 #[track_caller]
-pub fn read_split_slice(fd: libc::c_int, buf: &mut [u8]) -> io::Result<(&mut [u8], &mut [u8])> {
+pub fn read_partial(fd: libc::c_int, buf: &mut [u8]) -> io::Result<(&mut [u8], &mut [u8])> {
     let res = errno_result(unsafe { libc::read(fd, buf.as_mut_ptr().cast(), buf.len()) })?;
     Ok(buf.split_at_mut(res as usize))
 }

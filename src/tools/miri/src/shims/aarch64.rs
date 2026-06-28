@@ -146,6 +146,45 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
 
+            // Signed saturating doubling multiply returning the high half.
+            //
+            // Used by the `vqdmulh*` functions.
+            //
+            // This LLVM intrinsic multiplies the values of corresponding elements of the two source
+            // vector registers (which are signed integers), doubles the results, places the most significant half of the
+            // final results (using a saturating cast to fit the element type) into a vector, and writes the vector to the destination register.
+            //
+            // https://developer.arm.com/architectures/instruction-sets/intrinsics#f:@navigationhierarchiessimdisa=[Neon]&q=vqdmulh
+            name if name.starts_with("neon.sqdmulh.") => {
+                let [left, right] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+
+                let (left, left_len) = this.project_to_simd(left)?;
+                let (right, right_len) = this.project_to_simd(right)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
+                assert_eq!(left_len, right_len);
+                assert_eq!(left_len, dest_len);
+
+                let elem_size = dest.layout.field(this, 0).size;
+                let bits = elem_size.bits();
+                let min = elem_size.signed_int_min();
+                let max = elem_size.signed_int_max();
+
+                for i in 0..dest_len {
+                    let a = this.read_scalar(&this.project_index(&left, i)?)?.to_int(elem_size)?;
+                    let b = this.read_scalar(&this.project_index(&right, i)?)?.to_int(elem_size)?;
+
+                    // Uses i128 arithmetic, which cannot overflow because the intrinsic takes at most i32.
+                    let doubled = a.strict_mul(b).strict_mul(2);
+                    let res = (doubled >> bits).clamp(min, max);
+
+                    this.write_scalar(
+                        Scalar::from_int(res, elem_size),
+                        &this.project_index(&dest, i)?,
+                    )?;
+                }
+            }
+
             // Vector table lookup: each index selects a byte from the 16-byte table, out-of-range -> 0.
             // Used to implement vtbl1_u8 function.
             // LLVM does not have a portable shuffle that takes non-const indices

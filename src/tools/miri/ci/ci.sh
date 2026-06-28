@@ -168,6 +168,7 @@ case $HOST_TARGET in
     MANY_SEEDS=16 TEST_TARGET=x86_64-unknown-freebsd run_tests
     MANY_SEEDS=16 TEST_TARGET=i686-unknown-freebsd run_tests
     MANY_SEEDS=16 TEST_TARGET=x86_64-unknown-illumos run_tests
+    MANY_SEEDS=16 TEST_TARGET=x86_64-unknown-netbsd run_tests_minimal hello
     ;;
   armv7-unknown-linux-gnueabihf)
     # Host
