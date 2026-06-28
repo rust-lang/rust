@@ -54,3 +54,30 @@ tests/ui/parser/bad-char-literals.rs
 # Test file with CR line ending inside string
 tests/ui/parser/raw/raw-byte-string-literals.rs
 tests/ui/parser/trailing-carriage-return-in-string.rs
+
+# File types with a mixed formatting which is perhaps intentional.
+# Disabling only check for some properties (like indent_size) is currently not supported.
+
+# There are different languages in these files (for example css and xml in svg files)
+*.diff
+*.svg
+src/ci/docker/host-x86_64/disabled/dist-x86_64-dragonfly/patch-toolchain
+# Often mixed indentation for example due to alignment with previous line
+*.coverage
+*.css
+*.fixed
+*.goml
+*.js
+*.ld
+*.py
+*.stderr
+*.stdout
+*.ts
+*.wxs
+tests/run-make/linker-warning/*.txt
+tests/run-make/macos-deployment-target-warning/*.txt
+# The first { in these files is always indented with one space
+*.mir
+# Alignment and some test files without final newline
+*.html
+*.html.template
