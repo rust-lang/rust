@@ -2,7 +2,7 @@
 
 use base_db::{Crate, SourceDatabase};
 use mbe::MatchedArmIndex;
-use span::{AstIdMap, Edition, Span, SyntaxContext};
+use span::{AstIdMap, Span};
 use std::borrow::Cow;
 use syntax::{AstNode, Parse, SyntaxError, SyntaxNode, SyntaxToken, T, ast};
 use syntax_bridge::{DocCommentDesugarMode, syntax_node_to_token_tree};
@@ -136,19 +136,6 @@ pub trait ExpandDatabase: SourceDatabase {
         &self,
         macro_call: MacroCallId,
     ) -> Option<ExpandResult<Arc<[SyntaxError]>>>;
-
-    #[salsa::transparent]
-    fn syntax_context(&self, file: HirFileId, edition: Edition) -> SyntaxContext;
-}
-
-fn syntax_context(db: &dyn ExpandDatabase, file: HirFileId, edition: Edition) -> SyntaxContext {
-    match file {
-        HirFileId::FileId(_) => SyntaxContext::root(edition),
-        HirFileId::MacroFile(m) => {
-            let kind = &m.loc(db).kind;
-            db.macro_arg_considering_derives(m, kind).2.ctx
-        }
-    }
 }
 
 fn resolve_span(db: &dyn ExpandDatabase, Span { range, anchor, ctx: _ }: Span) -> FileRange {
