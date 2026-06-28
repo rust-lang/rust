@@ -1,3 +1,5 @@
+use std::cell::Cell;
+
 use rustc_span::edition::{DEFAULT_EDITION, Edition};
 
 use super::{
@@ -475,7 +477,9 @@ fn test_markdown_html_escape() {
     fn t(input: &str, expect: &str) {
         let mut idmap = IdMap::new();
         let mut output = String::new();
-        MarkdownItemInfo::new(input, &[], &mut idmap).write_into(&mut output).unwrap();
+        MarkdownItemInfo::new(input, &[], &mut idmap, &Cell::new(false), None)
+            .write_into(&mut output)
+            .unwrap();
         assert_eq!(output, format!("<p>{}</p>\n", expect), "original: {}", input);
     }
 
