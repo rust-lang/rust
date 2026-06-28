@@ -17,7 +17,7 @@ ci_dir=$(cd $(dirname $0) && pwd)/..
 # On the beta channel we'll be automatically calculating the prerelease version
 # via the git history, so unshallow our shallow clone from CI.
 if [ "$(releaseChannel)" = "beta" ]; then
-  git fetch origin --unshallow beta main
+    git fetch origin --unshallow beta main
 fi
 
 function fetch_github_commit_archive {
@@ -55,11 +55,11 @@ for i in ${!modules[@]}; do
         bg_pids[${i}]=$!
         continue
     else
-      # Submodule paths contained in SKIP_SUBMODULES (comma-separated list) will not be
-      # checked out.
-      if [ -z "${SKIP_SUBMODULES:-}" ] || [[ ! ",$SKIP_SUBMODULES," = *",$module,"* ]]; then
-        use_git="$use_git $module"
-      fi
+        # Submodule paths contained in SKIP_SUBMODULES (comma-separated list) will not be
+        # checked out.
+        if [ -z "${SKIP_SUBMODULES:-}" ] || [[ ! ",$SKIP_SUBMODULES," = *",$module,"* ]]; then
+            use_git="$use_git $module"
+        fi
     fi
 done
 retry sh -c "git submodule deinit -f $use_git && \
