@@ -1548,6 +1548,9 @@ pub struct LensConfig {
     pub refs_trait: bool, // for Struct, Enum, Union and Trait
     pub enum_variant_refs: bool,
 
+    pub refs_exclude_imports: bool,
+    pub refs_exclude_tests: bool,
+
     // annotations
     pub location: AnnotationLocation,
     pub filter_adjacent_derive_implementations: bool,
@@ -1591,10 +1594,6 @@ impl LensConfig {
         self.run || self.debug || self.update_test
     }
 
-    pub fn references(&self) -> bool {
-        self.method_refs || self.refs_adt || self.refs_trait || self.enum_variant_refs
-    }
-
     pub fn into_annotation_config<'a>(
         self,
         binary_target: bool,
@@ -1607,6 +1606,8 @@ impl LensConfig {
             annotate_references: self.refs_adt,
             annotate_method_references: self.method_refs,
             annotate_enum_variant_references: self.enum_variant_refs,
+            references_exclude_imports: self.refs_exclude_imports,
+            references_exclude_tests: self.refs_exclude_tests,
             location: self.location.into(),
             ra_fixture: RaFixtureConfig { minicore, disable_ra_fixture: self.disable_ra_fixture },
             filter_adjacent_derive_implementations: self.filter_adjacent_derive_implementations,
@@ -2688,18 +2689,19 @@ impl Config {
     }
 
     pub fn lens(&self) -> LensConfig {
+        let enable = *self.lens_enable();
         LensConfig {
-            run: *self.lens_enable() && *self.lens_run_enable(),
-            debug: *self.lens_enable() && *self.lens_debug_enable(),
-            update_test: *self.lens_enable()
-                && *self.lens_updateTest_enable()
-                && *self.lens_run_enable(),
-            interpret: *self.lens_enable() && *self.lens_run_enable() && *self.interpret_tests(),
-            implementations: *self.lens_enable() && *self.lens_implementations_enable(),
-            method_refs: *self.lens_enable() && *self.lens_references_method_enable(),
-            refs_adt: *self.lens_enable() && *self.lens_references_adt_enable(),
-            refs_trait: *self.lens_enable() && *self.lens_references_trait_enable(),
-            enum_variant_refs: *self.lens_enable() && *self.lens_references_enumVariant_enable(),
+            run: enable && *self.lens_run_enable(),
+            debug: enable && *self.lens_debug_enable(),
+            update_test: enable && *self.lens_updateTest_enable() && *self.lens_run_enable(),
+            interpret: enable && *self.lens_run_enable() && *self.interpret_tests(),
+            implementations: enable && *self.lens_implementations_enable(),
+            method_refs: enable && *self.lens_references_method_enable(),
+            refs_adt: enable && *self.lens_references_adt_enable(),
+            refs_trait: enable && *self.lens_references_trait_enable(),
+            enum_variant_refs: enable && *self.lens_references_enumVariant_enable(),
+            refs_exclude_imports: *self.references_excludeImports(),
+            refs_exclude_tests: *self.references_excludeTests(),
             location: *self.lens_location(),
             filter_adjacent_derive_implementations: *self
                 .gotoImplementations_filterAdjacentDerives(),

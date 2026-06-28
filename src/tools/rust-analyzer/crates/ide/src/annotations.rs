@@ -43,6 +43,8 @@ pub struct AnnotationConfig<'a> {
     pub annotate_references: bool,
     pub annotate_method_references: bool,
     pub annotate_enum_variant_references: bool,
+    pub references_exclude_imports: bool,
+    pub references_exclude_tests: bool,
     pub location: AnnotationLocation,
     pub filter_adjacent_derive_implementations: bool,
     pub ra_fixture: RaFixtureConfig<'a>,
@@ -219,8 +221,8 @@ pub(crate) fn resolve_annotation(
                 &FindAllRefsConfig {
                     search_scope: None,
                     ra_fixture: config.ra_fixture,
-                    exclude_imports: false,
-                    exclude_tests: false,
+                    exclude_imports: config.references_exclude_imports,
+                    exclude_tests: config.references_exclude_tests,
                 },
             )
             .map(|result| {
@@ -262,6 +264,8 @@ mod tests {
         annotate_references: true,
         annotate_method_references: true,
         annotate_enum_variant_references: true,
+        references_exclude_imports: false,
+        references_exclude_tests: false,
         location: AnnotationLocation::AboveName,
         ra_fixture: RaFixtureConfig::default(),
         filter_adjacent_derive_implementations: false,
@@ -278,7 +282,7 @@ mod tests {
             .annotations(config, file_id)
             .unwrap()
             .into_iter()
-            .map(|annotation| analysis.resolve_annotation(&DEFAULT_CONFIG, annotation).unwrap())
+            .map(|annotation| analysis.resolve_annotation(config, annotation).unwrap())
             .collect();
 
         expect.assert_debug_eq(&annotations);
@@ -1043,6 +1047,41 @@ struct Foo;
                 ]
             "#]],
             &AnnotationConfig { location: AnnotationLocation::AboveWholeItem, ..DEFAULT_CONFIG },
+        );
+    }
+
+    #[test]
+    fn refs_exclude_tests() {
+        check_with_config(
+            r#"
+fn foo() {}
+
+#[test]
+fn bar() { foo() }
+            "#,
+            expect![[r#"
+                [
+                    Annotation {
+                        range: 3..6,
+                        kind: HasReferences {
+                            pos: FilePositionWrapper {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                offset: 3,
+                            },
+                            data: Some(
+                                [],
+                            ),
+                        },
+                    },
+                ]
+            "#]],
+            &AnnotationConfig {
+                references_exclude_tests: true,
+                annotate_runnables: false,
+                ..DEFAULT_CONFIG
+            },
         );
     }
 }
