@@ -63,10 +63,13 @@ tests/ui/parser/trailing-carriage-return-in-string.rs
 *.svg
 src/ci/docker/host-x86_64/disabled/dist-x86_64-dragonfly/patch-toolchain
 # Often mixed indentation for example due to alignment with previous line
+*.c
 *.coverage
+*.cpp
 *.css
 *.fixed
 *.goml
+*.h
 *.js
 *.ld
 *.py
