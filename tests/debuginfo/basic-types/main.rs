@@ -7,6 +7,10 @@
 //@ compile-flags:-g
 //@ disable-gdb-pretty-printers
 //@ ignore-backends: gcc
+//@ min-llvm-lldb-version: 22.1.0
+
+// This version corresponds to swift 6.2.3/lldb 19.1.5
+//@ min-apple-lldb-version: 1703.0.236.21
 
 // === GDB TESTS ===================================================================================
 
@@ -47,33 +51,20 @@
 // === LLDB TESTS ==================================================================================
 
 //@ lldb-command:run
-//@ lldb-command:v b
-//@ lldb-check:[...] false
-//@ lldb-command:v i
-//@ lldb-check:[...] -1
-
-//@ lldb-command:v i8
-//@ lldb-check:[...] 'D'
-//@ lldb-command:v i16
-//@ lldb-check:[...] -16
-//@ lldb-command:v i32
-//@ lldb-check:[...] -32
-//@ lldb-command:v i64
-//@ lldb-check:[...] -64
-//@ lldb-command:v u
-//@ lldb-check:[...] 1
-//@ lldb-command:v u8
-//@ lldb-check:[...] 'd'
-//@ lldb-command:v u16
-//@ lldb-check:[...] 16
-//@ lldb-command:v u32
-//@ lldb-check:[...] 32
-//@ lldb-command:v u64
-//@ lldb-check:[...] 64
-//@ lldb-command:v f32
-//@ lldb-check:[...] 2.5
-//@ lldb-command:v f64
-//@ lldb-check:[...] 3.5
+//@ lldb-repr:b
+//@ lldb-repr:i
+//@ lldb-repr:c
+//@ lldb-repr:i8
+//@ lldb-repr:i16
+//@ lldb-repr:i32
+//@ lldb-repr:i64
+//@ lldb-repr:u
+//@ lldb-repr:u8
+//@ lldb-repr:u16
+//@ lldb-repr:u32
+//@ lldb-repr:u64
+//@ lldb-repr:f32
+//@ lldb-repr:f64
 
 // === CDB TESTS ===================================================================================
 

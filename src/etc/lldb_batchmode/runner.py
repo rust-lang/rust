@@ -20,6 +20,8 @@ import sys
 import threading
 import re
 import time
+import traceback
+
 
 try:
     import thread
@@ -183,6 +185,15 @@ def get_env_arg(name):
     return value
 
 
+def dispatch_repr(var_name: str, breakpoint_index: int, frame: lldb.SBFrame) -> bool:
+    # We save importing the check until we actually see a repr command. This prevents us from trying
+    # to load input data from tests that don't use `repr` commands.
+    from .check_lldb import check
+    from .common import Result
+
+    return check(var_name, breakpoint_index, frame) == Result.Ok
+
+
 ####################################################################################################
 # ~main
 ####################################################################################################
@@ -194,6 +205,7 @@ def main():
 
     print("LLDB batch-mode script")
     print("----------------------")
+    print(f"Python version: {sys.version}")
     print("Debugger commands script is '%s'." % script_path)
     print("Target executable is '%s'." % target_path)
     print("Current working directory is '%s'" % os.getcwd())
@@ -214,19 +226,14 @@ def main():
 
     # Create a target from a file and arch
     print("Creating a target for '%s'" % target_path)
-    target_error = lldb.SBError()
-    target: lldb.SBTarget = debugger.CreateTarget(
-        target_path, None, None, True, target_error
+
+    target: lldb.SBTarget = debugger.CreateTargetWithFileAndTargetTriple(
+        target_path, lldb.SBPlatform.GetHostPlatform().GetTriple()
     )
 
-    if not target:
+    if not target or not target.IsValid():
         print(
-            "Could not create debugging target '"
-            + target_path
-            + "': "
-            + str(target_error)
-            + ". Aborting.",
-            file=sys.stderr,
+            "Could not create debugging target '" + target_path + ". Aborting.",
         )
         sys.exit(1)
 
@@ -234,6 +241,10 @@ def main():
     start_breakpoint_listener(target)
 
     command_interpreter = debugger.GetCommandInterpreter()
+
+    repr_cmd_run = False
+    breakpoint_index = 0
+    all_ok = True
 
     try:
         script_file = open(script_path, "r")
@@ -245,25 +256,73 @@ def main():
                 or command == "r"
                 or re.match(r"^process\s+launch.*", command)
             ):
-                # Before starting to run the program, let the thread sleep a bit, so all
-                # breakpoint added events can be processed
-                time.sleep(0.5)
-            if command != "":
+                print(f"(lldb) {command}")
+                process: lldb.SBProcess = target.LaunchSimple(None, None, None)
+                if (
+                    process.GetSelectedThread().GetStopReason()
+                    == lldb.eStopReasonBreakpoint
+                    and breakpoint_index is None
+                ):
+                    breakpoint_index = 0
+                continue
+            if command == "continue" or command == "c":
+                print(f"(lldb) {command}")
+                process.Continue()
+                if (
+                    process.GetSelectedThread().GetStopReason()
+                    == lldb.eStopReasonBreakpoint
+                ):
+                    breakpoint_index += 1
+                continue
+            if command == "quit" or command == "exit":
+                print(f"(lldb) {command}")
+                break
+            if command.startswith("repr "):
+                repr_cmd_run = True
+                var_name = command.split(" ", 1)[1]
+
+                p = target.GetProcess()
+                frame = p.GetSelectedThread().GetSelectedFrame()
+
+                print(command)
+                all_ok &= dispatch_repr(var_name, breakpoint_index, frame)
+            elif command != "":
                 execute_command(command_interpreter, command)
 
     except IOError as e:
-        print("Could not read debugging script '%s'." % script_path, file=sys.stderr)
-        print(e, file=sys.stderr)
-        print("Aborting.", file=sys.stderr)
+        print("Could not read debugging script '%s'." % script_path)
+        traceback.print_exception(type(e), e, e.__traceback__, file=sys.stdout)
+        print("Aborting.")
         # Returning status codes using `sys.exit` doesn't work since we're in an LLDB managed python
         # instance. This command sets the exit code but *does not* kill LLDB, the debugee process,
         # or the SBDebugger object.
         debugger.HandleCommand("quit 1")
     except Exception as e:
-        import traceback
+        traceback.print_exception(e, file=sys.stdout)
+        debugger.HandleCommand("quit 1")
+    else:  # Executes if the `try` block throws no exceptions.
+        if repr_cmd_run:
+            # We save importing these until we actually see a repr command. This prevents us
+            # from trying to load input data from tests that don't use `repr` commands.
+            from .check_lldb import tested_all_types, tested_all_variables
+            from .common import BLESS, BlessMetadata, INPUT_DATA
 
-        for line in traceback.format_exception(e):
-            print(line)
-            debugger.HandleCommand("quit 1")
+            # `bless` should resolve any errors from mismatched test data, so any errors that reach
+            # this point are either from the `bless` not working properly, or some other issue with
+            # the test itself. In either case, we probably don't want to update the test data until
+            # those are resolved.
+            # Only runs if the test contains a repr command, as we don't want to create an input
+            # file for a test that won't ever use it.
+
+            if not tested_all_types() or not tested_all_variables():
+                debugger.HandleCommand("quit 1")
+            elif BLESS:
+                from lldb_providers import FEATURE_FLAGS
+
+                INPUT_DATA.save_blessing(
+                    BlessMetadata(
+                        sys.version, debugger.GetVersionString(), str(FEATURE_FLAGS)
+                    )
+                )
     finally:
         script_file.close()

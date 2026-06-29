@@ -471,8 +471,8 @@ impl TestCx<'_> {
 
         // Output the file path of the input data for `lldb-repr` commands
         let lldb_input_data_path = self.config.src_root.join(format!(
-            "tests/debuginfo/input/{}/{}.json",
-            self.testpaths.file.file_stem().unwrap(),
+            "{}/lldb_input/{}.json",
+            self.testpaths.file.parent().unwrap(),
             get_target_file_name(&self.config.target)
         ));
 
@@ -529,7 +529,7 @@ fn get_target_file_name(target_name: &str) -> &'static str {
     if target_name.ends_with("windows-msvc") {
         "windows_msvc"
     } else if target_name.ends_with("windows-gnu") || target_name.ends_with("windows-gnullvm") {
-        "windows-gnu"
+        "windows_gnu"
     } else {
         "non_windows"
     }
