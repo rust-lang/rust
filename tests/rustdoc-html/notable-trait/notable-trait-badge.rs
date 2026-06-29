@@ -10,7 +10,7 @@ pub trait AlsoLabeled {}
 pub trait Plain {}
 
 //@ has 'foo/struct.Tagged.html'
-//@ has - '//a[@class="notable-trait-badge"][@href="trait.Labeled.html"][@title="foo::Labeled"]' 'Labeled'
+//@ has - '//div[@class="notable-trait-badge-container"]/a[@href="trait.Labeled.html"][@title="foo::Labeled"]' 'Labeled'
 // Badges are sorted by trait name, so `AlsoLabeled` precedes `Labeled`.
 //@ has - '//div[@class="notable-trait-badge-container"]/a[1]' 'AlsoLabeled'
 //@ has - '//div[@class="notable-trait-badge-container"]/a[2]' 'Labeled'
