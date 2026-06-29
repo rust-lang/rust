@@ -49,6 +49,7 @@
     - [aarch64-nintendo-switch-freestanding](platform-support/aarch64-nintendo-switch-freestanding.md)
     - [aarch64-unknown-linux-gnu](platform-support/aarch64-unknown-linux-gnu.md)
     - [aarch64-unknown-linux-musl](platform-support/aarch64-unknown-linux-musl.md)
+    - [aarch64-unknown-linux-pauthtest](platform-support/aarch64-unknown-linux-pauthtest.md)
     - [aarch64-unknown-none*](platform-support/aarch64-unknown-none.md)
     - [aarch64v8r-unknown-none*](platform-support/aarch64v8r-unknown-none.md)
     - [aarch64_be-unknown-none-softfloat](platform-support/aarch64_be-unknown-none-softfloat.md)
