@@ -207,7 +207,9 @@ fn show_bless_help(mode: &str, action: &str, bless: bool) {
 }
 
 fn show_diff() -> bool {
-    std::env::var("TIDY_PRINT_DIFF").is_ok_and(|v| v.eq_ignore_ascii_case("true") || v == "1")
+    let disable_diff =
+        std::env::var("TIDY_PRINT_DIFF").is_ok_and(|v| v.eq_ignore_ascii_case("false") || v == "0");
+    !disable_diff
 }
 
 fn check_spellcheck(root_path: &Path, outdir: &Path, cargo: &Path, tidy_ctx: &TidyCtx) {
