@@ -4,6 +4,8 @@
 //@ normalize-stderr: "([0-9a-f][0-9a-f] |__ |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼ )+ *│.*" -> "HEX_DUMP"
 //@ dont-require-annotations: NOTE
 //@ normalize-stderr: "0x[0-9](\.\.|\])" -> "0x%$1"
+//@ normalize-stderr: "╾ALLOC\$ID╼\s+│.*╾.*╼" -> "╾ALLOC$$ID╼ │ ╾─╼"
+
 #![feature(pattern_types, pattern_type_macro)]
 #![allow(invalid_value)]
 
