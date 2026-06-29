@@ -1586,7 +1586,7 @@ impl Scalar {
     /// The *platform-specific* ABI alignment of this scalar.
     ///
     /// This is the type alignment for the corresponding built-in.
-    /// In other contexts it might have different alignment.
+    /// This is *not* necessarily the correct alignment for a type that has this `BackendRepr::Scalar`!
     pub fn default_align(self, cx: &impl HasDataLayout) -> AbiAlign {
         self.primitive().default_align(cx)
     }
@@ -1800,7 +1800,8 @@ impl IntoDiagArg for NumScalableVectors {
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum BackendRepr {
     Scalar(Scalar),
-    /// Two scalars listed in *memory* order, so the first is at offset zero
+    /// The data contained in this type can be entirely represented by two scalars.
+    /// The two scalars are listed in *memory* order, so the first is at offset zero
     /// and the second at a non-zero offset.
     /// These need not be `FieldIdx(0)` and `FieldIdx(1)`.
     ///
