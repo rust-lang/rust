@@ -103,6 +103,10 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             DebugLoc { file, line, col }
         }
     }
+
+    pub(crate) fn debuginfo_finalize(&self) {
+        self.context.set_debug_info(true)
+    }
 }
 
 impl<'gcc, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
@@ -136,10 +140,6 @@ impl<'gcc, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         _file: &SourceFile,
     ) -> Self::DIScope {
         // FIXME(antoyo): implement.
-    }
-
-    fn debuginfo_finalize(&self) {
-        self.context.set_debug_info(true)
     }
 
     fn create_dbg_var(
