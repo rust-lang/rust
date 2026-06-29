@@ -21,6 +21,7 @@ import threading
 import re
 import time
 
+
 try:
     import thread
 except ModuleNotFoundError:
@@ -183,6 +184,14 @@ def get_env_arg(name):
     return value
 
 
+def dispatch_repr(var_name: str, breakpoint_index: int, frame: lldb.SBFrame) -> bool:
+    # We save importing the check until we actually see a repr command. This prevents us from trying
+    # to load input data from tests that don't use `repr` commands.
+    from .check_lldb import check
+
+    return check(var_name, breakpoint_index, frame)
+
+
 ####################################################################################################
 # ~main
 ####################################################################################################
@@ -235,6 +244,10 @@ def main():
 
     command_interpreter = debugger.GetCommandInterpreter()
 
+    repr_cmd_run = False
+    breakpoint_index = 0
+    errors = False
+
     try:
         script_file = open(script_path, "r")
 
@@ -245,10 +258,34 @@ def main():
                 or command == "r"
                 or re.match(r"^process\s+launch.*", command)
             ):
-                # Before starting to run the program, let the thread sleep a bit, so all
-                # breakpoint added events can be processed
-                time.sleep(0.5)
-            if command != "":
+                process: lldb.SBProcess = target.LaunchSimple(None, None, None)
+                if (
+                    process.GetSelectedThread().GetStopReason()
+                    == lldb.eStopReasonBreakpoint
+                    and breakpoint_index is None
+                ):
+                    breakpoint_index = 0
+                continue
+            if command == "continue" or command == "c":
+                process.Continue()
+                if (
+                    process.GetSelectedThread().GetStopReason()
+                    == lldb.eStopReasonBreakpoint
+                ):
+                    breakpoint_index += 1
+                continue
+            if command == "quit" or command == "exit":
+                break
+            if command.startswith("repr "):
+                repr_cmd_run = True
+                var_name = command.split(" ", 1)[1]
+
+                p = target.GetProcess()
+                frame = p.GetSelectedThread().GetSelectedFrame()
+
+                print(command)
+                errors |= dispatch_repr(var_name, breakpoint_index, frame)
+            elif command != "":
                 execute_command(command_interpreter, command)
 
     except IOError as e:
@@ -265,5 +302,29 @@ def main():
         for line in traceback.format_exception(e):
             print(line)
             debugger.HandleCommand("quit 1")
+    else:  # Executes if the `try` block throws no exceptions.
+        if repr_cmd_run:
+            # We save importing these until we actually see a repr command. This prevents us
+            # from trying to load input data from tests that don't use `repr` commands.
+            from .check_lldb import tested_all_types, tested_all_variables
+            from .common import BLESS, BlessMetadata, INPUT_DATA
+
+            # `bless` should resolve any errors from mismatched test data, so any errors that reach
+            # this point are either from the `bless` not working properly, or some other issue with
+            # the test itself. In either case, we probably don't want to update the test data until
+            # those are resolved.
+            # Only runs if the test contains a repr command, as we don't want to create an input
+            # file for a test that won't ever use it.
+
+            if not tested_all_types() or not tested_all_variables():
+                debugger.HandleCommand("quit 1")
+            elif BLESS:
+                from lldb_providers import FEATURE_FLAGS
+
+                INPUT_DATA.save_blessing(
+                    BlessMetadata(
+                        sys.version, debugger.GetVersionString(), str(FEATURE_FLAGS)
+                    )
+                )
     finally:
         script_file.close()

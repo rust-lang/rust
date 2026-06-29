@@ -221,12 +221,16 @@ def variable_from_lldb(var: lldb.SBValue) -> Variable:
         value = None
 
     if (synth := var.GetTypeSynthetic()).IsValid():
-        synthetic = synth.GetData().strip()
+        synthetic = synth.GetData()
+        if synthetic is not None:
+            synthetic = synthetic.strip()
     else:
         synthetic = None
 
     if (summ := var.GetTypeSummary()).IsValid():
-        summary = summ.GetData().strip()
+        summary = summ.GetData()
+        if summary is not None:
+            summary = summary.strip()
     else:
         summary = None
 
@@ -272,12 +276,16 @@ def bless_variable(
     var_data = variable_from_lldb(valobj)
     target_data.breakpoints[breakpoint_idx][var_name] = var_data
 
-    bless_type(target_data, valobj.GetType(), valobj.GetTarget())
-
     # We also need to bless the types of the valobj's children, as they may not appear in the type
     # or fields.
-    for i in range(valobj.GetNumChildren()):
-        bless_type(target_data, valobj.GetChildAtIndex(i).GetType(), valobj.GetTarget())
+    target = valobj.GetTarget()
+
+    work_list = [valobj]
+    while len(work_list) != 0:
+        obj = work_list.pop()
+        work_list.extend([obj.GetChildAtIndex(i) for i in range(obj.GetNumChildren())])
+
+        bless_type(target_data, obj.GetType(), target)
 
 
 def bless_type(target_data: TargetData, type: lldb.SBType, sbtarget: lldb.SBTarget):
@@ -289,7 +297,11 @@ def bless_type(target_data: TargetData, type: lldb.SBType, sbtarget: lldb.SBTarg
         # If the type already exists in the type map, we don't need to process any further. We do
         # need to check that the type data is actually identical to its mapping before moving on.
         # It shouldn't ever be different, but better safe than sorry.
-        assert target_data.types[t_name] == t_data
+        import pprint
+
+        assert (
+            target_data.types[t_name] == t_data
+        ), f"old: {pprint.pformat(target_data.types[t_name])}\nnew: {pprint.pformat(t_data)}"
         return
 
     # We need to add this type first just in case the type contains itself.
