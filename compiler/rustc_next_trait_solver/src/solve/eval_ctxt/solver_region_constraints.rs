@@ -137,7 +137,7 @@ where
                 eagerly_handle_placeholders_in_universe(&**self.delegate, constraint, u)
             });
 
-        self.delegate.overwrite_solver_region_constraint(constraint.clone());
+        self.delegate.overwrite_solver_region_constraint(constraint.clone(), self.origin_span);
 
         if constraint.is_false() {
             Err(NoSolution)

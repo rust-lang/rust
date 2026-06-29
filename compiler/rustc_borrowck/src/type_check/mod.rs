@@ -189,7 +189,6 @@ pub(crate) fn type_check<'tcx>(
             &mut converter,
             typeck.known_type_outlives_obligations,
             universal_region_relations.outlives.clone(),
-            infcx.tcx.def_span(infcx.root_def_id),
         );
     }
 

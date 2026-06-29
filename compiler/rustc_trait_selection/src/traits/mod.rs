@@ -99,6 +99,7 @@ impl<'tcx> FulfillmentError<'tcx> {
         match self.code {
             FulfillmentErrorCode::Select(_)
             | FulfillmentErrorCode::Project(_)
+            | FulfillmentErrorCode::Outlives
             | FulfillmentErrorCode::Subtype(_, _)
             | FulfillmentErrorCode::ConstEquate(_, _) => true,
             FulfillmentErrorCode::Cycle(_) | FulfillmentErrorCode::Ambiguity { overflow: _ } => {
@@ -115,6 +116,8 @@ pub enum FulfillmentErrorCode<'tcx> {
     Cycle(PredicateObligations<'tcx>),
     Select(SelectionError<'tcx>),
     Project(MismatchedProjectionTypes<'tcx>),
+    /// An outlives constraint emitted for `-Zassumptions-on-binders` was unsatisfiable.
+    Outlives,
     Subtype(ExpectedFound<Ty<'tcx>>, TypeError<'tcx>), // always comes from a SubtypePredicate
     ConstEquate(ExpectedFound<ty::Const<'tcx>>, TypeError<'tcx>),
     Ambiguity {
@@ -130,6 +133,7 @@ impl<'tcx> Debug for FulfillmentErrorCode<'tcx> {
         match *self {
             FulfillmentErrorCode::Select(ref e) => write!(f, "{e:?}"),
             FulfillmentErrorCode::Project(ref e) => write!(f, "{e:?}"),
+            FulfillmentErrorCode::Outlives => write!(f, "CodeOutlivesError"),
             FulfillmentErrorCode::Subtype(ref a, ref b) => {
                 write!(f, "CodeSubtypeError({a:?}, {b:?})")
             }

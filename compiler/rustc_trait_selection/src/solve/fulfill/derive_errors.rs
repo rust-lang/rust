@@ -66,6 +66,9 @@ pub(super) fn fulfillment_error_for_no_solution<'tcx>(
             let expected_found = ExpectedFound::new(b, a);
             FulfillmentErrorCode::Subtype(expected_found, TypeError::Sorts(expected_found))
         }
+        ty::PredicateKind::Clause(
+            ty::ClauseKind::RegionOutlives(_) | ty::ClauseKind::TypeOutlives(_),
+        ) if infcx.tcx.assumptions_on_binders() => FulfillmentErrorCode::Outlives,
         ty::PredicateKind::Clause(_)
         | ty::PredicateKind::DynCompatible(_)
         | ty::PredicateKind::Ambiguous => {

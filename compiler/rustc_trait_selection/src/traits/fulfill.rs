@@ -1041,6 +1041,7 @@ impl<'tcx> FromSolverError<'tcx, OldSolverError<'tcx>> for ScrubbedTraitError<'t
         match error.0.error {
             FulfillmentErrorCode::Select(_)
             | FulfillmentErrorCode::Project(_)
+            | FulfillmentErrorCode::Outlives
             | FulfillmentErrorCode::Subtype(_, _)
             | FulfillmentErrorCode::ConstEquate(_, _) => ScrubbedTraitError::TrueError,
             FulfillmentErrorCode::Ambiguity { overflow: _ } => ScrubbedTraitError::Ambiguity,

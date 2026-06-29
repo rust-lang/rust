@@ -206,13 +206,12 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn destructure_solver_region_constraints_for_regionck(
         &self,
         outlives_env: &OutlivesEnvironment<'tcx>,
-        span: Span,
     ) {
         let assumptions = rustc_type_ir::region_constraint::Assumptions::new(
             outlives_env.known_type_outlives().into_iter().cloned().collect(),
             outlives_env.free_region_map().relation.clone(),
         );
-        self.destructure_solver_region_constraints(assumptions, self, span);
+        self.destructure_solver_region_constraints(assumptions, self);
     }
 
     pub fn destructure_solver_region_constraints_for_borrowck(
@@ -221,13 +220,12 @@ impl<'tcx> InferCtxt<'tcx> {
         conversion: impl TypeOutlivesDelegate<'tcx>,
         known_type_outlives: &[PolyTypeOutlivesPredicate<'tcx>],
         region_outlives: TransitiveRelation<RegionVid>,
-        span: Span,
     ) {
         let assumptions = rustc_type_ir::region_constraint::Assumptions::new(
             known_type_outlives.into_iter().cloned().collect(),
             region_outlives.maybe_map(|r| Some(Region::new_var(self.tcx, r))).unwrap(),
         );
-        self.destructure_solver_region_constraints(assumptions, conversion, span);
+        self.destructure_solver_region_constraints(assumptions, conversion);
     }
 
     #[instrument(level = "debug", skip(self, conversion))]
@@ -235,41 +233,42 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         assumptions: rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>,
         mut conversion: impl TypeOutlivesDelegate<'tcx>,
-        span: Span,
     ) {
         assert!(self.tcx.assumptions_on_binders());
         assert!(self.next_trait_solver());
 
-        let origin = SubregionOrigin::SolverRegionConstraint(span);
-        let category = origin.to_constraint_category();
-
         let constraint = self.inner.borrow().solver_region_constraint_storage.get_constraint();
         debug!(?constraint);
-        let constraint =
+        let constraint = constraint.map_atomic_constraints(&mut |constraint| {
             rustc_type_ir::region_constraint::destructure_type_outlives_constraints_in_root(
                 self,
                 constraint,
                 &assumptions,
-            );
+            )
+        });
         debug!(?constraint);
-        let constraint = rustc_type_ir::region_constraint::evaluate_solver_constraint(&constraint);
+        let constraint = constraint.evaluate();
         debug!(?constraint);
 
         let mut constraints = vec![constraint];
         while let Some(c) = constraints.pop() {
-            use rustc_type_ir::region_constraint::RegionConstraint::*;
+            use crate::infer::SolverRegionConstraint::*;
 
             match c {
-                Ambiguity => {
-                    self.dcx().err("unable to satisfy constraints involving placeholders due to unknown implied bounds");
+                Ambiguity(span) => {
+                    self.dcx()
+                        .struct_span_err(
+                            span,
+                            "unable to satisfy constraints involving placeholders due to unknown implied bounds",
+                        )
+                        .emit();
                 }
-                RegionOutlives(a, b) => {
+                RegionOutlives(a, b, span) => {
+                    let origin = SubregionOrigin::SolverRegionConstraint(span);
+                    let category = origin.to_constraint_category();
                     conversion.push_sub_region_constraint(
-                        origin.clone(),
-                        // we flip these because regionck is silly :>
-                        b,
-                        a,
-                        category,
+                        origin, // we flip these because regionck is silly :>
+                        b, a, category,
                     );
                 }
                 // FIXME(-Zassumptions-on-binders): actually implement OR as an  OR
@@ -302,7 +301,7 @@ impl<'tcx> InferCtxt<'tcx> {
         assert!(!self.in_snapshot(), "cannot process registered region obligations in a snapshot");
 
         if self.tcx.assumptions_on_binders() {
-            self.destructure_solver_region_constraints_for_regionck(outlives_env, span);
+            self.destructure_solver_region_constraints_for_regionck(outlives_env);
         }
 
         // Must loop since the process of normalizing may itself register region obligations.
