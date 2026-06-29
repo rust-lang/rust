@@ -1,8 +1,22 @@
-# Q
+# QNX
 
 **Tier: 3**
 
-Support for the [QNX®][qnx.com] Software Development Platform (SDP), version 7.0, 7.1 and 8.0.
+Support for the [QNX®][qnx.com] [QNX Software Development Platform (SDP)], version 7.0, 7.1 and 8.0.
+
+[QNX Software Development Platform (SDP)]: https://qnx.software/en/software/products-and-solutions/qnx-software-development-platform
+
+The [QNX Software Development Platform (SDP)] is a development environment that
+you download and install on a host computer. It includes a C toolchain for your
+host, an IDE, and various board support packages for different target platforms.
+You can then use QNX SDP to build a custom run-time environment which you deploy
+onto an embedded device. That run-time environment will include a microkernel,
+whatever services you have selected, and perhaps one or more applications
+written in Rust.
+
+In QNX SDP 7.x the run-time environment is based on QNX Neutrino RTOS 7.x, while
+in QNX SDP 8.0 the run-time environment is based on QNX OS 8.0. The name change
+reflects architectural changes in the RTOS, but both use a microkernel design.
 
 ## Target maintainers
 
@@ -24,44 +38,31 @@ The following QNX SDP versions and compilation targets are supported:
 | `aarch64-unknown-nto-qnx710`        | QNX SDP 7.1 with io-pkt       | AArch64             |      ✓       |        ✓         |
 | `x86_64-pc-nto-qnx710`              | QNX SDP 7.1 with io-pkt       | x86_64              |      ✓       |        ✓         |
 | `aarch64-unknown-nto-qnx700`        | QNX SDP 7.0                   | AArch64             |      ?       |        ✓         |
-| `i686-pc-nto-qnx700`                | QNX SDP 7.0                   | x86                 |              |        ✓         |
+| `i686-pc-nto-qnx700`                | QNX SDP 7.0                   | x86                 |      -       |        ✓         |
 
-* On QNX SDP 7.0 and 7.1, `io-pkt` is used as network stack by default.
-* QNX SDP 7.1 includes the optional network stack `io-sock`.
-* QNX SDP 8.0 always uses `io-sock`.
+* QNX SDP 7.0 only offers the `io-pkt` network stack
+* QNX SDP 7.1 uses the `io-pkt` network stack by default, but also includes the optional `io-sock` network stack
+* QNX SDP 8.0 only offers the `io-sock` network stack
 
-Adding other architectures that are supported by QNX is possible.
+In the table above, 'full support' indicates support for building Rust
+applications with the full standard library. A '?' means that support is
+in-progress. `no_std` support is for building `#![no_std]` applications where
+only `core` and `alloc` are available.
 
-In the table above, 'full support' indicates support for building Rust applications with the full standard library. A '?' means that support is in-progress. `no_std` support' is for building `#![no_std]` applications where only `core` and `alloc` are available.
+For building or using the Rust toolchain for QNX, the relevant version of the
+[QNX Software Development Platform (SDP)] must be installed and initialized.
+Initialization is usually done by sourcing `qnxsdp-env.sh` (this will be
+installed as part of the SDP, so see the installation instruction provided with
+the SDP). Afterwards [`qcc`] (the QNX C/C++ compiler) should be available in
+your system PATH because it will be called during Rust compilation (e.g. for
+linking executables).
 
-For building or using the Rust toolchain for QNX, the relevant version of the [QNX Software Development Platform (SDP)] must be installed and initialized.
-Initialization is usually done by sourcing `qnxsdp-env.sh` (this will be installed as part of the SDP, see also installation instruction provided with the SDP).
-Afterwards [`qcc`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.utilities/topic/q/qcc.html) (the QNX C/C++ compiler)
-should be available (in the `$PATH` variable).
-`qcc` will be called e.g. for linking executables.
+[`qcc`]: https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.utilities/topic/q/qcc.html
 
-[QNX Software Development Platform (SDP)]: https://qnx.software/en/software/products-and-solutions/qnx-software-development-platform
-
-When linking `no_std` applications, they must link against `libc.so` (see example). This is
-required because applications always link against the `crt` library and `crt` depends on `libc.so`.
-This is done automatically when using the standard library.
-
-### Disabling RELocation Read-Only (RELRO)
-
-While not recommended by default, some QNX kernel setups may require the `RELRO` to be disabled with `-C relro_level=off`, e.g. by adding it to the `.cargo/config.toml` file:
-
-```toml
-[target.aarch64-unknown-nto-qnx700]
-rustflags = ["-C", "relro_level=off"]
-```
-
-If your QNX kernel does not allow it, and `relro` is not disabled, running compiled binary would fail with `syntax error: ... unexpected` or similar.  This is due to kernel trying to interpret compiled binary with `/bin/sh`, and obviously failing.  To verify that this is really the case, run your binary with the `DL_DEBUG=all` env var, and look for this output. If you see it, you should disable `relro` as described above.
-
-```text
-Resolution scope for Executable->/bin/sh:
-        Executable->/bin/sh
-        libc.so.4->/usr/lib/ldqnx-64.so.2
-```
+When linking `no_std` applications, they must link against `libc.so` (see
+example). This is required because applications always link against the `crt`
+library and `crt` depends on `libc.so`. This is done automatically when using
+the standard library.
 
 ## Conditional compilation
 
@@ -127,18 +128,37 @@ For conditional compilation, the following QNX specific attributes are defined:
             rustc library/core library/alloc library/std
     ```
 
+## Building Rust programs
+
+Rust does not ship pre-compiled artifacts for this target. To compile for this
+target, you must either build Rust with the target enabled (see "Building the
+target" above), or build your own copy of `core` by using `build-std` or
+similar.
+
+Compiled executables can run directly on QNX, either by including them in the
+disk image, or copying them over the network to a running system.
+
+Compiling C code requires the same environment variables to be set as compiling
+the Rust toolchain (see above), to ensure `qcc` is used with proper arguments.
+To ensure compatibility, do not specify any further arguments that for example
+change calling conventions or memory layout.
+
 ## Running the Rust test suite
 
-The test suites of the Rust compiler and standard library can be executed much like other Rust targets.
-The environment for testing should match the one used during compiler compilation (refer to `build_env` and `qcc`/`PATH` above) with the
-addition of the TEST_DEVICE_ADDR environment variable.
-The TEST_DEVICE_ADDR variable controls the remote runner and should point to the target, despite localhost being shown in the following example.
-Note that some tests are failing which is why they are currently excluded by the target maintainers which can be seen in the following example.
+The test suites of the Rust compiler and standard library can be executed much
+like other Rust targets. The environment for testing should match the one used
+during compiler compilation (refer to `build_env` and `qcc`/`PATH` above) with
+the addition of the `TEST_DEVICE_ADDR` environment variable. The
+`TEST_DEVICE_ADDR` variable controls the remote runner and should point to a
+target running the `remote-test-server` executable.
+
+Note that some tests are failing which is why they are currently excluded by the
+target maintainers which can be seen in the following example.
 
 To run all tests on a x86_64 QNX Neutrino 7.1 target:
 
 ```bash
-export TEST_DEVICE_ADDR="localhost:12345" # must address the test target, can be a SSH tunnel
+export TEST_DEVICE_ADDR="1.2.3.4:12345" # must address the test target, can be a SSH tunnel
 export build_env=<see above>
 
 # Disable tests that only work on the host or don't make sense for this target.
@@ -160,16 +180,6 @@ env $build_env \
         --stage 1 \
         --target x86_64-pc-nto-qnx710
 ```
-
-## Building Rust programs
-
-Rust does not ship pre-compiled artifacts for this target.
-To compile for this target, you must either build Rust with the target enabled (see "Building the target" above),
-or build your own copy of `core` by using `build-std` or similar.
-
-## Testing
-
-Compiled executables can run directly on QNX.
 
 ### Rust std library test suite
 
@@ -230,8 +240,26 @@ is used.
   64 bytes from 127.0.0.1: icmp_seq=0 ttl=255 time=1 ms
   ```
 
-## Cross-compilation toolchains and C code
+## Disabling RELocation Read-Only (RELRO)
 
-Compiling C code requires the same environment variables to be set as compiling the Rust toolchain (see above),
-to ensure `qcc` is used with proper arguments.
-To ensure compatibility, do not specify any further arguments that for example change calling conventions or memory layout.
+While not recommended by default, some QNX kernel setups may require the `RELRO`
+to be disabled with `-C relro_level=off`, e.g. by adding it to the
+`.cargo/config.toml` file:
+
+```toml
+[target.aarch64-unknown-nto-qnx700]
+rustflags = ["-C", "relro_level=off"]
+```
+
+If your QNX kernel does not allow it, and `relro` is not disabled, running
+compiled binary would fail with `syntax error: ... unexpected` or similar. This
+is due to kernel trying to interpret compiled binary with `/bin/sh`, and
+obviously failing. To verify that this is really the case, run your binary with
+the `DL_DEBUG=all` env var, and look for this output. If you see it, you should
+disable `relro` as described above.
+
+```text
+Resolution scope for Executable->/bin/sh:
+        Executable->/bin/sh
+        libc.so.4->/usr/lib/ldqnx-64.so.2
+```
