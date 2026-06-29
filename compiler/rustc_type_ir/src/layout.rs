@@ -3,71 +3,15 @@ use std::ops::{Deref, Range};
 
 use derive_where::derive_where;
 use rustc_abi::{
-    AbiAlign, Align, BackendRepr, FieldIdx, FieldsShape, Float, HasDataLayout, LayoutData, Niche,
-    PointeeInfo, Primitive, Size, VariantIdx, Variants,
+    BackendRepr, FieldIdx, FieldsShape, Float, HasDataLayout, LayoutData, PointeeInfo, Primitive,
+    Size, VariantIdx, Variants,
 };
 use rustc_data_structures::range_set::RangeSet;
-#[cfg(feature = "nightly")]
-use rustc_macros::StableHash;
 use rustc_macros::StableHash_NoContext;
 
 use crate::Interner;
 
 // Explicitly import `Float` to avoid ambiguity with `Primitive::Float`.
-
-// TODO: this is temporary. I will be moving the definition of Layout from type_ir to middle
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "nightly", derive(StableHash))]
-#[rustc_pass_by_value]
-pub struct Layout<'a>(pub Interned<'a, LayoutData<FieldIdx, VariantIdx>>);
-
-impl<'a> fmt::Debug for Layout<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // See comment on `<LayoutData as Debug>::fmt` above.
-        self.0.0.fmt(f)
-    }
-}
-
-impl<'a> Deref for Layout<'a> {
-    type Target = LayoutData<FieldIdx, VariantIdx>;
-    fn deref(&self) -> &LayoutData<FieldIdx, VariantIdx> {
-        self.0.0
-    }
-}
-
-impl<'a> Layout<'a> {
-    pub fn fields(self) -> &'a FieldsShape<FieldIdx> {
-        &self.0.0.fields
-    }
-
-    pub fn variants(self) -> &'a Variants<FieldIdx, VariantIdx> {
-        &self.0.0.variants
-    }
-
-    pub fn backend_repr(self) -> BackendRepr {
-        self.0.0.backend_repr
-    }
-
-    pub fn largest_niche(self) -> Option<Niche> {
-        self.0.0.largest_niche
-    }
-
-    pub fn align(self) -> AbiAlign {
-        self.0.0.align
-    }
-
-    pub fn size(self) -> Size {
-        self.0.0.size
-    }
-
-    pub fn max_repr_align(self) -> Option<Align> {
-        self.0.0.max_repr_align
-    }
-
-    pub fn unadjusted_abi_align(self) -> Align {
-        self.0.0.unadjusted_abi_align
-    }
-}
 
 /// The layout of a type, alongside the type itself.
 /// Provides various type traversal APIs (e.g., recursing into fields).

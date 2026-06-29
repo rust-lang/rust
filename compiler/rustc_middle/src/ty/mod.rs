@@ -84,7 +84,7 @@ pub use self::context::{
 };
 pub use self::fold::*;
 pub use self::instance::{Instance, InstanceKind, ReifyReason, ShimKind};
-pub use self::layout::{ArgAbi, FnAbi, TyAndLayout};
+pub use self::layout::{ArgAbi, FnAbi, Layout, TyAndLayout};
 pub(crate) use self::list::RawList;
 pub use self::list::{List, ListWithCachedTypeInfo};
 pub use self::opaque_types::OpaqueTypeKey;

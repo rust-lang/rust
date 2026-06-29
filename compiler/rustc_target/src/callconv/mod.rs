@@ -1072,5 +1072,3 @@ where
     }
     cursor == layout.size
 }
-
-// TODO: reintroduce size checks somehow (for ArgAbi and FnAbi) even though we need I: Interner

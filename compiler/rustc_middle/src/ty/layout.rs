@@ -5,6 +5,7 @@ use rustc_abi::{
     HasDataLayout, LayoutData, Niche, PointeeInfo, PointerKind, Primitive, ReprFlags, ReprOptions,
     Scalar, Size, TagEncoding, TargetDataLayout, VariantIdx, Variants,
 };
+use rustc_data_structures::intern::Interned;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
 };
@@ -778,7 +779,59 @@ pub type TyAndLayout<'tcx> = rustc_type_ir::TyAndLayout<TyCtxt<'tcx>>;
 pub type ArgAbi<'tcx> = rustc_target::callconv::ArgAbi<TyCtxt<'tcx>>;
 pub type FnAbi<'tcx> = rustc_target::callconv::FnAbi<TyCtxt<'tcx>>;
 
-impl<'tcx> rustc_type_ir::inherent::Layout<TyCtxt<'tcx>> for rustc_type_ir::Layout<'tcx> {
+#[derive(Copy, Clone, PartialEq, Eq, Hash, StableHash)]
+#[rustc_pass_by_value]
+pub struct Layout<'tcx>(pub Interned<'tcx, LayoutData<FieldIdx, VariantIdx>>);
+
+impl<'tcx> fmt::Debug for Layout<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // See comment on `<LayoutData as Debug>::fmt` above.
+        self.0.0.fmt(f)
+    }
+}
+
+impl<'tcx> std::ops::Deref for Layout<'tcx> {
+    type Target = LayoutData<FieldIdx, VariantIdx>;
+    fn deref(&self) -> &LayoutData<FieldIdx, VariantIdx> {
+        self.0.0
+    }
+}
+
+impl<'tcx> Layout<'tcx> {
+    pub fn fields(self) -> &'tcx FieldsShape<FieldIdx> {
+        &self.0.0.fields
+    }
+
+    pub fn variants(self) -> &'tcx Variants<FieldIdx, VariantIdx> {
+        &self.0.0.variants
+    }
+
+    pub fn backend_repr(self) -> BackendRepr {
+        self.0.0.backend_repr
+    }
+
+    pub fn largest_niche(self) -> Option<Niche> {
+        self.0.0.largest_niche
+    }
+
+    pub fn align(self) -> AbiAlign {
+        self.0.0.align
+    }
+
+    pub fn size(self) -> Size {
+        self.0.0.size
+    }
+
+    pub fn max_repr_align(self) -> Option<Align> {
+        self.0.0.max_repr_align
+    }
+
+    pub fn unadjusted_abi_align(self) -> Align {
+        self.0.0.unadjusted_abi_align
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::Layout<TyCtxt<'tcx>> for Layout<'tcx> {
     fn fields(self) -> &'tcx FieldsShape<FieldIdx> {
         self.fields()
     }

@@ -107,7 +107,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type Pat = Pattern<'tcx>;
     type PatList = &'tcx List<Pattern<'tcx>>;
     type Safety = hir::Safety;
-    type Layout = rustc_type_ir::Layout<'tcx>;
+    type Layout = ty::Layout<'tcx>;
     type FieldsShapeRef = &'tcx rustc_abi::FieldsShape<rustc_abi::FieldIdx>;
     type VariantsRef = &'tcx rustc_abi::Variants<rustc_abi::FieldIdx, rustc_abi::VariantIdx>;
     type Const = ty::Const<'tcx>;
