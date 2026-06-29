@@ -1664,7 +1664,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         };
         // We'll ban these with a `ConstParamTy` rib, so just clear these ribs for better
         // diagnostics, so we don't mention anything about const param tys having generics at all.
-        if !self.r.tcx.features().generic_const_parameter_types() {
+        if !self.r.features.generic_const_parameter_types() {
             forward_ty_ban_rib_const_param_ty.bindings.clear();
             forward_const_ban_rib_const_param_ty.bindings.clear();
         }
@@ -1701,7 +1701,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
                         this.ribs[TypeNS].push(forward_ty_ban_rib_const_param_ty);
                         this.ribs[ValueNS].push(forward_const_ban_rib_const_param_ty);
-                        if this.r.tcx.features().generic_const_parameter_types() {
+                        if this.r.features.generic_const_parameter_types() {
                             this.visit_ty(ty)
                         } else {
                             this.ribs[TypeNS].push(Rib::new(RibKind::ConstParamTy));
@@ -1812,8 +1812,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                     }
 
                                     LifetimeRibKind::ImplTrait => {
-                                        if self.r.tcx.features().anonymous_lifetime_in_impl_trait()
-                                        {
+                                        if self.r.features.anonymous_lifetime_in_impl_trait() {
                                             None
                                         } else {
                                             Some(LifetimeUseSet::Many)
@@ -2991,7 +2990,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 self.with_generic_param_rib(
                     &generics.params,
                     RibKind::Item(
-                        if self.r.tcx.features().generic_const_items() {
+                        if self.r.features.generic_const_items() {
                             HasGenericParams::Yes(generics.span)
                         } else {
                             HasGenericParams::No
@@ -3008,7 +3007,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                             LifetimeRibKind::Elided(LifetimeRes::Static),
                             |this| {
                                 if rhs_kind.is_type_const()
-                                    && !this.r.tcx.features().generic_const_parameter_types()
+                                    && !this.r.features.generic_const_parameter_types()
                                 {
                                     this.with_rib(TypeNS, RibKind::ConstParamTy, |this| {
                                         this.with_rib(ValueNS, RibKind::ConstParamTy, |this| {
@@ -3255,7 +3254,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     RibKind::Normal => {
                         // FIXME(non_lifetime_binders): Stop special-casing
                         // const params to error out here.
-                        if self.r.tcx.features().non_lifetime_binders()
+                        if self.r.features.non_lifetime_binders()
                             && matches!(param.kind, GenericParamKind::Type { .. })
                         {
                             Res::Def(def_kind, def_id.to_def_id())
@@ -3409,7 +3408,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                             |this| {
                                 this.visit_generics(generics);
                                 if rhs_kind.is_type_const()
-                                    && !this.r.tcx.features().generic_const_parameter_types()
+                                    && !this.r.features.generic_const_parameter_types()
                                 {
                                     this.with_rib(TypeNS, RibKind::ConstParamTy, |this| {
                                         this.with_rib(ValueNS, RibKind::ConstParamTy, |this| {
@@ -5038,10 +5037,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 let tcx = self.r.tcx();
 
                 let gate_err_sym_msg = match prim {
-                    PrimTy::Float(FloatTy::F16) if !tcx.features().f16() => {
+                    PrimTy::Float(FloatTy::F16) if !self.r.features.f16() => {
                         Some((sym::f16, "the type `f16` is unstable"))
                     }
-                    PrimTy::Float(FloatTy::F128) if !tcx.features().f128() => {
+                    PrimTy::Float(FloatTy::F128) if !self.r.features.f128() => {
                         Some((sym::f128, "the type `f128` is unstable"))
                     }
                     _ => None,
@@ -5196,8 +5195,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             AnonConstKind::FieldDefaultValue => ConstantHasGenerics::Yes,
             AnonConstKind::InlineConst => ConstantHasGenerics::Yes,
             AnonConstKind::ConstArg(_) => {
-                if self.r.tcx.features().generic_const_exprs()
-                    || self.r.tcx.features().min_generic_const_args()
+                if self.r.features.generic_const_exprs()
+                    || self.r.features.min_generic_const_args()
                     || is_trivial_const_arg
                 {
                     ConstantHasGenerics::Yes
@@ -5624,12 +5623,15 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 }
 
 /// Walks the whole crate in DFS order, visiting each item, counting the declared number of
-/// lifetime generic parameters and function parameters.
-struct ItemInfoCollector<'a, 'ra, 'tcx> {
+/// lifetime generic parameters and function parameters. Also collects all `use` and
+/// `extern crate` items so that `check_unused` doesn't need to walk the crate again.
+struct ItemInfoCollector<'a, 'ast, 'ra, 'tcx> {
     r: &'a mut Resolver<'ra, 'tcx>,
+    /// All `use` and `extern crate` items, in the order in which they are visited.
+    use_items: Vec<&'ast Item>,
 }
 
-impl ItemInfoCollector<'_, '_, '_> {
+impl ItemInfoCollector<'_, '_, '_, '_> {
     fn collect_fn_info(&mut self, decl: &FnDecl, id: NodeId) {
         self.r
             .delegation_fn_sigs
@@ -5663,7 +5665,7 @@ fn required_generic_args_suggestion(generics: &ast::Generics) -> Option<String> 
     if required.is_empty() { None } else { Some(format!("<{}>", required.join(", "))) }
 }
 
-impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
+impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, 'ast, '_, '_> {
     fn visit_item(&mut self, item: &'ast Item) {
         match &item.kind {
             ItemKind::TyAlias(TyAlias { generics, .. })
@@ -5696,11 +5698,13 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
                 }
             }
 
+            ItemKind::Use(..) | ItemKind::ExternCrate(..) => {
+                self.use_items.push(item);
+            }
+
             ItemKind::Mod(..)
             | ItemKind::Static(..)
             | ItemKind::ConstBlock(..)
-            | ItemKind::Use(..)
-            | ItemKind::ExternCrate(..)
             | ItemKind::MacroDef(..)
             | ItemKind::GlobalAsm(..)
             | ItemKind::MacCall(..)
@@ -5731,9 +5735,12 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
 }
 
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
-    pub(crate) fn late_resolve_crate(&mut self, krate: &Crate) {
+    /// Returns the `use` and `extern crate` items of the crate, for use by `check_unused`.
+    pub(crate) fn late_resolve_crate<'ast>(&mut self, krate: &'ast Crate) -> Vec<&'ast Item> {
         with_owner(self, CRATE_NODE_ID, |this| {
-            visit::walk_crate(&mut ItemInfoCollector { r: this }, krate);
+            let mut info_collector = ItemInfoCollector { r: this, use_items: Vec::new() };
+            visit::walk_crate(&mut info_collector, krate);
+            let use_items = info_collector.use_items;
             let mut late_resolution_visitor = LateResolutionVisitor::new(this);
             late_resolution_visitor
                 .resolve_doc_links(&krate.attrs, MaybeExported::Ok(CRATE_NODE_ID));
@@ -5746,6 +5753,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     crate::diagnostics::UnusedLabel,
                 );
             }
+            use_items
         })
     }
 }

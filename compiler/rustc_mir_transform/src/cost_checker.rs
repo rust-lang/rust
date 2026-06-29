@@ -52,7 +52,7 @@ impl<'b, 'tcx> CostChecker<'b, 'tcx> {
 
     fn instantiate_ty(&self, v: Ty<'tcx>) -> Ty<'tcx> {
         if let Some(instance) = self.instance {
-            instance.instantiate_mir(self.tcx, ty::EarlyBinder::bind(&v))
+            instance.instantiate_mir(self.tcx, ty::EarlyBinder::bind(self.tcx, v))
         } else {
             v
         }

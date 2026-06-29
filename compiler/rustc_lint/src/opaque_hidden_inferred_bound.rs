@@ -103,7 +103,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                 let Some(proj_term) = proj.term.as_type() else { return };
 
                 // HACK: `impl Trait<Assoc = impl Trait2>` from an RPIT is "ok"...
-                if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: opaque_def_id }, .. }) =
+                if let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: opaque_def_id }, .. }) =
                     *proj_term.kind()
                     && cx.tcx.parent(opaque_def_id) == def_id
                     && matches!(
@@ -130,7 +130,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                     return;
                 }
 
-                let proj_ty = proj.projection_term.expect_ty().to_ty(cx.tcx);
+                let proj_ty = proj.projection_term.expect_ty().to_ty(cx.tcx,ty::IsRigid::No);
                 // For every instance of the projection type in the bounds,
                 // replace them with the term we're assigning to the associated
                 // type in our opaque type.
@@ -177,7 +177,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                         // then we can emit a suggestion to add the bound.
                         let add_bound = match (proj_term.kind(), assoc_pred.kind().skip_binder()) {
                             (
-                                ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }),
+                                ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }),
                                 ty::ClauseKind::Trait(trait_pred),
                             ) => Some(AddBound {
                                 suggest_span: cx.tcx.def_span(*def_id).shrink_to_hi(),
@@ -192,6 +192,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                             OpaqueHiddenInferredBoundLint {
                                 ty: Ty::new_opaque(
                                     cx.tcx,
+                                    ty::IsRigid::No,
                                     def_id,
                                     ty::GenericArgs::identity_for_item(cx.tcx, def_id),
                                 ),

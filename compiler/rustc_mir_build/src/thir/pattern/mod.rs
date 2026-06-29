@@ -657,11 +657,12 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
         let args = self.typeck_results.node_args(id);
         // FIXME(mgca): we will need to special case IACs here to have type system compatible
         // generic args, instead of how we represent them in body expressions.
-        let c = ty::Const::new_unevaluated(
+        let c = ty::Const::new_alias(
             self.tcx,
-            ty::UnevaluatedConst::new(
+            ty::IsRigid::No,
+            ty::AliasConst::new(
                 self.tcx,
-                ty::UnevaluatedConstKind::new_from_def_id(self.tcx, def_id),
+                ty::AliasConstKind::new_from_def_id(self.tcx, def_id),
                 args,
             ),
         );

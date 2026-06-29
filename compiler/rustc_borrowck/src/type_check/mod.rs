@@ -95,7 +95,7 @@ mod relate_tys;
 /// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysis
 /// - `location_map` -- map between MIR `Location` and `PointIndex`
 pub(crate) fn type_check<'tcx>(
-    root_cx: &mut BorrowCheckRootCtxt<'tcx>,
+    root_cx: &BorrowCheckRootCtxt<'tcx>,
     infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
     promoted: &IndexSlice<Promoted, Body<'tcx>>,
@@ -198,7 +198,6 @@ pub(crate) fn type_check<'tcx>(
         debug!("encountered an error region; removing constraints!");
         constraints.outlives_constraints = Default::default();
         constraints.type_tests = Default::default();
-        root_cx.set_tainted_by_errors(guar);
         infcx.set_tainted_by_errors(guar);
     }
 
@@ -229,7 +228,7 @@ enum FieldAccessError {
 /// way, it accrues region constraints -- these can later be used by
 /// NLL region checking.
 struct TypeChecker<'a, 'tcx> {
-    root_cx: &'a mut BorrowCheckRootCtxt<'tcx>,
+    root_cx: &'a BorrowCheckRootCtxt<'tcx>,
     infcx: &'a BorrowckInferCtxt<'tcx>,
     last_span: Span,
     body: &'a Body<'tcx>,
@@ -469,7 +468,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // Necessary for non-trivial patterns whose user-type annotation is an opaque type,
             // e.g. `let (_a,): Tait = whatever`, see #105897
             if !self.infcx.next_trait_solver()
-                && let ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }) =
+                && let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }) =
                     curr_projected_ty.ty.kind()
             {
                 // There is nothing that we can compare here if we go through an opaque type.
@@ -1760,13 +1759,15 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             let tcx = self.tcx();
             let maybe_uneval = match constant.const_ {
                 Const::Ty(_, ct) => match ct.kind() {
-                    ty::ConstKind::Unevaluated(uv) => match uv.kind {
-                        ty::UnevaluatedConstKind::Projection { def_id }
-                        | ty::UnevaluatedConstKind::Inherent { def_id }
-                        | ty::UnevaluatedConstKind::Free { def_id }
-                        | ty::UnevaluatedConstKind::Anon { def_id } => {
-                            Some(UnevaluatedConst { def: def_id, args: uv.args, promoted: None })
-                        }
+                    ty::ConstKind::Alias(_, alias_const) => match alias_const.kind {
+                        ty::AliasConstKind::Projection { def_id }
+                        | ty::AliasConstKind::Inherent { def_id }
+                        | ty::AliasConstKind::Free { def_id }
+                        | ty::AliasConstKind::Anon { def_id } => Some(UnevaluatedConst {
+                            def: def_id,
+                            args: alias_const.args,
+                            promoted: None,
+                        }),
                     },
                     _ => None,
                 },

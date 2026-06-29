@@ -1,4 +1,4 @@
-error[E0277]: expected a `FnOnce()` closure, found `{integer}`
+error[E0277]: expected an `FnOnce()` closure, found `{integer}`
   --> $DIR/closure-expected.rs:3:23
    |
 LL |     let y = x.or_else(4);

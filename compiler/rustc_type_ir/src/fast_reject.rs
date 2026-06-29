@@ -256,12 +256,12 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
         match rhs.kind() {
             // Start by checking whether the `rhs` type may unify with
             // pretty much everything. Just return `true` in that case.
-            ty::Param(_) => {
+            ty::Param(_) | ty::Alias(ty::IsRigid::Yes, _) => {
                 if INSTANTIATE_RHS_WITH_INFER {
                     return true;
                 }
             }
-            ty::Error(_) | ty::Alias(..) | ty::Bound(..) => return true,
+            ty::Error(_) | ty::Alias(ty::IsRigid::No, _) | ty::Bound(..) => return true,
             ty::Infer(var) => return self.var_and_ty_may_unify(var, lhs),
 
             // These types only unify with inference variables or their own
@@ -338,12 +338,22 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
 
             ty::Infer(var) => self.var_and_ty_may_unify(var, rhs),
 
+            // Since we ensure that the rhs is not non-rigid alias,
+            // lhs rigid alias can only unify with it if it's a rigid alias of the same kind.
+            ty::Alias(ty::IsRigid::Yes, lhs_alias) => {
+                INSTANTIATE_LHS_WITH_INFER
+                    || match rhs.kind() {
+                        ty::Alias(ty::IsRigid::Yes, rhs_alias) => {
+                            lhs_alias.kind == rhs_alias.kind
+                                && self.args_may_unify_inner(lhs_alias.args, rhs_alias.args, depth)
+                        }
+                        _ => false,
+                    }
+            }
             // As we're walking the whole type, it may encounter projections
             // inside of binders and what not, so we're just going to assume that
-            // projections can unify with other stuff.
-            //
-            // Looking forward to lazy normalization this is the safer strategy anyways.
-            ty::Alias(..) => true,
+            // non-rigid alias can unify with anything.
+            ty::Alias(ty::IsRigid::No, _) => true,
 
             ty::Int(_)
             | ty::Uint(_)
@@ -468,7 +478,7 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
             }
 
             ty::ConstKind::Expr(_)
-            | ty::ConstKind::Unevaluated(_)
+            | ty::ConstKind::Alias(_, _)
             | ty::ConstKind::Error(_)
             | ty::ConstKind::Infer(_)
             | ty::ConstKind::Bound(..) => {
@@ -499,9 +509,7 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
 
             // As we don't necessarily eagerly evaluate constants,
             // they might unify with any value.
-            ty::ConstKind::Expr(_) | ty::ConstKind::Unevaluated(_) | ty::ConstKind::Error(_) => {
-                true
-            }
+            ty::ConstKind::Expr(_) | ty::ConstKind::Alias(_, _) | ty::ConstKind::Error(_) => true,
 
             ty::ConstKind::Infer(_) | ty::ConstKind::Bound(..) => true,
         }

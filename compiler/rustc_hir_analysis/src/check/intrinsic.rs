@@ -631,6 +631,7 @@ pub(crate) fn check_intrinsic_type(
                 vec![Ty::new_imm_ref(tcx, ty::Region::new_bound(tcx, ty::INNERMOST, br), param(0))],
                 Ty::new_projection_from_args(
                     tcx,
+                    ty::IsRigid::No,
                     discriminant_def_id,
                     tcx.mk_args(&[param(0).into()]),
                 ),

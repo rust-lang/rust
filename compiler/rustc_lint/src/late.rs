@@ -18,7 +18,7 @@ use rustc_span::Span;
 use tracing::debug;
 
 use crate::passes::LateLintPassObject;
-use crate::{LateContext, LateLintPass, LintId, LintStore};
+use crate::{LateContext, LateLintPass, LintStore, is_lint_pass_required};
 
 /// Extract the [`LintStore`] from [`Session`].
 ///
@@ -349,31 +349,26 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
         only_module: true,
     };
 
+    let skippable_lints = tcx.skippable_lints(());
+
     // Note: `passes` is often empty. In that case, it's faster to run
     // `builtin_lints` directly rather than bundling it up into the
     // `RuntimeCombinedLateLintPass`.
-    let store = unerased_lint_store(tcx.sess);
-
-    if store.late_module_passes.is_empty() {
-        // If all builtin lints can be skipped, there is no point in running `late_lint_mod_inner`
-        // at all. This happens often for dependencies built with `--cap-lints=allow`.
-        let dont_need_to_run = tcx.lints_that_dont_need_to_run(());
-        let can_skip_lints = builtin_lints
-            .get_lints()
-            .iter()
-            .all(|lint| dont_need_to_run.contains(&LintId::of(lint)));
-        if !can_skip_lints {
+    let mut passes: Vec<_> = unerased_lint_store(tcx.sess)
+        .late_lint_mod_passes
+        .iter()
+        .map(|mk_pass| mk_pass(tcx))
+        .filter(|pass| is_lint_pass_required(skippable_lints, &pass.get_lints()))
+        .collect();
+    let builtin_lints_must_run = is_lint_pass_required(skippable_lints, &builtin_lints.get_lints());
+    if passes.is_empty() {
+        if builtin_lints_must_run {
             late_lint_mod_inner(tcx, module_def_id, context, builtin_lints);
         }
     } else {
-        let builtin_lints = Box::new(builtin_lints) as Box<dyn LateLintPass<'tcx>>;
-        let passes = store
-            .late_module_passes
-            .iter()
-            .map(|mk_pass| (mk_pass)(tcx))
-            .chain(std::iter::once(builtin_lints))
-            .collect::<Vec<_>>();
-
+        if builtin_lints_must_run {
+            passes.push(Box::new(builtin_lints) as Box<dyn LateLintPass<'tcx>>);
+        }
         let pass = RuntimeCombinedLateLintPass { passes };
         late_lint_mod_inner(tcx, module_def_id, context, pass);
     }
@@ -404,18 +399,15 @@ fn late_lint_mod_inner<'tcx, T: LateLintPass<'tcx>>(
 }
 
 fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
-    let lints_that_dont_need_to_run = tcx.lints_that_dont_need_to_run(());
+    let skippable_lints = tcx.skippable_lints(());
 
     // Note: `passes` is often empty after filtering.
-    let mut passes: Vec<_> =
-        unerased_lint_store(tcx.sess).late_passes.iter().map(|mk_pass| (mk_pass)(tcx)).collect();
-    passes.retain(|pass| {
-        let lints = pass.get_lints();
-        // Lintless passes are always in
-        lints.is_empty() ||
-            // If the pass doesn't have a single needed lint, omit it
-            !lints.iter().all(|lint| lints_that_dont_need_to_run.contains(&LintId::of(lint)))
-    });
+    let passes: Vec<_> = unerased_lint_store(tcx.sess)
+        .late_lint_passes
+        .iter()
+        .map(|mk_pass| mk_pass(tcx))
+        .filter(|pass| is_lint_pass_required(skippable_lints, &pass.get_lints()))
+        .collect();
     if passes.is_empty() {
         return;
     }

@@ -502,7 +502,10 @@ pub trait InferCtxtLike: Sized {
         &self,
         prev_entries: Self::OpaqueTypeStorageEntries,
     ) -> Vec<(ty::OpaqueTypeKey<Self::Interner>, <Self::Interner as Interner>::Ty)>;
-    fn opaques_with_sub_unified_hidden_type(&self, ty: TyVid) -> Vec<ty::AliasTy<Self::Interner>>;
+    fn opaques_with_sub_unified_hidden_type(
+        &self,
+        ty: TyVid,
+    ) -> Vec<ty::OpaqueAliasTy<Self::Interner>>;
 
     fn register_hidden_type_in_storage(
         &self,

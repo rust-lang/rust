@@ -2745,6 +2745,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // The expected type for the deref pat's inner pattern is `<expected as Deref>::Target`.
         let target_ty = Ty::new_projection(
             tcx,
+            ty::IsRigid::No,
             tcx.require_lang_item(hir::LangItem::DerefTarget, span),
             [source_ty],
         );

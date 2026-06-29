@@ -361,7 +361,7 @@ macro_rules! impl_Display {
 
         #[cfg(feature = "optimize_for_size")]
         fn ${concat($fmt_fn, _small)}(n: $T, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            const MAX_DEC_N: usize = $T::MAX.ilog(10) as usize + 1;
+            const MAX_DEC_N: usize = $T::MAX.ilog10() as usize + 1;
             let mut buf = [MaybeUninit::<u8>::uninit(); MAX_DEC_N];
 
             let offset = ${concat($fmt_fn, _in_buf_small)}(n, &mut buf);

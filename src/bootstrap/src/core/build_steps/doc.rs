@@ -1392,6 +1392,13 @@ impl Step for RustcBook {
     /// in the "md-doc" directory in the build output directory. Then
     /// "rustbook" is used to convert it to HTML.
     fn run(self, builder: &Builder<'_>) {
+        // FIXME: Temporary workaround for https://github.com/rust-lang/rust/issues/158378
+        #[cfg(not(test))] // So this check doesn't affect the bootstrap tests
+        if self.target == "i686-pc-windows-msvc" {
+            eprintln!("WARNING: Skipping rustc book build to work around #158378");
+            return;
+        }
+
         let out_base = builder.md_doc_out(self.target).join("rustc");
         t!(fs::create_dir_all(&out_base));
         let out_listing = out_base.join("src/lints");

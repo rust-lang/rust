@@ -24,7 +24,7 @@ mod trait_goals;
 use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 pub use rustc_type_ir::solve::*;
-use rustc_type_ir::{self as ty, Interner, TyVid, TypingMode};
+use rustc_type_ir::{self as ty, Interner, TyVid};
 use tracing::instrument;
 
 pub use self::eval_ctxt::{
@@ -171,7 +171,7 @@ where
     ) -> QueryResultOrRerunNonErased<I> {
         match self.well_formed_goals(goal.param_env, goal.predicate) {
             Some(goals) => {
-                self.add_goals(GoalSource::Misc, goals);
+                self.add_goals(GoalSource::Misc, goals)?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
             None => self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS),
@@ -196,7 +196,18 @@ where
         Goal { param_env, predicate: ct }: Goal<I, I::Const>,
     ) -> QueryResultOrRerunNonErased<I> {
         match ct.kind() {
-            ty::ConstKind::Unevaluated(uv) => {
+            ty::ConstKind::Alias(ty::IsRigid::Yes, _)
+            | ty::ConstKind::Placeholder(_)
+            | ty::ConstKind::Value(_)
+            | ty::ConstKind::Error(_) => {
+                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            }
+
+            ty::ConstKind::Infer(_) => {
+                self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+            }
+
+            ty::ConstKind::Alias(ty::IsRigid::No, alias_const) => {
                 // We never return `NoSolution` here as `evaluate_const` emits an
                 // error itself when failing to evaluate, so emitting an additional fulfillment
                 // error in that case is unnecessary noise. This may change in the future once
@@ -205,18 +216,13 @@ where
 
                 // FIXME(generic_const_exprs): Implement handling for generic
                 // const expressions here.
-                if let Some(_normalized) = self.evaluate_const(param_env, uv)? {
+                if let Some(_normalized) = self.evaluate_const(param_env, alias_const)? {
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 } else {
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 }
             }
-            ty::ConstKind::Infer(_) => {
-                self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
-            }
-            ty::ConstKind::Placeholder(_) | ty::ConstKind::Value(_) | ty::ConstKind::Error(_) => {
-                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-            }
+
             // We can freely ICE here as:
             // - `Param` gets replaced with a placeholder during canonicalization
             // - `Bound` cannot exist as we don't have a binder around the self Type
@@ -246,7 +252,12 @@ where
                     .evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                     .map_err(Into::into);
             }
-            ty::ConstKind::Unevaluated(uv) => uv.type_of(self.cx()).skip_norm_wip(),
+            ty::ConstKind::Alias(ty::IsRigid::Yes, alias_const) => {
+                alias_const.type_of(self.cx()).skip_norm_wip()
+            }
+            ty::ConstKind::Alias(ty::IsRigid::No, _) => unimplemented!(
+                "non-rigid unevaluated constant for compute_const_arg_has_type_goal: {ct:?}"
+            ),
             ty::ConstKind::Expr(_) => unimplemented!(
                 "`feature(generic_const_exprs)` is not supported in the new trait solver"
             ),
@@ -366,8 +377,12 @@ where
         param_env: I::ParamEnv,
         term: I::Term,
     ) -> Result<I::Term, NoSolutionOrRerunNonErased> {
+        if !self.cx().renormalize_rigid_aliases() && !term.is_non_rigid_alias() {
+            return Ok(term);
+        }
+
         if let Some(alias) = term.to_alias_term() {
-            let normalized_term = self.next_term_infer_of_kind(term);
+            let normalized_term = self.next_term_infer_of_alias_kind(alias);
             let projection_goal = Goal::new(
                 self.cx(),
                 param_env,
@@ -375,29 +390,11 @@ where
             );
             // We normalize the self type to be able to relate it with
             // types from candidates.
-            self.add_goal(GoalSource::TypeRelating, projection_goal);
+            self.add_goal(GoalSource::TypeRelating, projection_goal)?;
             self.try_evaluate_added_goals()?;
             Ok(self.resolve_vars_if_possible(normalized_term))
         } else {
             Ok(term)
-        }
-    }
-
-    fn opaque_type_is_rigid(&self, def_id: I::OpaqueTyId) -> bool {
-        match self
-            .typing_mode()
-            // Caller should handle erased mode
-            .assert_not_erased()
-        {
-            // Opaques are never rigid outside of analysis mode.
-            TypingMode::Coherence | TypingMode::PostAnalysis | TypingMode::Codegen => false,
-            // During analysis, opaques are rigid unless they may be defined by
-            // the current body.
-            TypingMode::Typeck { defining_opaque_types_and_generators: non_rigid_opaques }
-            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: non_rigid_opaques }
-            | TypingMode::PostBorrowck { defined_opaque_types: non_rigid_opaques } => {
-                !def_id.as_local().is_some_and(|def_id| non_rigid_opaques.contains(&def_id.into()))
-            }
         }
     }
 }

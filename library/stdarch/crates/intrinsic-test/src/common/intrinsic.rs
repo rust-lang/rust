@@ -1,22 +1,23 @@
-use crate::common::constraint::Constraint;
-
 use super::argument::ArgumentList;
-use super::intrinsic_helpers::IntrinsicTypeDefinition;
+use crate::common::{SupportedArchitecture, constraint::Constraint};
 
 /// An intrinsic
 #[derive(Debug, PartialEq, Clone)]
-pub struct Intrinsic<T: IntrinsicTypeDefinition> {
+pub struct Intrinsic<A: SupportedArchitecture> {
     /// The function name of this intrinsic.
     pub name: String,
 
     /// Any arguments for this intrinsic.
-    pub arguments: ArgumentList<T>,
+    pub arguments: ArgumentList<A>,
 
     /// The return type of this intrinsic.
-    pub results: T,
+    pub results: A::Type,
 
     /// Any architecture-specific tags.
     pub arch_tags: Vec<String>,
+
+    /// Specific extension that the intrinsic is from
+    pub extension: String,
 }
 
 /// Invokes `f` for each combination of the values in the constraint ranges.
@@ -40,7 +41,7 @@ fn recurse_specializations<'a, E>(
     }
 }
 
-impl<T: IntrinsicTypeDefinition> Intrinsic<T> {
+impl<A: SupportedArchitecture> Intrinsic<A> {
     /// Invokes `f` for "specialisation" of the intrinsic - a specific instantiation of the
     /// constant generics of the intrinsic. `f` takes a slice where the `i`th element corresponds
     /// to the value of the `i`th const generic argument of the intrinsic.

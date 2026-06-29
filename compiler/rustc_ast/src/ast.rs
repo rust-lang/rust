@@ -3059,13 +3059,15 @@ impl FnDecl {
     }
 
     /// The marker index for "no splatted arguments".
+    /// Higher values are also not supported, for performance reasons.
+    ///
     /// Must have the same value as `FnSigKind::NO_SPLATTED_ARG_INDEX` and `FnDeclFlags::NO_SPLATTED_ARG_INDEX`.
-    pub const NO_SPLATTED_ARG_INDEX: u16 = u16::MAX;
+    pub const NO_SPLATTED_ARG_INDEX: u8 = u8::MAX;
 
     /// Returns a splatted argument index, if any are present.
-    pub fn splatted(&self) -> Option<u16> {
+    pub fn splatted(&self) -> Option<u8> {
         self.inputs.iter().enumerate().find_map(|(index, arg)| {
-            if index == Self::NO_SPLATTED_ARG_INDEX as usize {
+            if index >= usize::from(Self::NO_SPLATTED_ARG_INDEX) {
                 // AST validation has already checked the splatted argument index is valid, so just
                 // ignore invalid indexes here.
                 None
@@ -3073,7 +3075,7 @@ impl FnDecl {
                 arg.attrs
                     .iter()
                     .any(|attr| attr.has_name(sym::splat))
-                    .then_some(u16::try_from(index).unwrap())
+                    .then_some(u8::try_from(index).unwrap())
             }
         })
     }

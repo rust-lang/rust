@@ -115,9 +115,29 @@ where
             panic!("We do not expect to encounter `Fresh` variables in the new solver")
         }
 
-        (other, ty::Alias(..)) | (ty::Alias(..), other) if infcx.next_trait_solver() => {
-            match relation.structurally_relate_aliases() {
-                StructurallyRelateAliases::Yes => match other {
+        (ty::Alias(is_rigid_a, _), ty::Alias(is_rigid_b, _)) if infcx.next_trait_solver() => {
+            match (is_rigid_a, is_rigid_b) {
+                (ty::IsRigid::Yes, ty::IsRigid::Yes) => structurally_relate_tys(relation, a, b),
+                _ => match relation.structurally_relate_aliases() {
+                    StructurallyRelateAliases::Yes => structurally_relate_tys(relation, a, b),
+                    StructurallyRelateAliases::No => {
+                        relation.register_alias_relate_predicate(a, b);
+                        Ok(a)
+                    }
+                },
+            }
+        }
+
+        (other, ty::Alias(is_rigid, _)) | (ty::Alias(is_rigid, _), other)
+            if infcx.next_trait_solver() =>
+        {
+            if let StructurallyRelateAliases::No = relation.structurally_relate_aliases()
+                && is_rigid == ty::IsRigid::No
+            {
+                relation.register_alias_relate_predicate(a, b);
+                Ok(a)
+            } else {
+                match other {
                     ty::Infer(infer_ty) => match infer_ty {
                         // Normally, we shouldn't be combining an infer ty with an alias here. But
                         // when we evaluate a `Projection(assoc_ty, expected)` goal, we normalize
@@ -139,10 +159,6 @@ where
                         | ty::InferTy::FreshFloatTy(_) => unreachable!(),
                     },
                     _ => structurally_relate_tys(relation, a, b),
-                },
-                StructurallyRelateAliases::No => {
-                    relation.register_alias_relate_predicate(a, b);
-                    Ok(a)
                 }
             }
         }
@@ -150,8 +166,8 @@ where
         // All other cases of inference are errors
         (ty::Infer(_), _) | (_, ty::Infer(_)) => Err(TypeError::Sorts(ExpectedFound::new(a, b))),
 
-        (ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }), _)
-        | (_, ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. })) => {
+        (ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }), _)
+        | (_, ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. })) => {
             assert!(!infcx.next_trait_solver());
             match infcx.typing_mode_raw().assert_not_erased() {
                 // During coherence, opaque types should be treated as *possibly*
@@ -223,7 +239,13 @@ where
             Ok(a)
         }
 
-        (ty::ConstKind::Unevaluated(..), _) | (_, ty::ConstKind::Unevaluated(..))
+        (ty::ConstKind::Alias(ty::IsRigid::Yes, _), ty::ConstKind::Alias(ty::IsRigid::Yes, _))
+            if (infcx.cx().features().generic_const_exprs() || infcx.next_trait_solver()) =>
+        {
+            structurally_relate_consts(relation, a, b)
+        }
+
+        (ty::ConstKind::Alias(..), _) | (_, ty::ConstKind::Alias(..))
             if infcx.cx().features().generic_const_exprs() || infcx.next_trait_solver() =>
         {
             match relation.structurally_relate_aliases() {

@@ -1,12 +1,12 @@
 use std::fmt;
 
+#[cfg(feature = "nightly")]
+use crate::{AliasConst, ClosureKind};
 use crate::{
     AliasTerm, AliasTy, Binder, CoercePredicate, ExistentialProjection, ExistentialTraitRef, FnSig,
     HostEffectPredicate, Interner, NormalizesTo, OutlivesPredicate, PatternKind, Placeholder,
     ProjectionPredicate, SubtypePredicate, TraitPredicate, TraitRef,
 };
-#[cfg(feature = "nightly")]
-use crate::{ClosureKind, UnevaluatedConst};
 
 pub trait IrPrint<T> {
     fn print(t: &T, fmt: &mut fmt::Formatter<'_>) -> fmt::Result;
@@ -100,7 +100,7 @@ mod into_diag_arg_impls {
         }
     }
 
-    impl<I: Interner> IntoDiagArg for UnevaluatedConst<I> {
+    impl<I: Interner> IntoDiagArg for AliasConst<I> {
         fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> DiagArgValue {
             format!("{self:?}").into_diag_arg(path)
         }

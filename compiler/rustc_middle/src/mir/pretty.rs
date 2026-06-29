@@ -218,7 +218,7 @@ impl<'a, 'tcx> MirDumper<'a, 'tcx> {
         // All drop shims have the same DefId, so we have to add the type
         // to get unique file names.
         let shim_disambiguator = match source.instance {
-            ty::InstanceKind::DropGlue(_, Some(ty)) => {
+            ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, Some(ty))) => {
                 // Unfortunately, pretty-printed types are not very filename-friendly.
                 // We do some filtering.
                 let mut s = ".".to_owned();
@@ -229,7 +229,7 @@ impl<'a, 'tcx> MirDumper<'a, 'tcx> {
                 }));
                 s
             }
-            ty::InstanceKind::AsyncDropGlueCtorShim(_, ty) => {
+            ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtor(_, ty)) => {
                 let mut s = ".".to_owned();
                 s.extend(ty.to_string().chars().filter_map(|c| match c {
                     ' ' => None,
@@ -238,7 +238,7 @@ impl<'a, 'tcx> MirDumper<'a, 'tcx> {
                 }));
                 s
             }
-            ty::InstanceKind::AsyncDropGlue(_, ty) => {
+            ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(_, ty)) => {
                 let ty::Coroutine(_, args) = ty.kind() else {
                     bug!();
                 };
@@ -251,7 +251,7 @@ impl<'a, 'tcx> MirDumper<'a, 'tcx> {
                 }));
                 s
             }
-            ty::InstanceKind::FutureDropPollShim(_, proxy_cor, impl_cor) => {
+            ty::InstanceKind::Shim(ty::ShimKind::FutureDropPoll(_, proxy_cor, impl_cor)) => {
                 let mut s = ".".to_owned();
                 s.extend(proxy_cor.to_string().chars().filter_map(|c| match c {
                     ' ' => None,
@@ -1491,16 +1491,14 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
             let val = match const_ {
                 Const::Ty(_, ct) => match ct.kind() {
                     ty::ConstKind::Param(p) => format!("ty::Param({p})"),
-                    ty::ConstKind::Unevaluated(uv) => {
-                        let kind = match uv.kind {
-                            ty::UnevaluatedConstKind::Projection { def_id }
-                            | ty::UnevaluatedConstKind::Inherent { def_id }
-                            | ty::UnevaluatedConstKind::Free { def_id }
-                            | ty::UnevaluatedConstKind::Anon { def_id } => {
-                                self.tcx.def_path_str(def_id)
-                            }
+                    ty::ConstKind::Alias(_, alias_const) => {
+                        let kind = match alias_const.kind {
+                            ty::AliasConstKind::Projection { def_id }
+                            | ty::AliasConstKind::Inherent { def_id }
+                            | ty::AliasConstKind::Free { def_id }
+                            | ty::AliasConstKind::Anon { def_id } => self.tcx.def_path_str(def_id),
                         };
-                        format!("ty::Unevaluated({}, {:?})", kind, uv.args)
+                        format!("ty::AliasConst({}, {:?})", kind, alias_const.args)
                     }
                     ty::ConstKind::Value(cv) => {
                         format!("ty::Valtree({})", fmt_valtree(&cv))

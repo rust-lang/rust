@@ -116,11 +116,42 @@ impl<'infcx, 'tcx> BorrowckDiagnosticsBuffer<'infcx, 'tcx> {
     pub(crate) fn buffer_non_error(&mut self, diag: Diag<'infcx, ()>) {
         self.buffered_diags.push(BufferedDiag::NonError(diag));
     }
+    pub(crate) fn buffer_error(&mut self, diag: Diag<'infcx>) {
+        self.buffered_diags.push(BufferedDiag::Error(diag));
+    }
+
+    pub(crate) fn emit_errors(&mut self) -> Option<ErrorGuaranteed> {
+        let mut res = None;
+
+        // Buffer any move errors that we collected and de-duplicated.
+        for (_, (_, diag)) in std::mem::take(&mut self.buffered_move_errors) {
+            // We have already set tainted for this error, so just buffer it.
+            self.buffer_error(diag);
+        }
+        for (_, (mut diag, count)) in std::mem::take(&mut self.buffered_mut_errors) {
+            if count > 10 {
+                diag.note(format!("...and {} other attempted mutable borrows", count - 10));
+            }
+            self.buffer_error(diag);
+        }
+
+        if !self.buffered_diags.is_empty() {
+            self.buffered_diags.sort_by_key(|buffered_diag| buffered_diag.sort_span());
+            for buffered_diag in self.buffered_diags.drain(..) {
+                match buffered_diag {
+                    BufferedDiag::Error(diag) => res = Some(diag.emit()),
+                    BufferedDiag::NonError(diag) => diag.emit(),
+                }
+            }
+        }
+
+        res
+    }
 }
 
 impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     pub(crate) fn buffer_error(&mut self, diag: Diag<'infcx>) {
-        self.diags_buffer.buffered_diags.push(BufferedDiag::Error(diag));
+        self.diags_buffer.buffer_error(diag);
     }
 
     pub(crate) fn buffer_non_error(&mut self, diag: Diag<'infcx, ()>) {
@@ -150,34 +181,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
     pub(crate) fn buffer_mut_error(&mut self, span: Span, diag: Diag<'infcx>, count: usize) {
         self.diags_buffer.buffered_mut_errors.insert(span, (diag, count));
-    }
-
-    pub(crate) fn emit_errors(&mut self) -> Option<ErrorGuaranteed> {
-        let mut res = self.infcx.tainted_by_errors();
-
-        // Buffer any move errors that we collected and de-duplicated.
-        for (_, (_, diag)) in std::mem::take(&mut self.diags_buffer.buffered_move_errors) {
-            // We have already set tainted for this error, so just buffer it.
-            self.buffer_error(diag);
-        }
-        for (_, (mut diag, count)) in std::mem::take(&mut self.diags_buffer.buffered_mut_errors) {
-            if count > 10 {
-                diag.note(format!("...and {} other attempted mutable borrows", count - 10));
-            }
-            self.buffer_error(diag);
-        }
-
-        if !self.diags_buffer.buffered_diags.is_empty() {
-            self.diags_buffer.buffered_diags.sort_by_key(|buffered_diag| buffered_diag.sort_span());
-            for buffered_diag in self.diags_buffer.buffered_diags.drain(..) {
-                match buffered_diag {
-                    BufferedDiag::Error(diag) => res = Some(diag.emit()),
-                    BufferedDiag::NonError(diag) => diag.emit(),
-                }
-            }
-        }
-
-        res
     }
 
     pub(crate) fn has_buffered_diags(&self) -> bool {

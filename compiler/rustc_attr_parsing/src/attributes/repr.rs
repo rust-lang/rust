@@ -63,7 +63,7 @@ impl CombineAttributeParser for ReprParser {
         reprs
     }
 
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::ManuallyChecked;
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::ManuallyChecked;
     const STABILITY: AttributeStability = AttributeStability::Stable;
 }
 
@@ -306,7 +306,7 @@ impl RustcAlignParser {
 impl AttributeParser for RustcAlignParser {
     const ATTRIBUTES: AcceptMapping<Self> =
         &[(Self::PATH, Self::TEMPLATE, unstable!(fn_align), Self::parse)];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
@@ -336,7 +336,7 @@ impl RustcAlignStaticParser {
 impl AttributeParser for RustcAlignStaticParser {
     const ATTRIBUTES: AcceptMapping<Self> =
         &[(Self::PATH, Self::TEMPLATE, unstable!(static_align), Self::parse)];
-    const ALLOWED_TARGETS: AllowedTargets =
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowList(&[Allow(Target::Static), Allow(Target::ForeignStatic)]);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {

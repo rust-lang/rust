@@ -57,9 +57,6 @@
 //!
 //! [`Once`]: crate::sync::Once
 
-// If we are not unwinding, `PoisonError` is uninhabited.
-#![cfg_attr(not(panic = "unwind"), expect(unreachable_code))]
-
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::condvar::Condvar;
 #[unstable(feature = "mapped_lock_guards", issue = "117108")]

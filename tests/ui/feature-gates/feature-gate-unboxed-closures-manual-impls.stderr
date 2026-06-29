@@ -87,7 +87,7 @@ LL | impl FnMut<()> for Bar {
    |
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
-error[E0277]: expected a `FnMut()` closure, found `Foo`
+error[E0277]: expected an `FnMut()` closure, found `Foo`
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:9:17
    |
 LL | impl Fn<()> for Foo {
@@ -161,7 +161,7 @@ help: change the self-receiver type to match the trait
 LL |     extern "rust-call" fn call_mut(&mut self, args: ()) -> () {}
    |                                     +++
 
-error[E0277]: expected a `FnOnce()` closure, found `Bar`
+error[E0277]: expected an `FnOnce()` closure, found `Bar`
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:26:20
    |
 LL | impl FnMut<()> for Bar {

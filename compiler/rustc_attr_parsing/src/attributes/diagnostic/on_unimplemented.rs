@@ -45,7 +45,7 @@ impl AttributeParser for OnUnimplementedParser {
             },
         ),
     ];
-    const ALLOWED_TARGETS: AllowedTargets =
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::Trait)]);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {

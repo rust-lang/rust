@@ -14,7 +14,7 @@ use rustc_middle::middle::stability::DeprecationEntry;
 use rustc_middle::queries::ExternProviders;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::fast_reject::SimplifiedType;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
 use rustc_middle::util::Providers;
 use rustc_serialize::Decoder;
 use rustc_session::StableCrateId;
@@ -39,10 +39,11 @@ impl<T> ProcessQueryValue<'_, T> for T {
     }
 }
 
-impl<'tcx, T> ProcessQueryValue<'tcx, ty::EarlyBinder<'tcx, T>> for T {
+// The `TypeVisitable` bound here is merely for `EarlyBinder`'s rigidness check.
+impl<'tcx, T: TypeVisitable<TyCtxt<'tcx>>> ProcessQueryValue<'tcx, ty::EarlyBinder<'tcx, T>> for T {
     #[inline(always)]
     fn process_decoded(self, _tcx: TyCtxt<'_>, _err: impl Fn() -> !) -> ty::EarlyBinder<'tcx, T> {
-        ty::EarlyBinder::bind(self)
+        ty::EarlyBinder::bind_no_rigid_aliases(self)
     }
 }
 
@@ -555,15 +556,15 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             )
         },
         crates: |tcx, ()| {
-            // The list of loaded crates is now frozen in query cache,
-            // so make sure cstore is not mutably accessed from here on.
-            tcx.untracked().cstore.freeze();
+            // The loaded-crate list is now frozen in the query cache; stop
+            // mutating the cstore and stable crate id map from here on.
+            tcx.untracked().freeze_cstore();
             tcx.arena.alloc_from_iter(CStore::from_tcx(tcx).iter_crate_data().map(|(cnum, _)| cnum))
         },
         used_crates: |tcx, ()| {
-            // The list of loaded crates is now frozen in query cache,
-            // so make sure cstore is not mutably accessed from here on.
-            tcx.untracked().cstore.freeze();
+            // The loaded-crate list is now frozen in the query cache; stop
+            // mutating the cstore and stable crate id map from here on.
+            tcx.untracked().freeze_cstore();
             tcx.arena.alloc_from_iter(
                 CStore::from_tcx(tcx)
                     .iter_crate_data()

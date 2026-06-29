@@ -1278,7 +1278,12 @@ pub fn unexpected_hidden_region_diagnostic<'a, 'tcx>(
     let tcx = infcx.tcx;
     let mut err = infcx.dcx().create_err(diagnostics::OpaqueCapturesLifetime {
         span,
-        opaque_ty: Ty::new_opaque(tcx, opaque_ty_key.def_id.to_def_id(), opaque_ty_key.args),
+        opaque_ty: Ty::new_opaque(
+            tcx,
+            ty::IsRigid::No,
+            opaque_ty_key.def_id.to_def_id(),
+            opaque_ty_key.args,
+        ),
         opaque_ty_span: tcx.def_span(opaque_ty_key.def_id),
     });
 

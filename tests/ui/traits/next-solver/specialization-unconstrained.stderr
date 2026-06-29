@@ -2,8 +2,12 @@ error[E0271]: type mismatch resolving `<u32 as Default>::Id == ()`
   --> $DIR/specialization-unconstrained.rs:19:12
    |
 LL |     test::<u32, ()>();
-   |            ^^^ types differ
+   |            ^^^ expected `()`, found associated type
    |
+   = note:    expected unit type `()`
+           found associated type `<u32 as Default>::Id`
+   = help: consider constraining the associated type `<u32 as Default>::Id` to `()`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 note: required by a bound in `test`
   --> $DIR/specialization-unconstrained.rs:16:20
    |

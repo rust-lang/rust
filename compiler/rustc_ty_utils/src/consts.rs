@@ -70,12 +70,9 @@ fn recurse_build<'tcx>(
         }
         &ExprKind::ZstLiteral { user_ty: _ } => ty::Const::zero_sized(tcx, node.ty),
         &ExprKind::NamedConst { def_id, args, user_ty: _ } => {
-            let uneval = ty::UnevaluatedConst::new(
-                tcx,
-                ty::UnevaluatedConstKind::new_from_def_id(tcx, def_id),
-                args,
-            );
-            ty::Const::new_unevaluated(tcx, uneval)
+            let uneval =
+                ty::AliasConst::new(tcx, ty::AliasConstKind::new_from_def_id(tcx, def_id), args);
+            ty::Const::new_alias(tcx, ty::IsRigid::No, uneval)
         }
         ExprKind::ConstParam { param, .. } => ty::Const::new_param(tcx, *param),
 
@@ -385,7 +382,7 @@ fn thir_abstract_const<'tcx>(
 
     let root_span = body.exprs[body_id].span;
 
-    Ok(Some(ty::EarlyBinder::bind(recurse_build(tcx, body, body_id, root_span)?)))
+    Ok(Some(ty::EarlyBinder::bind(tcx, recurse_build(tcx, body, body_id, root_span)?)))
 }
 
 pub(crate) fn provide(providers: &mut Providers) {

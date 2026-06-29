@@ -1775,8 +1775,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             // const generics. Of course, `Struct` and `Enum` may contain ty params, too, but the
             // benefits of including them here outweighs the small number of false positives.
             Some(Res::Def(DefKind::Struct | DefKind::Enum, _))
-                if self.r.tcx.features().adt_const_params()
-                    || self.r.tcx.features().min_adt_const_params() =>
+                if self.r.features.adt_const_params() || self.r.features.min_adt_const_params() =>
             {
                 Applicability::MaybeIncorrect
             }
@@ -3977,7 +3976,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 })
                 .emit(),
             NoConstantGenericsReason::NonTrivialConstArg => {
-                assert!(!self.r.tcx.features().generic_const_exprs());
+                assert!(!self.r.features.generic_const_exprs());
                 self.r
                     .dcx()
                     .create_err(diagnostics::ParamInNonTrivialAnonConst {
@@ -3985,8 +3984,8 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         name: lifetime_ref.ident.name,
                         param_kind: diagnostics::ParamKindInNonTrivialAnonConst::Lifetime,
                         help: self.r.tcx.sess.is_nightly_build(),
-                        is_gca: self.r.tcx.features().generic_const_args(),
-                        help_gca: self.r.tcx.features().generic_const_args(),
+                        is_gca: self.r.features.generic_const_args(),
+                        help_gca: self.r.features.generic_const_args(),
                     })
                     .emit()
             }

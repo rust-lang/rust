@@ -4,7 +4,7 @@ use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::limit::Limit;
 use rustc_middle::mir::TerminatorKind;
-use rustc_middle::ty::{self, GenericArgsRef, InstanceKind, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, GenericArgsRef, InstanceKind, ShimKind, TyCtxt, TypeVisitableExt};
 use rustc_span::sym;
 use tracing::{instrument, trace};
 
@@ -26,24 +26,24 @@ fn should_recurse<'tcx>(tcx: TyCtxt<'tcx>, callee: ty::Instance<'tcx>) -> bool {
         // These have MIR and if that MIR is inlined, instantiated and then inlining is run
         // again, a function item can end up getting inlined. Thus we'll be able to cause
         // a cycle that way
-        InstanceKind::VTableShim(_)
-        | InstanceKind::ReifyShim(..)
-        | InstanceKind::FnPtrShim(..)
-        | InstanceKind::ClosureOnceShim { .. }
-        | InstanceKind::ConstructCoroutineInClosureShim { .. }
-        | InstanceKind::ThreadLocalShim { .. }
-        | InstanceKind::CloneShim(..) => {}
+        InstanceKind::Shim(ShimKind::VTable(_))
+        | InstanceKind::Shim(ShimKind::Reify(..))
+        | InstanceKind::Shim(ShimKind::FnPtr(..))
+        | InstanceKind::Shim(ShimKind::ClosureOnce { .. })
+        | InstanceKind::Shim(ShimKind::ConstructCoroutineInClosure { .. })
+        | InstanceKind::Shim(ShimKind::ThreadLocal { .. })
+        | InstanceKind::Shim(ShimKind::Clone(..)) => {}
 
         // This shim does not call any other functions, thus there can be no recursion.
-        InstanceKind::FnPtrAddrShim(..) => return false,
+        InstanceKind::Shim(ShimKind::FnPtrAddr(..)) => return false,
 
         // FIXME: A not fully instantiated drop shim can cause ICEs if one attempts to
         // have its MIR built. Likely oli-obk just screwed up the `ParamEnv`s, so this
         // needs some more analysis.
-        InstanceKind::DropGlue(..)
-        | InstanceKind::FutureDropPollShim(..)
-        | InstanceKind::AsyncDropGlue(..)
-        | InstanceKind::AsyncDropGlueCtorShim(..) => {
+        InstanceKind::Shim(ShimKind::DropGlue(..))
+        | InstanceKind::Shim(ShimKind::FutureDropPoll(..))
+        | InstanceKind::Shim(ShimKind::AsyncDropGlue(..))
+        | InstanceKind::Shim(ShimKind::AsyncDropGlueCtor(..)) => {
             if callee.has_param() {
                 return false;
             }
@@ -76,7 +76,7 @@ fn process<'tcx>(
         let Ok(args) = caller.try_instantiate_mir_and_normalize_erasing_regions(
             tcx,
             typing_env,
-            ty::EarlyBinder::bind(args),
+            ty::EarlyBinder::bind(tcx, args),
         ) else {
             trace!(?caller, ?typing_env, ?args, "cannot normalize, skipping");
             continue;

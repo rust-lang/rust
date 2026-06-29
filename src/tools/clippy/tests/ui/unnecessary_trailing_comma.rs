@@ -26,9 +26,9 @@ fn simple() {
     println!{"Foo{{,}}", }; //~ unnecessary_trailing_comma
     println!{"Foo(,", }; //~ unnecessary_trailing_comma
     println!{"Foo[,", }; //~ unnecessary_trailing_comma
+    println!(concat!("Foo", "=", "{}"), 1,);  //~ unnecessary_trailing_comma
 
     // This should eventually work, but requires more work
-    println!(concat!("Foo", "=", "{}"), 1,);
     println!("No params", /*"a,){ */);
     println!("No params" /* "a,){*/, /*"a,){ */);
 

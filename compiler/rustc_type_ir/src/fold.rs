@@ -554,3 +554,66 @@ where
         if c.has_regions() { c.super_fold_with(self) } else { c }
     }
 }
+
+pub fn set_aliases_to_non_rigid<I: Interner, T>(cx: I, value: T) -> ty::Unnormalized<I, T>
+where
+    T: TypeFoldable<I>,
+{
+    if !value.has_rigid_aliases() {
+        return ty::Unnormalized::new(value);
+    }
+
+    let mut folder = RigidnessFolder { cx };
+    ty::Unnormalized::new(value.fold_with(&mut folder))
+}
+
+struct RigidnessFolder<I: Interner> {
+    cx: I,
+}
+
+impl<I: Interner> TypeFolder<I> for RigidnessFolder<I> {
+    #[inline]
+    fn cx(&self) -> I {
+        self.cx
+    }
+
+    fn fold_binder<T: TypeFoldable<I>>(&mut self, t: ty::Binder<I, T>) -> ty::Binder<I, T> {
+        if t.has_rigid_aliases() { t.super_fold_with(self) } else { t }
+    }
+
+    fn fold_ty(&mut self, t: I::Ty) -> I::Ty {
+        if !t.has_rigid_aliases() {
+            return t;
+        }
+
+        match t.kind() {
+            ty::Alias(ty::IsRigid::Yes, alias_ty) => {
+                let alias_ty = alias_ty.fold_with(self);
+                I::Ty::new_alias(self.cx(), ty::IsRigid::No, alias_ty)
+            }
+            _ => t.super_fold_with(self),
+        }
+    }
+
+    fn fold_const(&mut self, c: I::Const) -> I::Const {
+        if !c.has_rigid_aliases() {
+            return c;
+        }
+
+        match c.kind() {
+            ty::ConstKind::Alias(ty::IsRigid::Yes, alias_const) => {
+                let alias_const = alias_const.fold_with(self);
+                I::Const::new_alias(self.cx, ty::IsRigid::No, alias_const)
+            }
+            _ => c.super_fold_with(self),
+        }
+    }
+
+    fn fold_predicate(&mut self, p: I::Predicate) -> I::Predicate {
+        if p.has_rigid_aliases() { p.super_fold_with(self) } else { p }
+    }
+
+    fn fold_clauses(&mut self, c: I::Clauses) -> I::Clauses {
+        if c.has_rigid_aliases() { c.super_fold_with(self) } else { c }
+    }
+}

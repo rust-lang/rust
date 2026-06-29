@@ -102,7 +102,7 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
                         //
                         // Here we want to add an explicit `where <T as Iterator>::Item: 'a`
                         // or `Opaque<T>: 'a` depending on the alias kind.
-                        let ty = alias_ty.to_ty(tcx);
+                        let ty = alias_ty.to_ty(tcx, ty::IsRigid::No);
                         required_predicates
                             .entry(ty::OutlivesPredicate(ty.into(), outlived_region))
                             .or_insert(span);

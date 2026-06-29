@@ -9,37 +9,57 @@ mod impls;
 
 intrinsics! {
     #[mem_builtin]
-    pub unsafe extern "C" fn memcpy(dest: *mut u8, src: *const u8, n: usize) -> *mut u8 {
-        impls::copy_forward(dest, src, n);
+    pub unsafe extern "C" fn memcpy(
+        dest: *mut core::ffi::c_void,
+        src: *const core::ffi::c_void,
+        n: usize
+    ) -> *mut core::ffi::c_void {
+        impls::copy_forward(dest.cast(), src.cast(), n);
         dest
     }
 
     #[mem_builtin]
-    pub unsafe extern "C" fn memmove(dest: *mut u8, src: *const u8, n: usize) -> *mut u8 {
+    pub unsafe extern "C" fn memmove(
+        dest: *mut core::ffi::c_void,
+        src: *const core::ffi::c_void,
+        n: usize
+    ) -> *mut core::ffi::c_void {
         let delta = (dest as usize).wrapping_sub(src as usize);
         if delta >= n {
             // We can copy forwards because either dest is far enough ahead of src,
             // or src is ahead of dest (and delta overflowed).
-            impls::copy_forward(dest, src, n);
+            impls::copy_forward(dest.cast(), src.cast(), n);
         } else {
-            impls::copy_backward(dest, src, n);
+            impls::copy_backward(dest.cast(), src.cast(), n);
         }
         dest
     }
 
     #[mem_builtin]
-    pub unsafe extern "C" fn memset(s: *mut u8, c: core::ffi::c_int, n: usize) -> *mut u8 {
-        impls::set_bytes(s, c as u8, n);
+    pub unsafe extern "C" fn memset(
+        s: *mut core::ffi::c_void,
+        c: core::ffi::c_int,
+        n: usize
+    ) -> *mut core::ffi::c_void {
+        impls::set_bytes(s.cast(), c as u8, n);
         s
     }
 
     #[mem_builtin]
-    pub unsafe extern "C" fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> core::ffi::c_int {
-        impls::compare_bytes(s1, s2, n)
+    pub unsafe extern "C" fn memcmp(
+        s1: *const core::ffi::c_void,
+        s2: *const core::ffi::c_void,
+        n: usize
+    ) -> core::ffi::c_int {
+        impls::compare_bytes(s1.cast(), s2.cast(), n)
     }
 
     #[mem_builtin]
-    pub unsafe extern "C" fn bcmp(s1: *const u8, s2: *const u8, n: usize) -> core::ffi::c_int {
+    pub unsafe extern "C" fn bcmp(
+        s1: *const core::ffi::c_void,
+        s2: *const core::ffi::c_void,
+        n: usize
+    ) -> core::ffi::c_int {
         memcmp(s1, s2, n)
     }
 

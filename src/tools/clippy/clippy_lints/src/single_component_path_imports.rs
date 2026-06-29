@@ -146,16 +146,24 @@ impl SingleComponentPathImports {
         // ```
         let mut macros = Vec::new();
 
-        let mut import_usage_visitor = ImportUsageVisitor::default();
         for item in items {
             self.track_uses(item, &mut imports_reused_with_self, &mut single_use_usages, &mut macros);
+        }
+
+        // Only walk the module's AST in search of `self::xxx` paths when there are single
+        // component imports left to lint, as the visitor recurses into every nested item.
+        single_use_usages.retain(|usage| !imports_reused_with_self.contains(&usage.name));
+        if single_use_usages.is_empty() {
+            return;
+        }
+
+        let mut import_usage_visitor = ImportUsageVisitor::default();
+        for item in items {
             import_usage_visitor.visit_item(item);
         }
 
         for usage in single_use_usages {
-            if !imports_reused_with_self.contains(&usage.name)
-                && !import_usage_visitor.imports_referenced_with_self.contains(&usage.name)
-            {
+            if !import_usage_visitor.imports_referenced_with_self.contains(&usage.name) {
                 self.found.entry(usage.item_id).or_default().push(usage);
             }
         }

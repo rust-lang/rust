@@ -17,13 +17,13 @@ macro_rules! impl_NumBufferTrait {
             #[stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
             impl NumBufferTrait for $signed {
                 // `+ 2` and not `+ 1` to include the `-` character.
-                const DEFAULT: Self::Buf = [MaybeUninit::<u8>::uninit(); $signed::MAX.ilog(10) as usize + 2];
-                type Buf = [MaybeUninit<u8>; $signed::MAX.ilog(10) as usize + 2];
+                const DEFAULT: Self::Buf = [MaybeUninit::<u8>::uninit(); $signed::MAX.ilog10() as usize + 2];
+                type Buf = [MaybeUninit<u8>; $signed::MAX.ilog10() as usize + 2];
             }
             #[stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
             impl NumBufferTrait for $unsigned {
-                const DEFAULT: Self::Buf = [MaybeUninit::<u8>::uninit(); $unsigned::MAX.ilog(10) as usize + 1];
-                type Buf = [MaybeUninit<u8>; $unsigned::MAX.ilog(10) as usize + 1];
+                const DEFAULT: Self::Buf = [MaybeUninit::<u8>::uninit(); $unsigned::MAX.ilog10() as usize + 1];
+                type Buf = [MaybeUninit<u8>; $unsigned::MAX.ilog10() as usize + 1];
             }
         )*
     }
@@ -74,7 +74,6 @@ impl<T: NumBufferTrait> NumBuffer<T> {
     #[stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_stable(feature = "int_format_into", since = "CURRENT_RUSTC_VERSION")]
     pub const fn new() -> Self {
-        // FIXME: Once const generics feature is working, use `T::BUF_SIZE` instead of 40.
         NumBuffer { buf: T::DEFAULT, phantom: core::marker::PhantomData }
     }
 }

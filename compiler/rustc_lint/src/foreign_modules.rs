@@ -329,6 +329,14 @@ fn structurally_same_type_impl<'tcx>(
                     let a_sig = tcx.instantiate_bound_regions_with_erased(a_poly_sig);
                     let b_sig = tcx.instantiate_bound_regions_with_erased(b_poly_sig);
 
+                    // FIXME(splat): Is splatting ever repr(C)?
+                    // Can two splatted functions to have the same structure?
+                    // Can a splatted and non-splatted function have the same structure?
+                    // For now, we require splatting to match exactly.
+                    if a_sig.splatted() != b_sig.splatted() {
+                        return false;
+                    }
+
                     (a_sig.abi(), a_sig.safety(), a_sig.c_variadic())
                         == (b_sig.abi(), b_sig.safety(), b_sig.c_variadic())
                         && a_sig.inputs().iter().eq_by(b_sig.inputs().iter(), |a, b| {
@@ -355,16 +363,16 @@ fn structurally_same_type_impl<'tcx>(
                 | (ty::Coroutine(..), ty::Coroutine(..))
                 | (ty::CoroutineWitness(..), ty::CoroutineWitness(..))
                 | (
-                    ty::Alias(ty::AliasTy { kind: ty::Projection { .. }, .. }),
-                    ty::Alias(ty::AliasTy { kind: ty::Projection { .. }, .. }),
+                    ty::Alias(_, ty::AliasTy { kind: ty::Projection { .. }, .. }),
+                    ty::Alias(_, ty::AliasTy { kind: ty::Projection { .. }, .. }),
                 )
                 | (
-                    ty::Alias(ty::AliasTy { kind: ty::Inherent { .. }, .. }),
-                    ty::Alias(ty::AliasTy { kind: ty::Inherent { .. }, .. }),
+                    ty::Alias(_, ty::AliasTy { kind: ty::Inherent { .. }, .. }),
+                    ty::Alias(_, ty::AliasTy { kind: ty::Inherent { .. }, .. }),
                 )
                 | (
-                    ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }),
-                    ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }),
+                    ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }),
+                    ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }),
                 ) => false,
 
                 // These definitely should have been caught above.

@@ -30,7 +30,7 @@ pub fn is_const_evaluatable<'tcx>(
 ) -> Result<(), NotConstEvaluatable> {
     let tcx = infcx.tcx;
     match tcx.expand_abstract_consts(unexpanded_ct).kind() {
-        ty::ConstKind::Unevaluated(_) | ty::ConstKind::Expr(_) => (),
+        ty::ConstKind::Alias(_, _) | ty::ConstKind::Expr(_) => (),
         ty::ConstKind::Param(_)
         | ty::ConstKind::Bound(_, _)
         | ty::ConstKind::Placeholder(_)
@@ -44,10 +44,7 @@ pub fn is_const_evaluatable<'tcx>(
 
         let is_anon_ct = matches!(
             ct.kind(),
-            ty::ConstKind::Unevaluated(ty::UnevaluatedConst {
-                kind: ty::UnevaluatedConstKind::Anon { .. },
-                ..
-            })
+            ty::ConstKind::Alias(_, ty::AliasConst { kind: ty::AliasConstKind::Anon { .. }, .. })
         );
 
         if !is_anon_ct {
@@ -69,7 +66,7 @@ pub fn is_const_evaluatable<'tcx>(
                 // here.
                 tcx.dcx().span_bug(span, "evaluating `ConstKind::Expr` is not currently supported");
             }
-            ty::ConstKind::Unevaluated(_) => {
+            ty::ConstKind::Alias(_, _) => {
                 match crate::traits::try_evaluate_const(infcx, unexpanded_ct, param_env) {
                     Err(EvaluateConstErr::HasGenericsOrInfers) => {
                         Err(NotConstEvaluatable::Error(infcx.dcx().span_delayed_bug(
@@ -93,8 +90,8 @@ pub fn is_const_evaluatable<'tcx>(
         crate::traits::evaluate_const(infcx, unexpanded_ct, param_env);
         Ok(())
     } else {
-        let uv = match unexpanded_ct.kind() {
-            ty::ConstKind::Unevaluated(uv) => uv,
+        let alias_const = match unexpanded_ct.kind() {
+            ty::ConstKind::Alias(_, alias_const) => alias_const,
             ty::ConstKind::Expr(_) => {
                 bug!("`ConstKind::Expr` without `feature(generic_const_exprs)` enabled")
             }
@@ -117,7 +114,7 @@ pub fn is_const_evaluatable<'tcx>(
                 tcx.dcx()
                     .struct_span_fatal(
                         // Slightly better span than just using `span` alone
-                        if span == DUMMY_SP { uv.kind.def_span(tcx) } else { span },
+                        if span == DUMMY_SP { alias_const.kind.def_span(tcx) } else { span },
                         "failed to evaluate generic const expression",
                     )
                     .with_note("the crate this constant originates from uses `#![feature(generic_const_exprs)]`")
@@ -131,9 +128,9 @@ pub fn is_const_evaluatable<'tcx>(
             }
 
             Err(EvaluateConstErr::HasGenericsOrInfers) => {
-                let err = if uv.has_non_region_infer() {
+                let err = if alias_const.has_non_region_infer() {
                     NotConstEvaluatable::MentionsInfer
-                } else if uv.has_non_region_param() {
+                } else if alias_const.has_non_region_param() {
                     NotConstEvaluatable::MentionsParam
                 } else {
                     let guar = infcx.dcx().span_delayed_bug(

@@ -44,7 +44,7 @@ where
         goal: Goal<I, ProjectionPredicate<I>>,
     ) -> QueryResultOrRerunNonErased<I> {
         let ty::ProjectionPredicate { projection_term: alias, term } = goal.predicate;
-        let unconstrained_term = self.next_term_infer_of_kind(term);
+        let unconstrained_term = self.next_term_infer_of_alias_kind(alias);
         let normalizes_to =
             goal.with(self.cx(), ty::NormalizesTo { alias, term: unconstrained_term });
 
@@ -77,34 +77,11 @@ where
         // since equating the normalized terms will lead to additional constraints.
         self.inspect.make_canonical_response(Certainty::AMBIGUOUS);
 
-        // FIXME: We shouldn't be doing this in the long term in favor of eager
-        // normalization.
-        // Normalize alias types in rhs. This is done in `EvalCtxt::add_goal` for nested
-        // goals, but we might be evaluating the root goal.
-        let term = self.replace_alias_with_infer(term, GoalSource::TypeRelating, goal.param_env);
-
-        // Apply the constraints.
-        self.try_evaluate_added_goals()?;
-
-        // Finally, equate the goal's RHS with the unconstrained var.
-        //
-        // SUBTLE:
-        // We structurally relate aliases here. This is necessary
-        // as we otherwise emit a nested `AliasRelate` goal in case the
-        // returned term is a rigid alias, resulting in overflow.
-        //
-        // It is correct as both `goal.predicate.term` and `unconstrained_rhs`
-        // start out as an unconstrained inference variable so any aliases get
-        // fully normalized when instantiating it.
-        //
-        // FIXME: Strictly speaking this may be incomplete if the normalized-to
-        // type contains an ambiguous alias referencing bound regions. We should
-        // consider changing this to only use "shallow structural equality".
-        self.eq_structurally_relating_aliases(goal.param_env, term, unconstrained_term)?;
+        self.eq(goal.param_env, term, unconstrained_term)?;
 
         // Add the nested goals from normalization to our own nested goals.
         for (s, g) in nested_goals {
-            self.add_goal(s, g);
+            self.add_goal(s, g)?;
         }
 
         self.evaluate_added_goals_and_make_canonical_response(certainty)

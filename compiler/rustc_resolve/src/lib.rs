@@ -50,7 +50,7 @@ use rustc_data_structures::sync::{FreezeReadGuard, FreezeWriteGuard};
 use rustc_data_structures::unord::{UnordItems, UnordMap, UnordSet};
 use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed, LintBuffer};
 use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
-use rustc_feature::BUILTIN_ATTRIBUTES;
+use rustc_feature::{BUILTIN_ATTRIBUTES, Features};
 use rustc_hir::attrs::StrippedCfgItem;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{
@@ -1550,7 +1550,8 @@ pub struct Resolver<'ra, 'tcx> {
     impl_trait_names: FxHashMap<NodeId, Symbol> = default::fx_hash_map(),
 
     /// Stores `#[diagnostic::on_unknown]` attributes placed on module declarations.
-    on_unknown_data: FxHashMap<LocalDefId, OnUnknownData>,
+    on_unknown_data: FxHashMap<LocalDefId, OnUnknownData> = default::fx_hash_map(),
+    features: &'tcx Features,
 }
 
 /// This provides memory for the rest of the crate. The `'ra` lifetime that is
@@ -1808,11 +1809,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let registered_tools = tcx.registered_tools(());
         let edition = tcx.sess.edition();
 
-        let mut on_unknown_data = default::fx_hash_map();
-        if let Some(directive) = OnUnknownData::from_attrs(tcx, attrs) {
-            on_unknown_data.insert(CRATE_DEF_ID, directive);
-        }
-
         let mut resolver = Resolver {
             tcx,
 
@@ -1880,9 +1876,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             current_crate_outer_attr_insert_span,
             disambiguators: Default::default(),
             delegation_infos: Default::default(),
-            on_unknown_data,
+            features: tcx.features(),
             ..
         };
+
+        if let Some(directive) = OnUnknownData::from_attrs(&resolver, attrs) {
+            resolver.on_unknown_data.insert(CRATE_DEF_ID, directive);
+        }
 
         let root_parent_scope = ParentScope::module(graph_root, resolver.arenas);
         resolver.invocation_parent_scopes.insert(LocalExpnId::ROOT, root_parent_scope);
@@ -2082,17 +2082,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             self.tcx
                 .sess
                 .time("finalize_macro_resolutions", || self.finalize_macro_resolutions(krate));
-            self.tcx.sess.time("late_resolve_crate", || self.late_resolve_crate(krate));
+            let use_items =
+                self.tcx.sess.time("late_resolve_crate", || self.late_resolve_crate(krate));
             self.tcx.sess.time("resolve_main", || self.resolve_main());
-            self.tcx.sess.time("resolve_check_unused", || self.check_unused(krate));
+            self.tcx.sess.time("resolve_check_unused", || self.check_unused(use_items));
             self.tcx.sess.time("resolve_report_errors", || self.report_errors(krate));
             self.tcx
                 .sess
                 .time("resolve_postprocess", || self.cstore_mut().postprocess(self.tcx, krate));
         });
 
-        // Make sure we don't mutate the cstore from here on.
-        self.tcx.untracked().cstore.freeze();
+        // Don't mutate the cstore or stable crate id map from here on.
+        self.tcx.untracked().freeze_cstore();
     }
 
     fn traits_in_scope(

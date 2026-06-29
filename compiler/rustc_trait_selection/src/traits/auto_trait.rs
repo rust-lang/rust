@@ -552,7 +552,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     pub fn is_of_param(&self, ty: Ty<'tcx>) -> bool {
         match ty.kind() {
             ty::Param(_) => true,
-            ty::Alias(p @ ty::AliasTy { kind: ty::Projection { .. }, .. }) => {
+            ty::Alias(_, p @ ty::AliasTy { kind: ty::Projection { .. }, .. }) => {
                 self.is_of_param(p.self_ty())
             }
             _ => false,
@@ -561,7 +561,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
     fn is_self_referential_projection(&self, p: ty::PolyProjectionPredicate<'tcx>) -> bool {
         if let Some(ty) = p.term().skip_binder().as_type() {
-            matches!(ty.kind(), ty::Alias(proj @ ty::AliasTy { kind: ty::Projection { .. }, .. }) if proj == &p.skip_binder().projection_term.expect_ty())
+            matches!(ty.kind(), ty::Alias(_, proj @ ty::AliasTy { kind: ty::Projection { .. }, .. }) if proj == &p.skip_binder().projection_term.expect_ty())
         } else {
             false
         }
@@ -606,6 +606,12 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     // then `evaluate_predicates` will handle adding it the `ParamEnv`
                     // if possible.
                     predicates.push_back(bound_predicate.rebind(p));
+                }
+                ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(p)) => {
+                    let p = bound_predicate.rebind(p);
+                    if self.is_param_no_infer(p.skip_binder().trait_ref.args) && is_new_pred {
+                        self.add_user_pred(computed_preds, predicate);
+                    }
                 }
                 ty::PredicateKind::Clause(ty::ClauseKind::Projection(p)) => {
                     let p = bound_predicate.rebind(p);
@@ -768,15 +774,15 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 }
                 ty::PredicateKind::ConstEquate(c1, c2) => {
                     let evaluate = |c: ty::Const<'tcx>| {
-                        if let ty::ConstKind::Unevaluated(unevaluated) = c.kind() {
+                        if let ty::ConstKind::Alias(_, alias_const) = c.kind() {
                             let ct =
                                 super::try_evaluate_const(selcx.infcx, c, obligation.param_env);
 
                             if let Err(EvaluateConstErr::InvalidConstParamTy(_)) = ct {
-                                let span = unevaluated.kind.def_span(self.tcx);
+                                let span = alias_const.kind.def_span(self.tcx);
                                 self.tcx
                                     .dcx()
-                                    .emit_err(UnableToConstructConstantValue { span, unevaluated });
+                                    .emit_err(UnableToConstructConstantValue { span, alias_const });
                             }
 
                             ct
@@ -811,8 +817,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 | ty::PredicateKind::DynCompatible(..)
                 | ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::Coerce(..)
-                | ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_))
-                | ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(..)) => {}
+                | ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_)) => {}
                 ty::PredicateKind::Ambiguous => return false,
 
                 // FIXME(generic_const_exprs): you can absolutely add this as a where clauses

@@ -629,6 +629,11 @@ fn is_inferred_ret_closure(expr: &Expr<'_>) -> bool {
 
 impl<'tcx> LateLintPass<'tcx> for QuestionMark {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
+        // Cheap `let` check before the costlier lint level and const context queries.
+        if !matches!(stmt.kind, StmtKind::Let(..)) {
+            return;
+        }
+
         if !is_lint_allowed(cx, QUESTION_MARK_USED, stmt.hir_id) || !self.msrv.meets(cx, msrvs::QUESTION_MARK_OPERATOR)
         {
             return;
@@ -646,7 +651,9 @@ impl<'tcx> LateLintPass<'tcx> for QuestionMark {
             return;
         }
 
-        if !self.inside_try_block()
+        // Cheap `if`/`match` check before the costlier lint level and const context queries.
+        if matches!(expr.kind, ExprKind::If(..) | ExprKind::Match(..))
+            && !self.inside_try_block()
             && !is_in_const_context(cx)
             && is_lint_allowed(cx, QUESTION_MARK_USED, expr.hir_id)
             && self.msrv.meets(cx, msrvs::QUESTION_MARK_OPERATOR)
