@@ -83,6 +83,7 @@ use rustc_lint_defs::pluralize;
 use rustc_middle::span_bug;
 use rustc_parse::parser::{ParseNtResult, Parser, token_descr};
 use rustc_span::{Ident, MacroRulesNormalizedIdent, Span};
+use smallvec::SmallVec;
 
 use crate::mbe::macro_rules::Tracker;
 use crate::mbe::{KleeneOp, TokenTree};
@@ -292,12 +293,6 @@ impl MatcherPos {
     }
 }
 
-enum EofMatcherPositions {
-    None,
-    One(MatcherPos),
-    Multiple,
-}
-
 /// Represents the possible results of an attempted parse.
 #[derive(Debug)]
 pub(crate) enum ParseResult<T, F> {
@@ -478,7 +473,7 @@ impl TtParser {
     ) -> Option<NamedParseResult<T::Failure>> {
         // Matcher positions that would be valid if the macro invocation was over now. Only
         // modified if `token == Eof`.
-        let mut eof_mps = EofMatcherPositions::None;
+        let mut eof_mps = SmallVec::<[MatcherPos; 1]>::new();
 
         while let Some(mut mp) = self.cur_mps.pop() {
             let matcher_loc = &matcher[mp.idx];
@@ -582,12 +577,7 @@ impl TtParser {
                     // We are past the matcher's end, and not in a sequence. Try to end things.
                     debug_assert_eq!(mp.idx, matcher.len() - 1);
                     if *token == token::Eof {
-                        eof_mps = match eof_mps {
-                            EofMatcherPositions::None => EofMatcherPositions::One(mp),
-                            EofMatcherPositions::One(_) | EofMatcherPositions::Multiple => {
-                                EofMatcherPositions::Multiple
-                            }
-                        }
+                        eof_mps.push(mp);
                     }
                 }
             }
@@ -596,17 +586,15 @@ impl TtParser {
         // If we reached the end of input, check that there is EXACTLY ONE possible matcher.
         // Otherwise, either the parse is ambiguous (which is an error) or there is a syntax error.
         if *token == token::Eof {
-            Some(match eof_mps {
-                EofMatcherPositions::One(mut eof_mp) => {
+            Some(match *eof_mps {
+                [_] => {
+                    let mut eof_mp = eof_mps.pop().unwrap();
                     // Need to take ownership of the matches from within the `Rc`.
                     Rc::make_mut(&mut eof_mp.matches);
                     let matches = Rc::try_unwrap(eof_mp.matches).unwrap().into_iter();
                     Success(self.nameize(matcher, matches))
                 }
-                EofMatcherPositions::Multiple => {
-                    Error(token.span, "ambiguity: multiple successful parses".to_string())
-                }
-                EofMatcherPositions::None => Failure(T::build_failure(
+                [] => Failure(T::build_failure(
                     Token::new(
                         token::Eof,
                         if token.span.is_dummy() { token.span } else { token.span.shrink_to_hi() },
@@ -614,6 +602,7 @@ impl TtParser {
                     approx_position,
                     "missing tokens in macro arguments",
                 )),
+                _ => Error(token.span, "ambiguity: multiple successful parses".to_string()),
             })
         } else {
             None
