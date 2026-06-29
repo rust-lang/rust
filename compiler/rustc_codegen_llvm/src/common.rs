@@ -352,6 +352,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                                 alloc.inner(),
                                 IsStatic::No,
                                 IsInitOrFini::No,
+                                None,
                             );
                             let alloc = alloc.inner();
                             let value = match alloc.mutability {
@@ -389,6 +390,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                             alloc.inner(),
                             IsStatic::No,
                             IsInitOrFini::No,
+                            None,
                         );
                         self.static_addr_of_impl(init, alloc.inner().align, None)
                     }
