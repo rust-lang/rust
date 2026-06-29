@@ -16,6 +16,32 @@ pub(super) const UNKNOWN_LINE_NUMBER: u32 = 0;
 pub(super) const UNKNOWN_COLUMN_NUMBER: u32 = 0;
 
 impl<'a, 'gcc, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
+    fn dbg_scope_fn(
+        &self,
+        _instance: Instance<'tcx>,
+        _fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        _maybe_definition_llfn: Option<Function<'gcc>>,
+    ) -> Self::DIScope {
+        // FIXME(antoyo): implement.
+    }
+
+    fn dbg_create_lexical_block(
+        &self,
+        _pos: BytePos,
+        _parent_scope: Self::DIScope,
+    ) -> Self::DIScope {
+    }
+
+    fn create_dbg_var(
+        &self,
+        _variable_name: Symbol,
+        _variable_type: Ty<'tcx>,
+        _scope_metadata: Self::DIScope,
+        _variable_kind: VariableKind,
+        _span: Span,
+    ) -> Self::DIVariable {
+    }
+
     // FIXME(eddyb) find a common convention for all of the debuginfo-related
     // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
     fn dbg_var_addr(
@@ -119,13 +145,6 @@ impl<'gcc, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         // FIXME(antoyo)
     }
 
-    fn dbg_create_lexical_block(
-        &self,
-        _pos: BytePos,
-        _parent_scope: Self::DIScope,
-    ) -> Self::DIScope {
-    }
-
     fn dbg_location_clone_with_discriminator(
         &self,
         loc: Self::DILocation,
@@ -138,25 +157,6 @@ impl<'gcc, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         &self,
         _scope_metadata: Self::DIScope,
         _file: &SourceFile,
-    ) -> Self::DIScope {
-        // FIXME(antoyo): implement.
-    }
-
-    fn create_dbg_var(
-        &self,
-        _variable_name: Symbol,
-        _variable_type: Ty<'tcx>,
-        _scope_metadata: Self::DIScope,
-        _variable_kind: VariableKind,
-        _span: Span,
-    ) -> Self::DIVariable {
-    }
-
-    fn dbg_scope_fn(
-        &self,
-        _instance: Instance<'tcx>,
-        _fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
-        _maybe_definition_llfn: Option<Function<'gcc>>,
     ) -> Self::DIScope {
         // FIXME(antoyo): implement.
     }
