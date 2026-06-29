@@ -1,0 +1,40 @@
+   LL|       |//@ compile-flags: -Cinstrument-coverage=presence-only -Zunstable-options -Copt-level=0
+   LL|       |
+   LL|       |use std::hint::black_box;
+   LL|       |
+   LL|       |#[inline(never)]
+   LL|      1|fn repeated_hits() {
+   LL|      1|    for value in 0..100 {
+   LL|      1|        black_box(value);
+   LL|      1|    }
+   LL|      1|}
+   LL|       |
+   LL|       |#[inline(never)]
+   LL|      1|fn selected_branch(take_true: bool) -> u32 {
+   LL|      1|    if take_true { 1 } else { 2 }
+                                            ^0
+   LL|      1|}
+   LL|       |
+   LL|       |#[inline(never)]
+   LL|      1|fn concurrent_hit() {
+   LL|      1|    black_box(());
+   LL|      1|}
+   LL|       |
+   LL|      1|fn main() {
+   LL|      1|    repeated_hits();
+   LL|      1|    assert_eq!(selected_branch(true), 1);
+   LL|       |
+   LL|      1|    let threads = (0..4)
+   LL|      1|        .map(|_| {
+   LL|      1|            std::thread::spawn(|| {
+   LL|      1|                for _ in 0..100 {
+   LL|      1|                    concurrent_hit()
+   LL|       |                }
+   LL|      1|            })
+   LL|      1|        })
+   LL|      1|        .collect::<Vec<_>>();
+   LL|      1|    for thread in threads {
+   LL|      1|        thread.join().unwrap();
+   LL|      1|    }
+   LL|      1|}
+

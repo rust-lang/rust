@@ -10,9 +10,8 @@ pub(crate) enum CounterKind {
 /// A reference to an instance of an abstract "counter" that will yield a value in a coverage
 /// report. Note that `id` has different interpretations, depending on the `kind`:
 ///   * For `CounterKind::Zero`, `id` is assumed to be `0`
-///   * For `CounterKind::CounterValueReference`,  `id` matches the `counter_id` of the injected
-///     instrumentation counter (the `index` argument to the LLVM intrinsic
-///     `instrprof.increment()`)
+///   * For `CounterKind::CounterValueReference`, `id` matches the `counter_id` of the injected
+///     instrumentation counter (the `index` argument to the LLVM coverage intrinsic)
 ///   * For `CounterKind::Expression`, `id` is the index into the coverage map's array of
 ///     counter expressions.
 ///

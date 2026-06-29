@@ -10,7 +10,7 @@ use rustc_span::def_id::LocalDefId;
 use tracing::trace;
 
 use crate::coverage::counters::node_flow::make_node_counters;
-use crate::coverage::counters::{CoverageCounters, transcribe_counters};
+use crate::coverage::counters::{CoverageCounters, make_direct_counters, transcribe_counters};
 
 /// Registers query/hook implementations related to coverage.
 pub(crate) fn provide(providers: &mut Providers) {
@@ -112,21 +112,27 @@ fn coverage_ids_info<'tcx>(
         }
     }
 
-    // Clone the priority list so that we can re-sort it.
-    let mut priority_list = fn_cov_info.priority_list.clone();
-    // The first ID in the priority list represents the synthetic "sink" node,
-    // and must remain first so that it _never_ gets a physical counter.
-    debug_assert_eq!(priority_list[0], priority_list.iter().copied().max().unwrap());
-    assert!(!bcbs_seen.contains(priority_list[0]));
-    // Partition the priority list, so that unreachable nodes (removed by MIR opts)
-    // are sorted later and therefore are _more_ likely to get a physical counter.
-    // This is counter-intuitive, but it means that `transcribe_counters` can
-    // easily skip those unused physical counters and replace them with zero.
-    // (The original ordering remains in effect within both partitions.)
-    priority_list[1..].sort_by_key(|&bcb| !bcbs_seen.contains(bcb));
+    let coverage_counters = if tcx.sess.instrument_coverage_single_byte() {
+        // Boolean counters cannot preserve mappings that reconstruct execution counts through
+        // arithmetic expressions, so give every mapped BCB its own physical counter.
+        make_direct_counters(&bcb_needs_counter, &bcbs_seen)
+    } else {
+        // Clone the priority list so that we can re-sort it.
+        let mut priority_list = fn_cov_info.priority_list.clone();
+        // The first ID in the priority list represents the synthetic "sink" node,
+        // and must remain first so that it _never_ gets a physical counter.
+        debug_assert_eq!(priority_list[0], priority_list.iter().copied().max().unwrap());
+        assert!(!bcbs_seen.contains(priority_list[0]));
+        // Partition the priority list, so that unreachable nodes (removed by MIR opts)
+        // are sorted later and therefore are _more_ likely to get a physical counter.
+        // This is counter-intuitive, but it means that `transcribe_counters` can
+        // easily skip those unused physical counters and replace them with zero.
+        // (The original ordering remains in effect within both partitions.)
+        priority_list[1..].sort_by_key(|&bcb| !bcbs_seen.contains(bcb));
 
-    let node_counters = make_node_counters(&fn_cov_info.node_flow_data, &priority_list);
-    let coverage_counters = transcribe_counters(&node_counters, &bcb_needs_counter, &bcbs_seen);
+        let node_counters = make_node_counters(&fn_cov_info.node_flow_data, &priority_list);
+        transcribe_counters(&node_counters, &bcb_needs_counter, &bcbs_seen)
+    };
 
     let CoverageCounters {
         phys_counter_for_node, next_counter_id, node_counters, expressions, ..

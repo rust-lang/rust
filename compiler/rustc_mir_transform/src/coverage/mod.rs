@@ -18,9 +18,8 @@ mod spans;
 #[cfg(test)]
 mod tests;
 
-/// Inserts `StatementKind::Coverage` statements that either instrument the binary with injected
-/// counters, via intrinsic `llvm.instrprof.increment`, and/or inject metadata used during codegen
-/// to construct the coverage map.
+/// Inserts `StatementKind::Coverage` statements that either instrument the binary with LLVM
+/// coverage intrinsics, and/or inject metadata used during codegen to construct the coverage map.
 pub(super) struct InstrumentCoverage;
 
 impl<'tcx> crate::MirPass<'tcx> for InstrumentCoverage {

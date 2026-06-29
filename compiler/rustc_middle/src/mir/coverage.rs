@@ -87,8 +87,9 @@ pub enum CoverageKind {
     /// Marks its enclosing basic block with the ID of the coverage graph node
     /// that it was part of during the `InstrumentCoverage` MIR pass.
     ///
-    /// During codegen, this might be lowered to `llvm.instrprof.increment` or
-    /// to a no-op, depending on the outcome of counter-creation.
+    /// During codegen, this might be lowered to `llvm.instrprof.increment`,
+    /// `llvm.instrprof.cover`, or a no-op, depending on the coverage mode and
+    /// the outcome of counter-creation.
     VirtualCounter { bcb: BasicCoverageBlock },
 }
 

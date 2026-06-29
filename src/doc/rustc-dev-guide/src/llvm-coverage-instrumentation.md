@@ -4,15 +4,18 @@
 with a command line option (`-C instrument-coverage`) that instruments Rust
 libraries and binaries with additional instructions and data, at compile time.
 
-The coverage instrumentation injects calls to the LLVM intrinsic instruction
-[`llvm.instrprof.increment`][llvm-instrprof-increment] at code branches
+The coverage instrumentation injects calls to LLVM intrinsic instructions
+([`llvm.instrprof.increment`][llvm-instrprof-increment], or
+[`llvm.instrprof.cover`][llvm-instrprof-cover] in presence-only mode) at code branches
 (based on a MIR-based control flow analysis), and LLVM converts these to
-instructions that increment static counters, when executed.
+instructions that update static counters when executed.
 The LLVM coverage instrumentation also requires a [Coverage Map] that encodes source metadata,
 mapping counter IDs--directly and indirectly--to the file locations (with
 start and end line and column).
 
-Rust libraries, with or without coverage instrumentation, can be linked into instrumented binaries.
+Rust libraries, with or without coverage instrumentation, can be linked into
+instrumented binaries. However, all coverage-instrumented objects in a linked
+image must use the same counter mode.
 When the program is executed and cleanly terminates,
 LLVM libraries write the final counter values to a file (`default.profraw` or
 a custom file set through environment variable `LLVM_PROFILE_FILE`).
@@ -27,6 +30,7 @@ Detailed instructions and examples are documented in the
 [rustc book][rustc-book-instrument-coverage].
 
 [llvm-instrprof-increment]: https://llvm.org/docs/LangRef.html#llvm-instrprof-increment-intrinsic
+[llvm-instrprof-cover]: https://llvm.org/docs/LangRef.html#llvm-instrprof-cover-intrinsic
 [coverage map]: https://llvm.org/docs/CoverageMappingFormat.html
 [rustc-book-instrument-coverage]: https://doc.rust-lang.org/nightly/rustc/instrument-coverage.html
 

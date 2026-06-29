@@ -146,8 +146,11 @@ pub enum LtoCli {
 pub enum InstrumentCoverage {
     /// `-C instrument-coverage=no` (or `off`, `false` etc.)
     No,
-    /// `-C instrument-coverage` or `-C instrument-coverage=yes`
+    /// `-C instrument-coverage`, `-C instrument-coverage=yes`, or
+    /// `-C instrument-coverage=counter`
     Yes,
+    /// `-C instrument-coverage=presence-only`
+    SingleByte,
 }
 
 /// Individual flag values controlled by `-Zcoverage-options`.
@@ -2565,6 +2568,20 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     }
 
     if cg.instrument_coverage != InstrumentCoverage::No {
+        if cg.instrument_coverage == InstrumentCoverage::SingleByte {
+            if !unstable_opts.unstable_options {
+                early_dcx.early_fatal(
+                    "`-C instrument-coverage=presence-only` requires `-Z unstable-options`",
+                );
+            }
+            if unstable_opts.coverage_options.level >= CoverageLevel::Branch {
+                early_dcx.early_fatal(
+                    "`-C instrument-coverage=presence-only` is not compatible with branch or \
+                     condition coverage",
+                );
+            }
+        }
+
         if cg.profile_generate.enabled() || cg.profile_use.is_some() {
             early_dcx.early_fatal(
                 "option `-C instrument-coverage` is not compatible with either `-C profile-use` \

@@ -9,12 +9,13 @@ via the `-C instrument-coverage` compiler flag.
 
 When `-C instrument-coverage` is enabled, the Rust compiler enhances rust-based libraries and binaries by:
 
--   Automatically injecting calls to an LLVM intrinsic ([`llvm.instrprof.increment`]), at functions and branches in compiled code, to increment counters when conditional sections of code are executed.
+-   Automatically injecting calls to LLVM coverage intrinsics ([`llvm.instrprof.increment`] and, in presence-only mode, [`llvm.instrprof.cover`]), at functions and branches in compiled code, to update counters when conditional sections of code are executed.
 -   Embedding additional information in the data section of each library and binary (using the [LLVM Code Coverage Mapping Format] _Version 5_, if compiling with LLVM 12, or _Version 6_, if compiling with LLVM 13 or higher), to define the code regions (start and end positions in the source code) being counted.
 
 When running a coverage-instrumented program, the counter values are written to a `profraw` file at program termination. LLVM bundles tools that read the counter results, combine those results with the coverage map (embedded in the program binary), and generate coverage reports in multiple formats.
 
 [`llvm.instrprof.increment`]: https://llvm.org/docs/LangRef.html#llvm-instrprof-increment-intrinsic
+[`llvm.instrprof.cover`]: https://llvm.org/docs/LangRef.html#llvm-instrprof-cover-intrinsic
 [llvm code coverage mapping format]: https://llvm.org/docs/CoverageMappingFormat.html
 
 > **Note**: `-C instrument-coverage` also automatically enables `-C symbol-mangling-version=v0` (tracking issue [#60705]). The `v0` symbol mangler is strongly recommended. The `v0` demangler can be overridden by explicitly adding `-Z unstable-options -C symbol-mangling-version=legacy`.
@@ -331,10 +332,22 @@ $ llvm-cov report \
 
 ### Other values
 
+- `-C instrument-coverage=counter`:
+  An alias for the default counter-based coverage mode (`yes`).
 - `-C instrument-coverage=all`:
   Currently an alias for `yes`, but may behave differently in the future if
   more fine-grained coverage options are added.
   Using this value is currently not recommended.
+- `-C instrument-coverage=presence-only`:
+  Records whether each covered region executed, rather than its execution
+  count, using one-byte coverage counters. This mode requires
+  `-Z unstable-options` and cannot be combined with branch or condition
+  coverage. LLVM lowers these probes to idempotent, non-atomic byte stores,
+  matching Clang's single-byte coverage representation.
+
+  All coverage-instrumented objects linked into the same executable or shared
+  library must use the same counter mode. Mixing presence-only objects with
+  ordinary coverage or PGO objects in one linked image is not supported.
 
 ## `-Z coverage-options=<options>`
 

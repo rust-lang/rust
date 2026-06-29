@@ -124,10 +124,34 @@ pub(crate) fn transcribe_counters(
     new
 }
 
+/// Assigns a physical counter directly to every mapped BCB that survived MIR optimization.
+///
+/// Unlike [`transcribe_counters`], this does not create derived counter expressions. This is used
+/// for presence-only coverage, where counters only record whether their BCB was ever executed and
+/// therefore cannot be combined with arithmetic expressions to recover execution counts.
+pub(crate) fn make_direct_counters(
+    bcb_needs_counter: &DenseBitSet<BasicCoverageBlock>,
+    bcbs_seen: &DenseBitSet<BasicCoverageBlock>,
+) -> CoverageCounters {
+    let mut counters = CoverageCounters::with_num_bcbs(bcb_needs_counter.domain_size());
+
+    for bcb in bcb_needs_counter.iter() {
+        let counter = if bcbs_seen.contains(bcb) {
+            counters.ensure_phys_counter(bcb)
+        } else {
+            // This BCB's code was removed by MIR opts, so its counter is always zero.
+            CovTerm::Zero
+        };
+        counters.set_node_counter(bcb, counter);
+    }
+
+    counters
+}
+
 /// Generates and stores coverage counter and coverage expression information
 /// associated with nodes in the coverage graph.
 pub(super) struct CoverageCounters {
-    /// List of places where a counter-increment statement should be injected
+    /// List of places where a physical counter statement should be injected
     /// into MIR, each with its corresponding counter ID.
     pub(crate) phys_counter_for_node: FxIndexMap<BasicCoverageBlock, CounterId>,
     pub(crate) next_counter_id: CounterId,
