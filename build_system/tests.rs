@@ -146,9 +146,9 @@ static REGEX: CargoProject = CargoProject::new(REGEX_REPO.source_dir(), "regex_t
 pub(crate) static GRAVIOLA_REPO: GitRepo = GitRepo::github(
     "ctz",
     "graviola",
-    "c779b83cfd7114c4802293700c92cfb5e05cb4b7",
+    "7763d0cc617d6f5f66c3bc0fe9b3d8581d781b6a", // v0.4.1
     &["thirdparty/cavp", "thirdparty/wycheproof"],
-    "e0925ceb21a56101",
+    "7fa5a75b9fb1ac40",
     "graviola",
 );
 
@@ -231,16 +231,7 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
             test_cmd.env("GRAVIOLA_CPU_DISABLE_avx512bw", "1");
             test_cmd.env("GRAVIOLA_CPU_DISABLE_avx512vl", "1");
 
-            test_cmd.args([
-                "-p",
-                "graviola",
-                "--lib",
-                "--",
-                "-q",
-                // FIXME: Disable AVX-512 until intrinsics are supported.
-                "--skip",
-                "check_counter512",
-            ]);
+            test_cmd.args(["-p", "graviola", "--lib", "--", "-q"]);
             spawn_and_wait(test_cmd);
         } else {
             eprintln!("Cross-Compiling: Not running tests");
