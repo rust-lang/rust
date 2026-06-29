@@ -124,6 +124,13 @@ impl Command {
             Ok(t) => unsafe {
                 let mut status = 0 as c_int;
                 libc::waitpid(t.0.pid, &mut status, 0);
+                // If the task was killed by a signal, terminate the same way by
+                // restoring the default disposition and re-raising it.
+                if libc::WIFSIGNALED(status) {
+                    let signal = libc::WTERMSIG(status);
+                    libc::signal(signal, libc::SIG_DFL);
+                    libc::raise(signal);
+                }
                 libc::exit(libc::WEXITSTATUS(status));
             },
             Err(e) => e,
