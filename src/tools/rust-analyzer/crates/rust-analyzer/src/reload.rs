@@ -15,10 +15,10 @@
 // FIXME: This is a mess that needs some untangling work
 use std::{iter, mem, sync::atomic::AtomicUsize, time::Duration};
 
-use hir::{ChangeWithProcMacros, ProcMacrosBuilder, db::DefDatabase};
+use hir::{ChangeWithProcMacros, ProcMacrosBuilder};
 use ide_db::{
     FxHashMap,
-    base_db::{CrateGraphBuilder, ProcMacroLoadingError, ProcMacroPaths, salsa::Durability},
+    base_db::{CrateGraphBuilder, ProcMacroLoadingError, ProcMacroPaths},
 };
 use itertools::Itertools;
 use load_cargo::{ProjectFolders, load_proc_macro};
@@ -109,14 +109,10 @@ impl GlobalState {
             self.reload_flycheck();
         }
 
-        if self.analysis_host.raw_database().expand_proc_attr_macros()
-            != self.config.expand_proc_attr_macros()
-        {
-            self.analysis_host.raw_database_mut().set_expand_proc_attr_macros_with_durability(
-                self.config.expand_proc_attr_macros(),
-                Durability::HIGH,
-            );
-        }
+        hir::db::set_expand_proc_attr_macros(
+            self.analysis_host.raw_database_mut(),
+            self.config.expand_proc_attr_macros(),
+        );
 
         if self.config.cargo(None) != old_config.cargo(None) {
             let req = FetchWorkspaceRequest { path: None, force_crate_graph_reload: false };

@@ -15,7 +15,7 @@ use hir_expand::{
     builtin::{BuiltinDeriveExpander, find_builtin_attr, find_builtin_derive, find_builtin_macro},
     mod_path::{ModPath, PathKind},
     name::{AsName, Name},
-    proc_macro::CustomProcMacroExpander,
+    proc_macro::{CustomProcMacroExpander, ProcMacros},
 };
 use intern::{Interned, Symbol, sym};
 use itertools::izip;
@@ -79,7 +79,7 @@ pub(super) fn collect_defs(
     }
 
     let proc_macros = if krate.is_proc_macro {
-        db.proc_macros_for_crate(def_map.krate)
+        ProcMacros::get_for_crate(db, def_map.krate)
             .and_then(|proc_macros| {
                 proc_macros.list(tree_id.file_id().syntax_context(db, krate.edition))
             })
@@ -616,7 +616,7 @@ impl<'db> DefCollector<'db> {
         let (expander, kind) = match self.proc_macros.iter().find(|(n, _, _)| n == &def.name) {
             Some(_)
                 if kind == hir_expand::proc_macro::ProcMacroKind::Attr
-                    && !self.db.expand_proc_attr_macros() =>
+                    && !crate::db::ExpandProcAttrMacros::get(self.db).enabled(self.db) =>
             {
                 (CustomProcMacroExpander::disabled_proc_attr(), kind)
             }
