@@ -10,7 +10,6 @@
 //! [c]: https://rustc-dev-guide.rust-lang.org/solve/canonicalization.html
 
 use std::iter;
-use std::marker::PhantomData;
 
 use canonicalizer::Canonicalizer;
 use rustc_index::IndexVec;
@@ -18,7 +17,7 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::{
     self as ty, Canonical, CanonicalVarKind, CanonicalVarValues, InferCtxtLike, Interner,
-    TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitor, TypingMode, TypingModeEqWrapper,
+    TypeFoldable, TypingMode, TypingModeEqWrapper,
 };
 use tracing::instrument;
 
@@ -151,7 +150,11 @@ where
     // FIXME: Longterm canonical queries should deal with all placeholders
     // created inside of the query directly instead of returning them to the
     // caller.
-    let prev_universe = create_universes_for_response(delegate, response);
+    let prev_universe = delegate.universe();
+    let universes_created_in_query = response.max_universe.index();
+    for _ in 0..universes_created_in_query {
+        delegate.create_next_universe();
+    }
 
     compute_query_response_instantiation_values_in_universe(
         delegate,
@@ -255,106 +258,6 @@ where
             original_values[kind.expect_placeholder_index()]
         }
     })
-}
-
-fn create_universes_for_response<D, I, T>(
-    delegate: &D,
-    response: &Canonical<I, T>,
-) -> ty::UniverseIndex
-where
-    D: SolverDelegate<Interner = I>,
-    I: Interner,
-{
-    let prev_universe = delegate.universe();
-    let universes_created_in_query = response.max_universe.index();
-    for _ in 0..universes_created_in_query {
-        delegate.create_next_universe();
-    }
-    prev_universe
-}
-
-// Recover the caller-side max input universe for replaying a canonical state.
-//
-// We want the base universe the canonical state was relative to when it was
-// first recorded, not the max universe of the current resolved contents of
-// `orig_values`. Resolved inference vars may now point at placeholders from
-// later replay work, so looking through them would overestimate the base
-// universe and shift the replayed placeholders.
-fn max_input_universe_for_canonical_state<D, I>(
-    delegate: &D,
-    orig_values: &[I::GenericArg],
-) -> ty::UniverseIndex
-where
-    D: SolverDelegate<Interner = I>,
-    I: Interner,
-{
-    struct MaxUniverseVisitor<'a, D, I> {
-        delegate: &'a D,
-        max_universe: ty::UniverseIndex,
-        _interner: PhantomData<I>,
-    }
-
-    impl<D, I> TypeVisitor<I> for MaxUniverseVisitor<'_, D, I>
-    where
-        D: SolverDelegate<Interner = I>,
-        I: Interner,
-    {
-        type Result = ();
-
-        fn visit_ty(&mut self, t: I::Ty) -> Self::Result {
-            match t.kind() {
-                ty::Placeholder(placeholder) => {
-                    self.max_universe = self.max_universe.max(placeholder.universe());
-                }
-                ty::Infer(ty::TyVar(vid)) => {
-                    if let Some(universe) = self.delegate.universe_of_ty(vid) {
-                        self.max_universe = self.max_universe.max(universe);
-                    }
-                }
-                _ => {}
-            }
-            t.super_visit_with(self)
-        }
-
-        fn visit_region(&mut self, r: I::Region) -> Self::Result {
-            match r.kind() {
-                ty::RePlaceholder(placeholder) => {
-                    self.max_universe = self.max_universe.max(placeholder.universe());
-                }
-                ty::ReVar(vid) => {
-                    if let Some(universe) = self.delegate.universe_of_lt(vid) {
-                        self.max_universe = self.max_universe.max(universe);
-                    }
-                }
-                _ => {}
-            }
-        }
-
-        fn visit_const(&mut self, c: I::Const) -> Self::Result {
-            match c.kind() {
-                ty::ConstKind::Placeholder(placeholder) => {
-                    self.max_universe = self.max_universe.max(placeholder.universe());
-                }
-                ty::ConstKind::Infer(ty::InferConst::Var(vid)) => {
-                    if let Some(universe) = self.delegate.universe_of_ct(vid) {
-                        self.max_universe = self.max_universe.max(universe);
-                    }
-                }
-                _ => {}
-            }
-            c.super_visit_with(self)
-        }
-    }
-
-    let mut visitor = MaxUniverseVisitor {
-        delegate,
-        max_universe: ty::UniverseIndex::ROOT,
-        _interner: PhantomData,
-    };
-    for value in orig_values {
-        value.visit_with(&mut visitor);
-    }
-    visitor.max_universe
 }
 
 /// Unify the `original_values` with the `var_values` returned by the canonical query..
@@ -461,6 +364,7 @@ pub fn instantiate_canonical_state<D, I, T>(
     delegate: &D,
     span: I::Span,
     param_env: I::ParamEnv,
+    prev_universe: ty::UniverseIndex,
     orig_values: &mut Vec<I::GenericArg>,
     state: inspect::CanonicalState<I, T>,
 ) -> T
@@ -471,7 +375,6 @@ where
 {
     // In case any fresh inference variables have been created between `state`
     // and the previous instantiation, extend `orig_values` for it.
-    let prev_universe = max_input_universe_for_canonical_state(delegate, orig_values);
     let max_universe = prev_universe + state.max_universe.index();
     while delegate.universe() < max_universe {
         delegate.create_next_universe();
