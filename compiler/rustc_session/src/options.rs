@@ -2291,6 +2291,11 @@ target_modifier_options! {
         "On x86-32 targets, setting this to N causes the compiler to pass N arguments \
         in registers EAX, EDX, and ECX instead of on the stack for\
         \"C\", \"cdecl\", and \"stdcall\" fn."),
+    retpoline: bool = (false, parse_bool, [TRACKED_UNSTABLE],
+        "enables retpoline-indirect-branches and retpoline-indirect-calls target features (default: no)"),
+    retpoline_external_thunk: bool = (false, parse_bool, [TRACKED_UNSTABLE],
+        "enables retpoline-external-thunk, retpoline-indirect-branches and retpoline-indirect-calls \
+        target features (default: no)"),
     // tidy-alphabetical-end
 
     // If you add a new option, please update:

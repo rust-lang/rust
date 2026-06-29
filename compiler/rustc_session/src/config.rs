@@ -2739,7 +2739,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let mut collected_options = Default::default();
 
     let mut unstable_opts = UnstableOptions::build(early_dcx, matches, &mut collected_options);
-    let target_opts = TargetOptions::build(early_dcx, matches, &mut collected_options);
+    let mut target_opts = TargetOptions::build(early_dcx, matches, &mut collected_options);
     TargetOptions::require_unstable_options(
         early_dcx,
         &collected_options.metadata,
@@ -2932,8 +2932,8 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let prints = print_request::collect_print_requests(early_dcx, &mut cg, &unstable_opts, matches);
 
     // -Zretpoline-external-thunk also requires -Zretpoline
-    if unstable_opts.retpoline_external_thunk {
-        unstable_opts.retpoline = true;
+    if target_opts.retpoline_external_thunk {
+        target_opts.retpoline = true;
     }
 
     let cg = cg;

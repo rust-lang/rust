@@ -721,6 +721,8 @@ fn test_target_options_tracking_hash() {
     tracked!(fixed_x18, true);
     tracked!(indirect_branch_cs_prefix, true);
     tracked!(regparm, Some(3));
+    tracked!(retpoline, true);
+    tracked!(retpoline_external_thunk, true);
     // tidy-alphabetical-end
 }
 

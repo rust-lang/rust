@@ -7,8 +7,8 @@
 //@ revisions: disabled enabled_retpoline enabled_retpoline_external_thunk
 //@ needs-llvm-components: x86
 //@ compile-flags: --target x86_64-unknown-linux-gnu
-//@ [enabled_retpoline] compile-flags: -Zretpoline
-//@ [enabled_retpoline_external_thunk] compile-flags: -Zretpoline-external-thunk
+//@ [enabled_retpoline] compile-flags: -Tretpoline -Zunstable-options
+//@ [enabled_retpoline_external_thunk] compile-flags: -Tretpoline-external-thunk -Zunstable-options
 #![crate_type = "lib"]
 #![feature(no_core)]
 #![no_core]
