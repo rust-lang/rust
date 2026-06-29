@@ -203,6 +203,13 @@ fn split_attrs(
                 foreign_item_attributes.push(attr.clone());
                 macro_attributes.push(attr);
             }
+            // `#[track_caller]` goes on the foreign item only: it's the symbol callers link
+            // against, so it must carry the flag for call sites to pass the caller location.
+            // Implementations derive it during codegen (see `EiiImpls` in `codegen_attrs.rs`),
+            // so it must not be routed onto the default impl here.
+            Some(sym::track_caller) => {
+                foreign_item_attributes.push(attr);
+            }
             // Doc attributes should be forwarded to the macro and the foreign item, since those are
             // the two items you interact with as a user.
             // FIXME: idk yet how EIIs show up in docs, might want to customize

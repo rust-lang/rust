@@ -1,0 +1,19 @@
+error: `#[track_caller]` attribute cannot be used on foreign statics
+  --> $DIR/track_caller_errors.rs:17:1
+   |
+LL | #[track_caller]
+   | ^^^^^^^^^^^^^^^
+   |
+   = help: `#[track_caller]` can only be applied to functions
+
+error: `#[decl1]` is not allowed to have `#[track_caller]`
+  --> $DIR/track_caller_errors.rs:11:1
+   |
+LL | #[track_caller]
+   | ^^^^^^^^^^^^^^^
+LL | #[decl1]
+LL | fn impl1(x: u64) {
+   | ---------------- `#[decl1]` is not allowed to have `#[track_caller]`
+
+error: aborting due to 2 previous errors
+
