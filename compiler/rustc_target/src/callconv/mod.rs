@@ -399,7 +399,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             BackendRepr::Scalar(scalar) => PassMode::Direct(scalar_attrs(scalar, Size::ZERO)),
             BackendRepr::ScalarPair(a, b) => PassMode::Pair(
                 scalar_attrs(a, Size::ZERO),
-                scalar_attrs(b, a.size(cx).align_to(b.align(cx).abi)),
+                scalar_attrs(b, a.size(cx).align_to(b.default_align(cx).abi)),
             ),
             BackendRepr::SimdVector { .. } => PassMode::Direct(ArgAttributes::new()),
             BackendRepr::Memory { .. } => Self::indirect_pass_mode(&layout),

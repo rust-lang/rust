@@ -733,7 +733,7 @@ where
                     )
                 };
                 let a_size = a_val.size();
-                let b_offset = a_size.align_to(b.align(&tcx).abi);
+                let b_offset = a_size.align_to(b.default_align(&tcx).abi);
                 assert!(b_offset.bytes() > 0); // in `operand_field` we use the offset to tell apart the fields
 
                 // It is tempting to verify `b_offset` against `layout.fields.offset(1)`,

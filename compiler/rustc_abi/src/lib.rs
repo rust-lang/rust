@@ -1404,7 +1404,11 @@ impl Primitive {
         }
     }
 
-    pub fn align<C: HasDataLayout>(self, cx: &C) -> AbiAlign {
+    /// The *platform-specific* ABI alignment of this primitive.
+    ///
+    /// This is the type alignment for the corresponding built-in.
+    /// In other contexts it might have different alignment.
+    pub fn default_align<C: HasDataLayout>(self, cx: &C) -> AbiAlign {
         use Primitive::*;
         let dl = cx.data_layout();
 
@@ -1579,8 +1583,12 @@ impl Scalar {
         }
     }
 
-    pub fn align(self, cx: &impl HasDataLayout) -> AbiAlign {
-        self.primitive().align(cx)
+    /// The *platform-specific* ABI alignment of this scalar.
+    ///
+    /// This is the type alignment for the corresponding built-in.
+    /// In other contexts it might have different alignment.
+    pub fn default_align(self, cx: &impl HasDataLayout) -> AbiAlign {
+        self.primitive().default_align(cx)
     }
 
     pub fn size(self, cx: &impl HasDataLayout) -> Size {
@@ -1792,6 +1800,13 @@ impl IntoDiagArg for NumScalableVectors {
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum BackendRepr {
     Scalar(Scalar),
+    /// Two scalars listed in *memory* order, so the first is at offset zero
+    /// and the second at a non-zero offset.
+    /// These need not be `FieldIdx(0)` and `FieldIdx(1)`.
+    ///
+    /// As of June 2026 the offset to the second scalar is the size of the first
+    /// scalar rounded up to the platform alignment of the second scalar.
+    /// That may soon change, however; see MCP#1007.
     ScalarPair(Scalar, Scalar),
     SimdScalableVector {
         element: Scalar,
@@ -1857,10 +1872,16 @@ impl BackendRepr {
     /// The psABI alignment for a `Scalar` or `ScalarPair`
     ///
     /// `None` for other variants.
-    pub fn scalar_align<C: HasDataLayout>(&self, cx: &C) -> Option<Align> {
+    ///
+    /// It's unclear whether this is a meaningful operation, and MCP#1007 proposes changes.
+    /// You should generally be using the alignment of the place or the type,
+    /// not calculating something from the `Scalar`s.
+    pub fn scalar_platform_align<C: HasDataLayout>(&self, cx: &C) -> Option<Align> {
         match *self {
-            BackendRepr::Scalar(s) => Some(s.align(cx).abi),
-            BackendRepr::ScalarPair(s1, s2) => Some(s1.align(cx).max(s2.align(cx)).abi),
+            BackendRepr::Scalar(s) => Some(s.default_align(cx).abi),
+            BackendRepr::ScalarPair(s1, s2) => {
+                Some(s1.default_align(cx).max(s2.default_align(cx)).abi)
+            }
             // The align of a Vector can vary in surprising ways
             BackendRepr::SimdVector { .. }
             | BackendRepr::Memory { .. }
@@ -1877,9 +1898,9 @@ impl BackendRepr {
             BackendRepr::Scalar(s) => Some(s.size(cx)),
             // May have some padding between the pair.
             BackendRepr::ScalarPair(s1, s2) => {
-                let field2_offset = s1.size(cx).align_to(s2.align(cx).abi);
+                let field2_offset = s1.size(cx).align_to(s2.default_align(cx).abi);
                 let size = (field2_offset + s2.size(cx)).align_to(
-                    self.scalar_align(cx)
+                    self.scalar_platform_align(cx)
                         // We absolutely must have an answer here or everything is FUBAR.
                         .unwrap(),
                 );

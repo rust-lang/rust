@@ -1064,7 +1064,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
                 },
             )
         } else if let abi::BackendRepr::ScalarPair(ref a, ref b) = place.layout.backend_repr {
-            let b_offset = a.size(self).align_to(b.align(self).abi);
+            let b_offset = a.size(self).align_to(b.default_align(self).abi);
 
             let mut load = |i, scalar: &abi::Scalar, align| {
                 let ptr = if i == 0 {
