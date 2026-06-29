@@ -404,7 +404,7 @@ pub(crate) struct SmallDataThresholdNotSupportedForTarget<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("`-Zbranch-protection` is only supported on aarch64")]
+#[diag("`-Tbranch-protection` is only supported on aarch64")]
 pub(crate) struct BranchProtectionRequiresAArch64;
 
 #[derive(Diagnostic)]

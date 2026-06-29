@@ -475,6 +475,12 @@ impl TargetModifierOptionValue for u32 {
     }
 }
 
+impl TargetModifierOptionValue for BranchProtection {
+    fn to_string_for_diag(&self) -> String {
+        self.to_string()
+    }
+}
+
 impl<T: TargetModifierOptionValue> TargetModifierOptionValue for Option<T> {
     fn to_string_for_diag(&self) -> String {
         match self {
@@ -2274,6 +2280,9 @@ target_modifier_options! {
     TargetOptions, TargetOptionsMetadata, T_OPTIONS, topts, "T", target,
 
     // tidy-alphabetical-start
+    #[rustc_lint_opt_deny_field_access("use `Session::branch_protection` instead of this field")]
+    branch_protection: Option<BranchProtection> = (None, parse_branch_protection, [TRACKED_UNSTABLE],
+        "set options for branch target identification and pointer authentication on AArch64"),
     fixed_x18: bool = (false, parse_bool, [TRACKED_UNSTABLE],
         "make the x18 register reserved on AArch64 (default: no)"),
     // tidy-alphabetical-end
@@ -2335,9 +2344,6 @@ options! {
         (default: no)"),
     box_noalias: bool = (true, parse_bool, [TRACKED],
         "emit noalias metadata for box (default: yes)"),
-    #[rustc_lint_opt_deny_field_access("use `Session::branch_protection` instead of this field")]
-    branch_protection: Option<BranchProtection> = (None, parse_branch_protection, [TRACKED],
-        "set options for branch target identification and pointer authentication on AArch64"),
     build_sdylib_interface: bool = (false, parse_bool, [UNTRACKED],
         "whether the stable interface is being built"),
     cache_proc_macros: bool = (false, parse_bool, [TRACKED],

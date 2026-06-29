@@ -1,11 +1,12 @@
+//@ compile-flags: -Zunstable-options
 //@ revisions: BADFLAGS BADFLAGSPC BADTARGET
-//@ [BADFLAGS] compile-flags: --target=aarch64-unknown-linux-gnu -Zbranch-protection=leaf
+//@ [BADFLAGS] compile-flags: --target=aarch64-unknown-linux-gnu -Tbranch-protection=leaf
 //@ [BADFLAGS] check-fail
 //@ [BADFLAGS] needs-llvm-components: aarch64
-//@ [BADFLAGSPC] compile-flags: --target=aarch64-unknown-linux-gnu -Zbranch-protection=pc
+//@ [BADFLAGSPC] compile-flags: --target=aarch64-unknown-linux-gnu -Tbranch-protection=pc
 //@ [BADFLAGSPC] check-fail
 //@ [BADFLAGSPC] needs-llvm-components: aarch64
-//@ [BADTARGET] compile-flags: --target=x86_64-unknown-linux-gnu -Zbranch-protection=bti
+//@ [BADTARGET] compile-flags: --target=x86_64-unknown-linux-gnu -Tbranch-protection=bti
 //@ [BADTARGET] check-fail
 //@ [BADTARGET] needs-llvm-components: x86
 
@@ -22,6 +23,6 @@ pub trait MetaSized: PointeeSized {}
 #[lang = "sized"]
 pub trait Sized: MetaSized {}
 
-//[BADFLAGS]~? ERROR incorrect value `leaf` for unstable option `branch-protection`
-//[BADFLAGSPC]~? ERROR incorrect value `pc` for unstable option `branch-protection`
-//[BADTARGET]~? ERROR `-Zbranch-protection` is only supported on aarch64
+//[BADFLAGS]~? ERROR incorrect value `leaf` for target option `branch-protection`
+//[BADFLAGSPC]~? ERROR incorrect value `pc` for target option `branch-protection`
+//[BADTARGET]~? ERROR `-Tbranch-protection` is only supported on aarch64

@@ -11,7 +11,7 @@ use std::num::NonZero;
 use std::path::{Path, PathBuf};
 use std::str::{self, FromStr};
 use std::sync::LazyLock;
-use std::{cmp, fs, iter, thread};
+use std::{cmp, fmt, fs, iter, thread};
 
 use externs::{ExternOpt, split_extern_opt};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
@@ -1605,24 +1605,49 @@ impl Passes {
     }
 }
 
-#[derive(Clone, Copy, Hash, Debug, PartialEq)]
+#[derive(Clone, Copy, Hash, Debug, PartialEq, Encodable, BlobDecodable)]
 pub enum PAuthKey {
     A,
     B,
 }
 
-#[derive(Clone, Copy, Hash, Debug, PartialEq)]
+#[derive(Clone, Copy, Hash, Debug, PartialEq, Encodable, BlobDecodable)]
 pub struct PacRet {
     pub leaf: bool,
     pub pc: bool,
     pub key: PAuthKey,
 }
 
-#[derive(Clone, Copy, Hash, Debug, PartialEq, Default)]
+#[derive(Clone, Copy, Hash, Debug, PartialEq, Default, Encodable, BlobDecodable)]
 pub struct BranchProtection {
     pub bti: bool,
     pub pac_ret: Option<PacRet>,
     pub gcs: bool,
+}
+
+impl fmt::Display for BranchProtection {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut parts = Vec::new();
+        if self.bti {
+            parts.push("bti");
+        }
+        if let Some(pac_ret) = self.pac_ret {
+            parts.push("pac-ret");
+            if pac_ret.leaf {
+                parts.push("leaf");
+            }
+            if pac_ret.pc {
+                parts.push("pc");
+            }
+            if matches!(pac_ret.key, PAuthKey::B) {
+                parts.push("b-key");
+            }
+        }
+        if self.gcs {
+            parts.push("gcs");
+        }
+        write!(f, "{}", parts.join(","))
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialOrd, PartialEq)]
@@ -1646,6 +1671,7 @@ pub enum PointerAuthOption {
     VTPtrTypeDisc,
     // tidy-alphabetical-end
 }
+
 impl PointerAuthOption {
     pub fn parse(s: &str) -> Option<Self> {
         match s {

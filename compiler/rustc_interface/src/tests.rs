@@ -710,6 +710,14 @@ fn test_target_options_tracking_hash() {
 
     // Make sure that changing a [TRACKED] option changes the hash.
     // tidy-alphabetical-start
+    tracked!(
+        branch_protection,
+        Some(BranchProtection {
+            bti: true,
+            pac_ret: Some(PacRet { leaf: true, pc: true, key: PAuthKey::B }),
+            gcs: true,
+        })
+    );
     tracked!(fixed_x18, true);
     // tidy-alphabetical-end
 }
@@ -810,14 +818,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(autodiff_post_passes, Some("function(mem2reg,instsimplify,simplifycfg)".to_string()));
     tracked!(binary_dep_depinfo, true);
     tracked!(box_noalias, false);
-    tracked!(
-        branch_protection,
-        Some(BranchProtection {
-            bti: true,
-            pac_ret: Some(PacRet { leaf: true, pc: true, key: PAuthKey::B }),
-            gcs: true,
-        })
-    );
     tracked!(codegen_backend, Some("abc".to_string()));
     tracked!(codegen_emit_retag, Some(CodegenRetagOptions::default()));
     tracked!(

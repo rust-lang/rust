@@ -17,7 +17,8 @@ fn main() {
     build_native_static_lib("test");
     rustc()
         .arg("-Cunsafe-allow-abi-mismatch=branch-protection")
-        .arg("-Zbranch-protection=bti,gcs,pac-ret,leaf")
+        .arg("-Zunstable-options")
+        .arg("-Tbranch-protection=bti,gcs,pac-ret,leaf")
         .input("test.rs")
         .run();
     run("test");
@@ -31,7 +32,8 @@ fn main() {
     llvm_ar().obj_to_ar().output_input("libtest.a", &obj_file).run();
     rustc()
         .arg("-Cunsafe-allow-abi-mismatch=branch-protection")
-        .arg("-Zbranch-protection=bti,gcs,pac-ret,leaf")
+        .arg("-Zunstable-options")
+        .arg("-Tbranch-protection=bti,gcs,pac-ret,leaf")
         .input("test.rs")
         .run();
     run("test");

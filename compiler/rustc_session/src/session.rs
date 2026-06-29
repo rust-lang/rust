@@ -998,7 +998,7 @@ impl Session {
     /// Accessing the session's unstable `branch_protection` option fields directly is linted
     /// against.
     pub fn branch_protection(&self) -> Option<BranchProtection> {
-        let mut bp = self.opts.unstable_opts.branch_protection;
+        let mut bp = self.opts.target_opts.branch_protection;
 
         if let Some(bp) = bp.as_mut() {
             // Windows on Arm only supports PAC Key B for return address signing, as shown in
@@ -1590,7 +1590,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         }
     }
 
-    if sess.opts.unstable_opts.branch_protection.is_some() && sess.target.arch != Arch::AArch64 {
+    if sess.opts.target_opts.branch_protection.is_some() && sess.target.arch != Arch::AArch64 {
         sess.dcx().emit_err(diagnostics::BranchProtectionRequiresAArch64);
     }
 
