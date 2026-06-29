@@ -291,6 +291,15 @@ try re-running with the `--bless` option\n    Expected:\n\
                     # FIXME (todo) field retyped, new type is the same size
                     pass
 
+        if self.generic_params != expected.generic_params:
+            result = Result.Mismatch
+            print_mismatch(
+                error_source,
+                "generic_params",
+                self.generic_params,
+                expected.generic_params,
+            )
+
         return result
 
 
