@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 # tidy-alphabetical-start
 indexmap = "2.4.0"
-itertools = "0.12"
+itertools = "0.15"
 pulldown-cmark = { version = "0.11", features = [
     "html",
 ], default-features = false }

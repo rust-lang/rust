@@ -269,7 +269,7 @@ impl_lint_pass!(
 impl<'tcx> LateLintPass<'tcx> for IfLetRescope {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
         if expr.span.edition().at_least_rust_2024()
-            || cx.tcx.lints_that_dont_need_to_run(()).contains(&LintId::of(IF_LET_RESCOPE))
+            || cx.tcx.skippable_lints(()).contains(&LintId::of(IF_LET_RESCOPE))
         {
             return;
         }

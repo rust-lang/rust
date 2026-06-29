@@ -782,7 +782,7 @@ impl<'tcx> GATArgsCollector<'tcx> {
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GATArgsCollector<'tcx> {
     fn visit_ty(&mut self, t: Ty<'tcx>) {
         match t.kind() {
-            &ty::Alias(ty::AliasTy { kind: ty::Projection { def_id }, args, .. })
+            &ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id }, args, .. })
                 if def_id == self.gat =>
             {
                 for (idx, arg) in args.iter().enumerate() {
@@ -1488,7 +1488,7 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
             // be sure if it will error or not as user might always specify the other.
             // FIXME(generic_const_exprs): This is incorrect when dealing with unused const params.
             // E.g: `struct Foo<const N: usize, const M: usize = { 1 - 2 }>;`. Here, we should
-            // eagerly error but we don't as we have `ConstKind::Unevaluated(.., [N, M])`.
+            // eagerly error but we don't as we have `ConstKind::Alias(.., [N, M])`.
             if !default.has_param() {
                 wfcx.register_wf_obligation(
                     tcx.def_span(param.def_id),
@@ -1509,7 +1509,9 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
                     | ty::ConstKind::Bound(_, _) => unreachable!(),
                     ty::ConstKind::Error(_) | ty::ConstKind::Expr(_) => continue,
                     ty::ConstKind::Value(cv) => cv.ty,
-                    ty::ConstKind::Unevaluated(uv) => uv.type_of(infcx.tcx).skip_norm_wip(),
+                    ty::ConstKind::Alias(_, alias_const) => {
+                        alias_const.type_of(infcx.tcx).skip_norm_wip()
+                    }
                     ty::ConstKind::Param(param_ct) => {
                         param_ct.find_const_ty_from_env(wfcx.param_env)
                     }
@@ -1585,7 +1587,7 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
             }
             let mut param_count = CountParams::default();
             let has_region = pred.visit_with(&mut param_count).is_break();
-            let instantiated_pred = ty::EarlyBinder::bind(pred).instantiate(tcx, args);
+            let instantiated_pred = ty::EarlyBinder::bind(tcx, pred).instantiate(tcx, args);
             // Don't check non-defaulted params, dependent defaults (including lifetimes)
             // or preds with multiple params.
             if instantiated_pred.skip_normalization().has_non_region_param()
@@ -1714,7 +1716,16 @@ fn check_fn_or_method<'tcx>(
         let span = tcx.def_span(def_id);
         let has_implicit_self = hir_decl.implicit_self().has_implicit_self();
         let mut inputs = sig.inputs().iter().skip(if has_implicit_self { 1 } else { 0 });
-        // FIXME(splat): use `sig.splatted()` once FnSig has it
+        // FIXME(splat): support the rest of closure splatting, or replace this code with an error
+        if let Some(mut splatted_arg_index) = sig.splatted() {
+            let mut inputs_count = sig.inputs().len();
+            if has_implicit_self {
+                splatted_arg_index = splatted_arg_index.strict_sub(1);
+                inputs_count = inputs_count.strict_sub(1);
+            }
+            debug!(?splatted_arg_index, ?inputs_count, ?has_implicit_self, ?sig);
+            sig = sig.set_splatted(Some(splatted_arg_index), inputs_count).unwrap();
+        }
         // Check that the argument is a tuple and is sized
         if let Some(ty) = inputs.next() {
             wfcx.register_bound(

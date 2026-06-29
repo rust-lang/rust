@@ -5185,9 +5185,9 @@ function makeTab(tabNb, text, results, query, isTypeSearch, goToFirst) {
                 errorReport.className = "error";
                 errorReport.innerHTML = `Query parser error: "${error.join("")}".`;
                 search.insertBefore(errorReport, search.firstElementChild);
-            } else if (goToFirst ||
+            } else if (tabNb === 0 && (goToFirst ||
                 (count === 1 && getSettingValue("go-to-only-result") === "true")
-            ) {
+            )) {
                 // Needed to force re-execution of JS when coming back to a page. Let's take this
                 // scenario as example:
                 //

@@ -49,7 +49,7 @@ use rustc_trait_selection::{solve, traits};
 use tracing::{info, instrument};
 
 use crate::interface::Compiler;
-use crate::{diagnostics, limits, proc_macro_decls, util};
+use crate::{diagnostics, limits, util};
 
 pub fn parse<'a>(sess: &'a Session) -> ast::Crate {
     let mut krate = sess
@@ -101,7 +101,6 @@ fn pre_expansion_lint<'a>(
                 lint_store,
                 registered_tools,
                 None,
-                rustc_lint::BuiltinCombinedPreExpansionLintPass::new(),
                 check_node,
             );
         },
@@ -181,7 +180,7 @@ fn configure_and_expand(
         if cfg!(windows) {
             old_path = env::var_os("PATH").unwrap_or(old_path);
             let mut new_path = Vec::from_iter(
-                sess.host_filesearch().search_paths(PathKind::All).map(|p| p.dir.clone()),
+                sess.host_filesearch().search_paths(PathKind::Native).map(|p| p.dir.clone()),
             );
             for path in env::split_paths(&old_path) {
                 if !new_path.contains(&path) {
@@ -479,7 +478,6 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
         lint_store,
         tcx.registered_tools(()),
         Some(lint_buffer),
-        rustc_lint::BuiltinCombinedEarlyLintPass::new(),
         EarlyCheckNode::CrateRoot(&*krate, &*krate.attrs),
     )
 }
@@ -805,8 +803,8 @@ fn resolver_for_lowering_raw<'tcx>(
     );
     let krate = configure_and_expand(krate, &pre_configured_attrs, &mut resolver);
 
-    // Make sure we don't mutate the cstore from here on.
-    tcx.untracked().cstore.freeze();
+    // Don't mutate the cstore or stable crate id map from here on.
+    tcx.untracked().freeze_cstore();
 
     let ResolverOutputs {
         global_ctxt: untracked_resolutions,
@@ -897,9 +895,9 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     providers.queries.resolutions = |tcx, ()| tcx.resolver_for_lowering_raw(()).2;
     providers.queries.early_lint_checks = early_lint_checks;
     providers.queries.env_var_os = env_var_os;
+    providers.queries.proc_macro_decls_static = |tcx, _| tcx.hir_crate_items(()).proc_macro_decls();
     rustc_ast_lowering::provide(&mut providers.queries);
     limits::provide(&mut providers.queries);
-    proc_macro_decls::provide(&mut providers.queries);
     rustc_expand::provide(&mut providers.queries);
     rustc_const_eval::provide(providers);
     rustc_middle::hir::provide(&mut providers.queries);
@@ -1065,7 +1063,7 @@ impl<'a, 'tcx> Diagnostic<'a, ()> for DiagCallback<'tcx> {
 }
 
 pub fn emit_delayed_lints(tcx: TyCtxt<'_>) {
-    for owner_id in tcx.hir_crate_items(()).delayed_lint_items() {
+    for owner_id in tcx.hir_crate_items(()).owners() {
         if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(owner_id) {
             for lint in delayed_lints.steal() {
                 tcx.emit_node_span_lint(
@@ -1131,28 +1129,6 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     });
 
     sess.time("emit_ast_lowering_delayed_lints", || {
-        // Sanity check in debug mode that all lints are really noticed and we really will emit
-        // them all in the loop right below.
-        //
-        // During ast lowering, when creating items, foreign items, trait items and impl items,
-        // we store in them whether they have any lints in their owner node that should be
-        // picked up by `hir_crate_items`. However, theoretically code can run between that
-        // boolean being inserted into the item and the owner node being created. We don't want
-        // any new lints to be emitted there (you have to really try to manage that but still),
-        // but this check is there to catch that.
-        #[cfg(debug_assertions)]
-        {
-            let hir_items = tcx.hir_crate_items(());
-            for owner_id in hir_items.owners() {
-                if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(owner_id)
-                    && !delayed_lints.borrow().is_empty()
-                {
-                    // Assert that delayed_lint_items also picked up this item to have lints.
-                    assert!(hir_items.delayed_lint_items().any(|i| i == owner_id));
-                }
-            }
-        }
-
         emit_delayed_lints(tcx);
     });
 

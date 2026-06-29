@@ -14,11 +14,11 @@ use super::util::parse_single_integer;
 use crate::attributes::AttributeSafety;
 use crate::attributes::cfg::parse_cfg_entry;
 use crate::session_diagnostics::{
-    AsNeededCompatibility, BundleNeedsStatic, EmptyLinkName, ExportSymbolsNeedsStatic,
-    ImportNameTypeRaw, ImportNameTypeX86, IncompatibleWasmLink, InvalidLinkModifier,
-    InvalidMachoSection, InvalidMachoSectionReason, LinkFrameworkApple, LinkOrdinalOutOfRange,
-    LinkRequiresName, MultipleModifiers, NullOnLinkName, NullOnLinkSection, RawDylibOnlyWindows,
-    WholeArchiveNeedsStatic,
+    AsNeededCompatibility, BothFfiConstAndPure, BundleNeedsStatic, EmptyLinkName,
+    ExportSymbolsNeedsStatic, ImportNameTypeRaw, ImportNameTypeX86, IncompatibleWasmLink,
+    InvalidLinkModifier, InvalidMachoSection, InvalidMachoSectionReason, LinkFrameworkApple,
+    LinkOrdinalOutOfRange, LinkRequiresName, MultipleModifiers, NullOnLinkName, NullOnLinkSection,
+    RawDylibOnlyWindows, WholeArchiveNeedsStatic,
 };
 
 pub(crate) struct LinkNameParser;
@@ -26,7 +26,7 @@ pub(crate) struct LinkNameParser;
 impl SingleAttributeParser for LinkNameParser {
     const PATH: &[Symbol] = &[sym::link_name];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::ForeignFn),
         Allow(Target::ForeignStatic),
     ]);
@@ -70,7 +70,7 @@ impl CombineAttributeParser for LinkParser {
             r#"name = "...", import_name_type = "decorated|noprefix|undecorated""#,
             r#"name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated""#,
         ], "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute");
-    const ALLOWED_TARGETS: AllowedTargets =
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::ForeignMod)]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
@@ -494,7 +494,7 @@ impl SingleAttributeParser for LinkSectionParser {
         unsafe_since: Some(Edition2024),
     };
     const STABILITY: AttributeStability = AttributeStability::Stable;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Static),
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -535,7 +535,18 @@ impl SingleAttributeParser for LinkSectionParser {
 pub(crate) struct ExportStableParser;
 impl NoArgsAttributeParser for ExportStableParser {
     const PATH: &[Symbol] = &[sym::export_stable];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); //FIXME Still checked fully in `check_attr.rs`
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Struct),
+        Allow(Target::Enum),
+        Allow(Target::Union),
+        Allow(Target::TyAlias),
+        Allow(Target::AssocTy),
+        Allow(Target::Use),
+        Allow(Target::Mod),
+        Allow(Target::Impl { of_trait: false }),
+    ]);
     const STABILITY: AttributeStability = unstable!(export_stable);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ExportStable;
 }
@@ -547,7 +558,8 @@ impl NoArgsAttributeParser for FfiConstParser {
         note: "`#[ffi_const]` functions shall have no effects except for its return value, which can only depend on the values of the function parameters, and is not affected by changes to the observable state of the program.",
         unsafe_since: None,
     };
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::ForeignFn)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
+        AllowedTargets::AllowList(&[Allow(Target::ForeignFn)]);
     const STABILITY: AttributeStability = unstable!(ffi_const);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::FfiConst;
 }
@@ -559,15 +571,23 @@ impl NoArgsAttributeParser for FfiPureParser {
         note: "`#[ffi_pure]` functions shall have no effects except for its return value, which shall not change across two consecutive function calls with the same parameters.",
         unsafe_since: None,
     };
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::ForeignFn)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
+        AllowedTargets::AllowList(&[Allow(Target::ForeignFn)]);
     const STABILITY: AttributeStability = unstable!(ffi_pure);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::FfiPure;
+
+    fn finalize_check(cx: &FinalizeContext<'_, '_>, attr_span: Span) {
+        // `#[ffi_const]` functions cannot be `#[ffi_pure]`.
+        if cx.all_attrs.iter().any(|a| a.word_is(sym::ffi_const)) {
+            cx.emit_err(BothFfiConstAndPure { attr_span });
+        }
+    }
 }
 
 pub(crate) struct RustcStdInternalSymbolParser;
 impl NoArgsAttributeParser for RustcStdInternalSymbolParser {
     const PATH: &[Symbol] = &[sym::rustc_std_internal_symbol];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::ForeignFn),
         Allow(Target::Static),
@@ -581,7 +601,7 @@ pub(crate) struct LinkOrdinalParser;
 
 impl SingleAttributeParser for LinkOrdinalParser {
     const PATH: &[Symbol] = &[sym::link_ordinal];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::ForeignFn),
         Allow(Target::ForeignStatic),
         Warn(Target::MacroCall),
@@ -621,7 +641,7 @@ pub(crate) struct LinkageParser;
 
 impl SingleAttributeParser for LinkageParser {
     const PATH: &[Symbol] = &[sym::linkage];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
@@ -697,7 +717,7 @@ pub(crate) struct NeedsAllocatorParser;
 
 impl NoArgsAttributeParser for NeedsAllocatorParser {
     const PATH: &[Symbol] = &[sym::needs_allocator];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = unstable!(allocator_internals);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NeedsAllocator;
 }
@@ -706,7 +726,7 @@ pub(crate) struct CompilerBuiltinsParser;
 
 impl NoArgsAttributeParser for CompilerBuiltinsParser {
     const PATH: &[Symbol] = &[sym::compiler_builtins];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = unstable!(compiler_builtins);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::CompilerBuiltins;
 }

@@ -283,7 +283,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     /// named variants.
     #[instrument(level = "trace", skip(self))]
     fn give_name_from_error_region(&self, fr: RegionVid) -> Option<RegionName> {
-        let error_region = self.to_error_region(fr)?;
+        let error_region = self.regioncx.to_error_region(fr)?;
 
         let tcx = self.infcx.tcx;
 
@@ -1015,7 +1015,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         &self,
         fr: RegionVid,
     ) -> Option<RegionName> {
-        let ty::ReEarlyParam(region) = self.to_error_region(fr)?.kind() else {
+        let ty::ReEarlyParam(region) = self.regioncx.to_error_region(fr)?.kind() else {
             return None;
         };
         if region.is_named() {
@@ -1050,7 +1050,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         &self,
         fr: RegionVid,
     ) -> Option<RegionName> {
-        let ty::ReEarlyParam(region) = self.to_error_region(fr)?.kind() else {
+        let ty::ReEarlyParam(region) = self.regioncx.to_error_region(fr)?.kind() else {
             return None;
         };
         if region.is_named() {

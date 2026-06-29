@@ -100,7 +100,7 @@ fn get_arg_root<'a>(cx: &LateContext<'_>, arg: &'a hir::Expr<'a>) -> &'a hir::Ex
 }
 
 fn contains_call<'a>(cx: &LateContext<'a>, arg: &'a hir::Expr<'a>) -> bool {
-    for_each_expr(cx, arg, |expr| {
+    for_each_expr(cx.tcx, arg, |expr| {
         if matches!(expr.kind, hir::ExprKind::MethodCall { .. } | hir::ExprKind::Call { .. })
             && !is_inside_always_const_context(cx.tcx, expr.hir_id)
         {

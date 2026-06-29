@@ -23,7 +23,8 @@ pub(super) fn build_async_destructor_ctor_shim<'tcx>(
     debug_assert_eq!(Some(def_id), tcx.lang_items().async_drop_in_place_fn());
     let generic_body = tcx.optimized_mir(def_id);
     let args = tcx.mk_args(&[ty.into()]);
-    let mut body = EarlyBinder::bind(generic_body.clone()).instantiate(tcx, args).skip_norm_wip();
+    let mut body =
+        EarlyBinder::bind(tcx, generic_body.clone()).instantiate(tcx, args).skip_norm_wip();
 
     // Minimal shim passes except MentionedItems,
     // it causes error "mentioned_items for DefId(...async_drop_in_place...) have already been set
@@ -106,7 +107,7 @@ pub(super) fn build_async_drop_shim<'tcx>(
     );
     block(&mut blocks, TerminatorKind::Return);
 
-    let source = MirSource::from_instance(ty::InstanceKind::AsyncDropGlue(def_id, ty));
+    let source = MirSource::from_shim(ty::ShimKind::AsyncDropGlue(def_id, ty));
     let mut body =
         new_body(source, blocks, local_decls_for_sig(&sig, span), sig.inputs().len(), span);
 
@@ -175,17 +176,17 @@ pub(super) fn build_future_drop_poll_shim<'tcx>(
     proxy_ty: Ty<'tcx>,
     impl_ty: Ty<'tcx>,
 ) -> Body<'tcx> {
-    let instance = ty::InstanceKind::FutureDropPollShim(def_id, proxy_ty, impl_ty);
+    let shim = ty::ShimKind::FutureDropPoll(def_id, proxy_ty, impl_ty);
     let ty::Coroutine(coroutine_def_id, _) = impl_ty.kind() else {
-        bug!("build_future_drop_poll_shim not for coroutine impl type: ({:?})", instance);
+        bug!("build_future_drop_poll_shim not for coroutine impl type: ({:?})", shim);
     };
 
     let span = tcx.def_span(def_id);
 
     if tcx.is_async_drop_in_place_coroutine(*coroutine_def_id) {
-        build_adrop_for_adrop_shim(tcx, proxy_ty, impl_ty, span, instance)
+        build_adrop_for_adrop_shim(tcx, proxy_ty, impl_ty, span, shim)
     } else {
-        build_adrop_for_coroutine_shim(tcx, proxy_ty, impl_ty, span, instance)
+        build_adrop_for_coroutine_shim(tcx, proxy_ty, impl_ty, span, shim)
     }
 }
 
@@ -198,16 +199,16 @@ fn build_adrop_for_coroutine_shim<'tcx>(
     proxy_ty: Ty<'tcx>,
     impl_ty: Ty<'tcx>,
     span: Span,
-    instance: ty::InstanceKind<'tcx>,
+    shim: ty::ShimKind<'tcx>,
 ) -> Body<'tcx> {
     let ty::Coroutine(coroutine_def_id, impl_args) = impl_ty.kind() else {
-        bug!("build_adrop_for_coroutine_shim not for coroutine impl type: ({:?})", instance);
+        bug!("build_adrop_for_coroutine_shim not for coroutine impl type: ({:?})", shim);
     };
     let source_info = SourceInfo::outermost(span);
     let body = tcx.optimized_mir(*coroutine_def_id).future_drop_poll().unwrap();
     let mut body: Body<'tcx> =
-        EarlyBinder::bind(body.clone()).instantiate(tcx, impl_args).skip_norm_wip();
-    body.source.instance = instance;
+        EarlyBinder::bind(tcx, body.clone()).instantiate(tcx, impl_args).skip_norm_wip();
+    body.source.instance = ty::InstanceKind::Shim(shim);
     body.phase = MirPhase::Runtime(RuntimePhase::Initial);
     body.var_debug_info.clear();
 
@@ -291,7 +292,7 @@ fn build_adrop_for_adrop_shim<'tcx>(
     proxy_ty: Ty<'tcx>,
     impl_ty: Ty<'tcx>,
     span: Span,
-    instance: ty::InstanceKind<'tcx>,
+    shim: ty::ShimKind<'tcx>,
 ) -> Body<'tcx> {
     let source_info = SourceInfo::outermost(span);
     let proxy_ref = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, proxy_ty);
@@ -413,7 +414,7 @@ fn build_adrop_for_adrop_shim<'tcx>(
         false,
     ));
 
-    let source = MirSource::from_instance(instance);
+    let source = MirSource::from_shim(shim);
     let mut body = new_body(source, blocks, locals, sig.inputs().len(), span);
     body.phase = MirPhase::Runtime(RuntimePhase::Initial);
     return body;

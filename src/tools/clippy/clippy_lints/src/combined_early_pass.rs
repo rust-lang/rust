@@ -11,7 +11,7 @@
 //! inlined calls. No vtable, no per-node dynamic dispatch.
 //!
 //! Unlike the late combine there is no `active` gate. rustc drops fully-disabled
-//! late passes via `lints_that_dont_need_to_run`, but the early pass runner has
+//! late passes via `skippable_lints`, but the early pass runner has
 //! no such filtering, so a plain forward is equivalent and loses nothing.
 //!
 //! [`combined_late_pass`]: crate::combined_late_pass

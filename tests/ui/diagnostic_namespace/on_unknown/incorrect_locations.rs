@@ -3,47 +3,47 @@
 #![feature(diagnostic_on_unknown)]
 
 #[diagnostic::on_unknown(message = "foo")]
-//~^WARN `#[diagnostic::on_unknown]` can only be applied to `use` statements and module declarations
+//~^WARN cannot be used on
 extern crate std as other_std;
 
 #[diagnostic::on_unknown(message = "foo")]
-//~^WARN `#[diagnostic::on_unknown]` can only be applied to `use` statements and module declarations
+//~^WARN cannot be used on
 const CONST: () = ();
 
 #[diagnostic::on_unknown(message = "foo")]
-//~^WARN `#[diagnostic::on_unknown]` can only be applied to `use` statements and module declarations
+//~^WARN cannot be used on
 static STATIC: () = ();
 
 #[diagnostic::on_unknown(message = "foo")]
-//~^WARN `#[diagnostic::on_unknown]` can only be applied to `use` statements and module declarations
+//~^WARN cannot be used on
 type Type = ();
 
 #[diagnostic::on_unknown(message = "foo")]
-//~^WARN `#[diagnostic::on_unknown]` can only be applied to `use` statements and module declarations
+//~^WARN cannot be used on
 enum Enum {}
 
 #[diagnostic::on_unknown(message = "foo")]
-//~^WARN `#[diagnostic::on_unknown]` can only be applied to `use` statements and module declarations
+//~^WARN cannot be used on
 impl Enum {}
 
 #[diagnostic::on_unknown(message = "foo")]
-//~^WARN `#[diagnostic::on_unknown]` can only be applied to `use` statements and module declarations
+//~^WARN cannot be used on
 extern "C" {}
 
 #[diagnostic::on_unknown(message = "foo")]
-//~^WARN `#[diagnostic::on_unknown]` can only be applied to `use` statements and module declarations
+//~^WARN cannot be used on
 fn fun() {}
 
 #[diagnostic::on_unknown(message = "foo")]
-//~^WARN `#[diagnostic::on_unknown]` can only be applied to `use` statements and module declarations
+//~^WARN cannot be used on
 struct Struct {}
 
 #[diagnostic::on_unknown(message = "foo")]
-//~^WARN `#[diagnostic::on_unknown]` can only be applied to `use` statements and module declarations
+//~^WARN cannot be used on
 trait Trait {}
 
 #[diagnostic::on_unknown(message = "foo")]
-//~^WARN `#[diagnostic::on_unknown]` can only be applied to `use` statements and module declarations
+//~^WARN cannot be used on
 impl Trait for i32 {}
 
 #[diagnostic::on_unknown(message = "foo")]

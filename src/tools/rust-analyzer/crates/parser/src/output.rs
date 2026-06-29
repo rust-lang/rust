@@ -18,7 +18,7 @@ pub struct Output {
     ///
     /// ```text
     /// |16 bit kind|8 bit n_input_tokens|4 bit tag|4 bit leftover|
-    /// ``````
+    /// ```
     event: Vec<u32>,
     error: Vec<String>,
 }

@@ -38,7 +38,7 @@ use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::{
     self, Cfg, CheckCfg, CoverageLevel, CoverageOptions, CrateType, DebugInfo, ErrorOutputType,
-    FunctionReturn, Input, InstrumentCoverage, OptLevel, OutFileName, OutputType,
+    FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, OptLevel, OutFileName, OutputType,
     SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
@@ -418,10 +418,6 @@ impl Session {
     /// Returns `true` if the target can use the current split debuginfo configuration.
     pub fn target_can_use_split_dwarf(&self) -> bool {
         self.target.debuginfo_kind == DebuginfoKind::Dwarf
-    }
-
-    pub fn generate_proc_macro_decls_symbol(&self, stable_crate_id: StableCrateId) -> String {
-        format!("__rustc_proc_macro_decls_{:08x}__", stable_crate_id.as_u64())
     }
 
     pub fn target_filesearch(&self) -> &filesearch::FileSearch {
@@ -1149,6 +1145,10 @@ pub fn build_session(
     sess
 }
 
+pub fn generate_proc_macro_decls_symbol(stable_crate_id: StableCrateId) -> String {
+    format!("__rustc_proc_macro_decls_{:08x}__", stable_crate_id.as_u64())
+}
+
 /// Validate command line arguments with a `Session`.
 ///
 /// If it is useful to have a Session available already for validating a commandline argument, you
@@ -1338,6 +1338,12 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         if sess.opts.debuginfo == DebugInfo::None {
             sess.dcx().emit_warn(errors::EmbedSourceRequiresDebugInfo);
         }
+    }
+
+    if sess.opts.unstable_opts.instrument_mcount == InstrumentMcount::Fentry
+        && !sess.target.options.supports_fentry
+    {
+        sess.dcx().emit_err(errors::InstrumentationNotSupported { us: "fentry".to_string() });
     }
 
     if sess.opts.unstable_opts.instrument_xray.is_some() && !sess.target.options.supports_xray {

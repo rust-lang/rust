@@ -1,6 +1,7 @@
 // We're testing aarch64 CRC32 target specific features
 //@only-target: aarch64
 //@compile-flags: -C target-feature=+crc
+//@run-native
 
 use std::arch::aarch64::*;
 use std::arch::is_aarch64_feature_detected;

@@ -1,3 +1,4 @@
+// This code is automatically generated. DO NOT MODIFY.
 //! Hexagon HVX 128-byte vector mode intrinsics
 //!
 //! This module provides intrinsics for the Hexagon Vector Extensions (HVX)

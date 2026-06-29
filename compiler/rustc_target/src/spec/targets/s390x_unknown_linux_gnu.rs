@@ -12,6 +12,7 @@ pub(crate) fn target() -> Target {
     base.stack_probes = StackProbeType::Inline;
     base.supported_sanitizers =
         SanitizerSet::ADDRESS | SanitizerSet::LEAK | SanitizerSet::MEMORY | SanitizerSet::THREAD;
+    base.supports_fentry = true;
 
     Target {
         llvm_target: "s390x-unknown-linux-gnu".into(),

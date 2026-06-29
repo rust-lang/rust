@@ -6,6 +6,6 @@
 
 fn main() {
     #[diagnostic::on_unknown(message = "anonymous block")]
-    //~^ WARN `#[diagnostic::on_unknown]` can only be applied to `use` statements and module declarations
+    //~^ WARN cannot be used on
     {}
 }

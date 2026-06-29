@@ -1077,8 +1077,23 @@ fn rustfmt() -> PathBuf {
     let mut me = env::current_exe().expect("failed to get current executable");
     // Chop of the test name.
     me.pop();
-    // Chop off `deps`.
-    me.pop();
+
+    // Handle Cargo's old and new filesystem layouts
+    // * v1: `target/<profile>/deps/test-bin-[HASH][EXE]`
+    // * v2: `target/<profile>/build/<pkgname>/[HASH]/out/test-bin-[HASH][EXE]`
+    if me.ends_with("deps") {
+        // Chop off `deps`.
+        me.pop();
+    } else if me.ends_with("out") {
+        // Chop off `out`.
+        me.pop();
+        // Chop off `<hash>`.
+        me.pop();
+        // Chop off `<pkgname>`.
+        me.pop();
+        // Chop off `build`.
+        me.pop();
+    }
 
     me.push("rustfmt");
     assert!(

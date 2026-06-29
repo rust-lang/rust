@@ -116,7 +116,7 @@ use rustc_middle::mir::interpret::{AllocRange, GlobalAlloc};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::HasTypingEnv;
-use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use rustc_span::DUMMY_SP;
 use smallvec::SmallVec;
@@ -834,16 +834,20 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                     {
                         return Some((projection_ty, value));
                     }
-                    // DO NOT reason the pointer value.
-                    // We cannot unify two pointers that dereference same local, because they may
-                    // have different lifetimes.
+                    // We cannot unify two references produced by dereferencing the same nested reference,
+                    // because they may have different lifetimes.
                     // ```
                     // let b: &T = *a;
                     // ... `a` is allowed to be modified. `c` and `b` have different borrowing lifetime.
                     // Unifying them will extend the lifetime of `b`.
                     // let c: &T = *a;
                     // ```
-                    if projection_ty.ty.is_ref() {
+                    // Furthermore, unifying them can also violate Stacked Borrows or Tree Borrows.
+                    // We can only unify all `*b` and `*c` separately
+                    // because nested shared references are not read-only.
+                    // For more, see <https://github.com/rust-lang/rust/issues/155884> and
+                    // <https://github.com/rust-lang/rust/issues/130853>.
+                    if self.ty_may_have_ref(projection_ty.ty) {
                         return None;
                     }
 
@@ -1686,6 +1690,59 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         } else {
             false
         }
+    }
+
+    fn ty_may_have_ref(&self, ty: Ty<'tcx>) -> bool {
+        fn ty_may_have_ref_inner<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, depth: usize) -> bool {
+            if !tcx.recursion_limit().value_within_limit(depth) {
+                return true;
+            }
+            let depth = depth + 1;
+            match ty.kind() {
+                ty::Int(_)
+                | ty::Uint(_)
+                | ty::Float(_)
+                | ty::Bool
+                | ty::Char
+                | ty::Str
+                | ty::Never
+                | ty::FnDef(..)
+                | ty::Error(_)
+                | ty::FnPtr(..) => false,
+                ty::Tuple(fields) => {
+                    fields.iter().any(|field| ty_may_have_ref_inner(tcx, field, depth))
+                }
+                ty::Pat(ty, _) | ty::Slice(ty) | ty::Array(ty, _) => {
+                    ty_may_have_ref_inner(tcx, *ty, depth)
+                }
+                ty::Adt(adt_def, args) => {
+                    adt_def.has_param()
+                        || adt_def.has_aliases()
+                        || adt_def.all_fields().any(|field| {
+                            ty_may_have_ref_inner(
+                                tcx,
+                                field.ty(tcx, args).skip_normalization(),
+                                depth,
+                            )
+                        })
+                }
+                ty::Ref(..)
+                | ty::RawPtr(_, _)
+                | ty::Bound(..)
+                | ty::Closure(..)
+                | ty::CoroutineClosure(..)
+                | ty::Dynamic(..)
+                | ty::Foreign(_)
+                | ty::Coroutine(..)
+                | ty::CoroutineWitness(..)
+                | ty::UnsafeBinder(_)
+                | ty::Infer(_)
+                | ty::Alias(..)
+                | ty::Param(_)
+                | ty::Placeholder(_) => true,
+            }
+        }
+        ty_may_have_ref_inner(self.tcx, ty, 0)
     }
 
     /// Returns `false` if we're confident that the middle type doesn't have an

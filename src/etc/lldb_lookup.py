@@ -39,6 +39,9 @@ from lldb_providers import (
     MSVCTupleSyntheticProvider,
     ClangEncodedEnumSummaryProvider,
     StructSummaryProvider,
+    # re-exports
+    get_template_args as get_template_args,
+    resolve_msvc_template_arg as resolve_msvc_template_arg,
 )
 from rust_types import (
     ENUM_DISR_FIELD_NAME,

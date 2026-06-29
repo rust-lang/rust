@@ -136,7 +136,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         self.instance.instantiate_mir_and_normalize_erasing_regions(
             self.cx.tcx(),
             self.cx.typing_env(),
-            ty::EarlyBinder::bind(value),
+            ty::EarlyBinder::bind(self.cx.tcx(), value),
         )
     }
 }
@@ -219,7 +219,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let monomorphized_mir = instance.instantiate_mir_and_normalize_erasing_regions(
             tcx,
             ty::TypingEnv::fully_monomorphized(),
-            ty::EarlyBinder::bind(mir.clone()),
+            ty::EarlyBinder::bind(tcx, mir.clone()),
         );
         mir = tcx.arena.alloc(optimize_use_clone::<Bx>(cx, monomorphized_mir));
     }
@@ -433,6 +433,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let arg_decl = &mir.local_decls[local];
             let arg_ty = fx.monomorphize(arg_decl.ty);
 
+            // FIXME(splat): re-tuple splatted arguments that were un-tupled in the ABI
             if Some(local) == mir.spread_arg {
                 // This argument (e.g., the last argument in the "rust-call" ABI)
                 // is a tuple that was spread at the ABI level and now we have

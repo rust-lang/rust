@@ -1775,8 +1775,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             // const generics. Of course, `Struct` and `Enum` may contain ty params, too, but the
             // benefits of including them here outweighs the small number of false positives.
             Some(Res::Def(DefKind::Struct | DefKind::Enum, _))
-                if self.r.tcx.features().adt_const_params()
-                    || self.r.tcx.features().min_adt_const_params() =>
+                if self.r.features.adt_const_params() || self.r.features.min_adt_const_params() =>
             {
                 Applicability::MaybeIncorrect
             }
@@ -3763,6 +3762,50 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             Vec<(Span, String)>,
         ) -> bool,
     ) {
+        self.suggest_introducing_lifetime_filtered(err, name, |_| true, suggest);
+    }
+
+    pub(crate) fn suggest_introducing_lifetime_for_assoc_ty_binding(
+        &self,
+        err: &mut Diag<'_>,
+        lifetime: Span,
+    ) {
+        self.suggest_introducing_lifetime_filtered(
+            err,
+            None,
+            |kind| {
+                !matches!(
+                    kind,
+                    LifetimeBinderKind::FnPtrType
+                        | LifetimeBinderKind::PolyTrait
+                        | LifetimeBinderKind::WhereBound
+                )
+            },
+            |err, _higher_ranked, span, message, intro_sugg, _| {
+                err.multipart_suggestion(
+                    message,
+                    vec![(span, intro_sugg), (lifetime.shrink_to_hi(), "'a ".to_string())],
+                    Applicability::MaybeIncorrect,
+                );
+                false
+            },
+        );
+    }
+
+    fn suggest_introducing_lifetime_filtered(
+        &self,
+        err: &mut Diag<'_>,
+        name: Option<Ident>,
+        mut consider: impl FnMut(LifetimeBinderKind) -> bool,
+        suggest: impl Fn(
+            &mut Diag<'_>,
+            bool,
+            Span,
+            Cow<'static, str>,
+            String,
+            Vec<(Span, String)>,
+        ) -> bool,
+    ) {
         let mut suggest_note = true;
         for rib in self.lifetime_ribs.iter().rev() {
             let mut should_continue = true;
@@ -3775,7 +3818,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     {
                         continue;
                     }
-                    if let LifetimeBinderKind::ImplAssocType = kind {
+                    if matches!(kind, LifetimeBinderKind::ImplAssocType) || !consider(kind) {
                         continue;
                     }
 
@@ -3933,7 +3976,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 })
                 .emit(),
             NoConstantGenericsReason::NonTrivialConstArg => {
-                assert!(!self.r.tcx.features().generic_const_exprs());
+                assert!(!self.r.features.generic_const_exprs());
                 self.r
                     .dcx()
                     .create_err(diagnostics::ParamInNonTrivialAnonConst {
@@ -3941,8 +3984,8 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         name: lifetime_ref.ident.name,
                         param_kind: diagnostics::ParamKindInNonTrivialAnonConst::Lifetime,
                         help: self.r.tcx.sess.is_nightly_build(),
-                        is_gca: self.r.tcx.features().generic_const_args(),
-                        help_gca: self.r.tcx.features().generic_const_args(),
+                        is_gca: self.r.features.generic_const_args(),
+                        help_gca: self.r.features.generic_const_args(),
                     })
                     .emit()
             }

@@ -5,7 +5,7 @@
 trait Foo {}
 
 #[diagnostic::on_unimplemented(message = "Baz")]
-//~^WARN `#[diagnostic::on_unimplemented]` can only be applied to trait definitions
+//~^WARN cannot be used on
 struct Bar {}
 
 #[diagnostic::on_unimplemented(message = "Boom", unsupported = "Bar")]

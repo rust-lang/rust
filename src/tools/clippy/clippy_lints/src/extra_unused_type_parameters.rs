@@ -102,7 +102,7 @@ impl<'cx, 'tcx> TypeWalker<'cx, 'tcx> {
     fn emit_sugg(&self, spans: Vec<Span>, msg: String, help: &'static str) {
         let suggestions: Vec<(Span, String)> = spans.iter().copied().zip(std::iter::repeat(String::new())).collect();
         span_lint_and_then(self.cx, EXTRA_UNUSED_TYPE_PARAMETERS, spans, msg, |diag| {
-            diag.multipart_suggestion(help, suggestions, Applicability::MachineApplicable);
+            diag.multipart_suggestion(help, suggestions, Applicability::MaybeIncorrect);
         });
     }
 

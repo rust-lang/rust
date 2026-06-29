@@ -1196,6 +1196,9 @@ pub const unsafe fn transmute_prefix<Src, Dst>(src: Src) -> Dst {
 /// New version of `transmute`, exposed under this name so it can be iterated upon
 /// without risking breakage to uses of "real" transmute.
 ///
+/// Uses a `const`-`assert` to check the sizes instead of typeck hacks,
+/// but is semantially identical to `transmute` otherwise.
+///
 /// It will not be stabilized under this name.
 ///
 /// # Examples
@@ -1214,6 +1217,8 @@ pub const unsafe fn transmute_prefix<Src, Dst>(src: Src) -> Dst {
 /// unsafe { transmute_neo::<u32, u16>(123) };
 /// ```
 #[unstable(feature = "transmute_neo", issue = "155079")]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+#[inline]
 pub const unsafe fn transmute_neo<Src, Dst>(src: Src) -> Dst {
     const { assert!(Src::SIZE == Dst::SIZE) };
 

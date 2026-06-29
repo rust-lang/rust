@@ -2058,7 +2058,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Given a `ty`, return whether it's an `impl Future<...>`.
     pub fn ty_is_opaque_future(self, ty: Ty<'_>) -> bool {
-        let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }) = *ty.kind() else {
+        let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }) = *ty.kind() else {
             return false;
         };
         let future_trait = self.require_lang_item(LangItem::Future, DUMMY_SP);
@@ -2085,6 +2085,8 @@ impl<'tcx> TyCtxt<'tcx> {
                 ty::Tuple(params) => *params,
                 _ => bug!(),
             };
+            // Ignore splatting, it is unsupported on closures.
+            assert!(s.splatted().is_none());
             self.mk_fn_sig(
                 params,
                 s.output(),
@@ -2690,6 +2692,10 @@ impl<'tcx> TyCtxt<'tcx> {
         self.sess.opts.unstable_opts.disable_fast_paths
     }
 
+    pub fn renormalize_rigid_aliases(self) -> bool {
+        self.sess.opts.unstable_opts.renormalize_rigid_aliases
+    }
+
     #[allow(rustc::bad_opt_access)]
     pub fn use_typing_mode_post_typeck_until_borrowck(self) -> bool {
         self.next_trait_solver_globally()
@@ -2702,6 +2708,39 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn is_impl_trait_in_trait(self, def_id: DefId) -> bool {
         self.opt_rpitit_info(def_id).is_some()
+    }
+
+    pub fn get_impl_future_output_ty(self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+        let (def_id, args) = match *ty.kind() {
+            ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => (def_id, args),
+            ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id }, args, .. })
+                if self.is_impl_trait_in_trait(def_id) =>
+            {
+                (def_id, args)
+            }
+            _ => return None,
+        };
+
+        let future_trait = self.require_lang_item(LangItem::Future, DUMMY_SP);
+        let item_def_id = self.associated_item_def_ids(future_trait)[0];
+
+        self.explicit_item_self_bounds(def_id)
+            .iter_instantiated_copied(self, args)
+            .map(ty::Unnormalized::skip_norm_wip)
+            .find_map(|(predicate, _)| {
+                predicate
+                    .kind()
+                    .map_bound(|kind| match kind {
+                        ty::ClauseKind::Projection(projection_predicate)
+                            if projection_predicate.def_id() == item_def_id =>
+                        {
+                            projection_predicate.term.as_type()
+                        }
+                        _ => None,
+                    })
+                    .no_bound_vars()
+                    .flatten()
+            })
     }
 
     /// Named module children from all kinds of items, including imports.

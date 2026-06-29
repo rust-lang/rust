@@ -2139,6 +2139,8 @@ unsafe extern "C" {
         IsVolatile: bool,
     ) -> &'a Value;
 
+    pub(crate) fn LLVMRustBuildVScale<'a>(B: &Builder<'a>, Ty: &'a Type) -> &'a Value;
+
     pub(crate) fn LLVMRustTimeTraceProfilerInitialize();
 
     pub(crate) fn LLVMRustTimeTraceProfilerFinishThread();

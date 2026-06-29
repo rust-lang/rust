@@ -176,7 +176,7 @@ pub fn _mm256_cvtneps_avx_pbh(a: __m256) -> __m128bh {
 }
 
 #[allow(improper_ctypes)]
-unsafe extern "C" {
+unsafe extern "unadjusted" {
     #[link_name = "llvm.x86.vbcstnebf162ps128"]
     fn bcstnebf162ps_128(a: *const bf16) -> __m128;
     #[link_name = "llvm.x86.vbcstnebf162ps256"]

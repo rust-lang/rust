@@ -1604,6 +1604,7 @@ impl Intrinsic {
                             (Some(BaseTypeKind::Float), Some(BaseTypeKind::Float)) => ex,
                             (Some(BaseTypeKind::UInt), Some(BaseTypeKind::UInt)) => ex,
                             (Some(BaseTypeKind::Poly), Some(BaseTypeKind::Poly)) => ex,
+                            (Some(BaseTypeKind::Bool), Some(BaseTypeKind::Bool)) => ex,
 
                             (None, None) => ex,
                             _ => unreachable!(

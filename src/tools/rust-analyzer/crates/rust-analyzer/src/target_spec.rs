@@ -153,6 +153,9 @@ impl CargoTargetSpec {
                     Some(CargoTargetSpec { target_kind: TargetKind::Test, .. }) => {
                         config.test_command
                     }
+                    Some(CargoTargetSpec { target_kind: TargetKind::Bench, .. }) => {
+                        config.bench_command
+                    }
                     _ => "run".to_owned(),
                 };
                 cargo_args.push(subcommand);
@@ -224,6 +227,9 @@ impl CargoTargetSpec {
             RunnableKind::Bin => match spec {
                 Some(CargoTargetSpec { target_kind: TargetKind::Test, .. }) => {
                     (config.test_override_command, None)
+                }
+                Some(CargoTargetSpec { target_kind: TargetKind::Bench, .. }) => {
+                    (config.bench_override_command, None)
                 }
                 _ => (None, None),
             },
@@ -319,7 +325,11 @@ impl CargoTargetSpec {
 
     pub(crate) fn push_to(self, buf: &mut Vec<String>, kind: &RunnableKind) {
         buf.push("--package".to_owned());
-        buf.push(self.package);
+        if self.package.contains(":") {
+            buf.push(self.package_id.to_string());
+        } else {
+            buf.push(self.package);
+        }
 
         // Can't mix --doc with other target flags
         if let RunnableKind::DocTest { .. } = kind {

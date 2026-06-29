@@ -779,7 +779,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         match import_decls[ns] {
                             PendingDecl::Ready(Some(import_decl)) => {
                                 if import_decl.is_assoc_item()
-                                    && !this.tcx.features().import_trait_associated_functions()
+                                    && !this.features.import_trait_associated_functions()
                                 {
                                     feature_err(
                                         this.tcx.sess,
@@ -822,8 +822,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         continue;
                     };
 
-                    if module.is_trait() && !self.tcx.features().import_trait_associated_functions()
-                    {
+                    if module.is_trait() && !self.features.import_trait_associated_functions() {
                         feature_err(
                             self.tcx.sess,
                             sym::import_trait_associated_functions,
@@ -1487,7 +1486,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                 // If importing of trait asscoiated items is enabled, an also find an
                 // `Enum`, then note that inherent associated items cannot be imported.
-                let note = if self.tcx.features().import_trait_associated_functions()
+                let note = if self.features.import_trait_associated_functions()
                     && let PathResult::Module(ModuleOrUniformRoot::Module(m)) = path_res
                     && let Some(Res::Def(DefKind::Enum, _)) = m.res()
                 {

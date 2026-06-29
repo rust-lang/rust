@@ -1,5 +1,6 @@
 #![crate_name="lint_stability"]
 #![crate_type = "lib"]
+#![feature(extern_types)]
 #![feature(staged_api)]
 #![feature(associated_type_defaults)]
 #![stable(feature = "lint_stability", since = "1.0.0")]
@@ -185,4 +186,9 @@ macro_rules! macro_test_arg {
 #[macro_export]
 macro_rules! macro_test_arg_nested {
     ($func:ident) => (macro_test_arg!($func()));
+}
+
+extern "C" {
+    #[unstable(feature = "unstable_test_feature", issue = "none")]
+    pub type UnstableForeignType;
 }

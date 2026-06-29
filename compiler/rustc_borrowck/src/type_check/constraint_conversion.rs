@@ -11,7 +11,7 @@ use rustc_middle::ty::{
     self, GenericArgKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, elaborate, fold_regions,
 };
 use rustc_span::Span;
-use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
+use rustc_trait_selection::traits::query::type_op::TypeOpOutput;
 use tracing::{debug, instrument};
 
 use crate::constraints::OutlivesConstraint;
@@ -287,11 +287,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             ConstraintCategory<'tcx>,
         )>,
     ) -> Ty<'tcx> {
-        match self.infcx.param_env.and(DeeplyNormalize { value: ty }).fully_perform(
-            self.infcx,
-            self.infcx.root_def_id,
-            self.span,
-        ) {
+        match self.infcx.fully_perform(DeeplyNormalize { value: ty }, self.span) {
             Ok(TypeOpOutput { output: ty, constraints, .. }) => {
                 // FIXME(higher_ranked_auto): What should we do with the assumptions here?
                 if let Some(QueryRegionConstraints { constraints, assumptions: _ }) = constraints {

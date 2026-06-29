@@ -337,6 +337,8 @@ jobs:
         cargo run --bin=stdarch-gen-loongarch --release -- crates/stdarch-gen-loongarch/lasx.spec
         git diff --exit-code
     - name: Check hexagon
+      env:
+        STDARCH_GEN_MODE: check
       run: |
         cargo run -p stdarch-gen-hexagon --release
         git diff --exit-code

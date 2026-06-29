@@ -24,8 +24,9 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
-    self as hir, Attribute, CRATE_HIR_ID, Constness, FnSig, ForeignItem, GenericParamKind, HirId,
-    Item, ItemKind, MethodKind, Node, ParamName, Target, TraitItem, find_attr,
+    self as hir, Attribute, CRATE_HIR_ID, Constness, FnSig, ForeignItem, GenericParam,
+    GenericParamKind, HirId, Item, ItemKind, MethodKind, Node, ParamName, Target, TraitItem,
+    find_attr,
 };
 use rustc_macros::Diagnostic;
 use rustc_middle::hir::nested_filter;
@@ -203,9 +204,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::Deprecated { span: attr_span, .. } => {
                 self.check_deprecated(hir_id, *attr_span, target)
             }
-            AttributeKind::TargetFeature { attr_span, .. } => {
-                self.check_target_feature(hir_id, *attr_span, target, attrs)
-            }
             AttributeKind::RustcDumpObjectLifetimeDefaults => {
                 self.check_dump_object_lifetime_defaults(hir_id);
             }
@@ -219,7 +217,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::NonExhaustive(attr_span) => {
                 self.check_non_exhaustive(*attr_span, span, target, item)
             }
-            &AttributeKind::FfiPure(attr_span) => self.check_ffi_pure(attr_span, attrs),
             AttributeKind::MayDangle(attr_span) => self.check_may_dangle(hir_id, *attr_span),
             AttributeKind::Link(_, attr_span) => self.check_link(hir_id, *attr_span, target),
             AttributeKind::MacroExport { span, .. } => {
@@ -271,6 +268,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::ExportStable => (),
             AttributeKind::Feature(..) => (),
             AttributeKind::FfiConst => (),
+            AttributeKind::FfiPure(..) => (),
             AttributeKind::Fundamental => (),
             AttributeKind::Ignore { .. } => (),
             AttributeKind::InstructionSet(..) => (),
@@ -405,6 +403,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::ShouldPanic { .. } => (),
             AttributeKind::Splat(..) => (),
             AttributeKind::Stability { .. } => (),
+            AttributeKind::TargetFeature { .. } => {}
             AttributeKind::TestRunner(..) => (),
             AttributeKind::ThreadLocal => (),
             AttributeKind::TypeLengthLimit { .. } => (),
@@ -798,37 +797,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks if the `#[target_feature]` attribute on `item` is valid.
-    fn check_target_feature(
-        &self,
-        hir_id: HirId,
-        attr_span: Span,
-        target: Target,
-        attrs: &[Attribute],
-    ) {
-        match target {
-            Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent)
-            | Target::Fn => {
-                // `#[target_feature]` is not allowed in lang items.
-                if let Some(lang_item) = find_attr!(attrs, Lang(lang ) => lang)
-                    // Calling functions with `#[target_feature]` is
-                    // not unsafe on WASM, see #84988
-                    && !self.tcx.sess.target.is_like_wasm
-                    && !self.tcx.sess.opts.actually_rustdoc
-                {
-                    let sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
-
-                    self.dcx().emit_err(diagnostics::LangItemWithTargetFeature {
-                        attr_span,
-                        name: lang_item.name(),
-                        sig_span: sig.span,
-                    });
-                }
-            }
-            _ => {}
-        }
-    }
-
     fn check_doc_alias_value(&self, span: Span, hir_id: HirId, target: Target, alias: Symbol) {
         if let Some(location) = match target {
             Target::AssocTy => {
@@ -1112,21 +1080,20 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_ffi_pure(&self, attr_span: Span, attrs: &[Attribute]) {
-        if find_attr!(attrs, FfiConst) {
-            // `#[ffi_const]` functions cannot be `#[ffi_pure]`
-            self.dcx().emit_err(diagnostics::BothFfiConstAndPure { attr_span });
-        }
-    }
-
     /// Checks if `#[may_dangle]` is applied to a lifetime or type generic parameter in `Drop` impl.
     fn check_may_dangle(&self, hir_id: HirId, attr_span: Span) {
-        if let hir::Node::GenericParam(param) = self.tcx.hir_node(hir_id)
-            && matches!(
-                param.kind,
-                hir::GenericParamKind::Lifetime { .. } | hir::GenericParamKind::Type { .. }
-            )
-            && matches!(param.source, hir::GenericParamSource::Generics)
+        let hir::Node::GenericParam(
+            param @ GenericParam {
+                kind: hir::GenericParamKind::Lifetime { .. } | hir::GenericParamKind::Type { .. },
+                ..
+            },
+        ) = self.tcx.hir_node(hir_id)
+        else {
+            self.dcx().delayed_bug("Checked in attr parser");
+            return;
+        };
+
+        if matches!(param.source, hir::GenericParamSource::Generics)
             && let parent_hir_id = self.tcx.parent_hir_id(hir_id)
             && let hir::Node::Item(item) = self.tcx.hir_node(parent_hir_id)
             && let hir::ItemKind::Impl(impl_) = item.kind

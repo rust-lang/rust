@@ -33,7 +33,7 @@ error: rustc_dump_item_bounds
 LL |     type Assoc<P: Eq>: std::ops::Deref<Target = ()>
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: Binder { value: ProjectionPredicate(Alias { kind: ProjectionTy { def_id: DefId(..) }, args: [Alias(Alias { kind: Projection { def_id: DefId(..) }, args: [Self/#0, T/#1, P/#2], .. })], .. }, Term::Ty(())), bound_vars: [] }
+   = note: Binder { value: ProjectionPredicate(Alias { kind: ProjectionTy { def_id: DefId(..) }, args: [Alias(No, Alias { kind: Projection { def_id: DefId(..) }, args: [Self/#0, T/#1, P/#2], .. })], .. }, Term::Ty(())), bound_vars: [] }
    = note: Binder { value: TraitPredicate(<<Self as Trait<T>>::Assoc<P> as std::ops::Deref>, polarity:Positive), bound_vars: [] }
    = note: Binder { value: TraitPredicate(<<Self as Trait<T>>::Assoc<P> as std::marker::Sized>, polarity:Positive), bound_vars: [] }
 

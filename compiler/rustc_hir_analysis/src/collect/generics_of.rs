@@ -124,11 +124,11 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     //        ^ parent_def_id
                     //
                     // then we only want to return generics for params to the left of `N`. If we don't do that we
-                    // end up with that const looking like: `ty::ConstKind::Unevaluated(def_id, args: [N#0])`.
+                    // end up with that const looking like: `ty::ConstKind::Alias(def_id, args: [N#0])`.
                     //
                     // This causes ICEs (#86580) when building the args for Foo in `fn foo() -> Foo { .. }` as
                     // we instantiate the defaults with the partially built args when we build the args. Instantiating
-                    // the `N#0` on the unevaluated const indexes into the empty args we're in the process of building.
+                    // the `N#0` on the alias const indexes into the empty args we're in the process of building.
                     //
                     // We fix this by having this function return the parent's generics ourselves and truncating the
                     // generics to only include non-forward declared params (with the exception of the `Self` ty)

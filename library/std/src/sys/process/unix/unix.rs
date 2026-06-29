@@ -510,8 +510,8 @@ impl Command {
                                     support = SPAWN;
                                 }
                             }
-                            Err(e) if e.raw_os_error() == Some(libc::EMFILE) => {
-                                // We're temporarily(?) out of file descriptors. In this case pidfd_spawnp would also fail
+                            Err(e) if matches!(e.raw_os_error(), Some(libc::EMFILE | libc::ENFILE | libc::ENOMEM)) => {
+                                // We're temporarily(?) out of file descriptors or memory. In this case pidfd_spawnp would also fail
                                 // Don't update the support flag so we can probe again later.
                                 return Err(e)
                             }

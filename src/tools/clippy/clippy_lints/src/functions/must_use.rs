@@ -4,7 +4,6 @@ use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefIdSet;
 use rustc_hir::{self as hir, Attribute, QPath, find_attr};
-use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{Span, sym};
@@ -16,7 +15,6 @@ use clippy_utils::ty::is_must_use_ty;
 use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{is_entrypoint_fn, return_ty, trait_ref_of_method};
 use rustc_span::Symbol;
-use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 
 use core::ops::ControlFlow;
 
@@ -165,13 +163,11 @@ fn check_needless_must_use(
         );
     } else if reason.is_none() && is_must_use_ty(cx, return_ty(cx, item_id)) {
         // Ignore async functions unless Future::Output type is a must_use type
-        if sig.header.is_async() {
-            let infcx = cx.tcx.infer_ctxt().build(cx.typing_mode());
-            if let Some(future_ty) = infcx.err_ctxt().get_impl_future_output_ty(return_ty(cx, item_id))
-                && !is_must_use_ty(cx, future_ty)
-            {
-                return;
-            }
+        if sig.header.is_async()
+            && let Some(future_ty) = cx.tcx.get_impl_future_output_ty(return_ty(cx, item_id))
+            && !is_must_use_ty(cx, future_ty)
+        {
+            return;
         }
 
         span_lint_and_then(

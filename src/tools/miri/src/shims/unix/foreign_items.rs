@@ -840,16 +840,44 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             "mmap" => {
-                let [addr, length, prot, flags, fd, offset] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [addr, length, prot, flags, fd, offset] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*mut _, usize, i32, i32, i32, libc::off_t) -> *mut _),
+                    link_name,
+                    abi,
+                    args,
+                )?;
                 let offset = this.read_scalar(offset)?.to_int(this.libc_ty_layout("off_t").size)?;
                 let ptr = this.mmap(addr, length, prot, flags, fd, offset)?;
                 this.write_scalar(ptr, dest)?;
             }
             "munmap" => {
-                let [addr, length] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [addr, length] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*mut _, usize) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
                 let result = this.munmap(addr, length)?;
+                this.write_scalar(result, dest)?;
+            }
+            "mprotect" => {
+                let [addr, length, prot] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*mut _, usize, i32) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let result = this.mprotect(addr, length, prot)?;
+                this.write_scalar(result, dest)?;
+            }
+            "madvise" => {
+                let [addr, length, advice] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*mut _, usize, i32) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let result = this.madvise(addr, length, advice)?;
                 this.write_scalar(result, dest)?;
             }
 
@@ -1410,7 +1438,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [_, _] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 this.write_null(dest)?;
             }
-            "sigaction" | "mprotect" if this.frame_in_std() => {
+            "sigaction" if this.frame_in_std() => {
                 let [_, _, _] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 this.write_null(dest)?;
             }

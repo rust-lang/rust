@@ -276,7 +276,7 @@ fn elaborate_component_to_clause<I: Interner>(
             // We might end up here if we have `Foo<<Bar as Baz>::Assoc>: 'a`.
             // With this, we can deduce that `<Bar as Baz>::Assoc: 'a`.
             Some(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(
-                alias_ty.to_ty(cx),
+                alias_ty.to_ty(cx, ty::IsRigid::No),
                 outlives_region,
             )))
         }
@@ -414,7 +414,10 @@ pub fn elaborate_outlives_assumptions<I: Interner>(
                         }
 
                         Component::Alias(alias_ty) => {
-                            collected.insert(ty::OutlivesPredicate(alias_ty.to_ty(cx).into(), r2));
+                            collected.insert(ty::OutlivesPredicate(
+                                alias_ty.to_ty(cx, ty::IsRigid::No).into(),
+                                r2,
+                            ));
                         }
 
                         Component::UnresolvedInferenceVariable(_) | Component::EscapingAlias(_) => {

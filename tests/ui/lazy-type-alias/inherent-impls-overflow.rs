@@ -7,12 +7,12 @@
 
 type Loop = Loop;
 //[current]~^ ERROR overflow normalizing the type alias `Loop`
-//[next]~^^ ERROR type mismatch resolving `_ == Loop`
+//[next]~^^ ERROR overflow evaluating the requirement `Loop == _`
 
 impl Loop {}
 //[current]~^ ERROR overflow normalizing the type alias `Loop`
-//[next]~^^ ERROR type mismatch resolving `_ == Loop`
-//[next]~| ERROR type mismatch resolving `_ == Loop`
+//[next]~^^ ERROR overflow evaluating the requirement `Loop == _`
+//[next]~| ERROR overflow evaluating the requirement `Loop == _`
 
 type Poly0<T> = Poly1<(T,)>;
 //[current]~^ ERROR overflow normalizing the type alias `Poly0<(((((((...,),),),),),),)>`

@@ -65,15 +65,17 @@
     issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
     test(no_crate_inject, attr(allow(unused_variables, duplicate_features), deny(warnings)))
 )]
-#![doc(auto_cfg(hide(no_global_oom_handling, no_rc, no_sync, target_has_atomic = "ptr")))]
+#![doc(auto_cfg(
+    hide(no_global_oom_handling, no_rc, no_sync),
+    hide(target_has_atomic, values("ptr")),
+))]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
 #![no_std]
 #![needs_allocator]
 // Lints:
 #![deny(unsafe_op_in_unsafe_fn)]
-#![deny(fuzzy_provenance_casts)]
-#![deny(lossy_provenance_casts)]
+#![deny(implicit_provenance_casts)]
 #![warn(deprecated_in_future)]
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
@@ -114,6 +116,9 @@
 #![feature(const_try)]
 #![feature(copied_into_inner)]
 #![feature(core_intrinsics)]
+#![feature(core_io)]
+#![feature(core_io_borrowed_buf)]
+#![feature(core_io_internals)]
 #![feature(deprecated_suggestion)]
 #![feature(deref_pure_trait)]
 #![feature(diagnostic_on_move)]
@@ -131,6 +136,8 @@
 #![feature(generic_atomic)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(inplace_iteration)]
+#![feature(io_const_error)]
+#![feature(io_const_error_internals)]
 #![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
 #![feature(layout_for_ptr)]
@@ -145,6 +152,7 @@
 #![feature(ptr_cast_slice)]
 #![feature(ptr_internals)]
 #![feature(ptr_metadata)]
+#![feature(raw_os_error_ty)]
 #![feature(rev_into_inner)]
 #![feature(set_ptr_value)]
 #![feature(share_trait)]
@@ -234,6 +242,8 @@ pub mod collections;
 pub mod ffi;
 pub mod fmt;
 pub mod intrinsics;
+#[unstable(feature = "alloc_io", issue = "154046")]
+pub mod io;
 #[cfg(not(no_rc))]
 pub mod rc;
 pub mod slice;

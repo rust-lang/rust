@@ -1,5 +1,6 @@
 // We're testing x86 target specific features
 //@only-target: x86_64 i686
+//@run-native
 #![allow(unnecessary_transmutes)]
 
 #[cfg(target_arch = "x86")]

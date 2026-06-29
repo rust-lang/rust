@@ -86,17 +86,24 @@ where
         let cx = ecx.cx();
         let mut candidates = vec![];
 
-        if !ecx.cx().alias_has_const_conditions(alias_ty.kind.def_id()) {
+        let def_id = match alias_ty.kind {
+            ty::AliasTyKind::Projection { def_id } => def_id.into(),
+            ty::AliasTyKind::Inherent { def_id } => def_id.into(),
+            ty::AliasTyKind::Opaque { def_id } => def_id.into(),
+            ty::AliasTyKind::Free { def_id } => def_id.into(),
+        };
+
+        if !ecx.cx().alias_has_const_conditions(def_id) {
             return vec![];
         }
 
         for clause in elaborate::elaborate(
             cx,
-            cx.explicit_implied_const_bounds(alias_ty.kind.def_id())
-                .iter_instantiated(cx, alias_ty.args)
-                .map(|trait_ref| {
+            cx.explicit_implied_const_bounds(def_id).iter_instantiated(cx, alias_ty.args).map(
+                |trait_ref| {
                     trait_ref.to_host_effect_clause(cx, goal.predicate.constness).skip_norm_wip()
-                }),
+                },
+            ),
         ) {
             candidates.extend(Self::probe_and_match_goal_against_assumption(
                 ecx,
@@ -107,17 +114,17 @@ where
                     // Const conditions must hold for the implied const bound to hold.
                     ecx.add_goals(
                         GoalSource::AliasBoundConstCondition,
-                        cx.const_conditions(alias_ty.kind.def_id())
-                            .iter_instantiated(cx, alias_ty.args)
-                            .map(|trait_ref| {
+                        cx.const_conditions(def_id).iter_instantiated(cx, alias_ty.args).map(
+                            |trait_ref| {
                                 goal.with(
                                     cx,
                                     trait_ref
                                         .to_host_effect_clause(cx, goal.predicate.constness)
                                         .skip_norm_wip(),
                                 )
-                            }),
-                    );
+                            },
+                        ),
+                    )?;
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 },
             ));
@@ -169,7 +176,7 @@ where
                 .iter_instantiated(cx, impl_args)
                 .map(Unnormalized::skip_norm_wip)
                 .map(|pred| goal.with(cx, pred));
-            ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds);
+            ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds)?;
 
             // For this impl to be `const`, we need to check its `[const]` bounds too.
             let const_conditions = cx
@@ -183,7 +190,7 @@ where
                             .skip_norm_wip(),
                     )
                 });
-            ecx.add_goals(GoalSource::ImplWhereBound, const_conditions);
+            ecx.add_goals(GoalSource::ImplWhereBound, const_conditions)?;
 
             then(ecx, certainty)
         })
@@ -235,8 +242,8 @@ where
             // `GoalSource::ImplWhereClause` here would be incorrect, as we also
             // impl them, which means we're "stepping out of the impl constructor"
             // again. To handle this, we treat these cycles as ambiguous for now.
-            ecx.add_goals(GoalSource::Misc, where_clause_bounds);
-            ecx.add_goals(GoalSource::Misc, const_conditions);
+            ecx.add_goals(GoalSource::Misc, where_clause_bounds)?;
+            ecx.add_goals(GoalSource::Misc, const_conditions)?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -271,8 +278,8 @@ where
                             ),
                         )
                     }),
-                );
-            });
+                )
+            })?;
 
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
@@ -425,7 +432,7 @@ where
                             .to_host_effect_clause(cx, goal.predicate.constness),
                     )
                 }),
-            );
+            )?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }

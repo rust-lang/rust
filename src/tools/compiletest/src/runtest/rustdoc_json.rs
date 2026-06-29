@@ -1,6 +1,5 @@
-use std::process::Command;
-
 use super::{DocKind, TestCx, remove_and_create_dir_all};
+use crate::util::ArgFileCommand;
 
 impl TestCx<'_> {
     pub(super) fn run_rustdoc_json_test(&self) {
@@ -23,13 +22,9 @@ impl TestCx<'_> {
             self.fatal_proc_rec("rustdoc failed!", &proc_res);
         }
 
-        let res = self.run_command_to_procres(
-            Command::new(self.config.jsondocck_path.as_ref().unwrap())
-                .arg("--doc-dir")
-                .arg(&out_dir)
-                .arg("--template")
-                .arg(&self.testpaths.file),
-        );
+        let mut cmd = ArgFileCommand::new(self.config.jsondocck_path.as_ref().unwrap());
+        cmd.arg("--doc-dir").arg(&out_dir).arg("--template").arg(&self.testpaths.file);
+        let res = self.run_command_to_procres(cmd);
 
         if !res.status.success() {
             self.fatal_proc_rec_general("jsondocck failed!", None, &res, || {
@@ -41,9 +36,9 @@ impl TestCx<'_> {
         let mut json_out = out_dir.join(self.testpaths.file.file_stem().unwrap());
         json_out.set_extension("json");
 
-        let res = self.run_command_to_procres(
-            Command::new(self.config.jsondoclint_path.as_ref().unwrap()).arg(&json_out),
-        );
+        let mut cmd = ArgFileCommand::new(self.config.jsondoclint_path.as_ref().unwrap());
+        cmd.arg(&json_out);
+        let res = self.run_command_to_procres(cmd);
 
         if !res.status.success() {
             self.fatal_proc_rec("jsondoclint failed!", &res);

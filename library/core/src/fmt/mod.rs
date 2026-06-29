@@ -332,9 +332,7 @@ mod flags {
 }
 
 impl FormattingOptions {
-    /// Construct a new `FormatterBuilder` with the supplied `Write` trait
-    /// object for output that is equivalent to the `{}` formatting
-    /// specifier:
+    /// Construct a new `FormattingOptions` representing the plain `{}` formatting specifier:
     ///
     /// - no flags,
     /// - filled with spaces,
@@ -518,7 +516,7 @@ impl FormattingOptions {
     pub const fn get_precision(&self) -> Option<u16> {
         if self.flags & flags::PRECISION_FLAG != 0 { Some(self.precision) } else { None }
     }
-    /// Returns the current precision.
+    /// Returns the current `x?` or `X?` flag.
     #[unstable(feature = "formatting_options", issue = "118117")]
     pub const fn get_debug_as_hex(&self) -> Option<DebugAsHex> {
         if self.flags & flags::DEBUG_LOWER_HEX_FLAG != 0 {

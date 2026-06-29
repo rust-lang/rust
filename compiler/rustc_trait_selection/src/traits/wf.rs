@@ -284,7 +284,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
     };
 
     let ty_to_impl_span = |ty: Ty<'_>| {
-        if let ty::Alias(ty::AliasTy { kind: ty::Projection { def_id }, .. }) = ty.kind()
+        if let ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id }, .. }) = ty.kind()
             && let Some(&impl_item_id) = tcx.impl_item_implementor_ids(impl_def_id).get(def_id)
             && let Some(impl_item) =
                 items.iter().find(|item| item.owner_id.to_def_id() == impl_item_id)
@@ -801,15 +801,18 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 // Simple cases that are WF if their type args are WF.
             }
 
-            ty::Alias(ty::AliasTy {
-                kind: ty::Projection { def_id } | ty::Opaque { def_id } | ty::Free { def_id },
-                args,
-                ..
-            }) => {
+            ty::Alias(
+                _,
+                ty::AliasTy {
+                    kind: ty::Projection { def_id } | ty::Opaque { def_id } | ty::Free { def_id },
+                    args,
+                    ..
+                },
+            ) => {
                 let obligations = self.nominal_obligations(def_id, args);
                 self.out.extend(obligations);
             }
-            ty::Alias(data @ ty::AliasTy { kind: ty::Inherent { .. }, .. }) => {
+            ty::Alias(_, data @ ty::AliasTy { kind: ty::Inherent { .. }, .. }) => {
                 self.add_wf_preds_for_inherent_projection(data.into());
                 return; // Subtree handled by compute_inherent_projection.
             }
@@ -1061,10 +1064,11 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
         let tcx = self.tcx();
 
         match c.kind() {
-            ty::ConstKind::Unevaluated(uv) => {
+            ty::ConstKind::Alias(_, alias_const) => {
                 if !c.has_escaping_bound_vars() {
                     // Skip type consts as mGCA doesn't support evaluatable clauses
-                    if !uv.kind.is_type_const(tcx) && !tcx.features().generic_const_args() {
+                    if !alias_const.kind.is_type_const(tcx) && !tcx.features().generic_const_args()
+                    {
                         let predicate = ty::Binder::dummy(ty::PredicateKind::Clause(
                             ty::ClauseKind::ConstEvaluatable(c),
                         ));
@@ -1078,15 +1082,15 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                         ));
                     }
 
-                    match uv.kind {
-                        ty::UnevaluatedConstKind::Inherent { .. } => {
-                            self.add_wf_preds_for_inherent_projection(uv.into());
+                    match alias_const.kind {
+                        ty::AliasConstKind::Inherent { .. } => {
+                            self.add_wf_preds_for_inherent_projection(alias_const.into());
                             return; // Subtree is handled by above function
                         }
-                        ty::UnevaluatedConstKind::Projection { def_id }
-                        | ty::UnevaluatedConstKind::Free { def_id }
-                        | ty::UnevaluatedConstKind::Anon { def_id } => {
-                            let obligations = self.nominal_obligations(def_id, uv.args);
+                        ty::AliasConstKind::Projection { def_id }
+                        | ty::AliasConstKind::Free { def_id }
+                        | ty::AliasConstKind::Anon { def_id } => {
+                            let obligations = self.nominal_obligations(def_id, alias_const.args);
                             self.out.extend(obligations);
                         }
                     }
@@ -1108,7 +1112,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
             ty::ConstKind::Expr(_) => {
                 // FIXME(generic_const_exprs): this doesn't verify that given `Expr(N + 1)` the
                 // trait bound `typeof(N): Add<typeof(1)>` holds. This is currently unnecessary
-                // as `ConstKind::Expr` is only produced via normalization of `ConstKind::Unevaluated`
+                // as `ConstKind::Expr` is only produced via normalization of `ConstKind::Alias`
                 // which means that the `DefId` would have been typeck'd elsewhere. However in
                 // the future we may allow directly lowering to `ConstKind::Expr` in which case
                 // we would not be proving bounds we should.

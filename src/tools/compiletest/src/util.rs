@@ -6,6 +6,11 @@ use camino::{Utf8Path, Utf8PathBuf};
 #[cfg(test)]
 mod tests;
 
+#[path = "../../../build_helper/src/arg_file_command.rs"]
+mod arg_file_command;
+
+pub(crate) use arg_file_command::ArgFileCommand;
+
 pub(crate) fn make_new_path(path: &str) -> String {
     assert!(cfg!(windows));
     // Windows just uses PATH as the library search path, so we have to
