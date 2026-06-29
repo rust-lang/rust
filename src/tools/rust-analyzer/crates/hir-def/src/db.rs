@@ -46,7 +46,7 @@ pub trait DefDatabase: ExpandDatabase + SourceDatabase {
 
 /// Whether to expand procedural macros during name resolution.
 ///
-/// Note: this struct shouldn't be exposed to downstream crates -- consider using
+/// Note: this struct shouldn't be exposed to ide crates -- consider using
 /// [`set_expand_proc_attr_macros`] instead, if possible.
 #[salsa::input(singleton, debug)]
 pub(crate) struct ExpandProcAttrMacros {

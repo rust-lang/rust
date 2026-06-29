@@ -84,13 +84,8 @@ impl ProcMacrosBuilder {
         );
     }
 
-    /// Builds [`ProcMacros`] and adds id to `db` with the provided `durability`.
-    pub(crate) fn build_in(
-        self,
-        db: &mut dyn ExpandDatabase,
-        durability: Durability,
-        crates_id_map: &CratesIdMap,
-    ) {
+    /// Builds [`ProcMacros`] and adds id to `db`
+    pub(crate) fn build_in(self, db: &mut dyn ExpandDatabase, crates_id_map: &CratesIdMap) {
         let mut map = self
             .0
             .into_iter()
@@ -100,7 +95,7 @@ impl ProcMacrosBuilder {
         ProcMacros::try_get(db)
             .unwrap_or_else(|| ProcMacros::new(db, Default::default()))
             .set_by_crate(db)
-            .with_durability(durability)
+            .with_durability(Durability::HIGH)
             .to(map);
     }
 }
