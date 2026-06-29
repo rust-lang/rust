@@ -120,23 +120,6 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
     }
 }
 
-/// Creates any deferred debug metadata nodes
-pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
-    if let Some(dbg_cx) = &cx.dbg_cx {
-        debug!("finalize");
-
-        if gdb::needs_gdb_debug_scripts_section(cx) {
-            // Add a .debug_gdb_scripts section to this compile-unit. This will
-            // cause GDB to try and load the gdb_load_rust_pretty_printers.py file,
-            // which activates the Rust pretty printers for binary this section is
-            // contained in.
-            gdb::get_or_insert_gdb_debug_scripts_section_global(cx);
-        }
-
-        dbg_cx.finalize(cx.sess());
-    }
-}
-
 impl<'ll> Builder<'_, 'll, '_> {
     pub(crate) fn get_dbg_loc(&self) -> Option<&'ll DILocation> {
         unsafe { llvm::LLVMGetCurrentDebugLocation2(self.llbuilder) }
@@ -389,6 +372,23 @@ impl<'ll> CodegenCx<'ll, '_> {
                 name.len(),
                 actual_type_metadata,
             )
+        }
+    }
+
+    /// Creates any deferred debug metadata nodes
+    pub(crate) fn debuginfo_finalize(&self) {
+        if let Some(dbg_cx) = &self.dbg_cx {
+            debug!("finalize");
+
+            if gdb::needs_gdb_debug_scripts_section(self) {
+                // Add a .debug_gdb_scripts section to this compile-unit. This will
+                // cause GDB to try and load the gdb_load_rust_pretty_printers.py file,
+                // which activates the Rust pretty printers for binary this section is
+                // contained in.
+                gdb::get_or_insert_gdb_debug_scripts_section_global(self);
+            }
+
+            dbg_cx.finalize(self.sess());
         }
     }
 }
@@ -694,10 +694,6 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         file: &rustc_span::SourceFile,
     ) -> &'ll DILexicalBlock {
         metadata::extend_scope_to_file(self, scope_metadata, file)
-    }
-
-    fn debuginfo_finalize(&self) {
-        finalize(self)
     }
 
     // FIXME(eddyb) find a common convention for all of the debuginfo-related
