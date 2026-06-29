@@ -720,6 +720,10 @@ pub(crate) fn optimize_and_codegen_thin_module(
     {
         let target = &*module.module_llvm.tm;
         let llmod = module.module_llvm.llmod();
+
+        let reloc_model = cgcx.relocation_model;
+        llvm::set_module_pic_and_pie_levels(llmod, reloc_model, &cgcx.crate_types);
+
         save_temp_bitcode(cgcx, &module, "thin-lto-input");
 
         // Up next comes the per-module local analyses that we do for Thin LTO.
