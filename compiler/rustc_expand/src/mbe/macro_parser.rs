@@ -77,7 +77,7 @@ pub(crate) use NamedMatch::*;
 pub(crate) use ParseResult::*;
 use rustc_ast::token::{self, DocComment, NonterminalKind, Token, TokenKind};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::ErrorGuaranteed;
+use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_middle::span_bug;
 use rustc_parse::parser::{ParseNtResult, Parser, token_descr};
 use rustc_span::{Ident, MacroRulesNormalizedIdent, Span};
@@ -697,30 +697,19 @@ impl TtParser {
                     // We need to call the black-box parser to get some nonterminal.
                     let mut mp = self.bb_mps.pop().unwrap();
                     let loc = &matcher[mp.idx];
-                    if let &MatcherLoc::MetaVarDecl {
-                        span, kind, next_metavar, seq_depth, ..
-                    } = loc
-                    {
-                        // We use the span of the metavariable declaration to determine any
-                        // edition-specific matching behavior for non-terminals.
-                        let nt = match parser.parse_nonterminal(kind) {
-                            Err(err) => {
-                                let guarantee = err.with_span_label(
-                                    span,
-                                    format!(
-                                        "while parsing argument for this `{kind}` macro fragment"
-                                    ),
-                                )
-                                .emit();
-                                return ErrorReported(guarantee);
-                            }
-                            Ok(nt) => nt,
-                        };
-                        mp.push_match(next_metavar, seq_depth, MatchedSingle(nt));
-                        mp.idx += 1;
-                    } else {
+                    let &MatcherLoc::MetaVarDecl { kind, next_metavar, seq_depth, .. } = loc else {
                         unreachable!()
-                    }
+                    };
+
+                    // We use the span of the metavariable declaration to determine any
+                    // edition-specific matching behavior for non-terminals.
+                    let nt = match parser.parse_nonterminal(kind) {
+                        Err(err) => return self.nt_parsing_error(loc, err),
+                        Ok(nt) => nt,
+                    };
+                    mp.push_match(next_metavar, seq_depth, MatchedSingle(nt));
+
+                    mp.idx += 1;
                     self.cur_mps.push(mp);
                 }
 
@@ -732,6 +721,17 @@ impl TtParser {
 
             assert!(!self.cur_mps.is_empty());
         }
+    }
+
+    fn nt_parsing_error<F>(&self, loc: &MatcherLoc, err: Diag<'_>) -> NamedParseResult<F> {
+        let &MatcherLoc::MetaVarDecl { span, kind, .. } = loc else { unreachable!() };
+        let guarantee = err
+            .with_span_label(
+                span,
+                format!("while parsing argument for this `{kind}` macro fragment"),
+            )
+            .emit();
+        ErrorReported(guarantee)
     }
 
     fn ambiguity_error<'matcher, F, T: Tracker<'matcher>>(
