@@ -1598,7 +1598,8 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
                     // in the step_name field.
                     "step",
                     step_name = pretty_step_name::<S>(),
-                    args = step_debug_args(&step)
+                    args = step_debug_args(&step),
+                    location = crate::utils::tracing::format_location(*std::panic::Location::caller())
                 );
                 span.entered()
             };
