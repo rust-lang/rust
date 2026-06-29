@@ -3695,7 +3695,7 @@ impl<T> [T] {
     /// Returns two slices. The first contains no consecutive repeated elements.
     /// The second contains all the duplicates in no specified order.
     ///
-    /// The predicate `same_bucket(p, x)` is passed references to two elements from
+    /// The predicate `same_bucket(x, p)` is passed references to two elements from
     /// the slice and must determine if the elements compare equal. The element `p` occurs
     /// *before* `x` in the slice (`[.., p, .., x, ..]`), so `same_bucket(x, p)`
     /// is receiving them in reversed order.
