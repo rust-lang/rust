@@ -299,6 +299,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::NoStd { .. } => (),
             AttributeKind::OnUnknown { .. } => (),
             AttributeKind::OnUnmatchedArgs { .. } => (),
+            AttributeKind::Opaque => (),
             AttributeKind::Optimize(..) => (),
             AttributeKind::PanicRuntime => (),
             AttributeKind::PatchableFunctionEntry { .. } => (),

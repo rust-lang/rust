@@ -1022,6 +1022,8 @@ pub struct ExpnData {
     pub(crate) collapse_debuginfo: bool,
     /// When true, we do not display the note telling people to use the `-Zmacro-backtrace` flag.
     pub hide_backtrace: bool,
+    /// Prevents diagnostics pointing into this, if it is a macro expansion.
+    pub diagnostic_opaque: bool,
 }
 
 impl !PartialEq for ExpnData {}
@@ -1041,6 +1043,7 @@ impl ExpnData {
         local_inner_macros: bool,
         collapse_debuginfo: bool,
         hide_backtrace: bool,
+        diagnostic_opaque: bool,
     ) -> ExpnData {
         ExpnData {
             kind,
@@ -1056,6 +1059,7 @@ impl ExpnData {
             local_inner_macros,
             collapse_debuginfo,
             hide_backtrace,
+            diagnostic_opaque,
         }
     }
 
@@ -1081,6 +1085,7 @@ impl ExpnData {
             local_inner_macros: false,
             collapse_debuginfo: false,
             hide_backtrace: false,
+            diagnostic_opaque: false,
         }
     }
 

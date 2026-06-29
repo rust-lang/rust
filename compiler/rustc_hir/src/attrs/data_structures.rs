@@ -1216,6 +1216,9 @@ pub enum AttributeKind {
         directive: Option<Box<Directive>>,
     },
 
+    /// Represents `#[diagnostic::opaque]`.
+    Opaque,
+
     /// Represents `#[optimize(size|speed)]`
     Optimize(OptimizeAttr, Span),
 
