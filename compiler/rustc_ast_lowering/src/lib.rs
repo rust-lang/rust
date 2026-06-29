@@ -2815,6 +2815,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> hir::ConstArg<'hir> {
         let tcx = self.tcx;
 
+        // Unwrap a block, so that e.g. `{ P }` is recognised as a parameter. Const arguments
+        // currently have to be wrapped in curly brackets, so it's necessary to special-case.
+        let expr = if let ExprKind::Block(block, _) = &anon.value.kind
+            && let [stmt] = block.stmts.as_slice()
+            && let StmtKind::Expr(expr) = &stmt.kind
+            && let ExprKind::Path(..) = &expr.kind
+        {
+            expr
+        } else {
+            &anon.value
+        };
+
         // We cannot change parsing depending on feature gates available,
         // we can only require feature gates to be active as a delayed check.
         // Thus we just parse anon consts generally and make the real decision
@@ -2830,21 +2842,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         span: lowered_anon.span,
                     }
                 }
+                MgcaDisambiguation::Direct
+                    if self.direct_const_arg_has_primitive_fallback_path(&expr) =>
+                {
+                    // Primitive associated constants rely on expression fallback
+                    self.create_def(anon.id, None, DefKind::AnonConst, span);
+                    let lowered_anon = self.lower_anon_const_to_anon_const(anon, span);
+                    ConstArg {
+                        hir_id: self.next_id(),
+                        kind: hir::ConstArgKind::Anon(lowered_anon),
+                        span: lowered_anon.span,
+                    }
+                }
                 MgcaDisambiguation::Direct => self.lower_expr_to_const_arg_direct(&anon.value),
             };
         }
-
-        // Unwrap a block, so that e.g. `{ P }` is recognised as a parameter. Const arguments
-        // currently have to be wrapped in curly brackets, so it's necessary to special-case.
-        let expr = if let ExprKind::Block(block, _) = &anon.value.kind
-            && let [stmt] = block.stmts.as_slice()
-            && let StmtKind::Expr(expr) = &stmt.kind
-            && let ExprKind::Path(..) = &expr.kind
-        {
-            expr
-        } else {
-            &anon.value
-        };
 
         let maybe_res =
             self.get_partial_res(expr.id).and_then(|partial_res| partial_res.full_res());
@@ -2875,6 +2887,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
             kind: hir::ConstArgKind::Anon(lowered_anon),
             span: self.lower_span(expr.span),
         }
+    }
+
+    fn direct_const_arg_has_primitive_fallback_path(&self, expr: &Expr) -> bool {
+        let ExprKind::Path(None, path) = &expr.kind else {
+            return false;
+        };
+
+        self.get_partial_res(expr.id).is_some_and(|partial_res| {
+            matches!(partial_res.base_res(), Res::PrimTy(_))
+                && partial_res.unresolved_segments() > 0
+                && partial_res.unresolved_segments() == path.segments.len() - 1
+        })
     }
 
     /// See [`hir::ConstArg`] for when to use this function vs
