@@ -1624,7 +1624,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                         <- tcx.explicit_implied_const_bounds(def_id).skip_binder());
                 }
             }
-            if let DefKind::AnonConst = def_kind {
+            if let DefKind::AnonConst | DefKind::InlineConst = def_kind {
                 record!(self.tables.anon_const_kind[def_id] <- self.tcx.anon_const_kind(def_id));
             }
             if should_encode_const_of_item(self.tcx, def_id, def_kind) {
