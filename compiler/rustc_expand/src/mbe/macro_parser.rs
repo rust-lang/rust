@@ -634,7 +634,7 @@ impl TtParser {
         // Use single-token lookahead to quickly test whether matching is going to fail.
         // NOTE: This could be limited to single-token arms (len-2 matchers).
         if let MatcherLoc::Token { ref token } = matcher[0]
-            // TODO: Could this be eliminated without changing behavior?
+            // FIXME: Could this be eliminated without changing behavior?
             && !matches!(token.kind, TokenKind::DocComment(..))
             && !token_name_eq(token, &parser.token)
         {
