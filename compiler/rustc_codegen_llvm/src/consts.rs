@@ -121,7 +121,7 @@ pub(crate) fn const_alloc_to_llvm<'ll>(
             as u64;
 
         let address_space = cx.tcx.global_alloc(prov.alloc_id()).address_space(cx);
-        let schema = if cx.sess().pointer_authentication() {
+        let mut schema = if cx.sess().pointer_authentication() {
             match is_init_fini {
                 IsInitOrFini::Yes => cx.sess().pointer_authentication_init_fini(),
                 IsInitOrFini::No => cx.sess().pointer_authentication_functions(),

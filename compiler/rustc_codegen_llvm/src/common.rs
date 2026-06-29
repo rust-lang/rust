@@ -30,7 +30,7 @@ pub(crate) fn maybe_sign_fn_ptr<'ll, 'tcx>(
     cx: &CodegenCx<'ll, '_>,
     instance: Instance<'tcx>,
     llfn: &'ll llvm::Value,
-    schema: &PointerAuthSchema,
+    schema: PointerAuthSchema,
 ) -> &'ll llvm::Value {
     if cx.tcx.sess.pointer_authentication_functions().is_none() {
         return llfn;
@@ -317,7 +317,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
         cv: Scalar,
         layout: abi::Scalar,
         llty: &'ll Type,
-        schema: Option<&PointerAuthSchema>,
+        schema: Option<PointerAuthSchema>,
     ) -> &'ll Value {
         let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
         match cv {
