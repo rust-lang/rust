@@ -116,6 +116,27 @@ pub(super) mod id {
     }
 }
 
+/// If `thread::current()` ran before [`super::lifecycle::ThreadInit::init`] on a
+/// newly spawned thread (e.g. during `DLL_THREAD_ATTACH` on Windows), replace
+/// the temporary handle created by [`init_current`] with the one from `thread::spawn`.
+pub(super) fn recover_preinitialized_for_spawn(thread: Thread) -> bool {
+    let current = CURRENT.get();
+    if current <= DESTROYED || current == NONE || current == BUSY {
+        return false;
+    }
+
+    // SAFETY: `current` points to a valid `Thread` created by `init_current`.
+    let old = unsafe { Thread::from_raw(current) };
+    if old.name().is_some() {
+        return false;
+    }
+
+    drop(old);
+    CURRENT.set(NONE);
+    id::set(thread.id());
+    set_current(thread).is_ok()
+}
+
 /// Tries to set the thread handle for the current thread. Fails if a handle was
 /// already set or if the thread ID of `thread` would change an already-set ID.
 pub(super) fn set_current(thread: Thread) -> Result<(), Thread> {
