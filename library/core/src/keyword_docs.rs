@@ -1294,11 +1294,8 @@ mod return_keyword {}
 /// manner to computed goto).
 ///
 /// Example of using `become` to implement functional-style `fold`:
-#[cfg_attr(
-    target_family = "wasm",
-    doc = "```ignore (tail-call target feature not enabled by default on wasm)"
-)]
-#[cfg_attr(not(target_family = "wasm"), doc = "```")]
+///
+/// ```ignore-wasm (tail-call target feature not enabled by default on wasm)
 /// #![feature(explicit_tail_calls)]
 /// #![expect(incomplete_features)]
 ///
@@ -1352,11 +1349,8 @@ mod return_keyword {}
 ///    (unless it's coerced to a function pointer)
 ///
 /// It is possible to tail-call a function pointer:
-#[cfg_attr(
-    target_family = "wasm",
-    doc = "```ignore (tail-call target feature not enabled by default on wasm)"
-)]
-#[cfg_attr(not(target_family = "wasm"), doc = "```")]
+///
+/// ```ignore-wasm (tail-call target feature not enabled by default on wasm)
 /// #![feature(explicit_tail_calls)]
 /// #![expect(incomplete_features)]
 ///
