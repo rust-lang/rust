@@ -4,9 +4,9 @@
 //@ build-pass
 //@ only-msvc
 //@ revisions: link_exe lld
+//@[link_exe] compile-flags: -Clinker=link.exe
 //@[lld] needs-rust-lld
-//@[link_exe] compile-flags: -Zunstable-options -Clink-self-contained=-linker -Clinker-features=-lld
-//@[lld] compile-flags: -Zunstable-options -Clink-self-contained=+linker -Clinker-features=+lld
+//@[lld] compile-flags: -Clinker=rust-lld
 
 #![feature(linkage)]
 #![crate_type = "cdylib"]
