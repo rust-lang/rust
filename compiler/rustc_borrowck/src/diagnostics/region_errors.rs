@@ -414,8 +414,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         };
 
         // Find the code to blame for the fact that `longer_fr` outlives `error_fr`.
-        let cause =
-            self.regioncx.best_blame_constraint(longer_fr, origin_longer, error_vid).0.cause;
+        let (blame_constraint, path) =
+            self.regioncx.best_blame_constraint(longer_fr, origin_longer, error_vid);
+        let cause = blame_constraint.to_obligation_cause_from_path(&path);
 
         // FIXME these methods should have better names, and also probably not be this generic.
         // FIXME note that we *throw away* the error element here! We probably want to
@@ -448,17 +449,16 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         let (blame_constraint, path) =
             self.regioncx.best_blame_constraint(fr, fr_origin, outlived_fr);
-        let BlameConstraint { category, cause, variance_info, .. } = blame_constraint;
+        let BlameConstraint { category, span, variance_info, .. } = blame_constraint;
 
-        debug!("report_region_error: category={:?} {:?} {:?}", category, cause, variance_info);
+        debug!("report_region_error: category={:?} {:?} {:?}", category, span, variance_info);
 
         // Check if we can use one of the "nice region errors".
         if let (Some(f), Some(o)) =
             (self.regioncx.to_error_region(fr), self.regioncx.to_error_region(outlived_fr))
         {
             let infer_err = self.infcx.err_ctxt();
-            let nice =
-                NiceRegionError::new_from_span(&infer_err, self.mir_def_id(), cause.span, o, f);
+            let nice = NiceRegionError::new_from_span(&infer_err, self.mir_def_id(), span, o, f);
             if let Some(diag) = nice.try_report_from_nll() {
                 self.buffer_error(diag);
                 return;
@@ -475,7 +475,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             fr_is_local, outlived_fr_is_local, category
         );
 
-        let errci = ErrorConstraintInfo { fr, outlived_fr, category, span: cause.span };
+        let errci = ErrorConstraintInfo { fr, outlived_fr, category, span };
 
         let mut diag = match (category, fr_is_local, outlived_fr_is_local) {
             (ConstraintCategory::SolverRegionConstraint(span), _, _) => {
