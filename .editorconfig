@@ -39,6 +39,9 @@ end_of_line = crlf
 insert_final_newline = false
 [tests/{pretty/issue-74745.rs,ui/{parser/issues/issue-{62524,68730,58094-missing-right-square-bracket}.rs,type/issue-91268.rs}}]
 insert_final_newline = false
+# Most args files have to be without final newline, otherwise tests in aarch64-gnu-llvm-21-1 fail
+[tests/**.args]
+insert_final_newline = false
 
 [src/llvm-project]
 indent_style = unset
