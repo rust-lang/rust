@@ -319,6 +319,11 @@ pub fn remove_dir_all(path: &Path) -> io::Result<()> {
 }
 
 pub fn set_perm(path: &Path, perm: FilePermissions) -> io::Result<()> {
+    // Motor does not support symlinks
+    set_perm_nofollow(path, perm)
+}
+
+pub fn set_perm_nofollow(path: &Path, perm: FilePermissions) -> io::Result<()> {
     let path = path.to_str().ok_or(io::Error::from(io::ErrorKind::InvalidFilename))?;
     moto_rt::fs::set_perm(path, perm.rt_perm).map_err(map_motor_error)
 }
