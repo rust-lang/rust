@@ -175,7 +175,7 @@ pub trait Emitter {
                     ExpnKind::Desugaring(..) | ExpnKind::AstPass(..) => None,
 
                     ExpnKind::Macro(macro_kind, name) => {
-                        Some((macro_kind, name, expn_data.hide_backtrace))
+                        Some((macro_kind, name, expn_data.diagnostic_opaque))
                     }
                 }
             })

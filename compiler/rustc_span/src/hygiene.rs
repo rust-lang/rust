@@ -1020,9 +1020,8 @@ pub struct ExpnData {
     /// Should debuginfo for the macro be collapsed to the outermost expansion site (in other
     /// words, was the macro definition annotated with `#[collapse_debuginfo]`)?
     pub(crate) collapse_debuginfo: bool,
-    /// When true, we do not display the note telling people to use the `-Zmacro-backtrace` flag.
-    pub hide_backtrace: bool,
-    /// Prevents diagnostics pointing into this, if it is a macro expansion.
+    /// When true, we prevent diagnostics pointing into this macro, if it is one, and we do not
+    /// display the note telling people to use the `-Zmacro-backtrace` flag.
     pub diagnostic_opaque: bool,
 }
 
@@ -1042,7 +1041,6 @@ impl ExpnData {
         allow_internal_unsafe: bool,
         local_inner_macros: bool,
         collapse_debuginfo: bool,
-        hide_backtrace: bool,
         diagnostic_opaque: bool,
     ) -> ExpnData {
         ExpnData {
@@ -1058,7 +1056,6 @@ impl ExpnData {
             allow_internal_unsafe,
             local_inner_macros,
             collapse_debuginfo,
-            hide_backtrace,
             diagnostic_opaque,
         }
     }
@@ -1084,7 +1081,6 @@ impl ExpnData {
             allow_internal_unsafe: false,
             local_inner_macros: false,
             collapse_debuginfo: false,
-            hide_backtrace: false,
             diagnostic_opaque: false,
         }
     }
