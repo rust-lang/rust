@@ -145,6 +145,15 @@ pub(crate) struct InvalidConstInValtree {
 }
 
 #[derive(Diagnostic)]
+#[diag("constant {$global_const_id} cannot be used as pattern")]
+#[note("constants whose type references itself cannot be used as patterns")]
+pub(crate) struct CyclicConstInValtree {
+    #[primary_span]
+    pub span: Span,
+    pub global_const_id: String,
+}
+
+#[derive(Diagnostic)]
 #[diag("internal compiler error: reentrant incremental verify failure, suppressing message")]
 pub(crate) struct Reentrant;
 

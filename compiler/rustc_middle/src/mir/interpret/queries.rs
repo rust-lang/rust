@@ -232,6 +232,13 @@ impl<'tcx> TyCtxt<'tcx> {
                         });
                         Err(ReportedErrorInfo::allowed_in_infallible(handled).into())
                     }
+                    ValTreeCreationError::CyclicConst => {
+                        let handled = self.dcx().emit_err(error::CyclicConstInValtree {
+                            span,
+                            global_const_id: cid.display(self),
+                        });
+                        Err(ReportedErrorInfo::allowed_in_infallible(handled).into())
+                    }
                     ValTreeCreationError::ErrorHandled(handled) => Err(handled),
                 }
             }
