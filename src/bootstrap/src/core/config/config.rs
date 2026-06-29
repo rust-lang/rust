@@ -49,8 +49,8 @@ use crate::core::config::toml::target::{
     DefaultLinuxLinkerOverride, Target, TomlTarget, default_linux_linker_overrides,
 };
 use crate::core::config::{
-    CompilerBuiltins, DebuginfoLevel, DryRun, GccCiMode, LlvmLibunwind, Merge, ReplaceOpt,
-    RustcLto, SplitDebuginfo, StringOrBool, threads_from_config,
+    CompilerBuiltins, CompressDebuginfo, DebuginfoLevel, DryRun, GccCiMode, LlvmLibunwind, Merge,
+    ReplaceOpt, RustcLto, SplitDebuginfo, StringOrBool, threads_from_config,
 };
 use crate::core::download::{
     DownloadContext, download_beta_toolchain, is_download_ci_available, maybe_download_rustfmt,
@@ -210,6 +210,7 @@ pub struct Config {
     pub rust_debuginfo_level_std: DebuginfoLevel,
     pub rust_debuginfo_level_tools: DebuginfoLevel,
     pub rust_debuginfo_level_tests: DebuginfoLevel,
+    pub rust_compress_debuginfo: CompressDebuginfo,
     pub rust_rpath: bool,
     pub rust_strip: bool,
     pub rust_frame_pointers: bool,
@@ -550,6 +551,7 @@ impl Config {
             debuginfo_level_std: rust_debuginfo_level_std,
             debuginfo_level_tools: rust_debuginfo_level_tools,
             debuginfo_level_tests: rust_debuginfo_level_tests,
+            compress_debuginfo: rust_compress_debuginfo,
             backtrace: rust_backtrace,
             incremental: rust_incremental,
             randomize_layout: rust_randomize_layout,
@@ -1469,6 +1471,7 @@ impl Config {
                 .unwrap_or(vec![CodegenBackendKind::Llvm]),
             rust_codegen_units: rust_codegen_units.map(threads_from_config),
             rust_codegen_units_std: rust_codegen_units_std.map(threads_from_config),
+            rust_compress_debuginfo: rust_compress_debuginfo.unwrap_or_default(),
             rust_debug_logging: rust_debug_logging
                 .or(rust_rustc_debug_assertions)
                 .unwrap_or(rust_debug == Some(true)),
@@ -1923,6 +1926,13 @@ impl Config {
             .get(&target)
             .and_then(|t| t.split_debuginfo)
             .unwrap_or_else(|| SplitDebuginfo::default_for_platform(target))
+    }
+
+    pub fn compress_debuginfo(&self, target: TargetSelection) -> CompressDebuginfo {
+        self.target_config
+            .get(&target)
+            .and_then(|t| t.compress_debuginfo)
+            .unwrap_or(self.rust_compress_debuginfo)
     }
 
     /// Checks if the given target is the same as the host target.

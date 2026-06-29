@@ -5,8 +5,8 @@ use std::path::{Path, PathBuf};
 use super::{Builder, Kind};
 use crate::core::build_steps::test;
 use crate::core::build_steps::tool::SourceType;
-use crate::core::config::SplitDebuginfo;
 use crate::core::config::flags::Color;
+use crate::core::config::{CompressDebuginfo, SplitDebuginfo};
 use crate::utils::build_stamp;
 use crate::utils::helpers::{self, LldThreads, check_cfg_arg, linker_flags};
 use crate::{
@@ -348,8 +348,13 @@ impl Cargo {
             self.rustdocflags.arg(&arg);
         }
 
-        if !builder.config.dry_run() && builder.cc[&target].args().iter().any(|arg| arg == "-gz") {
-            self.rustflags.arg("-Clink-arg=-gz");
+        if !builder.config.dry_run() {
+            match builder.config.compress_debuginfo(target) {
+                CompressDebuginfo::Zlib => {
+                    self.rustflags.arg("-Clink-arg=-Wl,--compress-debug-sections=zlib");
+                }
+                CompressDebuginfo::Off => {}
+            }
         }
 
         // Ignore linker warnings for now. These are complicated to fix and don't affect the build.
