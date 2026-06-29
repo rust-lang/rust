@@ -128,7 +128,7 @@ impl<'ll> Builder<'_, 'll, '_> {
 
 impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     fn dbg_scope_fn(
-        &self,
+        &mut self,
         instance: Instance<'tcx>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         maybe_definition_llfn: Option<&'ll Value>,
@@ -369,7 +369,11 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         }
     }
 
-    fn dbg_create_lexical_block(&self, pos: BytePos, parent_scope: &'ll DIScope) -> &'ll DIScope {
+    fn dbg_create_lexical_block(
+        &mut self,
+        pos: BytePos,
+        parent_scope: &'ll DIScope,
+    ) -> &'ll DIScope {
         let loc = self.lookup_debug_loc(pos);
         let file_metadata = file_metadata(self, &loc.file);
         unsafe {
@@ -384,7 +388,7 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     }
 
     fn dbg_location_clone_with_discriminator(
-        &self,
+        &mut self,
         loc: &'ll DILocation,
         discriminator: u32,
     ) -> Option<&'ll DILocation> {
@@ -392,7 +396,7 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     }
 
     fn dbg_loc(
-        &self,
+        &mut self,
         scope: &'ll DIScope,
         inlined_at: Option<&'ll DILocation>,
         span: Span,
@@ -413,7 +417,7 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     }
 
     fn extend_scope_to_file(
-        &self,
+        &mut self,
         scope_metadata: &'ll DIScope,
         file: &rustc_span::SourceFile,
     ) -> &'ll DILexicalBlock {
@@ -423,7 +427,7 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     // FIXME(eddyb) find a common convention for all of the debuginfo-related
     // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
     fn create_dbg_var(
-        &self,
+        &mut self,
         variable_name: Symbol,
         variable_type: Ty<'tcx>,
         scope_metadata: &'ll DIScope,

@@ -21,29 +21,33 @@ pub trait DebugInfoBuilderMethods<'tcx>: BackendTypes {
     // FIXME(eddyb) find a common convention for all of the debuginfo-related
     // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
     fn dbg_scope_fn(
-        &self,
+        &mut self,
         instance: Instance<'tcx>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         maybe_definition_llfn: Option<Self::Function>,
     ) -> Self::DIScope;
 
-    fn dbg_create_lexical_block(&self, pos: BytePos, parent_scope: Self::DIScope) -> Self::DIScope;
+    fn dbg_create_lexical_block(
+        &mut self,
+        pos: BytePos,
+        parent_scope: Self::DIScope,
+    ) -> Self::DIScope;
 
     fn dbg_location_clone_with_discriminator(
-        &self,
+        &mut self,
         loc: Self::DILocation,
         discriminator: u32,
     ) -> Option<Self::DILocation>;
 
     fn dbg_loc(
-        &self,
+        &mut self,
         scope: Self::DIScope,
         inlined_at: Option<Self::DILocation>,
         span: Span,
     ) -> Self::DILocation;
 
     fn extend_scope_to_file(
-        &self,
+        &mut self,
         scope_metadata: Self::DIScope,
         file: &SourceFile,
     ) -> Self::DIScope;
@@ -51,7 +55,7 @@ pub trait DebugInfoBuilderMethods<'tcx>: BackendTypes {
     // FIXME(eddyb) find a common convention for all of the debuginfo-related
     // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
     fn create_dbg_var(
-        &self,
+        &mut self,
         variable_name: Symbol,
         variable_type: Ty<'tcx>,
         scope_metadata: Self::DIScope,

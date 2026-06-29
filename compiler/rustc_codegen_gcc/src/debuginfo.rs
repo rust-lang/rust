@@ -17,7 +17,7 @@ pub(super) const UNKNOWN_COLUMN_NUMBER: u32 = 0;
 
 impl<'a, 'gcc, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn dbg_scope_fn(
-        &self,
+        &mut self,
         _instance: Instance<'tcx>,
         _fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         _maybe_definition_llfn: Option<Function<'gcc>>,
@@ -26,14 +26,14 @@ impl<'a, 'gcc, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn dbg_create_lexical_block(
-        &self,
+        &mut self,
         _pos: BytePos,
         _parent_scope: Self::DIScope,
     ) -> Self::DIScope {
     }
 
     fn dbg_location_clone_with_discriminator(
-        &self,
+        &mut self,
         loc: Self::DILocation,
         _discriminator: u32,
     ) -> Option<Self::DILocation> {
@@ -41,7 +41,7 @@ impl<'a, 'gcc, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn extend_scope_to_file(
-        &self,
+        &mut self,
         _scope_metadata: Self::DIScope,
         _file: &SourceFile,
     ) -> Self::DIScope {
@@ -49,7 +49,7 @@ impl<'a, 'gcc, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn dbg_loc(
-        &self,
+        &mut self,
         _scope: Self::DIScope,
         _inlined_at: Option<Self::DILocation>,
         span: Span,
@@ -67,7 +67,7 @@ impl<'a, 'gcc, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn create_dbg_var(
-        &self,
+        &mut self,
         _variable_name: Symbol,
         _variable_type: Ty<'tcx>,
         _scope_metadata: Self::DIScope,
