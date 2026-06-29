@@ -121,7 +121,7 @@ pub(crate) fn build_langcall<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         bx.fn_abi_of_instance(instance, ty::List::empty()),
         bx.get_fn_addr(
             instance,
-            tcx.sess.pointer_auth_config.as_ref().and_then(|cfg| cfg.function_pointers.as_ref()),
+            tcx.sess.pointer_auth_config.as_ref().and_then(|cfg| cfg.function_pointers.clone()),
         ),
         instance,
     )

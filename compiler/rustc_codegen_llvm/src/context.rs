@@ -915,7 +915,7 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn get_fn_addr(
         &self,
         instance: Instance<'tcx>,
-        pointer_auth_schema: Option<&PointerAuthSchema>,
+        pointer_auth_schema: Option<PointerAuthSchema>,
     ) -> &'ll Value {
         // When pointer authentication metadata is provided, `get_fn_addr` will
         // attempt to sign the pointer using LLVM's `ConstPtrAuth` constant
@@ -983,10 +983,7 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     ty::List::empty(),
                     DUMMY_SP,
                 ),
-                tcx.sess
-                    .pointer_auth_config
-                    .as_ref()
-                    .and_then(|cfg| cfg.function_pointers.as_ref()),
+                tcx.sess.pointer_auth_config.as_ref().and_then(|cfg| cfg.function_pointers.clone()),
             ),
             _ => {
                 let name = name.unwrap_or("rust_eh_personality");

@@ -691,7 +691,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bx.sess()
                         .pointer_auth_config
                         .as_ref()
-                        .and_then(|cfg| cfg.function_pointers.as_ref()),
+                        .and_then(|cfg| cfg.function_pointers.clone()),
                 ),
                 bx.fn_abi_of_instance(drop_fn, ty::List::empty()),
                 drop_fn,
@@ -1111,7 +1111,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     bx.sess()
                                         .pointer_auth_config
                                         .as_ref()
-                                        .and_then(|cfg| cfg.function_pointers.as_ref()),
+                                        .and_then(|cfg| cfg.function_pointers.clone()),
                                 ),
                             ),
                         )
@@ -1432,7 +1432,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.sess()
                     .pointer_auth_config
                     .as_ref()
-                    .and_then(|cfg| cfg.function_pointers.as_ref()),
+                    .and_then(|cfg| cfg.function_pointers.clone()),
             ),
             (_, Some(llfn)) => llfn,
             _ => span_bug!(fn_span, "no instance or llfn for call"),

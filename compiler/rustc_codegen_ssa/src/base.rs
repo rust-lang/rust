@@ -495,7 +495,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let main_llfn = cx.get_fn_addr(
         instance,
-        cx.sess().pointer_auth_config.as_ref().and_then(|cfg| cfg.function_pointers.as_ref()),
+        cx.sess().pointer_auth_config.as_ref().and_then(|cfg| cfg.function_pointers.clone()),
     );
 
     let entry_fn = create_entry_fn::<Bx>(cx, main_llfn, main_def_id, entry_type);
@@ -562,7 +562,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 cx.sess()
                     .pointer_auth_config
                     .as_ref()
-                    .and_then(|cfg| cfg.function_pointers.as_ref()),
+                    .and_then(|cfg| cfg.function_pointers.clone()),
             );
 
             let i8_ty = cx.type_i8();

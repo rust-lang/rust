@@ -96,6 +96,7 @@ pub enum PointerAuthARM8_3Key {
 }
 
 /// Forms of extra discrimination.
+#[derive(Clone, PartialEq)]
 pub enum PointerAuthDiscrimination {
     /// No additional discrimination.
     None,
@@ -108,6 +109,7 @@ pub enum PointerAuthDiscrimination {
 }
 
 /// Types of address discrimination.
+#[derive(Clone)]
 pub enum PointerAuthAddressDiscriminator {
     /// Enable/disable hardware address discrimination.
     HardwareAddress(bool),
@@ -116,6 +118,7 @@ pub enum PointerAuthAddressDiscriminator {
     Synthetic(u64),
 }
 
+#[derive(Clone)]
 pub struct PointerAuthSchema {
     pub is_address_discriminated: PointerAuthAddressDiscriminator,
     pub discrimination_kind: PointerAuthDiscrimination,
@@ -206,8 +209,7 @@ impl PointerAuthConfig {
         const GOT: u32 = 8;
         const GOTOS: u32 = 9;
         const TYPEINFO_VT_PTR_DISCR: u32 = 10;
-        // FIXME(jchlanda) We don't yet support function pointer type discrimination.
-        // const FPTR_TYPE_DISCR: u32 = 11;
+        const FPTR_TYPE_DISCR: u32 = 11;
 
         let pauth_abi_version: u32 = (u32::from(self.intrinsics) << INTRINSICS)
             | (u32::from(self.function_pointers.is_some()) << CALLS)
@@ -225,7 +227,10 @@ impl PointerAuthConfig {
             })) << INIT_FINI_ADDR_DISC)
             | (u32::from(self.elf_got) << GOT)
             | (u32::from(self.indirect_gotos) << GOTOS)
-            | (u32::from(self.typeinfo_vt_ptr_discrimination) << TYPEINFO_VT_PTR_DISCR);
+            | (u32::from(self.typeinfo_vt_ptr_discrimination) << TYPEINFO_VT_PTR_DISCR)
+            | (u32::from(self.function_pointers.as_ref().is_some_and(|schema| {
+                matches!(schema.discrimination_kind, PointerAuthDiscrimination::Type)
+            })) << FPTR_TYPE_DISCR);
 
         pauth_abi_version
     }
@@ -1199,6 +1204,20 @@ impl Session {
     pub fn pointer_authentication_init_fini(&self) -> bool {
         self.pointer_auth_config.as_ref().and_then(|cfg| cfg.init_fini.as_ref()).is_some()
     }
+
+    pub fn pointer_authentication_fn_ptr_type_discrimination(&self) -> bool {
+        self.pointer_auth_config
+            .as_ref()
+            .and_then(|cfg| cfg.function_pointers.as_ref())
+            .is_some_and(|schema| schema.discrimination_kind == PointerAuthDiscrimination::Type)
+    }
+
+    pub fn pointer_authentication_fn_ptr_key(&self) -> Option<PointerAuthARM8_3Key> {
+        self.pointer_auth_config
+            .as_ref()
+            .and_then(|cfg| cfg.function_pointers.as_ref())
+            .map(|schema| schema.key)
+    }
 }
 
 // JUSTIFICATION: part of session construction
@@ -1426,17 +1445,6 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         && sess.target.is_like_windows
     {
         sess.dcx().emit_err(errors::LinkerPluginToWindowsNotSupported);
-    }
-
-    if sess
-        .pointer_auth_config
-        .as_ref()
-        .and_then(|cfg| cfg.function_pointers.as_ref())
-        .is_some_and(|schema| matches!(schema.discrimination_kind, PointerAuthDiscrimination::Type))
-    {
-        sess.dcx().emit_err(errors::PointerAuthenticationTypeDiscriminationNotSupportedForTarget {
-            target_triple: &sess.opts.target_triple,
-        });
     }
 
     if sess.target.cfg_abi != CfgAbi::Pauthtest

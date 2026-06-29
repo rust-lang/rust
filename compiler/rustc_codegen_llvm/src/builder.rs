@@ -2086,8 +2086,8 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         // bundles.
         // Once this is resolved, we should analyze each call and skip direct calls. See the
         // discussion in the rust-lang issue: <https://github.com/rust-lang/rust/issues/152532>
-        let key: u32 = 0;
 
+        let key: u32 = self.sess().pointer_authentication_fn_ptr_key().unwrap() as u32;
         let discriminator = if self.sess().pointer_authentication_fn_ptr_type_discrimination() {
             fn_abi?.type_discriminator
         } else {
