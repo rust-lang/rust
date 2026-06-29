@@ -62,7 +62,7 @@ pub(super) fn check<'tcx>(
                         {
                             diag.span_suggestion(
                                 call_span,
-                                "consider using `as_chunks` instead",
+                                format!("consider using `{suggestion_method}` instead"),
                                 format!("{as_chunks}.0"),
                                 applicability,
                             );
@@ -77,7 +77,7 @@ pub(super) fn check<'tcx>(
                         {
                             diag.span_suggestion(
                                 call_span,
-                                "consider using `as_chunks` instead",
+                                format!("consider using `{suggestion_method}` instead"),
                                 format!("{as_chunks}.0.{iter_method}()"),
                                 applicability,
                             );
