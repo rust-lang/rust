@@ -70,7 +70,6 @@
 //! eof: [a $( a )* a b ·]
 //! ```
 
-use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::fmt::Display;
 use std::rc::Rc;
 
@@ -80,6 +79,7 @@ use rustc_ast::token::{self, DocComment, NonterminalKind, Token, TokenKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_lint_defs::pluralize;
+use rustc_middle::span_bug;
 use rustc_parse::parser::{ParseNtResult, Parser, token_descr};
 use rustc_span::{Ident, MacroRulesNormalizedIdent, Span};
 
@@ -600,7 +600,7 @@ impl TtParser {
                     // Need to take ownership of the matches from within the `Rc`.
                     Rc::make_mut(&mut eof_mp.matches);
                     let matches = Rc::try_unwrap(eof_mp.matches).unwrap().into_iter();
-                    self.nameize(matcher, matches)
+                    Success(self.nameize(matcher, matches))
                 }
                 EofMatcherPositions::Multiple => {
                     Error(token.span, "ambiguity: multiple successful parses".to_string())
@@ -779,24 +779,28 @@ impl TtParser {
         )
     }
 
-    fn nameize<I: Iterator<Item = NamedMatch>, F>(
+    fn nameize<I: Iterator<Item = NamedMatch>>(
         &self,
         matcher: &[MatcherLoc],
         mut res: I,
-    ) -> NamedParseResult<F> {
+    ) -> NamedMatches {
         // Make that each metavar has _exactly one_ binding. If so, insert the binding into the
         // `NamedParseResult`. Otherwise, it's an error.
         let mut ret_val = FxHashMap::default();
         for loc in matcher {
-            if let &MatcherLoc::MetaVarDecl { span, bind, .. } = loc {
-                match ret_val.entry(MacroRulesNormalizedIdent::new(bind)) {
-                    Vacant(spot) => spot.insert(res.next().unwrap()),
-                    Occupied(..) => {
-                        return Error(span, format!("duplicated bind name: {bind}"));
-                    }
-                };
+            if let &MatcherLoc::MetaVarDecl { span, bind, .. } = loc
+                && ret_val
+                    .insert(MacroRulesNormalizedIdent::new(bind), res.next().unwrap())
+                    .is_some()
+            {
+                // Duplicate binds are checked for when the macro definition is processed,
+                // and should have prevented the definition from ever being used.
+                span_bug!(
+                    span,
+                    "duplicate meta-variable binding went undetected at macro definition"
+                )
             }
         }
-        Success(ret_val)
+        ret_val
     }
 }
