@@ -3,9 +3,9 @@ use rustc_type_ir::{Interner, TyAbiInterface};
 
 use crate::callconv::{ArgAbi, FnAbi, homogeneous_aggregate};
 
-fn unwrap_trivial_aggregate<'a, I: Interner, C>(cx: &C, val: &mut ArgAbi<'a, I>) -> bool
+fn unwrap_trivial_aggregate<I: Interner, C>(cx: &C, val: &mut ArgAbi<I>) -> bool
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout,
 {
     if val.layout.is_aggregate() {
@@ -23,9 +23,9 @@ where
     false
 }
 
-fn classify_ret<'a, I: Interner, C>(cx: &C, ret: &mut ArgAbi<'a, I>)
+fn classify_ret<I: Interner, C>(cx: &C, ret: &mut ArgAbi<I>)
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout,
 {
     ret.extend_integer_width_to(32);
@@ -44,9 +44,9 @@ where
     }
 }
 
-fn classify_arg<'a, I: Interner, C>(cx: &C, arg: &mut ArgAbi<'a, I>)
+fn classify_arg<I: Interner, C>(cx: &C, arg: &mut ArgAbi<I>)
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout,
 {
     if !arg.layout.is_sized() {
@@ -64,9 +64,9 @@ where
 }
 
 /// The purpose of this ABI is to match the C ABI (aka clang) exactly.
-pub(crate) fn compute_abi_info<'a, I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<'a, I>)
+pub(crate) fn compute_abi_info<I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<I>)
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout,
 {
     if !fn_abi.ret.is_ignore() {

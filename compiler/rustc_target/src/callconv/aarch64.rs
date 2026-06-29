@@ -18,9 +18,9 @@ pub(crate) enum AbiKind {
 }
 
 #[tracing::instrument(skip(cx), level = "debug")]
-fn is_homogeneous_aggregate<'a, I: Interner, C>(cx: &C, arg: &mut ArgAbi<'a, I>) -> Option<Uniform>
+fn is_homogeneous_aggregate<I: Interner, C>(cx: &C, arg: &mut ArgAbi<I>) -> Option<Uniform>
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     I::Ty: std::fmt::Display,
     C: HasDataLayout + HasTargetSpec,
 {
@@ -44,7 +44,7 @@ where
     })
 }
 
-fn softfloat_float_abi<I: Interner>(target: &Target, arg: &mut ArgAbi<'_, I>) {
+fn softfloat_float_abi<I: Interner>(target: &Target, arg: &mut ArgAbi<I>) {
     if target.rustc_abi != Some(RustcAbi::Softfloat) {
         return;
     }
@@ -77,9 +77,9 @@ fn softfloat_float_abi<I: Interner>(target: &Target, arg: &mut ArgAbi<'_, I>) {
 }
 
 #[tracing::instrument(skip(cx), level = "debug")]
-fn classify_ret<'a, I: Interner, C>(cx: &C, ret: &mut ArgAbi<'a, I>, kind: AbiKind)
+fn classify_ret<I: Interner, C>(cx: &C, ret: &mut ArgAbi<I>, kind: AbiKind)
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout + HasTargetSpec,
 {
     if !ret.layout.is_sized() || ret.layout.is_scalable_vector() {
@@ -110,9 +110,9 @@ where
 }
 
 #[tracing::instrument(skip(cx), level = "debug")]
-fn classify_arg<'a, I: Interner, C>(cx: &C, arg: &mut ArgAbi<'a, I>, kind: AbiKind)
+fn classify_arg<I: Interner, C>(cx: &C, arg: &mut ArgAbi<I>, kind: AbiKind)
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout + HasTargetSpec,
 {
     if !arg.layout.is_sized() || arg.layout.is_scalable_vector() {
@@ -159,9 +159,9 @@ where
     arg.make_indirect();
 }
 
-pub(crate) fn compute_abi_info<'a, I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<'a, I>, kind: AbiKind)
+pub(crate) fn compute_abi_info<I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<I>, kind: AbiKind)
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout + HasTargetSpec,
 {
     if !fn_abi.ret.is_ignore() {
@@ -176,9 +176,9 @@ where
     }
 }
 
-pub(crate) fn compute_rust_abi_info<'a, I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<'a, I>)
+pub(crate) fn compute_rust_abi_info<I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<I>)
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout + HasTargetSpec,
 {
     for arg in fn_abi.args.iter_mut().chain(iter::once(&mut fn_abi.ret)) {

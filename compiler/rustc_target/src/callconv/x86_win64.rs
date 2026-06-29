@@ -6,11 +6,11 @@ use crate::spec::{HasTargetSpec, RustcAbi};
 
 // Win64 ABI: https://docs.microsoft.com/en-us/cpp/build/parameter-passing
 
-pub(crate) fn compute_abi_info<'a, I: Interner, C: HasTargetSpec>(cx: &C, fn_abi: &mut FnAbi<'a, I>)
+pub(crate) fn compute_abi_info<I: Interner, C: HasTargetSpec>(cx: &C, fn_abi: &mut FnAbi<I>)
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
 {
-    let fixup = |a: &mut ArgAbi<'_, I>, is_ret: bool| {
+    let fixup = |a: &mut ArgAbi<I>, is_ret: bool| {
         match a.layout.backend_repr {
             BackendRepr::Memory { sized: false } => {}
             BackendRepr::ScalarPair(..) | BackendRepr::Memory { sized: true } => {

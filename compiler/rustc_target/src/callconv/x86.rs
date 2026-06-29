@@ -16,12 +16,9 @@ pub(crate) struct X86Options {
     pub reg_struct_return: bool,
 }
 
-pub(crate) fn compute_abi_info<'a, I: Interner, C>(
-    cx: &C,
-    fn_abi: &mut FnAbi<'a, I>,
-    opts: X86Options,
-) where
-    I: TyAbiInterface<'a, C>,
+pub(crate) fn compute_abi_info<I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<I>, opts: X86Options)
+where
+    I: TyAbiInterface<C>,
     C: HasDataLayout + HasTargetSpec,
 {
     if !fn_abi.ret.is_ignore() {
@@ -89,9 +86,9 @@ pub(crate) fn compute_abi_info<'a, I: Interner, C>(
             //
             // 4. If none of these conditions are true, the alignment is 4.
 
-            fn contains_vector<'a, I: Interner, C>(cx: &C, layout: TyAndLayout<'a, I>) -> bool
+            fn contains_vector<I: Interner, C>(cx: &C, layout: TyAndLayout<I>) -> bool
             where
-                I: TyAbiInterface<'a, C>,
+                I: TyAbiInterface<C>,
             {
                 match layout.backend_repr {
                     BackendRepr::Scalar(_) | BackendRepr::ScalarPair(..) => false,
@@ -130,13 +127,13 @@ pub(crate) fn compute_abi_info<'a, I: Interner, C>(
     fill_inregs(cx, fn_abi, opts, false);
 }
 
-pub(crate) fn fill_inregs<'a, I: Interner, C>(
+pub(crate) fn fill_inregs<I: Interner, C>(
     cx: &C,
-    fn_abi: &mut FnAbi<'a, I>,
+    fn_abi: &mut FnAbi<I>,
     opts: X86Options,
     rust_abi: bool,
 ) where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
 {
     if opts.flavor != Flavor::FastcallOrVectorcall && opts.regparm.is_none_or(|x| x == 0) {
         return;
@@ -202,9 +199,9 @@ pub(crate) fn fill_inregs<'a, I: Interner, C>(
     }
 }
 
-pub(crate) fn compute_rust_abi_info<'a, I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<'a, I>)
+pub(crate) fn compute_rust_abi_info<I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<I>)
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout + HasTargetSpec,
 {
     // Avoid returning floats in x87 registers on x86 as loading and storing from x87

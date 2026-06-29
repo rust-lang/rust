@@ -4,12 +4,12 @@ use rustc_type_ir::{Interner, TyAbiInterface};
 use crate::callconv::FnAbi;
 use crate::spec::HasTargetSpec;
 
-pub(crate) fn compute_abi_info<'a, I: Interner, C>(
+pub(crate) fn compute_abi_info<I: Interner, C>(
     cx: &C,
-    fn_abi: &mut FnAbi<'a, I>,
+    fn_abi: &mut FnAbi<I>,
     opts: super::x86::X86Options,
 ) where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout + HasTargetSpec,
 {
     if !fn_abi.ret.is_ignore() {

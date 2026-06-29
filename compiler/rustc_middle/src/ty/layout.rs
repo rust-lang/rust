@@ -774,9 +774,9 @@ impl<'tcx> LayoutOfHelpers<'tcx> for LayoutCx<'tcx> {
     }
 }
 
-pub type TyAndLayout<'tcx> = rustc_type_ir::TyAndLayout<'tcx, TyCtxt<'tcx>>;
-pub type ArgAbi<'tcx> = rustc_target::callconv::ArgAbi<'tcx, TyCtxt<'tcx>>;
-pub type FnAbi<'tcx> = rustc_target::callconv::FnAbi<'tcx, TyCtxt<'tcx>>;
+pub type TyAndLayout<'tcx> = rustc_type_ir::TyAndLayout<TyCtxt<'tcx>>;
+pub type ArgAbi<'tcx> = rustc_target::callconv::ArgAbi<TyCtxt<'tcx>>;
+pub type FnAbi<'tcx> = rustc_target::callconv::FnAbi<TyCtxt<'tcx>>;
 
 impl<'tcx> rustc_type_ir::inherent::Layout<TyCtxt<'tcx>> for rustc_type_ir::Layout<'tcx> {
     fn fields(self) -> &'tcx FieldsShape<FieldIdx> {
@@ -812,7 +812,7 @@ impl<'tcx> rustc_type_ir::inherent::Layout<TyCtxt<'tcx>> for rustc_type_ir::Layo
     }
 }
 
-impl<'tcx, C> TyAbiInterface<'tcx, C> for TyCtxt<'tcx>
+impl<'tcx, C> TyAbiInterface<C> for TyCtxt<'tcx>
 where
     C: HasTyCtxt<'tcx> + HasTypingEnv<'tcx>,
 {

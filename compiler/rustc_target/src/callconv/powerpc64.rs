@@ -16,13 +16,13 @@ enum ABI {
 }
 use ABI::*;
 
-fn is_homogeneous_aggregate<'a, I: Interner, C>(
+fn is_homogeneous_aggregate<I: Interner, C>(
     cx: &C,
-    arg: &mut ArgAbi<'a, I>,
+    arg: &mut ArgAbi<I>,
     abi: ABI,
 ) -> Option<Uniform>
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout,
 {
     homogeneous_aggregate(cx, arg.layout).ok().and_then(|ha| ha.unit()).and_then(|unit| {
@@ -44,9 +44,9 @@ where
     })
 }
 
-fn classify<'a, I: Interner, C>(cx: &C, arg: &mut ArgAbi<'a, I>, abi: ABI, is_ret: bool)
+fn classify<I: Interner, C>(cx: &C, arg: &mut ArgAbi<I>, abi: ABI, is_ret: bool)
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout,
 {
     if arg.is_ignore() || !arg.layout.is_sized() {
@@ -102,9 +102,9 @@ where
     };
 }
 
-pub(crate) fn compute_abi_info<'a, I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<'a, I>)
+pub(crate) fn compute_abi_info<I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<I>)
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout + HasTargetSpec,
 {
     let abi = match cx.target_spec().options.llvm_abiname {

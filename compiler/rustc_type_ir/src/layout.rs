@@ -78,15 +78,12 @@ impl<'a> Layout<'a> {
 /// or synthetic fields of enums (i.e., discriminants) and wide pointers.
 #[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
-pub struct TyAndLayout<'a, I: Interner> {
+pub struct TyAndLayout<I: Interner> {
     pub ty: I::Ty,
-    pub layout: Layout<'a>,
+    pub layout: I::Layout,
 }
 
-impl<'a, I: Interner> fmt::Debug for TyAndLayout<'a, I>
-where
-    I::Ty: fmt::Display,
-{
+impl<I: Interner> fmt::Debug for TyAndLayout<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Print the type in a readable way, not its debug representation.
         f.debug_struct("TyAndLayout")
@@ -96,71 +93,71 @@ where
     }
 }
 
-impl<'a, I: Interner> Deref for TyAndLayout<'a, I> {
+impl<I: Interner> Deref for TyAndLayout<I> {
     type Target = LayoutData<FieldIdx, VariantIdx>;
     fn deref(&self) -> &LayoutData<FieldIdx, VariantIdx> {
-        &self.layout.0.0
+        self.layout.deref()
     }
 }
 
-impl<'a, I: Interner> AsRef<LayoutData<FieldIdx, VariantIdx>> for TyAndLayout<'a, I> {
+impl<I: Interner> AsRef<LayoutData<FieldIdx, VariantIdx>> for TyAndLayout<I> {
     fn as_ref(&self) -> &LayoutData<FieldIdx, VariantIdx> {
-        &*self.layout.0.0
+        self.layout.deref()
     }
 }
 
 /// Trait that needs to be implemented by the higher-level type representation
 /// (e.g. `rustc_middle::ty::Ty`), to provide `rustc_target::abi` functionality.
-pub trait TyAbiInterface<'a, C>: Interner {
+pub trait TyAbiInterface<C>: Interner {
     fn ty_and_layout_for_variant(
-        this: TyAndLayout<'a, Self>,
+        this: TyAndLayout<Self>,
         cx: &C,
         variant_index: VariantIdx,
-    ) -> TyAndLayout<'a, Self>;
-    fn ty_and_layout_field(this: TyAndLayout<'a, Self>, cx: &C, i: usize) -> TyAndLayout<'a, Self>;
+    ) -> TyAndLayout<Self>;
+    fn ty_and_layout_field(this: TyAndLayout<Self>, cx: &C, i: usize) -> TyAndLayout<Self>;
     fn ty_and_layout_pointee_info_at(
-        this: TyAndLayout<'a, Self>,
+        this: TyAndLayout<Self>,
         cx: &C,
         offset: Size,
     ) -> Option<PointeeInfo>;
-    fn is_adt(this: TyAndLayout<'a, Self>) -> bool;
-    fn is_never(this: TyAndLayout<'a, Self>) -> bool;
-    fn is_tuple(this: TyAndLayout<'a, Self>) -> bool;
-    fn is_unit(this: TyAndLayout<'a, Self>) -> bool;
-    fn is_transparent(this: TyAndLayout<'a, Self>) -> bool;
-    fn is_scalable_vector(this: TyAndLayout<'a, Self>) -> bool;
+    fn is_adt(this: TyAndLayout<Self>) -> bool;
+    fn is_never(this: TyAndLayout<Self>) -> bool;
+    fn is_tuple(this: TyAndLayout<Self>) -> bool;
+    fn is_unit(this: TyAndLayout<Self>) -> bool;
+    fn is_transparent(this: TyAndLayout<Self>) -> bool;
+    fn is_scalable_vector(this: TyAndLayout<Self>) -> bool;
     /// See [`TyAndLayout::pass_indirectly_in_non_rustic_abis`] for details.
-    fn is_pass_indirectly_in_non_rustic_abis_flag_set(this: TyAndLayout<'a, Self>) -> bool;
+    fn is_pass_indirectly_in_non_rustic_abis_flag_set(this: TyAndLayout<Self>) -> bool;
 }
 
-impl<'a, I: Interner> TyAndLayout<'a, I>
+impl<I: Interner> TyAndLayout<I>
 where
     I::Ty: fmt::Display,
 {
     pub fn for_variant<C>(self, cx: &C, variant_index: VariantIdx) -> Self
     where
-        I: TyAbiInterface<'a, C>,
+        I: TyAbiInterface<C>,
     {
         I::ty_and_layout_for_variant(self, cx, variant_index)
     }
 
     pub fn field<C>(self, cx: &C, i: usize) -> Self
     where
-        I: TyAbiInterface<'a, C>,
+        I: TyAbiInterface<C>,
     {
         I::ty_and_layout_field(self, cx, i)
     }
 
     pub fn pointee_info_at<C>(self, cx: &C, offset: Size) -> Option<PointeeInfo>
     where
-        I: TyAbiInterface<'a, C>,
+        I: TyAbiInterface<C>,
     {
         I::ty_and_layout_pointee_info_at(self, cx, offset)
     }
 
     pub fn is_single_fp_element<C>(self, cx: &C) -> bool
     where
-        I: TyAbiInterface<'a, C>,
+        I: TyAbiInterface<C>,
         C: HasDataLayout,
     {
         match self.backend_repr {
@@ -180,7 +177,7 @@ where
 
     pub fn is_single_vector_element<C>(self, cx: &C, expected_size: Size) -> bool
     where
-        I: TyAbiInterface<'a, C>,
+        I: TyAbiInterface<C>,
         C: HasDataLayout,
     {
         match self.backend_repr {
@@ -198,42 +195,42 @@ where
 
     pub fn is_adt<C>(self) -> bool
     where
-        I: TyAbiInterface<'a, C>,
+        I: TyAbiInterface<C>,
     {
         I::is_adt(self)
     }
 
     pub fn is_never<C>(self) -> bool
     where
-        I: TyAbiInterface<'a, C>,
+        I: TyAbiInterface<C>,
     {
         I::is_never(self)
     }
 
     pub fn is_tuple<C>(self) -> bool
     where
-        I: TyAbiInterface<'a, C>,
+        I: TyAbiInterface<C>,
     {
         I::is_tuple(self)
     }
 
     pub fn is_unit<C>(self) -> bool
     where
-        I: TyAbiInterface<'a, C>,
+        I: TyAbiInterface<C>,
     {
         I::is_unit(self)
     }
 
     pub fn is_transparent<C>(self) -> bool
     where
-        I: TyAbiInterface<'a, C>,
+        I: TyAbiInterface<C>,
     {
         I::is_transparent(self)
     }
 
     pub fn is_scalable_vector<C>(self) -> bool
     where
-        I: TyAbiInterface<'a, C>,
+        I: TyAbiInterface<C>,
     {
         I::is_scalable_vector(self)
     }
@@ -251,7 +248,7 @@ where
     /// This function handles transparent types automatically.
     pub fn pass_indirectly_in_non_rustic_abis<C>(self, cx: &C) -> bool
     where
-        I: TyAbiInterface<'a, C>,
+        I: TyAbiInterface<C>,
     {
         let base = self.peel_transparent_wrappers(cx);
         I::is_pass_indirectly_in_non_rustic_abis_flag_set(base)
@@ -263,7 +260,7 @@ where
     /// not have a non-1zst field.
     pub fn peel_transparent_wrappers<C>(mut self, cx: &C) -> Self
     where
-        I: TyAbiInterface<'a, C>,
+        I: TyAbiInterface<C>,
     {
         while self.is_transparent()
             && let Some((_, field)) = self.non_1zst_field(cx)
@@ -278,7 +275,7 @@ where
     /// Returns `None` if there are multiple non-1-ZST fields or only 1-ZST-fields.
     pub fn non_1zst_field<C>(&self, cx: &C) -> Option<(FieldIdx, Self)>
     where
-        I: TyAbiInterface<'a, C>,
+        I: TyAbiInterface<C>,
     {
         let mut found = None;
         for field_idx in 0..self.fields.count() {

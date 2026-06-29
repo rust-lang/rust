@@ -27,16 +27,16 @@ enum FloatConv {
 #[derive(Copy, Clone)]
 struct CannotUseFpConv;
 
-fn is_riscv_aggregate<I: Interner>(arg: &ArgAbi<'_, I>) -> bool {
+fn is_riscv_aggregate<I: Interner>(arg: &ArgAbi<I>) -> bool {
     match arg.layout.backend_repr {
         BackendRepr::SimdVector { .. } => true,
         _ => arg.layout.is_aggregate(),
     }
 }
 
-fn should_use_fp_conv_helper<'a, I: Interner, C>(
+fn should_use_fp_conv_helper<I: Interner, C>(
     cx: &C,
-    arg_layout: &TyAndLayout<'a, I>,
+    arg_layout: &TyAndLayout<I>,
     xlen: u64,
     flen: u64,
     field1_kind: &mut RegPassKind,
@@ -44,7 +44,7 @@ fn should_use_fp_conv_helper<'a, I: Interner, C>(
     offset_from_start: Size,
 ) -> Result<(), CannotUseFpConv>
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
 {
     match arg_layout.backend_repr {
         BackendRepr::Scalar(scalar) => match scalar.primitive() {
@@ -150,14 +150,14 @@ where
     Ok(())
 }
 
-fn should_use_fp_conv<'a, I: Interner, C>(
+fn should_use_fp_conv<I: Interner, C>(
     cx: &C,
-    arg: &TyAndLayout<'a, I>,
+    arg: &TyAndLayout<I>,
     xlen: u64,
     flen: u64,
 ) -> Option<FloatConv>
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
 {
     let mut field1_kind = RegPassKind::Unknown;
     let mut field2_kind = RegPassKind::Unknown;
@@ -211,9 +211,9 @@ where
     }
 }
 
-fn classify_ret<'a, I: Interner, C>(cx: &C, arg: &mut ArgAbi<'a, I>, xlen: u64, flen: u64) -> bool
+fn classify_ret<I: Interner, C>(cx: &C, arg: &mut ArgAbi<I>, xlen: u64, flen: u64) -> bool
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
 {
     if !arg.layout.is_sized() {
         // Not touching this...
@@ -278,16 +278,16 @@ where
     false
 }
 
-fn classify_arg<'a, I: Interner, C>(
+fn classify_arg<I: Interner, C>(
     cx: &C,
-    arg: &mut ArgAbi<'a, I>,
+    arg: &mut ArgAbi<I>,
     xlen: u64,
     flen: u64,
     is_vararg: bool,
     avail_gprs: &mut u64,
     avail_fprs: &mut u64,
 ) where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
 {
     if !arg.layout.is_sized() {
         // FIXME: Update avail_gprs?
@@ -398,7 +398,7 @@ fn classify_arg<'a, I: Interner, C>(
     }
 }
 
-fn extend_integer_width<I: Interner>(arg: &mut ArgAbi<'_, I>, xlen: u64) {
+fn extend_integer_width<I: Interner>(arg: &mut ArgAbi<I>, xlen: u64) {
     if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr
         && let Primitive::Int(i, _) = scalar.primitive()
         && i.size().bits() == 32
@@ -412,9 +412,9 @@ fn extend_integer_width<I: Interner>(arg: &mut ArgAbi<'_, I>, xlen: u64) {
     arg.extend_integer_width_to(xlen);
 }
 
-pub(crate) fn compute_abi_info<'a, I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<'a, I>)
+pub(crate) fn compute_abi_info<I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<I>)
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout + HasTargetSpec,
 {
     let flen = match &cx.target_spec().llvm_abiname {
@@ -447,9 +447,9 @@ where
     }
 }
 
-pub(crate) fn compute_rust_abi_info<'a, I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<'a, I>)
+pub(crate) fn compute_rust_abi_info<I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<I>)
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout + HasTargetSpec,
 {
     let xlen = cx.data_layout().pointer_size().bits();

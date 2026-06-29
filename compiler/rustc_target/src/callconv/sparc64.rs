@@ -24,13 +24,13 @@ enum Word {
     Integer,
 }
 
-fn classify<'a, I: Interner, C>(
+fn classify<I: Interner, C>(
     cx: &C,
-    arg_layout: &TyAndLayout<'a, I>,
+    arg_layout: &TyAndLayout<I>,
     offset: Size,
     double_words: &mut [DoubleWord; 4],
 ) where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout,
 {
     // If this function does not update the `double_words` array, the value will be passed via
@@ -100,13 +100,13 @@ fn classify<'a, I: Interner, C>(
     }
 }
 
-fn classify_arg<'a, I: Interner, C>(
+fn classify_arg<I: Interner, C>(
     cx: &C,
-    arg: &mut ArgAbi<'a, I>,
+    arg: &mut ArgAbi<I>,
     in_registers_max: Size,
     total_double_word_count: &mut usize,
 ) where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout,
 {
     // 64-bit SPARC allocates argument stack space in 64-bit chunks (double words), some of which
@@ -193,9 +193,9 @@ fn classify_arg<'a, I: Interner, C>(
     arg.cast_to_and_pad_i32(cast_target.with_attrs(attrs.into()), pad);
 }
 
-pub(crate) fn compute_abi_info<'a, I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<'a, I>)
+pub(crate) fn compute_abi_info<I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<I>)
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout + HasTargetSpec,
 {
     if !fn_abi.ret.is_ignore() && fn_abi.ret.layout.is_sized() {

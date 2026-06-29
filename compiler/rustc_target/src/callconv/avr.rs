@@ -34,15 +34,15 @@ use rustc_type_ir::{Interner, TyAbiInterface};
 
 use crate::callconv::{ArgAbi, FnAbi};
 
-fn classify_ret_ty<I: Interner>(ret: &mut ArgAbi<'_, I>) {
+fn classify_ret_ty<I: Interner>(ret: &mut ArgAbi<I>) {
     if ret.layout.is_aggregate() {
         ret.make_indirect();
     }
 }
 
-fn classify_arg_ty<'a, I: Interner, C>(cx: &C, arg: &mut ArgAbi<'a, I>)
+fn classify_arg_ty<I: Interner, C>(cx: &C, arg: &mut ArgAbi<I>)
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
 {
     if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
         arg.make_indirect();
@@ -53,9 +53,9 @@ where
     }
 }
 
-pub(crate) fn compute_abi_info<'a, I: Interner, C>(cx: &C, fty: &mut FnAbi<'a, I>)
+pub(crate) fn compute_abi_info<I: Interner, C>(cx: &C, fty: &mut FnAbi<I>)
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
 {
     if !fty.ret.is_ignore() {
         classify_ret_ty(&mut fty.ret);

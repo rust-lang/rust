@@ -3,17 +3,17 @@ use rustc_type_ir::{Interner, TyAbiInterface};
 
 use crate::callconv::{ArgAbi, FnAbi};
 
-fn classify_ret<'a, I: Interner, C>(_cx: &C, ret: &mut ArgAbi<'a, I>)
+fn classify_ret<I: Interner, C>(_cx: &C, ret: &mut ArgAbi<I>)
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout,
 {
     ret.extend_integer_width_to(32);
 }
 
-fn classify_arg<'a, I: Interner, C>(cx: &C, arg: &mut ArgAbi<'a, I>)
+fn classify_arg<I: Interner, C>(cx: &C, arg: &mut ArgAbi<I>)
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout,
 {
     if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
@@ -23,9 +23,9 @@ where
     arg.extend_integer_width_to(32);
 }
 
-pub(crate) fn compute_abi_info<'a, I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<'a, I>)
+pub(crate) fn compute_abi_info<I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<I>)
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout,
 {
     if !fn_abi.ret.is_ignore() {

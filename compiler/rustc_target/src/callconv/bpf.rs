@@ -3,7 +3,7 @@ use rustc_type_ir::{Interner, TyAbiInterface};
 
 use crate::callconv::{ArgAbi, FnAbi};
 
-fn classify_ret<I: Interner>(ret: &mut ArgAbi<'_, I>) {
+fn classify_ret<I: Interner>(ret: &mut ArgAbi<I>) {
     if ret.layout.is_aggregate() || ret.layout.size.bits() > 64 {
         ret.make_indirect();
     } else {
@@ -11,9 +11,9 @@ fn classify_ret<I: Interner>(ret: &mut ArgAbi<'_, I>) {
     }
 }
 
-fn classify_arg<'a, I: Interner, C>(cx: &C, arg: &mut ArgAbi<'a, I>)
+fn classify_arg<I: Interner, C>(cx: &C, arg: &mut ArgAbi<I>)
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
 {
     if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
         arg.make_indirect();
@@ -26,9 +26,9 @@ where
     }
 }
 
-pub(crate) fn compute_abi_info<'a, I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<'a, I>)
+pub(crate) fn compute_abi_info<I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<I>)
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
 {
     if !fn_abi.ret.is_ignore() {
         classify_ret(&mut fn_abi.ret);
@@ -42,7 +42,7 @@ where
     }
 }
 
-pub(crate) fn compute_rust_abi_info<I: Interner>(fn_abi: &mut FnAbi<'_, I>) {
+pub(crate) fn compute_rust_abi_info<I: Interner>(fn_abi: &mut FnAbi<I>) {
     if !fn_abi.ret.is_ignore() {
         classify_ret(&mut fn_abi.ret);
     }

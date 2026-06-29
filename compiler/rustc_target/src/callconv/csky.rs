@@ -9,7 +9,7 @@ use rustc_type_ir::{Interner, TyAbiInterface};
 
 use crate::callconv::{ArgAbi, FnAbi, Uniform};
 
-fn classify_ret<I: Interner>(arg: &mut ArgAbi<'_, I>) {
+fn classify_ret<I: Interner>(arg: &mut ArgAbi<I>) {
     if !arg.layout.is_sized() {
         // Not touching this...
         return;
@@ -30,9 +30,9 @@ fn classify_ret<I: Interner>(arg: &mut ArgAbi<'_, I>) {
     }
 }
 
-fn classify_arg<'a, I: Interner, C>(cx: &C, arg: &mut ArgAbi<'a, I>)
+fn classify_arg<I: Interner, C>(cx: &C, arg: &mut ArgAbi<I>)
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
 {
     if !arg.layout.is_sized() {
         // Not touching this...
@@ -57,9 +57,9 @@ where
     }
 }
 
-pub(crate) fn compute_abi_info<'a, I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<'a, I>)
+pub(crate) fn compute_abi_info<I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<I>)
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
 {
     if !fn_abi.ret.is_ignore() {
         classify_ret(&mut fn_abi.ret);

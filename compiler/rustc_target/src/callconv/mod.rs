@@ -379,13 +379,13 @@ impl CastTarget {
 /// or return a value from, a function, under some ABI.
 #[derive_where(Clone, PartialEq, Eq, Hash; I: Interner)]
 #[derive(StableHash_NoContext)]
-pub struct ArgAbi<'a, I: Interner> {
-    pub layout: TyAndLayout<'a, I>,
+pub struct ArgAbi<I: Interner> {
+    pub layout: TyAndLayout<I>,
     pub mode: PassMode,
 }
 
 // Needs to be a custom impl because of the bounds on the `TyAndLayout` debug impl.
-impl<'a, I: Interner> fmt::Debug for ArgAbi<'a, I>
+impl<I: Interner> fmt::Debug for ArgAbi<I>
 where
     I::Ty: fmt::Display,
 {
@@ -395,11 +395,11 @@ where
     }
 }
 
-impl<'a, I: Interner> ArgAbi<'a, I> {
+impl<I: Interner> ArgAbi<I> {
     /// This defines the "default ABI" for that type, that is then later adjusted in `fn_abi_adjust_for_abi`.
     pub fn new(
         cx: &impl HasDataLayout,
-        layout: TyAndLayout<'a, I>,
+        layout: TyAndLayout<I>,
         scalar_attrs: impl Fn(Scalar, Size) -> ArgAttributes,
     ) -> Self {
         let mode = match layout.backend_repr {
@@ -416,7 +416,7 @@ impl<'a, I: Interner> ArgAbi<'a, I> {
         ArgAbi { layout, mode }
     }
 
-    fn indirect_pass_mode(layout: &TyAndLayout<'a, I>) -> PassMode {
+    fn indirect_pass_mode(layout: &TyAndLayout<I>) -> PassMode {
         let mut attrs = ArgAttributes::new();
 
         // For non-immediate arguments the callee gets its own copy of
@@ -607,12 +607,12 @@ impl RiscvInterruptKind {
 /// comments are reverse-engineered and may be inaccurate. -NDM
 #[derive_where(Clone, PartialEq, Eq, Hash; I: Interner)]
 #[derive(StableHash_NoContext)]
-pub struct FnAbi<'a, I: Interner> {
+pub struct FnAbi<I: Interner> {
     /// The type, layout, and information about how each argument is passed.
-    pub args: Box<[ArgAbi<'a, I>]>,
+    pub args: Box<[ArgAbi<I>]>,
 
     /// The layout, type, and the way a value is returned from this function.
-    pub ret: ArgAbi<'a, I>,
+    pub ret: ArgAbi<I>,
 
     /// Marks this function as variadic (accepting a variable number of arguments).
     pub c_variadic: bool,
@@ -629,10 +629,7 @@ pub struct FnAbi<'a, I: Interner> {
 }
 
 // Needs to be a custom impl because of the bounds on the `TyAndLayout` debug impl.
-impl<'a, I: Interner> fmt::Debug for FnAbi<'a, I>
-where
-    I::Ty: fmt::Display,
-{
+impl<I: Interner> fmt::Debug for FnAbi<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let FnAbi { args, ret, c_variadic, fixed_count, conv, can_unwind } = self;
         f.debug_struct("FnAbi")
@@ -646,10 +643,10 @@ where
     }
 }
 
-impl<'a, I: Interner> FnAbi<'a, I> {
+impl<I: Interner> FnAbi<I> {
     pub fn adjust_for_foreign_abi<C>(&mut self, cx: &C, abi: ExternAbi)
     where
-        I: TyAbiInterface<'a, C> + Copy,
+        I: TyAbiInterface<C> + Copy,
         C: HasDataLayout + HasTargetSpec + HasX86AbiOpt,
     {
         if abi == ExternAbi::X86Interrupt {
@@ -736,7 +733,7 @@ impl<'a, I: Interner> FnAbi<'a, I> {
 
     pub fn adjust_for_rust_abi<C>(&mut self, cx: &C)
     where
-        I: TyAbiInterface<'a, C>,
+        I: TyAbiInterface<C>,
         C: HasDataLayout + HasTargetSpec,
     {
         let spec = cx.target_spec();
@@ -883,12 +880,12 @@ impl<'a, I: Interner> FnAbi<'a, I> {
 /// should generally only be relevant to the ABI details of
 /// specific targets.
 #[tracing::instrument(skip(cx), level = "debug")]
-pub fn homogeneous_aggregate<'a, C, I: Interner>(
+pub fn homogeneous_aggregate<C, I: Interner>(
     cx: &C,
-    layout: TyAndLayout<'a, I>,
+    layout: TyAndLayout<I>,
 ) -> Result<HomogeneousAggregate, Heterogeneous>
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     I::Ty: std::fmt::Display,
 {
     match layout.backend_repr {
@@ -918,7 +915,7 @@ where
             // Helper for computing `homogeneous_aggregate`, allowing a custom
             // starting offset (used below for handling variants).
             let from_fields_at =
-                |layout: TyAndLayout<'a, I>,
+                |layout: TyAndLayout<I>,
                  start: Size|
                  -> Result<(HomogeneousAggregate, Size), Heterogeneous> {
                     let is_union = match layout.fields {
@@ -1022,9 +1019,9 @@ where
 /// Conservative: returns `false` for anything it cannot prove fully initialized,
 /// including multi-variant enums and SIMD vectors.
 // FIXME: extend to multi-variant enums (per-variant padding analysis needed).
-fn layout_is_noundef<'a, I: Interner, C>(layout: TyAndLayout<'a, I>, cx: &C) -> bool
+fn layout_is_noundef<I: Interner, C>(layout: TyAndLayout<I>, cx: &C) -> bool
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout,
 {
     match layout.backend_repr {
@@ -1054,9 +1051,9 @@ where
 
 /// Returns `true` if the fields of `layout` contiguously cover bytes `0..layout.size`
 /// with no padding gaps and each field is recursively `layout_is_noundef`.
-fn fields_are_noundef<'a, I: Interner, C>(layout: TyAndLayout<'a, I>, cx: &C) -> bool
+fn fields_are_noundef<I: Interner, C>(layout: TyAndLayout<I>, cx: &C) -> bool
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout,
 {
     let mut cursor = Size::ZERO;

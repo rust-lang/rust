@@ -4,9 +4,9 @@ use rustc_type_ir::{Interner, TyAbiInterface};
 use crate::callconv::{ArgAbi, FnAbi, Uniform, homogeneous_aggregate};
 use crate::spec::HasTargetSpec;
 
-fn is_homogeneous_aggregate<'a, I: Interner, C>(cx: &C, arg: &mut ArgAbi<'a, I>) -> Option<Uniform>
+fn is_homogeneous_aggregate<I: Interner, C>(cx: &C, arg: &mut ArgAbi<I>) -> Option<Uniform>
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout,
 {
     homogeneous_aggregate(cx, arg.layout).ok().and_then(|ha| ha.unit()).and_then(|unit| {
@@ -27,9 +27,9 @@ where
     })
 }
 
-fn classify_ret<'a, I: Interner, C>(cx: &C, ret: &mut ArgAbi<'a, I>, vfp: bool)
+fn classify_ret<I: Interner, C>(cx: &C, ret: &mut ArgAbi<I>, vfp: bool)
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout,
 {
     if !ret.layout.is_sized() {
@@ -57,9 +57,9 @@ where
     ret.make_indirect();
 }
 
-fn classify_arg<'a, I: Interner, C>(cx: &C, arg: &mut ArgAbi<'a, I>, vfp: bool)
+fn classify_arg<I: Interner, C>(cx: &C, arg: &mut ArgAbi<I>, vfp: bool)
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout,
 {
     if !arg.layout.is_sized() {
@@ -87,9 +87,9 @@ where
     arg.cast_to(Uniform::consecutive(if align <= 4 { Reg::i32() } else { Reg::i64() }, total));
 }
 
-pub(crate) fn compute_abi_info<'a, I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<'a, I>)
+pub(crate) fn compute_abi_info<I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<I>)
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout + HasTargetSpec,
 {
     // If this is a target with a hard-float ABI, and the function is not explicitly

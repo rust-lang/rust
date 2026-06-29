@@ -16,9 +16,9 @@ const NUM_RET_GPRS: u64 = 4;
 const MAX_ARG_IN_REGS_SIZE: u64 = NUM_ARG_GPRS * 32;
 const MAX_RET_IN_REGS_SIZE: u64 = NUM_RET_GPRS * 32;
 
-fn classify_ret_ty<'a, I: Interner, C>(cx: &C, arg: &mut ArgAbi<'a, I>)
+fn classify_ret_ty<I: Interner, C>(cx: &C, arg: &mut ArgAbi<I>)
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
 {
     if arg.is_ignore() {
         return;
@@ -37,13 +37,13 @@ where
     }
 }
 
-fn classify_arg_ty<'a, I: Interner, C>(
+fn classify_arg_ty<I: Interner, C>(
     cx: &C,
-    arg: &mut ArgAbi<'a, I>,
+    arg: &mut ArgAbi<I>,
     arg_gprs_left: &mut u64,
     is_ret: bool,
 ) where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
 {
     assert!(*arg_gprs_left <= NUM_ARG_GPRS, "Arg GPR tracking underflow");
 
@@ -108,9 +108,9 @@ fn classify_arg_ty<'a, I: Interner, C>(
     }
 }
 
-pub(crate) fn compute_abi_info<'a, I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<'a, I>)
+pub(crate) fn compute_abi_info<I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<I>)
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout + HasTargetSpec,
 {
     if !fn_abi.ret.is_ignore() {
@@ -127,7 +127,7 @@ where
     }
 }
 
-fn is_xtensa_aggregate<'a, I: Interner>(arg: &ArgAbi<'a, I>) -> bool {
+fn is_xtensa_aggregate<I: Interner>(arg: &ArgAbi<I>) -> bool {
     match arg.layout.backend_repr {
         BackendRepr::SimdVector { .. } => true,
         _ => arg.layout.is_aggregate(),

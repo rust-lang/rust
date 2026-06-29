@@ -24,22 +24,22 @@ struct Memory;
 const LARGEST_VECTOR_SIZE: usize = 512;
 const MAX_EIGHTBYTES: usize = LARGEST_VECTOR_SIZE / 64;
 
-fn classify_arg<'a, I: Interner, C>(
+fn classify_arg<I: Interner, C>(
     cx: &C,
-    arg: &ArgAbi<'a, I>,
+    arg: &ArgAbi<I>,
 ) -> Result<[Option<Class>; MAX_EIGHTBYTES], Memory>
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout,
 {
-    fn classify<'a, I: Interner, C>(
+    fn classify<I: Interner, C>(
         cx: &C,
-        layout: TyAndLayout<'a, I>,
+        layout: TyAndLayout<I>,
         cls: &mut [Option<Class>],
         off: Size,
     ) -> Result<(), Memory>
     where
-        I: TyAbiInterface<'a, C>,
+        I: TyAbiInterface<C>,
         C: HasDataLayout,
     {
         if !off.is_aligned(layout.align.abi) {
@@ -173,15 +173,15 @@ fn cast_target(cls: &[Option<Class>], size: Size) -> CastTarget {
 const MAX_INT_REGS: usize = 6; // RDI, RSI, RDX, RCX, R8, R9
 const MAX_SSE_REGS: usize = 8; // XMM0-7
 
-pub(crate) fn compute_abi_info<'a, I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<'a, I>)
+pub(crate) fn compute_abi_info<I: Interner, C>(cx: &C, fn_abi: &mut FnAbi<I>)
 where
-    I: TyAbiInterface<'a, C>,
+    I: TyAbiInterface<C>,
     C: HasDataLayout + HasTargetSpec,
 {
     let mut int_regs = MAX_INT_REGS;
     let mut sse_regs = MAX_SSE_REGS;
 
-    let mut x86_64_arg_or_ret = |arg: &mut ArgAbi<'a, I>, is_arg: bool| {
+    let mut x86_64_arg_or_ret = |arg: &mut ArgAbi<I>, is_arg: bool| {
         if !arg.layout.is_sized() {
             // FIXME: Update int_regs?
             // Not touching this...
