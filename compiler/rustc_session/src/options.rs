@@ -2285,6 +2285,10 @@ target_modifier_options! {
         "set options for branch target identification and pointer authentication on AArch64"),
     fixed_x18: bool = (false, parse_bool, [TRACKED_UNSTABLE],
         "make the x18 register reserved on AArch64 (default: no)"),
+    regparm: Option<u32> = (None, parse_opt_number, [TRACKED_UNSTABLE],
+        "On x86-32 targets, setting this to N causes the compiler to pass N arguments \
+        in registers EAX, EDX, and ECX instead of on the stack for\
+        \"C\", \"cdecl\", and \"stdcall\" fn."),
     // tidy-alphabetical-end
 
     // If you add a new option, please update:
@@ -2724,11 +2728,6 @@ options! {
         "randomize the layout of types (default: no)"),
     reg_struct_return: bool = (false, parse_bool, [TRACKED],
         "On x86-32 targets, it overrides the default ABI to return small structs in registers.
-        It is UNSOUND to link together crates that use different values for this flag!"),
-    regparm: Option<u32> = (None, parse_opt_number, [TRACKED],
-        "On x86-32 targets, setting this to N causes the compiler to pass N arguments \
-        in registers EAX, EDX, and ECX instead of on the stack for\
-        \"C\", \"cdecl\", and \"stdcall\" fn.\
         It is UNSOUND to link together crates that use different values for this flag!"),
     relax_elf_relocations: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "whether ELF relocations can be relaxed"),

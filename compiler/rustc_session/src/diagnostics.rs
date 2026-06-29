@@ -671,13 +671,13 @@ pub(crate) struct FunctionReturnThunkExternRequiresNonLargeCodeModel;
 pub(crate) struct IndirectBranchCsPrefixRequiresX86OrX8664;
 
 #[derive(Diagnostic)]
-#[diag("`-Zregparm={$regparm}` is unsupported (valid values 0-3)")]
+#[diag("`-Tregparm={$regparm}` is unsupported (valid values 0-3)")]
 pub(crate) struct UnsupportedRegparm {
     pub(crate) regparm: u32,
 }
 
 #[derive(Diagnostic)]
-#[diag("`-Zregparm=N` is only supported on x86")]
+#[diag("`-Tregparm=N` is only supported on x86")]
 pub(crate) struct UnsupportedRegparmArch;
 
 #[derive(Diagnostic)]
