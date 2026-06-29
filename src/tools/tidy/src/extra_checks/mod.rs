@@ -200,7 +200,9 @@ fn js_prepare(root_path: &Path, outdir: &Path, npm: &Path, tidy_ctx: &TidyCtx) -
 
 fn show_bless_help(mode: &str, action: &str, bless: bool) {
     if !bless {
-        eprintln!("rerun tidy with `--extra-checks={mode} --bless` to {action}");
+        eprintln!(
+            "rerun with `--bless` to {action}: `./x.py test tidy --extra-checks={mode} --bless`"
+        );
     }
 }
 

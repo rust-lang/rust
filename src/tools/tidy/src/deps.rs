@@ -683,6 +683,9 @@ pub fn check(root: &Path, cargo: &Path, tidy_ctx: TidyCtx) {
 
 /// Ensure the list of proc-macro crate transitive dependencies is up to date
 fn check_proc_macro_dep_list(root: &Path, cargo: &Path, bless: bool, check: &mut RunningCheck) {
+    if std::env::var("RUSTC").is_err() {
+        panic!("tidy must be run under bootstrap (./x test tidy), not as a standalone command");
+    }
     let mut cmd = cargo_metadata::MetadataCommand::new();
     cmd.cargo_path(cargo)
         .manifest_path(root.join("Cargo.toml"))
