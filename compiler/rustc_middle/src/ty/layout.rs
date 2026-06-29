@@ -1555,3 +1555,17 @@ pub trait FnAbiOf<'tcx>: FnAbiOfHelpers<'tcx> {
 }
 
 impl<'tcx, C: FnAbiOfHelpers<'tcx>> FnAbiOf<'tcx> for C {}
+
+// Some types are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(target_pointer_width = "64")]
+mod size_asserts {
+    use rustc_data_structures::static_assert_size;
+
+    use super::*;
+    // FIXME: ideally these asserts would be at the definitions for ArgAbi and FnAbi,
+    // but they need an I: Interner, so we have to do it here
+    // tidy-alphabetical-start
+    static_assert_size!(ArgAbi<'_>, 56);
+    static_assert_size!(FnAbi<'_>, 80);
+    // tidy-alphabetical-end
+}
