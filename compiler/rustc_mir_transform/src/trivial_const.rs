@@ -52,11 +52,10 @@ where
     F: FnOnce() -> B,
     B: Deref<Target = Body<'tcx>>,
 {
-    if !matches!(
-        tcx.def_kind(def),
-        DefKind::AssocConst { .. } | DefKind::Const { .. } | DefKind::AnonConst
-    ) {
-        return None;
+    match tcx.def_kind(def) {
+        DefKind::AssocConst { .. } | DefKind::Const { .. } | DefKind::AnonConst => (),
+        DefKind::InlineConst if tcx.is_type_system_inline_const(def) => (),
+        _ => return None,
     }
 
     // If there are impossible predicates then MIR passes will replace the body with
