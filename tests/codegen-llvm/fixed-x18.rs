@@ -5,7 +5,7 @@
 //@ revisions: unset set
 //@ needs-llvm-components: aarch64
 //@ compile-flags: --target aarch64-unknown-none
-//@ [set] compile-flags: -Zfixed-x18
+//@ [set] compile-flags: -Tfixed-x18 -Zunstable-options
 
 #![crate_type = "lib"]
 #![feature(no_core, lang_items)]
