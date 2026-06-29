@@ -57,7 +57,7 @@ the SDP). Afterwards [`qcc`] (the QNX C/C++ compiler) should be available in
 your system PATH because it will be called during Rust compilation (e.g. for
 linking executables).
 
-[`qcc`]: https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.utilities/topic/q/qcc.html
+[`qcc`]: https://www.qnx.com/developers/docs/latest/com.qnx.doc.neutrino.utilities/topic/q/qcc.html
 
 When linking `no_std` applications, they must link against `libc.so` (see
 example). This is required because applications always link against the `crt`
